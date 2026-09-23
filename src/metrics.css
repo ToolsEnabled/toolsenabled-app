@@ -1,0 +1,1176 @@
+/* Metrics uses the same theme register as the rest of the app. Providers
+   retain distinct, labelled colors; status and activity use shared tokens. */
+.metrics {
+  --prov-codex: var(--c-coordinator);
+  --prov-claude: var(--c-helper);
+  --prov-gemini: var(--c-shadow);
+  --prov-local: var(--c-manager);
+  --sev-good: var(--s-good);
+  --sev-warn: var(--s-warn);
+  --sev-serious: var(--s-serious);
+  --metric-heat-ink: var(--accent-2);
+  --pool-accent: var(--ink-3);
+  --heartbeat-ink: var(--ink-2);
+  --tile-mark: var(--ink-2);
+}
+
+/* ---------- filter row: bare controls over one hairline ----------
+   Two labels, two segs and a status note floating on the page; the
+   hairline ties the row to the column's edges. (The seg skin itself is
+   the shared styles.css control — untouched.) */
+.m-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 2px 2px 12px;
+  border-bottom: 1px solid var(--line-2);
+}
+.m-filter .mf-label {
+  font-size: 12.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-25);
+  font-weight: 650;
+}
+.m-filter .mf-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 4px;
+  background: var(--line-2);
+  flex: none;
+}
+.m-filter .spacer { flex: 1; }
+.m-filter .mf-note {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-25);
+  /* WAS `white-space: nowrap`, written when this note was the short
+     "demonstration fleet · live" tag. The unavailable branch of
+     applyLiveProjection() now writes a full sentence plus the guide door into
+     this same span, and a nowrap sentence cannot wrap: on every fresh install
+     it ran ~1385px wide inside a ~1240px filter row and pushed the whole
+     .view-pad sideways -- `body{overflow:hidden}` means those pixels are
+     simply gone. Measured by tools/window-size-sweep-qa.mjs at 1024/1280/1440
+     ("the page does not scroll sideways -- .view-pad 1403>1016"). A long note
+     wraps; it never widens the page. */
+  white-space: normal;
+  min-width: 0;
+}
+.m-filter .mf-note b { color: var(--ink-3); font-weight: 600; }
+/* the page's one ambient accent: a tiny dot breathing beside `live` —
+   opacity only (composited), stilled under reduced motion */
+.m-filter .live-dot {
+  display: inline-block;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--sev-good);
+  margin-right: 5px;
+  vertical-align: 1px;
+  animation: liveBreathe 2.8s ease-in-out infinite;
+}
+@keyframes liveBreathe { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* ---------- band 1: bare stat strip ----------
+   Six figures floating in one row — no boxes, no fills. 11px caps label
+   above, ~32px tabular value, the measured 12.5px delta line, the
+   shared sparkline glyph under. One full-column hairline closes the
+   strip. */
+.m-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--s4) 24px;
+  padding: 6px 2px 22px;
+  border-bottom: 1px solid var(--line-2);
+}
+/* six factors as 3+3 below the width where one row of six gets cramped */
+@media (max-width: 1100px) {
+  .m-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* ...and 2+2+2 below the width where one row of THREE does. The same reading,
+   one step further down: at 320 the page column is 288px, the strip spends 4px
+   of its own padding and two 24px gaps, and three tracks come to 78.7px each.
+   .stat .tl is 11px caps at --track-caps and white-space: nowrap -- it has to
+   be, the tile is a four-row grid whose label row is a measured 14px, so a
+   label that wrapped would push its figure down and the six figures would stop
+   sharing a baseline -- and the longest labels this page prints, "DID NOT
+   START" and "LAST 24 HOURS", measure ~112px. A nowrap label 33px wider than
+   its track hangs out of .stat, and .stat sets no overflow, so it reaches
+   .view-pad (overflow-y: auto, therefore overflow-x: auto) and the page pans
+   sideways. Three across needs ~429px of window; 480 is the first step below
+   that this sheet family already uses, and at 480 two tracks are 250px each,
+   so nothing between 481 and 1100 moves by a pixel. */
+@media (max-width: 480px) {
+  .m-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.stat {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 14px 34px 19px 34px;
+  align-content: start;
+}
+.stat .tl {
+  font-size: 11px;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+  font-weight: 650;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+.stat .tv {
+  display: flex; align-items: baseline; gap: 7px;
+  font-size: 32px; font-weight: 640; line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  transition: color .3s var(--ease);
+}
+/* Failure rate alone has a defined absolute verdict (<2 / 2–5 / >5).
+   These are the same text-safe theme steps as the agent table's fail column;
+   the other five count values remain neutral because they have no threshold. */
+.stat[data-tile="fail"] .tv.fail-ok { color: var(--s-good); }
+.stat[data-tile="fail"] .tv.fail-warn { color: var(--s-warn); }
+.stat[data-tile="fail"] .tv.fail-bad { color: var(--s-serious); }
+.stat .tv .unit {
+  font-size: 12.5px; color: var(--ink-25); font-weight: 550;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.stat .td {
+  align-self: center;
+  margin-top: 0;
+  font-size: 12.5px; line-height: 1.15; font-weight: 640;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: color .3s var(--ease);
+}
+.stat .td.up { color: var(--s-good); }
+.stat .td.down { color: var(--s-serious); }
+.stat .td.flat { color: var(--ink-3); font-weight: 550; }
+/* THE ONE-LINE CLAMP ABOVE IS FOR A DELTA, NOT FOR A REASON.
+   `white-space: nowrap; text-overflow: ellipsis` is right for "+12.4% vs
+   yesterday". The SAME node carries the whole explanation when the tile has
+   nothing to show, and there it clipped the only sentence that says why:
+   measured on a fresh profile, six tiles each showed "unavailable · No local
+   agent fleet fl…" in 186px of the 368px the sentence needs, with no title
+   and no other copy of the text anywhere on the page. The class is already on
+   the node in exactly that state, so the clamp is lifted for that state only
+   and the numeric delta is untouched. */
+.stat .td.projection-unavailable {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  align-self: start;
+}
+.stat .spark { align-self: end; margin-top: 0; display: block; }
+
+/* The metrics strip carries denominator and source sentences, not terse
+   units/deltas. Let those captions flow beneath each figure without clipping
+   them or colliding with the next row; unrelated stat layouts stay unchanged. */
+.metrics .m-strip .stat { display: flex; flex-direction: column; gap: 8px; }
+.metrics .m-strip .tv { min-width: 0; flex-wrap: wrap; row-gap: 5px; }
+.metrics .m-strip .tv .unit {
+  flex: 1 1 100%;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.metrics .m-strip .td { align-self: stretch; white-space: normal; overflow: visible; overflow-wrap: anywhere; line-height: 1.4; }
+.metrics .m-strip .spark { margin-top: auto; }
+
+/* count-up bump + sparkline end-point pulse (state marks, one-shot) */
+.stat .tv.bump { animation: tvBump .52s var(--ease-spring); }
+@keyframes tvBump {
+  0%   { transform: none; }
+  32%  { transform: translateY(-2px) scale(1.045); }
+  100% { transform: none; }
+}
+.spark-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  pointer-events: none;
+}
+.spark-halo.ping { animation: sparkPing .8s var(--ease) 1; }
+@keyframes sparkPing {
+  0%   { transform: scale(1);   opacity: 0.4; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+
+/* ---------- bands: bare sections ----------
+   A band is a caps title + quiet sub floating over its chart. No card,
+   no fill, no border — the band's own whitespace separates it. */
+.m-sec { min-width: 0; }
+.m-head {
+  display: flex; align-items: baseline; gap: 10px;
+  flex-wrap: wrap; row-gap: 4px;
+  padding: 0 2px;
+  margin-bottom: 10px;
+}
+.m-head .mt {
+  font-size: 11px;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-2);
+  font-weight: 660;
+  white-space: nowrap;
+}
+/* 13px, not 12.5: the sub is multi-word prose ("pools → providers →
+   roles · last 24 h"), which sits on the reading floor, not the
+   data-label tier */
+.m-head .ms { font-size: 13px; color: var(--ink-3); }
+.m-head .spacer { flex: 1; }
+
+/* engine hosts — CSS owns the box, the engine fills it */
+.metrics #sankey-chart { height: 430px; }
+.metrics #hero-chart { height: 260px; }
+.metrics #strip-chart { height: 70px; }
+.metrics #heat-chart { height: 168px; }
+.metrics .m-activity-picker { display: none; }
+.metrics #fail-chart { height: 192px; }
+.metrics #heartbeat-chart { height: 184px; }
+.metrics #burn-chart { height: 176px; }
+/* THE CHART HOST CONTAINS ITS OWN PIXELS, AND UNTIL 2026-08-18 ONLY THE TABLE DID.
+ *
+ * MEASURED at 1403x900 on the packaged build: `.view-pad` scrolled sideways on
+ * /metrics -- the whole page could be dragged horizontally, which is a thing a
+ * page must never do. The width comes from zrender: it writes a RAW INLINE PIXEL
+ * width onto the div it renders into (zrender/lib/svg/Painter.js), sized from
+ * whatever the slot measured at the moment it initialised, and nothing in this
+ * sheet ever targeted that div. One section had an overflow wrapper -- the agent
+ * table, inline in views/metrics.js -- and every `.echart` host had none, so a
+ * host that came back one measurement too wide pushed the page out from under
+ * the grid. `max-width: 100%` is the containment: it lets the host be narrower
+ * than its slot, never wider, whatever pixel value zrender left on it. The
+ * overflow rule is the belt: a chart that still overruns scrolls inside its own
+ * box rather than taking the page with it. */
+.metrics .echart { max-width: 100%; overflow-x: auto; }
+.metrics .echart[data-chart-scroll="false"] { overflow: visible; }
+.metrics .echart svg { width: 100%; height: 100%; }
+.metrics .m-chart-scroll-hint {
+  margin: var(--s2) 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.metrics .m-chart-scroll-hint[hidden] { display: none; }
+.metrics .echart[data-chart-scroll="true"]:focus-visible {
+  outline: 2px solid var(--ink-3);
+  outline-offset: 2px;
+}
+
+/* A missing live route keeps the hero's full measured slot. Two hairlines and
+   the strip's own absence mark make the absence deliberate without turning it
+   into a card; the one action is an explicit source switch, never simulated
+   data under a live label.
+   The bracket pair that used to flank this copy is gone. It was not bracketing
+   anything: measured at 1440x900 the copy column was 660px wide inside a
+   1704px slot, so each 190px-tall glyph stood ~120px clear of the nearest word
+   with the panel's own hairlines already closing the region above and below --
+   two ornaments parked beside the middle third, which is the exact failure
+   home.css documents for the typeset glyph. What replaces it is the page's own
+   word for "no measurement": the em-dash the six stat tiles overhead put in
+   their value slot when a figure is unavailable (see metrics.js, `ref.num`).
+   One page, one way of saying it, and the reader has already learned it two
+   bands up. */
+.metrics #sankey-chart.m-sankey-empty-host {
+  min-height: 430px;
+  padding: var(--s5) clamp(12px, 4vw, 56px);
+  border-block: 1px solid var(--line);
+}
+.m-sankey-empty {
+  width: min(560px, 100%);
+  min-height: 164px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+}
+/* Same glyph, same weight family and same ink as `.stat .tv` carries when a
+   figure is unavailable — set larger because this one is the hero's whole
+   answer rather than one of six. It is a state mark, not a rule: it must
+   not read as a divider, so it keeps the value ink rather than --line. */
+.m-sankey-empty-mark {
+  font-size: 44px;
+  font-weight: 640;
+  line-height: 1;
+  color: var(--ink-25);
+  user-select: none;
+}
+.m-sankey-empty-copy {
+  align-self: center;
+  display: grid;
+  justify-items: center;
+  gap: var(--s3);
+  text-align: center;
+}
+.m-sankey-empty-label {
+  color: var(--ink-25);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 660;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.m-sankey-empty-copy p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.m-sankey-sim {
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font: 620 12.5px/1 var(--font-ui);
+  cursor: pointer;
+  transition: color var(--dur-2) var(--ease), background var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+.m-sankey-sim:hover {
+  border-color: color-mix(in oklab, var(--ink) 34%, var(--line-2));
+  background: color-mix(in oklab, var(--ink) 4%, transparent);
+  color: var(--ink);
+}
+.m-sankey-sim:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* the caption row between the band's two panes — 11px caps micro-label
+   tier; its hairline is what makes hero and strip read as two panes of
+   ONE instrument */
+.m-band .band-cap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding: 8px 2px 4px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+  font-weight: 640;
+}
+.m-band .band-cap .bc-note { font-weight: 550; letter-spacing: 0.06em; }
+
+/* slot rows (.m-srow) are engine chrome — see src/metrics-layout.css,
+   imported by the layout engine itself. The standard heat·verdicts·lanes
+   row keeps its exact 1.25fr 1fr 1fr through --srow-cols. */
+
+/* ---------- verdict split: hero total + one 100% stacked bar ---------- */
+.vwrap {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  column-gap: 18px;
+  row-gap: 12px;
+  padding: 6px 0 4px;
+}
+.vhero { grid-column: 1; grid-row: 1; }
+.vhero .vh-n {
+  font-size: 34px; font-weight: 660; line-height: 1;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.vhero .vh-l {
+  margin-top: 5px;
+  font-size: 11px; letter-spacing: var(--track-caps); text-transform: uppercase;
+  color: var(--ink-25); font-weight: 650;
+}
+.vsplit { display: contents; }
+.vbar { position: relative; height: 22px; grid-column: 2; grid-row: 1; }
+.vlegend {
+  grid-column: 1 / -1; grid-row: 2;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 10px; margin-top: 0;
+}
+.vlegend .vk {
+  display: grid; grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center; gap: 3px 6px;
+  font-size: 12.5px; color: var(--ink-2); white-space: nowrap;
+}
+.vlegend .vk i { width: 8px; height: 8px; border-radius: 50%; background: var(--vc); grid-column: 1; grid-row: 1; }
+.vlegend .vk-label { grid-column: 2; grid-row: 1; overflow: hidden; text-overflow: ellipsis; }
+.vlegend .vk b { font-weight: 640; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vlegend .vk em {
+  grid-column: 2 / 4; grid-row: 2;
+  font-style: normal; color: var(--ink-3); font-variant-numeric: tabular-nums;
+}
+
+/* verdict footer — hairline + bare label/value rows, measured deltas */
+.vfoot {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding: 12px 2px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vf-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; }
+.vf-l { color: var(--ink-25); letter-spacing: 0.02em; }
+.vf-v { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 640; }
+.vf-v em { font-style: normal; color: var(--ink-3); font-weight: 550; margin-left: 6px; }
+
+/* sequential scale key for the heatmap (single-hue ramp) */
+.heat-key { display: flex; align-items: center; gap: 5px; }
+.heat-key em {
+  font-style: normal;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-25);
+  font-weight: 600;
+}
+.heat-key i {
+  width: 13px; height: 9px;
+  border-radius: 2px;
+  display: block;
+  box-shadow: inset 0 0 0 1px rgba(14, 23, 38, 0.04);
+}
+
+/* ---------- optional instrument: machine heartbeat ---------- */
+.heartbeat-stage, .burn-stage, .gate-stage { position: relative; min-width: 0; }
+.heartbeat-stage { height: 184px; }
+.hb-meta {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--hb-row) * 92px);
+  left: 2px; right: 2px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  min-width: 0;
+  pointer-events: none;
+  transition: opacity .22s var(--ease);
+}
+.hb-meta.is-muted { opacity: 0.34; }
+.hb-name {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-width: 0;
+  font-size: 11px; line-height: 1;
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+  color: var(--ink-2); font-weight: 660;
+  white-space: nowrap;
+}
+.hb-name i {
+  width: 5px; height: 5px; flex: none; border-radius: 50%;
+  background: var(--sev-good);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sev-good) 10%, transparent);
+}
+.hb-meta.is-hiccup .hb-name i {
+  background: var(--sev-warn);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sev-warn) 12%, transparent);
+}
+.hb-last {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+.hb-signal-tip {
+  position: absolute; z-index: 3; right: 0; top: -2px;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--heartbeat-ink);
+  box-shadow: 0 0 8px 2px color-mix(in oklab, var(--heartbeat-ink) 34%, transparent);
+  pointer-events: none;
+  transition: transform .28s var(--ease), opacity .2s var(--ease), background .2s var(--ease);
+  will-change: transform;
+}
+.hb-signal-tip.is-muted { opacity: 0.28; }
+.hb-signal-tip.is-hiccup {
+  background: var(--sev-warn);
+  box-shadow: 0 0 8px 2px color-mix(in oklab, var(--sev-warn) 30%, transparent);
+}
+
+/* ---------- optional instrument: pool burn ---------- */
+.burn-stage { height: 176px; }
+.burn-meta {
+  position: absolute; z-index: 2;
+  top: calc(var(--burn-row) * 88px);
+  left: 2px; right: 2px;
+  min-width: 0;
+  pointer-events: none;
+}
+.burn-line {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  min-width: 0;
+}
+.burn-name {
+  font-family: var(--font-mono); font-size: 11px; line-height: 1;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-2); font-weight: 660;
+}
+.burn-rate {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+.burn-figure {
+  margin-top: 5px;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13px; line-height: 1.2; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- optional instrument: gates & checkpoints ---------- */
+.gate-counts {
+  font-family: var(--font-mono); font-size: 12.5px;
+  font-variant-numeric: tabular-nums; color: var(--ink-3);
+  white-space: nowrap;
+}
+.gate-stage { height: 176px; padding: 6px 2px 0; }
+.gate-track { position: relative; height: 64px; }
+.gate-track::before {
+  content: "";
+  position: absolute; left: 2px; right: 2px; top: 31px;
+  height: 1px; background: var(--line-2);
+}
+.gate-event {
+  --gate-color: var(--ink-3);
+  position: absolute; z-index: 1;
+  left: var(--event-x); top: calc(7px + var(--event-row, 1) * 16px);
+  width: 15px; height: 15px;
+  padding: 0; margin: 0;
+  transform: translateX(-50%);
+  border: 0; border-radius: 3px;
+  background: transparent; cursor: crosshair;
+}
+.gate-event i {
+  position: absolute; left: 50%; top: 50%;
+  width: 8px; height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--gate-color);
+  transition: transform .18s var(--ease), box-shadow .18s var(--ease), background .18s var(--ease);
+}
+.gate-event.is-open i {
+  width: 9px; height: 9px;
+  border: 1.5px solid var(--gate-color); border-radius: 2px;
+  background: var(--bg);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.gate-event.is-open { --gate-color: var(--sev-good); }
+.gate-event.is-held { --gate-color: var(--sev-warn); }
+.gate-event.is-serious { --gate-color: var(--sev-serious); }
+.gate-event.is-held i,
+.gate-event.is-serious i {
+  width: 9px; height: 9px; border-radius: 2px;
+  background: var(--gate-color);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.gate-event.is-ongoing i::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 1px solid color-mix(in oklab, var(--gate-color) 48%, transparent);
+  border-radius: 50%;
+}
+.gate-event:hover i {
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--gate-color) 16%, transparent);
+  transform: translate(-50%, -50%) scale(1.22);
+}
+.gate-event.is-open:hover i,
+.gate-event.is-held:hover i,
+.gate-event.is-serious:hover i {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.22);
+}
+.gate-event:focus-visible { outline: 2px solid var(--focus-ring, #0079a8); outline-offset: 2px; }
+.gate-axis-labels {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 0 1px;
+  font-family: var(--font-mono); font-size: 11px;
+  font-variant-numeric: tabular-nums; color: var(--ink-3);
+}
+.gate-legend {
+  display: grid; grid-template-columns: repeat(3, max-content);
+  justify-content: start; gap: 12px;
+  margin-top: 34px;
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-25); font-weight: 620;
+}
+.gate-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.gate-legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.gate-legend i.is-open {
+  border: 1.5px solid var(--sev-good); border-radius: 2px; background: transparent; transform: rotate(45deg);
+}
+.gate-legend i.is-held { border-radius: 2px; background: var(--sev-warn); transform: rotate(45deg); }
+
+/* severity + provider legend chips ride the shared .chart-legend skin */
+.metrics .chart-legend { font-size: 12.5px; }
+.metrics .token-legend { column-gap: 14px; row-gap: 4px; }
+.metrics .token-legend .ck { gap: 4px; }
+/* names the legend numbers as the window's sums — the axis is instantaneous
+   thousands, and a cold reader shouldn't have to reconcile the two scales */
+.metrics .token-legend .ck-cap {
+  color: var(--ink-3); font-size: 11px; font-weight: 550;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.metrics .token-legend .ck i { margin-right: 2px; }
+.metrics .token-legend .ck-name { color: var(--ink-3); font-weight: 550; }
+.metrics .token-legend .ck-value {
+  color: var(--ink-2); font-family: var(--font-mono); font-weight: 620;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- engine tooltip skin (.mtip) ----------
+   The one glass survivor: a transient overlay, not a page surface.
+   Appended to <body>, hence no .metrics prefix. */
+.mtip {
+  box-sizing: border-box;
+  max-width: min(320px, calc(100vw / var(--zoom, 1) - 32px));
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding: var(--s2) var(--s3);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, calc(0.86 * var(--wa)));
+  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, calc(0.95 * var(--wa)));
+  box-shadow: 0 10px 26px -10px rgba(var(--shadow-rgb), calc(0.3 * var(--shadow-k)));
+  font-family: var(--font-ui);
+  font-size: 13px; color: var(--ink-2);
+}
+.mtip b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.mtip .tt-source {
+  margin-bottom: var(--s2);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+.mtip .tt-title {
+  font-size: 11px; letter-spacing: var(--track-caps); text-transform: uppercase;
+  color: var(--ink-25); font-weight: 640; margin-bottom: var(--s1);
+}
+.mtip .tt-total { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.tooltip .tt-row, .mtip .tt-row { display: flex; align-items: center; gap: 6px; line-height: 1.65; }
+.tooltip .tt-row b, .mtip .tt-row b { margin-left: auto; padding-left: 10px; }
+.tooltip .tt-key, .mtip .tt-key {
+  width: 7px; height: 7px; border-radius: 50%; flex: none; display: block;
+}
+
+/* ---------- band 5: pools, three bare columns over one hairline ---------- */
+.metrics .m-pools {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s4) 44px;
+  border-top: 1px solid var(--line-2);
+  padding-top: 20px;
+}
+@media (max-width: 900px) { .metrics .m-pools { grid-template-columns: 1fr; } }
+.metrics .pool { padding: 0 2px; }
+/* thin 3px meter — a rule of colour, not a trough */
+.metrics .meter {
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--ink) 12%, transparent);
+  box-shadow: none;
+}
+.metrics .meter .mf {
+  width: 100%;
+  border-radius: 2px;
+  background: var(--pc);
+  transform-origin: left center;
+  transition: transform .3s var(--ease);
+}
+.pool .meter { cursor: default; transition: box-shadow .3s var(--ease); }
+.pool .meter:hover {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pc) 14%, transparent);
+}
+/* type-floor restatements for pool text owned by styles.css */
+.metrics .pool-head .pt { font-size: 12.5px; padding: 4px 10px; }
+.metrics .pool-sub { font-size: 12.5px; }
+.metrics .meter-caption { font-size: 12.5px; }
+.metrics .pool-stat .l { font-size: 12.5px; }
+.metrics .pool-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.metrics .pool-stat { min-width: 0; }
+.metrics .pool-stat:nth-child(2) { text-align: center; }
+.metrics .pool-stat:nth-child(3) { text-align: right; }
+.metrics .pool-stat .v,
+.metrics .pool-stat .l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- agent table, unboxed ----------
+   Hairline header rule (on the section head), hairline row rules at low
+   alpha from the shared .mtable skin. Hover is an ink tint so it reads
+   on the bare page of every theme. */
+.metrics .m-agents .m-head {
+  border-bottom: 1px solid var(--line-2);
+  padding-bottom: 10px;
+  margin-bottom: 0;
+}
+.metrics .m-agents .mtable th { border-bottom: 1px solid var(--line); }
+.metrics .mtable tbody tr:hover { background: color-mix(in oklab, var(--ink) 4.5%, transparent); }
+.metrics .mtable th { font-size: 13px; padding: 9px 12px; }
+.metrics .mtable td { font-size: 13px; height: 45px; padding: 9px 12px; }
+.metrics .mtable .trend-head { width: 114px; color: var(--ink-25); }
+.metrics .mtable .trend-cell { width: 114px; padding-block: 7px; }
+.metrics .mtable .trend-cell .spark { display: block; margin-left: auto; }
+.metrics .mtable .trend-cell .spark path { stroke-width: 1.8; }
+.metrics .mtable tbody tr:hover .trend-cell .spark path { stroke: var(--ink-2); }
+.metrics .mtable tbody tr:hover .trend-cell .spark circle { filter: drop-shadow(0 0 3px var(--ink-3)); }
+
+.mtable th.sortable { cursor: pointer; user-select: none; transition: color .22s var(--ease); }
+.mtable th.sortable:hover { color: var(--ink-2); }
+.mtable th.sortable:focus-visible {
+  outline: 3px solid var(--focus-ring, #0079a8);
+  outline-offset: -3px;
+  color: var(--ink);
+  border-radius: 3px;
+}
+.mtable th .th-in { display: inline-flex; align-items: center; gap: 5px; }
+.mtable th.num .th-in { flex-direction: row-reverse; }
+.mtable th.sorted { color: var(--ink); }
+
+.sarr {
+  width: 9px; height: 9px;
+  flex: none;
+  opacity: 0;
+  color: var(--c-coordinator);
+  transform: translateY(1px) rotate(0deg);
+  transition: opacity .28s var(--ease), transform .38s var(--ease-spring);
+}
+.sarr svg { width: 9px; height: 9px; display: block; fill: currentColor; }
+.mtable th.sorted .sarr { opacity: 1; }
+.mtable th.sorted.desc .sarr { transform: translateY(1px) rotate(180deg); }
+
+/* D1, TEXT SHARPNESS. No will-change here: nothing in this product ever adds
+   the .flip class this hint was promoted for (searched two ways across
+   src/, tools/, shell/ and public/: `classList` writes and a whole-word
+   `flip` sweep of the metrics modules -- no writer), so every data row in
+   every metrics table carried a permanent compositing layer and its numbers
+   were resampled at rest. The .flip rule below is left in place: it is the
+   layout half, and removing a selector is not this change's job. */
+.mtable tbody tr.row-hidden { display: none; }
+.mtable tbody tr.flip { position: relative; z-index: 1; }
+
+/* failure-lane filter state: a filtered row is MARKED, not just a
+   survivor of hiding */
+.mtable tbody tr.lane-filtered td {
+  background: color-mix(in oklab, var(--ink) 4%, transparent);
+}
+.mtable tbody tr.lane-filtered td:first-child {
+  box-shadow: inset 2px 0 0 var(--ink-3);
+}
+
+/* the clear affordance in the table header: chip idiom, hairline
+   border, 3px corners, quiet until hovered */
+.lane-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color .22s var(--ease), border-color .22s var(--ease);
+}
+/* The inline-flex rule beats the UA's `[hidden] { display: none }`; metrics.js
+   ships this control hidden. Gate: tools/test/hidden-display-honesty.test.mjs. */
+.lane-clear[hidden] { display: none; }
+.lane-clear b { font-weight: 640; color: var(--ink); }
+.lane-clear .lc-x { font-size: 13px; line-height: 1; color: var(--ink-3); }
+.lane-clear:hover { color: var(--ink); border-color: var(--ink-3); }
+.lane-clear:hover .lc-x { color: var(--ink); }
+.lane-clear:focus-visible {
+  outline: 3px solid var(--focus-ring, #0079a8);
+  outline-offset: 1px;
+}
+
+/* a pools column that shares a row folds its three cards into a stack —
+   three 3-col cards at slot width clip their own captions — and sheds the
+   full-band hairline that would otherwise draw mid-row */
+.metrics .m-pools--slim {
+  grid-template-columns: 1fr;
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Layout edit-mode chrome (tray, grips, ghost, insert line, join halves,
+   stash, edit button) is engine chrome: src/metrics-layout.css, imported
+   by src/metrics-layout.js itself. Only page-specific drag behavior and
+   page type floors stay here. */
+
+/* charts must not chase the pointer with tooltips mid-drag — and inert
+   SVG lets elementFromPoint resolve straight to the component root */
+body.m-dragging .metrics .echart { pointer-events: none; }
+
+/* ---------- pool meter tooltip type floor ---------- */
+.metrics .tooltip { font-size: 13px; }
+.metrics .tooltip .tt-title { font-size: 11px; }
+/* ---------- reduced motion ----------
+   (the engine charts read the same gate in JS: reduced() sets
+   animation:false / animationDurationUpdate:0 on every setOption; the
+   drag ghost's settle fade is gated in metrics-layout.js the same way) */
+body.reduce-motion .spark-halo,
+body.reduce-motion .spark-halo.ping { animation: none; opacity: 0; }
+body.reduce-motion .stat .tv.bump { animation: none; }
+body.reduce-motion .m-filter .live-dot { animation: none; opacity: 1; }
+body.reduce-motion .hb-meta,
+body.reduce-motion .hb-signal-tip,
+body.reduce-motion .gate-event i { transition: none; }
+
+/* ================================================================
+   THE LIVE FACE OF THIS PAGE.
+
+   Every rule below draws a reading taken from this computer's own signed
+   record of what has run here (src/local-metrics.js). None of it is used by
+   the demonstration face, which keeps its ECharts instruments unchanged --
+   the live branch never initialises a chart engine, deliberately, because a
+   simulated shape held for even one frame is a false live claim.
+
+   They are unboxed like everything else on this page: hairlines and
+   whitespace do the separating, no cards, no fills behind text.
+   ================================================================ */
+
+/* The sentence a panel shows when there is nothing in it. It is a sentence,
+   in the page's reading grey, at reading size -- not a status code centred in
+   a chart well, which is what it replaced. */
+.metrics .m-panel-note {
+  margin: 0;
+  padding: var(--s3) 0 0;
+  max-width: 62ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-25);
+  text-wrap: pretty;
+}
+.metrics .m-panel-note.is-good { color: var(--s-good); }
+/* The chart wells are fixed-height for the engine's sake; a paragraph in one
+   should sit at the top of it and not float in the middle. */
+.metrics .echart.projection-unavailable,
+.metrics #agent-table.projection-unavailable,
+.metrics #pools.projection-unavailable {
+  display: block;
+  height: auto;
+  min-height: 0;
+  border: 0;
+}
+.metrics .mf-extra { display: block; color: var(--ink-3); }
+.metrics .mf-note.is-unverified { color: var(--s-warn); }
+
+/* ---------- runs by hour, over seven days ---------- */
+.metrics .m-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: var(--s2);
+}
+.metrics .m-activity-row {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: var(--s2);
+}
+.metrics .m-activity-day {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.metrics .m-activity-cells {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 2px;
+}
+/* An hour with no run is a hairline of the page, not a light grey block: an
+   empty week must read as empty rather than as a full grid of pale cells. */
+.metrics .m-activity-cell {
+  height: 14px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent-2) calc(var(--heat, 0) * 88%), transparent);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.metrics .m-activity-cell[data-runs] { box-shadow: none; }
+.metrics .m-activity-axis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-left: calc(34px + var(--s2));
+  padding-top: var(--s1);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+
+/* ---------- what became of each run ---------- */
+.metrics .m-outcomes { padding-top: var(--s2); }
+.metrics .m-outcome-total {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+.metrics .m-outcome-total b {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.metrics .m-outcome-total span { font-size: 12px; color: var(--ink-3); }
+.metrics .m-outcome-bar {
+  display: flex;
+  height: 10px;
+  margin-top: var(--s3);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--line);
+}
+.metrics .m-outcome-bar i { width: var(--w, 0%); }
+/* Three outcomes, three meanings: it ran, it did not, and nobody wrote down
+   which. The third is deliberately the neutral grey rather than a shade of
+   either of the other two -- an unrecorded outcome is not a near-success. */
+.metrics .m-outcome-bar i[data-key="started"],
+.metrics .m-outcome-legend i[data-key="started"] { background: var(--s-good); }
+.metrics .m-outcome-bar i[data-key="refused"],
+.metrics .m-outcome-legend i[data-key="refused"] { background: var(--s-serious); }
+.metrics .m-outcome-bar i[data-key="unrecorded"],
+.metrics .m-outcome-legend i[data-key="unrecorded"] { background: var(--ink-4); }
+.metrics .m-outcome-legend {
+  list-style: none;
+  margin: var(--s3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.metrics .m-outcome-legend li {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.metrics .m-outcome-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-sm);
+}
+.metrics .m-outcome-legend b {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.metrics .m-outcome-note {
+  margin: var(--s3) 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-25);
+}
+
+/* ---------- why a run did not start ---------- */
+.metrics .m-refusals {
+  list-style: none;
+  margin: var(--s2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+/* `minmax(0, ...)` on both tracks, for the reason .m-strip and .m-pools already
+   carry it: a bare `1fr` track has an automatic MINIMUM of its content's own
+   min-content width, so one long unbroken refusal sentence widens the grid past
+   its container instead of wrapping inside it. This head arrived with the
+   metrics rewrite without the floor its siblings have. */
+.metrics .m-refusal-head {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--s2);
+  align-items: baseline;
+  min-width: 0;
+}
+.metrics .m-refusal-head b {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.metrics .m-refusal-sentence {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.metrics .m-refusal-bar {
+  display: block;
+  height: 4px;
+  margin-top: 6px;
+  width: var(--w, 0%);
+  min-width: 3px;
+  border-radius: var(--r-sm);
+  background: var(--s-serious);
+}
+
+/* ---------- the runs themselves ---------- */
+.metrics .m-run-seq {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+.metrics td[data-result="started"] { color: var(--s-good); }
+.metrics td[data-result="refused"] { color: var(--s-serious); }
+.metrics .m-run-why {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-25);
+  max-width: 52ch;
+  white-space: normal;
+  text-wrap: pretty;
+}
+
+/* ================================================================
+   WHAT THE TURNS ON THIS COMPUTER USED
+   ----------------------------------------------------------------
+   Four panels -- token routing, token flow, account pools and pool burn --
+   used to carry one sentence each saying this product never sees a token
+   count. It does: both engines report usage on every turn and it is now
+   written into a signed record on this machine. These are the styles for
+   drawing that record, and they are deliberately the same instrument the
+   other live panels use -- a labelled row, a bar shaded against the largest
+   real reading, a figure in the mono face -- because a page whose measured
+   panels look like its simulated ones invites the reader to trust both
+   equally.
+   ================================================================ */
+.metrics .m-token-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: var(--s2) 0 0;
+  list-style: none;
+}
+.metrics .m-token-rows li {
+  display: grid;
+  grid-template-columns: minmax(64px, 22%) 1fr auto auto;
+  align-items: center;
+  gap: var(--s2);
+}
+.metrics .m-token-name {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Shaded against the largest REAL row, never against an invented ceiling: a
+   quiet week must read as a quiet week. */
+.metrics .m-token-bar {
+  display: block;
+  height: 10px;
+  width: var(--w, 0%);
+  min-width: 0;
+  border-radius: var(--r-sm);
+  background: var(--accent-2);
+}
+.metrics .m-token-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.metrics .m-token-note {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* Sign-ins, assistants and agents side by side -- the three columns this panel
+   has always promised, now naming things this computer recorded. */
+.metrics .m-routing {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--s4);
+  padding-top: var(--s2);
+}
+.metrics .m-routing-col h4,
+.metrics .m-pool-usage h4 {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.metrics .m-pool-usage,
+.metrics .m-burn-usage { padding-top: var(--s2); }
+
+/* ================= telling the two faces apart =================
+ *
+ * THE DEFECT THIS CLOSES, in the owner's own words: "simulation routing still
+ * seems to have the old version so im just confused whats happening." He was
+ * looking at two pages that both said `live`, with a pulsing green dot, one of
+ * which is a demonstration built from made-up numbers. The word and the dot are
+ * now the demonstration's own, in its own colour, and the measured face wears
+ * the name of the thing it is actually reading. One glance decides it.
+ */
+.m-filter .mf-face {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  border: 1px solid currentColor;
+  flex: none;
+  margin-right: var(--s3);
+}
+.metrics[data-face="demonstration"] .mf-face { color: var(--s-warn); }
+.metrics[data-face="this-computer"] .mf-face { color: var(--s-good); }
+/* The demonstration's own dot: the same 4px mark, in the same colour as the
+   word beside it, and deliberately NOT breathing -- the breath is what read as
+   a live signal. */
+.m-filter .sim-dot {
+  display: inline-block;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--s-warn);
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+.metrics[data-face="demonstration"] .mf-note b { color: var(--s-warn); }
+
+/* ================= measured chart hosts =================
+   The outcome split is an engine host now, and an engine host cannot inherit
+   the 10px track the hand-drawn bar wore: it needs a real box to fill and no
+   background of its own behind transparent series. */
+.metrics .m-outcome-bar.echart {
+  display: block;
+  height: 22px;
+  background: none;
+  overflow: visible;
+}
+/* A sentence that belongs to a panel but not inside its chart host -- the money
+   statement under pool burn, the derived-total note under token routing. The
+   hosts are fixed-height boxes an engine fills, so a paragraph inside one would
+   be drawn over. */
+.metrics .m-panel-aside {
+  margin-top: var(--s3);
+  padding-top: 0;
+}
+
+/* A LEGEND THAT WAS TOLD TO HIDE AND DID NOT.
+ *
+ * The measured failure panel counts runs; it does not draw the <2% / 2-5% / >5%
+ * severity scale the demonstration's bars use, so renderRefusals() sets
+ * `legend.hidden = true` on those three chips rather than deleting them (the
+ * demonstration still needs them). `hidden` is a UA rule of display:none, and
+ * `.chart-legend { display: flex }` in the shared stylesheet outranks it -- so
+ * the three chips stayed on screen above a panel with no percentages on it,
+ * measured on the packaged build. Scoped to .metrics so the fix cannot reach
+ * another surface's legend.
+ */
+.metrics .chart-legend[hidden] { display: none; }
+
+
+/* Keep the existing desktop filter row; phone labels travel with their controls. */
+.m-filter .mf-control-group { display: contents; }

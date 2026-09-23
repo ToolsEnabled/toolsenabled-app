@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "_readme": [
+    "THE PROMISE REGISTER. Every capability the owner has said a paid tier",
+    "INCLUDES, recorded as data with its provenance, so that the claim can be",
+    "checked against the entitlement model by a program instead of by a reader.",
+    "",
+    "This file is a REQUIREMENT, not a source of truth about what is granted.",
+    "tools/check-subscription-claims.mjs compares each entry against the engine's",
+    "src/lib/entitlement.js and REFUSES (exit 1) when the model does not actually",
+    "grant it to the tiers named here. The subscription page never renders from",
+    "this file -- it renders from the model -- so a promise recorded here and not",
+    "yet built cannot reach a customer as a claim. It can only make the guard red.",
+    "",
+    "Adding an entry here is how you say 'the product owes this'. Removing one is",
+    "how you say 'the owner withdrew it'. Neither is how you make the guard pass:",
+    "the way to make it pass is to declare the capability in GATED_CAPABILITIES."
+  ],
+  "promises": [
+    {
+      "capability": "website-access",
+      "statedAs": "website access is a paid-tier entitlement, equivalent to mobile phone access, included with its tier",
+      "provenance": "OWNER-STATED R1266, restated as still standing under R1268 (agent-coord key owner-directive-demos-are-live-user-demos, revision 3)",
+      "includedWithTiers": ["operator", "team"]
+    },
+    {
+      "capability": "mobile-access",
+      "statedAs": "mobile phone access, included with its tier -- the thing website access was declared equivalent to",
+      "provenance": "OWNER-STATED R1266, restated as still standing under R1268 (agent-coord key owner-directive-demos-are-live-user-demos, revision 3)",
+      "includedWithTiers": ["operator", "team"]
+    }
+  ]
+}

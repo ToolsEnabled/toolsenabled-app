@@ -1,0 +1,422 @@
+/* The shared compare window uses the app's surface, control, spacing, radius,
+ * font and focus tokens. Compact file controls follow the existing popup
+ * geometry; file text uses the interface's 12.5px mono tier.
+ *
+ * THE HEIGHT IS TAKEN FROM `--phone-canvas-h` WHEN THERE IS ONE, and from the
+ * viewport when there is not. src/phone-canvas.js writes that property with the
+ * VISUAL viewport height and rewrites it whenever the address bar or the
+ * keyboard moves; `100vh` on those engines is the taller box, so a dialog sized
+ * to it puts its own save controls under the keyboard. The fallback in the
+ * var() is what keeps every desktop window exactly as it was -- there is no
+ * media query and no attribute selector reaching into that module's business.
+ */
+
+.diff-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: clamp(var(--s2), 3vw, var(--s5));
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: color-mix(in oklab, var(--bg) 74%, transparent);
+  backdrop-filter: blur(18px) saturate(0.9);
+  -webkit-backdrop-filter: blur(18px) saturate(0.9);
+  animation: diff-editor-in var(--dur-2) var(--ease) both;
+}
+
+@keyframes diff-editor-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.diff-dialog {
+  width: min(1240px, 100%);
+  /* THE DESKTOP FALLBACK DIVIDES BY --zoom, and it is the same reason the iOS
+     note above gives for preferring --phone-canvas-h: a viewport unit is not
+     the box you think it is. Here the box is the window and the setting that
+     breaks it is Text size -- `zoom` on <body> leaves a viewport unit unscaled
+     while scaling the dialog painted from it, so at Large this window stood
+     12% taller than the one it sits in and its Save/Cancel row went under the
+     bottom edge, with nothing to scroll. Divided rather than swapped for a
+     percentage because .diff-overlay's padding is a clamp() and not the --s4
+     this line subtracts: at Default the height has to stay exactly what it
+     was. See --zoom at :root in src/styles.css. */
+  height: min(900px, calc(var(--phone-canvas-h, calc(100vh / var(--zoom, 1))) - 2 * var(--s4)));
+  /* THE PANES ASK THIS BOX HOW WIDE IT IS, NOT THE WINDOW. Stacking used to key
+     off the viewport, which is not the width the two columns actually get: the
+     dialog is min(1240px, 100%) inside a padded overlay, and Text size scales
+     the dialog's contents through `zoom` on <body> while leaving a viewport
+     unit unscaled -- the same mismatch the height above divides out. At Large
+     the window stayed over 700px so the panes stayed side by side, and the two
+     columns were narrower than the one-column layout the query was written to
+     give them. A container query measures the box the panes are in, after the
+     scaling, which is the number the decision was always about. */
+  container-type: inline-size;
+  container-name: diff-dialog;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background: var(--sheet);
+  box-shadow: var(--elev-3);
+}
+.diff-dialog:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+
+.diff-head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  border-bottom: 1px solid var(--line-2);
+}
+.diff-heading { min-width: 0; }
+.diff-eyebrow { margin: 0 0 var(--s2); color: var(--ink-25); font: 550 11px/1.4 var(--font-ui); letter-spacing: var(--track-caps); text-transform: uppercase; }
+.diff-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 640;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.diff-lede {
+  max-width: 68ch;
+  margin: var(--s2) 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+/* Quoted geometry: the 32px close button of src/owner-popup.css, so the two
+   modal surfaces in this product close at the same size and in the same spot. */
+.diff-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--control-border, var(--line-2));
+  border-radius: var(--r-sm);
+  background: var(--control-bg, var(--sheet));
+  color: var(--ink-3);
+  font: 300 24px/1 var(--font-ui);
+  cursor: pointer;
+}
+.diff-close svg { width: 18px; height: 18px; }
+.diff-close:hover { color: var(--ink); background: var(--control-hover, color-mix(in oklab, var(--ink) 5%, var(--sheet))); }
+.diff-close:focus-visible, .diff-recorded summary:focus-visible, .diff-recorded-lines:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.diff-session-totals { display: grid; grid-template-columns: auto auto; align-items: center; gap: var(--s1) var(--s3); margin-left: auto; padding: var(--s1) var(--s3); border-inline-start: 1px solid var(--line-2); font: 13px/1.4 var(--font-mono); font-variant-numeric: tabular-nums; }
+.diff-session-totals small { grid-column: 1 / -1; white-space: nowrap; color: var(--ink-3); font: 12.5px/1.4 var(--font-ui); }
+.diff-total-added { color: var(--s-good); }
+.diff-total-removed { color: var(--s-serious); }
+
+.diff-refusal,
+.diff-closing {
+  flex: none;
+  margin: 0;
+  padding: var(--s3) var(--s5);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in oklab, var(--s-serious) 8%, var(--sheet));
+}
+
+/* ------------------------------------------------------------------
+   THE TWO PANES. Side by side while there is room for two readable
+   columns, stacked when there is not.
+   ------------------------------------------------------------------ */
+.diff-panes {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+  padding: var(--s3) var(--s5) var(--s4);
+  overflow: hidden;
+}
+
+.diff-pane {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--bg) 25%, var(--sheet));
+  overflow: hidden;
+}
+
+.diff-pane-head { min-width: 0; padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line-2); background: color-mix(in oklab, var(--bg) 45%, var(--sheet)); }
+.diff-pane-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.diff-dialog .diff-choose { flex: none; height: 28px; padding: 0 var(--s2); font-size: 12.5px; font-weight: 550; color: var(--ink-2); border: 1px solid var(--control-border, var(--line-2)); border-radius: var(--r-sm); background: var(--control-bg, var(--sheet)); box-shadow: none; }
+.diff-dialog .diff-choose:hover:not(:disabled) { color: var(--ink); background: var(--control-hover, var(--sheet)); transform: none; box-shadow: none; }
+.diff-pane[data-diff-side="original"] { border-top: 2px solid color-mix(in oklab, var(--s-serious) 55%, var(--line-2)); }
+.diff-pane[data-diff-side="proposed"] { border-top: 2px solid color-mix(in oklab, var(--s-good) 55%, var(--line-2)); }
+.diff-pane-title {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+/* The path is the one long unbroken string on this surface, and it is the
+   person's own file rather than anything from inside the program. It wraps
+   anywhere rather than widening the column past its share of the dialog. */
+.diff-pane-where {
+  margin: var(--s2) 0 0;
+  font: 12.5px/1.45 var(--font-mono);
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diff-pane-where[data-diff-empty] { color: var(--ink-3); font-family: var(--font-ui); }
+
+/* WHAT THIS PANE HAS TO SAY ABOUT ITS OWN FILE. Drawn only when there is
+   something -- see paneNote() in src/diff-editor.js -- so it takes no room in
+   the ordinary case. Sentence type rather than the path's mono, because it is
+   a sentence. */
+.diff-pane-note {
+  margin: var(--s2) 0 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+/* The shipped `.ctl-textarea` recipe from src/cloud.css, at the size this
+   surface needs. `white-space: pre` pairs with wrap="off" in the markup: a
+   file being compared line against line must not have its lines re-flowed by
+   the width of a column. */
+.diff-text {
+  caret-color: var(--ui-accent, var(--theme-accent, var(--ink)));
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--s3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font: 12.5px/1.65 var(--font-mono);
+  white-space: pre;
+  overflow: auto;
+  resize: none;
+  tab-size: 2;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+.diff-text:disabled { color: var(--ink-3); background: color-mix(in oklab, var(--ink) 3%, transparent); }
+.diff-text:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; box-shadow: none; }
+
+.diff-change-note { flex: none; margin: 0; padding: var(--s2) var(--s5); font: 12.5px/1.5 var(--font-ui); color: var(--ink-25); border-bottom: 1px solid var(--line); }
+/* A numbered patch reads like a code review, with semantic colors reserved
+   for changed lines. Source text retains the theme's primary reading ink. */
+.diff-recorded { flex: none; margin: var(--s3) var(--s5) 0; border: 1px solid var(--line-2); border-radius: var(--r-md); overflow: hidden; background: var(--sheet); }
+.diff-recorded summary { padding: 11px var(--s3); color: var(--ink-2); cursor: pointer; font: 550 12.5px/1.4 var(--font-ui); background: color-mix(in oklab, var(--bg) 45%, var(--sheet)); }
+.diff-recorded summary::marker { color: var(--ink-3); }
+.diff-recorded[open] summary { border-bottom: 1px solid var(--line-2); }
+.diff-recorded-title { margin-left: var(--s1); }
+.diff-recorded-legend { display: inline-flex; gap: var(--s3); float: right; font: 11px/1.6 var(--font-mono); }
+.diff-legend-added { color: var(--s-good); }
+.diff-legend-removed { color: var(--s-serious); }
+.diff-recorded-lines { max-height: min(300px, calc(32vh / var(--zoom, 1))); overflow: auto; font: 12.5px/1.8 var(--font-mono); white-space: pre; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+.diff-live { flex: none; margin: var(--s3) var(--s5) 0; border: 1px solid var(--line-2); border-radius: var(--r-md); overflow: hidden; }
+.diff-live-lines { max-height: min(240px, calc(25vh / var(--zoom, 1))); overflow: auto; font: 12.5px/1.7 var(--font-mono); white-space: pre; }
+.diff-live-line { padding: 0; border: 0; border-radius: var(--r-sm); color: var(--ink); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.diff-live-line:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.diff-live-line:hover { outline: 1px solid var(--line-2); outline-offset: -1px; }
+.diff-patch-row, .diff-patch-columns { display: grid; grid-template-columns: 7ch 7ch 3ch minmax(0, 1fr); min-width: max-content; width: 100%; }
+.diff-patch-basis, .diff-patch-notice { margin: 0; padding: var(--s2) var(--s3); white-space: normal; color: var(--ink-2); font: 12px/1.5 var(--font-ui); border-bottom: 1px solid var(--line); }
+.diff-patch-notice { background: color-mix(in oklab, var(--bg) 45%, var(--sheet)); }
+.diff-patch-columns { position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--line); background: var(--sheet); font: inherit; line-height: 2.3; color: var(--ink-3); }
+.diff-patch-column-caption { grid-column: 3 / -1; padding-left: 12px; font: 10px/2.3 var(--font-ui); }
+.diff-line-number { padding-inline: 5px; color: var(--ink-3); text-align: right; font-size: 10px; font-variant-numeric: tabular-nums; border-inline-end: 1px solid color-mix(in oklab, var(--line-2) 55%, transparent); user-select: none; }
+.diff-line-prefix { text-align: center; color: var(--ink-3); user-select: none; }
+.diff-line-code { display: block; padding-right: var(--s4); color: var(--ink); font: inherit; tab-size: 2; }
+.diff-line-added { background: color-mix(in oklab, var(--s-good) 11%, var(--sheet)); box-shadow: inset 2px 0 var(--s-good); }
+.diff-line-removed { background: color-mix(in oklab, var(--s-serious) 10%, var(--sheet)); box-shadow: inset 2px 0 var(--s-serious); }
+.diff-line-added .diff-line-prefix { color: var(--s-good); font-weight: 700; }
+.diff-line-removed .diff-line-prefix { color: var(--s-serious); font-weight: 700; }
+.diff-line-hunk { min-width: 0; padding-block: var(--s1); border-block: 1px solid var(--line); background: color-mix(in oklab, var(--ui-accent, var(--theme-accent, var(--ink))) 7%, var(--sheet)); }
+.diff-line-meta { grid-column: 1 / -1; padding: 3px var(--s3); color: var(--ink-2); font-size: 11px; }
+.diff-hunk-range { display: block; white-space: normal; color: var(--ink-2); font: 550 12px/1.5 var(--font-ui); }
+.diff-hunk-context { display: block; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); font: inherit; }
+.diff-line-record { border-top: 1px solid var(--line-2); background: color-mix(in oklab, var(--bg) 45%, var(--sheet)); }
+.diff-line-record .diff-line-meta { padding-block: var(--s2); font: 600 11px/1.4 var(--font-ui); }
+.diff-line-note .diff-line-meta { color: var(--ink-3); font-style: italic; }
+.diff-patch-limit { margin: 0; padding: var(--s2) var(--s3); font: 12px/1.5 var(--font-ui); white-space: normal; color: var(--ink-2); background: color-mix(in oklab, var(--bg) 45%, var(--sheet)); border-top: 1px solid var(--line-2); }
+.diff-pane:has([data-diff-pane="original"]):has(.diff-text:not(:disabled)) .diff-pane-title { color: var(--s-serious); }
+.diff-pane:has([data-diff-pane="proposed"]):has(.diff-text:not(:disabled)) .diff-pane-title { color: var(--s-good); }
+
+.diff-pane-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-top: 1px solid var(--line-2);
+  background: var(--sheet);
+}
+.diff-pane-foot .ctl-btn { flex: none; min-height: 32px; height: auto; padding: var(--s2) var(--s3); font-size: 12.5px; border: 1px solid var(--control-border, var(--line-2)); background: var(--control-bg, var(--sheet)); box-shadow: none; }
+.diff-pane-foot .diff-save:not(:disabled) { color: var(--ink); border-color: color-mix(in oklab, var(--ui-accent, var(--theme-accent, var(--c-coordinator))) 38%, var(--line-2)); background: color-mix(in oklab, var(--ui-accent, var(--theme-accent, var(--c-coordinator))) 10%, var(--sheet)); }
+.diff-pane-foot .diff-save:hover:not(:disabled) { transform: none; background: color-mix(in oklab, var(--ui-accent, var(--theme-accent, var(--c-coordinator))) 16%, var(--sheet)); box-shadow: none; }
+.diff-pane-foot .diff-save:disabled { cursor: default; opacity: .6; transform: none; }
+.diff-blocked,
+.diff-pane-state {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+/* `[hidden] { display: none }` is a user-agent rule and any author display
+   declaration on the same element beats it. Neither of these is given one, and
+   the re-assert is written anyway because this product has shipped that bug
+   four times -- see .ctl-btn[hidden] in src/styles.css and the whole-repo
+   ratchet in tools/test/hidden-display-honesty.test.mjs. */
+.diff-blocked[hidden],
+.diff-pane-state[hidden] { display: none; }
+
+/* ------------------------------------------------------------------
+   THE WARNING BEFORE A SAVE REPLACES A FILE.
+   ------------------------------------------------------------------ */
+.diff-warning {
+  flex: none;
+  display: grid;
+  gap: var(--s2);
+  margin: 0 var(--s5) var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 1px solid color-mix(in oklab, var(--s-warn) 34%, var(--line-2));
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--s-warn) 7%, var(--sheet));
+}
+.diff-warning-title {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 640;
+  color: var(--ink);
+}
+/* WHICH OF THE TWO FILES THIS WARNING IS ABOUT. The path in the pane's own
+   mono, because it is the same path drawn there. */
+.diff-warning-where {
+  margin: 0;
+  font: 12.5px/1.45 var(--font-mono);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.diff-warning-line {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.diff-warning-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.diff-warning-remember {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.diff-warning-actions {
+  display: flex;
+  gap: var(--s2);
+  margin-top: var(--s1);
+}
+.diff-warning-actions .ctl-btn { padding: 0 var(--s4); }
+
+.diff-foot-note {
+  flex: none;
+  margin: 0;
+  padding: var(--s2) var(--s5) var(--s3);
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+/* ------------------------------------------------------------------
+   NARROW. Two columns of a source file below about 700px are two
+   columns nobody can read, so the panes stack and the dialog scrolls.
+   Measured on the DIALOG, not the window -- see container-type above.
+   ------------------------------------------------------------------ */
+@container diff-dialog (max-width: 700px) {
+  .diff-panes {
+    grid-template-columns: 1fr;
+    grid-auto-rows: max-content;
+    align-content: start;
+    overflow-y: auto;
+    padding: var(--s3) var(--s4);
+    gap: var(--s3);
+  }
+  /* A stacked pane gets a real box to type in rather than whatever is left of
+     a halved row: 38% of the window each, so both are reachable by scrolling
+     and neither collapses to a single line. */
+  /* The first declaration is the pre-custom-property fallback and stays a bare
+     unit on purpose: an engine that cannot read var(--zoom, 1) cannot read
+     --phone-canvas-h either, so dividing there would drop the height
+     altogether. The second is the one every shipped engine uses, and its
+     viewport fallback divides like the dialog's does. */
+  .diff-text { height: 38vh; height: calc(var(--phone-canvas-h, calc(100vh / var(--zoom, 1))) * 0.38); }
+  .diff-head { padding: var(--s3) var(--s4) var(--s2); }
+  .diff-heading h2 { font-size: 18px; }
+  .diff-session-totals { display: none; }
+  .diff-change-note { padding-inline: var(--s4); }
+  .diff-recorded { margin-inline: var(--s4); }
+  .diff-live { margin-inline: var(--s4); }
+  .diff-recorded-legend { gap: var(--s2); font-size: 10px; }
+  .diff-recorded-lines { max-height: calc(28vh / var(--zoom, 1)); font-size: 11.5px; }
+  .diff-patch-row, .diff-patch-columns { grid-template-columns: 7ch 7ch 2.5ch minmax(0, 1fr); }
+  .diff-warning { margin: 0 var(--s4) var(--s3); }
+  .diff-foot-note { padding: var(--s2) var(--s4) var(--s3); }
+}
+
+/* THE FALLBACK FOR AN ENGINE WITHOUT CONTAINER QUERIES, and only for one: with
+   both live the narrow rules would be written twice. Keyed on the viewport,
+   which is what such an engine can measure, and which is what this file did
+   before. */
+@supports not (container-type: inline-size) {
+  @media (max-width: 700px) {
+    .diff-panes {
+      grid-template-columns: 1fr;
+      grid-auto-rows: max-content;
+      align-content: start;
+      overflow-y: auto;
+      padding: var(--s3) var(--s4);
+      gap: var(--s3);
+    }
+    .diff-text { height: 38vh; height: calc(var(--phone-canvas-h, calc(100vh / var(--zoom, 1))) * 0.38); }
+    .diff-session-totals { display: none; }
+  }
+}
+
+/* A save warning must remain reachable in short windows and at large text size. */
+@media (max-height: 650px) {
+  .diff-dialog { overflow-y: auto; }
+  .diff-panes { flex: none; min-height: 240px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diff-overlay { animation: none; }
+}
+
+body.reduce-motion .diff-overlay { animation: none; }

@@ -1,0 +1,95 @@
+/* Card sizes change the amount of context. Camera compensation keeps text
+   legible at overview scale without increasing the node footprint. */
+.static-tree-graph[data-node-style="boxes"][data-card-size] .tree-agent-box {
+  width: var(--tree-box-width, 320px); height: var(--tree-box-height, 224px);
+}
+.static-tree-graph[data-node-style="boxes"][data-card-size] .tree-agent-box > .node-glass {
+  grid-template-rows: 36px 20px minmax(0, 1fr); gap: 5px;
+  --tree-box-header-height: 80px;
+}
+.static-tree-graph[data-node-style="boxes"][data-card-size] .tree-agent-box.has-latest-action > .node-glass {
+  grid-template-rows: 36px 20px 16px minmax(0, 1fr);
+  --tree-box-header-height: 100px;
+}
+.tree-box-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.static-tree-graph[data-node-style="boxes"][data-card-size] .tree-box-actions .tree-box-add-agent {
+  width: 28px; height: 28px; padding: 0; margin: 0; border: 1px solid var(--line-2); border-radius: 2px; font-size: 15px;
+}
+.tree-box-latest-action { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--ink-2); font: 500 12px/16px var(--font-ui); }
+.static-tree-graph[data-node-style="boxes"][data-card-size="mini"] .tree-agent-box > .node-glass {
+  padding: 7px 10px; gap: 3px; grid-template-rows: 28px 16px minmax(0, 1fr); --tree-box-header-height: 60px;
+}
+.static-tree-graph[data-node-style="boxes"][data-card-size="mini"] .tree-agent-box.has-latest-action > .node-glass {
+  grid-template-rows: 28px 16px 16px minmax(0, 1fr); --tree-box-header-height: 78px;
+}
+.static-tree-graph[data-node-style="boxes"][data-card-size="mini"] .tree-agent-box .node-role { display: none; }
+.static-tree-graph[data-node-style="boxes"][data-card-size="mini"] .tree-agent-box .node-name { font-size: calc(15px * var(--tree-box-text-scale, 1)); }
+.static-tree-graph[data-node-style="boxes"][data-card-size="mini"] .tree-box-context p { font-size: calc(14px * var(--tree-box-text-scale, 1)); -webkit-line-clamp: 1; }
+.static-tree-graph[data-node-style="boxes"][data-card-size="small"] .tree-agent-box > .node-glass {
+  padding: 9px 13px;
+  --tree-box-header-height: 79px;
+}
+.static-tree-graph[data-node-style="boxes"][data-card-size="small"] .tree-box-context p { -webkit-line-clamp: 2; }
+.static-tree-graph[data-node-style="boxes"][data-card-size="large"] .tree-agent-box > .node-glass {
+  padding: 10px 16px;
+}
+.static-tree-graph[data-node-style="boxes"][data-card-size="large"] .tree-box-context > p { font-size: calc(16px * var(--tree-box-text-scale, 1)); -webkit-line-clamp: 8; }
+/* With the working note taking its own captioned row, the conversation line
+   yields some of Large's eight lines so both are readable without clipping. */
+.static-tree-graph[data-node-style="boxes"][data-card-size="large"] .tree-box-context:has(.tree-box-thinking:not([hidden])) > p { -webkit-line-clamp: 4; }
+.static-tree-graph[data-node-style="boxes"][data-card-size="large"] .tree-scope-group .tree-box-context > p { white-space: pre-line; -webkit-line-clamp: 5; }
+.tree-box-context-indicators { display: flex; align-items: center; gap: 4px; flex: none; }
+.tree-box-context-indicators[hidden] { display: none; }
+.tree-box-context-indicator { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 1px solid var(--line-2); border-radius: 3px; color: var(--ink-2); font: 650 16px/1 var(--font-ui); }
+.static-tree-graph[data-node-style="boxes"][data-card-size="large"] .tree-box-status-row { gap: 5px; }
+.static-tree-graph[data-node-style="boxes"][data-card-size="large"] .tree-box-actions .tree-box-add-agent { width: 32px; height: 32px; padding: 0; margin: 0; flex: none; border: 1.5px solid color-mix(in oklab, var(--rc) 50%, var(--ink-3)); border-radius: 2px; background: var(--sheet); font-size: 16px; }
+.static-tree-graph[data-node-style="boxes"][data-card-size="large"] .tree-agent-box .node-labels { max-width: none; flex: 1; }
+.static-tree-graph[data-node-style="boxes"][data-box-compact="true"] .tree-agent-box .node-role { display: none; }
+.static-tree-graph[data-node-style="boxes"][data-box-compact="true"] :is(.tree-box-status, .tree-box-status-row .tree-box-branch) { padding-block: 0; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="small"] .cl-facts { display: none; }
+.static-tree-chip-overlay .chip-latest-action { color: var(--ink-2); font: 500 11px/16px var(--font-ui); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size] .chip-preview-activity > .cl:not(.cl-thinking) .chip-context-caption { display: none; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="mini"]:not(.as-chat) { padding: 6px 14px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="mini"] :is(.cl-thinking,.cl-scope,.cl-facts,.cl-meta) { display: none; }
+.static-tree-chip-overlay .static-tree-chip:is([data-context-size="mini"], [data-context-size="small"]) .chip-preview-activity > .cl.cl-thinking { display: none; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="mini"] .chip-context-text { font-size: 12px; line-height: 16px; -webkit-line-clamp: 1; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="mini"] .chip-preview-activity { padding-top: 3px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="small"] :is(.cl-chat, .cl-previous) { -webkit-line-clamp: 2; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-preview-activity { display: flex; flex-direction: column; gap: 5px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] :is(.cl-chat, .cl-previous) { -webkit-line-clamp: 5; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .cl-current { flex: none; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"][data-compact-context] .cl-chat { -webkit-line-clamp: 2; flex: none; }
+.tree-new-workspace-action { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 11px 10px; text-align: left; border: 0; background: transparent; color: var(--ink); }
+.tree-new-workspace-action:hover { background: var(--surface); }
+.tree-new-workspace-action b { font-size: 13px; }
+.tree-new-workspace-action small { font-size: 11px; color: var(--ink-3); }
+.tree-agent-notice { margin: 6px; padding: 12px; border: 1px solid var(--line-2); border-left: 3px solid var(--c-coordinator); border-radius: 3px; background: var(--sheet); font: 12px/1.6 var(--font-ui); color: var(--ink-2); }
+.tree-agent-notice strong { color: var(--ink); }
+.tree-agent-notice p { margin: 8px 0 12px; }
+.tree-agent-notice button { border: 1px solid var(--line-2); border-radius: 3px; padding: 6px 9px; background: var(--sheet); color: var(--ink); }
+.tree-agent-notice .tree-agent-continue { border-color: var(--c-coordinator); margin-right: 6px; }
+/* THE POP-UP HAD NO LAYOUT AT ALL, so its two labelled selects and its two
+   buttons flowed as inline content and wrapped wherever the panel ran out of
+   room. Measured on screen at 798ce265 and still at 4ad57e6b: "Program and
+   model [select] Effort" ended one line and "[select] [Open agent tab]
+   [Cancel]" began the next, which puts the word Effort beside the program
+   control and the effort control beside the buttons. A person reads a label
+   as belonging to the thing next to it, so that layout says the wrong thing
+   twice. Each field owns its own line with its name above it, and the two
+   buttons sit together on a row of their own. */
+.tree-agent-notice { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.tree-agent-notice p { margin: 0; }
+.tree-agent-spawn-field { display: flex; flex-direction: column; gap: 4px; }
+.tree-agent-spawn-field > span { color: var(--ink-2); }
+.tree-agent-spawn-select { width: 100%; padding: 5px 6px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); color: var(--ink); font: inherit; }
+.tree-agent-notice-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.tree-agent-notice .tree-agent-continue { margin-right: 0; }
+.tree-workspace .tree-standalone-conversation { height: 100%; padding: 12px 20px; box-sizing: border-box; }
+.tree-standalone-agent { display: flex; flex: 1; min-height: 0; width: 100%; height: 100%; }
+.tree-standalone-agent [data-chat-composer] { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; padding: 0; border: 0; }
+.tree-standalone-agent [data-chat-composer] > header { flex: none; padding: 7px 0; }
+.tree-standalone-agent [data-chat-composer] .write-surface-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.tree-standalone-agent [data-chat-composer] .chat { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; max-width: none; margin: 0; }
+.tree-standalone-agent [data-chat-composer] .chat-log { flex: 1; min-height: 0; }
+.tree-standalone-agent [data-chat-composer] .chat-input { flex: none; }
+.tree-standalone-agent [data-chat-composer] [data-action-output] { flex: none; max-height: 72px; overflow: auto; font-size: 11px; color: var(--ink-3); }

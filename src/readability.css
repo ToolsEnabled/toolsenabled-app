@@ -1,0 +1,139 @@
+/* Reading rhythm. Use the chosen interface font and the existing Text size
+   setting; keep numbers and source code in their dedicated mono face. */
+body[data-navigation="side"] .tb-nav a { font-size: 14px; line-height: 1.45; }
+body[data-navigation="side"] .tb-settings-label { font-size: 13px; }
+
+/* Labels should be readable at a glance without competing with the values. */
+:root :is(.m-head .ms, .settings-sub, .pool-sub, .chart-head .cs,
+  .meter-caption, .drawer-page-empty, .set-label, .set-link-go) {
+  font-size: 14px;
+  line-height: 1.55;
+}
+:root :is(.drawer-group-label, .apanel-title, .mtable th) {
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: .015em;
+  text-transform: none;
+}
+:root .ctl-btn { font-size: 13px; line-height: 1.4; }
+
+/* Comfortable prose and code, with a stronger author/context line. */
+:root .chat-message-body,
+:root .home .turn .chat-message-body,
+:root .rail-said.chat-message-body,
+:root .comms .cmsg-text.chat-message-body {
+  font-size: var(--chat-text-size, 16px);
+  line-height: 1.7;
+}
+:root .chat-message-body :is(.md-p, .md-list, .md-blockquote) { max-width: 76ch; }
+:root .chat-message-body .md-pre { font-size: .9em; line-height: 1.65; }
+:root .chat-message-body .md-code { font-size: .9em; }
+:root .chat-message-body .md-code-head,
+:root .chat-message-body .md-code-head .md-tool {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+:root .chat-message-body .md-table { font-size: .94em; }
+:root :is(.chat .msg .who, .home .turn .turn-who, .saved-message-who) {
+  font-size: 14px;
+  letter-spacing: 0;
+}
+:root :is(.chat-msg-footer, .chat-msg-footer .turn-stamp,
+  .chat-time-divider, .chat-message-time) { font-size: 13px; }
+:root .chat .msg:is(.note, .context) .chat-message-body,
+:root .home .turn.is-act .chat-message-body,
+:root .saved-message.is-act .chat-message-body { font-size: 14px; }
+:root .watch-pane .chip:not(.as-chat) .chat-message-body { font-size: 14px; }
+
+/* A channel keeps its compact row layout; text wraps within a readable line. */
+:root .comms :is(.ch-name, .ch-preview, .ch-description) { font-size: 14px; line-height: 1.55; }
+:root .comms :is(.cmsg-au, .cmsg-to) { font-size: 14px; }
+:root .comms :is(.day-div, .cmsg-time, .cmsg-kind, .cmsg-machine,
+  .cmsg-delivery, .cmsg-channel, .cmsg-reply) { font-size: 13px; }
+:root .comms .cmsg-top { gap: 6px 10px; margin-bottom: 6px; }
+:root .comms .cmsg-text.chat-message-body :is(.md-p, .md-list) { max-width: 76ch; }
+:root .comms .cmsg { padding-block: 16px; }
+
+/* Keep the existing form structure; let descriptions and choices breathe. */
+:root .settings-page :is(.settings-desc, .settings-section > p,
+  label.settings-row, .settings-field-control, .settings-control,
+  [data-settings-mode-description]) { font-size: 14px; line-height: 1.6; }
+:root .settings-page .settings-name { font-size: 15px; line-height: 1.5; }
+:root .settings-page .settings-rail button[data-category] { font-size: 14px; }
+:root .settings-page .settings-section-title { font-size: 19px; }
+:root .settings-page .settings-desc { max-width: 68ch; }
+:root .settings-page .settings-row { padding-block: 18px; }
+:root .settings-page [data-setting-id="ui_font"] { grid-template-columns: minmax(0, 1fr); }
+
+/* Data stays dense, but headings and explanatory notes have a clear hierarchy. */
+:root .metrics :is(.m-panel-note, .m-analysis-footnote, .m-outcome-note,
+  .m-usage-table small, .m-history-footer, .m-metrics-method,
+  .m-analysis-hero p, .m-issue-row p) { font-size: 14px; line-height: 1.6; }
+:root .metrics :is(.mtable, .m-usage-table) th {
+  font-size: 13px;
+  letter-spacing: .015em;
+  text-transform: none;
+  color: var(--ink-2);
+}
+:root .metrics :is(.mtable, .m-usage-table) td { font-size: 14px; }
+:root .metrics .m-usage-table .m-usage-number { font-size: 13.5px; }
+
+/* One font specimen in both settings surfaces. Selection remains a native
+   button with the existing pressed state, keyboard handling and persistence. */
+:root #font-seg,
+:root .settings-seg.font-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  height: auto;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root .settings-seg.font-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+:root :is(#font-seg, .settings-seg.font-options) > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 5px;
+  min-width: 0;
+  min-height: 96px;
+  height: auto;
+  padding: 12px;
+  white-space: normal;
+  text-align: left;
+  color: var(--ink-2);
+  background: var(--control-bg);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root :is(#font-seg, .settings-seg.font-options) > button.on {
+  color: var(--ink);
+  background: var(--theme-selected-bg);
+  border-color: var(--theme-selected-border);
+  box-shadow: inset 3px 0 var(--theme-selected-border);
+}
+:root :is(#font-seg, .settings-seg.font-options) > button:hover { border-color: var(--ink-2); }
+:root :is(#font-seg, .settings-seg.font-options) > button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.font-choice-name { font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
+.font-choice-sample { font-size: 19px; font-weight: 450; letter-spacing: .02em; }
+.font-choice-description { font: 400 13px/1.45 var(--font-ui); color: inherit; }
+
+@media (max-width: 900px) {
+  :root .settings-seg.font-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 440px) {
+  :root .settings-seg.font-options { grid-template-columns: 1fr; }
+}
+
+@media (forced-colors: active) {
+  :root :is(#font-seg, .settings-seg.font-options) > button.on {
+    color: HighlightText; background: Highlight; border-color: Highlight;
+  }
+}

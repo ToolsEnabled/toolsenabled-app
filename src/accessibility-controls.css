@@ -1,0 +1,36 @@
+.accessibility-confirmation, .voice-screen-dock {
+  position: fixed;
+  bottom: 12px;
+  z-index: 850;
+  box-sizing: border-box;
+  max-width: min(390px, calc(100vw / var(--zoom, 1) - 24px));
+  max-height: calc(70vh / var(--zoom, 1));
+  overflow: auto;
+  padding: 12px;
+  background: var(--bg, #101820);
+  color: var(--ink, #edf2f5);
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  box-shadow: 0 3px 16px #0005;
+}
+.accessibility-confirmation { left: 12px; }
+.accessibility-confirmation[hidden] { display: none; }
+.accessibility-confirmation h2 { margin-top: 0; font-size: 16px; }
+.accessibility-controls { padding-block: 12px; }
+.voice-screen-dock { right: 12px; }
+.voice-screen-dock:empty, .voice-screen-dock[hidden] { display: none; }
+.voice-screen-dock > summary {
+  min-height: 44px;
+  min-width: 180px;
+  box-sizing: border-box;
+  padding-block: 12px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.voice-screen-dock:not([open]) { padding-block: 0; }
+.accessibility-controls summary { cursor: pointer; min-height: 44px; font-weight: 600; }
+.accessibility-controls label { display: block; margin-block: 10px; }
+.accessibility-controls select { max-width: 100%; min-height: 44px; }
+.accessibility-controls button, .accessibility-confirmation button { padding: 8px; margin: 4px; min-height: 44px; }
+.accessibility-controls p, .accessibility-confirmation p { font-size: 13px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }

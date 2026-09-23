@@ -1,0 +1,460 @@
+@import './home-context.css';
+
+/* THE FRAME. Every colour here comes from the token source in home-circle.css
+   and every font-size is one of its six scale steps; there are no colour and no
+   size literals in this file. See REPORT-JELLY-FRAME-20260918.md. */
+.home:has(.home-ring-stage) {
+  --home-panel-line: var(--jelly-line);
+  --home-panel-line-soft: var(--jelly-line-soft);
+  --home-panel-shadow: none;
+  /* 12, not 16: the one container left on this page is the right panel
+     (home-context.css, A LITTLE BOX), the owner has seen it at 12 and called
+     it close to good, and the ring column no longer draws a box at all. The
+     token stays so a second container, if one ever comes, matches it. */
+  --home-panel-radius: 12px;
+  --home-control-radius: 8px;
+  /* The ring column's own side padding, kept out of the circle, PLUS 2px that
+     no longer paints. The 2px was the column's border; the border is gone (see
+     NOT BOXED below), so on 2026-09-19 this was cut to `calc(var(--jspace-3) *
+     2)` -- correct on its own terms, ring column 526 -> 524 and panel +2px at
+     1920. It is restored because the owner then froze the layout: "make sure
+     they dont make the circle smaller or change any of the formatting around
+     the circle. literally just the circle itself / just its border / rim needs
+     updating." The 2px is deliberate dead space under a standing order, not an
+     oversight. Do not re-cut it without the owner reopening the frame. */
+  --jelly-ring-chrome: calc(2px + var(--jspace-3) * 2);
+  --home-workspace-height: clamp(380px, calc((100dvh - 232px) / var(--zoom, 1)), 1400px);
+  /* THE RIGHT PANEL, EXPANDED (owner, 2026-09-18).
+     Before: `minmax(280px, .9fr) minmax(0, 1.1fr)` inside a 1520px cap. The two
+     columns were proportional, so every pixel the page gained was split 45/55
+     and the ring column kept banking width it could not use -- measured at
+     1440x980 (.lane-scratch/w7/before.json) the ring column resolved to 508px
+     around a circle that cannot exceed the top of
+     `--home-circle-size: clamp(248px, min(calc((100dvh - 530px) / var(--zoom,1)), 33vw), 500px)`
+     in home-circle.css, so the surplus was permanently empty and the panel was
+     621px, 50.1% of the page. (That top used to be 440px and this comment used
+     to say 440; the shader lane raised it to 500. Re-read the token rather than
+     this sentence -- it is not ours and it has moved once already.)
+
+     After: the ring column is sized to the thing in it and stops growing; the
+     panel takes 1fr, so it now absorbs the WHOLE of any width the page gains
+     instead of 55% of it. Same measurement after: panel 690px, 55.6%.
+
+     THE 1720px CAP BELOW DOES NOT GOVERN THE SHIPPED PAGE, and nobody should
+     tune it expecting to see the page move. `sidebar-pages.css` carries
+     `body[data-navigation="side"] .home:has(.home-ring-stage) { max-width: none }`
+     -- (0,3,1) against this rule's (0,2,0), so it wins -- for the owner's
+     2026-09-10 "use up the side white space since we changed to a sidebar".
+     `app-navigation.js` only ever writes "side" or "top" to that attribute and
+     desktop is "side", so the cap is reached only in the top/phone-canvas
+     layout, where a centred page does want a stop. Measured in msedge on the
+     running page, side nav, white theme: 1280x720 panel 705px, 1440x900 734px,
+     1920x1080 1082px, 2560x1440 1722px -- .home resolves 2360px at 2560, i.e.
+     past 1720, which is the cap not applying. This is the same lever R9 asked
+     for ("we are wasting a lot of width"), pointed at the panel. */
+  width: 100%; max-width: 1720px; margin-inline: auto; min-height: 100%; box-sizing: border-box;
+  display: grid; grid-template-columns: minmax(0, calc(var(--home-circle-size) + var(--jelly-ring-chrome))) minmax(0, 1fr);
+  /* THE PAGE FILLS THE WINDOW. `grid-auto-rows: max-content` made row 2 as tall
+     as its tallest child and no taller, so the panel stopped wherever its own
+     min-height ran out -- measured 121px of dead band under it at 1920x1080 and
+     49px at 1440x900, while at 1280x720 the same constant pushed it 29px PAST
+     the bottom of the window. One track that takes the remaining height fixes
+     both directions, because the window decides rather than a constant. */
+  grid-template-rows: max-content minmax(0, 1fr);
+  align-items: stretch; align-content: start; gap: 0 24px;
+  padding: var(--jspace-6) clamp(24px, 3vw, 44px) var(--jspace-6); 
+  container: home-circle-layout / inline-size;
+}
+/* THE BLACK THEME'S PRIVATE PALETTE IS GONE. This block used to reset --bg,
+   --surface, the whole ink ramp and --ui-accent for the Home route only.
+   Measured on the running page: document.body painted rgb(33,35,39) while
+   .home painted rgb(24,28,34) — a visible seam down the edge of the nav rail —
+   and the two grounds were different casts as well as different lightnesses
+   (#212327 is OKLCh hue 264.4 chroma 0.0081, #181c22 is hue 258.4 chroma
+   0.0132). It also introduced --ui-accent #83c4e2, hue 228.7: a fourth hue
+   family on a screen that is allowed one. The frame now takes the app's own
+   ground and derives its neutrals from it, so there is one cast and no seam. */
+
+/* ---- head ---------------------------------------------------------------- */
+/* TWO TRACKS, NOT THREE. The middle one existed only to hold the clock, which
+   is now the first child of the ring column. */
+.home-overview-head {
+  grid-column: 1 / -1; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; gap: var(--jspace-5); padding-bottom: var(--jspace-5);
+  border-bottom: 1px solid var(--home-panel-line-soft);
+  margin-bottom: var(--jspace-5);
+}
+.home-overview-title { min-width: 0; display: grid; gap: var(--jspace-1); }
+.home-overview-title h1 { margin: 0; color: var(--jelly-ink); font: 620 var(--type-4)/1.12 var(--font-ui); letter-spacing: -.032em; }
+.home-overview-title p { margin: 0; color: var(--jelly-ink-2); font: 400 var(--type-0)/1.5 var(--font-ui); }
+.home-workspace-link {
+  justify-self: end; display: inline-flex; align-items: center; gap: var(--jspace-3);
+  min-height: 38px; padding: var(--jspace-2) var(--jspace-1); border: 0; border-radius: var(--home-control-radius);
+  background: transparent; color: var(--jelly-ink);
+  font: 600 var(--type-0)/1.4 var(--font-ui); text-decoration: none; white-space: nowrap;
+}
+.home-workspace-link svg { width: 16px; height: 16px; }
+.home-workspace-link:hover { color: var(--jelly-ink); background: var(--control-hover, var(--surface)); border-color: var(--jelly-line); }
+.home-workspace-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+/* The strip is inside the ring column now, so it goes when the column goes.
+
+   THE RING COLUMN'S HIDE HAS TO OUT-SPECIFY ITS LAYOUT. Both this rule and
+   `.home:has(.home-ring-stage) > .home-ring-wrap` below resolve to (0,3,0), and
+   the layout one is later in the file, so the column was still display:flex
+   with the chat open -- measured 812px tall on all five themes. It cost nothing
+   visible while the column had no border and no background; the moment it got
+   the --bg-2 border it was a stray empty box down the side of the chat. The
+   :has() here makes the hide (0,4,0) so it wins on specificity rather than on
+   where it happens to sit in the file. */
+.home[data-chat-open] > .home-overview-head,
+.home[data-chat-open]:has(.home-ring-stage) > .home-ring-wrap { display: none; }
+.home .home-ring-stage { display: contents; padding: 0; border: 0; border-radius: 0; background: none; }
+.home .home-ring-slot { display: contents; }
+
+/* ============================================================================
+   THE RING COLUMN IS A LIT STAGE.
+
+   T371: "HIGH KEY is the biggest miss: a dark body on near-black is low-key
+   lighting, the vocabulary of drama and melancholy. The body-to-surround
+   RELATIONSHIP is the parameter and the ground belongs to the frame lane."
+
+   High key is a relationship, so it cannot be fixed one disc wide. A bright
+   subject on a bright disc on a near-black page is still, at the scale a person
+   actually looks at, a spotlight in the dark -- which is precisely the low-key
+   idiom the owner is objecting to. The lift therefore has to be the size of the
+   COMPOSITION, and that is this column: the clock, the circle, the strip, the
+   voice panel and the facts all stand on one lit plate, and the plate is the
+   subject's surround at every scale between the body's rim and the page.
+
+   The page behind it stays in its theme (see --jelly-surround) -- a "black"
+   theme whose Home page painted itself white is a different product, not a lit
+   one -- so the frame reads as a lit set on a dark wall, which is a composition
+   with a stated light in it rather than a colour scheme with a hole in it.
+
+   THE RING COLUMN TAKES THE SHEET'S OWN POLARITY. This block used to restate
+   the light-sheet ink (n-18 / n-36 / n-45) on the ring column because a light
+   plate sat under it on every theme; the plate was reverted on 2026-09-18 and
+   the ink stayed behind, so on the dark sheets the name, the state line and
+   the eyebrow were dark grey on a dark disc (measured --jelly-ink oklch(0.18 ..)
+   on the black theme). With no plate the column reads the same neutral roles
+   as the rest of .home: n-18 ink on the light sheets, n-96 on the dark ones,
+   from home-circle.css. No colour is chosen here; the ramp end follows the
+   sheet. Measured against the painted pixels on all five themes:
+   .lane-scratch/frame5/contrast.mjs. */
+.home:has(.home-ring-stage) > .home-ring-wrap {
+  grid-column: 1; grid-row: 2; display: flex; flex-direction: column; align-items: center;
+  min-width: 0; min-height: var(--home-workspace-height);
+  /* No side padding. It was taking 48px out of the ring column before the
+     circle got to size it, which at 1280x720 left a 252px circle in a 300px
+     column. The grid gap already separates the two columns. */
+  padding: var(--jspace-5) var(--jspace-3) var(--jspace-4);
+  /* NOT BOXED. Owner, 2026-09-19 (T449): "the circle panel is not supposed to
+     be boxed." This column used to carry `border: 1px solid var(--bg-2)` and
+     the page's panel radius (REPORT-JELLY-FRAME-20260918.md round 2, B), added
+     so the column read as a container; the owner's word reverses that. No
+     border, no radius, no plate, no shadow: the clock, the circle, the strip
+     and the voice panel stand directly on the page. The casing's own silhouette
+     (home-circle.css) is now the only edge in the column, and
+     .lane-scratch/w7b/casing-colour.mjs measures it against this ground.
+     The (0,4,0) hide above still keeps the column out of the chat takeover;
+     it no longer has a border that would show if it did not. */
+  border: 0; border-radius: 0; box-sizing: border-box;
+  background: transparent; box-shadow: none;
+}
+
+/* ---- clock: a figure and its label, two steps apart --------------------- */
+/* ABOVE THE CIRCLE (owner, 2026-09-18), which is the first slot of the stage.
+   It keeps the same two-part figure it had in the header -- an eyebrow at
+   t(-1) and digits at t(3), two steps apart -- because the clock did not
+   change, only where it stands. --jelly-measure is the column's one measure,
+   so the clock's box is the circle's box and the two share an axis rather than
+   being two centred things of two widths. */
+.home-overview-clock {
+  order: 0; flex: none; align-self: center;
+  display: grid; justify-items: center; align-content: center; gap: 2px;
+  width: var(--jelly-measure); min-width: 0;
+  margin-bottom: var(--jspace-4); padding-inline: var(--jspace-4); box-sizing: border-box;
+}
+.home-overview-clock[hidden], .home[data-clock="none"] .home-overview-clock, .home-glance[hidden] { display: none; }
+.home-overview-clock .uring-caption { margin: 0 0 var(--jspace-1); color: var(--jelly-ink-3); font: 600 var(--type--1)/1.4 var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.home-overview-clock .uring-digits { justify-content: center; font-weight: 550; letter-spacing: 0; }
+.home-overview-clock .uring-digits[data-days="0"] > .seg:first-child,
+.home-overview-clock .uring-digits[data-days="0"] > .seg:first-child + .colon { display: none; }
+.home-overview-clock .uring-digits .n-stack { position: relative; display: inline-block; min-width: 2ch; height: 1.05em; font-size: var(--type-3); line-height: 1.05; text-align: center; color: var(--jelly-ink); }
+/* THE DIGITS TAKE THE STAGE'S INK, AND THEY HAVE TO SAY SO.
+   `.uring-digits .n` in styles.css carries `color: var(--ink)` -- a declaration
+   ON the span, which beats the `--jelly-ink` the .n-stack above it inherits
+   down, whatever that ink is. That was invisible while the clock stood in the
+   page header, where the app's --ink is the right answer. Above the circle it
+   is on the lit plate, and measured on the running page the digits came back
+   rgb(245,241,238) over a stage at rgb(190,240,231): near-white on near-white.
+   This is the same colour the caption and the units already use; it is not a
+   new one, it is the one the rest of the clock was already getting. */
+.home-overview-clock .uring-digits .n { position: absolute; inset: 0 0 auto; color: var(--jelly-ink); font-size: inherit; font-variant-numeric: tabular-nums; transition: opacity .14s var(--ease); }
+/* ...and the SIZE has the same shape of problem, from a different file.
+   phone-canvas.css sizes `[data-phone-canvas="on"] .home-ring-wrap
+   .uring-digits .n-stack` in `cqw`, which is measured against
+   `.home-ring-stage .uring` -- the only inline-size container on this page.
+   That was correct for digits inside the ring and did not match the clock while
+   it lived in the header; now the clock IS inside .home-ring-wrap and one level
+   OUTSIDE .uring, so those units would resolve against the next container up
+   and paint a digit several times its intended size on the phone canvas.
+   Neither styles.css nor phone-canvas.css is this lane's to edit, so the guard
+   is here and it is deliberately specific enough to win: the doubled class is
+   what carries it past that file's (0,4,0) without inventing a wrapper element
+   nothing else needs. Reported to Manager for the file's owner. */
+.home-ring-wrap > .home-overview-clock.home-overview-clock .uring-digits .n-stack { font-size: var(--type-3); }
+.home-overview-clock .uring-digits .n.next, .home-overview-clock .uring-digits .n.out { opacity: 0; }
+.home-overview-clock .uring-digits .n.next.in { opacity: 1; }
+.home-overview-clock .uring-digits .colon { font-size: var(--type-1); font-weight: 400; padding-inline: 5px; transform: translateY(-3px); color: var(--jelly-ink-3); animation: none; }
+.home-overview-clock .uring-digits .u { margin-top: 3px; color: var(--jelly-ink-3); font: 500 var(--type--1)/1.4 var(--font-ui); letter-spacing: .05em; text-transform: uppercase; }
+
+/* ---- glance strip: figure at step 3, label at step 0 -------------------- */
+/* ---- the agents-working strip: COMPACT, AND UNDER THE CIRCLE -------------
+   Owner, 2026-09-18: the status header becomes "a compact strip beside or
+   under the circle". It was a full-width band on its own grid row, 1154px
+   across both columns at 1440x980, with the figure at t(3) -- the same step as
+   the clock's digits, so two unrelated things were tied for loudest on the
+   page and neither was the subject. Measured before: .home-glance box
+   1154x66 at y=145, i.e. above the circle and wider than the panel.
+
+   Under is the one that works at every width. Beside would put four figures in
+   the 440px the circle already occupies, and the column is exactly as wide as
+   the circle by construction now.
+
+   Compact is a real reduction, not a smaller font: the figure drops two steps
+   of the type scale (t(3) -> t(1)) so it sits BELOW the clock in the hierarchy
+   and well below the circle, the tiles stack label-under-figure so four of them
+   fit the circle's own measure, and the separators go -- §6 wants one alignment
+   axis, and four vertical rules across a 440px strip is five. The copy is
+   untouched. */
+.home-glance { order: 2; flex: none; align-self: center; width: var(--jelly-measure); min-width: 0; margin: var(--jspace-4) 0 0; box-sizing: border-box; container: home-glance / inline-size; }
+.home-glance-strip {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start;
+  gap: var(--jspace-2);
+  padding: var(--jspace-4) 0 0; border: 0; border-top: 1px solid var(--home-panel-line-soft); border-radius: 0;
+  background: transparent; box-shadow: none;
+}
+/* A NARROW MEASURE FOLDS THE STRIP TO TWO BY TWO. The strip is as wide as the
+   circle, and at a 720px-tall window the circle is 252px: four tiles of 63px,
+   and "Runs recorded" and "Need attention" broke onto two lines (measured
+   2026-09-18, 1280x720). Under 300px the four tiles sit two to a row, each
+   label on one line. The phone rule below keeps four across because there the
+   measure is up to 700px wide; this is the short-window case, not the phone. */
+@container home-glance (max-width: 300px) {
+  .home-glance-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--jspace-3); }
+}
+/* column-reverse, because the markup is label-then-figure and the FIGURE is
+   what a person reads first. Reversing the visual order of two nodes inside one
+   tile does not reorder anything a reader traverses -- the tile is a single
+   stop either way -- so this is the one place order is honest. */
+.home-stat { min-width: 0; display: flex; flex-direction: column-reverse; justify-content: flex-end; align-items: center; gap: 2px; padding: 0; text-align: center; }
+.home-stat .tl { color: var(--jelly-ink-3); font: 500 var(--type--1)/1.3 var(--font-ui); overflow-wrap: anywhere; }
+.home-stat .tv { color: var(--jelly-ink); font: 620 var(--type-1)/1.05 var(--font-ui); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+/* THE TWO STATUS COLOURS. --s-good and --s-warn are app-wide status tokens
+   (styles.css, not this lane's) and they are tuned for a dark sheet. §3 allows
+   a second hue when it has a stated job and warning is exactly that job, so the
+   hue and the chroma are the token's own and only the LIGHTNESS is the frame's,
+   in OKLCh -- the same rule every other colour here obeys.
+
+   THE LIGHTNESS IS A POLARITY VALUE AND IT NOW LIVES WITH THE OTHERS.
+   These two rules used to carry the literals .50 and .47 on every sheet, which
+   were chosen against the bright mint stage the owner later rejected. When the
+   stage went back to the theme's own ground the numbers stayed, and on the
+   three dark sheets the attention figure was rgb(119,84,0) on rgb(33,35,39):
+   2.29:1 black, 2.71 cobalt, 2.76 ember, against 4.5. It failed for the same
+   reason the pale casing donut did -- a value left behind by reverted work --
+   so the fix is not another literal, it is to put it where the sheet's polarity
+   is declared. --jelly-status-l is .47 on a light sheet and .78 on a dark one;
+   see src/home-circle.css for the sweep that chose .78.
+   Measured after: node .lane-scratch/w3b/contrast.mjs --frames=10 */
+.home-glance[data-working="true"] [data-glance-tile="working"] .tv { color: oklch(from var(--s-good) var(--jelly-status-l) calc(c * var(--jelly-status-c)) h); }
+.home-glance[data-attention="true"] [data-glance-tile="attention"] .tv { color: oklch(from var(--s-warn) var(--jelly-status-l) calc(c * var(--jelly-status-c)) h); }
+
+/* THE STAGE'S READING ORDER, DECLARED ONCE: clock 0, circle 1, strip 2,
+   facts 3, voice 4. .home-ring-slot and .home-ring-stage are both
+   `display: contents`, so the circle and the facts are flex children of the
+   wrapper even though the DOM nests them -- the slot exists to hold the ring's
+   position in the DOM, not to make a box.
+   The circle no longer carries `margin-top: auto`. It used to, to push itself
+   off the top of an otherwise empty column; with the clock standing directly
+   above it that auto margin would open a gap between the two things the owner
+   asked to be adjacent. The slack is spent at the BOTTOM instead, by the voice
+   panel's own `margin-top: auto`. */
+.home:has(.home-ring-stage) > .home-ring-wrap > .home-ring-slot > .home-ring-stage > .home-circle {
+  order: 1; flex: none; align-self: center;
+  max-width: var(--jelly-measure); margin: 0;
+}
+.home:has(.home-ring-stage) > .home-feed-wrap {
+  grid-column: 2; grid-row: 2; align-self: stretch; position: relative;
+  min-height: var(--home-workspace-height); height: auto;
+  max-width: none; width: 100%; margin: 0;
+}
+/* T448 -- THE PLANE. The panel is painted in --sheet (home-context.css, the
+   T448 block) and, in this two-column layout, runs out to the window's right
+   and bottom edges THROUGH the page's own padding -- the same clamp() and
+   --jspace-6 .home declares above -- so it reads as a surface the page meets
+   rather than a card sitting on it. No border, no radius, no shadow (T449
+   bans the box on the column beside it, and this is the same page). The feed
+   is absolutely placed inside, so the panel's inner padding is spent as the
+   feed's inset: the page padding it gave back on the right and bottom, plus
+   its own. */
+.home:has(.home-ring-stage) > .home-feed-wrap {
+  --feed-bleed-x: clamp(24px, 3vw, 44px); --feed-bleed-y: var(--jspace-6, 32px);
+  --feed-pad-x: clamp(20px, 2vw, 32px); --feed-pad-y: 20px;
+  margin-right: calc(-1 * var(--feed-bleed-x)); margin-bottom: calc(-1 * var(--feed-bleed-y));
+}
+.home:has(.home-ring-stage) > .home-feed-wrap > .home-feed,
+.home:has(.home-ring-stage) > .home-feed-wrap > .home-feed[data-mode="chat"] {
+  position: absolute; height: auto; min-height: 0; max-height: none;
+  inset: var(--feed-pad-y) calc(var(--feed-pad-x) + var(--feed-bleed-x)) calc(var(--feed-pad-y) + var(--feed-bleed-y)) var(--feed-pad-x);
+}
+
+/* ============================================================================
+   THE READOUT — four lines, four consecutive steps of one scale.
+
+   Before: "FOLLOWING" at 10px/500, the agent name at 16.39px/650, the action
+   line at 13px/500 and the count at 12.18px/400. The last two are 6.7% apart,
+   which is not a step — it is the same size done twice — and 10 / 16.39 is not
+   a step of anything either. Four lines, no rhythm.
+
+   After: eyebrow t(-1), name t(2), action t(1), count t(0) — ratio 1.25 between
+   each adjacent pair, descending after the name so emphasis falls off in the
+   order the reader needs the words. Size, weight and ink all agree: the name is
+   the only 650, the only ink at full strength and the only tightened tracking.
+   ========================================================================= */
+.home .home-circle .uring-center {
+  align-items: end; box-sizing: border-box;
+  /* The chord, derived — not a percentage someone liked. The block's bottom
+     sits wherever puts its optically-corrected centre on --jelly-type-chord. */
+  padding-bottom: calc((1 - var(--jelly-type-chord)) * 100%
+    - var(--jelly-type-block) / 2 - var(--jelly-optical-trim));
+}
+/* 72% of the BOX was wider than the disc is at the block's lowest line -- the
+   box is a square, the thing the text has to fit is a circle, and the two only
+   agree across the middle. 62% clears the chord at the seated height at every
+   viewport measured; a longer count line wraps inside the disc rather than
+   being drawn over the casing. */
+.home .home-circle .uring-inner { display: flex; flex-direction: column; align-items: center; width: 62%; max-width: 30ch; gap: 0; }
+.home .home-circle .home-agent-line { display: grid; justify-items: center; gap: var(--jspace-1); max-width: 100%; }
+.home .home-circle .home-agent-line::before {
+  content: 'Following'; color: var(--jelly-readout-ink-3);
+  font: 600 var(--type--1)/1.4 var(--font-ui); letter-spacing: .12em; text-transform: uppercase;
+  margin-bottom: var(--jspace-2);
+}
+.home .home-circle .home-agent-line[hidden] { display: none; }
+.home .home-circle .home-agent-line b { max-width: 100%; overflow-wrap: anywhere; color: var(--jelly-readout-ink); font: 650 var(--type-2)/1.2 var(--font-ui); letter-spacing: -.018em; }
+.home .home-circle .home-agent-line span { color: var(--jelly-readout-ink-2); font: 500 var(--type-1)/1.45 var(--font-ui); overflow-wrap: anywhere; }
+.home .home-circle .uring-sub { margin-top: var(--jspace-3); max-width: 100%; color: var(--jelly-readout-ink-3); font: 400 var(--type-0)/1.5 var(--font-ui); overflow-wrap: anywhere; }
+.home .home-circle .uring-caption { order: -1; margin: 0 0 var(--jspace-2); max-width: 100%; color: var(--jelly-readout-ink-3); font: 600 var(--type--1)/1.4 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; }
+.home .home-circle[data-circle-style="simple"] .uring-center { align-items: center; padding: 0; }
+/* With no clock above it the count is the only line carrying the fleet's size,
+   so it takes the action line's step and the action line drops one. It stays on
+   the scale; it does not get a size of its own. */
+.home[data-clock="none"] .home-circle .uring-sub { margin-top: var(--jspace-2); font-size: var(--type-1); font-weight: 500; color: var(--jelly-readout-ink-2); }
+.home[data-clock="none"] .home-circle .home-agent-line span { font-size: var(--type-0); }
+
+/* ---- one measure, one axis ---------------------------------------------- */
+.home:has(.home-ring-stage) > .home-ring-wrap > section.voice-contact.voice-contact-panel {
+  order: 4; flex: none; align-self: center; width: var(--jelly-measure);
+  margin-top: auto; padding-top: var(--jspace-4); border: 0; border-top: 1px solid var(--home-panel-line-soft); border-radius: 0;
+  background: transparent; box-shadow: none;
+}
+/* The idle wave is a row of dashes with nothing to show until voice is on;
+   it read as a stray mark beside the label. */
+.home .home-ring-wrap .voice-wave { border: 0; background: transparent; }
+.home .home-ring-wrap section.voice-contact-panel:not([data-voice="on"]) .voice-wave { display: none; }
+.home .home-ring-wrap > section.voice-contact.voice-contact-panel[data-expanded="true"] { width: var(--jelly-measure); }
+.home:has(.home-ring-stage) > .home-ring-wrap > .home-ring-slot > .home-ring-stage > .home-facts { order: 3; flex: none; align-self: center; width: var(--jelly-measure); margin: var(--jspace-4) 0 0; padding: 0; border: 0; gap: var(--jspace-2); box-sizing: border-box; }
+.home .home-fact { max-width: 100%; color: var(--jelly-ink-3); font: 400 var(--type-0)/1.5 var(--font-ui); }
+.home .home-fact i { width: 5px; height: 5px; background: var(--jelly-ink-3); }
+.home .home-facts:empty { display: none; }
+
+/* A SHORT WINDOW SPENDS ITS SLACK ON THE SUBJECT. Below 780px tall the column
+   is over-subscribed whatever the circle does, so the furniture gives up its
+   gaps first rather than the circle giving up another 40px of diameter: the
+   gaps between the clock, the strip and the facts halve, and the clock loses
+   its own bottom margin. Measured recovery at 1280x720: 40px. */
+@media (max-height: 780px) {
+  /* The header band tightens with everything else: at 1280x720 the separator
+     and the space around it cost 49px of a column that has none to give, and
+     the alternative was another 22px off the circle. The rule stays; the room
+     around it halves. */
+  .home-overview-head { padding-bottom: var(--jspace-3); margin-bottom: var(--jspace-3); }
+  .home:has(.home-ring-stage) > .home-ring-wrap { padding-top: var(--jspace-3); padding-bottom: var(--jspace-2); }
+  .home:has(.home-ring-stage) > .home-ring-wrap > .home-overview-clock { margin-bottom: var(--jspace-2); }
+  .home-glance { margin-top: var(--jspace-2); }
+  .home:has(.home-ring-stage) > .home-ring-wrap > .home-ring-slot > .home-ring-stage > .home-facts { margin-top: var(--jspace-2); }
+  .home:has(.home-ring-stage) > .home-ring-wrap > section.voice-contact.voice-contact-panel { padding-top: var(--jspace-2); }
+}
+
+@media (max-width: 980px) {
+  /* Stacked, this grid needs a THIRD row. The unstacked rule above defines
+     `grid-template-rows: max-content minmax(0, 1fr)` -- two rows -- but the
+     rules below place the ring in row 2 and the feed in row 3. Row 2 being
+     `1fr` of a height-bounded container resolved smaller than the circle's
+     own aspect-ratio box, so the circle overflowed row 2 and painted over the
+     feed: the owner's "circle jumps on top of the activity panel", measured
+     here as a 104581px^2 overlap at 980px and present at every narrower width.
+     Sizing all three rows to their content removes the overlap. */
+  .home:has(.home-ring-stage) { grid-template-columns: minmax(0, 1fr); grid-template-rows: max-content max-content max-content; }
+  .home-overview-head { gap: var(--jspace-3); }
+  .home-overview-title p { max-width: 180px; }
+  .home-overview-clock { min-width: 0; padding: 0; }
+  .home-stat { padding-inline: var(--jspace-2); }
+  .home:has(.home-ring-stage) > .home-ring-wrap { grid-column: 1; grid-row: 2; min-height: 0; width: 100%; max-width: 700px; justify-self: center; }
+  .home:has(.home-ring-stage) > .home-ring-wrap > .home-ring-slot > .home-ring-stage > .home-circle { max-width: var(--jelly-measure); margin-top: 0; }
+  .home:has(.home-ring-stage) > .home-feed-wrap { grid-column: 1; grid-row: 3; max-width: 700px; justify-self: center; height: min(640px, calc(85dvh / var(--zoom, 1))); min-height: 480px; margin-top: var(--jspace-5); }
+  /* Stacked, the panel is a centred column and does not bleed: no negative
+     margins, and the feed's inset is the panel's own padding only. */
+  .home:has(.home-ring-stage) > .home-feed-wrap { --feed-bleed-x: 0px; --feed-bleed-y: 0px; --feed-pad-x: 20px; --feed-pad-y: 16px; margin-right: 0; margin-bottom: 0; }
+  /* The panel's height is bounded by the WINDOW, so it divides by --zoom the
+     same way --home-circle-size above it does. Without that, at the Large text
+     size 85dvh resolves 12% taller than it reads and the body's overflow:
+     hidden loses the surplus rather than scrolling to it. */
+}
+@media (max-width: 650px) {
+  .home:has(.home-ring-stage) { padding: var(--jspace-5) var(--jspace-4) var(--jspace-6); }
+  .home:has(.home-ring-stage) > .home-ring-wrap { padding: var(--jspace-3) 0; }
+  .home-overview-head { grid-template-columns: minmax(0, 1fr) auto; gap: var(--jspace-4) var(--jspace-2); padding-bottom: var(--jspace-4); margin-bottom: var(--jspace-4); }
+  /* One step down the same scale, not a new size. */
+  .home-overview-title h1 { font-size: var(--type-3); }
+  .home-overview-title p { font-size: var(--type--1); }
+  .home-workspace-link { grid-column: 2; grid-row: 1; min-height: 36px; padding: 7px var(--jspace-3); font-size: var(--type--1); }
+  .home-workspace-link svg { display: none; }
+  /* The strip keeps four across on a phone: the tiles are a figure over a
+     label now, so four of them fit a phone's measure where four figure-BESIDE-
+     label rows never did. Two rows of two would also put a second alignment
+     axis under the circle for no gain. */
+  .home-glance-strip { gap: var(--jspace-1); padding-top: var(--jspace-3); }
+  .home-stat { padding-inline: 2px; }
+  .home-stat .tv { font-size: var(--type-0); }
+}
+body.reduce-motion .home-overview-clock .uring-digits .n { transition: none; }
+@media (prefers-reduced-motion: reduce) { .home-overview-clock .uring-digits .n { transition: none; } }
+
+/* THE FOLLOWING LINE ON THE PLATE ABOVE THE CIRCLE (owner, 2026-09-19 late:
+   "swap the clock and the following"): the same block that sat in the face,
+   centred on the plate; the clock is back in the face. */
+.home-overview-clock .home-agent-line { display: grid; justify-items: center; gap: 2px; max-width: 100%; text-align: center; }
+.home-overview-clock .home-agent-line[hidden] { display: none; }
+.home-overview-clock .home-agent-line::before { content: 'Following'; color: var(--jelly-ink-3); font: 600 var(--type--1)/1.4 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; }
+.home-overview-clock .home-agent-line b { max-width: 100%; overflow-wrap: anywhere; color: var(--jelly-ink); font: 650 var(--type-2)/1.2 var(--font-ui); }
+.home-overview-clock .home-agent-line span { color: var(--jelly-ink-2); font: 500 var(--type-0)/1.45 var(--font-ui); overflow-wrap: anywhere; }
+/* The clock in the face hides its days while they are zero, as the plate did. */
+.home .home-circle .uring-digits[data-days="0"] > .seg:first-child,
+.home .home-circle .uring-digits[data-days="0"] > .seg:first-child + .colon { display: none; }
+
+/* THE CLOCK IN THE FACE (owner, 2026-09-19 late: "the clock needs to be
+   smaller ... move the clock lower in the circle"). */
+.home .home-circle .uring-digits .n { font-size: clamp(18px, 2vw, 26px); line-height: 1; }
+.home .home-circle .uring-digits .n-stack { height: 1em; }
+.home .home-circle .uring-digits .colon { font-size: clamp(14px, 1.5vw, 20px); padding: 0 2px; transform: translateY(-2px); }
+.home .home-circle .uring-digits .u { font-size: var(--type--2, 10px); }
+.home .home-circle .uring-caption { margin-bottom: 6px; font-size: 9.5px; letter-spacing: .14em; }
+.home .home-circle .uring-center { padding-bottom: 13%; }
+.home .home-circle .uring-inner { width: 92%; max-width: none; }
+.home .home-circle .uring-digits { display: flex; align-items: flex-start; justify-content: center; }
+.home .home-circle .uring-digits .colon { align-self: flex-start; padding-top: .08em; transform: none; }
+.home .home-circle .uring-digits .u { font-size: 8px; letter-spacing: .04em; margin-top: 4px; white-space: nowrap; }
+.home .home-circle .uring-digits .seg { min-width: 0; }

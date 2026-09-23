@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en" data-theme="black">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tree interaction regression fixture</title>
+<body>
+  <main class="computers" style="height:calc(100dvh / var(--zoom, 1));max-width:none;width:100%;margin:0;padding:12px;box-sizing:border-box">
+    <div class="comp-body">
+      <section class="graph-wrap" style="height:100%;border:1px solid var(--line-2)">
+        <div class="graph-bar"><b>Tree interaction fixture</b><div class="graph-tools"><button type="button" class="graph-open-btn">Fleet overview</button></div></div>
+        <div class="graph-canvas-slot"><div id="graph"></div></div>
+      </section>
+      <div class="comp-body-resize"></div>
+      <aside class="rail"><button type="button" class="fixture-close-rail">Close side panel</button><p class="fixture-side-agent">Fleet overview</p></aside>
+    </div>
+  </main>
+  <script type="module" src="./tree-interactions.mjs"></script>
+</body>
+</html>

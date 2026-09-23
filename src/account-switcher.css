@@ -1,0 +1,232 @@
+/* Account management uses the app’s existing surface, ink and status tokens. */
+
+/* THE ROW THE CHIP SITS IN. `.tabs` keeps every property it had except its
+   overflow; this wrapper only puts something beside it and pushes that
+   something to the right edge. `min-width: 0` on the tab strip so a long
+   computer name shrinks rather than shoving the accounts chip off the row.
+
+   THE STRIP SCROLLS, IT DOES NOT CLIP. A first draft gave it `overflow:
+   hidden`, which cut the 3.5px focus ring off every machine tab (the ring
+   styles.css tunes to clear WCAG 1.4.11), took the active chip's elevation,
+   and turned chips past the row's edge into chips nothing could reach. It
+   scrolls sideways instead, with enough padding inside the scroll box that a
+   ring and a shadow stay whole, and a thin bar so the overflow is visible. */
+.comp-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: none;
+}
+.comp-topbar > .tabs {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  padding: 4px;
+  scroll-padding: 4px;
+  scrollbar-width: thin;
+}
+/* The slot the view writes and this menu fills. It keeps its width against a
+   wide strip (`flex: none`: the strip shrinks and scrolls, the chip does not)
+   and sits at the right edge.
+
+   UNDER HALF THE ROW IS ITS CEILING. On a phone the computer strip is one of
+   the two things the owner kept on that screen and it scrolls under a finger;
+   a 320px chip on a 390px row left it a few dozen pixels. The cap is written
+   as a share of the row rather than under the phone attribute, because that
+   attribute may appear in exactly one sheet (tools/test/phone-canvas.test.mjs
+   gate 2) -- and a desktop row wide enough for the chip is never touched by
+   it, since 44% of any row over 727px is more than the chip's own 320px. */
+.comp-accounts {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  max-width: 44%;
+  min-width: 0;
+}
+.comp-accounts > .acct-switch { position: relative; }
+.acct-trigger {
+  display: flex; align-items: center; gap: var(--s2);
+  max-width: 320px; padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-2); border-radius: 4px;
+  background: var(--control-bg, var(--sheet)); color: var(--ink-2);
+  font: 550 13.5px var(--font-ui); cursor: pointer;
+  transition: background var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.acct-trigger:hover, .acct-switch[data-open="yes"] .acct-trigger {
+  color: var(--ink); background: var(--control-hover, var(--sheet)); box-shadow: var(--elev-1);
+}
+.acct-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.acct-trigger-chev { font-size: 10px; color: var(--ink-3); flex: none; }
+
+/* The viewport dimensions account for the app’s text zoom and phone ceiling. */
+dialog.acct-menu {
+  box-sizing: border-box; position: fixed; inset: 0; margin: auto; padding: 0;
+  width: min(1480px, calc(100vw / var(--zoom, 1) - 48px));
+  height: min(960px, calc(100dvh / var(--zoom, 1) - 48px));
+  max-width: none;
+  /* The phone canvas supplies --acct-menu-available-height after measuring
+     the visual viewport. Keep the desktop 960px ceiling when it is absent,
+     and let the dialog honor the smaller measured ceiling when present. */
+  max-height: var(--acct-menu-available-height, 960px);
+  overflow: hidden; overscroll-behavior: contain;
+  display: flex; flex-direction: column;
+  border: 1px solid var(--line-2); border-radius: 16px;
+  background: var(--bg); color: var(--ink); box-shadow: 0 28px 100px #0005;
+  text-align: left; scrollbar-width: thin; font: 14px/1.5 var(--font-ui);
+}
+dialog.acct-menu::backdrop { background: #10172480; backdrop-filter: blur(5px); }
+.acct-menu *, .acct-menu *::before, .acct-menu *::after { box-sizing: border-box; }
+.acct-menu:not([open]) { display: none; }
+.acct-menu[hidden], .acct-menu [hidden] { display: none; }
+.acct-section[hidden], .acct-preview[hidden], .acct-field[hidden], .acct-switched[hidden],
+.acct-out[hidden], .acct-btn[hidden], .acct-signin-each[hidden] { display: none; }
+.acct-menu :is(button, select, input, summary):focus-visible {
+  outline: 2px solid var(--focus-ring); outline-offset: 3px;
+}
+.acct-header { display: flex; flex: none; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 24px 14px; background: var(--sheet); }
+.acct-eyebrow { font: 600 10px var(--font-mono); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); }
+.acct-heading h3 { margin: 5px 0 4px; font: 600 24px/1.2 var(--font-ui); letter-spacing: -0.02em; }
+.acct-summary { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.acct-toolbar {
+  flex: none; display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px 14px; padding: 10px 22px; border-block: 1px solid var(--line);
+  background: var(--sheet);
+}
+.acct-save-state { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-3); }
+.acct-save-state::before { content: ''; width: 6px; height: 6px; flex: none; border-radius: 50%; background: currentColor; }
+.acct-save-state[data-state="saving"] { color: var(--accent-2); }
+.acct-save-state[data-state="saved"] { color: var(--s-good); }
+.acct-save-state[data-state="error"], .acct-save-state[data-state="refresh-failed"] { color: var(--s-serious); }
+.acct-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: stretch; gap: 20px; padding: 16px 20px 20px; overflow: hidden; }
+.acct-listing { min-height: 0; }
+.acct-section { display: flex; flex-direction: column; min-width: 0; gap: 10px; }
+.acct-section-title { margin: 0; font: 600 14px/1.4 var(--font-ui); color: var(--ink); }
+.acct-sidebar { display: flex; flex-direction: column; gap: 16px; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px; scrollbar-width: thin; }
+.acct-policy-fields { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.acct-mode, .acct-add { flex: none; padding: 16px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--sheet); }
+.acct-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.acct-field-label { font-size: 12px; font-weight: 600; line-height: 1.45; color: var(--ink-2); }
+.acct-select, .acct-input, .acct-num {
+  width: 100%; min-width: 0; min-height: 36px; padding: 7px 9px;
+  border: 1px solid var(--line-2); border-radius: 4px; background: var(--control-bg, var(--sheet));
+  font: 400 14px var(--font-ui); color: var(--ink);
+}
+.acct-num { width: 6em; }
+.acct-num[aria-invalid="true"] { border-color: var(--s-serious); }
+.acct-reserve-input { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 12px; }
+.acct-help, .acct-cost { margin: 0; font-size: 12px; line-height: 1.55; color: var(--ink-25); overflow-wrap: anywhere; }
+.acct-help-quiet, .acct-cost { color: var(--ink-2); font-size: 12px; }
+.acct-recovery { display: flex; flex-direction: column; gap: 7px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.acct-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12.5px; font-weight: 550; cursor: pointer; }
+.acct-toggle input { width: 18px; height: 18px; flex: none; accent-color: var(--accent-2); cursor: pointer; }
+.acct-limits { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.acct-limit { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 5px 8px; }
+.acct-limit-name { font-size: 12px; color: var(--ink-2); }
+.acct-limit-figure { font-size: 11px; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+.acct-slider { grid-column: 1 / -1; width: 100%; margin: 2px 0; min-height: 20px; accent-color: var(--accent-2); cursor: pointer; }
+.acct-listing-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.acct-filters { display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 12px; }
+.acct-filter-summary { display: flex; align-items: center; justify-content: space-between; min-height: 26px; gap: 10px; font-size: 12px; color: var(--ink-2); }
+.acct-signin-each { width: 100%; text-align: left; }
+.acct-list { flex: 1; min-height: 100px; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 24px; padding: 4px; scroll-padding: 8px; scrollbar-width: thin; }
+.acct-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; flex: none; }
+.acct-group-head { grid-column: 1 / -1; display: flex; align-items: end; justify-content: space-between; gap: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line-2); }
+.acct-provider-heading { display: flex; align-items: center; gap: 8px; }
+.acct-provider-mark { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--line-2); border-radius: 4px; color: var(--ink-2); background: var(--surface); font: 600 12px var(--font-mono); }
+.acct-group-name { margin: 0; font-size: 16px; font-weight: 600; }
+.acct-provider-count { color: var(--ink-2); font-size: 12px; white-space: nowrap; }
+.acct-group-rule { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); gap: 8px; width: min(100%, 440px); }
+.acct-group-rule:has([hidden]) { grid-template-columns: minmax(0, 1fr); }
+.acct-select-small { min-height: 32px; padding: 5px 8px; font-size: 12.5px; }
+.acct-row { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 16px; border: 1px solid var(--line-2); border-radius: 9px; background: var(--sheet); }
+.acct-row[data-active="yes"] { border-color: color-mix(in oklab, var(--s-good) 45%, var(--line-2)); box-shadow: inset 3px 0 var(--s-good); }
+.acct-row-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.acct-name { flex: 1 1 130px; min-width: 0; font-size: 17px; line-height: 1.35; font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
+.acct-identity { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.acct-signin-identity { font-size: 13px; line-height: 1.5; color: var(--ink-2); overflow-wrap: anywhere; }
+.acct-plan { font-size: 12px; color: var(--ink-2); white-space: normal; overflow-wrap: anywhere; }
+.acct-allowance { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.acct-allowance-heading { margin: 0; font-size: 12px; line-height: 1.4; font-weight: 600; color: var(--ink); }
+.acct-reading-state { display: flex; align-items: baseline; gap: 6px; margin: 0; font-size: 12px; line-height: 1.45; color: var(--ink-2); }
+.acct-reading-state::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); }
+.acct-row[data-allowance-state="current"] .acct-reading-state::before { background: var(--s-good); }
+.acct-row:is([data-allowance-state="stale"], [data-allowance-state="failed"]) .acct-reading-state::before { background: var(--s-serious); }
+.acct-row[data-allowance-state="stale"] .acct-reading-state, .acct-row[data-allowance-state="failed"] .acct-reading-state { font-weight: 600; color: var(--s-serious); }
+.acct-row:is([data-allowance-state="stale"], [data-allowance-state="failed"], [data-allowance-state="undated"]) .acct-bar-fill { background: var(--ink-3); }
+.acct-inuse, .acct-chosen { padding: 3px 6px; border-radius: 3px; font-size: 10px; font-weight: 550; background: color-mix(in oklab, var(--s-good) 8%, var(--sheet)); color: var(--s-good); }
+.acct-chosen { color: var(--accent-2); background: color-mix(in oklab, var(--accent-2) 8%, var(--sheet)); }
+.acct-flag { font-size: 11px; color: var(--ink-3); }
+.acct-flag-bad { color: var(--s-serious); }
+.acct-row-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
+.acct-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 32px; padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 4px;
+  background: var(--control-bg, var(--sheet)); color: var(--ink-2); font: 550 13px/1.35 var(--font-ui);
+  cursor: pointer; text-decoration: none; white-space: normal;
+}
+.acct-btn:hover:not(:disabled) { color: var(--ink); background: var(--control-hover, var(--sheet)); }
+.acct-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.acct-switch [hidden] { display: none !important; }
+.acct-setup-link { align-self: flex-start; color: var(--accent); font-size: 12px; }
+.acct-btn-small { min-height: 32px; padding: 5px 9px; font-size: 12px; }
+.acct-close { flex: none; gap: 12px; }
+.acct-close > span { font-size: 20px; line-height: 1; }
+.acct-btn-danger { margin-left: auto; }
+.acct-btn-danger[data-armed="yes"] { color: var(--s-serious); border-color: var(--s-serious); }
+.acct-bars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.acct-bars > :only-child { grid-column: 1 / -1; }
+.acct-bar { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 5px; padding: 10px; min-width: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink-2); font-size: 12px; }
+.acct-bar-label { grid-column: 1; grid-row: 1; min-width: 0; overflow-wrap: anywhere; }
+.acct-bar-track { grid-column: 1; grid-row: 3; height: 8px; min-width: 0; border-radius: 4px; background: var(--line-2); overflow: hidden; }
+.acct-bar-fill { display: block; height: 100%; background: var(--s-good); transition: width var(--dur-2) var(--ease); }
+.acct-bar[data-tone="tight"] .acct-bar-fill { background: var(--s-warn); }
+.acct-bar[data-tone="spent"] .acct-bar-fill { background: var(--s-serious); }
+.acct-bar-figure { grid-column: 1; grid-row: 2; color: var(--ink); font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.acct-bar-detail { grid-column: 1 / -1; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; color: var(--ink-2); font-size: 11.5px; }
+/* Unknown allowances have words and no meter, so they cannot look unused. */
+.acct-bar-unread .acct-bar-none { grid-column: 1; font-style: italic; color: var(--ink-2); }
+.acct-bucket > .acct-bar-label, .acct-bucket > .acct-bar-figure, .acct-bucket > .acct-bar-track { grid-row: auto; }
+.acct-row:has(.acct-bucket) { grid-column: 1 / -1; }
+.acct-bucket .acct-bar-label { font-weight: 650; color: var(--ink); }
+.acct-bucket-scope { font-size: 11px; letter-spacing: .03em; overflow-wrap: anywhere; }
+.acct-bucket-amount { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; color: var(--ink); }
+.acct-bucket .acct-bar-reset, .acct-bucket-note { font-size: 11.5px; overflow-wrap: anywhere; }
+.acct-bucket-note { color: var(--ink-2); }
+.acct-bucket-explanation { margin: 6px 0; font-size: 12px; color: var(--ink-2); }
+.acct-line, .acct-empty, .acct-moved { margin: 0; font-size: 12px; line-height: 1.5; color: var(--ink-25); overflow-wrap: anywhere; }
+.acct-line-quiet, .acct-order, .acct-checked, .acct-switched { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-3); overflow-wrap: anywhere; }
+.acct-switched { display: flex; flex-direction: column; gap: 3px; }
+.acct-switched[data-automatic="yes"] .acct-switched-what { color: var(--ink-2); }
+.acct-rename { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; flex: 1 1 100%; }
+.acct-rename-input { flex: 1 1 100%; min-width: 0; }
+.acct-add summary { font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.acct-add-body { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
+.acct-add-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.acct-out { flex: none; margin: 0; padding: 12px 22px; border-top: 1px solid var(--line-2); background: var(--sheet); color: var(--ink-25); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.acct-out[data-tone="confirmed"] { color: var(--s-good); }
+.acct-out[data-tone="refused"] { color: var(--s-serious); }
+.acct-out:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -3px; }
+.acct-preview { padding: 20px 22px; }
+/* The example draws its own accounts to read (src/sample-accounts.js): the list stays, every
+   control that would change or re-read something does not. */
+.acct-switch[data-preview="yes"] :is(.acct-toolbar, .acct-summary, .acct-sidebar, [data-acct="refresh"], .acct-cost, .acct-signin-each) { display: none; }
+.acct-switch[data-preview="yes"] .acct-workspace { grid-template-columns: minmax(0, 1fr); }
+.acct-preview .acct-btn { align-self: flex-start; }
+@media (max-width: 1100px) { .acct-group { grid-template-columns: minmax(0, 1fr); } .acct-group-head { align-items: stretch; flex-direction: column; gap: 8px; } .acct-group-rule { width: 100%; } }
+@media (max-width: 760px) {
+  dialog.acct-menu { width: calc(100vw / var(--zoom, 1) - 24px); height: calc(100dvh / var(--zoom, 1) - 24px); border-radius: 12px; }
+  .acct-workspace { display: flex; flex-direction: column; gap: 20px; padding: 16px; overflow-y: auto; }
+  .acct-list, .acct-sidebar { overflow: visible; flex: none; min-height: 0; }
+  .acct-listing { flex: none; }
+  .acct-filters { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .acct-header { padding: 18px 16px 14px; }
+  .acct-toolbar, .acct-out { padding: 10px 16px; }
+}
+@media (max-width: 560px) {
+  .acct-bars { grid-template-columns: minmax(0, 1fr); }
+  .acct-group-rule { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .acct-trigger, .acct-bar-fill { transition: none; }
+}

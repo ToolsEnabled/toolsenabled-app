@@ -1,0 +1,1137 @@
+@import "./role-studio.css";
+/* ============================================================
+   BOARD — the folded whiteboard page (lane C2)
+
+   The rail's dblclick target stops being "a second stats panel" and
+   becomes the board from the sketch: a role-coloured agent title with a
+   rule under it, the circled runtime, a real Runtime Statistics plot with
+   drawn x/y axes, the controls inside a square box, square legend swatches.
+
+   Two hard rules live in this sheet:
+     · only the board's INTERNAL boxes are square — the rail glass card
+       keeps its own radius, and the stats page keeps its own look;
+     · nothing on the board is smaller than 12.5px, and no informational
+       label is lighter than --ink-2.
+   Loaded from views/computers.js, after styles.css, before morphs.css.
+   Additive only: every selector below is new or a scoped override.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1 · type + contrast floor, board only
+
+   The Runtime Statistics page is deliberately NOT touched here: lane C4
+   owns the site-wide type floor in styles.css and has already brought that
+   page up to it. This sheet only lifts the rail chrome that C4 keeps at its
+   11px uppercase micro-label tier, which this lane's board must carry at
+   12.5px, and pulls the board's rail chrome from --ink-25 to --ink-2 — both
+   scoped to .board-page, so the stats page keeps C4's calibration exactly.
+   ------------------------------------------------------------ */
+.board-page .rail-title { font-size: 12.5px; letter-spacing: 0.15em; color: var(--ink-2); }
+.board-page .rail-back { color: var(--ink-2); }
+
+/* ------------------------------------------------------------
+   2 · the board surface
+   ------------------------------------------------------------ */
+.board-page {
+  --board-r: 3px;                       /* the square corner, everywhere inside */
+  --role: var(--rc, var(--c-coordinator));
+  --role-glow: var(--g-coordinator);
+  /* a marker-dark version of the role hue: same hue, ink-level contrast */
+  --role-ink: color-mix(in oklab, var(--role) 52%, var(--ink));
+}
+
+/* The board rail scrolls — 1265px of content through a 511px window at
+   1600x900 — and it was doing it with no edge treatment at all, so the boundary
+   fell wherever it fell: on load that is the middle of the chat log, and a
+   message bubble (a filled slab, especially on the black theme) came out
+   guillotined flat against the pinned action bar's hairline. It read as a
+   rendering fault rather than as content continuing.
+   The agent page's Controls scroller already solved this with a bottom fade,
+   but it can afford one because views/agent.js drives an .at-end class that
+   lifts the mask at the end of the scroll; this rail has no such hook, and a
+   permanent fade would have left the LAST box — the legend — with a dissolved
+   bottom border for good. So the fade gets its own clearance instead: the
+   scroller carries 26px of bottom padding, which is empty by construction, so
+   at the end of the scroll the 24px band has nothing but padding inside it and
+   the legend's real edge sits clear above it. Mid-scroll the cut dissolves;
+   at the end nothing is ghosted. No JS required.
+   26/24 are a measured fade band and its clearance, so they stay literal. */
+.board-page .rail-scroll {
+  padding-right: 6px;
+  padding-bottom: 26px;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 24px), rgba(0,0,0,0.34) calc(100% - 10px), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 24px), rgba(0,0,0,0.34) calc(100% - 10px), transparent 100%);
+}
+
+/* --- title: role-coloured name, role beneath, rule under the block --- */
+.board-page .agent-head {
+  gap: 11px;
+  padding-bottom: 12px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--line-2);
+}
+.board-page .agent-head .role-dot {
+  width: 14px; height: 14px;
+  border-radius: 1px;                   /* square swatch, not a dot */
+  background: linear-gradient(150deg, color-mix(in oklab, var(--role) 72%, white), var(--role));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,calc(0.55 * var(--wa)));
+}
+.board-page .agent-head .an {
+  font-size: 21px; line-height: 1.15;
+  color: var(--role-ink);
+  letter-spacing: -0.005em;
+}
+/* SENTENCE CASE, because this line is sometimes a person's own words.
+   The base rule uppercases and letterspaces `.ar` (styles.css) — right for a
+   role word, wrong for anything a person typed, and this override restated
+   size, tracking, colour and weight while silently leaving the caps in
+   force. The owner's brief was therefore painted as a 60-character
+   letterspaced capital sentence in a 240px column: most of "an ugly
+   unreadable mess" on its own. */
+.board-page .agent-head .ar {
+  margin-top: 3px;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--ink-2); font-weight: 600;
+}
+
+/* --- circled runtime --- */
+.board-page .agent-ring-wrap { padding: 14px 0 8px; }
+.board-page .uring { max-width: 100%; }
+.board-page .uring .track { stroke: var(--chart-track); }   /* themed: was hardcoded light ink */
+/* the ring caption is a label like any other: 12.5px, --ink-2 */
+.board-page .uring.compact .uring-caption {
+  margin-top: 8px;
+  font-size: 12.5px; letter-spacing: 0.2em;
+  color: var(--ink-2); font-weight: 600;
+}
+.board-page .uring.compact .uring-digits .colon { color: var(--ink-2); }
+
+/* --- meta strip under the ring --- */
+.board-page .board-meta {
+  display: flex; flex-direction: column; gap: 3px;
+  text-align: center;
+  font-size: 12.5px; color: var(--ink-2);
+  margin-bottom: 2px;
+}
+
+/* ------------------------------------------------------------
+   3 · the square boxes — the board's internal geometry
+   ------------------------------------------------------------ */
+/* The `.computers .stats-page` half of every pair below is the FLEET rail. The
+   organisation panels (section 14) live on both rails — the role of one agent
+   belongs beside that agent, and the role library belongs beside the fleet —
+   and a panel that changed shape depending on which rail it was standing in
+   would read as two different panels. The selectors are widened rather than the
+   declarations copied, because a copy is what drifts. */
+.board-page .board-box,
+.computers .stats-page .board-box {
+  position: relative;
+  margin-top: 14px;
+  padding: 12px 13px 14px;
+  border-radius: var(--board-r);
+  border: 1px solid var(--line-2);
+  /* ink-mix, not white-alpha: the old gradient rode --wa, and dark themes
+     set --wa to 0.075 — the fill resolved to ~4% white, five stacked boxes
+     read as five hairlines around identical grey text (iteration 6:
+     Details "completely unreadable"). Mixing the theme's own ink gives the
+     same quiet lift on every theme: darker-on-light, lighter-on-dark. */
+  background: color-mix(in oklab, var(--ink) 4%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,calc(0.92 * var(--wa))),          /* inner top highlight */
+    /* theme-scaled, like every other elevation on the site: the literal
+       14,23,38 this used to carry is the white theme's shadow ink, so on
+       black these boxes were laying a faint navy contact shadow instead of
+       the neutral one the sheet's --shadow-rgb/--shadow-k pair defines.
+       Unchanged on white, where those tokens ARE 14,23,38 at k=1. */
+    0 1px 2px rgba(var(--shadow-rgb), calc(0.035 * var(--shadow-k)));
+}
+
+/* A HEADER HAS TO OUTRANK ITS BODY. This was `--ink-2` — the same token
+   `.rail-prose` uses — with no margin beneath it, so a 12.5px uppercase line
+   sat flush on a 13px line of the same colour and nothing read as a heading.
+   Brightest ink and a real gap are the two cheapest signals there are. */
+.board-page .board-box-h,
+.computers .stats-page .board-box-h {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 7px;
+  font-size: 12.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink); font-weight: 650;
+}
+.board-page .board-box-h .bh-v {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 600;
+  letter-spacing: 0; text-transform: none;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.board-page .board-box-h .bh-v i {
+  width: 9px; height: 9px; border-radius: 1px; flex: none;
+  background: var(--role);
+}
+.board-page .board-cap,
+.computers .stats-page .board-cap {
+  margin: 5px 0 10px;
+  font-size: 12.5px; color: var(--ink-2);
+}
+
+/* A DISCLOSURE A PERSON CAN IDENTIFY BEFORE THEY OPEN IT.
+ *
+ * The owner's bar for this page is that no control hides harder than it has to,
+ * and a sibling lane proved this week that a group which collapses without a
+ * clear affordance reads as a missing feature, not a tidy one. So the toggle is
+ * a real <button> carrying aria-expanded, a chevron that turns, and TWO lines:
+ * the group's name at header rank and, under it, the names of every panel
+ * inside. A person who has never opened it still knows Launch, Team, Loop and
+ * Codex Cloud are in there.
+ *
+ * The group is itself a .board-box, so it inherits the rail's own panel
+ * chrome and adds no new visual vocabulary. Its children keep theirs: nested
+ * boxes lose their frame, because a box inside a box is a border a person has
+ * to look past to read the contents. */
+.board-page .board-box.rail-group { padding: 0; }
+.board-page .rail-group-toggle {
+  display: flex; align-items: flex-start; gap: 9px; width: 100%;
+  padding: 13px 13px 13px 11px;
+  background: none; border: 0; border-radius: inherit;
+  text-align: left; cursor: pointer; color: inherit; font: inherit;
+}
+.board-page .rail-group-toggle:hover { background: var(--sheet-2, rgba(127, 127, 127, 0.06)); }
+.board-page .rail-group-toggle:focus-visible { outline: 2px solid var(--role); outline-offset: -2px; }
+.board-page .rail-group-chev {
+  flex: none; margin-top: 1px;
+  font-size: 15px; line-height: 1; color: var(--ink-2);
+  transition: transform 120ms ease;
+}
+.board-page .rail-group-toggle[aria-expanded='true'] .rail-group-chev { transform: rotate(180deg); }
+.board-page .rail-group-name { display: block; min-width: 0; }
+/* The header and caption rules above are written for a .board-box-h / a
+   .board-cap in flow; inside the button they are inline children, so the
+   margins that spaced them from a body they no longer have are dropped. */
+.board-page .rail-group-name .bh-t {
+  display: block;
+  font-size: 12.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink); font-weight: 650;
+}
+.board-page .rail-group-name .board-cap { display: block; margin: 4px 0 0; }
+.board-page .rail-group-body { padding: 0 11px 11px; }
+.board-page .rail-group-body > .board-box {
+  padding-left: 0; padding-right: 0;
+  background: none; border: 0; box-shadow: none;
+}
+.board-page .rail-group-body > .board-box + .board-box { border-top: 1px solid var(--line); }
+
+/* section rules inside a box */
+/* A SUB-LABEL, NOT A SECOND HEADER. `.rail-sec` rendered at the same size,
+   case, tracking and weight as `.board-box-h`, so "SETUP" and "WORKS IN"
+   read as two headings of equal rank stacked 40px apart. It is subordinate,
+   and now looks it: sentence case, no tracking, quieter ink, with the rule
+   above it doing the dividing. */
+.board-page .board-box .rail-sec {
+  margin: 14px 0 7px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--ink-2);
+  font-weight: 640;
+}
+
+/* ------------------------------------------------------------
+   4 · Runtime Statistics plot
+   The engine fills the same 116px slot the retired inline SVG occupied, so
+   the box keeps its ~344x190 footprint and its place in the rail unchanged.
+   All visible chart chrome is emitted by the scoped ECharts option; this CSS
+   owns only geometry and the hover cursor.
+   ------------------------------------------------------------ */
+.board-page .board-plot { position: relative; height: 116px; }
+.board-page .bc-canvas {
+  width: 100%; height: 116px;
+  cursor: crosshair;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   5 · Agent Controls — square box, square buttons
+   ------------------------------------------------------------ */
+.board-page .ctl-grid { gap: 7px; }
+.board-page .ctl-btn,
+.computers .stats-page .ctl-btn {
+  position: relative; overflow: hidden;
+  border-radius: var(--board-r);
+  border-color: var(--line-2);          /* the sketch's boxes have a drawn edge */
+}
+.board-page .ctl-btn:hover,
+.computers .stats-page .ctl-btn:hover { border-color: color-mix(in oklab, var(--role) 32%, white); }
+/* armed reads as the agent's own colour, but stays ink-on-tint so the label
+   never loses contrast on the lighter role hues */
+.board-page .ctl-btn.armed {
+  color: var(--ink);
+  /* mix toward the THEME's surface, not literal white: mixing to white put
+     light --ink text on a light tint under the black theme (~1.3:1), and
+     armed is the board's DEFAULT state, so the Pause button was unreadable
+     on load. Identical on white (--sheet is #fff), correct on tan/black. */
+  border-color: color-mix(in oklab, var(--role) 42%, var(--sheet));
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--role) 17%, var(--sheet)),
+    color-mix(in oklab, var(--role) 28%, var(--sheet)));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,calc(0.9 * var(--wa)));
+}
+.board-page .ctl-btn.armed::before {
+  content: "";
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--role);
+}
+/* .armed's extra .board-page scope makes it MORE specific than the shared
+   .ctl-btn:focus-visible ring (styles.css) — before this rule, tabbing to
+   an armed button (the default "Pause" state) lost its only focus
+   indicator the moment its glow was removed. Restate the ring explicitly,
+   on top of the armed elevation, so it wins. */
+.board-page .ctl-btn.armed:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,calc(0.9 * var(--wa))),
+    0 0 0 1.5px rgba(255,255,255,calc(0.95 * var(--wa))),
+    0 0 0 3.5px rgba(0, 169, 216, 0.72);
+}
+.board-page .ctl-btn.danger:hover {
+  color: var(--s-serious);
+  border-color: color-mix(in oklab, var(--s-serious) 32%, white);
+}
+
+.board-page .ctl-row { padding: 8px 0; gap: 12px; }
+/* The value column decided its own width, so the three rows ended their
+   sliders at three different x positions ("124k" is four mono characters,
+   "20m" three, "high" four). Reserving the widest value's advance — 4ch,
+   which in a monospaced face is exactly four character widths — locks the
+   values and the slider ends onto one vertical edge. Tabular figures are
+   inherited from styles.css and restated because the alignment now depends
+   on the fixed advance rather than merely reading better for it. */
+.board-page .ctl-row .cv {
+  color: var(--ink-2);
+  min-width: 4ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* inside the box the row has ~26px less width than it does on the stats
+   page, so the slider gives that back instead of the row overflowing */
+.board-page .ctl-row input[type="range"] {
+  flex: 1 1 84px; min-width: 0; max-width: 118px; width: auto;
+}
+.board-page input[type="range"]::-webkit-slider-runnable-track {
+  height: 5px; border-radius: 1px;
+  background: linear-gradient(90deg,
+    var(--role) var(--fill, 50%), var(--chart-track) var(--fill, 50%));   /* themed unfilled half */
+}
+.board-page input[type="range"]::-webkit-slider-thumb {
+  /* same theme-scaled pair as the shared thumb in styles.css, which this
+     rule was otherwise restating with the white theme's ink baked in */
+  box-shadow: 0 2px 7px rgba(var(--shadow-rgb), calc(0.25 * var(--shadow-k)));
+}
+
+/* ------------------------------------------------------------
+   6 · legend — square swatches, the agent's own role called out
+   ------------------------------------------------------------ */
+.board-page .board-legend { gap: 9px 12px; margin-top: 2px; }
+.board-page .board-legend .leg { padding: 3px 0; border-radius: 2px; }
+.board-page .board-legend .leg i {
+  width: 13px; height: 13px; border-radius: 1px;        /* square swatch */
+}
+/* the agent's own role is called out with a tinted plate. The plate's
+   horizontal padding is drawn with box-shadow spread rather than real
+   padding, so the swatches stay flush with the box header and the row
+   never widens the grid past its column. */
+.board-page .board-legend .leg.is-self {
+  color: var(--ink); font-weight: 640;
+  background: color-mix(in oklab, var(--lc) 9%, transparent);
+  box-shadow:
+    0 0 0 5px color-mix(in oklab, var(--lc) 9%, transparent),
+    0 0 0 6px color-mix(in oklab, var(--lc) 24%, transparent);
+}
+.board-page .board-legend .leg.is-self i {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,calc(0.6 * var(--wa))),
+    0 0 0 1px rgba(255,255,255,calc(0.95 * var(--wa))),
+    0 0 0 2px color-mix(in oklab, var(--lc) 55%, white);
+}
+
+/* ------------------------------------------------------------
+   7 · narrow rail — the board still has to breathe at a 320px rail
+   ------------------------------------------------------------ */
+@media (max-width: 1180px) {
+  .board-page .board-box { padding: 11px 11px 13px; }
+}
+
+/* ------------------------------------------------------------
+   8 · task chips: completion is now a moment, not a re-render
+
+   computers.js used to rebuild the whole chip list on every sim tick, so a
+   task being ticked off arrived as eight elements being destroyed and eight
+   new ones springing in. Now the chip that completed keeps its identity and
+   only gains .done, which means the change can finally be shown as a
+   change: the label crosses out and steps down the ink ramp over one
+   standard duration instead of the row blinking. Role colour is untouched —
+   chips are the identity half of the palette and stay so.
+   ------------------------------------------------------------ */
+.computers .task-chip {
+  transition: color var(--dur-2, 240ms) var(--ease);
+}
+.computers .task-chip i {
+  transition: opacity var(--dur-2, 240ms) var(--ease);
+}
+
+/* ------------------------------------------------------------
+   9 · the two floating graph controls — Tree|Physics and Edit
+
+   Both pills sit on the same top edge of the graph card, so they must also
+   share a bottom edge — built independently they came out 32.5px and 30.5px
+   tall, visibly off by 2px along their bottoms. The segment's geometry now
+   comes entirely from the shared .seg control (styles.css, height
+   --seg-h: 32px); --gc-h below keeps the Edit button and its caption on
+   that same 32px register, and MUST move with --seg-h if that token ever
+   changes — the two tokens agreeing numerically is what keeps the two
+   controls bottom-aligned.
+
+   Fixed here rather than in graph.css because that sheet belongs to the
+   graph lane this wave; every selector below is scoped to .computers, so
+   the agent page's own graph strip is untouched. The Edit button's
+   horizontal padding stays literal on purpose: these pills are positioned
+   by fixed right: offsets, so their WIDTHS are the only thing keeping them
+   from colliding, and width is not a dimension to hand to a variable that
+   another sheet owns.
+   ------------------------------------------------------------ */
+.computers .graph-wrap {
+  --gc-h: 32px;                     /* one height for both floating controls */
+}
+.computers .graph-edit-btn {
+  height: var(--gc-h);
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 16px;
+  border-radius: var(--r-md, 3px);
+}
+/* The edit caption was parked at top:22px / right:96px and the segment at
+   top:14px / right:94px — the same rectangle. Because edit mode forces the
+   tree, the segment is only dimmed to .locked rather than removed, so for
+   the whole of edit mode a ~200px nowrap caption was drawn straight through
+   a still-visible control. The caption now occupies its own normal-flow
+   header row, outside the canvas where circles and labels are laid out. */
+.computers .graph-edit-note {
+  flex: 0 0 100%;
+  min-width: 0;
+  text-align: right;
+}
+
+/* ------------------------------------------------------------
+   10 · the rail chat — owner: "under runtime in that panel should
+   be the chatbox again"
+
+   The shared buildChat component (components.js) drops in unchanged —
+   .chat-* classes are shared with the graph chips and the agent page, so
+   everything here is a SCOPED override, sized for the rail's tight
+   ~400px column. The chat is the main event of the board now: the box
+   reserves a fixed slice tall enough to read (log + input ≈ 340px)
+   instead of flexing, because a chat that changes height as the rail
+   scrolls can never keep its pinned-to-newest promise steady.
+   ------------------------------------------------------------ */
+.board-page .board-chat-box { padding: 10px 13px 12px; }
+.board-page .board-chat-box .chat { height: 380px; min-height: 0; }
+.board-page .board-chat-box .chat-head { padding-bottom: 9px; margin-bottom: 7px; }
+/* wheel at the log's edge stays in the log: without the containment the
+   scroll chains straight into the rail scroller and carries the whole chat
+   away from under the pointer mid-read */
+.board-page .board-chat-box .chat-log {
+  gap: 7px;
+  overscroll-behavior: contain;
+}
+/* the 400px column, under the gutter (styles.css converted the log from
+   bubbles 2026-08-24): the base row already spans the width, so the old
+   width-and-padding reclaim would now UNDERCUT the 28px gutter and land the
+   agent's mark on top of its own words. A narrow column keeps a slimmer
+   gutter instead — the mark's x is owned by the base rule and unchanged.
+   13px reading floor holds (message size inherited, deliberately not
+   restated). */
+.board-page .board-chat-box .msg { padding: 2px 0 2px 24px; }
+.board-page .board-chat-box .msg.me { margin-left: 24px; padding-left: 10px; }
+.board-page .board-chat-box .chat-input input { height: 34px; font-size: 13px; }
+.board-page .board-chat-box .chat-send { height: 34px; width: 34px; }
+
+/* ------------------------------------------------------------
+   11 · pinned actions bar
+
+   The four agent actions + "Open full view" leave the scroller: they are
+   the board's exits and must be reachable without scrolling past a chat,
+   a plot and three sliders. Flex sibling of .rail-scroll, so it simply
+   never scrolls; the hairline above it is the same rule the rail title
+   draws below itself, closing the frame.
+   ------------------------------------------------------------ */
+.board-page .board-actions {
+  flex: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-2);
+  display: flex; flex-direction: column; gap: 7px;
+}
+.board-page .board-actions .ctl-grid { gap: 7px; }
+.board-page .board-actions [data-a="open"] { width: 100%; }
+
+/* ------------------------------------------------------------
+   12 · a leaving rail page stops asserting numbers
+
+   During the stats ⇄ board crossfade both rail pages paint in the same
+   rect, and two half-opacity VALUES landing on the same spot read as one
+   struck-through value (the owner's tan screenshot: "80%" with another
+   glyph through it). Labels and structure may blend — that is what a
+   crossfade is — but a number that can be misread as data must never
+   blend with another number. The instant a page starts leaving, its
+   numeric readouts (the chart badge, the load-bar values) stop painting.
+   ------------------------------------------------------------ */
+.computers .rail-page.mc-out .bh-v,
+.computers .rail-page.mc-out .bv { visibility: hidden; }
+
+/* The rail's fail readout wears severity like everywhere else — the same
+   2/5 thresholds and the same text-safe Carbon steps the metrics page and
+   agent table read, so 6% means one colour on every surface it appears. */
+.board-meta .sev-good { color: var(--s-good-text, var(--s-good)); font-style: normal; }
+.board-meta .sev-warn { color: var(--s-warn-text, var(--s-warn)); font-style: normal; }
+.board-meta .sev-serious { color: var(--s-serious-text, var(--s-serious)); font-style: normal; }
+
+/* ------------------------------------------------------------
+   13 · Launch controls, and the chatbox's honest states
+
+   These replace the three "Tuning" sliders. Those sliders were inert — the
+   whole click handler wrote a formatted string into the span beside them —
+   and the owner named that class of defect directly: "dont lie like we cant
+   control temperature". So this section styles two new kinds of thing that
+   the rail never had to draw before:
+
+     · a control whose real effect is printed under it (.ctl-argv), because a
+       knob that shows the actual flags it produces cannot drift from what it
+       claims to do; and
+     · a NAMED ABSENCE (.ctl-unsupported), which is the part that has no
+       precedent on this page. It is deliberately styled as quiet prose rather
+       than as a disabled control: a greyed-out temperature slider still looks
+       like a temperature slider that might come back, and there is no such
+       flag on either engine to come back to.
+
+   No new colour, radius, or font enters here. Everything below is the rail's
+   existing token vocabulary so the box reads as part of the same panel.
+   ------------------------------------------------------------ */
+.board-page .ctl-field {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 0;
+  font-size: 13px;
+}
+.board-page .ctl-field .cl { flex: none; }
+.board-page .ctl-field .cv {
+  color: var(--ink-2);
+  font-family: var(--font-mono); font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.board-page .ctl-select,
+.board-page .ctl-num,
+.computers .stats-page .ctl-select {
+  flex: 1 1 auto; min-width: 0;
+  margin-left: auto;
+  padding: 5px 8px;
+  border-radius: var(--board-r);
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--ink);
+  font: inherit; font-size: 12.5px;
+}
+.board-page .ctl-num { flex: 0 0 5.5ch; text-align: right; font-variant-numeric: tabular-nums; }
+.board-page .ctl-select:focus-visible,
+.board-page .ctl-num:focus-visible,
+.computers .stats-page .ctl-select:focus-visible { border-color: var(--role); outline: none; }
+
+/* The literal argv fragment the selected tier produces. Monospace because it
+   is a command line and will be compared against one, and wrapped rather than
+   clipped because a truncated flag list is how a reader concludes the wrong
+   flags are being sent. */
+.board-page .ctl-argv {
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border-radius: var(--board-r);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-family: var(--font-mono); font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.board-page .ctl-unsupported {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.board-page .ctl-unsupported > .cl {
+  display: block; margin-bottom: 8px;
+  font-size: 12.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-2); font-weight: 650;
+}
+.board-page .ctl-unsupported-row {
+  display: grid; gap: 2px;
+  margin-bottom: 10px;
+  font-size: 12.5px; line-height: 1.45;
+}
+.board-page .ctl-unsupported-row b { color: var(--ink); font-weight: 650; }
+.board-page .ctl-unsupported-row span { color: var(--ink-2); }
+.board-page .ctl-unsupported-row code {
+  color: var(--ink-2); opacity: 0.8;
+  font-family: var(--font-mono); font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+/* TEAM PANEL.
+   Deliberately static: page 2 asserts that nothing inside .computers is
+   animating once the view has settled, so a transition here would fail
+   'no settled Page 2 CSS animation' and take every later check with it. */
+.board-page .team-member-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px;
+  margin-top: 6px;
+}
+.board-page .team-member {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px;
+  font-size: 12.5px; color: var(--ink);
+}
+.board-page .team-member code {
+  color: var(--ink-2); opacity: 0.8;
+  font-family: var(--font-mono); font-size: 11px;
+}
+.board-page .team-roster { display: grid; gap: 6px; margin-top: 8px; }
+.board-page .team-row {
+  display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: 8px;
+  font-size: 12.5px; line-height: 1.45;
+}
+.board-page .team-row b { color: var(--ink); font-weight: 650; }
+.board-page .team-row code {
+  color: var(--ink-2); opacity: 0.8;
+  font-family: var(--font-mono); font-size: 11px;
+}
+.board-page .team-row span { color: var(--ink-2); overflow-wrap: anywhere; }
+/* Phase is carried in a data attribute, not a colour alone: the roster has to
+   be readable when the status colour is the only thing distinguishing rows. */
+.board-page .team-row[data-phase="refused"] b { color: var(--danger, var(--ink)); }
+
+.board-page .ctl-dispatch,
+.computers .stats-page .ctl-dispatch { margin-top: 12px; display: grid; gap: 6px; }
+.board-page .ctl-out,
+.computers .stats-page .ctl-out {
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* A disabled control on this page is not a control that is loading. It is a
+   control naming something the system cannot do, and its title/aria-label
+   carries the reason, so it stays legible rather than fading toward invisible. */
+.board-page .ctl-btn:disabled,
+.computers .stats-page .ctl-btn:disabled {
+  cursor: not-allowed; opacity: 0.55;
+  border-color: var(--line);
+}
+.board-page .ctl-btn:disabled:hover,
+.computers .stats-page .ctl-btn:disabled:hover { border-color: var(--line); }
+
+/* ---- the chatbox's non-sending states -------------------------------- */
+
+/* There is no composer here, and this line is why. It is inside the chat
+   frame rather than replacing it, because the log above it is still real. */
+.board-page .chat-nosend {
+  padding: 9px 11px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2); font-size: 12.5px; line-height: 1.45;
+}
+.board-page .chat-empty {
+  display: grid; gap: 4px;
+  padding: 12px 4px;
+  color: var(--ink-2); font-size: 12.5px; line-height: 1.45;
+}
+.board-page .chat-empty b { color: var(--ink); font-weight: 650; }
+.board-page .chat-empty a { color: var(--role); }
+.board-page .chat-hidden-note {
+  margin-top: 8px;
+  color: var(--ink-2); font-size: 12.5px;
+}
+.board-page .chat-runs { margin-top: 10px; }
+.board-page .chat-runs-h {
+  margin-bottom: 6px;
+  font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-2); font-weight: 650;
+}
+.board-page .chat-run {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 3px 0;
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+.board-page .chat-run b { color: var(--ink); font-weight: 600; }
+
+/* ------------------------------------------------------------
+   14 · The declared organisation — hierarchy, roles, and role wording
+
+   Three surfaces, all of which WRITE: the drag's report line under the graph
+   tools, the selected agent's role menu, and the role library. They introduce
+   no new colour, radius or face; everything below is the rail's existing token
+   vocabulary, for the same reason section 13 gives.
+
+   The two things this section has to draw that nothing else on the page does:
+
+     · A CLAIM PILL. `capabilities.mayClaimWork` is the difference between a role
+       that is DESCRIBED as read-only and a role that IS read-only, and the
+       menu that offers a role is the moment its description becomes a promise.
+       The pill is therefore not a badge for the interesting roles — it is
+       present on every role, in both states, so its absence can never be read
+       as "unknown".
+     · A REFUSAL that stays. .org-status[data-state="refuse"] holds until the
+       next attempt, because it is reporting that what is on screen has just
+       been put back; a message that faded would leave the correction
+       unexplained.
+
+   The FLEET rail is not a .board-page and does not inherit its two tokens, so
+   they are declared for it here. The rest of the box chrome is reached by the
+   widened selectors in sections 3, 5 and 13 above rather than restated.
+   ------------------------------------------------------------ */
+.computers .stats-page {
+  --board-r: 3px;
+  --role: var(--rc, var(--c-coordinator));
+}
+/* Sibling of .computers .board-page .board-box in tree-graph.css: inside this
+   page the boxes are flat sheet, not the glassy gradient the rail ships. */
+.computers .stats-page .board-box { background: var(--sheet); box-shadow: none; }
+.computers .stats-page .rail-org-only { margin-top: 12px; }
+
+/* ---- the drag's report line ------------------------------------------ */
+.computers .org-status {
+  position: absolute; left: 16px; right: 16px; bottom: 12px;
+  z-index: 4;
+  padding: 7px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--line-2);
+  background: var(--sheet);
+  color: var(--ink-2); font-size: 12.5px; line-height: 1.45;
+  overflow-wrap: anywhere;
+  max-height: calc(100% - 24px); overflow-y: auto;
+  box-sizing: border-box;
+  /* NOT transitioned. This line inherits the page's `all 0.12s`, and a status
+     line that eases from the previous message's colour into this one spends
+     that time reading as the previous verdict — a refusal wearing the green of
+     the save it replaced. Measured: with the transition in place, a window that
+     is not producing frames holds the colour at the OLD state indefinitely. A
+     verdict must arrive already wearing its own colour. */
+  transition: none;
+}
+.computers .org-status[hidden], .computers .org-status:empty { display: none; }
+/* A status can wrap to any height. Give its message the canvas footer while
+   it is present; restore the gesture hint when that message clears. */
+.computers .graph-wrap:has(.org-status:not([hidden]):not(:empty)) .tree-pan-hint { display: none; }
+.computers .org-status[data-state="ok"] { color: var(--s-good-text, var(--s-good)); }
+.computers .org-status[data-state="refuse"] {
+  color: var(--s-serious-text, var(--s-serious));
+  border-color: color-mix(in oklab, var(--s-serious) 34%, var(--line-2));
+}
+
+/* ---- the fleet rail's section heads ----------------------------------- */
+/* SIX SECTIONS IN A 330px COLUMN. At the shared `.rail-sec` size that is six
+   lines of tracked upper case shouting at a reader who is trying to find one
+   of them, and nothing separates a section from the paragraph above it. A
+   hairline does the dividing, and the head goes back to sentence case, which
+   is the same resolution `.board-page .board-box .rail-sec` already reached
+   for the boxes on the other rail. */
+.computers .stats-page .rail-sec {
+  margin: var(--s4) 0 var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--ink-2);
+  font-weight: 640;
+}
+.computers .stats-page .rail-scroll > .rail-sec:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* ---- the fleet rail's facts ------------------------------------------- */
+/* FOUR FACTS, FOUR ROWS. They used to be one mono sentence joined by middots
+   -- "This computer · declared source · 0 described in the fleet record ·
+   graph revision 4" -- which asks the reader to do the parsing and wraps in a
+   different place at every rail width. Label in the reading face, value in
+   mono, because a name, a count and a revision are values. */
+.computers .rail-page .rail-facts {
+  margin: 0 0 var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.computers .rail-page .rail-fact {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+}
+.computers .rail-page .rail-fact dt {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.computers .rail-page .rail-fact dd {
+  margin: 0 0 0 auto;
+  min-width: 0;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ---- a warning that is a warning -------------------------------------- */
+/* One heading line, one explanation, one thing to press. The declared-only
+   warning was a run-on `.rail-sub` in mono with the remedy floating beneath it
+   as a fifth paragraph of the same weight, so nothing in it read as either the
+   point or the way out. */
+.computers .rail-page .rail-note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 0 var(--s4);
+  padding: 10px 12px;
+  border-radius: var(--board-r, 3px);
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--s-warn, var(--ink-3));
+  background: color-mix(in oklab, var(--ink) 3%, var(--sheet));
+  /* The box keeps `.projection-unavailable` because two harnesses count that
+     class to find "this screen is not showing live data". The class also
+     carries `font-family: var(--font-mono)`, which is right for the value it
+     was written for and wrong for three sentences and a link, so the reading
+     face is restored here rather than by dropping the marker. */
+  font-family: var(--font-ui);
+}
+.computers .rail-page .rail-note .rail-note-h {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.computers .rail-page .rail-note .rail-note-b {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.computers .rail-page .rail-note .rail-note-a {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 640;
+  color: var(--ink);
+}
+
+/* ---- filing sessions under a research project ------------------------- */
+/* Its own section of the rail since 2026-08-18. It was mounted into the top
+   bar's tool strip, where its empty state -- a whole sentence about the
+   research page -- sat between Edit and the zoom buttons and squeezed the
+   computer's own name out of the bar entirely at 1280x800. */
+.computers .rail-page .rail-research-slot .research-assign-control {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s2);
+}
+.computers .rail-page .rail-research-slot .research-popover-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.computers .rail-page .rail-research-slot select { width: 100%; }
+.computers .rail-page .rail-research-slot [data-assign-apply] { align-self: flex-start; }
+.computers .rail-page .rail-research-slot .research-observed-empty {
+  margin: 0;
+  /* research.css sets this class in mono for the research page's own registers.
+     Here it is one sentence at the foot of a rail of sentences, so it reads in
+     the same face as its neighbours. */
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+/* ---- notices about the org itself ------------------------------------ */
+.computers .rail-page .org-notice {
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border-radius: var(--board-r, 3px);
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--s-warn, var(--ink-3));
+  color: var(--ink-2); font-size: 12.5px; line-height: 1.45;
+}
+.computers .rail-page .org-notice[data-notice="damaged"] {
+  border-left-color: var(--s-serious, var(--ink-2));
+}
+
+/* ---- what a role is enforced to mean --------------------------------- */
+.computers .rail-page .role-facts { margin: 4px 0 2px; }
+.computers .rail-page .role-enforced {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 8px;
+}
+.computers .rail-page .role-claim {
+  padding: 2px 7px;
+  border-radius: var(--board-r, 3px);
+  border: 1px solid var(--line-2);
+  font-family: var(--font-mono); font-size: 11.5px;
+  color: var(--ink-2); white-space: nowrap;
+}
+.computers .rail-page .role-claim[data-claim="no"] {
+  color: var(--s-serious-text, var(--s-serious));
+  border-color: color-mix(in oklab, var(--s-serious) 30%, var(--line-2));
+}
+.computers .rail-page .role-claim[data-claim="yes"] {
+  color: var(--s-good-text, var(--s-good));
+  border-color: color-mix(in oklab, var(--s-good) 30%, var(--line-2));
+}
+.computers .rail-page .role-rule {
+  display: grid; gap: 1px;
+  margin-bottom: 8px;
+  font-size: 12.5px; line-height: 1.45;
+}
+.computers .rail-page .role-rule b { color: var(--ink); font-weight: 650; }
+.computers .rail-page .role-rule span { color: var(--ink-2); overflow-wrap: anywhere; }
+
+/* ---- the library list ------------------------------------------------- */
+.computers .rail-page .role-item {
+  border-top: 1px solid var(--line);
+  padding: 2px 0;
+}
+.computers .rail-page .role-item:first-child { border-top: none; }
+.computers .rail-page .role-item > summary {
+  display: flex; align-items: baseline; gap: 7px;
+  padding: 7px 0;
+  cursor: pointer;
+  font-size: 12.5px; color: var(--ink-2);
+  /* A long role name + nowrap claim chip + the kind column overflowed the
+     rail sideways, and .rail-scroll's overflow-y:auto silently computes
+     overflow-x to auto — the horizontal scrollbar in the owner's screenshot.
+     Rows WRAP instead; nothing in a rail may scroll sideways. */
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.computers .rail-page .role-item > summary b {
+  color: var(--ink); font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.computers .rail-page .role-item > summary .role-kind {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-3);
+}
+.computers .rail-page .role-body { padding: 2px 0 12px; }
+.computers .rail-page .role-field {
+  display: grid; gap: 4px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+}
+.computers .rail-page .role-field .cl { color: var(--ink-2); font-weight: 650; }
+.computers .rail-page .role-text,
+.computers .rail-page .role-input {
+  width: 100%; box-sizing: border-box;
+  padding: 6px 8px;
+  border-radius: var(--board-r, 3px);
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--ink);
+  font: inherit; font-size: 12.5px; line-height: 1.45;
+  resize: vertical;
+}
+.computers .rail-page .role-text:focus-visible,
+.computers .rail-page .role-input:focus-visible { border-color: var(--role); outline: none; }
+.computers .rail-page .role-text:disabled,
+.computers .rail-page .role-input:disabled { opacity: 0.55; cursor: not-allowed; }
+.computers .rail-page .role-actions {
+  display: flex; flex-wrap: wrap; gap: 7px;
+  margin-top: 8px;
+}
+.computers .rail-page .role-actions .ctl-btn { flex: 1 1 auto; }
+
+/* ---- the example board's stated absence, and the notice it replaces ----
+
+   THE CONTROLS ARE GONE FROM THE EXAMPLE BOARD, and this is what stands in
+   their place. Deliberately styled as copy rather than as a control: no border
+   that reads as a button, nothing that invites a click, because the whole point
+   is that this board starts nothing. See exampleControlsAbsentBox(). */
+/* THE ANSWER IS CAPPED, so everything under it stays reachable. A full agent
+   reply is written straight into this box; unbounded, one long answer pushed
+   the Setup controls hundreds of pixels down the rail's scroller. It keeps
+   its own inner scroll instead — the reply is fully readable in the Chat tab,
+   which is where a conversation belongs. */
+.board-page .board-box .rail-said {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* The engine note inside an ordinary box. Without this it fell through to
+   the document default — 13.5px at full --ink with no margins, the loudest
+   and tightest prose on the rail, wedged between a value row and a rule. */
+.board-page .board-box .board-absent-copy {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  margin: 6px 0 2px;
+}
+.computers .board-ctl-absent .board-absent-copy {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.computers .board-ctl-absent .board-absent-copy:first-of-type { margin-top: 10px; }
+
+/* The app-wide "some screens show example data" toast, hidden ONLY while this
+   page is actually showing the example.
+
+   WHY :has() AND NOT THE ROUTE. home.css, agent.css and setup.css each suppress
+   this notice for a whole route, which is right for them because those surfaces
+   are never anything else. The computers page is BOTH: on a live board the
+   notice is true and useful, and hiding it by route would suppress a real
+   message in the one mode that needs it. `:has()` reads the mode the view has
+   already published on its own root, so the rule tracks the live-flag event
+   with no JavaScript to run and no body class to leak onto another route when a
+   destroy is missed.
+
+   `:not(.is-serious)` is carried over from the other three deliberately: a
+   genuine profile failure is never hidden, on any surface. */
+body[data-route="computers"]:has(.computers[data-live-mode="simulated"])
+  .fleet-profile-notice:not(.is-serious) { display: none; }
+
+/* AND ON A LIVE BOARD WITH REAL NODES ON IT. The rule above assumed a live
+   board could only be showing absent projection data, where the notice earns
+   its place. Measured 2026-08-13 (owner screenshot): the live board was full
+   of the person's OWN agents — a real session, a real reply — under a banner
+   asserting "some screens show example data", which read as the product
+   calling its own real work fake. A populated live board is the person's own
+   data by construction; the notice stays only for the empty live board, the
+   one state where pointing at Settings still helps. */
+body[data-route="computers"]:has(.computers[data-live-mode="live"] .static-tree-node)
+  .fleet-profile-notice:not(.is-serious) { display: none; }
+
+/* AND WHILE THE COMPOSE PANEL IS OPEN. The notice floats bottom-right at
+   z=190, which is exactly where the panel's Start button sits — measured on
+   the packaged build over CDP: all nine elementFromPoint samples on the
+   button returned the notice's anchor, so "the panel offers a way to SEND
+   it" was literally unpressable at panel-open (agent-start-flow-qa's
+   finding). A person mid-compose is acting, not needing the example-data
+   disclaimer; it returns the moment the panel closes. Serious notices stay,
+   as everywhere else. */
+body:has([data-agent-compose])
+  .fleet-profile-notice:not(.is-serious) { display: none; }
+
+/* THE ACTIONS PALETTE. Its rows were button.ctl-btn.palette-row with NO rule
+   for palette-row anywhere: .ctl-btn is a fixed 40px CENTRED flex row, so the
+   label and the hint rendered side by side, clipped, and overlapping across
+   rows. (The page div was also the only rail page rendering board pieces
+   without board-page -- fixed at the markup.) Rows are columns, left-aligned,
+   free to grow; the hint is its own class because .rail-sub's
+   margin-bottom: var(--s4) inside a button skews the baselines. */
+.board-page .palette-list { display: flex; flex-direction: column; gap: 6px; }
+.board-page .palette-row {
+  flex-direction: column; align-items: flex-start; justify-content: flex-start;
+  height: auto; min-height: 40px;
+  padding: 9px 11px; gap: 3px;
+  text-align: left;
+}
+.board-page .palette-row > div:first-child { font-weight: 640; }
+.board-page .palette-hint {
+  font-size: 11.5px; line-height: 1.35; color: var(--ink-3);
+  font-family: var(--font-mono); font-weight: 400;
+}
+
+/* THE TREE SWITCHER: one seg in the bar's TREES SLOT, present only when a
+   second tree exists. The slot (.graph-bar-trees, tree-graph.css) is the
+   scroller — hidden scrollbar, edge fades — so the seg keeps its NATURAL
+   width and slides. No inner scroller here, ever: a horizontal scrollbar
+   inside the seg's fixed 32px box had nowhere to live and rendered as the
+   squashed glitch strip (owner walkthrough, iteration 5). Buttons keep a
+   readable ellipsised slice of their tree's name and snap into view. */
+.graph-bar-trees .graph-tree-switch {
+  flex: none;
+  height: 30px;
+  overflow: visible;
+}
+/* 18ch, not 14. The budget was set while a paragraph about the research page
+   was also living in this bar; with that gone the strip has the room, and a
+   tree named by the first words typed into it needs about that many characters
+   before the name stops being a name. */
+.graph-bar-trees .graph-tree-switch > button {
+  flex: none;
+  max-width: 18ch;
+  height: 24px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  line-height: 24px;
+  scroll-snap-align: start;
+}
+
+/* THE VSCODE-SHAPED RAIL (defect 7): Chat / Details / Actions. Bodies are
+   persistent siblings toggled by [hidden]; the chat body is a column that
+   hands its full height to the mounted .chat, which owns its own scrolling. */
+.board-page .rail-tabs { margin: 2px 0 10px; align-self: flex-start; }
+.board-page .rail-tabs > button { height: 26px; }
+.board-page .rail-tab-body { min-height: 0; }
+.board-page .rail-chat-body { flex: 1; display: flex; flex-direction: column; }
+.board-page .rail-chat-body[hidden] { display: none; }
+.board-page .rail-chat-host { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.board-page .rail-chat-host .chat { flex: 1; min-height: 0; }
+/* Account retries (d839fa41) sit under the chat as one quiet block that keeps its own height. */
+.account-retry-controls { flex: none; display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--line); }
+/* Saved pages share the rail's height with the live chat. Only the archive
+   entries scroll; its toggle and paging controls remain reachable. */
+.node-transcript-history { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; max-height: 45%; overflow: hidden; border-top: 1px solid var(--line-2); }
+.node-transcript-history > button { flex: none; align-self: flex-start; margin: 6px 0; }
+.node-transcript-history-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.node-transcript-history-body[hidden] { display: none; }
+.node-transcript-history-body > p { flex: none; margin: 4px 0 8px; font-size: 12px; }
+.node-transcript-history-entries { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.node-transcript-history-nav { display: flex; flex: none; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+
+
+/* The role list's own frame: breathing room between rows, and the box never
+   becomes a sideways scroller. It had no rule at all before — its whole
+   appearance was an accident of inheritance, the palette-row defect's shape. */
+.computers .rail-page .role-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-x: hidden;
+}
+/* And the rail scroller itself never pans sideways: overflow-y:auto computes
+   the unset x-axis to auto, which is how every over-wide child became a
+   scrollbar instead of a wrap. */
+.board-page .rail-scroll,
+.computers .stats-page.rail-page,
+.computers .rail-page .rail-scroll {
+  overflow-x: hidden;
+}
+
+/* SESSION PROFILES on the fleet rail: plain rows, the folder in mono because
+   it is a path the person picked, a remove chip at the row's end. */
+.board-profile-slot { min-width: 0; }
+.computers .rail-page .profile-list {
+  display: flex; flex-direction: column; gap: 6px;
+  list-style: none; padding: 0; margin: 6px 0 10px;
+  min-width: 0; overflow-x: hidden;
+}
+.computers .rail-page .profile-list li {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-width: 0;
+}
+.computers .rail-page .profile-folder {
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-3);
+  overflow-wrap: anywhere; min-width: 0;
+}
+.computers .rail-page .profile-remove {
+  margin-left: auto; height: 24px; padding: 0 9px; font-size: 11.5px;
+}

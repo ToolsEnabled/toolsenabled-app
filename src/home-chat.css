@@ -1,0 +1,455 @@
+/* Full-page reading surface, using the shared chat and home feed. */
+.home-takeover {
+  --reading-max: 920px;
+  --home-chat-accent: var(--ui-accent, var(--theme-accent, var(--c-coordinator)));
+  container-type: inline-size;
+}
+.home-takeover[data-reading-width="wide"] { --reading-max: 100%; }
+
+.home-takeover {
+  position: fixed;
+  inset: 0;
+  /* This is the top layer within #stage. When it opens, the rule below raises
+     the stage above fixed shell chrome; drawers and notices remain above it at
+     their 190+ layers. */
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.home-takeover[hidden] { display: none; }
+/* The takeover lives inside #stage, which is itself a stacking context. Raising
+   only the child cannot clear fixed shell chrome outside that context. */
+body:has(.home[data-chat-open]) #stage { z-index: 90; }
+
+.home-takeover-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 72px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--sheet) 65%, var(--bg));
+}
+.home-takeover-heading { margin-right: auto; min-width: 0; }
+.home-takeover-heading h1 {
+  margin: 0;
+  color: var(--ink);
+  font: 600 20px/1.3 var(--font-ui);
+  letter-spacing: -0.025em;
+}
+.home-takeover-heading p { display: inline-block; margin: 4px 0 0; color: var(--ink-3); font: 400 12.5px/1.5 var(--font-ui); }
+.home-takeover-mode { display: inline-block; margin: 4px 0 0 10px; padding: 2px 6px; border: 1px solid color-mix(in srgb, var(--s-warn) 30%, var(--line)); border-radius: var(--r-sm); color: var(--s-warn); font: 500 11px/1.3 var(--font-ui); }
+.home-takeover-mode[hidden] { display: none; }
+.home-takeover-pick {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  color: var(--ink-25);
+  font: 600 11px/1 var(--font-ui);
+}
+.home-takeover-pick select {
+  min-width: 0;
+  min-height: 36px;
+  width: 280px;
+  max-width: 100%;
+  padding: 0 12px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--control-bg, var(--sheet));
+  color: var(--ink);
+  font: 500 13px/1.3 var(--font-ui);
+}
+.home-takeover-close {
+  margin-left: 12px;
+  flex: none;
+  min-height: 36px;
+  padding: 8px 12px;
+  color: var(--ink-25);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  font: 500 12.5px/1.4 var(--font-ui);
+  cursor: pointer;
+}
+.home-takeover-close:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.home-takeover-toolbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--sheet);
+}
+.home-takeover-toolbar .home-takeover-pick { flex: 1; flex-direction: row; align-items: center; gap: 10px; font-size: 12.5px; }
+.home-takeover-tools { display: flex; flex: none; gap: 6px; }
+.home-takeover-tools button, .home-takeover-search button {
+  min-height: 36px;
+  padding: 8px 12px;
+  font: 500 13px/1.3 var(--font-ui);
+  color: var(--ink-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--control-bg);
+  cursor: pointer;
+}
+.home-takeover-tools button:hover, .home-takeover-search button:hover { background: var(--control-hover); color: var(--ink); }
+.home-takeover-tools button[aria-expanded="true"], .home-takeover-tools button[aria-pressed="true"] { border-color: var(--focus-ring); color: var(--ink); }
+.home-takeover-tools [data-chat-latest] { color: var(--accent-2); }
+.home-takeover-search {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.home-takeover-search[hidden] { display: none; }
+.home-takeover-search input {
+  flex: 1; min-width: 0; height: 36px; padding: 8px 12px;
+  border: 1px solid var(--line-2); border-radius: var(--r-lg);
+  color: var(--ink); background: var(--bg); font: 400 14px/1.3 var(--font-ui);
+}
+.home-takeover-search input::placeholder { color: var(--ink-3); }
+.home-takeover-search output { color: var(--ink-3); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.home-takeover-search button { min-width: 36px; padding-inline: 10px; }
+.home-takeover-search button:disabled { opacity: .45; cursor: default; }
+.home-takeover :is(input, textarea, button, select, summary):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+::highlight(home-chat-matches) { color: var(--ink); background: color-mix(in srgb, var(--focus-ring) 28%, var(--sheet)); }
+::highlight(home-chat-current) { color: var(--bg); background: var(--focus-ring); }
+
+/* The stage is the whole remaining page, and the panel parked in it grows to
+   fill it -- the point of the feature. min-height:0 so the log inside can
+   scroll instead of pushing the stage taller than the window. */
+.home-takeover-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  padding: 16px 24px 20px;
+  overflow: hidden;
+}
+.home-takeover-stage > .home-feed,
+.home-takeover-stage > .chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
+}
+.home .home-takeover-stage > .home-feed { height: 100%; padding: 0; }
+.home-takeover-stage > .chat {
+  max-width: none;
+  padding: 16px 20px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--sheet);
+  box-shadow: var(--elev-1);
+}
+.home-takeover-stage > .home-feed .session-log { max-height: none; }
+
+.home .home-takeover-stage > .home-feed {
+  padding: 16px 20px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--sheet);
+}
+.home-takeover .chat-search-toggle { display: none; }
+.home-takeover :is(.chat-log, .session-log) { overscroll-behavior: contain; scrollbar-gutter: stable; scroll-padding-block: 24px; }
+/* An empty run ledger can still have a long coordinator conversation. The
+   overview's empty-state overflow rule must never spill it over the composer. */
+.home .home-takeover .session-view { overflow: hidden; }
+.home .home-takeover .session-log { overflow-y: auto; scrollbar-width: thin; }
+.home .home-takeover .session-log::-webkit-scrollbar { display: block; width: 8px; }
+.home-takeover :is(.chat-msg-text, .turn-text) { max-width: 78ch; }
+.home-takeover[data-reading-width="wide"] :is(.chat-msg-text, .turn-text, .run-asked, .run-said, .run-why, .run-gap) { max-width: none; }
+/* Widening the container alone changes nothing a person can see: chat-content.css
+   caps .md-p and .md-list at 72ch, which is narrower than the wide measure, so the
+   paragraph would keep its old width inside a wider box. Relax the cap only under
+   this surface's wide mode -- page 2 cards and the docked panel keep their measure. */
+.home-takeover[data-reading-width="wide"] .chat-message-body :is(.md-p, .md-list) { max-width: none; }
+.home-takeover .session-write-state { flex: none; width: 100%; max-width: var(--reading-max); margin: 8px auto 0; font: 400 12px/1.5 var(--font-ui); }
+.home-takeover .log-turns { max-width: var(--reading-max); margin-inline: auto; padding-block: 16px; }
+.home .home-takeover .turn-text, .home .home-takeover .turn.is-owner .turn-text { font-size: 15px; line-height: 1.75; }
+.home-takeover .turn { padding-block: 12px; }
+.home-takeover .turn-who { font-family: var(--font-ui); font-size: 12px; }
+.home-takeover .home-scope-empty { padding: 28px 16px; color: var(--ink-3); font-size: 14px; line-height: 1.6; text-align: center; }
+.home-coordinator-empty { padding: 40px 20px; text-align: center; color: var(--ink-2); font: 400 14px/1.6 var(--font-ui); }
+.home-coordinator-empty[hidden] { display: none; }
+.home-coordinator-empty strong { color: var(--ink); font-weight: 600; }
+.home-coordinator-empty p { margin: 10px 0 20px; }
+.home-coordinator-empty button { padding: 10px 14px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--control-bg); color: var(--accent-2); cursor: pointer; }
+.home-takeover[data-subject-kind="coordinator"] .home-feed:has(.home-coordinator-empty:not([hidden])) .log-notices { display: none; }
+.home-takeover .home-scope-reply { flex: none; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--line); color: var(--ink-3); font: 400 13px/1.5 var(--font-ui); }
+.home-takeover .home-scope-reply[hidden] { display: none; }
+/* Scoped activity has no sender of its own. Keep the coordinator draft, but
+   don't offer its Send button as if it addressed the selected computer/tree. */
+.home-takeover .home-feed:is([data-scope="computer"], [data-scope="tree"], [data-scope="agent"]) > :is(.session-input, .session-write-state) { display: none; }
+.home-takeover .home-run[hidden] { display: none; }
+.home-takeover-stage > .agent-session-surface {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--sheet);
+}
+.home-takeover .agent-session-surface > .write-surface-grid {
+  grid-template-columns: minmax(220px, .7fr) minmax(0, 2fr);
+  align-items: start;
+}
+.home-takeover .agent-session-surface .chat { min-height: 400px; }
+
+/* The same rail and session runtime as Computers, with the chat filling Home.
+   Its status and details remain reachable; its canvas is never mounted. */
+.home-takeover-stage > .home-agent-workspace {
+  display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0;
+  width: 100%; height: 100%; gap: 0; padding: 0; margin: 0;
+  border: 1px solid var(--line-2); border-radius: var(--r-md);
+  background: var(--sheet); overflow: hidden; box-shadow: var(--elev-1);
+}
+.home-agent-workspace > :is(.comp-topbar, .agent-screen-voice, .agent-contact-controls),
+.home-agent-workspace .comp-body > :is(.graph-wrap, .comp-body-resize) { display: none; }
+.home-agent-workspace > .comp-body { display: flex; flex: 1; min-height: 0; gap: 0; padding: 0; }
+.home-agent-workspace .comp-body > .rail {
+  position: relative; display: flex; flex: 1; min-width: 0; min-height: 0;
+  width: 100%; max-width: none; height: 100%; padding: 0;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none;
+}
+.home-takeover .home-agent-workspace .rail-page { padding: 16px 20px; }
+.home-agent-workspace .ctl-page > .rail-title { display: none; }
+.home-agent-workspace .rail-tabs { flex: none; align-self: flex-start; margin-bottom: 12px; }
+.home-agent-workspace .rail-chat-body,
+.home-agent-workspace .rail-chat-host { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+.home-agent-workspace .rail-chat-body[hidden] { display: none; }
+.home-agent-workspace .rail-chat-host > .chat { flex: 1; min-height: 0; max-height: none; padding: 0; border: 0; box-shadow: none; }
+.home-takeover .home-agent-workspace > .org-status { position: static; flex: none; margin: 8px 20px; max-width: none; order: 1; font-family: var(--font-ui); }
+.home-takeover .home-agent-workspace .agent-screen-voice-controls { flex: none; margin: 0 0 16px; border-radius: var(--r-md); }
+.home-takeover .home-agent-workspace .agent-control-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.home-agent-workspace > .machine-note { margin: 0; }
+
+/* One chronological list with the same surface, accent and status tokens as
+   the tree and chat. Color reinforces the written state and its shape. */
+.home .activity-overview { display: none; }
+.home-takeover .session-expand { display: none; }
+.home-takeover .session-head { margin: 0; padding: 0 0 16px; font-size: 16px; border: 0; }
+.home .home-takeover .activity-overview:not([hidden]) {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px;
+  margin-bottom: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line);
+}
+.activity-counts { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; color: var(--ink-2); font: 600 13px/1.4 var(--font-ui); }
+.activity-counts [data-activity-working] { color: var(--s-good); }
+.activity-order { color: var(--ink-3); font-weight: 400; }
+.activity-actions { display: flex; gap: 6px; margin-left: auto; }
+.activity-actions button, .activity-filters button, .home-takeover-views button {
+  padding: 8px 12px; min-height: 34px; border: 1px solid var(--line-2);
+  border-radius: var(--r-lg); color: var(--ink-2); background: var(--control-bg);
+  font: 500 12px/1.3 var(--font-ui); cursor: pointer;
+}
+.activity-actions button:hover, .activity-filters button:hover, .home-takeover-views button:hover { background: var(--control-hover); color: var(--ink); }
+.activity-actions [aria-pressed="true"] { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 40%, var(--line)); }
+.activity-actions [aria-pressed="true"]::before { content: '✓'; margin-right: 6px; }
+.activity-filters { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.activity-filters button { display: flex; align-items: center; gap: 10px; border-color: transparent; background: transparent; }
+.activity-filters [aria-pressed="true"], .home-takeover-views [aria-pressed="true"] {
+  color: var(--ink); background: color-mix(in srgb, var(--home-chat-accent) 8%, var(--sheet)); border-color: color-mix(in srgb, var(--home-chat-accent) 28%, var(--line));
+}
+/* The chosen view and filter are marked by colour alone, which forced colors
+   flattens: Coordinator and Everything drew identically in Windows High
+   Contrast (T1596). They take the person's highlight pair, as the segmented
+   controls do. */
+@media (forced-colors: active) {
+  .activity-filters [aria-pressed="true"], .home-takeover-views [aria-pressed="true"] {
+    color: HighlightText; background: Highlight; border-color: Highlight;
+  }
+}
+.activity-filters [data-filter-count] { font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.activity-filters [data-activity-filter="working"] { --filter-tone: var(--s-good); }
+.activity-filters [data-activity-filter="attention"] { --filter-tone: var(--s-warn); }
+.activity-filters [data-activity-filter="updated"] { --filter-tone: var(--accent-2); }
+.activity-filters button:not([data-activity-filter="all"])::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--filter-tone, var(--ink-3)); }
+.home-takeover-views { display: flex; flex: none; gap: 4px; }
+.home-takeover-toolbar { justify-content: flex-start; }
+.home-takeover-tools { margin-left: auto; }
+.home-takeover .session-view::before { display: none; }
+.home-takeover .session-log { padding-top: 0; }
+.home-takeover .home-runs { display: grid; gap: 0; }
+.home-takeover .home-run {
+  --run-tone: var(--ink-3);
+  border: 0; border-bottom: 1px solid var(--line); border-left: 2px solid transparent;
+  border-radius: 0; background: transparent; overflow: clip;
+}
+.home-takeover .home-run[data-status="working"] { --run-tone: var(--s-good); border-left-color: var(--run-tone); }
+.home-takeover .home-run[data-status="attention"] { --run-tone: var(--s-warn); border-left-color: var(--run-tone); }
+.home-takeover .home-run[data-status="finished"] { --run-tone: var(--s-good); }
+.home-takeover .home-run[data-updated] { border-left-color: var(--accent-2); }
+.home-takeover .home-run:has(> details[open]) { background: color-mix(in srgb, var(--ink) 2%, transparent); }
+.home-takeover .run-head {
+  display: grid; grid-template-columns: 12px minmax(150px, .8fr) minmax(0, 2.4fr) 138px 85px;
+  align-items: center; gap: 16px; padding: 16px 16px;
+}
+.home-takeover .run-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.home-takeover .run-identity { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.home-takeover .run-agent { font: 600 14px/1.4 var(--font-ui); color: var(--ink); overflow-wrap: anywhere; }
+.home-takeover .run-what { font: 500 11px/1.4 var(--font-ui); color: var(--ink-3); }
+.run-location { display: none; }
+.home-takeover .run-location:not([hidden]) { display: block; font: 400 11px/1.4 var(--font-ui); color: var(--ink-3); overflow-wrap: anywhere; }
+.home-takeover .run-identity:has(.run-agent[hidden]) .run-what { color: var(--ink-2); font-size: 14px; }
+.home-takeover .run-overview { display: grid; gap: 5px; min-width: 0; }
+.home-takeover .run-fold[open] .run-brief,
+.home-takeover .run-brief { display: block; font: 500 13px/1.5 var(--font-ui); color: var(--ink); }
+.home-takeover .run-preview { color: var(--ink-25); font: 400 13px/1.5 var(--font-ui); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: break-word; }
+.home-takeover .run-fold[open] .run-preview { display: none; }
+.home-takeover .run-summary-work { display: none; }
+.home-takeover .run-brief[hidden], .home-takeover .run-preview[hidden] { display: none; }
+.home-takeover .run-status { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.home-takeover .run-state { display: inline-flex; align-items: center; gap: 7px; color: var(--run-tone); font: 600 12px/1.4 var(--font-ui); }
+.home-takeover .run-state-mark { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 17px; height: 17px; border: 1px solid color-mix(in srgb, var(--run-tone) 40%, transparent); border-radius: 50%; font-size: 10px; }
+.home-takeover [data-status="working"] .run-state-mark { animation: home-run-live 1.6s ease-in-out infinite; }
+.home-takeover .run-updated { color: var(--accent-2); font: 600 11px/1.4 var(--font-ui); }
+.home-takeover .run-updated::before { content: ''; display: inline-block; width: 5px; height: 5px; margin-right: 6px; border-radius: 50%; background: currentColor; }
+.home-takeover .run-result, .home-takeover .run-live { display: none; }
+.home-takeover .run-when { font: 400 11px/1.4 var(--font-ui); font-variant-numeric: tabular-nums; }
+.home-takeover .run-body { padding: 0 20px 22px 44px; gap: 14px; }
+.home-takeover .run-asked, .home-takeover .run-said, .home-takeover .run-why, .home-takeover .run-gap { font: 400 14px/1.7 var(--font-ui); max-width: min(100%, var(--reading-max)); }
+.home-takeover .run-asked { padding-top: 12px; border-top: 1px solid var(--line); color: var(--ink-3); white-space: pre-wrap; }
+/* Bound long context against the window at every Text size; keep the px cap
+   scaling with the text and the full content reachable by scrolling. */
+.home-takeover .run-said { white-space: normal; border-left-color: color-mix(in srgb, var(--accent-2) 40%, var(--line)); max-height: min(calc(45vh / var(--zoom, 1)), 420px); overflow: auto; scrollbar-width: thin; overscroll-behavior: contain; }
+.home-takeover .run-said:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.home-takeover .run-answer-label { font: 500 12px/1.4 var(--font-ui); color: var(--ink-3); margin-bottom: -8px; }
+.home-takeover .run-answer-footer { display: flex; gap: 6px; }
+.home-takeover .run-answer-footer[hidden] { display: none; }
+.home-takeover .run-said :is(pre, table) { max-width: 100%; }
+.home-takeover .run-did { display: block; color: var(--ink-3); font: 400 12px/1.5 var(--font-ui); }
+.home-takeover .run-did[hidden] { display: none; }
+.home-takeover .run-current-work { color: var(--accent-2); font: 500 13px/1.5 var(--font-ui); overflow-wrap: anywhere; }
+.home-takeover .run-current-work[hidden], .run-state, .run-updated, .run-preview { display: none; }
+.home-takeover .run-state { display: inline-flex; }
+.home-takeover .run-updated:not([hidden]) { display: inline; }
+.home-takeover .run-gap { font-style: normal; opacity: 1; }
+.home-takeover .run-why { color: var(--s-warn); }
+.home-takeover .run-transcript { min-width: 0; border-top: 1px solid var(--line); }
+.home-takeover .run-transcript > summary { padding: 12px 0; font-size: 13px; }
+.home-takeover .run-turns { padding: 8px 0 12px; gap: 20px; }
+.home-takeover .run-turns .turn-text { font-size: 14px; line-height: 1.7; }
+.home-takeover .run-door { font-size: 12px; }
+/* The coordinator owns its conversation and composer. Aggregate scopes own
+   the run stream; switching scopes never disguises a coordinator send. */
+.home-takeover[data-subject-kind="coordinator"] :is(.log-runs, .activity-overview) { display: none !important; }
+.home-takeover .home-feed:not([data-scope="coordinator"]) > :is(.session-input, .session-write-state) { display: none; }
+.home-thread-context > summary { display: none; }
+.home-takeover .home-feed:not([data-scope="coordinator"]) .home-thread-context {
+  padding: 12px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--line); border-left: 2px solid var(--accent-2);
+}
+.home-takeover .home-feed:not([data-scope="coordinator"]) .home-thread-context > summary { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; font: 600 13px/1.5 var(--font-ui); color: var(--ink); cursor: pointer; }
+.home-thread-context > summary::-webkit-details-marker { display: none; }
+.home-thread-context[open] > summary .chat-action-mark svg { transform: rotate(90deg); }
+.home-thread-preview { color: var(--ink-3); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-takeover .home-feed:not([data-scope="coordinator"]) .home-thread-context .log-thread-head { display: none; }
+.home-takeover .home-feed:not([data-scope="coordinator"]) .home-thread-context .log-turns { max-height: min(calc(45vh / var(--zoom, 1)), 420px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+@media (prefers-reduced-motion: reduce) { .home-takeover [data-status="working"] .run-state-mark { animation: none; } }
+@media (max-width: 1100px) {
+  .home-takeover .run-head { grid-template-columns: 12px minmax(130px, 1fr) auto 80px; gap: 12px; }
+  .home-takeover .run-overview { grid-column: 2 / -1; grid-row: 2; }
+  .home-takeover .run-status { grid-column: 3; grid-row: 1; }
+  .home-takeover .run-when { grid-column: 4; grid-row: 1; }
+  .home-takeover-toolbar { flex-wrap: wrap; gap: 10px; }
+  .home-takeover-toolbar .home-takeover-pick { flex: 1; }
+}
+
+@media (max-width: 640px) {
+  .home-takeover-bar { flex-wrap: wrap; gap: 16px; padding: 18px 16px; }
+  .home-takeover-heading { width: 100%; }
+  .home-takeover-heading h1 { font-size: 24px; }
+  .home-takeover-pick { flex: 1; }
+  .home-takeover-pick select { width: 100%; }
+  .home-takeover-close { margin-left: 0; align-self: flex-end; }
+  .home-takeover-stage { padding: 18px 12px; }
+  .home-takeover .session-head { flex-wrap: wrap; gap: 10px; }
+  .home-takeover-stage > .chat { padding: var(--s3); border-radius: 3px; }
+  .home .home-takeover .activity-overview:not([hidden]) { gap: 10px; grid-template-columns: 1fr; }
+  .activity-overview button { grid-column: 1; grid-row: 3; justify-self: start; }
+  .home-takeover .run-head { grid-template-columns: 10px minmax(0, 1fr) auto; padding: 16px 14px; gap: 10px; }
+  .home-takeover .run-identity { grid-column: 2; }
+  .home-takeover .run-when { grid-column: 3; font-size: 12px; max-width: 75px; }
+  .home-takeover .run-overview { grid-column: 2 / -1; grid-row: 3; }
+  .home-takeover .run-status { grid-column: 2 / -1; grid-row: 2; flex-direction: row; align-items: center; gap: 12px; }
+  .home-takeover .run-body { padding: 0 14px 16px 34px; }
+  .home-takeover .run-agent { font-size: 14px; }
+  .home-takeover-bar { min-height: 0; padding: 14px 16px; gap: 12px; }
+  .home-takeover-heading { width: auto; flex: 1; }
+  .home-takeover-heading h1 { font-size: 19px; }
+  .home-takeover-heading p { display: none; }
+  .home-takeover-mode { margin-left: 0; }
+  .home-takeover-close { height: 36px; padding: 0 10px; font-size: 12px; }
+  .home-takeover-toolbar { flex-wrap: wrap; padding: 10px 12px; gap: 10px; }
+  .home-takeover-toolbar .home-takeover-pick { flex: 1 1 100%; }
+  .home-takeover-toolbar .home-takeover-pick select { flex: 1; width: auto; }
+  .home-takeover-tools { width: 100%; }
+  .home-takeover-tools button { flex: 1; }
+  .home-takeover-stage { padding: 10px; }
+  .home .home-takeover-stage > .home-feed, .home-takeover-stage > .chat { padding: 12px; }
+  .home-takeover .msg.me { margin-left: 12px; padding: 12px; }
+  .home-takeover .msg.them { padding-right: 2px; padding-left: 18px; }
+  .home-takeover .msg.them::before { left: 1px; }
+  .home-takeover-search { padding: 8px 12px; gap: 4px; flex-wrap: wrap; }
+  .home-takeover-search input { flex-basis: calc(100% - 120px); }
+  .home-takeover-search output { order: 1; flex-basis: 100%; }
+  .home-takeover-search output:empty { display: none; }
+  .home-takeover .agent-session-surface > .write-surface-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Keep the status summary compact at phone widths so the list gets the page. */
+@media (max-width: 640px) {
+  .home-takeover-views { display: none; }
+  .home-takeover-views button { flex: 1; }
+  .home-takeover .session-head { display: none; }
+  .activity-actions { margin-left: 0; flex-wrap: wrap; }
+  .activity-actions button { font-size: 11px; padding: 7px 9px; }
+  .activity-counts { font-size: 12px; gap: 8px; }
+  .activity-order { display: none; }
+  .activity-filters { gap: 2px; }
+  .activity-filters button { padding: 7px 5px; font-size: 11px; gap: 5px; }
+  .home .home-takeover .activity-overview:not([hidden]) { gap: 8px; margin-bottom: 0; padding-bottom: 10px; }
+  .home-takeover .run-state { font-size: 11px; }
+  .home-takeover .run-head { padding-block: 13px; }
+}
+
+/* Follow the available page width, including an expanded navigation rail and
+   increased text size. Keep the composer reachable at every reading width. */
+@container (max-width: 880px) {
+  .home-takeover-views { display: none; }
+  .home-takeover-toolbar { gap: 8px 12px; }
+  .home-takeover-toolbar .home-takeover-pick { flex: 1; }
+  .home-takeover-pick select { width: 100%; }
+}
+@container (max-width: 580px) {
+  .home-takeover-bar { min-height: 0; padding: 12px; gap: 10px; }
+  .home-takeover-heading h1 { font-size: 18px; }
+  .home-takeover-heading p { display: none; }
+  .home-takeover-mode { margin-left: 0; }
+  .home-takeover-close { padding: 8px; font-size: 12px; }
+  .home-takeover-toolbar { padding: 8px 12px; }
+  .home-takeover-toolbar .home-takeover-pick { flex-basis: 100%; }
+  .home-takeover-tools { width: 100%; }
+  .home-takeover-tools button { flex: 1 0 auto; padding-inline: 8px; white-space: nowrap; }
+  .home-takeover-stage { padding: 8px; }
+  .home .home-takeover-stage > .home-feed,
+  .home-takeover-stage > .chat,
+  .home-takeover .home-agent-workspace .rail-page { padding: 12px; }
+  .home-takeover .home-agent-workspace .rail-tabs { margin-bottom: 8px; }
+  .home-takeover-search { padding-inline: 12px; }
+  .home-takeover .home-agent-workspace .agent-control-body { grid-template-columns: minmax(0, 1fr); }
+  .home-takeover .home-agent-workspace > .org-status { margin-inline: 12px; font-size: 12px; }
+}

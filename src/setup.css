@@ -1,0 +1,224 @@
+/* Setup uses the application theme and a single reading column. Native choice
+   buttons keep the complete permission wording available to pointer, keyboard,
+   touch and assistive technology users. */
+.setup-page { display: flex; }
+.setup-page > .setup-shell {
+  max-width: min(var(--page-max), 840px);
+  margin-block: auto;
+  padding-block: var(--s5);
+}
+.setup-section {
+  container: setup-content / inline-size;
+  padding: clamp(var(--s3), 4vw, calc(var(--s5) * 2));
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background: var(--sheet);
+  box-shadow: var(--elev-1);
+}
+.setup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+}
+.setup-brand { color: var(--ink); font-size: 14px; font-weight: 640; }
+.setup-brand > span { margin-left: var(--s2); color: var(--ink-3); font-weight: 400; }
+.setup-progress { color: var(--ink-2); font-size: 12.5px; white-space: nowrap; }
+.setup-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--s2);
+  list-style: none;
+  padding: 0 0 var(--s5);
+  margin: 0 0 var(--s5);
+  border-bottom: 1px solid var(--line-2);
+}
+.setup-steps li { display: flex; align-items: flex-start; gap: var(--s2); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
+.setup-steps small { display: block; font-size: 12.5px; font-weight: 400; }
+.setup-step-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  font-size: 12.5px;
+}
+.setup-steps [aria-current='step'] { color: var(--ink); font-weight: 640; }
+.setup-steps [aria-current='step'] .setup-step-number { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
+.setup-steps .is-complete .setup-step-number { border-color: var(--ink-3); color: var(--ink-2); }
+.setup-title { margin: 0 0 var(--s3); color: var(--ink); font-size: clamp(22px, 3vw, 28px); font-weight: 640; line-height: 1.25; letter-spacing: -0.02em; }
+.setup-title:focus { outline: none; }
+.setup-lede { margin: 0 0 var(--s5); color: var(--ink-2); font-size: 14px; line-height: 1.6; }
+.setup-subtitle { margin: var(--s5) 0 var(--s2); color: var(--ink-2); font-size: 13px; font-weight: 640; line-height: 1.5; }
+.setup-choices { display: grid; gap: var(--s3); }
+.setup-choice-card {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+  width: 100%;
+  padding: var(--s4);
+  color: var(--ink);
+  background: var(--sheet);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.setup-choice-card .settings-copy { display: block; min-width: 0; }
+.setup-choice-card .settings-name { display: block; margin-bottom: var(--s1); font-size: 14px; line-height: 1.5; }
+.setup-choice-card .settings-desc { display: block; font-size: 13px; line-height: 1.6; }
+.settings-desc[hidden] { display: none; }
+.setup-choice-card:hover { border-color: var(--ink-3); }
+.setup-choice-card[aria-pressed='true'] { border-color: var(--ink-2); background: var(--seg-bg); }
+.setup-choice-mark { flex: 0 0 18px; height: 18px; margin-top: var(--s1); border: 1px solid var(--ink-3); border-radius: 50%; display: grid; place-items: center; }
+.setup-choice-card[aria-pressed='true'] .setup-choice-mark::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+.setup-choice-card:disabled { cursor: wait; opacity: 0.65; }
+.setup-choice-card:focus-visible,
+.setup-section summary:focus-visible,
+.setup-section .ctl-btn:focus-visible,
+.setup-skip:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+.setup-badge { display: inline-block; margin-left: var(--s1); padding: 0 var(--s2); border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--sheet); color: var(--ink-2); font-size: 12.5px; font-weight: 400; vertical-align: middle; }
+.setup-choice { grid-template-columns: minmax(0, 1fr); align-items: start; }
+.setup-consequence { margin-top: var(--s1); color: var(--s-warn); }
+.setup-question { border-top: none; padding-top: 0; }
+
+.setup-question .fleet-profile-fields {
+  width: 100%;
+  max-width: 100%;
+}
+/* THE EDGE OF AN ACCOUNT FIELD MEETS 3:1 IN EVERY THEME (T1564). --line-2 is a
+   divider tone (about 1.4:1 light and 1.6:1 dark), so a field drawn with it
+   read as a row line or as nothing. The fourth ink is 3.7:1 or more on the
+   light sheets; on the dark ones it is not, so they take the third. */
+.setup-page { --setup-field-edge: var(--ink-4); }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .setup-page { --setup-field-edge: var(--ink-3); }
+.setup-question .fleet-profile-input {
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--setup-field-edge);
+  border-radius: var(--r-sm);
+  background: var(--control-bg, var(--sheet));
+  color: var(--ink);
+}
+.setup-question .fleet-profile-input:hover:not(:disabled) { border-color: var(--ink-3); }
+.setup-question .fleet-profile-input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.setup-question .fleet-profile-input:disabled { cursor: not-allowed; opacity: .6; }
+/* The signed-out Account page draws the same fields; they are boxed the same way. */
+.setup-page [data-account-section] .fleet-profile-input {
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--setup-field-edge);
+  border-radius: var(--r-sm);
+  background: var(--control-bg, var(--sheet));
+  color: var(--ink);
+}
+.setup-page [data-account-section] .fleet-profile-input:hover:not(:disabled) { border-color: var(--ink-3); }
+.setup-page [data-account-section] .fleet-profile-input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.setup-page [data-account-section] .fleet-profile-input:disabled { cursor: not-allowed; opacity: .6; }
+.setup-section .settings-desc { overflow-wrap: anywhere; }
+.setup-section .settings-row { min-width: 0; }
+.setup-section .settings-control { min-width: 0; }
+.setup-section .settings-row:has(.seg) { grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
+.setup-section .settings-row:has(.seg) .settings-control { justify-self: start; max-width: 100%; }
+.setup-section .fleet-profile-status { margin-block: var(--s3); line-height: 1.6; }
+.setup-disclosure { margin-top: var(--s3); border-top: 1px solid var(--line-2); padding-top: var(--s2); }
+.setup-disclosure > summary { padding-block: var(--s3); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; }
+.setup-disclosure > summary > span { margin-left: var(--s2); color: var(--ink-3); font-size: 12.5px; font-weight: 400; }
+.setup-section .ctl-btn { min-height: 36px; padding: var(--s2) var(--s3); white-space: normal; height: auto; }
+.setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line-2);
+}
+.setup-actions-spacer { flex: 1 1 auto; }
+.setup-actions .ctl-btn { min-height: 40px; padding-inline: var(--s4); }
+.setup-actions [data-setup-continue],
+.setup-actions [data-setup-account-submit],
+.setup-actions:not(:has([data-setup-account-submit])) [data-setup-next] { background: var(--ink); color: var(--sheet); border-color: var(--ink); font-weight: 600; }
+.setup-actions .ctl-btn:disabled { opacity: 0.6; }
+.setup-skip { min-height: 40px; padding: var(--s2) 0; border: 0; background: none; color: var(--ink-3); font: inherit; font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.setup-skip:hover { color: var(--ink); }
+.setup-root { display: flex; align-items: center; gap: var(--s2); padding: var(--s3); border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--seg-bg); }
+.setup-root-path { flex: 1 1 auto; min-width: 0; color: var(--ink); font-family: var(--font-mono); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.setup-hint { display: block; color: var(--ink-3); font-size: 12.5px; line-height: 1.6; }
+.setup-readiness-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); margin-block: var(--s3); }
+.setup-docker-guidance { margin-block: var(--s3); }
+.setup-docker-guidance summary { cursor: pointer; }
+.setup-docker-addresses { margin-block: var(--s2); }
+.setup-docker-addresses dd { margin: 0 0 var(--s2); overflow-wrap: anywhere; }
+.setup-section [data-sandbox-action] { min-height: 40px; padding: var(--s2) var(--s3); margin: var(--s1); font: inherit; color: var(--ink); border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--seg-bg); cursor: pointer; }
+.setup-section [data-sandbox-action]:disabled { opacity: 0.6; cursor: default; }
+body.first-run .topbar { display: none; }
+body.first-run.in-shell #stage,
+body.first-run #stage { padding-top: 0; }
+body.first-run .fleet-profile-notice:not(.is-serious) { display: none; }
+@media (max-width: 620px) {
+  .setup-page .setup-steps li { flex-direction: column; gap: var(--s1); overflow-wrap: anywhere; }
+  .setup-page .setup-steps { gap: 0; }
+  .setup-page .setup-choice-card { padding: var(--s3); gap: var(--s2); }
+  .setup-page .setup-disclosure > summary > span { display: block; margin-left: 0; }
+}
+@media (forced-colors: active) {
+  .setup-choice-card[aria-pressed='true'] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .setup-choice-card[aria-pressed='true'] .setup-choice-mark::after { background: Highlight; forced-color-adjust: none; }
+  .setup-steps [aria-current='step'] { text-decoration: underline; }
+}
+
+/* The review can have a narrow column inside a wide or zoomed window. Base
+   this layout on the available content width as well as the phone viewport. */
+@container setup-content (max-width: 620px) {
+  .setup-page .seg:where(:has(> button)) { display: grid; grid-auto-flow: row; width: 100%; height: auto; gap: var(--s2); }
+  .setup-page .seg > button { justify-content: flex-start; min-height: calc(var(--s5) * 2); padding-block: var(--s2); line-height: 1.4; text-align: left; white-space: normal; }
+  .setup-page .seg > .seg-ind { opacity: 0; }
+  .setup-page .seg > button.on { background: var(--sheet); }
+}
+
+@media (max-width: 620px) {
+  /* The trough becomes a column. height: auto because the base pins
+     var(--seg-h) for a single row of chips. */
+  .setup-page .seg:where(:has(> button)) {
+    display: grid;
+    grid-auto-flow: row;
+    width: 100%;
+    height: auto;
+    gap: var(--s2);
+  }
+
+  /* One option per row, reading left, words allowed to wrap. The floor is a
+     thumb-sized target expressed the way .settings-row expresses its own
+     (min-height: calc(var(--s5) * 3)); 1.4 is .settings-desc's line height. */
+  .setup-page .seg > button {
+    justify-content: flex-start;
+    min-height: calc(var(--s5) * 2);
+    padding-block: var(--s2);
+    line-height: 1.4;
+    text-align: left;
+    white-space: normal;
+  }
+
+  /* Held at the value .seg-ind itself declares at rest. attachSeg() still runs
+     and still measures; nothing it computes is painted here. */
+  .setup-page .seg > .seg-ind { opacity: 0; }
+
+  /* So the chosen option carries the mark on itself, in the fill the desktop
+     chip is made of. .seg > button.on supplies the ink that goes with it. */
+  .setup-page .seg > button.on { background: var(--sheet); }
+
+  /* The action bar was the second thing off the edge: Skip + Back + "See what
+     that sets" measures 334px, and Skip + Back + "Finish setup" 295px, in the
+     same 288px column, in a flex row with no wrap. The spacer takes a full line
+     instead of a flexible one, so the exit keeps its own line and the two
+     buttons keep theirs. */
+  .setup-page .setup-actions { flex-wrap: wrap; }
+  .setup-page .setup-actions .setup-actions-spacer { flex-basis: 100%; }
+}

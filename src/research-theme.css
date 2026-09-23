@@ -1,0 +1,157 @@
+/* Shared presentation for the existing Research tools. Scoped to the page so
+   other workspaces and the module layout engine keep their own UI.
+
+   2026-09-19: cut back to legibility only, at the owner's direction ("its not
+   supposed to be fancy, its supposed to be for real researchers"). This file
+   arrived from a 2026-09-08 branch and was overriding the 2026-09-10 rebuild
+   that the owner directed by hand, which sets the shell to full width and the
+   reading type to 15px/1.6 in src/research.css. Those two decisions are older
+   than this file only by sha, not by intent: do NOT reintroduce a width cap on
+   .research-shell and do NOT set a font on .research-page here. Decorative
+   surfaces, tints, eyebrow treatments and tab chrome were removed, not moved. */
+
+.research-page {
+  --research-field-border: var(--line-2);
+}
+
+/* Controls: standard size, natural height, one thin border.
+
+   Nothing here may set a height or a min-height -- a control that cannot size
+   to its own content is what produced the 250px-tall "Wrap in" row the owner
+   screenshotted.
+
+   The control selectors below are deliberately wrapped in :where() so they
+   carry (0,0,1) specificity -- a bare type selector. These are DEFAULTS, and
+   any feature stylesheet must be able to override them with one plain class.
+   Before this, the selector was `.research-page .research-shell button:not(...)`
+   at (0,2,1), which silently beat every (0,2,0) rule in research-snippets.css
+   and flattened .snippet-card, .snippet-category and the .bench-primary CTAs
+   into plain secondary buttons. Do not add classes back to these selectors. */
+:where(.research-page .research-shell) button:not(:where(.m-editctl *, .m-x, .m-grip, .research-queue-x)) {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+:where(.research-page .research-shell) button:not(:where(.m-editctl *, .m-x, .m-grip, .research-queue-x)):hover:not(:disabled) {
+  border-color: var(--ink-3);
+}
+:where(.research-page) button:disabled {
+  color: var(--ink-3);
+  cursor: default;
+  opacity: 1;
+}
+
+:where(.research-page .research-shell) :is(input:not(:where([type="checkbox"], [type="radio"], [type="range"], [type="color"])), select, textarea) {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--research-field-border);
+  border-radius: 3px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+}
+.research-page :is(input, textarea)::placeholder { color: var(--ink-3); opacity: 1; }
+.research-page :is(input, select, textarea):disabled { color: var(--ink-3); opacity: 1; }
+.research-page :is(input[type="checkbox"], input[type="radio"]) {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 16px;
+  accent-color: var(--accent-2);
+}
+.research-page input[type="file"] { max-width: 100%; }
+
+/* Rows of controls line up on their first line and keep their own height. */
+.research-page :is(.bench-wrap, .bench-toolbar, .research-queue-form-row, .research-queue-controls, .research-assign-control, .research-project-bar) {
+  align-items: flex-start;
+}
+
+.research-page :is(button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring, var(--ink));
+  outline-offset: 2px;
+}
+
+/* Section headings and step navigation read as plain text. */
+.research-page .research-section-head h2 {
+  color: var(--ink);
+  font-size: 1.1em;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.research-page .research-section-head p { max-width: 88ch; }
+.research-page :is(.research-workflow-nav, .bench-steps) { gap: 4px; }
+.research-page :is(.research-workflow-nav, .bench-steps) button {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.research-page :is(.research-workflow-nav, .bench-steps) button[aria-pressed="true"] {
+  border-color: var(--line-2);
+  background: var(--sheet);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Code, prompts and numeric evidence keep a monospace face; that is legibility,
+   not decoration. */
+.research-page .benchmark-builder textarea { width: 100%; font-family: var(--font-mono); resize: vertical; }
+.research-page :is(.benchmark-builder pre, .research-input-receipt, .research-finding-details pre) {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  tab-size: 2;
+  overflow-x: auto;
+}
+.research-page .bench-node { border-color: var(--line-2); }
+.research-page .bench-kind { color: var(--ink-3); }
+
+.research-page :is(.research-results-table, .bench-table-scroll table) { font-variant-numeric: tabular-nums; }
+.research-page :is(.research-results-table, .bench-table-scroll table) :is(th, td) {
+  padding: 6px 10px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+.research-page :is(.research-results-table, .bench-table-scroll table) thead th {
+  color: var(--ink-2);
+  font-weight: 600;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.research-page .research-finding-details dl > div { padding-block: 6px; border-top: 1px solid var(--line); }
+
+@media (max-width: 800px) {
+  .research-page .research-mast { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .research-page .research-source { max-width: 100%; text-align: left; overflow-wrap: anywhere; }
+  .research-page .bench-columns:has(> label:nth-child(6)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .research-page .bench-columns,
+  .research-page .bench-columns:has(> label:nth-child(6)) { grid-template-columns: minmax(0, 1fr); }
+  .research-page .research-project-bar > label { width: 100%; }
+  .research-page .bench-toolbar label, .research-page .bench-toolbar .bench-file { flex-basis: 100%; }
+}
+
+@media (forced-colors: active) {
+  .research-page { --research-field-border: ButtonText; }
+  .research-page :is(.research-workflow-nav, .bench-steps) button[aria-pressed="true"] {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+  .research-page :is(button, input, select, textarea):disabled { color: GrayText; }
+}

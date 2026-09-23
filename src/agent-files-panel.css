@@ -1,0 +1,184 @@
+/* THE FILES-AND-REPORTS PANEL'S OWN STYLES. Paired with
+ * src/agent-files-panel.js.
+ *
+ * IMPORTED BY THE VIEW, NOT BY THE MODULE, exactly as src/agent-compose-panel.css
+ * is. The module is proven under `node --test`, and an `import` of this file
+ * inside it would make it unloadable there -- and a component that cannot be
+ * tested without a browser gets tested by looking at it, which is how the empty
+ * states in this product got wrong twice.
+ *
+ * NOTHING HERE INVENTS A COLOUR, A RADIUS OR A SPACING. Every value is a token
+ * from src/styles.css, so the panel follows the theme, the text-size control and
+ * the high-contrast rules without a second set of rules to keep in step.
+ *
+ * THE FOCUS RING IS A REAL OUTLINE, for the reason src/agent-compose-panel.css
+ * states: Windows High Contrast drops box-shadow and overrides border colour, so
+ * an indicator built either of those ways is not dimmed there, it is GONE. An
+ * outline is kept and recoloured. tools/a11y-keyboard-qa.mjs measures this.
+ */
+
+.agent-files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: var(--s4) 0;
+  padding: var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.agent-files-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.agent-files-source,
+.agent-files-note,
+.agent-files-notice {
+  margin: 0;
+  color: var(--ink-3);
+}
+
+.agent-files-notice {
+  color: var(--ink-2);
+}
+
+.agent-files-chooser {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.agent-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-files-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+/* The file's own name, which is the one thing a person is scanning for. */
+.agent-files-name {
+  flex: 1 1 14ch;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.agent-files-meta,
+.agent-files-why {
+  color: var(--ink-3);
+}
+
+.agent-files-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+
+/* An empty folder is a sentence in the list's own place, not a bordered box
+   with nothing in it. */
+.agent-files-empty {
+  padding: var(--s2);
+  color: var(--ink-2);
+  list-style: none;
+}
+
+.agent-files-action {
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.agent-files-action:focus-visible,
+.agent-files-report:focus-visible,
+.agent-files-chooser select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* A DISABLED CONTROL STAYS READABLE. It is dimmed, not hidden, because the
+   reason it is off is printed beside it and a person has to be able to read
+   both together. */
+.agent-files-action[disabled] {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.agent-files-status[data-tone='refused'] {
+  color: var(--s-serious);
+}
+
+.agent-files-status[data-tone='confirmed'] {
+  color: var(--s-good);
+}
+
+/* The reading pane. It is mounted OUTSIDE .agent-files -- see the note in the
+   module -- because the panel is switched off with `inert` while it is open,
+   and that attribute applies to every descendant. */
+.agent-files-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s5);
+  background: rgba(var(--shadow-rgb), 0.45);
+}
+
+.agent-files-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  width: min(80ch, 100%);
+  max-height: 100%;
+  padding: var(--s4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: var(--elev-3);
+}
+
+.agent-files-dialog-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+/* THE REPORT, AS WRITTEN. No markdown library: adding a dependency here needs
+   the owner's word, and a report read exactly as the agent wrote it is the
+   honest rendering either way. It scrolls in its own box so the dialog never
+   grows past the window, and it is focusable so a keyboard can scroll it. */
+.agent-files-report {
+  overflow: auto;
+  margin: 0;
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

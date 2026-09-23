@@ -1,0 +1,891 @@
+/* THE OLD CIRCLE STYLE, BACK (owner, 2026-09-19 late: 'i decided i like the
+   old circle style better, can you bring it back but with the new circle
+   polish, so a thin inner pinstripe instead of a thick one'): the casing of
+   97e1364e -- the soft bevel band with the inset status line -- with the
+   status line thinned (lip 1.5, halo 4). The frosted-glass ring is gone. */
+/* ============================================================================
+   THE FRAME'S TOKEN SOURCE — one accent hue, one neutral cast, one type scale.
+
+   Every lane on the Home screen reads its colour from here. Nobody hardcodes a
+   colour, and no derived colour is allowed to pick a hue: each one is
+
+       oklch(from <source> <L> <C> h)
+
+   where L and C are literals and `h` is the source's own hue carried through
+   untouched. That is not a convention, it is the syntax — you cannot rotate a
+   hue you never name. Measured on the running page (2026-09-18, headless
+   Chromium 153): oklch(from #f08c87 0.62 calc(c * 0.9) h) resolves to
+   oklch(0.62 0.110315 23.4723), and #f08c87 is hue 23.4723 — the rotation is 0.
+
+   WHAT THE CANVAS LANE CONSUMES. Every token registered with @property below
+   has a RESOLVED computed value, so getComputedStyle(el).getPropertyValue()
+   returns "oklch(L C H)" rather than the unsubstituted token stream, and the
+   canvas 2d fillStyle probe in home-circle-fluid.js readPalette() parses it
+   directly. Verified in .lane-scratch/w3/atproperty-probe.mjs.
+   ========================================================================= */
+
+/* ---- the one accent ------------------------------------------------------
+   The ledger owns the hue; the frame owns everything else about the colour.
+   --core-status-color stays the canvas lane's existing entry point and is now
+   the single source every other colour in the frame is derived from. */
+@property --jelly-accent { syntax: '<color>'; inherits: true; initial-value: #808080; }
+
+/* ---- accent ramp — L is the token's own number, C never collapses ---------
+   L is strictly monotonic 0.12 → 0.94. C is a fraction of the ACCENT'S OWN
+   chroma (calc(c * k)), so a low-chroma status stays low-chroma and a vivid one
+   stays vivid; k peaks mid-ramp at 1.00 and its floor is 0.62, which holds
+   THE STANDARD §9's "never below ~0.60 of the accent's chroma" at every step.
+   No mid-band dip: k rises 0.62 → 1.00 then falls 1.00 → 0.62, monotonically
+   on each side. */
+@property --jelly-a-12 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-a-20 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-a-30 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-a-42 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-a-54 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-a-66 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-a-76 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-a-86 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-a-94 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+
+/* ---- neutral ramp — separate, low chroma, ONE cast ------------------------
+   The cast is the frame's own ground hue, taken with `from`, so it is exactly
+   one hue per theme and cannot drift per surface. Chroma is one constant for
+   the whole ramp (--jelly-neutral-c), which is what makes it a neutral ramp and
+   not a second accent. Measured before this change, the frame carried two casts
+   at once: the app ground #212327 is OKLCh hue 264.4 chroma 0.0081 while the
+   Home page overrode it with #181c22, hue 258.4 chroma 0.0132 — a different
+   hue at 1.6x the chroma, on the same screen. */
+@property --jelly-n-08 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-n-18 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-n-26 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-n-36 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-n-45 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-n-55 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-n-66 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-n-80 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-n-90 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-n-96 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+
+/* ---- the roles the canvas lane reads -------------------------------------
+   Registered too, so the canvas gets a resolved colour from each. */
+@property --jelly-illuminant { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-body-deep { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-body-core { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-body-thin { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-body-rim { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-atmosphere { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-structure { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-illuminant-gain { syntax: '<number>'; inherits: true; initial-value: 1; }
+
+/* ---- THE GROUND — the one thing §9 never gave a token ---------------------
+   T371's finding, in the owner's words through Manager: "a dark body on
+   near-black is low-key lighting, the vocabulary of drama and melancholy", and
+   "the body-to-surround RELATIONSHIP is the parameter". Until now there was no
+   surround token at all: the body's surround was `--jelly-ground: var(--bg)`,
+   i.e. whatever the app's chrome happened to be. Measured on the running page
+   at 1440x980 before this change (.lane-scratch/w7/before.json):
+
+       theme   surround relative luminance
+       black   0.0175      ember  0.0060
+       cobalt  0.0069      white  0.8972   tan 0.7846
+
+   Three of the five themes put the subject on a ground at or below 0.02. That
+   is the defect, and it is a FRAME defect, not a render one.
+
+   THE STAGE is the lit set the subject stands on: the ring column's plate and,
+   brightest of all, the disc inside the casing that the body itself sits on.
+   THE SURROUND is the page the stage sits on. They are separate tokens because
+   they are separate jobs — high key is a statement about the first one, and the
+   second one still has to stay inside its theme.
+
+   THE STAGE IS A SECOND HUE AND THAT IS DELIBERATE (§3 allows one, with a
+   stated job). Its job: a warm subject on a ground of its own hue has nothing
+   to be the subject OF — the two dissolve into one colour field. The owner's
+   reference is a warm saturated gummy on a BRIGHT MINT ground, and mint is
+   where crimson's complement lands. So the stage hue is the accent's own hue
+   turned by a declared constant, in OKLCh, with `calc(h + N)` — which means the
+   stage TRACKS the ledger accent and stays complementary to it whichever of the
+   three status hues is live. It cannot drift, for the same reason nothing else
+   here can: the only hue literal is the turn itself.
+   Verified this engine resolves the rotation (.lane-scratch/w7/probe.mjs):
+   oklch(from #f08c87 0.86 0.09 calc(h + 160)) -> oklch(0.86 0.09 183.472),
+   against oklch(0.86 0.09 23.4723) unrotated. Exactly +160, no drift. */
+@property --jelly-stage { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-stage-2 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-stage-3 { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-stage-line { syntax: '<color>'; inherits: true; initial-value: #808080; }
+@property --jelly-surround { syntax: '<color>'; inherits: true; initial-value: #808080; }
+/* THE LEGIBILITY WELL, registered so the canvas lane gets RESOLVED numbers.
+   Unregistered, --jelly-well-r computes to the literal token stream
+   "calc((var(--jelly-type-block) / 2 + var(--jspace-5)) / var(--home-circle-size))"
+   and parseFloat() on it returns NaN. Registered as <number>, the same
+   getComputedStyle().getPropertyValue() call that readPalette() already makes
+   returns a bare number. All four are fractions of the disc's own diameter, so
+   they are correct at every frame size and on fractional DPR without a single
+   pixel constant. --jelly-well-depth is in the body's absorption units. */
+@property --jelly-well-cx { syntax: '<number>'; inherits: true; initial-value: 0.5; }
+@property --jelly-well-cy { syntax: '<number>'; inherits: true; initial-value: 0.5; }
+@property --jelly-well-r { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --jelly-well-depth { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+/* A NUMBER, not an <angle>: inside oklch(from ...) the `h` keyword resolves to
+   a bare number of degrees, so an angle-typed token would make calc(h + turn)
+   a type error and the whole declaration invalid-at-computed-value-time. */
+@property --jelly-stage-turn { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+.home {
+  /* THE THREE LEDGER HUES, as hue numbers rather than hexes. These are the only
+     hue literals in the frame and each one has a stated job: the frame's accent
+     is whichever of them the ledger is currently reporting. Everything else is
+     L and C on that hue. Values restate the shipped defaults in the working
+     space (src/home-status-colors.js PALETTES, which this lane does not own):
+     #176c85 = hue 223.0, #997200 = hue 84.7, #b44355 = hue 13.9. */
+  --jelly-hue-clear: 223;
+  --jelly-hue-attention: 85;
+  --jelly-hue-blocked: 14;
+  --jelly-fallback-l: .52;
+  --jelly-fallback-c: .11;
+
+  --core-status-color: var(--ink-3);
+  --jelly-accent: var(--core-status-color);
+
+  /* The neutral ramp's cast and its one chroma. */
+  --jelly-ground: var(--bg);
+  --jelly-neutral-c: .010;
+
+  --jelly-a-12: oklch(from var(--jelly-accent) .12 calc(c * .62) h);
+  --jelly-a-20: oklch(from var(--jelly-accent) .20 calc(c * .72) h);
+  --jelly-a-30: oklch(from var(--jelly-accent) .30 calc(c * .84) h);
+  --jelly-a-42: oklch(from var(--jelly-accent) .42 calc(c * .94) h);
+  --jelly-a-54: oklch(from var(--jelly-accent) .54 calc(c * 1.00) h);
+  --jelly-a-66: oklch(from var(--jelly-accent) .66 calc(c * .98) h);
+  --jelly-a-76: oklch(from var(--jelly-accent) .76 calc(c * .88) h);
+  --jelly-a-86: oklch(from var(--jelly-accent) .86 calc(c * .74) h);
+  --jelly-a-94: oklch(from var(--jelly-accent) .94 calc(c * .62) h);
+
+  --jelly-n-08: oklch(from var(--jelly-ground) .08 var(--jelly-neutral-c) h);
+  --jelly-n-18: oklch(from var(--jelly-ground) .18 var(--jelly-neutral-c) h);
+  --jelly-n-26: oklch(from var(--jelly-ground) .26 var(--jelly-neutral-c) h);
+  --jelly-n-36: oklch(from var(--jelly-ground) .36 var(--jelly-neutral-c) h);
+  --jelly-n-45: oklch(from var(--jelly-ground) .45 var(--jelly-neutral-c) h);
+  --jelly-n-55: oklch(from var(--jelly-ground) .55 var(--jelly-neutral-c) h);
+  --jelly-n-66: oklch(from var(--jelly-ground) .66 var(--jelly-neutral-c) h);
+  --jelly-n-80: oklch(from var(--jelly-ground) .80 var(--jelly-neutral-c) h);
+  --jelly-n-90: oklch(from var(--jelly-ground) .90 var(--jelly-neutral-c) h);
+  --jelly-n-96: oklch(from var(--jelly-ground) .96 var(--jelly-neutral-c) h);
+
+  /* ROLES. THE STANDARD §6's ordering, made into colour: the body is the
+     subject, the ring is structure, the trails are atmosphere, the type is
+     information. Chroma and lightness agree with that ordering — the body
+     carries the ramp's peak chroma, the ring sits one step down, the trails
+     two, and the type is on the neutral ramp and carries no accent at all. */
+  --jelly-body-deep: var(--jelly-a-42);
+  --jelly-body-core: oklch(from var(--jelly-accent) .62 calc(c * 1.00) h);
+  /* §9: the thin rim is BRIGHTER AND MORE SATURATED than the core, because
+     light comes through the jelly where it is thin. Both coordinates move. */
+  --jelly-body-thin: oklch(from var(--jelly-accent) .80 calc(c * 1.06) h);
+  --jelly-body-rim: var(--jelly-a-94);
+  --jelly-structure: var(--jelly-a-66);
+  --jelly-atmosphere: var(--jelly-a-54);
+  /* §1: the illuminant is a colour AND an intensity, declared once, in linear.
+     The gain may exceed 1 — it is what gives the tonemap something to shoulder.
+     Per-theme below; this is the light-sheet value. */
+  --jelly-illuminant: var(--jelly-a-94);
+  --jelly-illuminant-gain: 1.35;
+
+  /* ---- THE GROUND, in two parts -----------------------------------------
+     THE STAGE. L is high and flat across all five themes on purpose: the whole
+     point of high key is that the subject's surround does NOT follow the page
+     into the dark. Three steps, monotonic in L and rising in C as L falls, so
+     the plate has a direction of light in it rather than being a flat fill —
+     the gradient between them is the "structured" half of "bright and
+     structured". C stays low (.045 -> .085) because this is a GROUND: it is
+     tinted light, not a second accent competing with the body. */
+  /* OWNER, 2026-09-18, rejected the invented mint plate outright: "no one
+     authorized you to touch the coloring of the schemes". The rotation above
+     was a Manager instruction, not his, and it is withdrawn. The stage now
+     takes the THEME'S OWN ground hue and the frame's neutral chroma, so it is
+     the theme's own surface lifted in L -- no rotation and no invented hue.
+     The three lightness steps and the direction of light are kept: those are
+     structure, which he did not object to; the colour was what he rejected. */
+  --jelly-stage-turn: 0;
+  --jelly-stage: var(--jelly-ground);
+  --jelly-stage-2: var(--jelly-ground);
+  --jelly-stage-3: var(--jelly-ground);
+  --jelly-stage-line: var(--jelly-n-55);
+  /* THE SURROUND is the page the stage sits on, and it stays in its theme: a
+     "black" theme whose Home page painted itself white would be a different
+     product, not a lit one. It is a step of the frame's own neutral ramp, so it
+     carries the one cast and no hue of its own. The light sheets take n-90 (the
+     stage then reads as the brighter plate it is); the dark sheets take the
+     lifted step set below. */
+  --jelly-surround: var(--jelly-n-90);
+
+  /* Neutral roles. Polarity is set per sheet below; these are the light-sheet
+     assignments (dark ink on a light ground). */
+  --jelly-ink: var(--jelly-n-18);
+  --jelly-ink-2: var(--jelly-n-36);
+  --jelly-ink-3: var(--jelly-n-45);
+
+  /* ---- READOUT INK — a SECOND ink ramp, and why there has to be one -------
+     The ink roles above are seated against THE PAGE, which is a flat sheet.
+     The readout is not on the page: it is on THE SUBJECT, and the subject is a
+     live fluid whose luminance under any given letter changes every frame.
+     Those are two different grounds and one ramp cannot serve both.
+
+     Measured on the running app, 10 frames 220ms apart, 1440x980, the
+     luminance the readout's own rectangles actually stand on
+     (node .lane-scratch/w3b/contrast.mjs --frames=10):
+
+         black   0.017 .. 0.093      cobalt  0.006 .. 0.077
+         ember   0.005 .. 0.169      white   0.409 .. 0.899
+
+     Against that, --jelly-ink-3 (n-66, rgb 143,146,153) measured 2.35:1 on
+     black, 2.65 on cobalt and 2.86 on ember for the eyebrow, and 1.54 on ember
+     for the count line. The page's quiet ink is simply the wrong ink over a lit
+     body, and it had been reading as AA only because the gate that measured it
+     could not see the body at all (bundled headless Chromium renders the ring
+     and leaves the disc empty).
+
+     SO THE HIERARCHY MOVES OFF LIGHTNESS AND ONTO SIZE AND WEIGHT. Over a
+     ground this hostile every line has to be near the far end of the ramp, so
+     lightness can no longer carry the ordering; the type scale's 1.25 steps and
+     the weight ramp carry it instead, which is what they are for. The three
+     readout roles differ by one ramp step, not by the four the page ink uses.
+     Light-sheet assignments here; the dark sheets invert below.
+
+     (A stray comment terminator used to sit at the end of the line above, so
+     the paragraph below stood OUTSIDE any comment, inside the .home block. The
+     browser read it as declarations, swallowed everything up to each `;` --
+     including the `--jelly-readout-ink:` line that followed -- and dropped it
+     without a word: on the light sheets --jelly-readout-ink computed to the
+     empty string. Measured 2026-09-19 with .lane-scratch/w7b/readout-ink-probe.mjs
+     before this join; found by parsing the sheet with postcss, which a browser
+     never does out loud.)
+
+     The light sheet is the harder one, not the easier one: there the body is
+     BRIGHTER than the page and its own darkest pixel under the count line
+     measured 0.219, so the ink has to get under that rather than over it. At
+     n-26 the count line measured 3.96:1; n-18 measures 4.73. The ramp therefore
+     takes the ramp's bottom two steps, mirroring the top two the dark sheets
+     take. */
+  --jelly-readout-ink: var(--jelly-n-08);
+  --jelly-readout-ink-2: var(--jelly-n-08);
+  --jelly-readout-ink-3: var(--jelly-n-18);
+
+  /* ---- STATUS INK — the one chromatic ink in the frame ---------------------
+     §3 allows a second hue when it has a stated job, and "this many need
+     attention" is exactly that job. The hue and chroma come from the app-wide
+     status tokens; only the LIGHTNESS is the frame's, because lightness is what
+     legibility is made of and the app tokens are tuned for a dark sheet.
+
+     THIS NUMBER USED TO BE STRANDED. It was .47 for both figures on every
+     sheet, chosen against the bright mint stage that the owner then rejected;
+     the stage went back to the theme's own ground and the .47 stayed. On the
+     three dark sheets that left the attention figure at rgb(119,84,0) over
+     rgb(33,35,39) -- 2.29:1 on black, 2.71 cobalt, 2.76 ember, against a 4.5
+     requirement. It is a polarity value, so it now lives with the other
+     polarity values and inverts with them.
+
+     WHY .78 AND NOT THE FIRST NUMBER THAT PASSED. Swept per theme against the
+     painted ground with both tiles forced live
+     (node .lane-scratch/w3b/status-l.mjs): .62 fails black (4.30), .66 is the
+     first step that clears every dark sheet (5.03 / 5.94 / 6.06) and .78 gives
+     7.79 / 9.23 / 9.41. .66 is also where --jelly-ink-3 sits, which would put
+     the warning at the same lightness as the frame's QUIETEST ink -- a warning
+     that reads dimmer than the label beneath it. .78 keeps it above the quiet
+     ink and below the neutral figures' n-96, which is the order it should
+     read in. */
+  --jelly-status-l: .47;
+  --jelly-status-c: 1.15;
+  --jelly-band: var(--jelly-n-90);
+  --jelly-line: var(--jelly-n-80);
+  --jelly-line-soft: var(--jelly-n-90);
+
+  /* ---- THE TYPE SCALE — ratio 1.25 (major third), six steps ---------------
+     Every font-size in the files this lane owns is one of these six. The base
+     is anchored on the ring's own diameter so the ratio is preserved at every
+     size the frame takes, rather than each element carrying its own clamp: the
+     scale scales, not the individual sizes. Before this change the frame ran
+     nine sizes with no ratio between them — measured on the running page:
+     32, 26, 24, 16.39, 13, 12.5, 12.18, 12, 10 px. Three of those (12, 12.18,
+     13) are within 8% of each other and read as one size done three ways. */
+  --type-ratio: 1.25;
+  --type-base: clamp(11.5px, calc(var(--home-circle-size, 420px) * .0295), 14px);
+  --type--1: calc(var(--type-base) / var(--type-ratio));
+  --type-0: var(--type-base);
+  --type-1: calc(var(--type-0) * var(--type-ratio));
+  --type-2: calc(var(--type-1) * var(--type-ratio));
+  --type-3: calc(var(--type-2) * var(--type-ratio));
+  --type-4: calc(var(--type-3) * var(--type-ratio));
+
+  /* ---- THE SPACE SCALE — 4px base, one ladder ---------------------------- */
+  --jspace-1: 4px; --jspace-2: 8px; --jspace-3: 12px;
+  --jspace-4: 16px; --jspace-5: 24px; --jspace-6: 32px; --jspace-7: 48px;
+
+  /* ---- COMPOSITION ———————————————————————————————————————————————————————
+     THE RING IS STRUCTURE, NOT THE SUBJECT, so it stops being the largest
+     thing on the screen by a distance. Measured before this change the ring
+     painted 468px around a body of roughly 55px — 1.4% of the disc's area —
+     with the readout pinned to the bottom eighth and a third of the diameter
+     of nothing between the two. The ring comes down and the type goes up.
+
+     --jelly-type-chord is the fraction of the diameter at which the readout's
+     OPTICAL centre sits. It is published rather than baked into a padding so
+     the canvas lane can seat the body against the same number instead of the
+     two composing independently. */
+  /* BOUNDED BY BOTH AXES. Height alone is the wrong bound on a short wide
+     window and on a tall narrow one: sized on height only, an 1100x800 window
+     gave the circle 470px against a 472px panel -- the ring column had taken
+     half the page. The width term caps the subject's share of the page, the
+     height term stops it running off the bottom, and whichever binds first
+     wins.
+
+     THE HEIGHT SUBTRAHEND IS MEASURED, NOT ESTIMATED. It was 330px, which is
+     what the page above the column costs but not what the column itself
+     carries, so at 1280x720 the glance strip and the facts were clipped and the
+     voice panel never painted at all -- the column wanted 680px of a 555px box.
+     Summed off the running page (.lane-scratch/frame6/column.mjs): head +
+     page padding 165-175, clock 58-69 + 16, glance 46-52 + 16, facts 43-50 +
+     16, voice 71, column padding 40. That totals 505 within a few px at every
+     viewport measured, so 505 is the number. */
+  --home-circle-size: clamp(248px, min(calc((100dvh - 530px) / var(--zoom, 1)), 33vw), 500px);
+  /* THE CHORD IS WHERE THE DISC IS STILL WIDE ENOUGH TO HOLD THE BLOCK. At
+     .655 the count line's ink needed 89px of half-width where the drawable disc
+     offered 58 at 1280x720 -- the line was painted across the casing, measured
+     .lane-scratch/frame6/readout.mjs. A circle narrows fast below its middle,
+     so the fix is to seat the block where the chord can carry it rather than to
+     keep shrinking the type. */
+  --jelly-type-chord: .58;
+  /* The readout's own height, derived from the type scale rather than guessed,
+     so the chord stays true at every frame size: four lines and three gaps. */
+  --jelly-type-block: calc(
+    var(--type--1) * 1.4 + var(--jspace-2) +
+    var(--type-2) * 1.2 + var(--jspace-1) +
+    var(--type-1) * 1.45 + var(--jspace-3) +
+    var(--type-0) * 1.5);
+  /* OPTICAL, NOT BOUNDING-BOX. The block opens on an uppercase eyebrow with no
+     descenders and closes on lowercase text with them, so its ink sits above
+     the box's middle; the correction is one step of the type scale's own
+     smallest size rather than a number picked to look right. */
+  --jelly-optical-trim: calc(var(--type--1) * .34);
+  /* ---- THE LEGIBILITY WELL — published for the canvas lane ---------------
+     THE FRAME CANNOT CLOSE THIS ONE ALONE AND THE MEASUREMENT SAYS SO.
+
+     For each readout line the gate reports the luminance span its rectangle
+     stands on over 10 frames, and from that span the best contrast ratio ANY
+     ink colour could reach -- the ink whose luminance is equidistant from both
+     ends, or the endpoint when that ink is outside the display range
+     (node .lane-scratch/w3b/contrast.mjs --frames=10). On ember the count
+     line's span is 0.005 .. 0.169 and the ceiling is 4.80:1 against a 4.5
+     requirement. That is the number for PURE WHITE. There is no ink left to
+     spend: a body one step brighter under that line takes the frame below AA
+     no matter what colour the type is.
+
+     So the background has to change where the type sits, and the background is
+     the body. Physically this is not a concession, it is the correct picture:
+     the readout is seen THROUGH the jelly, so the jelly in front of it is
+     thicker, absorbs more, and the type reads against a deeper ground. That is
+     a function of the body's own field -- it moves and vanishes with the body
+     -- so it is a term, not the banned layer.
+
+     These are the numbers the frame owns, published so the two lanes seat
+     against one geometry instead of composing independently, exactly as
+     --jelly-type-chord already is. The centre is the chord; the radius covers
+     the type block plus one space step of air; the depth is the extra optical
+     thickness at the centre, in the body's own absorption units, falling to
+     zero at the radius. Depth is a NUMBER so the canvas can multiply by it.
+
+     UNCONSUMED AS OF THIS WRITING. home-circle-fluid.js readPalette() does not
+     read these yet; that file belongs to the canvas lane. Until it does, the
+     ember count line stands at the ink ceiling and the frame is at the limit of
+     what type alone can do. */
+  --jelly-well-cx: .5;
+  --jelly-well-cy: var(--jelly-type-chord);
+  --jelly-well-r: calc((var(--jelly-type-block) / 2 + var(--jspace-5)) / var(--home-circle-size));
+  --jelly-well-depth: 1.35;
+
+  /* ONE MEASURE for the whole left column. The ring, the voice panel and the
+     facts had three different widths (468 / 400 / min(100%,520)) all centred,
+     which is three left edges and three right edges on one axis. */
+  --jelly-measure: min(100%, var(--home-circle-size));
+}
+
+/* The ledger picks WHICH of the three hues is the accent; L and C are the same
+   for all three, so a status change is a hue change and nothing else moves. */
+.home[data-ledger-status="clear"] { --core-status-color: var(--home-ledger-clear, oklch(var(--jelly-fallback-l) var(--jelly-fallback-c) var(--jelly-hue-clear))); }
+.home[data-ledger-status="attention"] { --core-status-color: var(--home-ledger-attention, oklch(var(--jelly-fallback-l) var(--jelly-fallback-c) var(--jelly-hue-attention))); }
+.home[data-ledger-status="blocked"] { --core-status-color: var(--home-ledger-blocked, oklch(var(--jelly-fallback-l) var(--jelly-fallback-c) var(--jelly-hue-blocked))); }
+
+/* DARK SHEETS — the neutral roles invert, and only their polarity does. Same
+   ramp, same single cast, same accent; the ink steps are the ones measured to
+   clear WCAG AA against each theme's actual painted ground (see
+   .lane-scratch/w3/contrast.mjs and REPORT-JELLY-FRAME-20260918.md). */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home {
+  --jelly-ink: var(--jelly-n-96);
+  --jelly-ink-2: var(--jelly-n-80);
+  --jelly-ink-3: var(--jelly-n-66);
+  /* THE READOUT'S RAMP COLLAPSES TO ONE STEP ON A DARK SHEET, and that is the
+     measurement's verdict rather than a preference. On a dark sheet the body is
+     the BRIGHT thing in the frame, so its type has to be brighter still. At
+     n-90 the count line measured 4.16:1 on ember against a ceiling of 5.64 --
+     there was ink left, and n-96 spends it (4.99). Every step below n-96 is
+     ink the frame cannot afford here, so all three roles take the same value
+     and the hierarchy is carried entirely by the type scale's 1.25 steps and
+     the weight ramp. The three roles stay separate tokens because they are
+     separate jobs: when the legibility well lands and the ground under the
+     readout deepens, the steps come back without touching a rule. */
+  --jelly-readout-ink: var(--jelly-n-96);
+  --jelly-readout-ink-2: var(--jelly-n-96);
+  --jelly-readout-ink-3: var(--jelly-n-96);
+  --jelly-status-l: .78;
+  --jelly-band: var(--jelly-n-36);
+  --jelly-line: var(--jelly-n-36);
+  --jelly-line-soft: var(--jelly-n-26);
+  /* A dark sheet gives the light more headroom to spend, so the gain is higher
+     and the tonemap's shoulder is where the body stops being a dim marble. */
+  --jelly-illuminant-gain: 2.2;
+  /* THE LIFT, and the reason it is this number and not a bigger one.
+
+     A TRAP WORTH RECORDING, because the first attempt at this line was a
+     no-op that measured as a success. The obvious lift is "take a step up the
+     neutral ramp", and --jelly-n-26 is what that looks like — but OKLab L .26
+     IS ALREADY WHERE THE DARK THEMES SIT: #212327 has relative luminance
+     0.0175, whose OKLab lightness is ~0.26. Setting the surround to n-26
+     changed nothing at all, and the page-wide measurement still came back
+     "high-key" because the annulus it samples is mostly the lit plate. A
+     ramp step is not a lift unless you know where on the ramp you started.
+
+     The ceiling is set by text this lane does not own. The panel's quiet line
+     resolves to rgb(202,189,183) from styles.css's own --ink-2, and it sits
+     DIRECTLY on this ground (the panel is a transparent card), so at 4.5:1 it
+     puts a hard ceiling on the ground's luminance of about 0.077. L .40 lands
+     under that with margin on all three dark themes; every step above it takes
+     a row of panel text red. Measured per theme, against painted pixels, in
+     .lane-scratch/w7/frame-contrast.mjs.
+
+     So: the page lifts about 3x in luminance — out of near-black and into a
+     ground with a value — and the REST of the lift is spent where T371 says the
+     parameter lives, on the stage immediately around the body, which the page's
+     ink does not constrain at all. */
+  --jelly-surround: oklch(from var(--jelly-ground) .40 var(--jelly-neutral-c) h);
+}
+
+.home .home-circle {
+  /* The glow rides the Glow intensity setting (--glow, 0..2, default 1):
+     a still halo on the lip, and the live fluid inside the ring reads
+     --core-glow-trail as its light dose (home-circle-fluid.js readPalette).
+     At --glow 0 nothing glows. */
+  --core-glow-lip: .13; --core-glow-trail: .5;
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle {
+  --core-glow-lip: .2; --core-glow-trail: .75;
+}
+.home .home-circle[data-load="unknown"] { --core-glow-lip: .08; --core-glow-trail: .08; }
+
+/* ONE CONTINUOUS CASING, ON THE SHIPPED DECLARATIONS. These three stops are
+   doses of --ink-3 over --surface, and light and shade are that band mixed
+   toward white and toward black by --core-bevel-lift / --core-bevel-drop, which
+   are set per sheet so the bevel is lit from the same side on a dark page as on
+   a light one. tools/home-circle-contrast.mjs reads this shape by name and
+   refuses anything else rather than guessing the band it measures.
+
+   THE CASING'S COLOUR, DESIGNED RATHER THAN INHERITED (T259 item 4, "circle
+   FRAME upgraded not polished"). The geometry pass made every edge at least a
+   device pixel; what it could not touch was the ink, and measured on the
+   painted page (.lane-scratch/w7b/casing-from-png.py over the before
+   captures) the ink was wrong in three places on the dark sheets:
+     - the lit edge was not lit: the highlight stroke was var(--surface),
+       which on black is #292b30, and it measured within 0.5 L* of the band
+       under it on black, cobalt and ember (a lit edge needs about 2 L* to be
+       seen at all), so the top of the rim had no edge;
+     - the step into the face was LIGHTER than the face (0.0193 against 0.0167
+       on black), because it and the shadow were doses of --ink, which is light
+       on a dark sheet -- a recess drawn as a highlight, a shadow cast as a glow;
+     - the lit side of the band stood at 2.08:1 against the page on black.
+   Each lever below is a colour, and each is now derived from the same two
+   tokens (--ink-3 over --surface) so the casing stays inside its theme. After
+   (.lane-scratch/w7b/casing-colour.mjs): lit edge 17-18 L* over the band on the
+   dark sheets, the step darker than the face on all five, band 2.97:1 on black.
+   The light sheets already read as a machined rim and are moved least: a
+   firmer shade side, and the step and shadow in black rather than ink. */
+.home .home-circle-finish {
+  /* TWO RINGS WITH A CHANNEL BETWEEN THEM IS A LIFT PROBLEM, NOT A STROKE ONE.
+     With the ring face transparent again, the light sheets read as "a pink line
+     then a white gap then a grey line". The gap is not empty space between two
+     strokes -- it is the BAND, and at lift 40% the bezel's lit stop resolved
+     BRIGHTER THAN THE PAGE, so the one surface that should join the lip to the
+     silhouette was the lightest thing in the frame and read as a channel
+     separating them. A band cannot bridge two edges while out-glowing both.
+     Lift comes down to 24% (the value the dark sheets already use) so the face
+     sits just off the page instead of above it, and drop rises to 18% so what
+     modelling remains runs ACROSS the band's width, which is the direction that
+     makes it read as one turned surface. No stroke moved; no radius moved. */
+  --core-bevel-lift: 24%;
+  --core-bevel-drop: 18%;
+  --core-frame: color-mix(in srgb, var(--ink-3) 7%, var(--surface));
+  --core-frame-light: color-mix(in srgb, #fff var(--core-bevel-lift), var(--core-frame));
+  --core-frame-shade: color-mix(in srgb, #000 var(--core-bevel-drop), var(--core-frame));
+  /* THE LIT EDGE IS ALWAYS LIGHTER THAN THE BAND, on every sheet: white over
+     the band at twice the bevel's lift, never the sheet's own surface. */
+  --core-edge-light: color-mix(in srgb, #fff calc(var(--core-bevel-lift) * 2), var(--core-frame));
+  /* THE SILHOUETTE is the band's own ink one step further toward --ink-3, so
+     a hairline that is a device pixel wide also has something to show in it. */
+  --core-edge-dark: color-mix(in srgb, var(--ink-3) 34%, var(--surface));
+  /* THE SHADOW IS BLACK. A shadow is the absence of the light, not a dose of
+     the sheet's text colour. 9% on the light sheets, where --ink 5% used to
+     land near the same value; the dark sheets take more below. */
+  --core-shadow: rgb(0 0 0 / .05);
+  /* THE RAIL IS WHAT MAKES THE BAND A TUBE INSTEAD OF A STRIP.
+     The bezel gradient runs corner to corner across the whole 520 viewBox, so
+     it varies AROUND the ring and is constant ACROSS the band's width -- and a
+     surface with no variation across its width is, to the eye, flat. That is
+     the "thick flat grey band" in the hand-test: not a colour problem, a
+     direction problem. A tube is dark where it turns away from the viewer at
+     BOTH its edges and lit between them, so the foundation (22 units) is now
+     darker than the bezel (14) that sits on top of it, and the 4 units it
+     leaves proud on each side are those two turned edges. The band's outer
+     radius does not move -- foundation is still r239/22, so 228..250, meeting
+     the silhouette at 250 exactly as before, and the circle's footprint is
+     unchanged. Only the shading inside it changed. */
+  /* 12% -> 20%: with the ground gone there is nothing behind the band to seat
+     it, so the turned edges have to do that work themselves on the light
+     sheets. This is what ties the band to the silhouette instead of leaving
+     the outline stranded as a second ring. */
+  --core-rail: color-mix(in srgb, #000 9%, var(--core-frame));
+  /* THE CROSS-SECTION'S TWO DOSES. Measured on the shipped rim
+     (.lane-scratch/mgr2/rim/before-scan.json, mean colour per radius over 180
+     angles): across r234..r244 -- the middle ten units of a twenty-two unit
+     band -- white ran L 82.73 -> 85.73 and tan ran 69.74 -> 73.59. Three L
+     units over ten units of width is, to the eye, no modelling at all, and
+     that is the "flat" the owner keeps seeing however the tokens are retuned.
+     These two are the shade and the light the #-tube radialGradient paints
+     ACROSS that width. They are black and white at a dose rather than named
+     colours on purpose: the gradient MODELS the bezel's own ink instead of
+     replacing it, so neither the theme's hue nor its contrast budget moves. */
+  --core-tube-shade: rgb(0 0 0 / .34);
+  --core-tube-crown: rgb(255 255 255 / .42);
+  /* The wet edge and its opposite number. A catchlight bright enough to be a
+     specular rather than a lighter grey, and a contact darkening on the far
+     side; both are arcs, not rings -- see the note in src/home-circle.js. */
+  --core-wet: rgb(255 255 255 / .88);
+  --core-contact: rgb(0 0 0 / .26);
+  position: absolute; inset: 0; z-index: 1; pointer-events: none; user-select: none;
+}
+/* The dark sheets carry more ink so the band separates from them -- 22% reads
+   as a component at about 1.7:1 against the page and still leaves every status
+   colour over 3:1 against the band (tools/home-circle-contrast.mjs) -- and a
+   bevel with enough lift and drop to be seen at all on a dark ground. */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle-finish {
+  --core-frame: color-mix(in srgb, var(--ink-3) 22%, var(--surface));
+  --core-bevel-lift: 24%;
+  --core-bevel-drop: 24%;
+  --core-edge-dark: color-mix(in srgb, var(--ink-3) 46%, var(--surface));
+  --core-shadow: rgb(0 0 0 / .38);
+  /* The dark sheets need a deeper turn: the band carries more ink here, so a
+     12% rail disappears into it and the tube stays a strip. */
+  --core-rail: color-mix(in srgb, #000 22%, var(--core-frame));
+  /* The dark sheets take a deeper turn and a quieter crown: the band already
+     carries 22% ink here, so a light dose that works on cream out-glows a
+     near-black page, while a shade dose that works on cream vanishes into it.
+     Same gradient, same radii; only the two doses differ per sheet. */
+  --core-tube-shade: rgb(0 0 0 / .60);
+  --core-tube-crown: rgb(255 255 255 / .34);
+  --core-wet: rgb(255 255 255 / .62);
+  --core-contact: rgb(0 0 0 / .50);
+}
+.home .home-circle-finish > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* THE CASING'S EDGES ARE SCREEN-SPACE, ITS BAND IS NOT.
+   ==================================================================
+   The casing is drawn in a 520-unit viewBox and painted at whatever the circle
+   resolves to, so a stroke-width in this file is a RATIO, not a width. Measured
+   on the running page at DPR 1 (.lane-scratch/frame6/casing.mjs), the three
+   strokes that DEFINE the casing -- its outer silhouette, its lit top edge and
+   the inner step where the face begins -- landed under one device pixel at
+   every viewport:
+
+       circle     outline   highlight   recess
+       248px       0.43        0.48       0.38
+       295px       0.47        0.52       0.42
+       370px       0.64        0.71       0.57
+       500px       0.87        0.96       0.77
+
+   An edge thinner than a pixel is not a crisp edge; it is a partially covered
+   grey row. All three of them, at every size the app renders. That is the
+   casing reading as soft rather than as machined, and no amount of colour would
+   have fixed it -- it is the unit the width is expressed in.
+
+   So the two kinds of geometry are separated, which is the whole change:
+     - THE BAND is a proportion of the control and keeps scaling with it
+       (foundation and bezel, still in viewBox units).
+     - THE EDGES are edges. A hairline is a hairline at every size, the same way
+       a 1px border is, so they take `vector-effect: non-scaling-stroke` and are
+       declared in px -- screen units, independent of the viewBox transform and
+       of fractional DPR. Correct on Windows and on Linux without a per-DPR
+       constant anywhere.
+
+   The lip and the halo are deliberately NOT touched here: the body lane is
+   moving the lip into the canvas, so its geometry is in flight and is not this
+   lane's to settle. */
+.home .home-core-standard-design {
+  fill: none;
+  /* THE SHADOW SCALES WITH THE OBJECT. It was a flat 0 3px 5px while the circle
+     ranges 248px to 500px, so the same shadow was 2.0% of the diameter on the
+     smallest circle and 1.0% on the largest -- a small control wearing a
+     proportionally heavy shadow and a large one wearing almost none. Expressed
+     against the circle's own size it is one shadow at every viewport.
+
+     THE OFFSET IS GONE, and that is the whole of the "coaster" fix. A shadow
+     cast DOWNWARD from an object is the single strongest cue that the object
+     is sitting ON TOP of the surface behind it, which is why the light sheets
+     read as "a coaster stuck on the page": 0.8% of 500px is a 4px drop, and a
+     4px drop under a hard-edged light ring is a beermat. Something wet sitting
+     IN the page does not throw its own shape downward onto the page; it darkens
+     what it is touching, evenly, all the way round. So the offset is 0 and what
+     is left is contact, not elevation. Still proportional, still one shadow at
+     every viewport. */
+  filter: drop-shadow(0 0 calc(var(--home-circle-size, 420px) * .01) var(--core-shadow));
+}
+/* THE SILHOUETTE AND THE STEP ARE EDGES AND STAY SCREEN-SPACE. The highlight
+   has LEFT this set: it is no longer an edge. See the sheen note below -- this
+   file's own rule is that edges are edges and the band is a proportion, and a
+   specular is shading, so it belongs with the band. */
+.home :is(.home-core-outline, .home-core-recess) { vector-effect: non-scaling-stroke; }
+/* A TURNED EDGE IS NOT A STEP. The rail read as a machined groove the moment it
+   had a hard boundary against the lit face -- bright line, dark line, face, which
+   is three concentric lines and more of a gasket than before. Blurring the
+   foundation turns both of its exposed margins into a falloff instead, so the
+   band rounds away at its edges the way a meniscus does. The blur is in viewBox
+   units, so it is one shape at every circle size. */
+.home .home-core-foundation { stroke: var(--core-rail); stroke-width: 22; filter: blur(3.2px); }
+/* 14 -> 22, THE FULL WIDTH OF THE BAND. The rail's two proud margins were an
+   attempt to model the band's cross-section with a stroke WIDTH, and a stroke
+   width can only ever give a step: rail, hard edge, face, hard edge, rail. That
+   is three concentric bands, not a turned surface, and blurring it (above) only
+   made the steps soft steps. The modelling is now a gradient concentric with
+   the ring (.home-core-tube), which is continuous across the whole 22 units, so
+   the bezel goes back to being what it actually is -- the band's BASE TONE and
+   its around-the-ring direction of light -- and carries it across the whole
+   band instead of only the middle 14. The foundation keeps its 22 and its rail
+   underneath: it is what casts the group's contact shadow and what feathers the
+   band into the page at the silhouette. No radius moved; the band is still
+   r239 +/- 11, i.e. 228..250, meeting the silhouette at 250 exactly. */
+.home .home-core-bezel { stroke-width: 22; }
+/* THE REDESIGN ITSELF: DEPTH ACROSS THE BAND, NOT AROUND IT.
+   One stroke, the same r239/22 as the foundation and the bezel, painted with
+   #-tube -- a radialGradient concentric with the ring whose stops are radii.
+   Because it is concentric, its shading is CONSTANT around the ring and VARIES
+   across the band's width, which is the exact axis the corner-to-corner bezel
+   gradient cannot reach and the axis a turned surface needs. Inner turn dark at
+   r228, crown lit at r239, outer turn dark into the silhouette at r250. No
+   filter: the falloff is in the gradient, so there is no blur radius to go
+   wrong at a fractional DPR and nothing to re-tune per viewport. */
+.home .home-core-tube { stroke-width: 22; }
+/* THE WET EDGE. Narrow, bright, and only on the lit quarter. It rides
+   r248.2 +/- 1.1 = 247.1..249.3, inside the silhouette.
+   NO `stroke` HERE ON PURPOSE. Both arcs are painted by a fade gradient pinned
+   to their own endpoints (src/home-circle.js, fade()), and a `stroke:`
+   declaration in this file would beat that presentation attribute and put the
+   blunt ends back -- the first cut of this arc showed them as two bright
+   notches at 170 and 280 degrees in .lane-scratch/mgr2/rim/after-black.png.
+   The colour still lives here, as --core-wet, which the gradient's stops read. */
+.home .home-core-wet { stroke-width: 2.2; stroke-linecap: round; }
+/* ...and the contact darkening opposite it, r246.0 +/- 2.5 = 243.5..248.5.
+   Wider and softer than the catchlight, because a shadow has no focus. Its
+   radius and blur are set by the footprint freeze, not by taste -- see the
+   measured note on `contact` in src/home-circle.js. */
+.home .home-core-contact { stroke-width: 5; stroke-linecap: round; }
+/* THE OUTER RING WAS THE OTHER HALF OF THE COASTER. A continuous grey hairline
+   all the way round is a DRAWN BOUNDARY, and a drawn boundary is what a coaster
+   has and a droplet does not: a wet edge is found by its shading, not outlined.
+   Held very low so it still seats the band against the page where the two are
+   close in value, without ever reading as a ring in its own right. The light
+   sheets need it weakest -- that is where the tester saw the coaster, because a
+   grey line on cream is the highest-contrast version of this shape. */
+.home .home-core-outline { stroke: var(--core-edge-dark); stroke-width: 1px; opacity: .16; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-core-outline { opacity: .3; }
+/* THE SHEEN, WHICH USED TO BE A HAIRLINE. At 1px non-scaling it was a drawn
+   line lying on the band -- the single strongest reason the rim read as "a
+   rubber gasket laid on the page". Wet things do not have a line of light on
+   them; they have a soft band of it that falls off in both directions. Wide,
+   blurred and half-strength, in viewBox units so it scales with the object it
+   is sitting on. */
+/* MOVED r247 -> r241, ONTO THE CROWN. At r247 the sheen sat on the band's
+   OUTER TURN, which the cross-section now shades down -- a light on the one
+   part of the surface that faces away from the viewer, which is what a
+   contradictory shading reads as: nothing. On the crown the specular and the
+   gradient's lit stop (offset .956 = r239) agree about where the top of the
+   tube is, and the two reinforce instead of cancelling. Still 236.75..245.25,
+   well inside the band; the outer edge's light is the wet arc above. */
+.home .home-core-highlight {
+  stroke: var(--core-edge-light); stroke-width: 4; opacity: .22; filter: blur(2.6px);
+}
+/* The step into the face is shade, not ink: the inner wall of a recess faces
+   away from the light on every sheet, so it is black at a dose, never --ink
+   (which is light on a dark sheet and drew the step as a second highlight). */
+/* Eased .16 -> .08 and softened on the light sheets. With the disc given a
+   ground of its own it became the last hard hairline left inside the rim -- a
+   fine grey circle between the band and the body, visible on tan and white in
+   the same shot that proved the coaster gone, and "an edge should not have a
+   drawn line inside it" applies to this one exactly as it did to the lip. It
+   still steps the face down; it no longer draws a ring. The dark trio keeps its
+   .45 below, where the step is doing real work against a near-black face. */
+.home .home-core-recess { stroke: rgb(0 0 0 / .08); stroke-width: 1px; filter: blur(.9px); }
+/* .45 -> .10. THE STEP HAS NOTHING LEFT TO STEP ONTO. At r=224 this stroke sits
+   INSIDE the band (the foundation spans 228..250), so it never painted on the
+   casing at all -- it painted on the ring face. While that face was a lit plate
+   a 45% black inner wall was a recess. With the face transparent it paints 45%
+   black straight onto the page, and measured on black it landed at luminance 25
+   against a 35 page: not a step, a groove cut DARKER THAN THE BACKGROUND, which
+   is the "dark vignette hugging the inside of the rim". Any black over a
+   near-black page digs a trough, so the only honest value is one small enough
+   not to be seen: .10 leaves about 3 units, the same imperceptible margin the
+   light sheets carry at .08. The blur comes from the base rule and still
+   applies here. If a ground ever returns this wants re-deriving, not restoring
+   -- see the note on the ring face. */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-core-recess { stroke: rgb(0 0 0 / .10); }
+/* The status lip carries the ledger colour, so it has to be legible. At 1.8px
+   on the light sheets it read as a hairline and any status colour stayed too
+   faint to see; the dark themes get their strength from the halo instead. */
+/* THE LIP IS LIGHT IN THE EDGE, NOT A LINE ON IT. Hard-edged at full width it
+   was "a bright red line drawn inside" the band; the colour was never the
+   problem, the boundary was. A small blur -- a third of its own width -- keeps
+   every pixel of its luminance and its contrast against the band (nothing here
+   changes --jelly-structure, the ledger colour, or the lip's radius) while
+   letting it bleed into the face the way light does through something wet.
+   In viewBox units, so the softness is the same shape at every circle size. */
+.home .home-core-lip {
+  stroke: var(--jelly-structure); stroke-width: 1.5; filter: blur(.6px);
+  transition: stroke .5s var(--ease);
+}
+/* The dark trio is where it read as "a bright red line inside the band", i.e.
+   a tyre. A narrow hard stroke at high chroma on a wide neutral band is a line
+   no matter what colour it is, so here it is widened and blurred past its own
+   width: the same light, spread into the band instead of ruled across it. The
+   peak stays on the same radius and keeps its luminance, so the ledger colour
+   is as legible as before -- this does NOT lean on the halo, which is bound to
+   the user's Glow slider and is 0 when they set Glow to 0. The rim has to read
+   wet with the glow turned off. */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-core-lip { stroke-width: 1.8; filter: blur(.8px); }
+.home .home-core-halo {
+  stroke: var(--jelly-structure); stroke-width: 3;
+  opacity: calc(var(--core-glow-lip) * var(--glow, 1));
+  /* A gaussian falloff whose RADIUS is bound to the same --glow the Settings
+     "Glow intensity" slider writes (#set-glow in src/quick-settings.js, 0..200
+     mapped to 0..2), so turning the slider up spreads the light as well as
+     brightening it. At Glow 0 the opacity above is 0 and nothing glows. */
+  filter: drop-shadow(0 0 calc(1px + 2.5px * var(--glow, 1)) var(--jelly-structure));
+  transition: stroke .5s var(--ease), opacity .5s var(--ease);
+}
+/* ============================================================================
+   THE STAGE THE BODY STANDS ON.
+
+   This ::before is the disc inside the casing, and its inset matches
+   .home-circle-fluid's 86.154% exactly, so it is the body's IMMEDIATE
+   surround — every pixel of body is drawn over this and nothing else. It used
+   to be `background: var(--jelly-ground)`, i.e. the app's own chrome colour,
+   which is how the subject ended up on a 0.0175-luminance field on the black
+   theme. It is now the lit set.
+
+   BRIGHT: the stage steps run L .945 -> .835, on every theme, so the body's
+   surround does not follow the page into the dark. That is the whole of "high
+   key" — it is a RELATIONSHIP, and this is the surround half of it.
+
+   STRUCTURED: two gradients, not a fill. A radial keyed off the top-left puts
+   the light somewhere (§1 has one illuminant; this is the same light falling on
+   the ground the subject stands on, so its direction has to agree with the
+   body's), and a very low-contrast conic gives the plate a gentle turn so it
+   reads as a curved surface receding rather than as a flat swatch. The
+   structure is for THE PICTURE. It is explicitly NOT a refraction backdrop:
+   a WebGL canvas is composited by the browser and cannot sample the DOM behind
+   it, so nothing drawn here can ever be refracted (Manager's correction on
+   T372, 2026-09-18). The refractable backdrop lives inside the canvas and the
+   body lane draws its own.
+
+   SCOPED TO `standard` ON PURPOSE. §8: Simple is the earlier cheap pre-corona
+   renderer and is a different product, not a degraded version of this one. It
+   keeps the plain ground it always had. */
+.home .home-circle[data-circle-style="standard"]::before {
+  content: ''; position: absolute; inset: 6.923%; border-radius: 50%; pointer-events: none;
+  /* THE RING FACE IS DELIBERATELY TRANSPARENT.
+     A ten-line block describing a two-stop gradient stood here, above
+     `background: transparent`, for long enough to mislead two people who each
+     read it as a description of the code. It was history, not documentation,
+     and it is deleted rather than disclaimed -- git holds it at 22def14b, and
+     a marker on top of a stale block is weaker than not having the stale block.
+     Its one durable constraint is carried forward here, because it binds
+     anyone who ever puts a ground back: THIS DISC IS THE ONLY SURFACE IN THE
+     FRAME THAT CARRIES BOTH THE READOUT TEXT AND THE SUBJECT, so its range has
+     to be the narrow one -- the plate outside the casing takes the deeper
+     falloff instead.
+
+     A light ground was tried here on 2026-09-19 (light sheets only, a radial
+     3% -> 9% ink over surface) to fix "the body is invisible on tan", and it
+     was reverted the same hour. It was INERT when it landed: the fluid's old
+     coverage solve forced the paint to (want - (1 - a) * ground) / a, which
+     cancels the ground out by construction, so nothing behind the body could
+     reach it. Two and a half minutes later the body lane shipped real
+     translucency -- the ground now reaches the eye wherever the body is thin --
+     and the same face that had done nothing started washing the body out on
+     white, which was the best theme on the page. A face LIGHTER than the page
+     also reads as a plate stuck on it, which is the coaster this lane had just
+     finished removing. Two defects from one declaration.
+
+     So: the casing cannot solve an invisible body by brightening its face. If
+     the body needs presence against a pale ground that belongs to the body.
+     Do not re-tune this without asking -- it is a calibration reference the
+     body lane measures against, and its stability is worth more than any
+     improvement to it. */
+  background: transparent;
+  box-shadow: none;
+}
+/* THE READOUT IS NOW ON A LIGHT SHEET, WHATEVER THE PAGE IS.
+   The four readout lines sit on top of that plate. On the three dark themes
+   they were near-white (--jelly-ink resolves to --jelly-n-96 there), and
+   near-white over an L .945 stage is not a contrast problem, it is unreadable.
+   The circle therefore carries its OWN neutral polarity: the same ramp, the
+   same single cast, the light-sheet assignments — which is exactly the base
+   `.home` block above, restated here so the dark-sheet override cannot reach
+   inside the casing. No new colours; only which end of the ramp is ink. */
+/* The original still crescent. No canvas, animated blur, pulse or rotation. */
+.home .home-core-simple-design { display: none; fill: none; }
+.home .home-circle[data-circle-style="simple"] .home-core-standard-design { display: none; }
+.home .home-circle[data-circle-style="simple"] .home-core-simple-design { display: block; }
+.home .home-simple-rim { stroke: var(--ink-4); stroke-width: 2; }
+.home :is(.home-simple-haze, .home-simple-halo, .home-simple-core) { stroke: var(--jelly-structure); stroke-linecap: round; }
+.home .home-simple-haze { stroke-width: 35.4; opacity: calc(.22 * var(--glow, 1)); }
+.home .home-simple-halo { stroke-width: 19.8; opacity: calc(.4 * var(--glow, 1)); }
+.home .home-simple-core { stroke-width: 7.8; opacity: calc(.9 * var(--glow, 1)); }
+.home .home-circle > svg .uring-rim { display: none; }
+/* THE WIDTH AND THE Z-INDEX BELOW DO NOT REACH THE RUNNING PAGE. boot() in
+   src/home-circle-fluid.js sets `canvas.style.width = '100%'` and
+   `canvas.style.zIndex = '2'` INLINE when it mounts the canvas, and an inline
+   declaration beats a stylesheet one. Read back off the live element
+   (.lane-scratch/mgr2/rim/freeze-check.mjs): half-width 260 viewBox units, not
+   224, and z-index 2, not 0 -- so the shader covers the WHOLE circle and paints
+   ABOVE this file's rim rather than inside it and below it. That is deliberate
+   over there ("The whole ring, above the SVG frame"), so the declarations stay
+   as the fallback for a page where the canvas never boots; they are recorded as
+   dead here so the next reader does not size anything against them. The
+   ::before note further up this file still describes the 86.154% disc as "the
+   body's IMMEDIATE surround"; on the running page the body's surround is
+   whatever the canvas leaves transparent, which is most of the rim band. */
+.home .home-circle .home-circle-fluid {
+  position: absolute; left: 50%; top: 50%; width: 86.154%; height: 86.154%; transform: translate(-50%, -50%);
+  z-index: 0; border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity 1.6s var(--ease);
+}
+.home .home-circle .home-circle-fluid.is-live { opacity: 1; }
+
+/* REDUCED MOTION IS A DESIGNED STILL, not the animated frame with the clock
+   stopped. The still reads the accent at its structural step and drops the
+   glow's spread to a defined, non-zero rim so the ring still carries state —
+   a state colour nobody can see is a state nobody is told about. */
+body.reduce-motion .home :is(.home-core-lip, .home-core-halo) { transition: none !important; }
+body.reduce-motion .home .home-core-halo { filter: drop-shadow(0 0 2px var(--jelly-structure)); opacity: calc(var(--core-glow-lip) * var(--glow, 1) * 1.3); }
+@media (prefers-reduced-motion: reduce) {
+  .home .home-circle:not([data-circle-motion="animate"]) :is(.home-core-lip, .home-core-halo) { transition: none !important; }
+  .home .home-circle:not([data-circle-motion="animate"]) .home-core-halo {
+    filter: drop-shadow(0 0 2px var(--jelly-structure));
+    opacity: calc(var(--core-glow-lip) * var(--glow, 1) * 1.3);
+  }
+}

@@ -1,0 +1,389 @@
+/* Keep each theme's palette recognizable.
+   Surfaces, actions, focus and statuses have separate jobs from role colors. */
+:root {
+  --control-bg: var(--sheet);
+  --control-hover: color-mix(in oklab, var(--ink) 7%, var(--sheet));
+  --control-border: var(--line-2);
+  /* Editable fields need a clearer boundary than panel dividers. Keep the
+     existing palette; give text, controls and decoration their own contrast. */
+  --field-border: color-mix(in srgb, var(--ink-3) 85%, var(--sheet));
+  --theme-selected-bg: color-mix(in srgb, var(--ui-accent) 9%, var(--sheet));
+  --theme-selected-border: color-mix(in srgb, var(--ui-accent) 65%, var(--sheet));
+  --seg-bg: var(--bg-2);
+  --lane-green: var(--s-good);
+  --lane-gold: var(--s-warn);
+  --lane-red: var(--s-serious);
+  --message-voice-1: #397589;
+  --message-voice-2: #9d5d43;
+  --message-voice-3: #3e786a;
+  --message-voice-4: #6a65ac;
+  --message-voice-5: #796596;
+  --message-voice-6: #676d77;
+}
+:root[data-theme="white"] {
+  color-scheme: light;
+  --surface: #ffffff;
+  --ink-2: #465465;
+  --ink-25: #526172;
+  --ink-3: #5c6b7b;
+  --line: rgba(31, 45, 61, 0.10);
+  --line-2: rgba(31, 45, 61, 0.19);
+  --accent-2: #28647c;
+  --focus-ring: #39788f;
+  --s-good: #236b47;
+  --s-warn: #835e16;
+  --s-serious: #b53a49;
+  --s-critical: #97345d;
+  --seg-border: var(--line-2);
+}
+:root[data-theme="tan"] {
+  --message-voice-1: #326678;
+  --message-voice-2: #8b523b;
+  --message-voice-3: #37695d;
+  --message-voice-4: #5e5998;
+  --message-voice-5: #695984;
+  --message-voice-6: #5c616a;
+  color-scheme: light;
+  --surface: #f6ebcb;
+  --ink-3: #62584e;
+  --line: rgba(65, 51, 33, 0.13);
+  --line-2: rgba(65, 51, 33, 0.22);
+  --accent-2: #4c625b;
+  --focus-ring: #61795d;
+  --s-good: #315f43;
+  --s-warn: #775413;
+  --s-serious: #a3363d;
+  --s-critical: #8b3458;
+  --seg-border: var(--line-2);
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) {
+  --message-voice-1: #6ba0b2;
+  --message-voice-2: #c58c74;
+  --message-voice-3: #71a396;
+  --message-voice-4: #9692cf;
+  --message-voice-5: #a290bd;
+  --message-voice-6: #9398a1;
+  --surface: #292b30;
+  --ink-3: #b3a39a;
+  --line: rgba(245, 231, 219, 0.12);
+  --line-2: rgba(245, 231, 219, 0.22);
+  --accent-2: #a8c8c0;
+  --focus-ring: #9cbfb4;
+  --s-good: #8ac6a3;
+  --s-warn: #dfbd7c;
+  --s-serious: #f19fa2;
+  --s-critical: #eaaac7;
+  --seg-border: var(--line-2);
+  --toggle-track: #7e7c7a;
+  --scrollbar-thumb: rgba(245, 231, 219, 0.40);
+  --scrollbar-thumb-hover: rgba(245, 231, 219, 0.54);
+}
+
+/* Neutral control chrome stays legible even when the owner picks a very light
+   role color. Role labels use the AA text tone, not a small decorative dot. */
+.chat-new-below,
+.chat-queue-next,
+.chat-queue-now { color: var(--accent-2); }
+.inline-agent { color: var(--role-ink, var(--ink-2)); }
+.role-coordinator { --role-ink: var(--role-text-coordinator, var(--ink-2)); }
+.role-helper { --role-ink: var(--role-text-helper, var(--ink-2)); }
+.role-shadow { --role-ink: var(--role-text-shadow, var(--ink-2)); }
+.role-manager { --role-ink: var(--role-text-manager, var(--ink-2)); }
+.role-default { --role-ink: var(--role-text-default, var(--ink-2)); }
+.role-spawned { --role-ink: var(--role-text-spawned, var(--ink-2)); }
+.role-coordinator, .role-helper, .role-shadow, .role-manager, .role-default, .role-spawned {
+  --rg-soft: 0 0 calc(8px * var(--glow)) color-mix(in oklab, var(--rc) 25%, transparent);
+  --rg-loud: 0 0 calc(15px * var(--glow)) color-mix(in oklab, var(--rc) 40%, transparent);
+}
+
+.role-color-settings { margin-top: 20px; padding: 20px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); }
+.role-colors-heading { display: flex; gap: 18px; align-items: flex-start; justify-content: space-between; }
+.role-colors-heading h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.role-colors-heading p, .role-color-source { color: var(--ink-3); font-size: 13px; line-height: 1.6; max-width: 66ch; }
+.role-colors-heading > button { flex-shrink: 0; }
+.role-color-settings .ctl-btn { padding: 7px 10px; }
+.role-color-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; margin-top: 18px; }
+.role-color-row { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 10px 12px 12px; border: 1px solid var(--line-2); background: var(--sheet); }
+.role-color-row legend { padding: 0 5px; color: var(--ink-2); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.role-color-swatch-label { display: flex; flex: 0 0 38px; }
+.role-color-row input[type="color"] { width: 38px; height: 34px; padding: 3px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--control-bg); cursor: pointer; }
+.role-color-hex-label { min-width: 0; flex: 1 1 90px; }
+.role-color-row input[type="text"] { width: 100%; min-width: 0; height: 34px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--control-bg); color: var(--ink); padding: 6px 8px; font: 13px var(--font-mono); }
+.role-color-row input[aria-invalid="true"] { border-color: var(--s-serious); }
+.role-color-row .ctl-btn { min-height: 34px; margin: 0; background: var(--control-bg); color: var(--ink-2); }
+.role-color-settings :is(input, button, summary):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.role-color-legacy { margin-top: 18px; }
+.role-color-legacy summary { cursor: pointer; color: var(--ink-2); padding-block: 6px; }
+.role-color-source { margin-top: 16px; }
+.role-color-status { display: block; min-height: 1.6em; margin-top: 6px; color: var(--ink-2); font-size: 13px; }
+@media (max-width: 620px) {
+  .role-color-settings { padding: 14px; }
+  .role-colors-heading { flex-direction: column; }
+  .role-color-row { flex-wrap: wrap; }
+}
+
+/* The glow themes share dark component ramps and keep semantic role/status
+   colors. Their light comes from the edges, never from a wash over the text. */
+:root:is([data-theme="ember"], [data-theme="cobalt"]) {
+  color-scheme: dark;
+  --wa: 0.045;
+  --sheen: 0;
+  --shadow-rgb: 0, 0, 0;
+  --shadow-k: 1.8;
+  --s-good: #94d3b0;
+  --s-warn: #edc889;
+  --s-serious: #ffadb5;
+  --s-critical: #f7b0d4;
+  --toggle-track: color-mix(in srgb, var(--ink-3) 65%, var(--sheet));
+  --ui-accent: var(--theme-accent);
+  --ui-accent-fill: color-mix(in srgb, var(--theme-accent) 64%, var(--bg));
+  --control-hover: color-mix(in srgb, var(--theme-accent) 8%, var(--sheet));
+  --seg-bg: var(--bg-2);
+  --theme-selected-bg: color-mix(in srgb, var(--theme-accent) 12%, var(--sheet));
+  --theme-selected-border: color-mix(in srgb, var(--theme-accent) 60%, var(--sheet));
+  --theme-ambient: clamp(0, var(--glow), 1);
+  --brace: color-mix(in srgb, var(--theme-accent) 48%, transparent);
+  --ring-track: color-mix(in srgb, var(--theme-accent) 15%, transparent);
+  --line: color-mix(in srgb, var(--theme-accent) 17%, transparent);
+  --line-2: color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  --scrollbar-thumb: color-mix(in srgb, var(--theme-accent) 45%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--theme-accent) 65%, transparent);
+  --seg-border: var(--line-2);
+  --accent-2: var(--theme-accent);
+  --focus-ring: var(--theme-accent);
+  --pulse: var(--theme-accent);
+  --pulse-dim: var(--theme-accent);
+  --theme-glow:
+    0 0 calc(10px * var(--glow)) rgba(var(--theme-glow-rgb), calc(.07 * var(--glow))),
+    0 0 calc(22px * var(--glow)) rgba(var(--theme-glow-rgb), calc(.07 * var(--glow)));
+}
+:root[data-theme="ember"] {
+  --bg: #170d13;
+  --bg-2: #25141d;
+  --surface: #25141d;
+  --sheet: #301b25;
+  --ink: #fff1f3;
+  --ink-2: #e5d0d5;
+  --ink-25: #d9bac3;
+  --ink-3: #cbabb5;
+  --ink-4: #a78290;
+  --theme-accent: #ff8099;
+  --theme-glow-rgb: 224, 38, 77;
+  --bub-me-1: #542b3b;
+  --bub-me-2: #3d2130;
+  --heat-0: #321823;
+  --heat-1: #512435;
+  --heat-2: #793046;
+  --heat-3: #a93f59;
+  --heat-4: #df5975;
+  --heat-5: #ff94ac;
+}
+:root[data-theme="cobalt"] {
+  --bg: #0b1223;
+  --bg-2: #131e35;
+  --surface: #131e35;
+  --sheet: #1b2943;
+  --ink: #eff5ff;
+  --ink-2: #d2dced;
+  --ink-25: #bccbdf;
+  --ink-3: #acbcd2;
+  --ink-4: #8299b8;
+  --theme-accent: #7cb4ff;
+  --theme-glow-rgb: 49, 112, 244;
+  --bub-me-1: #2b4168;
+  --bub-me-2: #223351;
+  --heat-0: #162a46;
+  --heat-1: #203f69;
+  --heat-2: #2c5795;
+  --heat-3: #3c77c5;
+  --heat-4: #589bec;
+  --heat-5: #91caff;
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) :is(body, .home-takeover) {
+  background:
+    radial-gradient(ellipse 100% 75% at 50% -12%, rgba(var(--theme-glow-rgb), calc(.18 * var(--theme-ambient))), transparent 70%),
+    radial-gradient(ellipse 55% 65% at 100% 100%, rgba(var(--theme-glow-rgb), calc(.045 * var(--theme-ambient))), transparent 75%),
+    var(--bg);
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) :is(.glass, .home-takeover-stage > .chat, .home-takeover-stage > .home-feed) {
+  box-shadow: var(--elev-3), 0 0 calc(24px * var(--glow)) -8px rgba(var(--theme-glow-rgb), calc(.08 * var(--glow)));
+}
+/* Light follows the panel's rim. A moving white reflection across a reading
+   surface muddied both palettes, especially at higher glow settings. */
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .glass {
+  border-color: var(--line);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .glass::before {
+  inset: 0 12px auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(var(--theme-glow-rgb), calc(.4 * var(--glow))), transparent);
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .glass::after { content: none; }
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .glass:hover {
+  border-color: var(--line-2);
+  box-shadow: var(--elev-3), var(--theme-glow);
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .drawer {
+  border-color: var(--line-2);
+  box-shadow: 0 24px 64px -20px rgba(0, 0, 0, .6), var(--theme-glow);
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) :is(.icon-btn, .ctl-btn:not(.armed, .danger), .chat-close, .chat-expand, .chat-search-toggle, .saved-conversation-toggle):hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--control-hover);
+  transform: none;
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .tb-nav a.active::before {
+  background: var(--theme-accent);
+  box-shadow: 0 0 calc(8px * var(--glow)) rgba(var(--theme-glow-rgb), calc(.45 * var(--glow)));
+}
+/* Tighten the home corona's haze while keeping its status-colored core. */
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .home .uring.crescent { --cres-halo-o: .35; }
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .home .uring.crescent .uring-rim {
+  stroke: color-mix(in srgb, var(--ink-3) 62%, var(--bg));
+}
+
+/* A tinted inset marks selection even with glow off. The moving segment
+   indicator owns its fill; the button keeps its keyboard focus ring. */
+:root :is(.theme-seg button, .seg > button, .tab):hover:not(.on, .active, :disabled) {
+  color: var(--ink);
+  background: var(--control-hover);
+}
+:root :is(.theme-seg button.on, .seg-ind, .seg:not(:has(> .seg-ind.ready)) > button.on, .tab.active) {
+  background: var(--theme-selected-bg);
+  border-color: var(--theme-selected-border);
+}
+:root :is(.theme-seg button.on, .seg-ind, .seg:not(:has(> .seg-ind.ready)) > button.on, .tab.active):not(:focus-visible) {
+  box-shadow: inset 0 0 0 1px var(--theme-selected-border), var(--elev-1);
+}
+
+/* Scope the send treatment to send mode so Stop retains its status color.
+   Resting and pointer shadows must leave the shared focus ring intact. */
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send { color: var(--bg); }
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:not(.is-stop) {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--theme-accent) 80%, white), var(--theme-accent));
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:not(.is-stop, :focus-visible) {
+  box-shadow: var(--elev-1), var(--theme-glow);
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:not(.is-stop):hover:not(:disabled) {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--theme-accent) 66%, white), var(--theme-accent));
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:not(.is-stop, :focus-visible):active:not(:disabled) {
+  box-shadow: var(--theme-glow);
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:disabled { box-shadow: none; }
+:root[data-theme="black"] .chat-send { color: var(--bg); }
+:root .chat-send:disabled { box-shadow: none; }
+:root:is([data-theme="ember"], [data-theme="cobalt"]) :is(.theme-seg button, .seg > button, .tab, .chat-send):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) ::selection {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--theme-accent) 28%, var(--bg-2));
+}
+
+/* The same surface-and-accent swatch identifies every theme in both pickers.
+   A bordered square remains visible on a matching light or dark surface. */
+[data-theme-choice="white"] { --swatch-base: #ffffff; --swatch-accent: #d4dee8; }
+[data-theme-choice="tan"] { --swatch-base: #f2e5bc; --swatch-accent: #bca882; }
+[data-theme-choice="black"] { --swatch-base: #292b30; --swatch-accent: #80726b; }
+[data-theme-choice="ember"] { --swatch-base: #301b25; --swatch-accent: #ff8099; }
+[data-theme-choice="cobalt"] { --swatch-base: #1b2943; --swatch-accent: #7cb4ff; }
+:root [data-theme-choice] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding-inline: 6px;
+  transform: none;
+}
+[data-theme-choice]::before {
+  content: '';
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent);
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--swatch-base) 50%, var(--swatch-accent) 50%);
+}
+
+/* Theme choices wrap as one component in the drawer and the settings page;
+   font buttons keep previewing their own faces at every drawer width. */
+#font-seg, #theme-seg { display: grid; gap: 4px; width: 100%; }
+#font-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#theme-seg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#font-seg button, #theme-seg button { min-width: 0; min-height: 36px; white-space: normal; line-height: 1.35; }
+[data-setting-id="theme"] .settings-seg {
+  display: flex;
+  flex-wrap: wrap;
+  height: auto;
+  gap: 4px;
+}
+[data-setting-id="theme"] [data-theme-choice] { min-height: 36px; flex: 1 1 auto; }
+
+/* Quiet metadata still carries facts. The decorative ramp remains available
+   to ring tracks, separators and inactive marks without dimming timestamps. */
+:root :is(.projection-mode, .projection-state small, .projection-state.is-loading span,
+  .chat-time-divider, .chat-message-time, .turn-stamp,
+  .research-report-meta dt, .research-method-index, .cloud-task-meta,
+  .cloud-binding, .cloud-watch, .cloud-receipt-k, .cloud-diff-note,
+  .ar-accounts-note, .ar-account-label, .ar-status-previous,
+  .checkout-provenance.is-quiet) { color: var(--ink-3); }
+:root .chat-queue-row::before { color: var(--ink-3); }
+:root .home-run .run-gap { color: var(--ink-3); opacity: 1; }
+:root .ledger-line[data-state="removed"] ~ .ledger-words { color: var(--ink-3); }
+
+/* A visible field edge invites input; selection and focus stay distinct.
+   Invalid and disabled fields keep their own state treatments. */
+:root :is(.chat-input, .chat-search, .settings-search, .settings-control,
+  .settings-field-control, label.settings-row, .home-takeover-pick,
+  .home-takeover-search, .role-color-row) :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), select, textarea):not(:disabled, [aria-invalid="true"]) {
+  border-color: var(--field-border);
+}
+:root :is(input, textarea)::placeholder { color: var(--ink-3); opacity: 1; }
+
+/* Preserve the theme's edge light without passing a white reflection over
+   reading content. Graph and activity glows retain their existing colors. */
+:root:not([data-theme="ember"], [data-theme="cobalt"]) .glass::before {
+  inset: 0 12px auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,calc(.55 * var(--wa))), transparent);
+}
+:root:not([data-theme="ember"], [data-theme="cobalt"]) .glass::after {
+  inset: 0 12px auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ui-accent) 40%, transparent), transparent);
+  background-size: 100% 100%;
+  transition: opacity var(--dur-2) var(--ease);
+}
+:root:not([data-theme="ember"], [data-theme="cobalt"]) .glass:hover::after {
+  opacity: clamp(0, var(--glow), 1);
+  background-position: 0 0;
+  transition: opacity var(--dur-2) var(--ease);
+}
+
+@media (forced-colors: active) {
+  /* !important, as in styles.css's forced-colors block, and for the same kind
+     of reason (T1593): the selection fill above is :is(... .seg:not(:has(>
+     .seg-ind.ready)) > button.on ...), and :is() takes the specificity of its
+     MOST specific argument, (0,5,1), even when it matched through .tab.active
+     or .theme-seg button.on. So it outranked this (0,3,1) rule and won the
+     background; forced colors flattened that to Canvas while the text stayed
+     HighlightText: white on white for the chosen theme in Quick settings and
+     the computer's name on its tab. */
+  :root :is(.theme-seg button.on, .seg > button.on, .tab.active) {
+    color: HighlightText !important;
+    background: Highlight !important;
+    border-color: Highlight !important;
+  }
+  :root :is(.theme-seg button, .seg > button, .tab, .chat-send):focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+  }
+  :root .glass::before, :root .glass::after { display: none; }
+}

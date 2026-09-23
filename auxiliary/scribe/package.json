@@ -1,0 +1,17 @@
+{
+  "name": "scribe",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Talk to one CLI-backed agent and watch it edit your paper, step by step.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/test_account_fence.js && python test/test_live_input.py && python test/test_current_content.py && python test/test_docmodel_fuzz.py && python test/test_python_hosts.py && python test/test_format_batch.py && node test/test_guard.js && node test/test_resolve.js && node test/test_pid_registry.js && node test/test_orchestration_robustness.js && node test/test_mcp_transport.js && node test/test_research.js && node test/test_agent_state.js && node test/test_codex_agent_state.js",
+    "test:configured": "python test/test_docmodel.py && node test/test_server.js && node test/test_runtime_boundaries.js && node test/test_viewer.js && node test/test_watch.js && node test/test_predict.js && node test/test_format.js && node test/test_lane.js && node test/test_propose.js && node test/test_model.js && node test/test_voice.js && node test/test_perf.js",
+    "test:current": "python test/test_current_content.py",
+    "smoke:live": "node test/smoke_live_idle.js",
+    "test:live": "npm run test:configured && node test/test_agent_live.js && node test/test_flow_live.js",
+    "shot": "node test/shot.js",
+    "bench:stt": "python test/bench_stt.py small medium"
+  }
+}

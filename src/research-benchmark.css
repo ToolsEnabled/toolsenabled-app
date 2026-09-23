@@ -1,0 +1,149 @@
+.benchmark-builder { min-width: 0; }
+.bench-start-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px; margin: 20px 0; padding: 16px 0; border-block: 1px solid var(--line-2); }
+.bench-start-sections section { min-width: 0; }
+.bench-start-sections h3 { margin: 0 0 8px; }
+.bench-start-sections p { margin: 0 0 12px; }
+.bench-start-sections .bench-toolbar { margin: 12px 0; align-items: flex-end; }
+.bench-start-sections .bench-file { flex-basis: 200px; }
+.benchmark-builder [hidden] { display: none !important; }
+.benchmark-builder label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; }
+.benchmark-builder input, .benchmark-builder select, .benchmark-builder textarea { box-sizing: border-box; min-width: 0; max-width: 100%; border: 1px solid var(--ink-3); border-radius: 4px; padding: 9px; color: var(--ink); background: var(--sheet); font: inherit; }
+.benchmark-builder textarea { width: 100%; font-family: var(--font-mono, monospace); font-size: 12.5px; line-height: 1.5; resize: vertical; }
+.benchmark-builder button { min-height: 36px; padding: 7px 12px; border: 1px solid var(--ink-3); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; cursor: pointer; }
+.benchmark-builder button:disabled { opacity: .5; cursor: default; }
+.benchmark-builder :is(button,input,select,textarea,pre,summary):focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.bench-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 16px 0; }
+.bench-toolbar label { flex: 1 1 160px; }
+.bench-toolbar .bench-file { flex: 0 1 200px; }
+.bench-file input { font-size: 12.5px; }
+.bench-muted { color: var(--ink-3); font-size: 12.5px; overflow-wrap: anywhere; }
+.bench-steps { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--line-2); padding-bottom: 12px; margin: 20px 0; }
+.bench-steps [aria-pressed=true] { background: var(--ink); color: var(--surface); text-decoration: underline; text-underline-offset: 4px; }
+.bench-compose-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.bench-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 16px; margin: 16px 0; }
+:is([data-composition-fields-editor], [data-composition-family-fields-editor]) { display: grid; gap: 16px; margin: 16px 0; min-width: 0; }
+[data-composition-fields-editor] fieldset { display: grid; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--line-2); border-radius: 8px; }
+[data-composition-fields-editor] legend { padding: 0 6px; font-weight: 600; }
+:is([data-composition-fields-editor], [data-composition-family-fields-editor]) p { margin: 0; overflow-wrap: anywhere; }
+:is([data-composition-fields-editor], [data-composition-family-fields-editor]) button { justify-self: start; }
+[data-condition-fields-editor] { display: grid; gap: 16px; margin: 16px 0; min-width: 0; }
+[data-condition-fields-editor] fieldset { display: grid; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--line-2); border-radius: 8px; }
+[data-condition-fields-editor] legend { padding: 0 6px; font-weight: 600; }
+[data-condition-fields-editor] p { margin: 0; overflow-wrap: anywhere; }
+[data-condition-fields-editor] button { justify-self: start; }
+[data-condition-fields-editor] :is([data-condition-fields-identity], [data-condition-fields-settings]) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+[data-condition-fields-identity] > div { display: grid; gap: 8px; align-content: start; }
+[data-condition-fields-settings] > :is(p, button) { grid-column: 1 / -1; }
+.bench-node { margin: 10px 0; padding: 12px; border: 1px solid var(--line-2); border-left: 3px solid var(--ink); min-width: 0; }
+.bench-node .bench-node { margin-left: 8px; }
+.bench-node legend { font-weight: 600; font-size: 12.5px; }
+.bench-node label { margin-bottom: 8px; }
+.bench-node select { width: 100%; }
+.benchmark-builder .bench-branch { margin: 10px 0; min-width: 0; }
+.bench-branch > summary { overflow-wrap: anywhere; }
+.bench-branch > .bench-node { margin-left: 0; }
+.bench-node .bench-node .bench-node { padding: 8px; margin-left: 0; }
+.bench-wrap { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.bench-wrap select { flex: none; width: auto; height: auto; }
+.bench-kind { display: inline-block; font-size: 12.5px; margin-bottom: 8px; }
+.bench-preview { border: 1px solid var(--line-2); padding: 16px; border-radius: 6px; min-width: 0; }
+.benchmark-builder pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 520px; overflow: auto; font-size: 12.5px; line-height: 1.6; }
+.benchmark-builder details { margin: 16px 0; }
+.benchmark-builder summary { cursor: pointer; padding: 8px 0; font-weight: 500; }
+.benchmark-builder [data-bench-status], .benchmark-builder [data-bench-review-status], .benchmark-builder [data-bench-frozen] { overflow-wrap: anywhere; }
+.bench-lean-combinations fieldset { border: 1px solid var(--line-2); margin: 8px 0; }
+.bench-lean-combinations fieldset label, .benchmark-builder label:has(> input[type=checkbox]) { flex-direction: row; align-items: center; }
+.bench-table-scroll { overflow: auto; }
+.bench-table-scroll table { border-collapse: collapse; width: 100%; }
+.bench-table-scroll :is(th,td) { text-align: left; padding: 10px; border-bottom: 1px solid var(--line-2); }
+.bench-table-scroll caption { text-align: left; font-size: 12.5px; padding: 8px; }
+@media (max-width: 800px) { .bench-compose-grid { grid-template-columns: minmax(0, 1fr); } .bench-node .bench-node { margin-left: 0; } .benchmark-builder button { min-height: 44px; } }
+@media (forced-colors: active) { .bench-steps [aria-pressed=true] { border: 2px solid Highlight; text-decoration-thickness: 2px; } }
+
+/* ---- 2026-09-10 rebuild, by hand with the owner directing ----
+   One plain single column, nothing down the side. Reading type; the eleven
+   steps as one simple row of plain buttons above the current step's fields.
+   Nothing about the builder's data, hooks or step switching changes. */
+.bench-steps { display: flex; flex-wrap: wrap; gap: 6px 8px; padding: 0 0 14px; margin: 20px 0 24px; border-bottom: 1px solid var(--line-2); counter-reset: bench-step; }
+.bench-steps button { counter-increment: bench-step; min-height: 38px; padding: 6px 12px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); color: var(--ink-2); font-size: 15px; }
+.bench-steps button::before { content: counter(bench-step) ". "; color: var(--ink-3); }
+.bench-steps [aria-pressed=true] { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; text-decoration: none; }
+.bench-steps [aria-pressed=true]::before { color: var(--sheet); }
+.benchmark-builder label { font-size: 15px; font-weight: 600; color: var(--ink); gap: 6px; }
+.benchmark-builder input, .benchmark-builder select, .benchmark-builder textarea { min-height: 39px; padding: 8px 10px; border-color: var(--ink-4); border-radius: 3px; font-size: 15px; font-weight: 400; }
+.benchmark-builder textarea { font-size: 14px; line-height: 1.55; }
+.benchmark-builder button { min-height: 38px; padding: 8px 14px; border-color: var(--ink-4); border-radius: 3px; font-size: 15px; font-weight: 500; color: var(--ink); }
+.benchmark-builder button:hover:not(:disabled) { border-color: var(--ink-2); }
+.bench-toolbar { gap: 16px 20px; margin: 20px 0; }
+.bench-muted { color: var(--ink-2); font-size: 15px; }
+.benchmark-builder p { max-width: 90ch; font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+.benchmark-builder pre { font-size: 14px; }
+.bench-node { padding: 14px 16px; border-color: var(--ink-4); border-left-width: 2px; }
+.bench-node legend { font-size: 15px; }
+.bench-kind { font-size: 14px; }
+.bench-table-scroll :is(th, td) { font-size: 15px; }
+.bench-table-scroll th { font-weight: 600; }
+/* One column all the way down: the compiled prompt reads under the prompt
+   tree at full width, not in a box beside it; fields take the width their
+   content needs, not the whole page. */
+.bench-compose-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.bench-preview { border: 0; border-top: 1px solid var(--line-2); border-radius: 0; padding: 16px 0 0; }
+.bench-toolbar label { flex: 0 1 480px; }
+.bench-toolbar label:has(> select) { flex-basis: 360px; }
+.bench-toolbar .bench-file { flex: 0 1 300px; }
+.bench-node select, .bench-wrap select { width: auto; min-width: 240px; max-width: 100%; }
+.bench-node label:has(> input) { max-width: 640px; }
+/* A label is a flex column, so its control stretched to the column's width
+   whatever width it asked for; controls keep their content width. */
+.benchmark-builder label > :is(input:not([type=checkbox]), select) { align-self: flex-start; width: auto; min-width: 240px; max-width: 100%; }
+.benchmark-builder label > input:not([type=checkbox]) { width: min(100%, 640px); }
+.benchmark-builder label > textarea { align-self: stretch; }
+.bench-wrap select { flex: none; height: auto; }
+
+/* Build task set: the per-task tools and the old recipe generator fold under
+   the set generation, as the plain research disclosure. */
+[data-bench-panel="corpus"] > details.bench-task-tools, [data-bench-panel="corpus"] > details.bench-routing-fold, [data-bench-panel="corpus"] > details.bench-tree-fold, [data-bench-panel="corpus"] > details[data-bench-advanced-generation] { margin: 24px 0 0; padding-top: 10px; border-top: 1px solid var(--line-2); }
+[data-bench-panel="corpus"] > details.bench-routing-fold > p:first-of-type, [data-bench-panel="corpus"] > details.bench-tree-fold > p:first-of-type { margin: 4px 0 12px; max-width: 80ch; }
+[data-bench-panel="corpus"] > details > summary { padding: 8px 0; font-size: 15px; font-weight: 600; }
+[data-bench-panel="corpus"] > details.bench-task-tools > p:first-of-type { margin: 4px 0 12px; max-width: 80ch; }
+
+/* ---- the builder's steps, split across the pages ----
+   Design: 1-4. Protocol: 5-9. Run & review: 10-11. All modules: every step.
+   The numbers are the steps' own, so a step keeps its number on every page, and
+   they follow the order the nav renders them in so a page never counts backwards.
+   Every step is numbered here and nowhere else: a second stylesheet numbering the
+   same step again decides the page by load order, which is how Snippets, Compose
+   tasks and Experiment fields came to carry two different numbers each. */
+.bench-steps [data-bench-tab="library"]::before { content: "1. "; }
+.bench-steps [data-bench-tab="compose"]::before { content: "2. "; }
+.bench-steps [data-bench-tab="nesting"]::before { content: "3. "; }
+.bench-steps [data-bench-tab="variance"]::before { content: "4. "; }
+.bench-steps [data-bench-tab="corpus"]::before { content: "5. "; }
+.bench-steps [data-bench-tab="requirements"]::before { content: "6. "; }
+.bench-steps [data-bench-tab="audit"]::before { content: "7. "; }
+.bench-steps [data-bench-tab="protocol"]::before { content: "8. "; }
+.bench-steps [data-bench-tab="workflow"]::before { content: "9. "; }
+.bench-steps [data-bench-tab="observations"]::before { content: "10. "; }
+.bench-steps [data-bench-tab="analysis"]::before { content: "11. "; }
+.bench-steps [data-bench-tab="run"]::before { content: "12. "; }
+[data-research-area="design"] .bench-steps [data-bench-tab]:not([data-bench-tab="compose"], [data-bench-tab="nesting"], [data-bench-tab="variance"], [data-bench-tab="experiment"], [data-bench-tab="library"], [data-bench-tab="corpus"]) { display: none; }
+[data-research-area="protocol"] .bench-steps [data-bench-tab]:not([data-bench-tab="requirements"], [data-bench-tab="audit"], [data-bench-tab="protocol"], [data-bench-tab="workflow"], [data-bench-tab="observations"]) { display: none; }
+[data-research-area="run"] .bench-steps [data-bench-tab]:not([data-bench-tab="analysis"], [data-bench-tab="run"]) { display: none; }
+
+/* Freeze & run: the review at the top reads; the steps below act. */
+.bench-review { margin: 4px 0 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line-2); }
+.bench-review h3 { margin: 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.bench-review .bench-review-intro { margin: 0 0 10px; color: var(--ink-2); font-size: 13.5px; }
+.bench-review-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 0 24px; margin: 0; border-top: 1px solid var(--line); }
+.bench-review-grid > div { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.bench-review-grid dt { margin: 0 0 3px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
+.bench-review-grid dd { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.bench-review-grid dd ul { margin: 2px 0 0; padding-left: 18px; }
+.bench-review-grid dd code { font-size: 12.5px; }
+.bench-review-quote { color: var(--ink-2); font-size: 13px; }
+.bench-run-step { padding: 14px 0 6px; border-top: 1px solid var(--line-2); }
+.bench-run-step > h3 { margin: 0 0 8px; font-size: 16px; font-weight: 650; }
+.bench-run-n { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 10px; border: 1px solid var(--ink-2); border-radius: 50%; font-family: var(--font-mono); font-size: 12px; font-weight: 500; vertical-align: 2px; }
+.benchmark-builder details.bench-run-fold { margin: 8px 0; }
+.benchmark-builder details.bench-run-more { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--line-2); }
+.benchmark-builder details.bench-run-more > summary, .benchmark-builder details.bench-run-fold > summary { padding: 6px 0; font-size: 14px; font-weight: 500; cursor: pointer; }

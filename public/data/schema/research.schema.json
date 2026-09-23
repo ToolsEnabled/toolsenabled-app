@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.toolsenabled.local/data/schema/research.schema.json",
+  "title": "ToolsEnabled owner-scoped research-suite projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "domain", "generatedAt", "ok", "reason", "sources", "data"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "domain": { "const": "research" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "ok": { "type": "boolean" },
+    "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 },
+    "sources": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/source" } },
+    "data": { "anyOf": [{ "$ref": "#/$defs/data" }, { "type": "null" }] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "ok": { "const": true } } },
+      "then": { "properties": { "reason": { "type": "null" }, "data": { "$ref": "#/$defs/data" } } },
+      "else": { "properties": { "reason": { "type": "string", "minLength": 1 }, "data": { "type": "null" } } }
+    }
+  ],
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "path", "ok", "observedAt", "reason"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{0,79}$" },
+        "kind": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{0,79}$" },
+        "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "ok": { "type": "boolean" },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "ok": { "const": true } } },
+          "then": { "properties": { "reason": { "type": "null" } } },
+          "else": { "properties": { "reason": { "type": "string", "minLength": 1 } } }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "exitCode", "count", "durationMs", "commitId", "observedAt"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "exitCode": { "type": "integer" },
+        "count": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "commitId": { "type": ["string", "null"], "pattern": "^[a-f0-9]{7,40}$" },
+        "observedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "sampleSize", "observationWindow"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "sampleSize": { "type": "integer", "minimum": 1 },
+        "observationWindow": { "type": "string", "minLength": 1, "maxLength": 240 }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "reason"],
+      "properties": {
+        "level": { "enum": ["low", "moderate", "high"] },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 600 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "claim", "status", "evidence", "method", "confidence", "falsifier", "dissents", "supersedes", "ownerScope"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^F-[0-9]{4}-[0-9]{4}-[0-9]{3}$" },
+        "claim": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "status": { "enum": ["open", "confirmed", "refuted", "superseded"] },
+        "evidence": { "$ref": "#/$defs/evidence" },
+        "method": { "$ref": "#/$defs/method" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "falsifier": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "dissents": { "type": "array", "maxItems": 64, "items": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+        "supersedes": { "type": ["string", "null"], "pattern": "^F-[0-9]{4}-[0-9]{4}-[0-9]{3}$" },
+        "ownerScope": { "const": "local-owner" }
+      }
+    },
+    "safeCatalogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "path", "bytes", "dateObserved", "summary", "ownerScope", "source"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,119}$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "path": { "type": "string", "minLength": 1, "maxLength": 320 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "dateObserved": { "type": "string", "format": "date-time" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "ownerScope": { "const": "local-owner" },
+        "source": { "const": "desktop-report" }
+      }
+    },
+    "flaggedCatalogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "path", "bytes", "dateObserved", "ownerScope", "source", "needsOwnerAuthorization", "authorizationReason"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,119}$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "path": { "type": "string", "minLength": 1, "maxLength": 320 },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "dateObserved": { "type": "string", "format": "date-time" },
+        "ownerScope": { "const": "local-owner" },
+        "source": { "const": "desktop-report" },
+        "needsOwnerAuthorization": { "const": true },
+        "authorizationReason": { "type": "string", "minLength": 1, "maxLength": 300 }
+      }
+    },
+    "failureCategory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "count", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,79}$" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "count": { "type": "integer", "minimum": 0 },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "openQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "question", "methodToClose"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^OQ-[0-9]{3}$" },
+        "question": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "methodToClose": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "methodNote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "guidance"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,79}$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "guidance": { "type": "string", "minLength": 1, "maxLength": 600 }
+      }
+    },
+    "findingsObservation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ok", "reason", "observedAt", "value"],
+      "properties": {
+        "ok": { "type": "boolean" }, "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "value": { "anyOf": [{ "type": "array", "maxItems": 5000, "items": { "$ref": "#/$defs/finding" } }, { "type": "null" }] }
+      },
+      "allOf": [{ "if": { "properties": { "ok": { "const": true } } }, "then": { "properties": { "reason": { "type": "null" }, "value": { "type": "array", "items": { "$ref": "#/$defs/finding" } } } }, "else": { "properties": { "reason": { "type": "string", "minLength": 1 }, "value": { "type": "null" } } } }]
+    },
+    "taxonomyObservation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ok", "reason", "observedAt", "value"],
+      "properties": {
+        "ok": { "type": "boolean" }, "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "value": { "anyOf": [{ "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/failureCategory" } }, { "type": "null" }] }
+      },
+      "allOf": [{ "if": { "properties": { "ok": { "const": true } } }, "then": { "properties": { "reason": { "type": "null" }, "value": { "type": "array", "items": { "$ref": "#/$defs/failureCategory" } } } }, "else": { "properties": { "reason": { "type": "string", "minLength": 1 }, "value": { "type": "null" } } } }]
+    },
+    "catalogObservation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ok", "reason", "observedAt", "value"],
+      "properties": {
+        "ok": { "type": "boolean" }, "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "value": { "anyOf": [{ "type": "array", "maxItems": 5000, "items": { "oneOf": [{ "$ref": "#/$defs/safeCatalogEntry" }, { "$ref": "#/$defs/flaggedCatalogEntry" }] } }, { "type": "null" }] }
+      },
+      "allOf": [{ "if": { "properties": { "ok": { "const": true } } }, "then": { "properties": { "reason": { "type": "null" }, "value": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/safeCatalogEntry" }, { "$ref": "#/$defs/flaggedCatalogEntry" }] } } } }, "else": { "properties": { "reason": { "type": "string", "minLength": 1 }, "value": { "type": "null" } } } }]
+    },
+    "questionsObservation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ok", "reason", "observedAt", "value"],
+      "properties": {
+        "ok": { "type": "boolean" }, "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "value": { "anyOf": [{ "type": "array", "maxItems": 1000, "items": { "$ref": "#/$defs/openQuestion" } }, { "type": "null" }] }
+      },
+      "allOf": [{ "if": { "properties": { "ok": { "const": true } } }, "then": { "properties": { "reason": { "type": "null" }, "value": { "type": "array", "items": { "$ref": "#/$defs/openQuestion" } } } }, "else": { "properties": { "reason": { "type": "string", "minLength": 1 }, "value": { "type": "null" } } } }]
+    },
+    "methodNotesObservation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ok", "reason", "observedAt", "value"],
+      "properties": {
+        "ok": { "type": "boolean" }, "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "value": { "anyOf": [{ "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/methodNote" } }, { "type": "null" }] }
+      },
+      "allOf": [{ "if": { "properties": { "ok": { "const": true } } }, "then": { "properties": { "reason": { "type": "null" }, "value": { "type": "array", "items": { "$ref": "#/$defs/methodNote" } } } }, "else": { "properties": { "reason": { "type": "string", "minLength": 1 }, "value": { "type": "null" } } } }]
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownerScope", "findingsRegister", "failureTaxonomy", "corpusCatalog", "openQuestions", "methodNotes"],
+      "properties": {
+        "ownerScope": { "const": "local-owner" },
+        "findingsRegister": { "$ref": "#/$defs/findingsObservation" },
+        "failureTaxonomy": { "$ref": "#/$defs/taxonomyObservation" },
+        "corpusCatalog": { "$ref": "#/$defs/catalogObservation" },
+        "openQuestions": { "$ref": "#/$defs/questionsObservation" },
+        "methodNotes": { "$ref": "#/$defs/methodNotesObservation" }
+      }
+    }
+  }
+}

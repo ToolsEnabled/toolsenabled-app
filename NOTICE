@@ -1,0 +1,176 @@
+ToolsEnabled
+Copyright (c) 2026 Joshua Pinckard
+
+ToolsEnabled was founded and created by Joshua Pinckard. The original platform was
+developed by directing autonomous AI-agent fleets through the system's own evolving
+coordination architecture.
+
+Sole founder and creator : Joshua Pinckard
+Official product         : ToolsEnabled
+Official publisher       : ToolsEnabled, Inc. (in formation)
+Copyright holder         : Joshua Pinckard
+
+This repository holds the DESKTOP INTERFACE. The local runtime -- the agent engine
+and the capability layer it exposes through MCP -- is built in a separate
+repository. Both are the same product and carry the same grant.
+
+-------------------------------------------------------------------------------
+LICENSE
+-------------------------------------------------------------------------------
+
+This software is licensed under the MIT License. The grant is made by the
+LICENSE file in the root of this repository. That file controls; nothing in this
+NOTICE alters, adds to, or narrows it.
+
+MIT was chosen deliberately over a copyleft license. The software you install and
+run on your own machines is free, and it is meant to stay free in the sense that
+costs you nothing and asks you nothing: no network-service source obligation, no
+share-alike condition on what you build with it, and no policy review at
+organisations that refuse copyleft. You may use, modify, redistribute and sell
+this software, including inside closed-source products, provided the copyright
+notice and the permission notice travel with the copies you hand on.
+
+The MIT License grants copyright permissions. It does not contain an express
+patent grant.
+
+-------------------------------------------------------------------------------
+WHAT IS FREE AND WHAT IS PAID
+-------------------------------------------------------------------------------
+
+Everything in this repository is free and open under the MIT License. There is no
+paid tier of this source, no feature withheld behind a license key in it, and no
+obligation to buy anything in order to run it. Connect the application to a server
+you run yourself and you pay nothing, forever.
+
+What ToolsEnabled sells is OPERATING a server, not the right to any code. That
+paid service is called ToolsEnabled Anywhere: the managed connectivity service
+and the relay we host, the secure phone path and mobile access through the
+website to your own agent systems, the hosted vault storage service, and the
+account, billing and entitlement services. None of that is in this repository.
+Running your own server for these capabilities is free; the reason to pay is
+that you would rather we ran one for you.
+
+-------------------------------------------------------------------------------
+CRYPTOGRAPHY
+-------------------------------------------------------------------------------
+
+This software uses cryptography solely through standard platform primitives:
+Node.js `node:crypto`, WebCrypto at the browser edge, and the Windows Data
+Protection API (DPAPI) for local credential storage. It implements no
+cryptographic algorithm of its own and contains no homegrown or proprietary
+cryptographic construction. No third-party cryptographic library is used.
+
+The primitives it calls are:
+
+  - Ed25519 signatures, for device identity and for verifying signed
+    material it is given.
+  - SHA-256, for content addressing and integrity checks, including the
+    payload and release digests this application publishes about itself.
+  - HMAC-SHA-256, for keyed integrity.
+  - scrypt, for deriving a key from a password held locally.
+  - Random generation, for identifiers and nonces.
+
+One non-cryptographic use of a hash function appears in the source and is
+named here so an inventory does not read as though it were a security
+mechanism:
+
+  - SHA-1 in `tools/installer-identity.mjs`, as the hash mandated by
+    RFC 4122 for a version-5 UUID. It derives a stable installer identifier
+    from a namespace and a name, and it must match the identifier the
+    packaging toolchain produces or an upgrade would install alongside the
+    previous version rather than over it. It protects nothing, and the
+    algorithm is fixed by the UUID specification rather than chosen here.
+
+-------------------------------------------------------------------------------
+LEGAL STATUS
+-------------------------------------------------------------------------------
+
+ToolsEnabled, Inc. has not been incorporated. It is named here as the intended
+publisher and is marked "(in formation)" for that reason. Copyright is held
+personally by Joshua Pinckard until the entity exists and the rights are
+assigned to it; this NOTICE is updated at that point.
+
+No trademark application has been filed for "ToolsEnabled", and the name is not
+claimed here as a REGISTERED mark. The reservation below is of common-law
+rights in the name, which is a different thing and does not depend on a filing.
+
+The interface was previously called "Mission Control". That name was dropped
+before launch: a USPTO search returned 17 live marks for it in the relevant
+classes, including Apple Inc. (Reg. 4240125, IC 009) and BMC Software.
+"ToolsEnabled" returned no hits, live or dead.
+
+The trademark section below was drafted in-house and has not been reviewed by
+outside counsel. It states a boundary that already exists rather than creating
+one: MIT grants copyright permissions and never granted trademark rights.
+
+-------------------------------------------------------------------------------
+TRADEMARKS
+-------------------------------------------------------------------------------
+
+"ToolsEnabled", "ToolsEnabled Anywhere", and the ToolsEnabled logos are
+trademarks of Joshua Pinckard (assignment to ToolsEnabled, Inc. planned upon
+its formation). The MIT License above grants copyright permissions only; it
+does not grant permission to use these names or logos.
+
+What this means in practice:
+
+  - You may use, modify, redistribute and sell this software under the MIT
+    License, and you may truthfully state that your work is based on or
+    compatible with ToolsEnabled.
+  - You may not name a fork, derivative, product, or service "ToolsEnabled"
+    (or a confusingly similar name), and you may not use the names or logos
+    in a way that suggests your distribution is published, endorsed by, or
+    affiliated with us.
+  - If you distribute a modified version, give it your own name.
+
+Nothing here restricts fair or nominative use of the names to describe
+provenance ("a fork of ToolsEnabled") or compatibility.
+
+-------------------------------------------------------------------------------
+CONTRIBUTIONS
+-------------------------------------------------------------------------------
+
+Outside contributions are accepted under the Developer Certificate of Origin,
+version 1.1. Each commit carries a Signed-off-by line, which is the contributor's
+statement that they wrote the change or otherwise have the right to submit it
+under this project's license. There is no copyright assignment and no separate
+agreement to sign: contributors keep the copyright in what they write, and it is
+contributed under the same MIT terms the rest of the project uses.
+
+CONTRIBUTING.md states the certificate in full and explains how to sign off.
+
+-------------------------------------------------------------------------------
+CONTRIBUTORS
+-------------------------------------------------------------------------------
+
+Outside developers are credited in CONTRIBUTORS.md as contributors and
+maintainers. Contributors are never founders. The founder credit above is not
+shared and is not altered by contribution.
+
+-------------------------------------------------------------------------------
+ACADEMIC AND RESEARCH CITATION
+-------------------------------------------------------------------------------
+
+Joshua Pinckard conceived the project, defined its objectives and requirements,
+directed the autonomous agent workflows, selected and evaluated outputs, and
+assumes responsibility for the research methodology and conclusions. AI agents
+generated substantial portions of the implementation and written drafts.
+
+-------------------------------------------------------------------------------
+THIRD-PARTY COMPONENTS
+-------------------------------------------------------------------------------
+
+This product bundles third-party open-source components, each governed by its
+own license. Those licenses are unaffected by this NOTICE, and nothing here
+adds to or removes from them. The bundled dependencies are declared in
+package.json and resolved in package-lock.json.
+
+Several of those licenses -- the SIL Open Font License on the bundled fonts, the
+Apache License 2.0, and the BSD 3-Clause License -- require that their copyright
+notices and license texts accompany the copies we distribute. Naming the
+dependency files above does not discharge that; reproducing the texts does. They
+are reproduced in full in THIRD-PARTY-LICENSES.md, which ships with the
+installer as well as living in this repository.
+
+Electron and Chromium notices are placed beside the executable by the build as
+LICENSE.electron.txt and LICENSES.chromium.html.

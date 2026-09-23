@@ -1,0 +1,292 @@
+{
+  "analysisVersion": 3,
+  "projectSha256": "efaa64a29e87a38b48893fee77a06599382dafc1bb8a9ef0e21f5832ef0c1dc2",
+  "execution": {
+    "purpose": "apparatus-development",
+    "evidenceClass": "development-computations",
+    "scope": "Apparatus development executes and tests the frozen apparatus. Its outcomes do not establish a qualified oracle, scientific inference or admitted experimental collection.",
+    "computationScope": "Development computations; no scientific inference or admitted experimental collection.",
+    "experimentalCollection": "not-admitted",
+    "referenceAncestry": []
+  },
+  "cohort": "qualification",
+  "analysisPlan": {
+    "version": 1,
+    "cohort": "qualification",
+    "primaryDenominator": "scheduled",
+    "uncertainty": null,
+    "contrasts": [],
+    "multiplicity": "none-descriptive",
+    "rationale": "Apparatus-development computations on one task. The purpose is to exercise the compile/collect/native-grade/report path end to end and show every step, not to measure a model. One task and one replicate cannot support an interval, a contrast or any inference about a provider; the per-condition rates below are descriptions of three single trials.",
+    "primaryPopulation": "all"
+  },
+  "criterion": {
+    "label": "Passed",
+    "population": "all",
+    "definition": "Each task meets its frozen grader criterion on the declared inputs."
+  },
+  "primaryPopulation": {
+    "selection": "all",
+    "label": "All frozen tasks",
+    "taskIds": [
+      "flat-canary"
+    ],
+    "ledger": [
+      {
+        "taskId": "flat-canary",
+        "split": "development",
+        "included": true,
+        "reason": null
+      }
+    ],
+    "scheduled": 3,
+    "excludedScheduled": 0
+  },
+  "corpus": null,
+  "conventions": {
+    "version": 1,
+    "scope": "declared-set",
+    "distributions": [],
+    "limitations": []
+  },
+  "audit": null,
+  "informationTasks": [],
+  "scheduled": 3,
+  "attempts": 3,
+  "completed": 3,
+  "failed": 0,
+  "interrupted": 0,
+  "pending": 0,
+  "groups": [
+    {
+      "condition": "recorded",
+      "scheduled": 1,
+      "measured": 1,
+      "passed": 0,
+      "eligibleScheduled": 1,
+      "eligibleCompleted": 1,
+      "unscored": 0,
+      "passRate": 0,
+      "scheduledPassRate": 0,
+      "meanScore": 0,
+      "dispositions": {
+        "no-program": 1
+      },
+      "primaryDenominator": "scheduled",
+      "primaryPopulation": "all",
+      "primary": {
+        "scheduled": 1,
+        "measured": 1,
+        "passed": 0,
+        "eligibleScheduled": 1,
+        "eligibleCompleted": 1,
+        "unscored": 0,
+        "passRate": 0,
+        "scheduledPassRate": 0,
+        "meanScore": 0,
+        "dispositions": {
+          "no-program": 1
+        },
+        "excludedScheduled": 0
+      },
+      "primaryRate": 0
+    },
+    {
+      "condition": "reference-program",
+      "scheduled": 1,
+      "measured": 1,
+      "passed": 1,
+      "eligibleScheduled": 1,
+      "eligibleCompleted": 1,
+      "unscored": 0,
+      "passRate": 1,
+      "scheduledPassRate": 1,
+      "meanScore": 1,
+      "dispositions": {
+        "correct": 1
+      },
+      "primaryDenominator": "scheduled",
+      "primaryPopulation": "all",
+      "primary": {
+        "scheduled": 1,
+        "measured": 1,
+        "passed": 1,
+        "eligibleScheduled": 1,
+        "eligibleCompleted": 1,
+        "unscored": 0,
+        "passRate": 1,
+        "scheduledPassRate": 1,
+        "meanScore": 1,
+        "dispositions": {
+          "correct": 1
+        },
+        "excludedScheduled": 0
+      },
+      "primaryRate": 1
+    },
+    {
+      "condition": "claude-cli",
+      "scheduled": 1,
+      "measured": 1,
+      "passed": 1,
+      "eligibleScheduled": 1,
+      "eligibleCompleted": 1,
+      "unscored": 0,
+      "passRate": 1,
+      "scheduledPassRate": 1,
+      "meanScore": 1,
+      "dispositions": {
+        "correct": 1
+      },
+      "primaryDenominator": "scheduled",
+      "primaryPopulation": "all",
+      "primary": {
+        "scheduled": 1,
+        "measured": 1,
+        "passed": 1,
+        "eligibleScheduled": 1,
+        "eligibleCompleted": 1,
+        "unscored": 0,
+        "passRate": 1,
+        "scheduledPassRate": 1,
+        "meanScore": 1,
+        "dispositions": {
+          "correct": 1
+        },
+        "excludedScheduled": 0
+      },
+      "primaryRate": 1
+    }
+  ],
+  "strata": [
+    {
+      "dimension": "split",
+      "value": "development",
+      "condition": "recorded",
+      "scheduled": 1,
+      "measured": 1,
+      "passed": 0,
+      "eligibleScheduled": 1,
+      "eligibleCompleted": 1,
+      "unscored": 0,
+      "passRate": 0,
+      "scheduledPassRate": 0,
+      "meanScore": 0,
+      "dispositions": {
+        "no-program": 1
+      }
+    },
+    {
+      "dimension": "split",
+      "value": "development",
+      "condition": "reference-program",
+      "scheduled": 1,
+      "measured": 1,
+      "passed": 1,
+      "eligibleScheduled": 1,
+      "eligibleCompleted": 1,
+      "unscored": 0,
+      "passRate": 1,
+      "scheduledPassRate": 1,
+      "meanScore": 1,
+      "dispositions": {
+        "correct": 1
+      }
+    },
+    {
+      "dimension": "split",
+      "value": "development",
+      "condition": "claude-cli",
+      "scheduled": 1,
+      "measured": 1,
+      "passed": 1,
+      "eligibleScheduled": 1,
+      "eligibleCompleted": 1,
+      "unscored": 0,
+      "passRate": 1,
+      "scheduledPassRate": 1,
+      "meanScore": 1,
+      "dispositions": {
+        "correct": 1
+      }
+    }
+  ],
+  "contrasts": [],
+  "rows": [
+    {
+      "id": "flat-canary.claude-cli.1",
+      "taskId": "flat-canary",
+      "conditionId": "claude-cli",
+      "replicate": 1,
+      "status": "completed",
+      "attempts": 1,
+      "score": 1,
+      "passed": true,
+      "latencyMs": 90881,
+      "split": "development",
+      "familyId": null,
+      "factors": {},
+      "primaryIncluded": true,
+      "primaryExclusionReason": null,
+      "selectedAttempt": 1,
+      "selection": "first-completed",
+      "information": null,
+      "referenceEligible": true,
+      "audit": null,
+      "providerCompleted": true,
+      "disposition": "correct"
+    },
+    {
+      "id": "flat-canary.recorded.1",
+      "taskId": "flat-canary",
+      "conditionId": "recorded",
+      "replicate": 1,
+      "status": "completed",
+      "attempts": 1,
+      "score": 0,
+      "passed": false,
+      "latencyMs": 7,
+      "split": "development",
+      "familyId": null,
+      "factors": {},
+      "primaryIncluded": true,
+      "primaryExclusionReason": null,
+      "selectedAttempt": 1,
+      "selection": "first-completed",
+      "information": null,
+      "referenceEligible": true,
+      "audit": null,
+      "providerCompleted": true,
+      "disposition": "no-program"
+    },
+    {
+      "id": "flat-canary.reference-program.1",
+      "taskId": "flat-canary",
+      "conditionId": "reference-program",
+      "replicate": 1,
+      "status": "completed",
+      "attempts": 1,
+      "score": 1,
+      "passed": true,
+      "latencyMs": 7109,
+      "split": "development",
+      "familyId": null,
+      "factors": {},
+      "primaryIncluded": true,
+      "primaryExclusionReason": null,
+      "selectedAttempt": 1,
+      "selection": "first-completed",
+      "information": null,
+      "referenceEligible": true,
+      "audit": null,
+      "providerCompleted": true,
+      "disposition": "correct"
+    }
+  ],
+  "limitations": [
+    "Apparatus development executes and tests the frozen apparatus. Its outcomes do not establish a qualified oracle, scientific inference or admitted experimental collection.",
+    "Development computations; no scientific inference or admitted experimental collection.",
+    "Scheduled-trial rates include unmeasured trials in the denominator. Their disposition remains separate from a completed response that does not meet the grader criterion.",
+    "Completed-trial rates condition on successful collection and grading; they do not describe missing outputs."
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "whisperRevision": "4df90f75321148c3a29a9e2351b7ddf8f5b115a8",
+  "files": [
+    {"path":"whisper-large-v3-turbo/model.bin","bytes":1617884929,"sha256":"e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da","url":"https://huggingface.co/deepdml/faster-whisper-large-v3-turbo-ct2/resolve/4df90f75321148c3a29a9e2351b7ddf8f5b115a8/model.bin"},
+    {"path":"whisper-large-v3-turbo/config.json","bytes":2263,"sha256":"b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e","url":"https://huggingface.co/deepdml/faster-whisper-large-v3-turbo-ct2/resolve/4df90f75321148c3a29a9e2351b7ddf8f5b115a8/config.json"},
+    {"path":"whisper-large-v3-turbo/tokenizer.json","bytes":2710337,"sha256":"297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd","url":"https://huggingface.co/deepdml/faster-whisper-large-v3-turbo-ct2/resolve/4df90f75321148c3a29a9e2351b7ddf8f5b115a8/tokenizer.json"},
+    {"path":"whisper-large-v3-turbo/vocabulary.json","bytes":1068114,"sha256":"c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1","url":"https://huggingface.co/deepdml/faster-whisper-large-v3-turbo-ct2/resolve/4df90f75321148c3a29a9e2351b7ddf8f5b115a8/vocabulary.json"},
+    {"path":"whisper-large-v3-turbo/preprocessor_config.json","bytes":340,"sha256":"7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711","url":"https://huggingface.co/deepdml/faster-whisper-large-v3-turbo-ct2/resolve/4df90f75321148c3a29a9e2351b7ddf8f5b115a8/preprocessor_config.json"},
+    {"path":"kokoro-v1.0.onnx","bytes":325532387,"sha256":"7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5","url":"https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"},
+    {"path":"voices-v1.0.bin","bytes":28214398,"sha256":"bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d","url":"https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"}
+  ]
+}

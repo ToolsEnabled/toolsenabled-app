@@ -1,0 +1,55 @@
+.resource-settings .resource-live {
+  padding: 16px 18px;
+  margin: 16px 0 22px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--bg-2);
+}
+.resource-settings .resource-live h3 { font-size: 14px; margin: 0 0 8px; }
+.resource-settings .resource-live p { margin: 6px 0; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+.resource-settings .resource-live .ctl-btn { margin-top: 8px; }
+.resource-settings .resource-admission { margin: 12px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+.resource-settings .resource-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+.resource-settings .resource-group { border: 0; border-top: 1px solid var(--line-2); margin: 28px 0 0; padding: 12px 0 0; min-width: 0; }
+.resource-settings .resource-group legend { font-size: 16px; font-weight: 600; padding: 0 10px 0 0; }
+.resource-settings .resource-mode select { max-width: 240px; }
+.resource-settings .resource-control { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(240px, 1.3fr); gap: 4px 24px; padding: 13px 0; align-items: center; }
+.resource-settings .resource-control label { font-size: 13px; font-weight: 500; }
+.resource-settings .resource-control-copy p { margin: 5px 0 0; font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+.resource-settings .resource-control-inputs { display: grid; grid-template-columns: minmax(80px, 1fr) 130px; gap: 5px 12px; align-items: center; }
+.resource-settings .resource-control input[type="range"] { min-width: 0; width: 100%; margin: 0; accent-color: var(--ui-accent); }
+.resource-settings .resource-number { display: flex; align-items: center; gap: 6px; }
+.resource-settings .resource-number input { width: 91px; min-width: 0; padding: 6px; border: 1px solid var(--line-2); border-radius: 5px; background: var(--surface, transparent); color: inherit; font: inherit; font-size: 14px; text-align: right; }
+.resource-settings .resource-number span { color: var(--ink-2); font-size: 13px; }
+.resource-settings .resource-default { grid-column: 1 / -1; color: var(--ink-2); font-size: 13px; }
+.resource-settings .resource-field-error { grid-column: 1 / -1; margin: 0; color: var(--danger, #c2410c); font-size: 13px; }
+.resource-settings [aria-invalid="true"] { border-color: var(--danger, #c2410c); }
+.resource-settings .resource-details { margin: 20px 0; }
+.resource-settings .resource-details summary { cursor: pointer; font-size: 14px; font-weight: 500; line-height: 1.6; }
+.resource-settings .resource-details > p { color: var(--ink-2); font-size: 14px; line-height: 1.6; margin: 12px 0; }
+.resource-settings .resource-notice { min-height: 1.5em; }
+.resource-settings .resource-fields:disabled { opacity: .6; }
+@media (max-width: 760px) {
+  .resource-settings .resource-control { grid-template-columns: 1fr; gap: 10px; }
+  .resource-settings .resource-control-inputs { grid-template-columns: minmax(80px, 1fr) 130px; }
+  .resource-settings .resource-mode { flex-wrap: wrap; gap: 10px; }
+}
+
+.settings-page .resource-settings .resource-control { grid-template-columns: minmax(0, 1fr) minmax(260px, 44%); gap: 8px 28px; align-items: start; padding-block: 18px; border-bottom: 1px solid var(--line); }
+.settings-page .resource-settings .resource-control-inputs { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.settings-page .resource-settings .resource-control-copy label { font-weight: 600; font-size: 15px; line-height: 1.5; }
+.settings-page .resource-settings .resource-control-copy p { color: var(--ink-2); font-size: 14px; line-height: 1.6; }
+.settings-page .resource-settings .resource-field-error { color: var(--s-serious); }
+.settings-page .resource-settings .resource-live { background: var(--sheet); }
+.settings-page .resource-settings .resource-fields { border: 0; }
+.resource-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 16px 0; }
+.resource-metrics dt { color: var(--ink-2); font-size: 13px; }
+.resource-metrics dd { margin: 6px 0; color: var(--ink); font-size: 20px; font-variant-numeric: tabular-nums; }
+.resource-metrics meter { display: block; width: 100%; height: 12px; accent-color: var(--ui-accent); }
+.resource-metrics meter[hidden] { display: none; }
+.resource-metrics meter::-webkit-meter-bar { background: var(--ring-track); border: 0; border-radius: 2px; }
+.resource-metrics meter::-webkit-meter-optimum-value { background: var(--ui-accent); }
+.resource-metrics meter::-moz-meter-bar { background: var(--ui-accent); }
+@container settings-content (max-width: 680px) {
+  .settings-page .resource-settings .resource-control { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+}

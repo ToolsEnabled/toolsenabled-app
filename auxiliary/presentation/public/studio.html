@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Studio · Presentation Suite</title>
+  <link rel="stylesheet" href="/studio.css" />
+  <link rel="stylesheet" href="/animation-preview.css" />
+</head>
+<body>
+  <!-- The deck owns the whole viewport. Everything else floats over it, which is
+       why the stage is the only element left in normal flow. -->
+  <main id="stage" class="mode-grid">
+    <div class="deck" id="deck"></div>
+    <div class="deck-empty-msg" id="deckEmpty" hidden>No slides in this deck.</div>
+  </main>
+
+  <!-- Passive HUD: status only, pointer-events:none, never interactive. -->
+  <div class="hud" id="hud" aria-hidden="true">
+    <div class="hud-pos" id="slidePos"></div>
+    <div class="ticker" id="ticker"></div>
+  </div>
+
+  <div id="pausedOverlay" class="paused-overlay hidden">
+    <div class="paused-card">
+      <div class="paused-title">EDITS PAUSED</div>
+      <div class="paused-sub" id="pausedSub">All editors are locked out.</div>
+    </div>
+  </div>
+
+  <header class="chrome" id="chrome">
+    <span class="dot" id="connDot" title="connection"></span>
+    <div class="brand">
+      <div class="brand-title" id="deckTitle">Untitled Presentation</div>
+      <div class="brand-sub">
+        <span id="revLabel">rev 0</span> · <span id="slideCount">0 slides</span>
+        · <span id="timingLabel" title="estimated speaking time from visible slide text, not a real rehearsal">~0:00</span>
+      </div>
+    </div>
+    <div class="agent-chips" id="agentChips"></div>
+    <div class="spacer"></div>
+
+    <!-- Panel toggles. The count badge is most of the value: it answers the
+         question without opening anything. -->
+    <div class="ptogs" id="ptogs">
+      <button class="ptog" data-panel="board" id="togBoard" aria-pressed="false" aria-controls="panelBoard" title="Message board and house rules (b)"><span aria-hidden="true">📌</span><span class="sr-only">Message board and house rules</span><span class="pcount" id="rulesCount"></span></button>
+      <button class="ptog" data-panel="loops" id="togLoops" aria-pressed="false" aria-controls="panelLoops" title="Standing loops (l)"><span aria-hidden="true">🔁</span><span class="sr-only">Standing loops</span><span class="pcount" id="loopsCount"></span></button>
+      <button class="ptog" data-panel="tasks" id="togTasks" aria-pressed="false" aria-controls="panelTasks" title="Task queue (t)"><span aria-hidden="true">✅</span><span class="sr-only">Task queue</span><span class="pcount" id="tasksCount"></span></button>
+      <button class="ptog" data-panel="protections" id="togProtections" aria-pressed="false" aria-controls="panelProtections" title="Lock slides or individual objects (p)"><span aria-hidden="true">&#128274;</span><span class="sr-only">Manage slide and object locks</span><span class="pcount" id="protectionsCount"></span></button>
+      <button class="ptog" data-panel="lint" id="togLint" aria-pressed="false" aria-controls="panelLint" title="House-rule lint (k)"><span aria-hidden="true">🔍</span><span class="sr-only">House-rule lint</span><span class="pcount" id="lintCount"></span></button>
+      <button class="ptog" data-panel="activity" id="togActivity" aria-pressed="false" aria-controls="panelActivity" title="Activity log (a)"><span aria-hidden="true">⚡</span><span class="sr-only">Activity log</span></button>
+    </div>
+
+    <span class="stale-dot" id="staleDot" title="pixel freshness"></span>
+    <div class="mode-toggle">
+      <button id="gridModeBtn" class="active" title="Grid (g)">Grid</button>
+      <button id="singleModeBtn" title="Single slide (s)">Slide</button>
+    </div>
+    <!-- Secondary work stays reachable without turning a narrow viewer into a
+         multi-row control wall. Pause, navigation and view mode remain direct. -->
+    <div class="compact-controls" id="compactControls">
+      <button class="compact-menu-button" id="compactMenuBtn" type="button"
+              aria-expanded="false" aria-controls="compactMenu"
+              title="Session controls">More <span aria-hidden="true">⌄</span></button>
+      <section class="compact-menu" id="compactMenu" hidden role="group" aria-label="Session controls">
+        <div class="compact-menu-head">
+          <span>Session controls</span>
+          <button class="compact-close" id="compactMenuClose" type="button" aria-label="Close session controls">×</button>
+        </div>
+        <div class="compact-roster" id="compactRoster"></div>
+        <div class="compact-meta" id="compactMeta"></div>
+        <div class="compact-actions" aria-label="History and exports">
+          <button class="compact-action" id="compactUndoBtn" type="button" disabled>↶ Undo</button>
+          <button class="compact-action" id="compactRedoBtn" type="button" disabled>↷ Redo</button>
+          <button class="compact-action" id="compactDownloadBtn" type="button">⇩ .pptx</button>
+          <button class="compact-action" id="compactExportPdfBtn" type="button">⇩ .pdf</button>
+        </div>
+      </section>
+    </div>
+    <button class="btn" id="undoBtn" title="Undo the last edit (Ctrl+Z)" disabled>↶</button>
+    <button class="btn" id="redoBtn" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
+    <button class="btn" id="downloadBtn" type="button" title="Download .pptx">⤓ .pptx</button>
+    <button class="btn" id="exportPdfBtn" title="Export the current deck to PDF, then download">⤓ .pdf</button>
+    <button class="btn pause" id="pauseBtn">⏸ Pause</button>
+  </header>
+
+  <!-- The common lock actions stay one click away in Slide view. The full
+       panel remains the place to audit every saved lock. -->
+  <section class="lock-quickbar" id="lockQuickbar" hidden aria-label="Quick lock controls"></section>
+
+  <!-- All panels stay resident and one is un-hidden at a time. That is what
+       lets the ported renderers write into #rules/#notes/#tasklist/... on every
+       SSE event without needing an "am I open?" guard. -->
+  <section class="panel" data-panel="board" id="panelBoard" hidden role="region" aria-label="Message board">
+    <div class="panel-head">
+      <span class="panel-title">📌 Board</span>
+      <span class="panel-count" id="rulesCountPanel"></span>
+      <button class="mini-x" data-close aria-label="Close board">×</button>
+    </div>
+    <form class="composer" id="composer">
+      <textarea id="noteText" rows="2" aria-label="Message for the other editor sessions" placeholder="Leave a note for the editor sessions…  (Ctrl+Enter to post)"></textarea>
+      <div class="composer-row">
+        <label class="pin-toggle"><input type="checkbox" id="pinCheck" /> 📌 Pin as house rule</label>
+        <span class="as-name">as <input id="asName" spellcheck="false" aria-label="Post as" /></span>
+        <button class="btn send" id="sendNote" type="submit">Post</button>
+      </div>
+    </form>
+    <div class="panel-scroll">
+      <div class="rules-label" id="rulesLabel">House rules</div>
+      <div class="rules" id="rules"></div>
+      <div class="notes-label">Messages</div>
+      <div class="notes" id="notes"></div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="loops" id="panelLoops" hidden role="region" aria-label="Standing loops">
+    <div class="panel-head">
+      <span class="panel-title">🔁 Standing Loops</span>
+      <span class="panel-count" id="loopsCountPanel"></span>
+      <button class="mini-x" data-close aria-label="Close loops">×</button>
+    </div>
+    <form class="composer" id="loopComposer">
+      <textarea id="loopText" rows="2" aria-label="Standing loop check description" placeholder="A recurring check the sessions keep running…  (Ctrl+Enter)"></textarea>
+      <div class="composer-row">
+        <span class="as-name">every <input id="loopEvery" spellcheck="false" aria-label="Loop cadence" placeholder="10m (optional)" /></span>
+        <button class="btn send" id="sendLoop" type="submit">Add loop</button>
+      </div>
+    </form>
+    <div class="panel-scroll">
+      <div class="runner-state" id="runnerState"></div>
+      <div class="looplist" id="looplist"></div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="tasks" id="panelTasks" hidden role="region" aria-label="Task queue">
+    <div class="panel-head">
+      <span class="panel-title">✅ Tasks</span>
+      <span class="panel-count" id="tasksCountPanel"></span>
+      <button class="mini-x" data-close aria-label="Close tasks">×</button>
+    </div>
+    <form class="composer" id="taskComposer">
+      <textarea id="taskText" rows="2" aria-label="Task description" placeholder="Assign a task to a session…  (Ctrl+Enter to add)"></textarea>
+      <div class="composer-row">
+        <span class="as-name">for <input id="taskFor" spellcheck="false" aria-label="Assign task to" placeholder="anyone" /></span>
+        <button class="btn send" id="sendTask" type="submit">Add task</button>
+      </div>
+    </form>
+    <div class="panel-scroll">
+      <div class="tasklist" id="tasklist"></div>
+    </div>
+  </section>
+
+  <section class="panel protection-panel" data-panel="protections" id="panelProtections" hidden role="region" aria-label="Slide and object locks">
+    <div class="panel-head">
+      <span class="panel-title">&#128274; Locks</span>
+      <span class="panel-count" id="protectionsCountPanel"></span>
+      <button class="mini-x" data-close aria-label="Close locks">×</button>
+    </div>
+    <div class="protection-selection" id="protectionSelection" aria-live="polite"></div>
+    <div class="protection-legend" aria-label="Protection indicators">
+      <span><i class="protection-swatch persistent" aria-hidden="true"></i>Saved lock</span>
+      <span><i class="protection-swatch temporary" aria-hidden="true"></i>Worker editing now</span>
+    </div>
+    <div class="panel-scroll">
+      <p class="protection-help">Locks stay in force for future agent edits. A slide lock covers the whole slide; an object lock follows one specific item. In Slide view, click an item to select it and open its history; double-click it to lock or unlock it. Repeated single clicks cycle through stacked items.</p>
+      <div class="protection-list-label">All saved locks</div>
+      <div class="protection-list" id="protectionList"></div>
+    </div>
+  </section>
+
+  <!-- Selecting an item opens its own solid, focused workspace. On desktop the
+       sheet reserves real viewport width (studio.css), so it never covers the
+       slide the user is comparing against an earlier version. -->
+  <section class="panel object-history-panel" data-panel="object-history" id="panelObjectHistory"
+           hidden role="region" aria-label="Selected item history" tabindex="-1">
+    <div class="panel-head">
+      <span class="panel-title">Item history</span>
+      <span class="panel-count" id="objectHistoryCount"></span>
+      <button class="mini-x" data-close aria-label="Close item history">&times;</button>
+    </div>
+    <div class="object-history-context" id="objectHistoryContext" aria-live="polite"></div>
+    <div class="panel-scroll object-history-list" id="objectHistoryList" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" data-panel="lint" id="panelLint" hidden role="region" aria-label="House-rule lint">
+    <div class="panel-head">
+      <span class="panel-title">🔍 House-Rule Lint</span>
+      <span class="panel-count" id="lintCountPanel"></span>
+      <button class="mini-x" data-close aria-label="Close lint">×</button>
+    </div>
+    <div class="panel-scroll">
+      <div class="lintlist" id="lintlist"></div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="activity" id="panelActivity" hidden role="region" aria-label="Activity log">
+    <div class="panel-head">
+      <span class="panel-title">⚡ Activity</span>
+      <span class="panel-count" id="spendLabel"></span>
+      <button class="mini-x" data-close aria-label="Close activity">×</button>
+    </div>
+    <div class="panel-scroll">
+      <div class="feed-list" id="feed"></div>
+    </div>
+  </section>
+
+  <!-- The chat pill floats above the paused scrim on purpose: the board is
+       explicitly ungated by pause, so you can keep briefing the lead while
+       editing is frozen. -->
+  <div class="chat" id="chat">
+    <div class="chatlog" id="chatlog"></div>
+    <div class="chat-delivery" id="chatDelivery" hidden role="status" aria-live="polite"></div>
+    <form class="chatform" id="chatform">
+      <button class="pinbtn" id="pinChatBtn" type="button" aria-pressed="false" title="Pin the next message as a house rule">📌</button>
+      <textarea class="chatinput" id="chatinput" rows="1" autocomplete="off"
+             aria-label="Message to the lead agent"
+             placeholder="Tell the lead what to change  ( / to focus, Enter to send )"></textarea>
+      <button class="chatsend" id="chatSend" type="submit">Send</button>
+    </form>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/animation-preview.js"></script>
+  <script src="/studio.js"></script>
+</body>
+</html>

@@ -1,0 +1,1016 @@
+/* Compact activity and chat share a frame. Full view keeps its own layout. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) {
+  /* The ground, and it must step AWAY from the page in EVERY theme. --sheet
+     only does that on the dark trio (#212327 page -> #2e3136 sheet, 13 units);
+     on white and tan the sheet is #fffdfa against a #f6f3ee page -- three units
+     under the white ceiling, which is why the panel read as the page. Mixing the
+     theme's own INK into the page ground steps toward the text in whichever
+     direction that theme runs: lighter on dark, darker on light. No box needed. */
+  --home-context-surface: color-mix(in srgb, var(--ink) 6%, var(--bg));
+  --home-context-muted: var(--ink-2);
+  --home-context-accent: var(--ui-accent, var(--theme-accent, var(--c-coordinator)));
+  /* NO EDGE ON THE WRAPPER. This element used to carry `border-left: 1px` and
+     `padding-left: 28px`, and two later rules in this same file turned both
+     back off -- one in the max-width:1000px query, one in the T448 block --
+     so the file argued with itself in three places and the computed border
+     was 0 the whole time. The edge now belongs to .home-feed, which is the
+     element that is actually painted (see A LITTLE BOX below), so there is
+     one declaration instead of a source and two retractions. */
+  display: flex; min-width: 0; gap: 0; container: home-context / inline-size;
+}
+/* SECONDARY TEXT ON THE WHITE THEME'S PLATE (T1533). White's --ink-3
+   (#5c6b7b) is solved for its light page; this plate is darker (#e7e4df), and
+   the pair measured 4.3:1: Full view's empty-state sentence and reply hint,
+   the chat subtitle, the Copy buttons, the example badge. On the plate it
+   steps one shade darker, 4.8:1, so the hierarchy under --ink-2 is kept. */
+:root[data-theme="white"] .home :is(.home-feed-wrap, .home-chat-pane-body, .home-takeover) { --ink-3: #566474; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed {
+  flex: 1 1 auto; min-width: 0; min-height: 0; padding: 0 0 16px; overflow: hidden;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none;
+}
+/* WHAT A HIGHLIGHT IS FOR ON THIS SURFACE, decided once so that seeing one
+   tells a person something.
+     the pointer is here   -> one background tint, on the row, and nowhere else
+     this run is open      -> a bar down its edge, in the run's own status colour
+     you are on this lane  -> the NAME reads pressed, because that is whose state it is
+     this is new           -> THE ACCENT, and nothing else in the panel may spend it
+     keyboard focus        -> the focus ring the rest of the app already uses
+   Before this, one accent was doing four unrelated jobs in five idioms -- a
+   tint, an inset bar, an underline, a bottom-border, a coloured run of text and
+   a glow ring -- so it could not mean any of them. Measured on the running page
+   at rest: accent painted on the active filter AND on a row's edge bar at once.
+
+   THE FEED NO LONGER TINTS ON HOVER. It and the row both did, and they nest, so
+   hovering one row lit the row and everything around it together; measured, the
+   hovered page had .home-feed and .run-head both carrying a background. Two
+   hover surfaces at once is the mush rather than the pointer. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-head {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 12px;
+  flex: none; margin: 0; padding: 0 0 10px;
+  background: transparent;
+  /* NO RULE HERE. Measured on the running page at 1440x900 this border and the
+     one under .activity-overview were two horizontal lines 53px apart at the
+     top of the panel, boxing the controls in a band of their own. The rule
+     under the filters is the one that does the work -- it divides CONTROLS
+     from LIST -- so it keeps the job and this one goes. */
+  border-bottom: 0;
+}
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-context-heading { display: contents; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-context-label { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) [data-panel-title] { grid-column: 1; grid-row: 1; min-width: 0; color: var(--ink); font: 650 20px/1.3 var(--font-ui); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-expand {
+  grid-column: 2; grid-row: 1; justify-self: end; min-height: 36px; height: auto; margin: 0; padding: 6px 10px;
+  border: 0; border-radius: var(--home-control-radius); background: transparent; color: var(--ink);
+  font: 600 12px/1.4 var(--font-ui); white-space: nowrap;
+}
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-expand::after { content: ' \2197'; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-expand:hover { background: var(--control-hover, var(--surface)); border-color: var(--ink-3); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .panel-badge { grid-column: 1 / -1; grid-row: 2; justify-self: start; max-width: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink-2); font: 500 12px/1.4 var(--font-ui); }
+/* THE ONE BOX LEFT ON THIS PANEL, and it was the only one. Counted on the
+   running page: of everything drawn on the home screen, exactly one element
+   carried a visible border on all four sides, and it was this picker, sitting
+   on a panel where the rows have no boxes, the filters have no boxes and the
+   open run is marked by a bar rather than a card. Owner: "i dont know that we
+   need so many boxes around everything".
+   It is still obviously a control -- it is a filled surface with the arrow the
+   platform draws, and it lights on hover the way the rows do -- but it reads as
+   the same KIND of thing as the filters beside it rather than as a form field
+   borrowed from another screen. The focus ring is untouched, so reaching it by
+   keyboard is unchanged. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-pick {
+  /* SIZED TO ITS CONTENT. As a full-width control it painted a 1167px filled
+     slab at 1920x1080 for two words, which is the widest box on the page and
+     the least information in one. */
+  grid-column: 1; grid-row: 3; justify-self: start; min-width: 0; width: auto; max-width: 100%; min-height: 36px; padding: 6px 26px 6px 10px;
+  text-overflow: ellipsis;
+  border: 0; border-radius: var(--home-control-radius); color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  font: 600 13px/1.4 var(--font-ui); cursor: pointer;
+}
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-pick:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-mode { grid-column: 2; grid-row: 3; display: flex; min-height: 36px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-mode button { appearance: none; flex: 1; min-height: 28px; padding: 3px 10px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--ink-2); font: 600 12px/1.4 var(--font-ui); cursor: pointer; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-mode button[aria-pressed="true"] { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); border-bottom-color: transparent; border-radius: var(--home-control-radius); font-weight: 650; box-shadow: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-head:not(:has(.home-agent-mode:not([hidden]))) .home-agent-pick { grid-column: 1 / -1; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-head:not(:has(.panel-badge:not([hidden]))) :is(.home-agent-pick, .home-agent-mode) { grid-row: 2; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(.home-agent-mode, .home-agent-pick, .panel-badge, .home-agent-chat, .session-view, .home-run, .run-brief)[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(button, select, summary):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.home :is(.home-feed-wrap, .home-chat-pane-body) .activity-overview:not([hidden]) { flex: none; display: block; margin: 0; padding: 10px 0; border-bottom: 1px solid var(--home-panel-line-soft); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .activity-overview :is(.activity-counts, .activity-actions) { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .activity-filters { display: flex; flex-wrap: wrap; gap: 0 2px; }
+/* FIVE CHIPS WERE FIVE BOXES. Measured before this change (census.mjs, black,
+   1440x900): the filter row contributed one `fill` and four `shadow` boxes, all
+   at radius 8px -- inherited from .activity-actions button in home-chat.css,
+   which this row is not. A filter is a word you press; the one that is on says
+   so with full ink, a heavier face and a rule under it, which is one mark
+   instead of a container. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .activity-filters button { appearance: none; display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 5px 2px; margin-right: 10px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; box-shadow: none; color: var(--ink-2); font: 500 12px/1.4 var(--font-ui); cursor: pointer; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .activity-filters button:hover { background: transparent; color: var(--ink); border-bottom-color: var(--home-panel-line-soft); }
+/* A SELECTED CONTROL READS AS SELECTED BY ITS OWN SURFACE. An accent underline
+   here spent the one colour that means "something is new" on "this is the
+   filter you picked", which is neither new nor about any run. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .activity-filters button[aria-pressed="true"] { color: var(--ink); background: transparent; box-shadow: none; border-bottom-color: currentColor; font-weight: 650; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) [data-filter-count] { font-variant-numeric: tabular-nums; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-view { flex: 1; min-height: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-view::before,
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-view::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 20px; z-index: 1; pointer-events: none;
+}
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-view::before { top: 0; background: linear-gradient(to bottom, var(--home-context-surface), transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-view::after { bottom: 0; background: linear-gradient(to top, var(--home-context-surface), transparent); }
+/* A READING MEASURE FOR THE LIST. The run row is `10px | auto | 1fr | auto |
+   6.5rem`, so the 1fr track absorbs every pixel the panel gains: measured at
+   1920x1080 after the panel was expanded, a row's text ended at x=1265 and its
+   timestamp began at x=1675 -- 410px of empty track inside one row, which is
+   what makes a wide panel read as unfinished rather than as roomy. The cap
+   keeps the rows a column and spends the surplus as margin; the panel still
+   gained the rows and the untruncated text that the expansion was for. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-log { padding: 4px 0; }
+/* THE 1000px CAP IS GONE. Owner, 2026-09-19 (T448): the panel "does not use
+   the extra space when a screen is wide". Measured before the change at
+   2560x1440: the panel's track was 1722px and every row, the head and the
+   filters stopped at 1000px, leaving 722px of the page empty down the right.
+   The cap is replaced by a type scale that grows with the container (the T448
+   block at the foot of this file), so a wide screen gets larger, roomier rows
+   rather than the same rows and a margin. The brief keeps a reading measure of
+   its own (max-width in ch) so a long sentence still reads as a line. */
+@container home-context (min-width: 1000px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .session-log,
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .session-head,
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .activity-overview:not([hidden]) { max-width: none; }
+}
+
+.run-agent {
+  appearance: none; margin: 0; padding: 0; border: 0; border-radius: 0;
+  background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+
+/* A run reads top to bottom: identity and time, brief, then current status.
+   Long names and actions wrap without stealing space from the brief. */
+/* NO RULE PER ROW. Counted on the running example at 1440x900: twenty-seven
+   runs, twenty-seven full-bleed hairlines, one every 44px down a 569px
+   scroller -- which is a table of contents for a spreadsheet, not a record of
+   what a fleet did. Owner: "i dont know that we need so many boxes around
+   everything", and a stack of rules across a column is the same fault lying
+   down. The six rules the list keeps are the ones that mean something: one
+   under each stretch of time (below), and the pair that bracket the run a
+   person has opened. Everything else that used to be a border is now the
+   arrangement -- one shared left edge for the names, one for the briefs, one
+   for the status marks, and a steady 46px beat. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-run { --home-context-status: var(--ink-2); padding: 0; border-bottom: 0; color: var(--ink); }
+/* WHERE THE LIST CHANGES SUBJECT. views/home.js puts this attribute on the
+   first VISIBLE run of each stretch of time (see paintRunScope), so the label
+   never lands on a row the filters have taken away, and the words are elapsed
+   rather than calendar so a heading can never contradict the row under it.
+
+   It is set here as generated content rather than as its own list item because
+   the list is placed by index (renderRuns) and a separator element would have
+   to be counted by every insertion; the row order is the one thing on this
+   screen that must not drift.
+
+   CAPS ON TWO OR THREE WORDS, which is the one place this screen keeps them:
+   the ring's own caption is set the same way. Caps here are what stop a
+   heading reading as another row -- it is a different KIND of thing from the
+   agent names below it, and at 11px that has to be said by the shape of the
+   word rather than by a box around it. It is set to the left edge of the NAMES
+   rather than of the panel, so it heads the column it is about while the
+   disclosure marks keep their gutter. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-run[data-group]::before {
+  content: attr(data-group);
+  display: block;
+  margin: 26px 0 0;
+  padding: 0 12px 7px 30px;
+  border-bottom: 1px solid var(--home-panel-line);
+  color: var(--ink-3);
+  font: 650 11px/1.45 var(--font-ui);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+/* The newest stretch opens the list, so it takes the space the controls' own
+   rule already gave it instead of adding a second gap on top of it. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-runs > .home-run[data-group]:first-child::before { margin-top: 14px; }
+/* THE COMMON OUTCOME IS QUIET AND THE EXCEPTION IS NOT. Counted on the running
+   page: 22 of 27 runs read "Finished", and every one of them was painted in the
+   good colour, so the right edge of the list was a wall of green with the four
+   runs that actually wanted somebody sitting in it. A colour carried by almost
+   every row is not a highlight, it is the background. The tick already says
+   finished; the colour was saying it twice and drowning the ones that differ.
+   Working keeps the colour because it is live, and attention keeps it because
+   it is the thing a person is being asked to look at. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-run[data-status="working"] { --home-context-status: var(--s-good); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-run[data-status="finished"] { --home-context-status: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-run[data-status="attention"] { --home-context-status: var(--s-warn); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-fold { margin: 0; border-radius: 0; overflow: hidden; }
+/* An open run is marked by a bar down its own edge, not by a filled card.
+   Owner: "i dont know that we need so many boxes around everything". It carries
+   the run's STATUS colour, so the one mark says both that the row is open and
+   how the run ended, and it is now the only bar in the list. */
+/* AND THE OPEN RUN IS THE ONE THING ON THIS LIST THAT IS CURRENT, so it is
+   given the two things a flat list cannot give it: a boundary and room. The
+   bar alone was doing the whole job -- a 3px mark down the left of a row that
+   was otherwise the same height, the same rhythm and the same hairline as the
+   twenty-six shut rows under it, so the row a person had actually opened was
+   the hardest thing on the panel to find. It now stands between the only two
+   full-strength rules in the list, with 10px of its own clear of them; that is
+   a BAND, not a card, and it costs two lines where a plate would have cost a
+   border on four sides and a fill. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-fold[open] {
+  background: transparent;
+  box-shadow: inset 3px 0 color-mix(in srgb, var(--home-context-status) 70%, transparent);
+  margin: 10px 0;
+  border-top: 1px solid var(--home-panel-line);
+  border-bottom: 1px solid var(--home-panel-line);
+}
+/* Except where the stretch heading is already drawing a rule immediately
+   above it: two rules 26px apart with nothing between them is the banding
+   fault this file records under .session-head, reintroduced at the top of the
+   list where the newest run almost always sits. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-run[data-group] .run-fold[open] { margin-top: 0; border-top: 0; }
+/* Room, and the head takes most of it: an open row is being read rather than
+   scanned, so its first line stops sitting at the same 10px as the rows it is
+   supposed to stand out from. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-fold[open] > .run-head {
+  padding-top: calc(var(--feed-row-y) + 3px); padding-bottom: calc(var(--feed-row-y) + 1px);
+}
+/* One step of weight for the name of the run being read. Nothing else on the
+   row changes size, so the list keeps its beat when a row is opened.
+   IT HAS TO TRACK THE SCALE, NOT SIT AT A NUMBER. Both of these were written
+   flat -- 16px, and 14/12 of padding -- against closed rows that were 15px and
+   11px. Once the wide steps started firing the closed rows went to 17.5px and
+   15px and the pair INVERTED: seen on the running page at 1920, the opened run
+   read smaller and tighter than the nine closed rows under it, which is the
+   opposite of what opening a row is for. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-fold[open] .run-agent { font-size: calc(var(--feed-name) * 1.07); }
+/* THE FOLLOWED LANE IS NOT A SECOND BAR. views/home.js says it of itself --
+   "Which lane is being followed is a state of the name, not of the row" -- and
+   then painted a 3px accent bar on the row's edge, in the same place and the
+   same idiom as the open marker, so open and followed were one shape in two
+   colours and neither could be read. The name carries aria-pressed already and
+   is styled for it below; that is the whole treatment. */
+/* 16px on the right rather than 12: the status column ends the row, and with
+   the verdict set to the left of its own track (see the wide layout below) the
+   line of text now stops well clear of the panel edge instead of running at
+   it. The left stays at 12 so the disclosure marks keep the gutter the
+   stretch headings are set against. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-head { display: grid; grid-template-columns: 10px minmax(0, auto) minmax(0, 1fr); align-items: baseline; gap: 4px 8px; padding: 11px 16px 11px 12px; border-radius: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-fold:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-head > .chat-action-mark { grid-column: 1; grid-row: 1; color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-identity { grid-column: 2; grid-row: 1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; min-width: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-agent { min-width: 0; max-width: 100%; color: var(--ink); font: 650 15px/1.5 var(--font-ui); overflow-wrap: anywhere; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-agent:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* Following a lane is a selection, and a selection is weight and a rule under
+   the word -- not the colour that means "new". */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-agent[aria-pressed="true"] { color: var(--ink); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-what { min-width: 0; color: var(--ink-2); font: 400 12px/1.5 var(--font-ui); }
+/* A run whose record never named a lane has its number as its identity, so the
+   number carries the weight the name would have carried rather than reading as
+   a row with something missing from it. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-identity:has(.run-agent[hidden]) .run-what { color: var(--ink); font: 650 15px/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-when { grid-column: 3; grid-row: 1; margin: 0; justify-self: start; color: var(--ink-2); font: 400 12px/1.5 var(--font-ui); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-overview { display: block; grid-column: 2 / -1; grid-row: 2; min-width: 0; }
+/* THE BRIEF IS CLAMPED, SO IT BREAKS WORDS THE PROVEN WAY. `anywhere` offers a
+   break at ANY character the moment a clamped box runs out of room, so a word
+   can be split at its first character while ordinary wrapping still had a
+   space to fall back to, and the remainder is past the clamp and gone. That
+   was measured twice before on this product's own text: `.node-name .nn-t`
+   (c06c44c, "Coordinat / or 1") and the tree card copy rule (0b0087e, a path
+   cut mid-word, reported by the owner twice). `break-word` only forces a
+   mid-word split once ordinary wrapping has nowhere left to go.
+   It also keeps this box out of the min-content trap: `anywhere` reports the
+   box's min-content as one character wide, which is a false floor for the 1fr
+   track the brief shares with the time and the verdict. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-brief { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: break-word; color: var(--ink); font: 450 14px/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-fold[open] .run-overview { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 10px; grid-column: 2 / -1; grid-row: 3; min-width: 0; max-width: 100%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-state { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 2px 0; border: 0; border-radius: 0; color: var(--home-context-status); background: transparent; font: 600 12px/1.45 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-state-mark { flex: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-action:not([hidden]) { display: inline; margin: 0; color: var(--ink-2); font: 400 13px/1.5 var(--font-ui); overflow-wrap: anywhere; white-space: normal; }
+/* THE ONE THING THE ACCENT IS FOR: this run changed while you were not looking.
+   It is the only accent left in the panel, which is what makes it worth
+   looking at. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-updated:not([hidden]) { display: inline; color: var(--home-context-accent); font: 600 11.5px/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(.run-result, .run-live) { display: none; }
+/* The body is set under the NAME, not under the mark, and it keeps 14px clear
+   of the rule that closes the band -- the answer used to finish 10px above a
+   hairline and read as if it had been cut off at it. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-body { gap: 6px; padding: 0 16px 14px 30px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(.run-asked, .run-did, .run-gap, .run-current-work) { color: var(--ink); font: 400 14px/1.55 var(--font-ui); opacity: 1; overflow-wrap: anywhere; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-answer-label { color: var(--ink-2); font: 600 12px/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-said { max-height: 6.5em; overflow: auto; overscroll-behavior: contain; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font: 400 14px/1.55 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-why { color: var(--s-serious); font: 400 13px/1.5 var(--font-ui); }
+/* NO RULE. This sits inside an open fold that is already set off by its status
+   bar and its indent; at 1100x800 it was drawing ten more horizontal lines into
+   a list that already has one per row. Space does the same job. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-transcript { min-width: 0; border-top: 0; margin-top: 4px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-transcript > summary { padding: 6px 0 2px; font-size: 12px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-turns { padding-top: 8px; gap: 10px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-door { font-size: 12px; }
+
+/* THE CHAT IS THE SHARED CHAT (owner, 2026-09-19 late: "why does the chatbox
+   still not follow the same chatbox as every other page"). No Home styling of
+   .chat[data-chat-panel] here: only the sizing that lets it fill the panel. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: 12px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-chat > .chat { flex: 1; min-height: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed[data-mode="chat"] :is(.activity-overview, .session-foot, .home-scope-reply) { display: none; }
+
+/* NARROW, THE ROW IS THREE LINES AND RHYTHM ALONE CANNOT SEPARATE THEM.
+   The wide list drops its per-row rules because one line per run, on four
+   shared edges, already reads as a row. Stacked, a run is a name line, a brief
+   line and a status line, so the space between two runs is the same space that
+   sits between the lines inside one -- measured at a 520px panel, two adjacent
+   three-line runs with no rule between them read as one six-line block. The
+   rule comes back exactly where it is load-bearing, and at the strength that
+   survives the dark sheets (line-soft composites into the ground there). */
+@container home-context (max-width: 559px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-run { border-bottom: 1px solid var(--home-panel-line); }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-run:last-child { border-bottom: 0; }
+  /* And the open run drops ITS pair of rules here, because every row now has
+     one: the band would otherwise be a rule 10px under a rule, which is the
+     banding this file already records against .session-head. The bar down its
+     edge and the room in its head still say which run is open. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-fold[open] { margin: 0; border-top: 0; border-bottom: 0; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-run[data-group]::before { margin-top: 20px; }
+}
+
+@container home-context (max-width: 390px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed { padding-inline: 0; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .session-head { margin-inline: 0; padding: 0 0 14px; gap: 10px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) [data-panel-title] { font-size: 17px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .session-expand { padding-inline: 8px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-pick { grid-column: 1 / -1; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-mode { grid-column: 1 / -1; grid-row: 4; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .session-head:not(:has(.panel-badge:not([hidden]))) .home-agent-mode { grid-row: 3; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-mode button { min-height: 30px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-identity .run-what { display: none; }
+}
+/* Stacked, the columns are above and below rather than side by side, so the
+   divider becomes a rule across the top instead of down the left. */
+/* PROMPT C. THE PANEL IS WIDE AND THE ROWS WERE NOT USING IT.
+
+   MEASURED ON THE RUNNING PAGE, at a 1920 window: the panel is 884px and every
+   row spent it on two stacked lines of short left-aligned text. The identity
+   line ended at x+212 and the next ink was the status at x+780, so ~570px of
+   every row was empty while 26 runs were queued behind a 459px scroll region.
+   A shut row was 71px for two short strings; an open one 105-179px, so the list
+   had no rhythm to read down.
+
+   THE CHANGE IS ARRANGEMENT, NOT SIZE. A shut row is now ONE line across the
+   whole width -- who, what it was about, when, and how it ended -- so the empty
+   middle carries the brief that used to have a line of its own, and the row
+   halves in height without losing a word. What is long still keeps a reading
+   column: the brief clips to the line it is on and the open body sets the ask
+   and the answer out in full underneath.
+
+   Held behind a container query on the panel's own width, so the stacked
+   narrow layout, where the width genuinely is not there, is untouched. */
+@container home-context (min-width: 560px) {
+  /* mark | who it was | what it was about | when | how it ended */
+  /* THE NAME COLUMN HAS A FLOOR, AND THAT IS WHAT PUTS THE BRIEFS IN A COLUMN.
+     Each row is its own grid, so `minmax(0, auto)` sized track 2 to THAT row's
+     own name and nothing else: measured on the running example at 1440x900 the
+     briefs began at x = 744, 749, 757, 760 and 784 -- five different left edges
+     in nine rows, a 40px ragged margin down the middle of the panel, which is
+     most of why the list reads as a dump. A floor the names all clear (the
+     widest measured was 81px) gives every row the same second edge while a
+     freak long name still pushes its own row out rather than clipping. */
+  /* THE BRIEF TRACK HAS A CEILING, because 1fr on its own turns the row into
+     two things at opposite ends of a metre. Measured on the running page at
+     2560x1440: the brief's text ended at x=1483 and its own timestamp began at
+     x=2220 -- 738px of nothing between a sentence and the time it happened,
+     down twenty-seven rows. Nothing holds those two together at that distance
+     and the row stops being one row. The ceiling is a variable so each width
+     step sets its own; below the steps it stays 1fr, where the panel is narrow
+     enough that the slack never opens. The slack above the ceiling falls off
+     the end of the tracks, so the row's ground still runs the full width and
+     the hover band with it -- the surface uses the space, the sentence does
+     not have to cross it. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-head {
+    --run-name-col: 6.5rem; --run-brief-col: 1fr;
+    grid-template-columns: 10px minmax(var(--run-name-col), max-content) minmax(0, var(--run-brief-col)) auto minmax(6.5rem, auto);
+    align-items: baseline;
+    /* AND THE SLACK HAS TO BE TOLD WHERE TO GO. Capping the brief track alone
+       moved the canyon rather than closing it: justify-content defaults to
+       `normal`, which stretches the leftover into the `auto` tracks, so the
+       time and the verdict rode the free space back out to the panel edge --
+       measured at 2560 with a 32rem ceiling, the brief track ended at 1624 and
+       the timestamp still began at 1926. `start` leaves the leftover after the
+       last track instead of inside the row. Below the steps the 1fr eats
+       everything and there is no leftover, so this is a no-op there. */
+    justify-content: start;
+  }
+  /* The brief joins the line it belongs to instead of starting a second one.
+     One line and an ellipsis: the full text is two lines below in the open
+     body, so nothing here is the only copy of anything. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-overview { grid-column: 3; grid-row: 1; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-brief { -webkit-line-clamp: 1; }
+  /* When and state are short and fixed, so they hold the right edge the row was
+     leaving empty; the 1fr between them and the name is what stretches. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-when { grid-column: 4; grid-row: 1; justify-self: end; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-status { display: contents; }
+  /* The verdict column carries a floor rather than fitting each word, because
+     a column that resizes per row drags the timestamp beside it left and right
+     and the times stop reading as a column. The floor is the widest of the
+     labels in home-activity.js ("Did not start") and its mark. */
+  /* SET TO THE LEFT OF ITS TRACK, so the MARKS line up. Right-aligned, the
+     track was constant (104px) but the item inside it was not: measured at
+     1440x900 a tick sat at x=1324 and a warning triangle at x=1301, so the one
+     glyph on the row a person scans a column of runs FOR was the one thing in
+     it that moved. The marks now start on a single edge and the labels read
+     off it; the ragged right is against empty space, which nobody scans. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-status > .run-state { grid-column: 5; grid-row: 1; justify-self: start; }
+  /* WHAT IS NEW GOES ON THE LINE IT IS ABOUT. "New update" is two words and it
+     was taking a whole second line, so the three rows carrying one stood 68px
+     against the 46px of every other row -- the same fault as the status word
+     that started this work, reappearing on the one row a person most wants to
+     find.
+     IT RIDES IN THE BRIEF'S OWN TRACK, not a track of its own. A sixth column
+     sized to its contents is 0 wide on the twenty-four rows with no update and
+     ~75px on the three with one, which drags the timestamp left and right and
+     stops the times reading as a column -- the same fault this file already
+     records about the verdict column, reintroduced. The 1fr track absorbs it
+     instead, and the brief reserves room for it only on a row that has one, so
+     the two never share the same pixels. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-status > .run-updated { grid-column: 3; grid-row: 1; justify-self: end; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-run:has(.run-updated:not([hidden])) .run-overview { padding-right: 6.75rem; }
+  /* What a run is doing right now is a sentence, not a word, so it drops to the
+     line below and keeps the reading width. Auto-placed rather than pinned to a
+     row: an open row has no brief, and pinning these under one left an empty
+     track and two gaps of nothing on every open row. */
+  /* What a run is DOING is a sentence and keeps its own line; what is NEW about
+     it is two words and does not. They were sharing a rule and should not. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-status > .run-action { grid-column: 2 / -1; justify-self: start; }
+  /* An OPEN row has no brief, so the track the brief was in is empty and the
+     sentence goes into it instead of onto a line of its own. That is the whole
+     difference between an open row four lines tall and one three lines tall,
+     and it is what keeps an opened row close to the rhythm of the shut ones. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-fold[open] .run-status > .run-action { grid-column: 3; grid-row: 1; justify-self: start; }
+
+  /* An answer had a label above it and a copy control below it: three lines for
+     one sentence. Both are short and the answer has a wide empty gutter to its
+     left, so both move into it -- and the answer spans the two of them rather
+     than pushing the copy control onto a fourth line. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-body { grid-template-columns: max-content minmax(0, 1fr); column-gap: 14px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-body > * { grid-column: 1 / -1; }
+  /* THE GUTTER IS SET AGAINST THE ANSWER, not against the margin. Left-set,
+     the label and the copy control were two short words starting on the body's
+     own left edge while the answer they belong to started 72px further in, so
+     an open run read with three different left edges in four lines. Set to the
+     right of the gutter they close up against the answer's edge and the pair
+     reads as what it is -- a label and its control, beside the thing they are
+     about. The answer's own edge does not move. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-answer-label { grid-column: 1; justify-self: end; text-align: right; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-said { grid-column: 2; grid-row: span 2; align-self: start; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-answer-footer { grid-column: 1; justify-self: end; margin: 0; }
+  /* The copy control and the transcript door share one line under the answer
+     rather than taking one each, and they are sized as the small controls they
+     are instead of as body text. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-body { align-items: start; }
+  /* The transcript door stays full width: its label is "Conversation details -
+     N entries", and a max-content gutter holding that would be 200px wide and
+     would push the answer off to the right. It is the compact size below that
+     buys the line back, not a column. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-transcript { margin: 0; border-top: 0; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-transcript > summary { padding: 0; font-size: 11.5px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-answer-footer :is(button, .run-copy) { min-height: 22px; padding: 2px 6px; font-size: 11.5px; }
+}
+
+/* BETWEEN THE TWO LAYOUTS THE ROW IS ONE LINE BUT THE WIDTH IS TIGHT, and the
+   line has to give something up for the brief to be readable rather than three
+   words and an ellipsis. It gives up the run's ordinal ("Agent run 54"), which
+   is the one thing on the line that is not the run's own words: the name, the
+   time and the verdict all stay. The narrow layout below 390px already drops
+   the same span for the same reason. */
+@container home-context (min-width: 560px) and (max-width: 760px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .run-identity .run-what { display: none; }
+}
+
+/* ABOVE 760 THE ORDINAL COMES BACK INTO THE IDENTITY CELL, so the floor under
+   the name column has to clear the pair rather than the name alone -- a floor
+   sized for "terra-02" leaves the briefs ragged again the moment "Agent run
+   54" is sitting beside it. One number, moved with the content it measures,
+   rather than a second set of tracks. */
+@container home-context (min-width: 760px) {
+  /* 8px of column gap was the whole distance between the end of an ellipsised
+     brief and the timestamp of the row it belongs to: measured at a 1600px
+     window, 19px from the last glyph to the first digit, so the sentence read
+     as running into the time. The tracks either side are both text, and text
+     needs a gutter, not a seam. */
+  /* 12px, NOT THE 20 THIS RULE USED TO CARRY. A gutter is worth paying for --
+     8px between two text columns was a seam, and that is why this went up --
+     but it is charged four times over, once per gap, and at this step the
+     panel is at its tightest. Measured at 1600 after the box landed: the
+     brief track was down to 170px and every row on screen was cut
+     mid-sentence ("re-pin the territory ma..."), short by 31 to 196px. 20px a
+     gap was 44px of that and the box's own padding was another 38. 12 still
+     parts the columns and hands the sentence back most of what it lost. The
+     wider steps below keep 20, where the room is actually there. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-head { --run-name-col: 11rem; column-gap: 12px; }
+}
+
+/* THE HEAD SPENT A WHOLE ROW ON A ONE-WORD PICKER while the list underneath it
+   was the thing short of room: 187px of chrome stood between the top of the
+   panel and the first run. Where the head is wide enough to hold it, the picker
+   goes on the title line. Only where the Activity/Chat toggle is not on screen:
+   that toggle shares the picker's row and needs the width when it is there. */
+@container home-context (min-width: 700px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .session-head:not(:has(.home-agent-mode:not([hidden]))) {
+    /* 220px, not 300: with the panel inset on its own plane (T448) the title
+       track at 1280x720 lost 64px and "Activity in this example fleet" wrapped
+       to two lines; the picker never needs more than its longest option. */
+    /* The picker's track is its own content: it now reads "Control lane · 3
+       agents, 1 working", and a native select CLIPS a label it cannot fit
+       (no ellipsis), so a fixed 220px track cut the words a person picked
+       by. The title track keeps min 0 and wraps where the two collide. */
+    grid-template-columns: minmax(0, 1fr) fit-content(50%) auto;
+    /* HALF THE HEAD AT MOST (T1576). As minmax(0, max-content) the picker's
+       track took its longest option whole: a tree named within the 80-character
+       limit made it 456px of a 543px head and squeezed the title to 0px, one
+       letter per line down the whole panel, pushing the agent list out of
+       sight. Measured at 1440x900 with that name: title 0x676 before, 172x52
+       after, picker 283px with the list back in view. */
+  }
+  /* The picker and "Full view" are one cluster of controls at the right edge.
+     Sized to its content, the picker was starting a 300px track and standing
+     alone in the middle of the header with 170px of nothing beside it. */
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .session-head:not(:has(.home-agent-mode:not([hidden]))) .home-agent-pick {
+    grid-column: 2; grid-row: 1; align-self: center; justify-self: end;
+  }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .session-head:not(:has(.home-agent-mode:not([hidden]))) .session-expand {
+    grid-column: 3; grid-row: 1;
+  }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .session-head:not(:has(.home-agent-mode:not([hidden]))) .panel-badge {
+    grid-column: 1 / -1; grid-row: 2;
+  }
+}
+
+@media (max-width: 1000px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) { padding-top: 24px; }
+}
+
+/* ============================================================================
+   T448 -- THE RIGHT PANEL IS ITS OWN SURFACE, AND IT GROWS WITH THE SCREEN.
+   Owner, 2026-09-19: "it is hard to read, not distinguished from the rest of
+   the page, and does not use the extra space when a screen is wide." Read
+   with T449 ("the circle panel is not supposed to be boxed"): the separation
+   cannot be a border or a card. It is a GROUND.
+
+   (b) ITS OWN SURFACE, NOT A BOX. The panel is painted in --sheet, the app's
+   one opaque panel surface (styles.css: "--sheet is the one opaque surface"),
+   which every theme already defines one step off its page ground. It has no
+   border, no radius and no shadow, and in the two-column layout it runs OUT
+   to the window's right and bottom edges through the page's own padding, so
+   it reads as a plane the page meets -- a side of the room -- and not as a
+   card sitting on the page. The hairline that used to stand on its left edge
+   is gone: the plane's edge is the division. Inside, the feed is inset by the
+   panel's own padding, which is what the page padding used to do for it.
+
+   (a) READABLE. Nothing in the panel is set under 13px any more (the filters,
+   the ordinal, the timestamp and the verdict were 12px, the "new" mark 11.5px),
+   and the muted roles stay on --ink-2, which measures over 7:1 on the sheet
+   of every theme (.lane-scratch/w3b/contrast.mjs --scopes=.home-feed-wrap).
+
+   (c) WIDE. Two container steps. From 1000px the rows' type rises a step and
+   the rows gain height; from 1400px (a 1440p screen) another. The brief keeps
+   a measure of its own, so it stays a line of prose rather than a bar of text
+   across a metre of panel. Measured before: at 2560x1440 the list stopped at
+   1000px of a 1722px track.
+   ========================================================================= */
+/* THE OWNER ASKED FOR THE BOX, ON THIS ELEMENT, AND FOR A BOTTOM EDGE:
+   "if you just cut it off at the bottom a bit and give it a little bit of a
+   nicer box styling i think we are basically there." That is not the T449
+   no-box ruling being reversed -- T449 is about the CIRCLE COLUMN beside this
+   one, which stays unboxed. This is the panel, and it is being asked for.
+
+   THE PAINT MOVES OFF THE WRAP AND ONTO THE FEED, and that one move is both
+   halves of the ask. The wrap is the element that bleeds: home-overview.css
+   gives it `margin-right: calc(-1 * var(--feed-bleed-x))` and
+   `margin-bottom: calc(-1 * var(--feed-bleed-y))` so it runs out through the
+   page's own padding to the window edge. Measured on the running page at
+   1600x1000 the wrap's bottom was y=1000 -- the window's last pixel -- which
+   is exactly the "runs to the page bottom" the owner is looking at.
+   The FEED, its only child, is absolutely placed inside it at
+   `inset: pad-y, pad-x + bleed-x, pad-y + bleed-y, pad-x`, so its box already
+   stops clear of both edges: measured bottom y=948, 52px of daylight under it.
+   Painting the feed therefore gives a surface that ENDS, on the right and at
+   the bottom, without touching a single declaration in home-overview.css and
+   without fighting the page grid Worker 8 is holding.
+
+   The list already scrolls inside rather than bleeding: .session-log is
+   overflow-y:auto and measured 1626px of runs in a 616px window. So the
+   bottom edge clips nothing a person cannot reach. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) {
+  --feed-pad-x: 28px; --feed-pad-y: 4px;
+  --feed-name: 15px; --feed-brief: 14px; --feed-meta: 13px; --feed-title: 20px; --feed-row-y: 11px;
+  background: transparent;
+  /* THE EDGE, DECLARED ONCE AND VISIBLE ON EVERY THEME. Owner, 2026-09-19:
+     "the border is close to good but just a little more work." It was
+     --home-panel-line-soft, which is a lightness step of the SHEET's ramp
+     (n-26 on the dark trio, n-90 on the light pair), and on the dark trio that
+     lands BETWEEN the page and the box's own surface -- measured on black:
+     page (33,35,39), line about (39,40,44), surface (46,47,51) -- so the
+     hairline was darker than the plate it was meant to edge and read as no
+     line at all. The edge is now the theme's ink mixed a little into the
+     box's own surface, so it steps toward the text in whichever direction
+     the theme runs: a quiet light line on the dark trio, a quiet dark line on
+     white and tan, and the same relation to its surface on all five. It is
+     the strongest rule the panel draws; the ones inside it (under the
+     filters, over a stretch of time, around an open run) stay on the softer
+     tokens, so the outer edge is the outer edge. */
+  --home-context-edge: color-mix(in srgb, var(--ink) 26%, var(--home-context-surface));
+  --home-context-lift: inset 0 1px 0 rgb(255 255 255 / .05), 0 14px 32px -16px rgb(0 0 0 / .55);
+}
+/* A LITTLE BOX. One hairline, one radius, a tint one step off the page and
+   room inside it -- not a card stack, not a shadow, and nothing nested inside
+   it gains an edge of its own. The radius is the page's own panel radius
+   (home-overview.css --home-panel-radius) so this box and any other container
+   this page ever draws agree on their corners by construction.
+
+   THE SIDE PADDING IS 14px AND NOT 20, because this box is already held off
+   the page by the feed's own absolute inset (--feed-pad-x, 28px on the left)
+   -- that gap is OUTSIDE the border, so anything spent here is taken straight
+   out of the rows. At 1600 the panel is 792px and 20px a side cost the briefs
+   40px of the little they have: the rows went from reading to "re-pin the
+   territory ma...". Padding a box is not the same job as holding it off the
+   page, and only one of the two is this declaration's. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed {
+  /* 18 on top rather than 16: the title's cap line sat 22px under the edge
+     while the sides had 14, and the head read as pushed up against the lid. */
+  padding: 18px 14px 16px;
+  border: 1px solid var(--home-context-edge);
+  border-radius: var(--home-panel-radius, 12px);
+  background: var(--home-context-surface);
+  /* One inner line of light along the lid and one soft shadow under the
+     plate -- the two cues that make a box a box rather than a region with
+     a hairline round it. Owner, 2026-09-19, on the previous hairline:
+     "it looks the same." The light sheets take a darker edge and a
+     lighter shadow below (same rule, their own doses). */
+  box-shadow: var(--home-context-lift);
+}
+/* The feed is absolutely placed inside the panel and the panel's bleed to the
+   window edge is layout, so both live in home-overview.css (which @imports
+   this file first and therefore wins ties): see "T448 -- the plane" there. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) [data-panel-title] { font-size: var(--feed-title); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-agent,
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-identity:has(.run-agent[hidden]) .run-what { font-size: var(--feed-name); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-brief { font-size: var(--feed-brief); max-width: 80ch; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-what,
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-when,
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-state,
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-action:not([hidden]),
+.home :is(.home-feed-wrap, .home-chat-pane-body) .run-updated:not([hidden]),
+.home :is(.home-feed-wrap, .home-chat-pane-body) .panel-badge,
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-expand,
+.home :is(.home-feed-wrap, .home-chat-pane-body) .activity-filters button { font-size: var(--feed-meta); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-head { padding-top: var(--feed-row-y); padding-bottom: var(--feed-row-y); }
+/* THE STEPS ARE PITCHED AT THE CONTAINER, AND THE CONTAINER IS NOT THE SCREEN.
+   Measured on the running page: at a 1920x1080 window the panel's container is
+   1082px, because the circle column and the nav take the rest. So the step
+   written at min-width:1400px could not fire on the owner's own screen -- a
+   1440p window is needed before the panel alone is 1400 wide, and the "wide"
+   scale was dead where it was asked for. The steps below are measured widths:
+   1040 is the panel at a 1920 window and 1400 at 2560 -- both read off the
+   running page. The first step was written at 880 for "the panel at a 1600px
+   window" and that number was never measured: at 1600 the panel is 792px,
+   because the circle column and the nav do not shrink with the window, so the
+   step meant for a 1600 screen was dead for exactly the reason the 1400 one
+   was. 760 is the measured 1600 container with room under it, so the first
+   step now fires where it was aimed.
+
+   AND THE STEPS DECLARE ON THE FEED, NOT ON THE WRAP. .home-feed-wrap carries
+   "container: home-context / inline-size", and an element is never its own
+   query container -- a @container rule whose subject IS the container looks UP
+   for an ancestor of that name, finds none, and never matches. Read off the
+   running page before this change, at a 1082px container: --feed-name computed
+   15px, the BASE value, with every step silently dead. That is the whole of
+   "does not use the extra space when a screen is wide". The wrap has exactly
+   one child and everything in the panel is inside it, so the feed is where the
+   scale is declared and the rows inherit it. */
+@container home-context (min-width: 760px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed { --feed-name: 16px; --feed-brief: 15px; --feed-meta: 13.5px; --feed-title: 22px; --feed-row-y: 13px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-run[data-group]::before { font-size: 12px; }
+}
+@container home-context (min-width: 1040px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed { --feed-name: 17.5px; --feed-brief: 16px; --feed-meta: 14px; --feed-title: 24px; --feed-row-y: 15px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-head { --run-name-col: 12.5rem; column-gap: 20px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-run[data-group]::before { font-size: 12.5px; }
+}
+@container home-context (min-width: 1400px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed { --feed-name: 18.5px; --feed-brief: 17px; --feed-meta: 14.5px; --feed-title: 26px; --feed-row-y: 17px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) > .home-feed .home-run .run-head { --run-name-col: 14rem; --run-brief-col: 32rem; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-run[data-group]::before { font-size: 13px; }
+}
+
+/* ============================================================================
+   AGENTS AT A GLANCE. Owner, 2026-09-19: "the contents inside need to have
+   more useful, easy, on demand info." One line per agent in the panel's
+   scope, above the runs and inside the same scroller. The line is the glance
+   -- who, what it is doing or how it last ended, since when, and Chat -- and
+   the body under it is the on-demand part, folded the way a run is. Same
+   gutter, same beat, same marks and the same status colours as the rows
+   under it: a second reading of the same record, not a second design. No
+   box: a caps heading per tree, the way the list heads each stretch of time,
+   and one rule to close the board before the runs begin.
+   ========================================================================= */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents { margin: 0 0 4px; padding: 0 0 6px; border-bottom: 1px solid var(--home-panel-line); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 14px 0 0; padding: 0 16px 7px 30px; border-bottom: 1px solid var(--home-panel-line); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-title { color: var(--ink-3); font: 650 11px/1.45 var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-summary { color: var(--ink-2); font: 500 var(--feed-meta)/1.45 var(--font-ui); }
+/* The ledger's own waiting words, in the colour the page already gives
+   "needs attention", as a link to the page that resolves them. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-ledger { margin-left: auto; color: var(--s-warn); font: 600 var(--feed-meta)/1.45 var(--font-ui); text-decoration: underline; text-underline-offset: 3px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-ledger[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-group { margin: 12px 0 0; padding: 0 12px 4px 30px; color: var(--ink-3); font: 650 11px/1.45 var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent { --home-context-status: var(--ink-2); margin: 0; border-radius: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent[data-state="working"] { --home-context-status: var(--s-good); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent[data-state="attention"] { --home-context-status: var(--s-warn); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent[data-state="idle"] { --home-context-status: var(--ink-3); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent[data-state="idle"] .home-agent-now { color: var(--ink-2); }
+/* fold | who | what it is doing now, or how it last ended | since when | Chat */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-head { display: grid; grid-template-columns: 10px minmax(var(--run-name-col, 6.5rem), max-content) minmax(0, 1fr) auto auto; align-items: baseline; gap: 4px 12px; padding: var(--feed-row-y) 16px var(--feed-row-y) 12px; list-style: none; cursor: pointer; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-head::-webkit-details-marker { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-head > .chat-action-mark { grid-column: 1; grid-row: 1; color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-name { min-width: 0; color: var(--ink); font: 650 var(--feed-name)/1.5 var(--font-ui); overflow-wrap: anywhere; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-now { display: flex; align-items: baseline; gap: 6px; min-width: 0; color: var(--ink); font: 450 var(--feed-brief)/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-mark { flex: none; color: var(--home-context-status); font-weight: 600; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-words { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-since { color: var(--ink-2); font: 400 var(--feed-meta)/1.5 var(--font-ui); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* The two presses are WORDS, not boxes: nine outlined Chat buttons down the
+   panel were nine more boxes on a page the owner asked to have fewer of. A
+   pressed word here is the idiom this panel already uses for following a
+   lane (the name, underlined), so Chat reads as the same kind of thing. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-show { appearance: none; min-height: 24px; padding: 2px 2px; border: 0; border-radius: 0; background: transparent; color: var(--ink); font: 600 var(--feed-meta)/1.4 var(--font-ui); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 3px; cursor: pointer; white-space: nowrap; box-shadow: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-show:hover { background: transparent; text-decoration-color: currentColor; }
+/* The fold holding the agents with nothing going on: one muted line, the
+   names clipped to the line, the same fold mark as everything else here. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-rest { margin: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-rest-head { display: grid; grid-template-columns: 10px max-content minmax(0, 1fr); align-items: baseline; gap: 4px 12px; padding: 8px 16px 8px 12px; list-style: none; cursor: pointer; color: var(--ink-2); font: 500 var(--feed-meta)/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-rest-head::-webkit-details-marker { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-rest-head > .chat-action-mark { color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-rest-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-3); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-rest:hover > .home-agent-rest-head { color: var(--ink); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-rest[open] > .home-agent-rest-head { color: var(--ink); }
+/* An open line takes the run list's own open mark: the bar in its status colour. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent[open] { box-shadow: inset 3px 0 color-mix(in srgb, var(--home-context-status) 70%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-body { display: grid; gap: 6px; padding: 0 16px 14px 30px; color: var(--ink); font: 400 var(--feed-brief)/1.55 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-body > [hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(.home-agent-asked, .home-agent-result) { overflow-wrap: anywhere; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-waiting { color: var(--s-warn); font-weight: 500; overflow-wrap: anywhere; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-runs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--ink-2); font-size: var(--feed-meta); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-detail { color: var(--ink-2); font-size: var(--feed-meta); font-variant-numeric: tabular-nums; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-history { display: grid; gap: 3px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-history-head { color: var(--ink-3); font: 600 var(--feed-meta)/1.4 var(--font-ui); letter-spacing: .04em; text-transform: uppercase; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-history-list { margin: 0; padding: 0 0 0 14px; display: grid; gap: 2px; color: var(--ink-2); font-size: var(--feed-meta); font-variant-numeric: tabular-nums; }
+/* Narrow, the line stacks: who and Chat on the first line, what under it,
+   since under that, and a rule per agent because the beat alone cannot part
+   three-line entries (the same finding the run rows record above). */
+@container home-context (max-width: 559px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-head { grid-template-columns: 10px minmax(0, 1fr) auto; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-name { grid-column: 2; grid-row: 1; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-now { grid-column: 2 / -1; grid-row: 2; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-since { grid-column: 2 / -1; grid-row: 3; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent { border-bottom: 1px solid var(--home-panel-line); }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent:last-child { border-bottom: 0; }
+}
+
+:root:is([data-theme="white"], [data-theme="tan"]) .home :is(.home-feed-wrap, .home-chat-pane-body) {
+  --home-context-edge: color-mix(in srgb, var(--ink) 20%, var(--home-context-surface));
+  --home-context-lift: inset 0 1px 0 rgb(255 255 255 / .9), 0 12px 28px -18px rgb(0 0 0 / .30);
+}
+
+/* =========================================================================
+   FINISH PASS (owner, 2026-09-19 late: "the details are horrible"). One
+   hierarchy -- tree heading, agent line, fold body -- with plain words,
+   one type scale, the fold mark and the columns aligned to the first line,
+   Chat a small button, the body as label | value rows, and no tab that
+   counts nothing. These rules come last so they win at equal specificity.
+   ========================================================================= */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .activity-filters button[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .panel-badge { padding: 1px 8px; border: 1px solid var(--home-panel-line); border-radius: 999px; color: var(--ink-3); font: 500 11px/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-head { margin: 10px 0 0; padding: 0 16px 8px 12px; align-items: center; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-title { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-summary { color: var(--ink-2); font: 500 var(--feed-meta)/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-ledger { padding: 2px 9px; border: 1px solid color-mix(in srgb, var(--s-warn) 45%, transparent); border-radius: 6px; text-decoration: none; font-weight: 600; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-ledger:hover { background: color-mix(in srgb, var(--s-warn) 12%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-group { margin: 14px 0 2px; padding: 0 16px 5px 12px; color: var(--ink); font: 650 var(--feed-brief)/1.45 var(--font-ui); letter-spacing: 0; text-transform: none; border-bottom: 1px solid var(--home-panel-line-soft); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-head { align-items: start; grid-template-columns: 10px minmax(6.5rem, 8.5rem) minmax(0, 1fr) auto auto; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-head > .chat-action-mark { align-self: start; padding-top: 4px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-name { padding-top: 1px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-now { align-items: start; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-mark { padding-top: 1px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-since { padding-top: 2px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-chat { min-height: 24px; padding: 1px 9px; border: 1px solid var(--home-panel-line); border-radius: 6px; text-decoration: none; color: var(--ink); background: transparent; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-chat:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); text-decoration: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-show { text-decoration: none; color: var(--ink-2); padding: 0 1px; border-bottom: 1px solid var(--home-panel-line-soft); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-show:hover { color: var(--ink); border-bottom-color: currentColor; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-rest-head { align-items: start; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-rest-head > .chat-action-mark { padding-top: 3px; }
+/* The fold body: label | value rows, one label column, plain words. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-body { gap: 5px; padding: 2px 16px 14px 34px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-body > :is(.home-agent-detail, .home-agent-asked, .home-agent-result, .home-agent-waiting, .home-agent-runs, .home-agent-history) { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 2px 10px; align-items: start; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-body > [hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-body > :is(.home-agent-detail, .home-agent-asked, .home-agent-result, .home-agent-waiting, .home-agent-runs)::before { color: var(--ink-3); font: 500 var(--feed-meta)/1.55 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-detail::before { content: 'Now'; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-asked::before { content: 'Asked'; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-result::before { content: 'Last result'; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-waiting::before { content: 'Waiting on you'; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-runs::before { content: 'Runs'; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-detail { color: var(--ink); font-size: var(--feed-brief); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-runs > .home-agent-runs-count { color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-runs > .home-agent-show { grid-column: 2; justify-self: start; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-history-head { color: var(--ink-3); font: 500 var(--feed-meta)/1.55 var(--font-ui); letter-spacing: 0; text-transform: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-history-list { padding: 0; list-style: none; }
+
+/* THE ROW, TIDIED (owner, 2026-09-19 late): four columns that line up down
+   the list -- name, one word of state with its mark, when, Chat -- and
+   nothing that wraps. The task sentence is the first row under the fold. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-head { grid-template-columns: 10px minmax(6.5rem, 9rem) minmax(7rem, max-content) 1fr auto; align-items: center; column-gap: 10px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-now { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-word { font: 500 var(--feed-brief)/1.4 var(--font-ui); color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent[data-state="working"] .home-agent-word { color: var(--s-good); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent[data-state="attention"] .home-agent-word { color: var(--s-warn); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-since { justify-self: end; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-body > .home-agent-task::before { color: var(--ink-3); content: 'Task'; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agent-task { overflow-wrap: anywhere; }
+/* The run filter tabs are off while the agents board is the list (they count runs, not agents). */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .activity-filters[hidden] { display: none; }
+
+/* =========================================================================
+   THE BOARD OF CARDS (owner, 2026-09-19 late). A strip of numbers, one
+   section per tree, a grid of cards. A card: a coloured left edge for its
+   state, the name and one word of state, what it is doing or how it ended,
+   a line of facts, and two small buttons. Nothing folds. These rules come
+   last so they win at equal specificity.
+   ========================================================================= */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents { margin: 0; padding: 0; border-bottom: 0; }
+/* THE ROSTER (owner, 2026-09-19 late). One table, hairline rules, a stat
+   strip above, one detail pane below for the selected row. Depth without
+   noise: a monogram per agent, a status pill with a dot, row hover, small
+   caps in the header row, tabular numbers, the pane as a soft inset panel.
+   Every colour is a theme token. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin: 10px 0 6px; padding: 2px 4px 12px; border-bottom: 1px solid var(--home-panel-line); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-summary { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; color: var(--ink-3); font: 500 var(--feed-meta)/1.4 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-stat { display: inline-flex; align-items: baseline; gap: 6px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-stat > b { color: var(--ink); font: 650 18px/1 var(--font-ui); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-stat > span { color: var(--ink-3); font: 500 var(--feed-meta)/1.4 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-ledger { margin-left: auto; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-empty { margin: 10px 2px; color: var(--ink-2); font: 400 var(--feed-brief)/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-empty[hidden] { display: none; }
+
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster { width: 100%; border-collapse: collapse; table-layout: fixed; font: 400 13.5px/1.4 var(--font-ui); color: var(--ink); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th { padding: 6px 8px 8px; text-align: left; color: var(--ink-3); font: 650 10.5px/1.4 var(--font-ui); letter-spacing: .09em; text-transform: uppercase; border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(1) { width: 25%; padding-left: 4px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(2) { width: 17%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(4) { width: 16%; text-align: right; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(5) { width: 58px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group th { padding: 14px 4px 5px; text-align: left; color: var(--ink-2); font: 650 12px/1.4 var(--font-ui); border-bottom: 1px solid var(--home-panel-line); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group th { display: flex; align-items: center; gap: 8px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group th::after { content: ''; flex: 1; height: 1px; margin-left: 4px; background: linear-gradient(to right, var(--line-2), transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink-2); font: 600 10.5px/1 var(--font-ui); font-variant-numeric: tabular-nums; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row { --row-state: var(--ink-3); cursor: pointer; transition: background 120ms ease; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row > td { padding: 8px 8px; border-bottom: 1px solid var(--home-panel-line); vertical-align: middle; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row:hover > td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row.is-selected > td { background: color-mix(in srgb, var(--accent-2) 10%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row.is-selected > td:first-child { box-shadow: inset 3px 0 0 var(--accent-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row[data-state="working"] { --row-state: var(--s-good); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row[data-state="attention"] { --row-state: var(--s-warn); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row[data-state="idle"] { --row-state: var(--ink-4); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-agent { display: flex; align-items: center; gap: 9px; min-width: 0; padding-left: 4px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-mono { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; color: var(--ink); font: 700 10.5px/1 var(--font-ui); letter-spacing: .02em; background: color-mix(in srgb, oklch(.72 .12 var(--mono-hue, 220)) 34%, var(--home-context-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, oklch(.72 .12 var(--mono-hue, 220)) 45%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 650 13.5px/1.4 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-pill { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 2px 9px 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--row-state) 12%, transparent); color: var(--row-state); font: 600 11.5px/1.4 var(--font-ui); white-space: nowrap; transition: background 120ms ease, color 120ms ease; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row[data-state="finished"] .home-roster-pill, .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row[data-state="idle"] .home-roster-pill { color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--row-state); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-doing { color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-doing-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-since { text-align: right; color: var(--ink-3); font-size: 12px; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-actions { text-align: right; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(.home-roster-chat, .home-roster-detail-chat, .home-roster-detail-runs) { appearance: none; min-height: 26px; padding: 2px 10px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--ink); font: 600 12px/1.4 var(--font-ui); cursor: pointer; transition: background 120ms ease, border-color 120ms ease, color 120ms ease; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(.home-roster-chat, .home-roster-detail-chat) { background: color-mix(in srgb, var(--accent-2) 16%, transparent); border-color: color-mix(in srgb, var(--accent-2) 32%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(.home-roster-chat, .home-roster-detail-chat):hover { background: color-mix(in srgb, var(--accent-2) 26%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-runs { border-color: var(--line-2); color: var(--ink-2); font-weight: 500; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-runs:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(.home-roster-chat, .home-roster-detail-chat, .home-roster-detail-runs, .home-roster-detail-close):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-row > td { padding: 0 0 6px; border-bottom: 1px solid var(--home-panel-line); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail { --row-state: var(--ink-3); position: relative; display: grid; gap: 10px; margin: 6px 2px 4px; padding: 12px 14px 12px 16px; border: 1px solid var(--line-2); border-radius: 10px; background: color-mix(in srgb, var(--ink) 4%, var(--home-context-surface)); box-shadow: inset 0 1px 3px rgba(var(--shadow-rgb), calc(.06 * var(--shadow-k))); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail::before { content: ''; position: absolute; left: 6px; top: 12px; bottom: 12px; width: 3px; border-radius: 2px; background: var(--row-state); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail[data-state="working"] { --row-state: var(--s-good); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail[data-state="attention"] { --row-state: var(--s-warn); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-head { display: flex; align-items: center; gap: 10px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-name { font: 650 14px/1.4 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-state { padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--row-state) 12%, transparent); color: var(--row-state); font: 600 11px/1.4 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail[data-state="finished"] .home-roster-detail-state, .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail[data-state="idle"] .home-roster-detail-state { color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-close { appearance: none; margin-left: auto; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-3); font: 500 18px/1 var(--font-ui); cursor: pointer; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-close:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows { display: grid; gap: 6px; margin: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows > div { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows > div[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows dt { margin: 0; color: var(--ink-3); font: 600 11px/1.5 var(--font-ui); letter-spacing: .06em; text-transform: uppercase; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows dd { margin: 0; color: var(--ink); font: 400 13.5px/1.5 var(--font-ui); overflow-wrap: anywhere; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows [data-detail-row="waiting"] dd { color: var(--s-warn); font-weight: 500; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows ul { margin: 0; padding: 0 0 0 16px; display: grid; gap: 3px; color: var(--ink-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-actions { display: flex; gap: 6px; }
+@media (max-width: 1180px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(3), .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-doing { display: none; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(1) { width: 44%; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(2) { width: 30%; }
+}
+
+/* COLUMN ROOM: the sentence column had 100px while the status pill and the
+   name took the rest. Fixed layout, the sentence gets what is left, "since"
+   never wraps. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster { table-layout: fixed; width: 100%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(1) { width: 30%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(2) { width: 17%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(4) { width: 14%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(5) { width: 64px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-since { white-space: nowrap; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-pill { padding: 2px 8px 2px 7px; font-size: 12px; }
+
+/* REFINEMENTS (owner, 2026-09-19 late: "some of these lines are off, i dont
+   like the styling of the blocked ledger item box but i like that its there"). */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-ledger { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px 4px 9px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--s-warn) 13%, transparent); color: var(--s-warn); font: 600 12px/1.4 var(--font-ui); text-decoration: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-ledger::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--s-warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--s-warn) 18%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-ledger:hover { background: color-mix(in srgb, var(--s-warn) 22%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(4), .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-since { padding-right: 12px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(1) { width: 27%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(4) { width: 15%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group th { display: table-cell; padding: 16px 4px 6px; border-bottom: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group th::after { content: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group-label { display: inline-flex; align-items: center; gap: 8px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group th > * { vertical-align: middle; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group th { background: linear-gradient(to right, var(--line-2), transparent 70%) no-repeat 0 100% / 100% 1px; }
+
+/* The style pass of 2026-09-19 (lid, header band, tinted pills, filled Chat)
+   was removed at the owner's word: 'i like the new format but i like the old
+   more basic style.' The roster's layout stays; its look is the plain one. */
+/* The chat toolbar: where the picker sits while a chat is open. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-chat-toolbar { display: flex; align-items: center; gap: 10px; margin: 8px 0 8px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--ink) 9%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-chat-toolbar[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-chat-toolbar .home-agent-pick { grid-column: auto; grid-row: auto; justify-self: auto; flex: none; min-width: 11rem; max-width: 50%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-chat-toolbar-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font: 650 13.5px/1.4 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-chat-toolbar-back { appearance: none; margin-left: auto; min-height: 28px; padding: 3px 12px; border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--ink) 4%, transparent); color: var(--ink-2); font: 600 12.5px/1.4 var(--font-ui); cursor: pointer; transition: background 120ms ease, color 120ms ease; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-chat-toolbar-back:hover { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-chat-toolbar-back::before { content: '\2190  '; }
+
+/* THE FACTS LINE AND THE OPEN MARK (owner, 2026-09-20: 'add back in the extra
+   info'). The monogram wears the node's page-2 colour (--rc from
+   role-colors.js); an agent in no tree keeps a quiet ink tint. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-facts { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-3); font-size: 12px; line-height: 1.35; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-facts[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-actions { white-space: nowrap; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-open { display: inline-block; width: 14px; height: 14px; margin-left: 6px; vertical-align: middle; color: var(--ink-4, var(--ink-3)); transition: transform 120ms ease, color 120ms ease; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-open::before { content: ''; display: block; width: 6px; height: 6px; margin: 3px 0 0 2px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row:hover .home-roster-open { color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row.is-selected .home-roster-open { color: var(--accent-2); transform: rotate(90deg); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-mono { color: var(--role-ink, var(--ink)); background: color-mix(in srgb, var(--rc, var(--ink)) 18%, var(--home-context-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rc, var(--ink)) 40%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-mono.is-loose { color: var(--ink-2); background: color-mix(in srgb, var(--ink) 8%, var(--home-context-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(5) { width: 86px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(1) { width: 24%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(2) { width: 15%; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(4) { width: 13%; }
+
+/* ONE LEFT LINE, ONE RIGHT LINE (owner, 2026-09-20: "the lines on the right
+   dont line up with each other"). Measured before: the title sat at the
+   panel's content edge (739), the strip text, header cells and group names 4px
+   in (743), the monograms 8px in (747); the group rule faded out at 70% of the
+   width; the detail pane sat 2px inside the panel; the ledger chip ended 4px
+   in and the chevron 8px in while Full view ended on the edge. Now every text
+   edge sits 4px in from the content edge, every rule runs the full content
+   width, and every right-hand control ends on the content edge. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .session-head { padding-left: 4px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents-strip { padding: 2px 0 12px 4px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:nth-child(1) { padding-left: 4px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row td.home-roster-agent { padding-left: 4px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster thead th:last-child, .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row td:last-child { padding-right: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group th { padding-left: 4px; padding-right: 0; background: none; border-bottom: 1px solid var(--line-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail { margin-left: 0; margin-right: 0; }
+
+/* FIRST-LINE ALIGNMENT (owner, 2026-09-20: "the lines on the right still
+   dont line up"): a row with a facts line had its name, status, time and Chat
+   centred on two lines while the sentence sat above them. Every cell now
+   aligns to the top and its content sits on the first line's centre. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row > td { vertical-align: top; padding-top: 9px; padding-bottom: 9px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row > td > .home-roster-agent { min-height: 26px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row > td > .home-roster-pill { margin-top: 2px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-doing-text { line-height: 26px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-since { line-height: 26px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row > td:last-child { padding-top: 9px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row > td:last-child > * { vertical-align: top; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-chat { height: 26px; min-height: 26px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-open { margin-top: 6px; vertical-align: top; }
+
+/* THE BROKEN HAIRLINE, FOUND (owner, 2026-09-20: "the lines on the right
+   still dont line up"): the agent cell was display:flex, which took it out
+   of the table row -- 45px tall against the row's 63 -- so its bottom rule
+   sat 17px above the rest of the row's. The cell is a table cell again; the
+   monogram and the name line up inline. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row > td.home-roster-agent { display: table-cell; white-space: nowrap; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row > td.home-roster-agent > .home-roster-mono { display: inline-flex; vertical-align: middle; margin-right: 9px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-row > td.home-roster-agent > .home-roster-name { display: inline-block; vertical-align: middle; max-width: calc(100% - 40px); overflow: hidden; text-overflow: ellipsis; }

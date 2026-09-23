@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Hand controls practice</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/src/hand-controls.css">
+<link rel="stylesheet" href="/src/accessibility-controls.css">
+<style>
+  * { box-sizing: border-box; } body { margin: 0; padding: 32px; color: #1a2930; background: #f3f6f7; font: 17px system-ui; }
+  main { max-width: 950px; margin: auto; } h1 { margin-bottom: 8px; font-size: 30px; }
+  p { line-height: 1.5; } .practice-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin: 28px 0; }
+  .practice-buttons button { padding: 40px 18px; background: white; color: #203a48; font: 600 21px system-ui; border: 2px solid #c6d4db; border-radius: 18px; cursor: pointer; }
+  [data-practice-result] { min-height: 48px; font-size: 22px; font-weight: 600; }
+  [data-device-status] { color: #475a65; } details { margin: 20px 0 90px; } .hand-settings { background: #fff; }
+</style></head><body><main>
+<h1>Hand controls practice</h1>
+<p>Move your palm to move the pointer. Pinch your thumb and index finger to press the highlighted button. Release before pressing again.</p>
+<p data-device-status>Checking whether a camera is available…</p>
+<div data-settings-host></div>
+<div class="practice-buttons"><button data-practice="Left">Left</button><button data-practice="Middle">Middle</button><button data-practice="Right">Right</button></div>
+<p data-practice-result role="status">Try pressing one of the buttons.</p>
+<details><summary>About this practice window</summary><p>These buttons only count presses. Hand controls start off. Frames stay on this computer. Your running agents and voice connection continue in their own app.</p></details>
+</main><script type="module">
+import { startHandControls } from '/src/hand-controls.js'
+import { createHandControlSettings } from '/src/hand-control-settings.js'
+const controls = startHandControls()
+const settings = createHandControlSettings(), host = document.querySelector('[data-settings-host]')
+host.innerHTML = settings.markup(); settings.bind(host)
+let presses = 0
+for (const button of document.querySelectorAll('[data-practice]')) button.addEventListener('click', () => {
+  document.querySelector('[data-practice-result]').textContent = `${button.dataset.practice} pressed · ${++presses} total`
+})
+async function devices() {
+  try {
+    const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(device => device.kind === 'videoinput')
+    document.querySelector('[data-device-status]').textContent = cameras.length
+      ? `Camera available${cameras[0].label ? ': ' + cameras[0].label : ''}. Turn on hand controls when ready.`
+      : 'No camera is visible to this window yet. Connect a webcam; this message will update when Windows detects it.'
+  } catch { document.querySelector('[data-device-status]').textContent = 'Camera availability could not be read. Check Windows camera settings.' }
+}
+navigator.mediaDevices.addEventListener('devicechange', devices); void devices()
+controls.subscribe(state => { if (state.phase === 'running') void devices() })
+</script></body></html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>corona preview</title>
+  <!--
+    A look-at-it harness for the GPU corona, served by the dev server from
+    tools/ and never a build entry (vite's default input is index.html alone).
+    It mounts the rim and the corona over a real theme sheet at a real ring
+    size so the thing can be judged, and nothing else.
+      ?theme=white|tan|black  ?state=clear|blockers|failure|unknown  ?size=520
+  -->
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { display: grid; place-items: center; }
+    #ring { position: relative; }
+    #ring canvas { position: absolute; z-index: 0; pointer-events: none; }
+    #ring svg { position: relative; z-index: 1; display: block; overflow: visible; }
+    #centre {
+      position: absolute; inset: 0; z-index: 2;
+      display: grid; place-items: center; text-align: center;
+    }
+    .digits { display: flex; align-items: baseline; gap: 10px;
+      font-weight: 640; font-variant-numeric: tabular-nums; }
+    .digits .n { font-size: 58px; color: var(--ink); line-height: 1.05; }
+    .digits .u { font-size: 11px; font-weight: 550; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--ink-25); display: block; margin-top: 6px; }
+    .cap { margin-top: 22px; font-size: 12.5px; letter-spacing: .3em;
+      text-transform: uppercase; color: var(--ink-25); font-weight: 550; }
+    /* Emitted light on the near-black sheet; ink on the paper sheets. */
+    :root[data-theme="black"] #ring canvas { mix-blend-mode: plus-lighter; }
+  </style>
+</head>
+<body>
+  <div id="ring"></div>
+  <span id="probe" style="display:none"></span>
+
+  <script type="module">
+    import '/src/styles.css'
+    import '/src/home.css'
+    import { createCorona, cssColorToSrgb } from '/src/corona-gl.js'
+
+    const q = new URLSearchParams(location.search)
+    const size  = Number(q.get('size') || 520)
+    const theme = q.get('theme') || 'tan'
+    const state = q.get('state') || 'clear'
+    const gain  = Number(q.get('gain') || 2.0)
+
+    document.documentElement.dataset.theme = theme
+    document.body.classList.add('reduce-motion')
+
+    // The hue still comes from CSS, so the per-theme table and its measured
+    // contrast ratios remain the single source of colour.
+    const HUES = {
+      white:  { clear: '#12855a', blockers: '#b4640a', failure: '#c53a20' },
+      tan:    { clear: '#427b58', blockers: '#96600f', failure: '#9d0006' },
+      black:  { clear: '#35c17c', blockers: '#f0a02e', failure: '#fb4934' },
+    }
+    const hue = state === 'unknown'
+      ? getComputedStyle(document.documentElement).getPropertyValue('--ink-4').trim()
+      : HUES[theme][state]
+
+    const stroke = Math.max(7, size * 0.02)
+    const rim = Math.round((size - stroke * 2 - 14) / 2)
+    const centre = size / 2
+    const boxHalf = Math.ceil(rim * 1.72)
+    const box = boxHalf * 2
+    const dpr = window.devicePixelRatio || 1
+
+    const ring = document.getElementById('ring')
+    ring.style.width = ring.style.height = `${size}px`
+
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(box * dpr)
+    canvas.height = Math.round(box * dpr)
+    canvas.style.width = `${box}px`
+    canvas.style.height = `${box}px`
+    canvas.style.left = `${centre - boxHalf}px`
+    canvas.style.top = `${centre - boxHalf}px`
+    ring.appendChild(canvas)
+
+    ring.insertAdjacentHTML('beforeend', `
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${centre}" cy="${centre}" r="${rim}" fill="none"
+                stroke="var(--ink-4)" stroke-width="2"/>
+      </svg>
+      <div id="centre">
+        <div>
+          <div class="digits">
+            <span><span class="n">1</span><span class="u">Days</span></span>
+            <span><span class="n">20</span><span class="u">Hours</span></span>
+            <span><span class="n">03</span><span class="u">Minutes</span></span>
+            <span><span class="n">01</span><span class="u">Seconds</span></span>
+          </div>
+          <div class="cap">Server Uptime</div>
+        </div>
+      </div>`)
+
+    const deg = (d) => (Number(d) * Math.PI) / 180
+    const shape = {
+      h0:  Number(q.get('h0')  || 0.012),
+      h1:  Number(q.get('h1')  || 0.030),
+      h2:  Number(q.get('h2')  || 0.105),
+      w1:  Number(q.get('w1')  || 0.62),
+      w2:  Number(q.get('w2')  || 0.38),
+      a1i: deg(q.get('a1i') || 25), a1x: deg(q.get('a1x') || 50),
+      a2i: deg(q.get('a2i') || 30), a2x: deg(q.get('a2x') || 60),
+    }
+
+    /* Variants for the side-by-side. `crest` lifts toward a colour lighter than
+       the sheet; `trough` lays the status hue down further out. Together they
+       are the Cornsweet dipole. `control` is the positive control the research
+       demanded: full crest, NO trough — if that still reads as light, the
+       trough is not the mechanism and the recipe is mis-attributed. */
+    const VARIANTS = {
+      current: { crestAmp: 0,    troughAmp: 0    },
+      gentle:  { crestAmp: 0.10, troughAmp: 0.07 },
+      full:    { crestAmp: 0.30, troughAmp: 0.34 },
+      control: { crestAmp: 0.30, troughAmp: 0    },
+    }
+    const variant = q.get('variant') || 'current'
+    const dip = VARIANTS[variant] || VARIANTS.current
+    /* The crest paints toward near-white with a breath of the sheet's own
+       warmth, so the lift does not read as a cold grey hole in cream. */
+    const CREST = theme === 'tan' ? [1.0, 0.995, 0.965] : [1.0, 1.0, 1.0]
+    const dipole = theme === 'black'
+      ? {}                                    // the dark sheet already works
+      : { ...dip, crestColor: CREST, crestPos: 0.022, crestW: 0.020,
+          troughPos: 0.085, troughW: 0.045 }
+
+    const corona = createCorona(canvas)
+    window.__coronaOk = !!corona
+    if (corona) {
+      corona.draw({
+        dipole,
+        scale: dpr,
+        centre: [boxHalf, boxHalf],   // ring centre within the canvas box, CSS px
+        rim,
+        unit: rim,
+        color: cssColorToSrgb(hue),
+        paper: cssColorToSrgb(getComputedStyle(document.body).backgroundColor),
+        paperMode: theme !== 'black',
+        chroma: Number(q.get('chroma') || 0.35),
+        gain,
+        hazeDose: theme === 'black' ? 0.5 : 0.85,
+        shape,
+        time: 0,
+        breath: 0,
+      })
+    }
+    window.__meta = { size, theme, state, rim, box, dpr, hue, gain, ok: !!corona }
+    requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true }))
+  </script>
+</body>
+</html>

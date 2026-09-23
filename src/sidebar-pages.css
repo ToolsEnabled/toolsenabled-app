@@ -1,0 +1,315 @@
+/* Page formatting for the side navigation. Container breakpoints follow the
+   available workspace, including a collapsed rail and the Text size setting. */
+body[data-navigation="side"]:is([data-route="research"], [data-route="settings"], [data-route="metrics"]) {
+  --page-max: 1440px;
+  --page-gutter: clamp(20px, 2.4vw, 40px);
+}
+
+body[data-navigation="side"] :is(.research-shell, .settings-shell, .metrics) {
+  container: sidebar-page / inline-size;
+  min-width: 0;
+  padding-top: 0;
+}
+
+body[data-navigation="side"] .settings-header.m-head,
+body[data-navigation="side"] .m-page-head {
+  min-height: 96px;
+  margin: 0;
+  padding: 12px 0 20px;
+  align-items: center;
+  gap: 16px 32px;
+}
+
+body[data-navigation="side"] :is(.settings-header .mt, .m-page-head h1) {
+  color: var(--ink);
+  font-size: 36px;
+  font-weight: 610;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  text-transform: none;
+}
+
+/* Research stays a plain workbench; only fit the existing document and forms. */
+body[data-navigation="side"] .research-mast { gap: 16px 24px; padding: 8px 0 16px; }
+body[data-navigation="side"] .research-mast h1 { font-size: 32px; }
+body[data-navigation="side"] .research-source {
+  max-width: 60ch;
+  white-space: normal;
+  text-align: end;
+}
+body[data-navigation="side"] .bench-compose-grid > * { min-width: 0; }
+body[data-navigation="side"] .research-queue-controls { flex-wrap: wrap; }
+
+/* Settings: the category list is secondary navigation beside the app rail. */
+body[data-navigation="side"] .settings-header.m-head {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 360px);
+}
+body[data-navigation="side"] .settings-title-stack { gap: 8px; }
+body[data-navigation="side"] .settings-command-bar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 12px 32px;
+  margin-bottom: 24px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+body[data-navigation="side"] .settings-toolbar {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+body[data-navigation="side"] [data-settings-mode-description] { max-width: 64ch; color: var(--ink-3); font-size: 12.5px; }
+body[data-navigation="side"] .settings-mode-picker .ctl-btn {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-3);
+}
+body[data-navigation="side"] .settings-mode-picker [aria-pressed="true"] {
+  border-color: var(--line-2);
+  background: var(--sheet);
+  color: var(--ink);
+}
+body[data-navigation="side"] .settings-save-bar {
+  position: static;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+body[data-navigation="side"] .settings-save-bar [role="status"] { grid-column: 1 / -1; min-width: 0; text-align: end; font-size: 12.5px; }
+body[data-navigation="side"] .settings-layout {
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 32px;
+}
+body[data-navigation="side"] .settings-page .settings-rail {
+  padding: 0 16px 16px 0;
+  border: 0;
+  border-inline-end: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body[data-navigation="side"] .settings-rail-intro { padding: 0 4px 12px; font-size: 10px; letter-spacing: .08em; }
+body[data-navigation="side"] .settings-rail-count { min-width: 24px; min-height: 24px; }
+body[data-navigation="side"] .settings-rail-sections { width: auto; margin-inline: 4px 0; padding-inline-start: 8px; }
+body[data-navigation="side"] .settings-main { min-width: 0; container: settings-content / inline-size; }
+body[data-navigation="side"] .settings-main-context { padding: 0 0 16px; }
+body[data-navigation="side"] .settings-page .settings-section {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body[data-navigation="side"] .settings-page .settings-row {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .8fr);
+  gap: 12px 24px;
+  padding-block: 16px;
+}
+body[data-navigation="side"] .settings-page .settings-check-row { grid-template-columns: minmax(0, 1fr) auto; }
+body[data-navigation="side"] .settings-page .fleet-profile-block { grid-template-columns: minmax(0, 1fr); }
+body[data-navigation="side"] .settings-page .settings-control {
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+body[data-navigation="side"] .settings-control :is(.seg, .settings-seg) { max-width: 100%; flex-wrap: wrap; height: auto; }
+body[data-navigation="side"] .settings-control .seg > button {
+  min-height: 36px;
+  max-width: 100%;
+  padding: 7px 10px;
+  white-space: normal;
+  line-height: 1.4;
+  text-align: start;
+}
+/* Wrapped choices paint their own selection; the sliding highlight assumes
+   a single row, including on the theme picker. */
+body[data-navigation="side"] .settings-control :is(.seg, .settings-seg) > .seg-ind { display: none; }
+body[data-navigation="side"] .settings-control .seg > button.on { background: var(--sheet); box-shadow: var(--elev-1); }
+body[data-navigation="side"] .settings-page [data-setting-id="ui_font"] .seg {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+body[data-navigation="side"] .settings-page [data-setting-id="theme"] .settings-seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+}
+body[data-navigation="side"] .settings-page [data-setting-id="theme"] button { min-width: 0; line-height: 1.4; }
+body[data-navigation="side"] .setup-profile-section .settings-control .seg:not(.settings-level-slider) {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+/* Metrics: keep the overview and filters aligned with the chart columns. */
+body[data-navigation="side"] .metrics .m-page-actions { gap: 12px; }
+body[data-navigation="side"] .metrics .m-filter { gap: 12px 20px; padding-block: 14px; }
+body[data-navigation="side"] .metrics .m-filter .mf-face {
+  padding: 5px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  line-height: 1.4;
+}
+body[data-navigation="side"] .metrics .m-filter .mf-face:empty { display: none; }
+body[data-navigation="side"] .metrics .m-period-context { padding-block: 12px; }
+body[data-navigation="side"] .metrics .m-strip { padding-block: 16px 24px; }
+body[data-navigation="side"] .metrics .m-strip .stat { padding-inline: 20px; }
+body[data-navigation="side"] .metrics .m-strip .stat[data-tile="tokens"] { padding-inline-start: 0; }
+body[data-navigation="side"] .metrics .m-sec { padding-block: 24px; scroll-margin-top: 24px; }
+body[data-navigation="side"] .metrics .m-head h2.mt {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  text-transform: none;
+}
+body[data-navigation="side"] .metrics .m-srow { column-gap: 24px; align-items: stretch; }
+body[data-navigation="side"] .metrics .m-srow > .m-sec + .m-sec { padding-inline-start: 24px; }
+body[data-navigation="side"] .metrics .m-srow > .m-sec { container: metric-module / inline-size; }
+body[data-navigation="side"] .metrics .m-history-tools { gap: 12px; padding-bottom: 16px; }
+body[data-navigation="side"] .metrics .m-history-tools label:not(.m-search) { flex: 0 1 160px; }
+body[data-navigation="side"] .metrics .m-history-tools .m-search { flex-basis: 260px; }
+body[data-navigation="side"] .metrics .m-table-scroll {
+  max-height: min(560px, calc(72dvh / var(--zoom, 1)));
+  overflow: auto;
+  scrollbar-gutter: stable;
+  scroll-padding-top: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+body[data-navigation="side"] .metrics :is(.mtable, .m-usage-table) th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 12px;
+  background: var(--sheet);
+  box-shadow: 0 1px var(--line-2);
+}
+body[data-navigation="side"] .metrics :is(.mtable, .m-usage-table) td { padding: 12px; }
+body[data-navigation="side"] .metrics :is(.mtable, .m-usage-table) tr:focus-within { background: color-mix(in srgb, var(--ui-accent) 5%, transparent); }
+body[data-navigation="side"] .metrics .m-usage-table { table-layout: fixed; }
+body[data-navigation="side"] .metrics .m-usage-table th:nth-child(1) { width: 16%; }
+body[data-navigation="side"] .metrics .m-usage-table th:nth-child(2) { width: 20%; }
+body[data-navigation="side"] .metrics .m-usage-table th:nth-child(3) { width: 12%; }
+body[data-navigation="side"] .metrics .m-usage-table th:nth-child(4) { width: 16%; }
+body[data-navigation="side"] .metrics .m-usage-table th:nth-child(5) { width: 16%; }
+body[data-navigation="side"] .metrics .m-usage-table th:nth-child(6) { width: 20%; }
+body[data-navigation="side"] .metrics .m-usage-record { min-width: 0; max-width: none; }
+body[data-navigation="side"] .metrics .m-usage-record[open] summary { font-weight: 600; }
+
+@container metric-module (max-width: 430px) {
+  body[data-navigation="side"] .metrics .m-distribution-summary { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  body[data-navigation="side"] .metrics .m-distribution-summary > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  body[data-navigation="side"] .metrics .m-histogram { grid-template-columns: minmax(0, 1fr); gap: 12px; padding-top: 0; }
+  body[data-navigation="side"] .metrics .m-histogram-bin { display: grid; grid-template-columns: 72px minmax(0, 1fr) 36px; align-items: center; gap: 12px; min-height: 28px; }
+  body[data-navigation="side"] .metrics .m-histogram-track { display: contents; }
+  body[data-navigation="side"] .metrics .m-histogram-track i { position: static; grid-area: 1 / 2; width: var(--bar-height); height: 4px; }
+  body[data-navigation="side"] .metrics .m-histogram-track b { position: static; grid-area: 1 / 3; text-align: end; }
+  body[data-navigation="side"] .metrics .m-histogram-label { grid-area: 1 / 1; margin: 0; text-align: start; }
+}
+
+@container sidebar-page (max-width: 1100px) {
+  body[data-navigation="side"] .metrics .m-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 0; }
+  body[data-navigation="side"] .metrics .m-strip .stat:nth-child(3n + 2) { padding-inline-start: 0; border-inline-start: 0; }
+}
+@container sidebar-page (max-width: 900px) {
+  body[data-navigation="side"] .research-mast { align-items: start; flex-direction: column; gap: 12px; }
+  body[data-navigation="side"] .research-source { max-width: none; text-align: start; }
+  body[data-navigation="side"] .research-section-head { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  body[data-navigation="side"] .research-page .m-editing .research-section-head.m-layout-head { grid-template-columns: minmax(0, 1fr) auto; }
+  body[data-navigation="side"] .bench-compose-grid { grid-template-columns: minmax(0, 1fr); }
+  body[data-navigation="side"] .metrics .m-srow { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  body[data-navigation="side"] .metrics .m-srow > .m-sec + .m-sec {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+    border-top: 1px solid var(--line-2);
+  }
+}
+@container settings-content (max-width: 660px) {
+  body[data-navigation="side"] .settings-page .settings-row { grid-template-columns: minmax(0, 1fr); }
+  body[data-navigation="side"] .settings-page .settings-check-row { grid-template-columns: minmax(0, 1fr) auto; }
+  body[data-navigation="side"] .settings-page .settings-control { justify-self: start; width: 100%; }
+}
+@container settings-content (max-width: 420px) {
+  body[data-navigation="side"] .settings-page [data-setting-id="theme"] .settings-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container sidebar-page (max-width: 700px) {
+  body[data-navigation="side"] :is(.settings-header .mt, .m-page-head h1) { font-size: 30px; }
+  body[data-navigation="side"] .settings-header.m-head { grid-template-columns: minmax(0, 1fr); }
+  body[data-navigation="side"] .settings-command-bar { position: static; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  body[data-navigation="side"] .settings-save-bar [role="status"] { text-align: start; }
+  body[data-navigation="side"] .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  body[data-navigation="side"] .settings-page .settings-rail {
+    position: static;
+    display: flex;
+    flex-direction: row;
+    gap: 24px;
+    max-height: none;
+    padding: 0 0 12px;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+  body[data-navigation="side"] .settings-rail-intro { display: none; }
+  body[data-navigation="side"] .settings-page :is(.settings-rail-group, .settings-rail-head, .settings-rail-sections, .settings-rail button[data-category]) {
+    flex: none;
+    width: max-content;
+  }
+  body[data-navigation="side"] .settings-page .settings-rail-sections { margin-inline: 0; }
+  body[data-navigation="side"] .settings-page :is(.settings-rail-group, .settings-rail-sections) {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+  body[data-navigation="side"] .settings-page .settings-rail-sections { padding-inline-start: 0; border-inline-start: 0; }
+  body[data-navigation="side"] .settings-save-bar { position: static; }
+  body[data-navigation="side"] .metrics .m-page-head { flex-wrap: wrap; }
+  body[data-navigation="side"] .metrics .m-page-actions { justify-content: start; }
+  body[data-navigation="side"] .metrics .m-history-tools .m-search { flex-basis: 100%; }
+  body[data-navigation="side"] .metrics .m-history-tools label:not(.m-search) { flex: 1 1 120px; }
+  body[data-navigation="side"] .metrics #m-account-scope { margin-inline-start: 0; }
+  body[data-navigation="side"] .metrics .m-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body[data-navigation="side"] .metrics .m-strip .stat:nth-child(n) { grid-column: auto; min-height: 108px; padding-inline: 12px; border-inline-start: 1px solid var(--line); }
+  body[data-navigation="side"] .metrics .m-strip .stat:nth-child(2n) { padding-inline-start: 0; border-inline-start: 0; }
+}
+
+/* With the side navigation the pages no longer sit in a centred column: the
+   workspace beside the rail is the page. Home and Settings span it (owner,
+   2026-09-10: "use up the side white space since we changed to a sidebar");
+   their own grids already give the remaining width to the panel and the rows. */
+body[data-navigation="side"] .home:has(.home-ring-stage) { max-width: none; }
+body[data-navigation="side"] .settings-shell { max-width: none; }
+/* METRICS WAS LEFT OUT OF THAT CHANGE, and the owner has now asked twice:
+   2026-09-15, "the metrics page still doesnt seem to have its formatting landed
+   or needs its formatting reworked because theres huge side gaps at times".
+   It is the same sentence as the 2026-09-10 one above, about the one sidebar
+   page that never got it.
+   MEASURED before the change, rendered, at a 1920px window: Ledger 1920 wide
+   and Settings 1920, both flush; Computers 1888 with its 16px gutter either
+   side; Metrics 1440 with a 480px gap SPLIT EVENLY, 240 a side. The cap is
+   styles.css's `.metrics { max-width: var(--page-max) }` meeting this route's
+   `--page-max: 1440px`, so the gap appears only above 1440 and grows with the
+   window -- which is exactly "at times", and why it reads as a formatting
+   change that never landed rather than as a deliberate column.
+   Overridden HERE rather than by editing the styles.css rule, because that rule
+   still governs the centred non-sidebar layout, where the cap is what keeps the
+   page from sprawling. This file is where the sidebar exceptions already live. */
+body[data-navigation="side"] .metrics { max-width: none; }

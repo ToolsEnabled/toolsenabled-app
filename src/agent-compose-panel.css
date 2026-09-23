@@ -1,0 +1,547 @@
+/* THE COMPOSE PANEL'S OWN STYLES. Paired with src/agent-compose-panel.js.
+ *
+ * IMPORTED BY THE VIEW, NOT BY THE MODULE. src/agent-compose-panel.js is proven
+ * under `node --test`, and a `import './agent-compose-panel.css'` inside it
+ * would make the module unloadable there. So whichever view mounts the panel
+ * imports this file, the same way src/views/computers.js already imports
+ * board.css and tree-graph.css.
+ *
+ * NOTHING HERE INVENTS A COLOUR OR A SPACING. Every value is a token from
+ * src/styles.css, so the panel follows the theme, the text-size control and the
+ * high-contrast rules without a second set of rules to keep in step.
+ *
+ * THE FOCUS RING IS AN OUTLINE ON PURPOSE, and it is the one rule in this file
+ * that is not cosmetic. board.css styles its own controls' focus with a border
+ * colour and `outline: none`, which is legible in the normal themes. In Windows
+ * High Contrast the user agent drops box-shadow and overrides border colours, so
+ * an indicator built that way is not dimmed there -- it is gone, and a keyboard
+ * user cannot see which of these three controls they are on. Every focusable
+ * control in this panel therefore gets a real outline, which forced-colors mode
+ * keeps and recolours. tools/a11y-keyboard-qa.mjs measures exactly this.
+ */
+
+/* A COLUMN WITH A SCROLLING BODY, not one tall grid.
+   The rail clips (`.rail { overflow: hidden }`) and its pages are absolutely
+   positioned, so this panel can only ever overflow the rail -- which is how
+   Start ended up unreachable. The nav row is fixed at the top; the form
+   scrolls beneath it. `min-height: 0` on both is what lets the body shrink
+   below its content height instead of pushing the button into the clip. */
+/* NO SECOND FRAME, AND THAT IS THE FIX FOR THE ONE CONTROL NOBODY COULD PRESS.
+ *
+ * WHAT WAS MEASURED, on the packaged build at 1512x945 with a role chosen --
+ * the state a person is in when they reach the last menu:
+ *
+ *   the form wants          587px
+ *   the scroller gives      560px
+ *   "How hard should it think?"   823px..855px
+ *   the scroller's bottom edge    828px
+ *   the pinned Start bar          836px..885px
+ *
+ * So five pixels of the menu were visible and its centre, at 839px, was inside
+ * the Start bar: document.elementFromPoint at the middle of the effort menu
+ * returned div.agent-compose-actions. A press aimed at where the menu appears
+ * to be pressed START instead, which is the worst possible substitution on this
+ * panel -- the person loses the choice AND submits the form.
+ *
+ * WHY A GUTTER BETWEEN THE FORM AND THE BUTTON IS NOT THE FIX, since that is
+ * the obvious move and it was measured before this one was written. The Start
+ * bar is bottom-anchored: its top is the panel's inner bottom minus its own
+ * height, so it sits at 836px whatever margin is put above it. Adding a gutter
+ * only shrinks the scroller and cuts the menu FURTHER, while the button stays
+ * exactly where it was. There is no separation that moves the collision.
+ *
+ * THE ROOM WAS ALREADY THERE, SPENT TWICE. This panel is the only thing in its
+ * rail page, and `.computers .rail-page` (src/tree-graph.css) already pays
+ * var(--s5) of padding on every edge and sits on `aside.rail.glass`, which is
+ * already a surface. This panel then drew a SECOND card inside that one: 1px of
+ * border and var(--s4) of padding all round, 34px of it vertical. Every other
+ * rail page -- the stats page, the board page -- renders straight into the
+ * padded page and looks right. Giving this one the same treatment hands the
+ * form 34px it was never using and makes the fields wider as well, which costs
+ * the hints a wrapped line each.
+ *
+ * NOTHING IS REMOVED HERE. Every control, every hint and every sentence stays;
+ * the panel keeps its own scroller and its pinned Start bar. What goes is a
+ * border and a padding drawn on top of a page that had already drawn both. */
+.agent-compose {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: var(--font-ui);
+}
+
+.agent-compose-body {
+  display: grid;
+  gap: var(--s3);
+  align-content: start;
+  min-height: 0;
+  /* THE SCROLLING IS DECLARED HERE, not borrowed. The class this element also
+     carries, `.rail-scroll`, is only ever DEFINED in this tree under
+     `.board-page` and `.agentv-panels` (src/board.css, src/agent.css), and the
+     compose page is neither -- so the panel was relying on a rule that does not
+     select it. It scrolled anyway, because these two lines were what it needed;
+     stating them here means a lane editing board.css cannot silently take the
+     panel's scrolling away, which would put Start back below the fold. */
+  flex: 1 1 0%;
+  overflow-y: auto;
+  /* The room the scrollbar needs, so it never sits on the fields. */
+  padding-right: 2px;
+  /* WHERE A CONTROL LANDS WHEN IT IS SCROLLED TO. Without this, focusing the
+     last menu with the keyboard scrolls it until its edge touches the clip --
+     measured: after scrolling to the end the menu's bottom sat exactly ON the
+     scroller's bottom edge, flush against the Start bar. The scroll padding
+     keeps a control clear of that edge whenever anything scrolls it into view. */
+  scroll-padding-block-end: var(--s4);
+  /* Separated from the nav row above, at var(--s2) rather than var(--s3):
+     `.rail-title-row` carries no bottom margin of its own, so the form does
+     need a gap here -- it just does not need twelve pixels of one in a form
+     that was twenty-seven pixels short. */
+  margin-top: var(--s2);
+}
+
+.agent-compose-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.agent-compose-intro {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+/* Where the new agent is going. It carries a node name chosen by nobody on this
+   team, so it must be able to wrap: without this a long unbroken name pushes
+   the whole rail sideways. */
+.agent-compose-under {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* The line offered on an empty tree only. Set apart from the intro so it reads
+   as a suggestion rather than as another instruction.
+
+   ITS LEFT RULE IS GONE (owner, 2026-08-18, on this panel: "messy"). Three
+   blocks opened this panel in a row -- the intro, this suggestion behind a grey
+   left rule, and the switched-off notice behind an amber one -- at two indents
+   and with no headings between them, so they read as a stack of look-alike
+   quotations and a person had to read all three to find which one mattered.
+   Only ONE thing in this panel has a rule down its side now, and it is the one
+   that changes what the panel can do. A suggestion is quieter than an
+   instruction, so quiet ink says it. */
+.agent-compose-suggestion {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+/* The chosen role's line, under the menu. It appears and disappears as the
+   choice changes, so it takes no room at all when nothing is chosen. */
+.agent-compose-summary {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+.agent-compose-summary[hidden] { display: none; }
+.agent-compose-summary:empty { display: none; }
+
+.agent-compose-field {
+  display: grid;
+  gap: var(--s1);
+  /* The frame a tipped hint is positioned against. See .tip-box below. */
+  position: relative;
+}
+
+.agent-compose-field .cl {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+.agent-compose-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+/* ---------------------------------------------------------------
+   THE TIPS, BEHIND THE LABEL THEY BELONG TO
+   --------------------------------------------------------------- */
+
+/* Owner, 2026-08-19, on this panel for the second time: "pg 2 right pnel STILL
+   reads ugly and messy. Make some of the tips only show on hover (give it a
+   nice clean box in theme and give it a slightly longer delay like 1s) so it
+   isnt so messy".
+
+   FIVE PARAGRAPHS OF FIELD HELP CAME OUT OF THE RESTING LAYOUT. Which five and
+   why those five is argued in src/agent-compose-panel.js, above buildPanel():
+   only text that EXPLAINS a control moves. Every sentence that states a fact
+   about this computer -- the refusals, the sign-in and not-installed rows, the
+   folder empty state, the confinement line, the progress line -- is still on
+   the glass at rest, and hiding one would have undone the work that put it
+   there.
+
+   IT IS FADED AND TAKEN OUT OF THE FLOW, NEVER `display: none` AND NEVER
+   `visibility: hidden`. Both of those remove an element from the accessibility
+   tree, and these paragraphs are still named by their field's aria-describedby
+   -- a screen reader must read exactly what it read before this change. Opacity
+   and absolute positioning change what a sighted person sees at rest and
+   nothing else.
+
+   NO NEW COLOUR OR SPACING. The box is the same recipe .agent-compose-notice
+   already uses (a token tint over --sheet with a --line-2 border), which is
+   proven in both themes, plus the overlay shadow the chart tooltip in
+   src/styles.css uses -- because unlike the notice this one floats over the
+   form and needs to read as a layer rather than as another row. */
+.agent-compose-hint.tip-box {
+  /* BELOW THE WHOLE FIELD, never on top of it. The label is the hover target
+     and the control sits between them, so a person travelling from the
+     question down to the menu never has a box open across their path. */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  margin-top: var(--s1);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--ink) 3%, var(--sheet));
+  box-shadow: 0 10px 26px -10px rgba(var(--shadow-rgb), calc(0.3 * var(--shadow-k)));
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  /* IT MUST NEVER INTERCEPT A PRESS. Every driver on this tree checks
+     document.elementFromPoint before pressing and refuses a press the target
+     would not feel; a floating box over a control would turn a working control
+     into "covered by" in four harnesses at once. It is also why hovering the
+     BOX does not hold it open -- it cannot be hovered at all, and it does not
+     need to be: the label under the pointer is what keeps it up. */
+  pointer-events: none;
+  opacity: 0;
+  /* LEAVING IS IMMEDIATE, ARRIVING WAITS A SECOND (the owner's "slightly
+     longer delay like 1s"). The delay is on the reveal rule, not here, so a
+     tip that is on screen disappears the moment the pointer leaves rather than
+     hanging over the next field for another second. */
+  transition: opacity var(--dur-2) var(--ease);
+}
+
+/* THE MARK, so a hidden tip is offered rather than merely gone. A character
+   and a ring drawn in tokens: this product ships no icon set, and five hints
+   are not a reason for this module to introduce one. `aria-hidden` where it is
+   built -- it is not the tip and not a control. */
+.agent-compose-field .cl .tip-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--s1);
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  color: var(--ink-3);
+  vertical-align: text-bottom;
+  transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+
+/* TWO WAYS IN, AND THE SECOND ONE IS THE POINT. Hovering the label is the
+   pointer's way. `:focus-visible` on the field's OWN control is the keyboard's:
+   tabbing onto the menu shows the sentence about the menu, with no extra tab
+   stop invented to hold a tip and nothing for a keyboard user to discover.
+   Sibling combinators, which is why buildPanel() appends the hint AFTER the
+   control -- they can only reach a later sibling. */
+.agent-compose-field > .cl:hover ~ .agent-compose-hint.tip-box,
+.agent-compose-field > .agent-compose-select:focus-visible ~ .agent-compose-hint.tip-box,
+.agent-compose-field > .agent-compose-text:focus-visible ~ .agent-compose-hint.tip-box {
+  opacity: 1;
+  transition-delay: 1s;
+}
+
+.agent-compose-field > .cl:hover .tip-mark {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+/* THE THIRD WAY IN IS A PRESS, and it is the only one a finger has. The label
+   toggles this class (src/agent-compose-panel.js fieldLabel), so a tap shows
+   the sentence at once — no hover, no focus, no delay — and a second tap puts
+   it away. It reveals immediately rather than after the hover delay: a press
+   is a request, not a pass-over. */
+.agent-compose-field.tip-open > .agent-compose-hint.tip-box {
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+/* A DISABLED FORM KEEPS ITS TIPS, and a rule that said otherwise is gone.
+   This sheet used to zero the tip when the field was `:disabled` ("a tip
+   floating over a dead form is noise"), and the press-through measured what
+   that really built: the preview ships every field disabled, so the four "?"
+   marks — the invitation this module draws on purpose — could never answer.
+   Hover was suppressed here, focus-reveal cannot fire on a control that
+   refuses focus, and touch had nothing at all. The panel's notice still
+   carries the refusal about the form; the tips explain the controls beside
+   it, and an offered explanation must stay reachable wherever the mark that
+   offers it is drawn. */
+
+.agent-compose-select,
+.agent-compose-text {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.agent-compose-text {
+  /* FOUR ROWS, NOT SIX. Six rows spent ~40px that the rail does not have:
+     with Start pinned below the form, the message box itself fell out of
+     first paint, which is the same defect one field further up. Nothing is
+     lost by starting shorter -- the box scrolls internally, so a long brief
+     still types and still reads; only its opening height changed. */
+  min-height: 5em;
+  /* Vertical resize is gone deliberately: dragging it taller inside a rail
+     that clips only pushed Start further out of reach. The body scrolls
+     now, and the box is a comfortable fixed four rows. */
+  resize: none;
+}
+
+.agent-compose-select[aria-invalid="true"],
+.agent-compose-text[aria-invalid="true"] {
+  border-color: var(--s-serious);
+}
+
+.agent-compose-select:disabled,
+.agent-compose-text:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* The refusal for one field, under that field. Never a colour on its own: the
+   sentence carries the meaning, and the colour is a second signal for people who
+   see it. */
+.agent-compose-problem {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--s-serious);
+  overflow-wrap: anywhere;
+}
+
+.agent-compose-problem[hidden],
+.agent-compose-notice[hidden],
+.agent-compose-confinement[hidden],
+.agent-compose-status[hidden] {
+  display: none;
+}
+
+/* An empty alert element still occupies a row in a grid, which leaves a gap that
+   looks like a rendering fault. An empty one collapses. */
+.agent-compose-problem:empty {
+  display: none;
+}
+
+/* THE ONE BLOCK IN THIS PANEL THAT IS ALLOWED TO LOOK LIKE A BLOCK, and it now
+   looks like one: a tinted card with a real border rather than a paragraph with
+   a coloured edge, so it separates from the prose above it by shape and not
+   only by a 2px line. The button that answers it sits immediately below and is
+   read as part of it. */
+.agent-compose-notice {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--s-warn);
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--ink) 3%, var(--sheet));
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.agent-compose-notice[role="alert"] {
+  border-left-color: var(--s-serious);
+  color: var(--ink);
+}
+
+/* THE WAY OUT, TIED TO THE SENTENCE THAT NEEDED IT. The button is a sibling of
+   the notice rather than a child, so without this it floated in the panel's own
+   row rhythm and read as a third unrelated control. Pulled up under the notice
+   it reads as that block's answer, which is what it is. */
+.agent-compose-enable {
+  align-self: flex-start;
+  margin-top: calc(-1 * var(--s2));
+}
+
+.agent-compose-status {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+/* WHAT THE SESSION THIS BUTTON STARTS MAY DO, sitting under Start where the
+   same reading sits under the other Start button in this product. Quiet on
+   purpose: it is a standing fact about this computer, not a warning and not a
+   refusal, and dressing it as either would teach people to dismiss it. It is
+   OUTSIDE the scroller, pinned with the action row above it, so it cannot be
+   scrolled away from the control it describes. */
+.agent-compose-confinement {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* PINNED UNDER THE SCROLLER, NEVER INSIDE IT. The panel is a column: nav row,
+   scrolling form, then this. `flex: none` is what stops the form's overflow
+   from squeezing the button to nothing -- without it a tall form and a short
+   rail put Start back where the owner could not see it. The top rule separates
+   it from the form the way the nav row is separated from above. */
+.agent-compose-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  flex: none;
+  margin-top: var(--s2);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--line);
+}
+
+.agent-compose-actions .ctl-btn {
+  flex: 1 1 auto;
+}
+
+.agent-compose-submit[disabled],
+.agent-compose-cancel[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.agent-compose-select:focus-visible,
+.agent-compose-text:focus-visible,
+.agent-compose-submit:focus-visible,
+.agent-compose-cancel:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------
+   ON A PHONE THE RAIL HANDS THIS PANEL A HEIGHT IT NEVER ASKED FOR
+   --------------------------------------------------------------- */
+
+/* WHAT WAS MEASURED, on the live site at 390x844 with a real machine on the
+ * other end of the relay. Below 1024 the computers page STACKS -- the tree
+ * canvas on top, the rail underneath it -- and the page itself is a scroller
+ * (`.computers { overflow-y: auto }`, src/styles.css:1894). Pressing an empty
+ * node opens this panel down there:
+ *
+ *   the panel                    391px tall, at y529..920
+ *   its scrolling body           201px, a window onto ~399px of form
+ *   "Start this agent"           y810..850 -- its last six pixels past the fold
+ *   the confinement sentence     y850..920 -- all of it past the fold
+ *
+ * So the person gets TWO scrollers, a cramped 201px one inside a page that also
+ * scrolls, the primary button is cut by the bottom of the screen, and the
+ * sentence saying what the agent they are about to start may do is not on
+ * screen at the moment they press it.
+ *
+ * WHICH ANCESTOR IS AT FAULT, because it is not this panel and it is not the
+ * page. `.computers .rail-page` is `position: absolute; inset: 0`
+ * (src/tree-graph.css:794) -- every rail page is out of flow, so the rail
+ * measures NO content at all. Its height is therefore whatever its grid row
+ * says: `minmax(440px, auto)` (src/styles.css:1887) with `.rail { min-height:
+ * 440px }` (src/styles.css:1895). The `auto` maximum is dead, because there is
+ * nothing in flow for it to measure, so the track can only ever be its 440px
+ * base -- a number chosen for a statistics list. 440 less the rail page's own
+ * padding is the 391px above, and the panel, a `flex: 1; min-height: 0` column,
+ * dutifully divides that up: nav row, 201px of form, Start, the sentence.
+ *
+ * THE PAGE IS ALREADY A SCROLLER, SO THE PANEL DOES NOT NEED TO BE ONE. Below
+ * the stack breakpoint the compose page returns to normal flow, the rail sizes
+ * itself to the panel instead of to 440px, and the panel and its body lay out
+ * at their natural height. One scroller -- the page's -- and nothing is clipped:
+ * Start and the confinement line travel with the form, still pinned to the
+ * panel, because the panel is no longer inside a 391px window.
+ *
+ * THE OTHER SHAPE WAS REJECTED ON THE SAME MEASUREMENT. Constraining the panel
+ * to the visible area cannot work here: its TOP already sits at y529, so fitting
+ * ~399px of form, a 40px button and a 70px sentence into the 315px of screen
+ * left below it means the inner scroller gets SMALLER than the 201px that is
+ * already too small to use. There is no height left to constrain it to.
+ *
+ * NOTHING IS REORDERED AND NOTHING IS REMOVED. The body still comes before the
+ * action row, which still comes before the confinement line -- see the comment
+ * above the action row in src/agent-compose-panel.js, which records Start being
+ * pushed below the fold as an owner-reported defect TWICE, and the comment on
+ * `.agent-compose-body` above, which is why the body owns its own scrolling at
+ * desktop width. At 1024px and wider not one declaration below applies, so the
+ * pinned Start bar and the panel's own scroller are exactly as they were
+ * measured.
+ *
+ * THE BREAKPOINT IS THE PAGE'S OWN (src/styles.css:1877), repeated rather than
+ * invented: this block is only ever right while that stack is in force, and a
+ * second number here would drift away from the layout it depends on. */
+@media (max-width: 1023px) {
+  /* IN FLOW, SO THE RAIL CAN SEE IT. Only while this page is the one on screen:
+     the other two rail pages stay absolute, so they still stack in the same
+     rect and still cost the rail nothing when the panel is closed. `relative`
+     rather than `static` because the element stays a containing block, which
+     the tips inside the form are positioned against. */
+  .computers .rail-page.compose-page.is-active {
+    position: relative;
+    inset: auto;
+  }
+  /* AND THE RAIL TAKES ITS HEIGHT FROM WHAT IS IN IT. Left alone, a grid item
+     is stretched to its row -- the 440px above -- whatever it contains.
+     `align-self: start` drops the stretch, so the rail measures the compose
+     page instead, with `.rail { min-height: 440px }` still standing as the
+     floor it always was. The rail then outgrows its own row, which is the last
+     row of `.comp-body`, and the page that already scrolls carries the rest. */
+  .computers .rail:has(> .rail-page.compose-page.is-active) {
+    align-self: start;
+  }
+  /* THE PANEL AT ITS NATURAL HEIGHT. `flex: 1` asks for a share of a parent's
+     height, and there is no fixed height to share out any more. */
+  .computers .rail-page.compose-page .agent-compose {
+    flex: none;
+  }
+  /* AND ITS BODY STOPS BEING THE SECOND SCROLLER.
+     `overflow-x: clip` rather than simply dropping the overflow: the sideways
+     clip is a real rule with a reason (`.computers .rail-page .rail-scroll`,
+     src/board.css:1090 -- one over-wide child used to turn the rail into a
+     horizontal scroller), and a bare `overflow-y: visible` beside a `hidden`
+     x-axis computes BACK to `auto`, which would quietly restore the very
+     scroller this block exists to remove. `clip` is the one value that pairs
+     with `visible` and leaves it as written. */
+  .computers .rail-page.compose-page .agent-compose-body {
+    flex: none;
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+}

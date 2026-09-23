@@ -1,0 +1,248 @@
+{
+  "$comment": [
+    "Declared coverage for every browser-proof driver under tools/test/fixtures/run-*.mjs, checked by tools/check-browser-proofs-discovered.mjs.",
+    "A driver absent from proofs fails the guard by name; a proof whose file is gone fails it as stale. Declaration is not execution.",
+    "required: a release qualification must verify an attributable receipt from one real execution at private/browser-proof-receipts/<driver stem>/<receipt>; a missing, failed or unattributable receipt is a failure, never a skip.",
+    "manual: hand-run by the named owner or document; reported as discovered and unexecuted, never counted as coverage.",
+    "platform-limited: runnable only on the named platform; reported as discovered and unexecuted on every host, never counted as coverage.",
+    "Census 2026-09-10 (B1-12/B1-13, T58): 43 drivers, 38 named by nothing that runs; the packaged-driver guard skips tools/test/ by construction."
+  ],
+  "schemaVersion": 1,
+  "receiptsDirectory": "private/browser-proof-receipts",
+  "families": {
+    "research": {
+      "owner": "Research lanes (R1/R2)",
+      "reason": "Research view browser journey: needs MC_PLAYWRIGHT_ROOT, a served origin in BENCHMARK_TEST_ORIGIN, an output directory in BENCHMARK_TEST_OUTPUT and lane fixtures; some variants also need pinned native engines. Documented in docs/research-benchmark-builder.md and executed by the Research lanes when their surface changes, never by the cut."
+    },
+    "tree": {
+      "owner": "Page 2 tree surface owners",
+      "reason": "Focused headless interaction check run by hand from the repository root (docs/NATIVE-DEVELOPMENT.md): starts its own loopback Vite server, uses PLAYWRIGHT_MODULE and writes its own evidence directory. Hand-run when the corresponding surface changes; not a cut gate and not counted as executed coverage."
+    }
+  },
+  "proofs": {
+    "run-first-use-navigation.mjs": {
+      "coverage": "manual",
+      "owner": "First-use guidance owners (T1289)",
+      "reason": "Mounted first-use guidance and navigation with real styles: pointer access, guide-less route transitions, focus, side/top layouts, resizing and T1357 centered icon-only narrow Guide controls. Uses a caller-supplied loopback fixture origin, MC_PLAYWRIGHT_ROOT and BENCHMARK_TEST_OUTPUT; starts no server and visits no Research route. Portable Linux/Windows preparation; declaration is not execution or cut coverage."
+    },
+    "run-ledger-reset-controls.mjs": {
+      "coverage": "manual",
+      "owner": "Ledger surface owners",
+      "reason": "Hand-run after Ledger reset controls change using PLAYWRIGHT_MODULE. Starts its own loopback Vite server and isolated Chromium page with fictional service replies; checks all four warnings, focus, cancellation, stale errors, commit controls and narrow layout. Canonical persistence and purchase races are covered separately by engine tests. Declaration alone is not executed coverage."
+    },
+    "run-buttons-carry-app-style.mjs": {
+      "coverage": "required",
+      "ledger": "T35",
+      "receipt": "results.json",
+      "reason": "Owner-reported unstyled controls (Browse saved conversation, Full view). The zero-specificity :where(button:not([class])) rule in src/styles.css is the fix, and only this painted check proves it: without a receipt from one real execution a regression that deleted the rule would turn no gate red. Declaration here is not execution; the receipt is."
+    },
+    "run-page2-interactions-native.mjs": {
+      "coverage": "manual",
+      "reason": "Retained earlier native-flow evidence and selectors; predates the current shared tree tabs and header (docs/NATIVE-DEVELOPMENT.md). Kept for its recorded evidence, not run as current proof."
+    },
+    "run-page2-layout.mjs": {
+      "coverage": "platform-limited",
+      "platform": "win32",
+      "reason": "Refuses any output directory outside a fixed Windows development-account Temp path and redirects the browser profile to that account (page2-layout-README.md). The driver itself carries no Linux route; the Linux family guidance lives in browser-proofs-README.md."
+    },
+    "run-page2-native.mjs": {
+      "coverage": "manual",
+      "reason": "Retained earlier native-flow evidence and selectors; predates the current shared tree tabs and header (docs/NATIVE-DEVELOPMENT.md). Kept for its recorded evidence, not run as current proof."
+    },
+    "run-page2-zoom-linux.mjs": {
+      "coverage": "platform-limited",
+      "platform": "linux",
+      "reason": "Takes a Linux Chromium binary path as its only argument and launches it with an isolated HOME/config/cache (page2-zoom-linux-README.md); its negative controls exit 1 by design. Hand-run on Linux; not counted as executed coverage."
+    },
+    "run-research-benchmark.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-composition-fields.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-condition-fields.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-condition-freeze.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-design-fields.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-endpoint-fields.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-family-fields.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-information-context.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-information-fields.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-native-evidence-verification.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-native-information-observation.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-native-preparation.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-node-editing.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-qualification-import.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-recorded-reset.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-replay-source-draft.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-report-integrity.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-source-drafts.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-example-load.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-nesting.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-variance.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-prompt-set.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-topology-fields.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-research-workflow-setup.mjs": {
+      "coverage": "manual",
+      "family": "research"
+    },
+    "run-tree-box-forest.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-box-workspace.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-card-typography.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-chat-workspace.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-circle-cards.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-context-policy.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-density-matrix.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-full-edit.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-indicators.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-interactions.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-link-clearance.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-link-popover.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-navigation.mjs": {
+      "coverage": "manual",
+      "family": "tree",
+      "reason": "Needs an already running development origin in TREE_DEV_ORIGIN instead of starting its own server; otherwise as the tree family. Hand-run; not counted as executed coverage."
+    },
+    "run-tree-shared-strokes.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-standalone-agent.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-standalone-combined.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-standalone-placement.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-tree-zoom-responsive.mjs": {
+      "coverage": "manual",
+      "family": "tree"
+    },
+    "run-home-circle-jelly-material.mjs": {
+      "coverage": "manual",
+      "ledger": "T360",
+      "receipt": "results.json",
+      "reason": "Historical proof for T360, removed in the owner ledger on 2026-09-22 as stale. The current Home view uses home-circle-fluid-classic.js for Blob and a static Classic default; home-circle-fluid.js, whose jelly shapes and material this driver measures, is not selected by any supported saved style. Preserve this driver for investigation of the retired renderer; it cannot qualify the current renderer. Owner rejected the home-circle body on sight while every arithmetic assertion was green (\"right now it looks super bad and nothing like the image\"). This driver paints the body in a real browser and judges the PICTURE against tools/test/home-circle-jelly-thresholds.mjs: transmission under two grounds, chroma and hue across the thickness, core luminance, razor silhouette and halo, luminance rising to the rim, one wet catch, one joined body. Needs a Vite origin serving this tree in HOME_CIRCLE_ORIGIN and a browser with real WebGL (msedge/chrome channels are tried, then chromium). Declaration is not execution; the receipt is, and its subject sha256 names the shader it judged.",
+      "owner": "Historical Home jelly renderer investigation"
+    },
+    "run-home-circle-jelly-motion.mjs": {
+      "coverage": "manual",
+      "ledger": "T365",
+      "receipt": "results.json",
+      "reason": "Historical proof for T365, removed in the owner ledger on 2026-09-22 as stale. The current Home view uses home-circle-fluid-classic.js for Blob and a static Classic default; home-circle-fluid.js, whose jelly shapes and material this driver measures, is not selected by any supported saved style. Preserve this driver for investigation of the retired renderer; it cannot qualify the current renderer. Owner: \"bouncy and squishy and changes its state like liquid, mist, solid ... through the animations\". This driver samples the body every drawn frame and judges the MOTION against tools/test/home-circle-jelly-thresholds.mjs MOTION: fixed-step seeded determinism, overshoot crossing rest twice, an intermediate frame that is not a linear blend of its endpoints, axes in opposition with area held, three states separating on two independent measures, interior lag 40-80 ms, transitions 350-600 ms, plus the motion strip. Same origin and browser needs as the material proof. Declaration is not execution; the receipt is.",
+      "owner": "Historical Home jelly renderer investigation"
+    },
+    "run-home-circle-jelly-presence.mjs": {
+      "coverage": "manual",
+      "ledger": "T360",
+      "receipt": "results.json",
+      "reason": "Historical proof for T360, removed in the owner ledger on 2026-09-22 as stale. The current Home view uses home-circle-fluid-classic.js for Blob and a static Classic default; home-circle-fluid.js, whose jelly shapes and material this driver measures, is not selected by any supported saved style. Preserve this driver for investigation of the retired renderer; it cannot qualify the current renderer. Precondition for every other home-circle proof: in each real agent state (idle, waiting, reading, thinking, writing, running) the renderer is stepping and a body is drawn on every theme, and the drawn-frame interval holds the ladder budget (owner: \"keep lag in mind\"; this is the pre-3D baseline). Names dead-bundle / software-WebGL / dead-shader refusals instead of scoring a blank. Same origin and browser needs as the material proof. Declaration is not execution; the receipt is.",
+      "owner": "Historical Home jelly renderer investigation"
+    }
+  }
+}

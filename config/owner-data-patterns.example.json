@@ -1,0 +1,12 @@
+{
+  "comment": "TEMPLATE. Copy this file to private/owner-data-patterns.owner.json and replace every value with your own before building. The private/ destination is local and ignored by Git. This file lists the strings that identify YOU, and the ship gate refuses to build until it exists -- a privacy guard with no identity to look for is a guard that passes everything.",
+  "matching": "Entries are matched as raw bytes anywhere in any shipped file, case-insensitively by default. Set caseSensitive: true where case carries meaning.",
+  "ownership": "The local private/owner-data-patterns.owner.json belongs to whoever set it up. A copied, cached, or otherwise incorrect profile can make a guard scan for a stranger's identity while YOUR name ships, so the gate also requires at least one pattern there to relate to the OS account running the build (case-insensitive substring, either direction). Leaving these placeholder values in place will not pass. On CI or a shared build machine whose account name legitimately differs, set MC_IDENTITY_PROFILE_ACCOUNT to the account name the local profile describes -- it renames the account being checked, it does not switch the check off.",
+  "patterns": [
+    { "value": "your-os-username", "note": "The account name in your home-directory paths." },
+    { "value": "Your Full Name", "note": "Your name as prose. Path-shaped checks will not catch a name in shipped UI text." },
+    { "value": "Surname", "note": "Surname alone, for text that omits the given name." },
+    { "value": "your-account-alias", "note": "Work/school/vendor account identifiers. These are neither names nor paths, so nothing else catches them." },
+    { "value": "10.0.0.", "caseSensitive": true, "note": "Your private LAN range, if any hostname or address could be baked into a build." }
+  ]
+}

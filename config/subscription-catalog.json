@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "domain": "subscription-catalog",
+  "generatedAt": "2026-08-12T00:00:00.540Z",
+  "derivedFrom": "src/lib/entitlement.js",
+  "paidProduct": "ToolsEnabled Anywhere",
+  "unlicensedInstall": "full-function",
+  "unlicensedInstallStatement": "This installation is fully functional without a licence, permanently. The local runtime, direct machine-to-machine transport, and every safety control are free and are never licence-checked. Hosting the relay yourself is planned and not available yet; when it lands it will be free and never licence-checked too. A licence pays only for infrastructure we operate on your behalf.",
+  "neverGated": [
+    "the local runtime and every tool it dispatches",
+    "direct machine-to-machine transport on your own network",
+    "hosting the relay yourself (planned, not available yet)",
+    "joining a second computer to your account, and the keys behind it",
+    "the audit ledger, the kill switch, approvals, and every other safety control",
+    "reading, exporting, or deleting your own data"
+  ],
+  "capabilities": {
+    "hosted-relay": {
+      "id": "hosted-relay",
+      "label": "Relay hosted by us",
+      "rationale": "A relay server we operate, pay for, and keep online so two of your machines can reach each other across any network with no setup.",
+      "requiredTiers": [
+        "operator",
+        "team"
+      ],
+      "freeAlternatives": [
+        "direct: both machines on one private network, no server, no account",
+        "self-hosted-relay (planned, not yet available): run the same relay yourself on any host you control"
+      ]
+    }
+  },
+  "plans": [
+    {
+      "id": "community",
+      "label": "Community",
+      "qualifiedLabel": "Community",
+      "requiresLicense": false,
+      "monthlyUsd": 0,
+      "annualUsd": null,
+      "seatMinimum": null,
+      "productId": null,
+      "grants": []
+    },
+    {
+      "id": "operator",
+      "label": "Operator Cloud",
+      "qualifiedLabel": "ToolsEnabled Anywhere -- Operator Cloud",
+      "requiresLicense": true,
+      "monthlyUsd": 19,
+      "annualUsd": 190,
+      "seatMinimum": null,
+      "productId": "toolsenabled.operator-cloud.v1",
+      "grants": [
+        "hosted-relay"
+      ]
+    },
+    {
+      "id": "team",
+      "label": "Team",
+      "qualifiedLabel": "ToolsEnabled Anywhere -- Team",
+      "requiresLicense": true,
+      "monthlyUsd": 299,
+      "annualUsd": null,
+      "seatMinimum": 3,
+      "productId": "toolsenabled.team.v1",
+      "grants": [
+        "hosted-relay"
+      ]
+    }
+  ]
+}

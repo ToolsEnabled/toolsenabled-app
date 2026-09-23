@@ -1,0 +1,21 @@
+{
+  "$comment": "The payload's OWN manifest, staged over the source tree's via neutralDefaults. The source package.json used to ship byte-identical: 119 scripts naming ~620 files that are not in this payload, so every npm script in the shipped product failed on contact, and the file enumerated the private tree's internal layout to every install. This file carries only what the payload actually holds: the one runtime consumer is src/mcp-server.js reading .version for serverInfo, and the three scripts below are the only ones from the source set whose every referenced file ships. bin is dropped because neither target ships. A repo-side guard test asserts every path this file references resolves inside the payload. On a version bump, update .version here as part of the same re-pin adoption that flips the pinned-source records.",
+  "name": "toolsenabled",
+  "version": "1.4.0",
+  "private": true,
+  "license": "MIT",
+  "description": "AI-agnostic autonomous capability layer exposed through MCP.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dependencies": {
+    "playwright": "^1.62.0",
+    "werift": "0.24.4"
+  },
+  "scripts": {
+    "mcp": "node src/mcp-server.js",
+    "grepsaver:reindex": "node tools/grepsaver-reindex.js",
+    "grepsaver:reindex:check": "node tools/grepsaver-reindex.js --check"
+  }
+}

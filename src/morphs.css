@@ -1,0 +1,172 @@
+/* ============================================================
+   MORPHS — shared-element continuity (lane T3)
+   Every selector below is new; nothing existing is renamed or removed.
+   Loaded last so a delay/fill override always wins over the base sheets.
+   ============================================================ */
+
+:root {
+  --morph-stagger: 80ms;    /* rail content cascade step, top → bottom */
+  --morph-item: 340ms;      /* per-item crossfade inside the rail */
+  --morph-out: 240ms;       /* per-item fade of the outgoing rail page */
+  --morph-view: 500ms;      /* view → view shared-element morph */
+  /* plain route crossfade. Same role as .view's own .38s transition —
+     a whole surface entering — so it spends the structural motion step
+     when the scale is present, and mirrors .view exactly when it is not. */
+  --morph-route: var(--dur-3, 380ms);
+}
+
+/* ------------------------------------------------------------
+   1 · rail: Runtime Statistics ⇄ Agent Controls
+   The panel never slides as a slab any more: its blocks crossfade
+   in a top-to-bottom cascade while the hero figure flies to the ring.
+   ------------------------------------------------------------ */
+
+/* during a cascade the page itself stays fully present — the children carry
+   the motion (this is what makes it read as one panel morphing, not two) */
+.rail-page.mc-in,
+.rail-page.mc-out { opacity: 1; transform: none; }
+.rail-page.mc-out { pointer-events: none; }   /* leaving content is not clickable */
+
+.rail-page.mc-in .mc-stag {
+  animation: mcRailIn var(--morph-item) var(--ease) both;
+  animation-delay: calc(var(--mi, 0) * var(--morph-stagger));
+}
+.rail-page.mc-out .mc-stag {
+  animation: mcRailOut var(--morph-out) var(--ease) both;
+  animation-delay: calc(var(--mi, 0) * var(--morph-stagger));
+}
+@keyframes mcRailIn  { from { opacity: 0; transform: translateY(12px) scale(0.985); } }
+@keyframes mcRailOut { to   { opacity: 0; transform: translateY(-9px) scale(0.99); } }
+
+/* the flying hero number: a FLIP ghost that rides between the
+   Agent Count figure and the agent runtime ring, so neither end blanks */
+.rail-morph-ghost {
+  position: absolute; left: 0; top: 0; z-index: 14;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  user-select: none; -webkit-user-select: none;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------
+   2 · tab switch: the outgoing graph dissolves, the incoming
+   bubbles cascade in (delay driven from computers.js mount order)
+   ------------------------------------------------------------ */
+.graph-canvas.mc-graph-out {
+  opacity: 0;
+  transition: opacity 150ms var(--ease);
+  pointer-events: none;
+}
+
+.node.mc-stagger,
+.chip.mc-stagger {
+  animation: mcFadeIn 420ms var(--ease) both;
+  animation-delay: var(--mc-sd, 0ms);
+}
+@keyframes mcFadeIn { from { opacity: 0; } }
+
+/* ------------------------------------------------------------
+   3 · "Open full view": the computers view scales into the node
+   that was opened (origin set inline by the shell), the agent
+   view fades up through it — one continuous ~500 ms move.
+   ------------------------------------------------------------ */
+.view.mc-zoom-exit {
+  animation: mcZoomExit var(--morph-view) var(--ease) both;
+  pointer-events: none;
+}
+@keyframes mcZoomExit {
+  0%   { opacity: 1; transform: scale(1); }
+  55%  { opacity: 0.34; }
+  100% { opacity: 0; transform: scale(2.3); }
+}
+
+.view.mc-zoom-enter { animation: mcZoomEnter var(--morph-view) var(--ease) both; }
+@keyframes mcZoomEnter {
+  0%   { opacity: 0; transform: translateY(14px) scale(0.965); }
+  45%  { opacity: 0.72; }
+  100% { opacity: 1; transform: none; }
+}
+
+/* ------------------------------------------------------------
+   4 · native View Transitions for the plain route crossfade
+   main.js feature-detects document.startViewTransition and, when it
+   exists, performs the route swap inside one — the browser crossfades a
+   snapshot of the old stage, so two live views (two graph canvases, two
+   rAF loops) never run at once. The .view.enter/.exit rules above stay
+   as the fallback and still own the zoom morph, which needs both views
+   genuinely on screen. Same curve and same displacement as .view.enter /
+   .view.exit, so the two paths are indistinguishable to the eye.
+   ------------------------------------------------------------ */
+@supports (view-transition-name: none) {
+  #stage { view-transition-name: mc-stage; }
+
+  /* The shell (topbar, crumb, drawer) is not what moves — crossfading its
+     near-identical pixels only adds a flicker, so the root snapshot swaps
+     outright. The old half must be taken out of the paint, not merely left
+     unanimated: the UA sheet blends old over new with plus-lighter, and two
+     fully opaque copies added together blow the topbar out to white. */
+  ::view-transition-old(root) { animation: none; display: none; }
+  ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+
+  ::view-transition-group(mc-stage) { animation-duration: var(--morph-route); }
+  ::view-transition-old(mc-stage) {
+    animation: mcRouteOut var(--morph-route) var(--ease, ease) both;
+  }
+  ::view-transition-new(mc-stage) {
+    animation: mcRouteIn var(--morph-route) var(--ease, ease) both;
+  }
+  /* the default plus-lighter blend is kept: the pair sums to opacity 1, so
+     there is no grey dip halfway through the fade */
+}
+@keyframes mcRouteOut { to   { opacity: 0; transform: translateY(-10px) scale(0.995); } }
+@keyframes mcRouteIn  { from { opacity: 0; transform: translateY(14px) scale(0.992); } }
+
+/* The OS-level preference, belt-and-braces — main.js also refuses to start a
+   transition when either the media query or body.reduce-motion is set (these
+   pseudo-elements hang off the document root, where no body.* selector can
+   reach them, so the runtime toggle has to be handled in JS). */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+
+/* ------------------------------------------------------------
+   5 · settings drawer + theme segment on the space scale
+   These two carried hand-picked pixels (18 / 14 / 8 / 7 / 6) while the
+   rest of the shell moved onto --s1..--s5. Converted by the scale's own
+   rule: nearest step when within 2px, exact ties round DOWN, and 20px
+   stays literal because it is 4px from every step — as do the segment's
+   2px gap and 3px inset, which are the square-corner language rather
+   than spacing. Each declaration keeps the shipped value as its fallback,
+   so the sheet still renders standalone. Nothing renamed, nothing removed.
+   ------------------------------------------------------------ */
+.drawer-head { padding: var(--s4, 18px) 20px var(--s3, 14px); }
+.drawer-body {
+  padding: var(--s4, 18px) 20px;
+  gap: var(--s4, 18px);
+}
+.set-row { gap: var(--s2, 8px); }
+.theme-seg button { padding: var(--s2, 7px) var(--s1, 6px); }
+
+/* buildChat has no timestamp today; if one lands it must not jitter the row
+   as the seconds tick (the Comms sheet already does this for .cmsg-time). */
+.chat-log .msg time,
+.chat-log .msg .ts { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------
+   reduced motion — the base sheet already collapses durations;
+   collapse the cascade delays too so nothing sits invisible.
+   ------------------------------------------------------------ */
+body.reduce-motion .mc-stag,
+body.reduce-motion .mc-stagger { animation-delay: 0ms !important; }
+body.reduce-motion .view.mc-zoom-enter { animation: none !important; }
+body.reduce-motion .view.mc-zoom-exit { animation: none !important; opacity: 0; }
+body.reduce-motion .rail-morph-ghost { display: none; }

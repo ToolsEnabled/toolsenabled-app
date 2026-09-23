@@ -1,0 +1,402 @@
+:root {
+  --accent: #2563eb;
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --panel-2: #fbfbfd;
+  --ink: #1a1c22;
+  --ink-soft: #5b616e;
+  --line: #e4e6eb;
+  --live: #16a34a;
+  --paused: #d97706;
+  --flash: #fde68a;
+  --shadow: 0 1px 3px rgba(20, 22, 34, .08), 0 8px 24px rgba(20, 22, 34, .06);
+  /* so UA-painted surfaces (scrollbars, caret, selection, the search clear
+     button) follow the panel, not a hardcoded light default */
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1016; --panel: #171a22; --panel-2: #1c2029;
+    --ink: #e8eaf0; --ink-soft: #9aa1b1; --line: #262b36;
+    --flash: #4d3f12; --shadow: 0 1px 3px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------- top bar ---------------- */
+.topbar {
+  /* wrap is inert while the content fits; it engages when the row runs out of
+     room (narrow viewports, or a wide one once .editors fills with connected
+     sessions), which otherwise pushed the overflow onto the buttons and wrapped
+     their labels. The bar is then two rows tall, so .rail reads its measured
+     height from --topbar-h instead of assuming one row. */
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap; row-gap: 10px;
+  padding: 12px 20px; background: var(--panel);
+  /* above the PAUSED scrim (z 30): the board and Resume must stay legible while
+     paused, which is the whole promise of the comment on .paused-overlay below */
+  border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 32;
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 240px; }
+.brand-title { font-weight: 650; font-size: 16px; letter-spacing: -.01em; }
+.brand-sub { color: var(--ink-soft); font-size: 12px; }
+#timingLabel.timing-ok { color: var(--live); font-weight: 600; }
+#timingLabel.timing-warn { color: var(--paused); font-weight: 600; }
+#timingLabel.timing-over { color: #dc2626; font-weight: 700; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ink-soft); flex: none; transition: background .3s; }
+.dot.ok { background: var(--live); box-shadow: 0 0 0 4px color-mix(in srgb, var(--live) 22%, transparent); }
+.dot.bad { background: #dc2626; }
+
+.status { margin-left: auto; margin-right: auto; font-weight: 700; font-size: 13px; letter-spacing: .04em; }
+.status-live { color: var(--live); }
+.status-paused { color: var(--paused); }
+
+.actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; flex: 1 1 auto; }
+.editors { display: flex; gap: 6px; flex-wrap: wrap; max-width: 320px; justify-content: flex-end; }
+.chip {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-soft); }
+.chip.free::before { background: var(--live); }
+.chip.busy::before { background: var(--paused); }
+.chip.busy { background: color-mix(in srgb, var(--paused) 14%, transparent); color: var(--paused);
+  border-color: color-mix(in srgb, var(--paused) 30%, transparent); }
+/* A lead/worker agent (name-derived color, from suite/agents.js, mirrored on
+   /studio): ink carries text/border for identity. The busy/free dot keeps its
+   own separate meaning (activity, not identity) and is left untouched, so the
+   chip carries two channels at once rather than one overwriting the other. */
+.chip.agent { color: var(--agent-ink); border-color: color-mix(in srgb, var(--agent-ink) 40%, transparent);
+  background: color-mix(in srgb, var(--agent) 14%, transparent); }
+
+.btn {
+  font: inherit; font-weight: 600; border-radius: 9px; padding: 9px 15px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+  cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  transition: transform .06s, filter .15s, background .2s;
+}
+.btn:hover { filter: brightness(1.03); }
+.btn:active { transform: translateY(1px); }
+.btn.ghost { color: var(--ink-soft); }
+.btn:disabled { opacity: .4; cursor: default; pointer-events: none; }
+.btn.pause { background: var(--paused); color: #fff; border-color: transparent; min-width: 116px; justify-content: center; }
+.btn.pause.resumed { background: var(--live); }
+
+/* Fast is one saved next-spawn switch, not a settings panel. Text carries every
+   state so ON, OFF, pending, and Claude-unavailable never rely on color alone. */
+.fast-mode-slot { display: inline-flex; flex: 0 0 auto; }
+.fast-mode-ctl { display: inline-flex; align-items: center; gap: 6px; }
+.fast-mode-ctl .fast-mode-button { padding: 7px 10px; min-height: 38px; }
+.fast-mode-ctl .fast-mode-button.active {
+  color: var(--live); border-color: color-mix(in srgb, var(--live) 48%, var(--line));
+  background: color-mix(in srgb, var(--live) 10%, var(--panel-2));
+}
+.fast-mode-ctl.pending .fast-mode-button {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--paused) 24%, transparent);
+}
+.fast-mode-ctl.unavailable .fast-mode-button { color: var(--ink-soft); }
+.fast-mode-next { margin-left: 3px; font-size: 9px; font-weight: 750; }
+.fast-mode-scope { max-width: 92px; color: var(--ink-soft); font-size: 10px; line-height: 1.15; }
+
+.search-input {
+  /* 21 + 18 + 2 = 41px, matching .btn exactly, so it stops floating in the row.
+     One settled width: growing on focus shoved every sibling sideways at the
+     moment the user committed to typing. */
+  font: inherit; font-size: 13px; border-radius: 9px; padding: 9px 12px; width: 170px; line-height: 21px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+  transition: border-color .16s ease;
+}
+.search-input:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.search-count { font-size: 11px; color: var(--ink-soft); min-width: 30px; text-align: center; flex: none; }
+
+/* ---------------- layout ---------------- */
+.layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; padding: 20px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+/* the header had no breakpoint between 900 and 1280: let .brand and .status give
+   up their reserved space before the buttons have to wrap */
+@media (max-width: 1100px) {
+  .brand { min-width: 0; }
+  .status { margin-left: 0; margin-right: 0; }
+  .editors { max-width: 220px; }
+}
+/* the rail caps itself at one viewport but five panels carry more chrome than
+   that, so it needs its own scroller or everything past the cap is unreachable.
+   An element's own overflow does not affect its stickiness.
+   The offsets track --topbar-h (measured live in app.js) rather than assuming a
+   one-row bar: .topbar wraps to two rows on narrow viewports and, once enough
+   sessions connect, at wide ones too. A hardcoded 84px let the wrapped bar
+   (z 32, opaque) cover the board header and pushed the rail's foot off-screen. */
+.rail { position: sticky; top: calc(var(--topbar-h, 64px) + 20px); z-index: 31; display: flex; flex-direction: column; gap: 16px;
+  max-height: calc(100vh - var(--topbar-h, 64px) - 40px);
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+@media (max-width: 900px) { .rail { position: static; max-height: none; } }
+
+/* ---------------- deck ---------------- */
+/* multi-column like /studio, but with a 420px floor rather than studio's 260:
+   this page has no click-to-zoom escape hatch, so a card has to stay legible on
+   its own. auto-fill (not auto-fit) so a short deck does not stretch one card
+   back to full width. Do NOT add grid-auto-flow:dense or per-item order here:
+   app.js refreshes thumbnails by DOM index, not by slide id. */
+.deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 18px; }
+.slide {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow); overflow: hidden; position: relative;
+  display: flex; flex-direction: column;
+}
+.slide-head {
+  display: flex; align-items: center; gap: 10px; padding: 8px 14px;
+  border-bottom: 1px solid var(--line); background: var(--panel-2); color: var(--ink-soft); font-size: 12px;
+}
+.slide-num { font-weight: 700; color: var(--ink); }
+.slide-layout { padding: 1px 8px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 600; }
+/* .8 not .6: this is the id every session needs to address a slide through the
+   ppt CLI, and at 60% it fell under the 4.5:1 minimum */
+.slide-id { margin-left: auto; font-family: ui-monospace, "Cascadia Code", monospace; opacity: .8; }
+.slide-lock {
+  font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 6px;
+  background: color-mix(in srgb, var(--paused) 16%, transparent); color: var(--paused);
+}
+
+/* 16:9 canvas */
+/* container, not viewport: the type below has to track the CARD, which halves in
+   width once the deck goes multi-column. Sizing off vw overflowed a shrunken
+   canvas and .slide { overflow: hidden } silently clipped it. flex:none keeps the
+   aspect-ratio height from wavering now that .slide is a flex column. */
+.canvas {
+  aspect-ratio: 16 / 9; padding: 6% 7%; display: flex; flex-direction: column; gap: 3%;
+  background: var(--panel); container-type: inline-size; flex: none;
+}
+.el { border-radius: 8px; padding: 4px 8px; margin: -4px -8px; transition: background .5s, box-shadow .5s; }
+.el-title { font-size: clamp(20px, 3.4cqi, 34px); font-weight: 750; color: var(--accent); letter-spacing: -.02em; line-height: 1.15; }
+.el-subtitle { font-size: clamp(13px, 1.8cqi, 19px); color: var(--ink-soft); }
+.el-heading { font-size: clamp(16px, 2.2cqi, 24px); font-weight: 700; }
+.el-body { font-size: clamp(12px, 1.7cqi, 17px); }
+.el-bullets { font-size: clamp(12px, 1.7cqi, 17px); margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.el-bullets li { line-height: 1.35; }
+.el.empty { color: var(--ink-soft); opacity: .45; font-style: italic; }
+.el.empty::after { content: attr(data-placeholder); }
+
+/* true-render canvas: the actual slide PNG + invisible flash hotspots on top */
+.canvas.thumb { position: relative; padding: 0; overflow: hidden; background: #fff; }
+.canvas.thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.canvas.thumb .hotspot { position: absolute; border-radius: 4px; pointer-events: none; }
+.canvas.thumb .hotspot.flash { animation: hotflash 2.6s ease-out; }
+@keyframes hotflash {
+  0%   { background: color-mix(in srgb, var(--flash) 55%, transparent); outline: 3px solid var(--accent); }
+  100% { background: transparent; outline: 3px solid transparent; }
+}
+
+/* positioned thumbnail canvas (imported / overlay decks) — always white like PowerPoint */
+.canvas.pos { position: relative; container-type: size; padding: 0; overflow: hidden; background: #ffffff; color: #14161d; aspect-ratio: 4 / 3; }
+.canvas.pos .decor { position: absolute; border-radius: 2px; }
+.canvas.pos .pel { position: absolute; overflow: hidden; box-sizing: border-box; padding: 1px 4px; display: flex; flex-direction: column; justify-content: center; line-height: 1.12; border-radius: 3px; }
+.canvas.pos .pel > div { width: 100%; }
+.canvas.pos .pel.empty { outline: 1px dashed rgba(0, 0, 0, .14); }
+.canvas.pos .pel.ro { opacity: .8; }
+.canvas.pos .pel.flash { animation: flashbg 2.6s ease-out; z-index: 5; outline: 2px solid var(--accent); }
+
+/* grid rows size to their tallest card, so one long notes block would inflate
+   every sibling in its row. Cap at ~5 lines with its own scroller (nothing is
+   lost) and pin it to the card bottom so a stretched card still looks deliberate. */
+.slide-notes { padding: 8px 14px; border-top: 1px dashed var(--line); color: var(--ink-soft); font-size: 12px; background: var(--panel-2);
+  max-height: 92px; overflow-y: auto; margin-top: auto; }
+.slide-notes b { color: var(--ink); font-weight: 600; }
+
+/* flash highlight when edited */
+@keyframes flashbg { 0% { background: var(--flash); box-shadow: 0 0 0 3px var(--flash); } 100% { background: transparent; box-shadow: 0 0 0 0 transparent; } }
+.el.flash { animation: flashbg 2.6s ease-out; }
+@keyframes ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 100% { box-shadow: 0 0 0 6px transparent; } }
+.slide.flash { animation: ring 2.6s ease-out; }
+.slide.flash .slide-head::after { content: "edited"; color: var(--accent); font-weight: 700; font-size: 11px; animation: fade 2.6s forwards; }
+@keyframes fade { 0%,60% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .canvas.thumb .hotspot.flash, .canvas.pos .pel.flash, .el.flash, .slide.flash, .slide.flash .slide-head::after
+    { animation-duration: .01s; }
+}
+
+/* ---------------- message board ---------------- */
+.board { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  /* the board takes ALL leftover rail height (the other panels are content-sized
+     below), and its floor clears its own ~170px of chrome with room to spare so
+     the rules are always readable rather than technically present. */
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 420px; overflow: hidden; }
+.board-head { padding: 12px 16px; font-weight: 650; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 8px; }
+.board-head .rules-count { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--paused);
+  background: color-mix(in srgb, var(--paused) 14%, transparent); padding: 2px 8px; border-radius: 999px; }
+/* app.js writes '' to mean "nothing to report"; without this the pill still paints
+   its background and padding, leaving a stray lozenge beside the panel title. */
+.board-head .rules-count:empty { display: none; }
+
+.composer { padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.composer textarea { width: 100%; resize: vertical; font: inherit; padding: 8px 10px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); min-height: 40px; }
+.composer textarea:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+/* the substituted 1px border is ~1.95:1, so a keyboard user cannot see where focus
+   is. :focus-visible only fires for keyboard interaction, and outline-offset is
+   outside the box model, so pointer users see nothing and nothing reflows. */
+.search-input:focus-visible, .composer textarea:focus-visible, .as-name input:focus-visible,
+.btn:focus-visible, .mini-x:focus-visible, .mini-btn:focus-visible,
+.loop-toggle:focus-visible, .board-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, #ffffff); outline-offset: 2px;
+}
+.composer-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.pin-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-soft); cursor: pointer; user-select: none; }
+.pin-toggle input { accent-color: var(--paused); }
+.as-name { font-size: 12px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 4px; flex: 1 1 auto; min-width: 0; }
+/* takes the free space its row already has (so "10m (optional)" fits whole) rather
+   than a bigger fixed width, which would wrap .composer-row onto a second line */
+.as-name input { width: auto; flex: 1 1 auto; min-width: 74px; font: inherit; font-size: 12px; padding: 3px 6px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.btn.send { margin-left: auto; padding: 7px 16px; background: var(--accent); color: #fff; border-color: transparent; font-size: 13px; }
+
+/* the scroller is the ONLY part of a rail panel that may absorb shrink: without
+   an explicit flex it inherits 0 1 auto against its own (huge) content basis and
+   collapses to nothing, which is what buried the 9 pinned house rules under a
+   35px sliver. The chrome around it stays inelastic. */
+.board-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 12px 12px; }
+.board-head, .composer, .feed-head { flex: none; }
+.rules-label, .notes-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft);
+  font-weight: 700; margin: 8px 4px 6px; }
+.rules { display: flex; flex-direction: column; gap: 8px; }
+.rule { display: flex; gap: 8px; align-items: flex-start; padding: 9px 11px; border-radius: 10px;
+  background: color-mix(in srgb, var(--paused) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--paused) 34%, transparent); }
+.rule-pin { flex: none; line-height: 1.4; }
+.rule-main { flex: 1 1 auto; min-width: 0; }
+.rule-text { font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.rule-meta { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+.notes { display: flex; flex-direction: column; gap: 8px; }
+.note { padding: 9px 11px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.note-head { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.note-author { font-weight: 650; font-size: 12.5px; color: var(--accent); }
+.note-t { font-size: 11px; color: var(--ink-soft); }
+.note-text { line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
+/* one resting treatment across the three micro icon-buttons: these are the
+   delete/unpin/done/toggle controls, so the smallest targets were also the
+   destructive ones. 24x24 minimum; the distinct hover hues below are meaning
+   (red destructive, green affirmative) and stay. */
+.mini-x { margin-left: auto; flex: none; border: none; background: transparent; color: var(--ink-soft);
+  cursor: pointer; font-size: 15px; line-height: 1; padding: 1px 5px; border-radius: 6px; opacity: .65;
+  min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.mini-x:hover { opacity: 1; color: #dc2626; background: color-mix(in srgb, #dc2626 14%, transparent); }
+.board-empty { font-size: 12.5px; color: var(--ink-soft); font-style: italic; padding: 4px 2px; }
+.board-toggle { display: block; width: 100%; margin-top: 8px; padding: 7px; border-radius: 9px;
+  border: 1px dashed var(--line); background: transparent; color: var(--accent); font: inherit;
+  font-size: 12px; font-weight: 650; cursor: pointer; text-align: center; }
+.board-toggle:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+/* ---------------- task list ---------------- */
+.tasks { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  /* content-sized, not a percentage share: the old bases summed to 144% so every
+     panel was clamped below its own chrome and sliced its composer. The cap keeps
+     a long list from re-starving the board. */
+  display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; max-height: 300px; overflow: hidden; }
+.tasks-count { color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 14%, transparent) !important; }
+.tasklist { display: flex; flex-direction: column; gap: 8px; }
+.task { display: flex; gap: 8px; align-items: flex-start; padding: 9px 11px; border-radius: 10px;
+  background: var(--panel-2); border: 1px solid var(--line); }
+.task.claimed { border-color: color-mix(in srgb, var(--paused) 40%, var(--line));
+  background: color-mix(in srgb, var(--paused) 8%, transparent); }
+.task.done { opacity: .55; }
+.task.done .task-text { text-decoration: line-through; }
+.task-main { flex: 1 1 auto; min-width: 0; }
+.task-text { line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap; }
+.task-meta { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+.task-actions { display: flex; align-items: center; gap: 2px; flex: none; }
+.mini-btn { border: none; background: transparent; color: var(--ink-soft); cursor: pointer; font-size: 15px;
+  line-height: 1; padding: 1px 5px; border-radius: 6px; opacity: .65;
+  min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.mini-btn:hover { opacity: 1; color: var(--live); background: color-mix(in srgb, var(--live) 15%, transparent); }
+
+/* ---------------- standing loops ---------------- */
+.loops { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; max-height: 260px; overflow: hidden; }
+.loops-count { color: var(--live) !important;
+  background: color-mix(in srgb, var(--live) 16%, transparent) !important; }
+.looplist { display: flex; flex-direction: column; gap: 8px; }
+.loop { display: flex; gap: 8px; align-items: flex-start; padding: 9px 11px; border-radius: 10px;
+  background: color-mix(in srgb, var(--live) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--live) 32%, transparent); }
+.loop.off { background: var(--panel-2); border-color: var(--line); opacity: .72; }
+.loop-toggle { flex: none; border: none; background: transparent; cursor: pointer; font-size: 15px;
+  line-height: 1.3; padding: 1px 5px; border-radius: 6px; opacity: .65;
+  min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.loop-toggle:hover { background: color-mix(in srgb, var(--live) 18%, transparent); }
+.loop-main { flex: 1 1 auto; min-width: 0; }
+.loop-text { font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.loop-meta { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+
+/* ---------------- house-rule lint ---------------- */
+.lint { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; max-height: 240px; overflow: hidden; }
+.lint-count.clean { color: var(--live) !important;
+  background: color-mix(in srgb, var(--live) 16%, transparent) !important; }
+.lint-count.dirty { color: #dc2626 !important;
+  background: color-mix(in srgb, #dc2626 16%, transparent) !important; }
+.lintlist { display: flex; flex-direction: column; gap: 8px; }
+.lint-clean { font-size: 12.5px; color: var(--live); font-weight: 600; padding: 4px 2px; }
+.lint-issue { display: flex; gap: 8px; align-items: flex-start; padding: 9px 11px; border-radius: 10px;
+  background: color-mix(in srgb, #dc2626 8%, transparent); border: 1px solid color-mix(in srgb, #dc2626 30%, transparent); }
+.lint-issue-main { flex: 1 1 auto; min-width: 0; }
+.lint-issue-where { font-weight: 650; font-size: 12.5px; }
+.lint-issue-type { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #dc2626; font-weight: 700; }
+.lint-issue-detail { line-height: 1.35; overflow-wrap: anywhere; margin-top: 2px; }
+
+/* ---------------- feed ---------------- */
+.feed { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  flex: 0 0 auto; min-height: 160px; max-height: 300px; display: flex; flex-direction: column; overflow: hidden; }
+/* built like .board-head so Activity stops being the one odd header out */
+.feed-head { padding: 12px 16px; font-weight: 650; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 8px; }
+.feed-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 6px; }
+.feed-item { padding: 8px 10px; border-radius: 10px; display: flex; gap: 9px; align-items: flex-start; font-size: 13px; }
+.feed-item:hover { background: var(--panel-2); }
+.feed-item .ic { flex: none; width: 20px; text-align: center; }
+.feed-item .who { font-weight: 600; }
+.feed-item .what { color: var(--ink-soft); }
+.feed-item .t { margin-left: auto; color: var(--ink-soft); font-size: 11px; white-space: nowrap; }
+.feed-item.pause { color: var(--paused); font-weight: 600; }
+.feed-item.resume { color: var(--live); font-weight: 600; }
+.feed-empty { font-size: 12.5px; color: var(--ink-soft); font-style: italic; padding: 4px 2px; }
+
+/* ---------------- paused overlay ---------------- */
+/* pointer-events:none so the PAUSED scrim stays purely visual. It covers the
+   whole viewport, and without this it swallowed every click on the dashboard
+   (board composer, pin/delete, even Resume), which broke the promise that the
+   board keeps working while editing is paused. */
+.paused-overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--paused) 16%, rgba(0,0,0,.35)); backdrop-filter: blur(2px);
+  pointer-events: none; }
+/* Centre the card over the DECK column, not the whole viewport. The rail is
+   deliberately z 31 (above this scrim) so the board stays usable while paused,
+   which means a viewport-centred card slides under the opaque rail on narrower
+   screens: the card is ~282px wide and the rail claims the right 380px
+   (360px track + 20px page padding), so they collided from about 1042px down
+   to the 900px breakpoint where the rail goes static and the reservation ends. */
+@media (min-width: 901px) { .paused-overlay { padding-right: 380px; } }
+.paused-card { background: var(--panel); border: 2px solid var(--paused); border-radius: 18px; padding: 34px 46px; text-align: center; box-shadow: var(--shadow); animation: pop .18s ease-out;
+  pointer-events: none; }
+@keyframes pop { from { transform: scale(.94); opacity: .6; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .paused-card { animation-duration: .01s; } }
+.paused-icon { font-size: 40px; }
+.paused-title { font-size: 24px; font-weight: 800; letter-spacing: .06em; color: var(--paused); margin-top: 6px; }
+.paused-sub { color: var(--ink-soft); margin-top: 6px; }
+
+.hidden { display: none !important; }
+
+/* ---------------- toast ---------------- */
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-weight: 600;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 40; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.err { background: #dc2626; color: #fff; }

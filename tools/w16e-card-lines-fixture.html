@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>W16e card line-budget render check</title>
+<!-- THE BUILD'S OWN STYLESHEETS, UNMODIFIED. The class chain below is the
+     real `.chip-preview` markup _renderChipPreview() writes
+     (src/tree-graph.js). src/styles.css supplies the custom properties
+     (--font-mono, --ink-3, --sheet, --rc, ...) tree-graph.css's rules read;
+     src/tree-graph.css supplies the clamp/line-height/wrap rules under test.
+     Neither is retyped here. This file renders whatever the linked
+     src/tree-graph.css currently says; CARD_LINES_CSS (see
+     w16e-card-lines-main.cjs) points that one link at a different copy of
+     the file to render a different commit's rule without touching this
+     worktree's real source. -->
+<link rel="stylesheet" href="../src/styles.css">
+<link rel="stylesheet" href="../src/tree-graph.css" id="tree-graph-css">
+<style>
+  /* TEST HARNESS ONLY, below this line -- position/transform/background only,
+     the same restriction tools/clamp-render-fixture.html documents: never
+     text-overflow, overflow, white-space or -webkit-line-clamp, since those
+     are exactly the properties under test and must come from the linked
+     stylesheet alone. */
+  html, body { margin: 0; background: #ffffff; }
+  body { padding: 24px; background: #ffffff; }
+  body *:not(#mc-capture-freshness-probe) { position: static !important; transform: none !important; }
+  /* SCREEN_CHIP_W (src/tree-graph.js) is 322px; padding: 7px 15px on
+     .static-tree-chip makes its .chip-preview content box 292px, the exact
+     width evidence\w16d-cardroom.json measured on the person's own card
+     (div.chip-preview rect.w: 292). Written here because this fixture has no
+     layout engine to derive it the way the real canvas does. */
+  .static-tree-chip-overlay .static-tree-chip { width: 322px; }
+</style>
+</head>
+<body>
+
+  <!-- The real card: name, current (short, closed-vocabulary status word),
+       previous, tool (unaffected by this lane, single nowrap line), chat.
+       feed.current/previous/tool/chat can all be simultaneously truthy
+       (src/tree-graph.js `_renderChipPreview`), so all four render together
+       here, matching the worst case the CSS comment in src/tree-graph.css
+       budgets for.
+       previous/chat text is one 81-character sentence repeated a known
+       number of times (10x for previous = 810 chars, 6x for chat = 486
+       chars) rather than free prose, so this fixture's own length is exact
+       and checkable by inspection instead of by running anything -- and
+       both totals are the same order of magnitude as the person's own card
+       (741 / 482 chars, evidence\w16d-cardroom.json), long enough to still
+       overflow a 16-line clamp so the test proves the ceiling is reached,
+       not that the text ran out first. -->
+  <div class="static-tree-chip-overlay">
+    <div class="chip static-tree-chip screen-chip-visible role-coordinator">
+      <div class="chip-preview">
+        <div class="cl cl-name"><b>Manager 4</b><span class="chip-runtime"></span></div>
+        <div class="cl cl-current" data-clamp-test="fixture-current">running</div>
+        <div class="cl cl-previous" data-clamp-test="fixture-previous">This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it.</div>
+        <div class="cl cl-tool" title="Running a command">Running a command: cd 'C:\Users\redacted-profile\Desktop\ToolsEnabled-1.0.41-WorkingFolder\wt-t5-m4-w16e'</div>
+        <div class="cl cl-chat" data-clamp-test="fixture-chat">This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it. This line must still be visible after the clamp grows so the check can count it.</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

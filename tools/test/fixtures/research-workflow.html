@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en" data-theme="white"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Research workflow renderer fixture</title></head>
+<body><div id="audit-host"></div><script type="module">
+import '/src/styles.css'
+import '/src/theme-refinements.css'
+import { researchView } from '/src/views/research.js'
+import { setExampleMode, DATA_SOURCE_EVENT } from '/src/data-source.js'
+const mode = new URLSearchParams(location.search).get('mode') || 'example'
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms))
+const wait = async predicate => { for (let i=0;i<250;i++) { if (predicate()) return; await pause(20) }; throw Error('Synthetic fixture did not settle') }
+const rows = new Map(), accountWrites = [], backendActions = [], pendingSaves = []
+let nextId = 0, projectCalls = 0, failedCatalog = false, failedService = false
+const projects = [{projectId:'rp-'+'a'.repeat(36),name:'Synthetic workflow project',enabled:true,status:'active'}]
+const nativeFetch = window.fetch.bind(window)
+window.fetch = async (input, options) => {
+  const url = new URL(typeof input === 'string' ? input : input.url, location.href)
+  if (url.origin !== location.origin) throw Error('Synthetic fixture blocked outside fetch')
+  if (url.pathname === '/data/research.json' && failedCatalog) return new Response('Synthetic catalog HTTP failure', {status:503})
+  if (url.pathname.startsWith('/v1/')) throw Error('Native bridge fetch forbidden in this fixture')
+  return nativeFetch(input, options)
+}
+const transport = async (pathname, options={}) => {
+  const body = options.body || {}
+  backendActions.push({pathname,body:structuredClone(body)})
+  if (pathname === '/v1/actions/research-snapshot') return failedService
+    ? {ok:false,code:'SYNTHETIC_UNAVAILABLE',reason:'Synthetic service unavailable'}
+    : {ok:true,receipt:{projects:structuredClone(projects),experiments:mode === 'available' ? { [projects[0].projectId]: [{ experimentId:'fixture-exp', projectId:projects[0].projectId, name:'Synthetic measured experiment', resultSchema:{ fields:{ score:'number', okay:'boolean' } }, axes:[{id:'score',values:[5]}] }] } : {},assignments:[],settings:{pipelineEnabled:false},lifecycle:{running:false,available:true,state:'stopped'}}}
+  if (pathname === '/v1/actions/research-project-save') {
+    projectCalls++
+    await new Promise(resolve => pendingSaves.push(resolve))
+    // Mirrors the inspected UNIQUE(name) constraint in state-store.js; the
+    // initial exploratory fixture omitted it and cannot prove duplicate rows.
+    if (projects.some(project => project.name === body.name)) return {ok:false,code:'RESEARCH_PROJECT_NAME_TAKEN',reason:'A research project with that name already exists.'}
+    const project={projectId:'rp-'+(++nextId).toString(16).padStart(36,'0'),name:body.name,enabled:true,status:'active'}
+    projects.push(project)
+    return {ok:true,receipt:{project}}
+  }
+  if (pathname === '/v1/actions/research-runs') return {ok:true,receipt:{runs:[{runId:'fixture-run',experimentId:'fixture-exp',params:{score:5},task:{status:'succeeded',attempt:1,result:{evidenceStatus:'collected',runnerKind:'process'}}}]}}
+  if (pathname === '/v1/actions/research-results') return {ok:true,receipt:{results:[{record:{score:99,okay:false},recordHash:'a'.repeat(64),artifactPath:'synthetic/output.json',createdAtMs:1}]}}
+  if (pathname === '/v1/actions/research-findings') return {ok:true,receipt:{findings:mode === 'available' ? [{findingId:'fixture-finding',claim:'Synthetic finding for navigation verification',status:'draft'}] : []}}
+  if (pathname === '/v1/research/local-tiers-status') return {ok:false,reason:'Synthetic local tiers not connected',code:'SYNTHETIC_UNAVAILABLE'}
+  return {ok:false,code:'SYNTHETIC_REFUSAL',reason:'Synthetic fixture does not execute work'}
+}
+if (mode !== 'example') {
+  // A host that offers a bridge transport must also offer the research
+  // assignment destination capture; the store refuses to read a snapshot without
+  // one. This mirrors the synthetic host in research-view-state.test.mjs.
+  window.mcShell={getBridgeProof:async()=>{throw Error('No native bootstrap in synthetic fixture')},getBridgeTransport:async()=>transport,
+    captureResearchAssignmentDestination:async()=>({ok:true,key:'synthetic-destination',request:(action,body)=>transport('/v1/actions/'+action,{body})})}
+  window.mcAccount={getSetting:async key=>({ok:true,key,accountId:'synthetic-workflow-account',value:rows.get(key)??null}),putSetting:async(key,value)=>{accountWrites.push({key,value});rows.set(key,value);return {ok:true}}}
+}
+setExampleMode(mode === 'example')
+let view = researchView()
+document.querySelector('#audit-host').append(view.el)
+const q = selector => view.el.querySelector(selector)
+window.audit = {
+  state: { projects, rows, accountWrites, backendActions },
+  remount() { view.destroy(); view.el.remove(); view = researchView(); document.querySelector('#audit-host').append(view.el) },
+  setEmpty() { projects.length = 0; window.dispatchEvent(new CustomEvent(DATA_SOURCE_EVENT)) },
+  measure() {
+    return { sourceMode:view.el.dataset.liveMode, source:q('[data-research-source]')?.textContent,
+      modules:[...view.el.querySelectorAll('[data-mc]')].map(node=>node.dataset.mc),
+      area: view.el.dataset.researchArea, visible:[...view.el.querySelectorAll('[data-mc]')].filter(node=>node.checkVisibility({checkVisibilityCSS:true}) && !node.closest('.m-stash')).map(node=>node.dataset.mc),
+      moduleHeadings:[...view.el.querySelectorAll('section[data-mc]')].map(node=>({id:node.dataset.mc,headings:[...node.querySelectorAll(':scope > .research-section-head h2')].map(n=>n.textContent),gripName:node.querySelector('.m-grip')?.getAttribute('aria-label'),removeName:node.querySelector('.m-x')?.getAttribute('aria-label'),visibleCaption:node.querySelector('.m-edit-head .mt')?.textContent||null})),
+      storedDisabled:JSON.parse(localStorage.getItem('mc.research.modules')||'{"disabled":[]}').disabled,
+      noneVisible:!q('[data-research-none]').hidden,designerPresent:!!q('[data-exp-form]'),
+      projectStatus:q('[data-project-status]')?.textContent,projectDisabled:q('[data-project-select]')?.disabled,
+      pipelineHref:q('[data-project-status] a')?.getAttribute('href')||null,
+      catalogNotice:q('[data-research-unavailable]')?.textContent.replace(/\s+/g,' ').trim()||null,
+      viewport:{width:innerWidth,height:innerHeight},pageOverflow:document.documentElement.scrollWidth>innerWidth,
+      contentWidth:document.documentElement.scrollWidth,
+      overflowElements:[...view.el.querySelectorAll('*')].filter(node=>{const r=node.getBoundingClientRect();return r.width>0&&(r.right>innerWidth+1||r.left< -1)}).slice(0,10).map(n=>({tag:n.tagName,class:n.className,text:n.textContent.slice(0,80)})),
+      h1:[...view.el.querySelectorAll('h1')].map(n=>n.textContent),
+    }
+  },
+  async exampleWrites() {
+    q('[data-exp-run]').click();await pause(60)
+    const runSentence=q('[data-exp-run]')?.textContent
+    q('[data-exp-template="command"]').click()
+    q('[data-exp-form]').requestSubmit();await pause(60)
+    return {runSentence,saveSentence:q('[data-exp-form-status]').textContent,backendActions,accountWrites}
+  },
+  disableAll(){q('[data-modules-btn]').click();q('[data-modules-all-off]').click()},
+  enableAll(){q('[data-modules-all-on]').click()},
+  async failCatalog() {
+    failedCatalog=true;window.dispatchEvent(new CustomEvent(DATA_SOURCE_EVENT));await pause(200)
+    return {injectedHttpStatus:503,visible:this.measure()}
+  },
+  async failService() {
+    failedService=true;window.dispatchEvent(new CustomEvent(DATA_SOURCE_EVENT));await pause(200)
+    return this.measure()
+  },
+}
+window.auditReady=true
+</script></body></html>

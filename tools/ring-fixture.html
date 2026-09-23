@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>crescent fixture</title>
+  <!--
+    A measurement fixture for the home hero's crescent, and nothing else.
+
+    It exists because driving the whole /home view to photograph one circle
+    makes the measurement hostage to engine state, poll timing and the session
+    feed: the ring's colour is derived from live fleet load, so "capture the
+    reference" would have meant "capture whatever the fleet happened to be
+    doing". Here the layer states are set directly and the geometry is pinned,
+    so a before/after difference can only come from the rendering.
+
+    It is served by the dev server from tools/ and is NOT a build entry —
+    vite's default input is index.html alone — so it cannot reach the product.
+  -->
+  <style>
+    html, body { margin: 0; padding: 0; }
+    /* The measurement frame: the ring is parked at a known offset with room on
+       every side for the haze, which reaches about 90px past the ring's own box
+       and would otherwise be clipped by the window edge. */
+    #park { position: absolute; left: 200px; top: 140px; }
+  </style>
+</head>
+<body>
+  <div id="park" class="home-ring-wrap"></div>
+  <script type="module">
+    import '/src/styles.css'
+    import '/src/home.css'
+    import { uptimeRing } from '/src/components.js'
+
+    const q = new URLSearchParams(location.search)
+    const size = Number(q.get('size') || 520)
+    const theme = q.get('theme') || 'white'
+    const load = q.get('load') || 'idle'
+
+    document.documentElement.dataset.theme = theme
+    /* Deterministic capture: this kills cresPulse on the peak state and the
+       colon pulse, both of which would otherwise put the shot at the mercy of
+       when the screenshot landed in the animation. It is also the state the
+       reduced-motion guard has to keep working in, so measuring it is not a
+       compromise. */
+    document.body.classList.add('reduce-motion')
+
+    const ring = uptimeRing({ size, epoch: Date.now(), caption: '', sub: '', crescent: true })
+    ring.el.dataset.load = load
+    document.getElementById('park').appendChild(ring.el)
+
+    /* Only the light is under measurement. The clock inside the disc is a
+       different question and its crossfade would add motion to a still. */
+    const digits = ring.el.querySelector('.uring-digits')
+    if (digits) digits.hidden = true
+
+    /* The measurement frame, derived from the SHIPPED formulas and held fixed
+       across versions on purpose: if a change moves the arc, that has to show
+       up as a measured shift rather than being absorbed by a frame that moved
+       with it. */
+    const stroke = Math.max(7, size * 0.02)
+    const rect = ring.el.getBoundingClientRect()
+    window.__ringGeom = {
+      size, theme, load,
+      left: rect.left, top: rect.top,
+      arcCx: rect.left + size / 2 - Math.max(4, size * 0.022),
+      arcCy: rect.top + size / 2,
+      r: (size - stroke * 2 - 14) / 2,
+      reach: Math.ceil((size - stroke * 2 - 14) / 2 + (stroke * 3.4) / 2 + 3 * (size * 0.05)),
+    }
+
+    const settle = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.__ringReady = true
+    }))
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle)
+    else settle()
+  </script>
+</body>
+</html>

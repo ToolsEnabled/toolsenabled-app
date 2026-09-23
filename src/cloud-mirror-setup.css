@@ -1,0 +1,224 @@
+/* The cloud mirror setup dialog.
+ *
+ * EVERY VALUE HERE COMES FROM THE EXISTING SCALE. No new colour, radius or
+ * spacing token is introduced -- the owner's standing rule is that presentation
+ * is open but must agree strictly with the theme, and a one-off hex in a dialog
+ * is how a theme stops being one.
+ *
+ * The 44px control floor is deliberate and is NOT what .ctl-btn ships (40px).
+ * The inputs here are the only controls on this surface a person must hit on a
+ * phone, and the shared button is a wider question than this file. Composed
+ * from the existing scale rather than declared as a magic number:
+ * 2 x --s5 - --s1 = 44px, the same arithmetic the site floor uses.
+ */
+
+.cms-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s4);
+  background: color-mix(in oklab, var(--ink) 42%, transparent);
+}
+
+.cms-dialog {
+  width: min(560px, 100%);
+  /* 100%, NOT 100vh LESS A COPY OF THE OVERLAY'S PADDING -- .cms-overlay is
+     fixed and inset:0 with exactly that padding, so the percentage says the
+     same thing without repeating the number, and it is the spelling that
+     holds under the Text size setting: a viewport unit is not scaled by the
+     body zoom while the painted dialog is, so at Large this was 12% taller
+     than the window and its Connect/Cancel row sat below the edge with
+     nothing to scroll. See --zoom at :root in src/styles.css. */
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  box-shadow: var(--elev-2);
+}
+
+.cms-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4);
+  border-bottom: 1px solid var(--line);
+}
+
+.cms-header h2 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 640;
+  color: var(--ink);
+}
+
+.cms-close {
+  /* calc keeps this on the same floor as the fields below without restating
+     the number that produced it. */
+  min-width: calc((2 * var(--s5)) - var(--s1));
+  min-height: calc((2 * var(--s5)) - var(--s1));
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-sm);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.cms-close:hover { color: var(--ink); background: color-mix(in oklab, var(--ink) 5%, transparent); }
+.cms-close:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 1px; }
+
+.cms-registration-status {
+  min-height: calc(var(--s3) + var(--s2));
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-25);
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.cms-dialog[aria-busy="true"] .cms-registration-status { color: var(--ink-2); }
+
+.cms-body { padding: var(--s4); overflow-y: auto; }
+
+.cms-form { display: flex; flex-direction: column; gap: var(--s4); }
+
+.cms-field { display: flex; flex-direction: column; gap: var(--s1); }
+
+.cms-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 640;
+  color: var(--ink-2);
+}
+
+.cms-row { display: flex; gap: var(--s2); align-items: stretch; }
+.cms-row .cms-input { flex: 1 1 auto; min-width: 0; }
+
+.cms-input {
+  min-height: calc((2 * var(--s5)) - var(--s1));
+  padding: 0 var(--s3);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+}
+.cms-input:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 1px; }
+.cms-input[readonly] { color: var(--ink-2); }
+.cms-input:disabled { opacity: 0.62; cursor: not-allowed; }
+
+.cms-note, .cms-blocked {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-25);
+}
+
+.cms-refusal {
+  margin: 0;
+  padding: var(--s3);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: color-mix(in oklab, var(--s-serious) 8%, transparent);
+  border-left: 2px solid var(--s-serious);
+  border-radius: var(--r-sm);
+}
+.cms-refusal:focus, .cms-reregister:focus { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+
+.cms-reregister {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  background: color-mix(in oklab, var(--s-warn) 8%, transparent);
+  border-left: 2px solid var(--s-warn);
+  border-radius: var(--r-sm);
+}
+
+.cms-reregister .ctl-btn { flex: 0 0 auto; min-height: calc((2 * var(--s5)) - var(--s1)); }
+
+.cms-actions { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.cms-actions .ctl-btn { min-height: calc((2 * var(--s5)) - var(--s1)); padding: 0 var(--s4); }
+.cms-actions .ctl-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+.cms-lede { margin: 0 0 var(--s2); font-family: var(--font-ui); font-size: 14px; color: var(--ink); }
+
+.cms-progress { min-height: calc((2 * var(--s5)) + var(--s6)); }
+
+.cms-checks { list-style: none; margin: var(--s3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s1); }
+
+.cms-check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s1) var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--bg-2);
+  border-radius: var(--r-sm);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.cms-check-state {
+  font-weight: 640;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  align-self: center;
+}
+.cms-check[data-tone="good"] .cms-check-state { color: var(--s-good); }
+.cms-check[data-tone="warn"] .cms-check-state { color: var(--s-warn); }
+
+.cms-check-detail { grid-column: 2; color: var(--ink-3); }
+
+.cms-project {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name action" "status action" "detail action";
+  align-items: center;
+}
+.cms-project .cms-check-name { grid-area: name; }
+.cms-project .cms-project-status {
+  grid-area: status;
+  width: fit-content;
+  font-weight: 640;
+  color: var(--s-good);
+}
+.cms-project[data-state="disabled"] .cms-project-status { color: var(--s-warn); }
+.cms-project .cms-check-detail { grid-area: detail; overflow-wrap: anywhere; }
+.cms-project-actions { grid-area: action; display: flex; gap: var(--s2); align-items: center; }
+.cms-project .ctl-btn { min-height: calc((2 * var(--s5)) - var(--s1)); }
+.cms-project .ctl-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+@media (max-width: 480px) {
+  .cms-overlay { padding: 0; align-items: flex-end; }
+  /* 92% of the overlay, which this query has just made the whole window
+     (padding: 0 above) -- a percentage rather than 92vh for the reason on the
+     base rule: the viewport unit ignores the Text size zoom, the box does not. */
+  .cms-dialog { width: 100%; max-height: 92%; border-radius: var(--r-lg) var(--r-lg) 0 0; }
+  .cms-row { flex-direction: column; }
+  .cms-reregister { align-items: stretch; flex-direction: column; }
+  .cms-project {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "name" "status" "detail" "action";
+  }
+  .cms-project-actions { align-items: stretch; flex-direction: column; }
+  .cms-project .ctl-btn { width: 100%; }
+}

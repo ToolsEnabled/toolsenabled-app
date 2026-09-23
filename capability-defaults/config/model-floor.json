@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "model-floor-v1",
+  "$comment": [
+    "SHIPPED DEFAULT model floor for a fresh installation.",
+    "",
+    "src/lib/model-floor.js reads this file at load and src/lib/tool-registry.js",
+    "refuses a delegated run whose model is not on it, so it has to ship. The",
+    "builder's own copy is not the file to ship, and the reason is not that it",
+    "contains a secret -- it does not. It contains their WORKING NOTES: their",
+    "instructions quoted verbatim and attributed, an argument about how two of",
+    "those instructions interact, dated incident write-ups naming which internal",
+    "lane made which mistake, the names of the agents who own each file, and a",
+    "declaration-site index describing a repository the installer does not have.",
+    "Publishing someone's private engineering correspondence inside a config file",
+    "is a privacy failure even when every individual sentence is harmless.",
+    "",
+    "WHAT SURVIVES IS THE RULE ITSELF, unchanged and still enforced:",
+    "  * purposesCannotLowerTheFloor stays true. The reader FAILS CLOSED if it is",
+    "    anything else, and that refusal is the whole point: there is no lane type,",
+    "    planning pass, review pass or advisory call that gets a cheaper model. A",
+    "    per-purpose exception is how a floor stops being a floor.",
+    "  * unknownIsRefusal stays true. An id that is not listed is refused whether",
+    "    it is weaker, unknown, or merely unverified -- never assumed acceptable.",
+    "  * A model below the floor is a REFUSAL, never a silent substitution to",
+    "    something cheaper.",
+    "",
+    "The model ids are public Google identifiers, not builder data, and are kept",
+    "so the floor is enforceable rather than empty on a fresh machine. refusedIds",
+    "keeps the ids and the technical reason, without the incident narrative.",
+    "",
+    "declarationSites is absent. It indexes source files in the builder's working",
+    "tree and pins them against drift; the check that reads it does not ship, and a",
+    "shipped index of files that are not here would describe nothing. The reader",
+    "treats the field as optional.",
+    "",
+    "A stronger model that is proven to serve is always addable here. That is the",
+    "one direction this file is meant to move."
+  ],
+  "policy": {
+    "purposesCannotLowerTheFloor": true,
+    "purposes": ["lane", "planning", "review", "advisory", "chat", "release-review"],
+    "unknownIsRefusal": true
+  },
+  "backends": {
+    "subscription": {
+      "$identity": "The Gemini Code Assist account this installation is signed in to, if any.",
+      "allowed": ["gemini-3.1-pro-preview"],
+      "default": "gemini-3.1-pro-preview",
+      "notServable": {}
+    },
+    "vertex": {
+      "$identity": "A billed Vertex AI project this installation is configured for, if any.",
+      "allowed": ["gemini-2.5-pro"],
+      "default": "gemini-2.5-pro",
+      "notServable": {
+        "gemini-2.5-flash": "Not servable through the CLI lane path on Vertex: the CLI substitutes its own default flash id, which is not enabled on a Vertex project. The provider error would otherwise name a model nobody requested."
+      }
+    },
+    "vertex-seat": {
+      "$identity": "A separately configured Vertex seat, if any.",
+      "allowed": ["gemini-3.1-pro-preview"],
+      "default": "gemini-3.1-pro-preview",
+      "notServable": {}
+    }
+  },
+  "refusedIds": {
+    "gemini-3.6-flash": "Not a real model id in the supported CLI, and a flash tier. A run launched with an id the CLI does not know cannot get the model that was asked for; the CLI substitutes something else without saying so.",
+    "gemini-3.5-flash": "Below floor. A real id -- the CLI's default flash model -- but a flash tier.",
+    "gemini-2.5-flash": "Below floor on every backend, and additionally not servable on Vertex through the CLI lane path.",
+    "gemini-3.1-flash-lite": "Below floor. Observed being served silently in response to an explicit pro request, which is the silent downgrade this floor exists to catch.",
+    "gemini-3-flash": "Below floor.",
+    "gemini-3-flash-preview": "Below floor. Observed being served in response to a requested pro model, caught by the serve-side check -- which is why checking the served model matters and checking only the requested one does not."
+  }
+}

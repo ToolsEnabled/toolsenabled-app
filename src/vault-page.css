@@ -1,0 +1,64 @@
+/* Vault page only. Keep policy/write behavior in the existing controllers. */
+.vault-page .settings-shell { width: 100%; max-width: 1120px; margin-inline: auto; box-sizing: border-box; }
+.vault-page .vault-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s5); padding-block: var(--s3) var(--s5); }
+.vault-page .vault-header .settings-desc { max-width: 65ch; margin: var(--s3) 0 0; line-height: 1.6; }
+.vault-eyebrow { margin: 0 0 var(--s2); font-size: 11px; font-weight: 650; letter-spacing: var(--track-caps); color: var(--ink-2); }
+.vault-page .vault-primary { min-height: 42px; padding-inline: var(--s4); font-weight: 650; white-space: nowrap; background: var(--ink); color: var(--sheet); }
+.vault-toolbar { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--s4); padding: var(--s4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--sheet); }
+.vault-search, .vault-filter { display: grid; gap: var(--s2); font-size: 12px; font-weight: 600; color: var(--ink-2); min-width: 0; }
+.vault-search { flex: 1 1 280px; }
+.vault-filter { flex: 0 1 230px; }
+.vault-toolbar input, .vault-toolbar select { min-height: 42px; width: 100%; min-width: 0; box-sizing: border-box; padding: 10px var(--s3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--sheet); color: var(--ink); font: inherit; font-size: 14px; }
+.vault-result-count { margin: var(--s4) 0 var(--s3); font-size: 12px; color: var(--ink-2); }
+.vault-notice { padding: var(--s4); background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r-lg); line-height: 1.6; overflow-wrap: anywhere; }
+.vault-page [hidden] { display: none !important; }
+.vault-page-rows { display: grid; gap: var(--s3); }
+.vault-page .vault-page-row { margin: 0; padding: var(--s4) var(--s5); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--sheet); min-width: 0; }
+.vault-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4); }
+.vault-card-heading > div { min-width: 0; }
+.vault-page .vault-card-heading h2 { margin: 0; padding-bottom: 0; font-size: 16px; line-height: 1.4; text-transform: none; letter-spacing: normal; overflow-wrap: anywhere; }
+.vault-card-meta { margin: var(--s2) 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.vault-badge { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s1) var(--s2); font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+.vault-page summary { cursor: pointer; font-size: 13px; line-height: 1.5; padding-block: 10px; color: var(--ink); }
+.vault-card-details { margin-top: var(--s3); border-top: 1px solid var(--line); }
+.vault-card-details > summary { width: fit-content; }
+.vault-card-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: start; gap: var(--s5); padding-block: var(--s3); }
+.vault-nickname-editor, .vault-access-editor { display: grid; gap: var(--s3); min-width: 0; }
+.vault-nickname-editor h3 { margin: 0; font-size: 13px; font-weight: 650; }
+.vault-editor-note { margin: 0; font-size: 12px; line-height: 1.6; color: var(--ink-2); }
+.vault-page .vault-credentials-label { color: var(--ink-2); }
+.vault-page .vault-credentials-input { min-height: 40px; max-width: none; border-radius: var(--r-md); font-family: inherit; }
+.vault-nickname-editor > .ctl-btn { justify-self: start; }
+.vault-editor-footer { grid-column: 1 / -1; display: flex; justify-content: flex-end; padding-top: var(--s3); border-top: 1px solid var(--line); }
+.vault-page-real { margin-top: var(--s2); }
+.vault-page-real code { display: block; overflow-wrap: anywhere; font-size: 12px; padding-block: var(--s2); }
+.vault-page-matrix, .vault-page-agents { display: grid; gap: var(--s3); border: 0; padding: 0; margin: 0; min-width: 0; }
+.vault-page legend { font-size: 13px; font-weight: 650; padding: 0 0 var(--s3); overflow-wrap: anywhere; }
+.vault-role-list { display: grid; grid-template-columns: minmax(0, 1fr); max-height: 22rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: var(--s1); border: 1px solid var(--line); border-radius: var(--r-md); }
+.vault-page-cell { display: flex; align-items: center; gap: var(--s3); min-height: 40px; box-sizing: border-box; font-size: 13px; padding: var(--s2) var(--s3); overflow-wrap: anywhere; }
+.vault-page-cell + .vault-page-cell { border-top: 1px solid var(--line); }
+.vault-page-cell:hover, .vault-page-cell:focus-within { background: color-mix(in oklab, var(--ui-accent) 7%, var(--sheet)); }
+.vault-page-cell span { min-width: 0; }
+.vault-page input[type=checkbox] { width: 17px; height: 17px; flex: 0 0 auto; accent-color: var(--ui-accent); }
+.vault-page-agents { border-top: 1px solid var(--line); padding-top: var(--s4); margin-top: var(--s2); }
+.vault-page-agents .vault-credentials-label { display: grid; gap: var(--s2); }
+.vault-agent-choice { display: flex; align-items: center; gap: var(--s3); font-size: 13px; }
+.vault-page-agents .ctl-btn { justify-self: start; }
+.vault-manage { margin-top: var(--s5); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s2) var(--s4); }
+.vault-manage > summary { font-weight: 600; }
+.vault-manage .vault-credentials { padding: var(--s4) 0; }
+.vault-empty { padding: var(--s5); text-align: center; color: var(--ink-2); }
+.vault-page :is(button,input,select,summary,a):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.vault-page button:disabled { cursor: progress; opacity: .65; }
+@media (max-width: 760px) {
+ .vault-card-body { grid-template-columns: minmax(0, 1fr); }
+ .vault-access-editor { padding-top: var(--s4); border-top: 1px solid var(--line); }
+}
+@media (max-width: 640px) {
+ .vault-page .vault-header { flex-direction: column; gap: var(--s4); }
+ .vault-page .vault-primary { width: 100%; }
+ .vault-toolbar { padding: var(--s3); gap: var(--s3); }
+ .vault-filter { flex: 1 1 100%; }
+ .vault-page .vault-page-row { padding: var(--s4); }
+ .vault-card-heading { flex-wrap: wrap; gap: var(--s2); }
+}

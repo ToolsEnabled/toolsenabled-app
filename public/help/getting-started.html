@@ -1,0 +1,588 @@
+<!doctype html>
+<!--
+  THE PAGE FOR SOMEBODY WHO HAS NEVER SEEN THIS PRODUCT.
+
+  WHO IT IS FOR, AND WHO IT IS NOT FOR. Everything else written down about
+  ToolsEnabled is written for the person who built it or for an agent working on
+  it: charters, standing orders, lane reports, handoff documents. A stranger who
+  is handed the installer has none of that context and cannot be given it. This
+  page assumes only that the reader has a supported Windows or Linux computer and
+  was given a file.
+
+  WHY IT IS ONE SELF-CONTAINED FILE. It ships inside the application archive and
+  is served by the application's own local web server (serveDist() in
+  shell/main.cjs, which maps .html to text/html), so it is readable with no
+  internet connection, no account, and no second program. That rules out a web
+  font, a stylesheet, an analytics tag and an image host: one external request
+  would make the page fail exactly when a person is most stuck, which is on a
+  machine that is not working yet. There is no <script> either, so nothing here
+  can behave differently from what it says.
+
+  WHAT IT MAY NOT DO. It may not promise a remedy that does not exist. The same
+  rule src/first-run-needs.js is built around applies with more force here,
+  because a person reading this has usually already failed at something. Where
+  there is no answer today -- such as no support address -- this page says so rather than
+  implying a step the reader will go looking for and not find.
+
+  KEEP THIS GUIDE TIED TO THE PRODUCT. tools/test/help-page-pages.test.mjs
+  checks the route inventory and key control and permission claims.
+  tools/onboarding-doc-qa.mjs exercises the packaged onboarding path on a
+  sterile profile; it does not validate every page or every provider. Further
+  instructions need source review and the relevant interaction checks.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ToolsEnabled — Getting started</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --ink: #14171a;
+    --ink-soft: #4a5560;
+    --ink-faint: #6b7680;
+    --page: #f6f4f0;
+    --card: #fffefb;
+    --rule: #ddd8cf;
+    --edge: #c9c2b6;
+    --accent: #1f5f4f;
+    --warn-bg: #fdf6e3;
+    --warn-edge: #d8c99a;
+    --code-bg: #eeeae2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e6e1;
+      --ink-soft: #b3b0a8;
+      --ink-faint: #8d8a83;
+      --page: #17181a;
+      --card: #1f2124;
+      --rule: #33363a;
+      --edge: #44484d;
+      --accent: #7fc9b2;
+      --warn-bg: #2a2519;
+      --warn-edge: #5c5030;
+      --code-bg: #26292d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 16px/1.62 -apple-system, "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+  header.mast { border-bottom: 1px solid var(--rule); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  .eyebrow {
+    text-transform: uppercase; letter-spacing: .12em; font-size: .7rem;
+    color: var(--ink-faint); margin: 0 0 .5rem;
+  }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 .6rem; font-weight: 620; }
+  .lede { margin: 0; color: var(--ink-soft); font-size: 1.04rem; }
+  h2 {
+    font-size: 1.22rem; margin: 2.6rem 0 .3rem; font-weight: 620;
+    padding-top: 1.4rem; border-top: 1px solid var(--rule);
+  }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
+  h3 { font-size: 1rem; margin: 1.6rem 0 .3rem; font-weight: 620; }
+  p, li { margin: .55rem 0; }
+  ol, ul { padding-left: 1.3rem; }
+  ol.steps > li { margin: .9rem 0; }
+  code, kbd {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+    font-size: .88em; background: var(--code-bg); border-radius: 3px;
+    padding: .1em .35em; word-break: break-word;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--rule); border-radius: 6px;
+    padding: .7rem .85rem; overflow-x: auto; margin: .6rem 0;
+  }
+  pre code { background: none; padding: 0; font-size: .86rem; }
+  .note, .warn {
+    border: 1px solid var(--rule); border-left: 3px solid var(--edge);
+    background: var(--card); border-radius: 4px;
+    padding: .8rem 1rem; margin: 1rem 0;
+  }
+  .warn { background: var(--warn-bg); border-color: var(--warn-edge); border-left-color: var(--warn-edge); }
+  .note > :first-child, .warn > :first-child { margin-top: 0; }
+  .note > :last-child, .warn > :last-child { margin-bottom: 0; }
+  .label { font-weight: 620; }
+  .quote {
+    font-style: italic; color: var(--ink-soft);
+    border-left: 2px solid var(--edge); padding-left: .75rem; margin: .6rem 0;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .93rem; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: left; vertical-align: top; padding: .55rem .6rem; border-bottom: 1px solid var(--rule); }
+  th { font-weight: 620; color: var(--ink-soft); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+  .tier { border: 1px solid var(--rule); background: var(--card); border-radius: 6px; padding: .9rem 1.1rem; margin: .9rem 0; }
+  .tier h3 { margin-top: 0; }
+  .tier .sets { color: var(--ink-soft); font-size: .93rem; }
+  footer.foot { margin-top: 3.5rem; padding-top: 1.2rem; border-top: 1px solid var(--rule); color: var(--ink-faint); font-size: .87rem; }
+  a { color: var(--accent); }
+  @media print {
+    body { background: #fff; color: #000; }
+    .wrap { max-width: none; padding: 0; }
+    .note, .warn, .tier { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">ToolsEnabled</p>
+  <h1>Getting started</h1>
+  <p class="lede">You were handed an installer for a program that runs an AI assistant on your own
+  computer with the permissions you choose, and keeps local records of its runs. This page takes you
+  from installation to an assistant that answers you, then explains the pages, controls and their limits.</p>
+</header>
+
+<h2>What you need first</h2>
+
+<ul>
+  <li><span class="label">A supported computer.</span> ToolsEnabled has a 64-bit Windows 10/11 installer
+  and a 64-bit Debian/Ubuntu Linux <code>.deb</code> package. macOS is not supported by these builds.</li>
+  <li><span class="label">Room for the download and installed program.</span> The download page lists
+  the package size. Provider programs, Linux dependencies and local-model downloads need additional space.</li>
+  <li><span class="label">An assistant program only if you want to run agents.</span> ToolsEnabled does not
+  bundle provider programs. Codex, Claude, Gemini and Grok can be installed and signed in from
+  Setup; the available models and whether they can start from a tree are shown beside each row. A
+  local model runs on this computer and has no provider sign-in. Provider charges and quotas belong
+  to the provider, not ToolsEnabled.</li>
+</ul>
+
+<p>Local features do not require a ToolsEnabled account or licence key. Provider installation,
+sign-in and online assistants need an internet connection. The Windows installer is per user;
+installing the Linux package requires administrator permission. There is no time-limited trial.</p>
+
+<h2>1. Getting the installer</h2>
+
+<p class="label">Download it from toolsenabled.ai/download.</p>
+
+<p>That page is the only place we publish installers, and it lists what it is offering: the file
+name, the exact size in bytes and the SHA-256 checksum. Check the address before you install
+anything — anywhere else offering a ToolsEnabled download is not us.</p>
+
+<p>The download page lists the platforms and versions currently available. Choose the installer
+for your computer.</p>
+
+<p>Somebody may instead have handed you the installer directly — a file transfer, a USB stick, or a
+link on a local network. That is a normal way to get it, and it makes the check below matter more,
+not less.</p>
+
+<p>The Windows installer ends in <code>.exe</code>; the Linux package ends in <code>.deb</code>.
+Use the exact filename shown on the download page or supplied with your copy.</p>
+
+<h3>Check you got the right file</h3>
+
+<p>The download page gives the installer's exact size in bytes and its SHA-256 checksum, and
+whoever hands you a copy directly should give you the same two numbers. Check both before running
+it. On Windows, open <span class="label">Windows Terminal</span> or
+<span class="label">PowerShell</span> — press the Start button, type <code>terminal</code>, press
+Enter — and run these two lines against your copy:</p>
+
+<pre><code>Get-Item "$HOME\Downloads\ToolsEnabled-Setup-&lt;version&gt;.exe" | Select-Object Length
+Get-FileHash "$HOME\Downloads\ToolsEnabled-Setup-&lt;version&gt;.exe" -Algorithm SHA256</code></pre>
+
+<p>On Linux, open Terminal and run:</p>
+
+<pre><code>wc -c "$HOME/Downloads/toolsenabled_&lt;version&gt;_amd64.deb"
+sha256sum "$HOME/Downloads/toolsenabled_&lt;version&gt;_amd64.deb"</code></pre>
+
+<p>Put in the version you actually have in place of <code>&lt;version&gt;</code>, and change the
+filename or path if yours differs. The byte count must
+equal the size given for that file, and the SHA-256 value must equal the
+checksum, ignoring upper and lower case. If either differs, <span class="label">stop</span> — you do
+not have the file that was published or sent to you, and no amount of retrying the installer will
+change that. Download it again from the address above, or ask whoever sent it for another copy.</p>
+
+<div class="note">
+<p>Why this matters more here than for most programs: this installer is not code-signed (see the
+next step), so Windows cannot tell you who produced it. The checksum is the only evidence you have
+that the file is the one that was built for you, and checking it takes ten seconds.</p>
+</div>
+
+<h2>2. Installing it</h2>
+
+<h3>Linux</h3>
+
+<p>For the Linux <code>.deb</code> package, open Terminal and install your downloaded file:</p>
+
+<pre><code>sudo apt install "$HOME/Downloads/toolsenabled_&lt;version&gt;_amd64.deb"</code></pre>
+
+<p>Replace <code>&lt;version&gt;</code> with the version you downloaded. Installation may ask for
+your administrator password. When it finishes, open <span class="label">ToolsEnabled</span> from
+Applications as your usual user, then continue to section 3. The program is installed under
+<code>/opt/ToolsEnabled</code>; your settings are kept separately in your user profile.</p>
+
+<h3>Windows</h3>
+
+<ol class="steps">
+  <li>Double-click the downloaded <code>ToolsEnabled-Setup-<em>&lt;version&gt;</em>.exe</code>.</li>
+  <li><span class="label">Expect Windows to try to stop you.</span> A blue box saying
+  <span class="quote">Windows protected your PC</span> — Microsoft Defender SmartScreen. It is not a
+  virus warning. It appears because this installer carries no code-signing certificate, so Windows
+  has no publisher name to show you and nothing to check it against. To continue, click
+  <span class="label">More info</span>, then <span class="label">Run anyway</span>.
+  <br>Whether it appears at all depends on how the file reached you: Windows shows it for files it
+  has marked as coming from somewhere else, which a download does and a copy from a USB stick
+  sometimes does not. Its absence is not a sign that this build is signed — it is not. If you are
+  not willing to run an unsigned installer, that is a reasonable position; stop here and ask
+  whoever sent it for a signed build.</li>
+  <li>There are no further questions. No licence screen, no folder chooser, no
+  <span class="label">Next</span> buttons. A progress bar runs for a few seconds and the application
+  opens by itself.</li>
+</ol>
+
+<p>You will not be asked for an administrator password. The installation is for your Windows user
+account only. Work you later start can use the working folders and permissions you allow.</p>
+
+<h3>Where it goes</h3>
+
+<div class="scroll">
+<table>
+  <tr><th>Thing</th><th>Where</th></tr>
+  <tr><td>The program</td><td><code>%LOCALAPPDATA%\Programs\toolsenabled</code></td></tr>
+  <tr><td>Shortcut</td><td>Start menu, under <span class="label">ToolsEnabled</span></td></tr>
+  <tr><td>Your settings and the record of what ran</td><td><code>%APPDATA%\ToolsEnabled</code></td></tr>
+  <tr><td>What this computer is allowed to do</td><td><code>%LOCALAPPDATA%\ToolsEnabled</code></td></tr>
+</table>
+</div>
+
+<p>Paste either of those <code>%…%</code> paths into the File Explorer address bar to open it.
+Nothing is written to <code>C:\Program Files</code>, nothing is written for any other user of the
+computer, and the installer also writes keys under your own user's
+registry: one recording where it was installed and what its shortcut is called, and the one that
+puts ToolsEnabled in the Windows uninstall list.</p>
+
+<h3>To open it again later</h3>
+
+<p>Press the Start button and type <code>ToolsEnabled</code>. Only one copy runs at a time: starting
+it a second time brings the window you already have to the front instead of opening another.</p>
+
+<h2>3. The first launch</h2>
+
+<p>The first time it opens you are asked four things, and then shown what your answers add up to
+before anything is written. You can press <span class="label">Back</span> at any point, and nothing
+is saved until the last screen — except your permission level, which is recorded as soon as you pass
+question 1 so that closing the window does not send you back to the start.</p>
+
+<ol class="steps">
+  <li><span class="label">“How much should the assistant be allowed to do?”</span>
+  This is the important one, and it is the only screen of the five with no way past it except
+  answering — there is no Skip here and it is not numbered, because everything after it depends on
+  the answer. The three answers are explained in the next section. One is already selected, so if
+  you do not want to decide yet, press <span class="label">Continue</span> and you get the most
+  cautious of the three.</li>
+
+  <li><span class="label">Question 2 of 3 — “Which folder should your assistant work in?”</span>
+  Review the suggested working folder shown for your computer. A new suggested workspace is created
+  when you finish setup and initialized for version history.
+  Press <span class="label">Continue</span> to accept it, or
+  <span class="label">Choose a different folder…</span> to point it at a project of your own.</li>
+
+  <li><span class="label">Signing in.</span> An optional step that asks who is using this copy, so
+  that the record of what your assistant does says who asked for it. You can press
+  <span class="label">Not now</span>; nothing later in this page depends on it. If you do make one,
+  note what the screen itself tells you: it is an account <em>on this computer</em>, not a sign-in
+  to anyone's service. No OpenAI, Anthropic or Google password is asked for anywhere in this setup.
+  After setup, <a href="#assistant-program">What this copy needs</a> has the separate install and
+  sign-in controls for assistant programs.</li>
+
+  <li><span class="label">Question 3 of 3 — “How much should it do without asking you?”</span> Three
+  answers again:
+    <ul>
+      <li><span class="label">Nothing yet — let me look around first.</span> Every screen still
+      reads and reports, and nothing that <em>acts</em> is switched on. Read the sentence under this
+      option: while it is your answer, <span class="label">starting agents is switched off</span>.
+      The page explains how to turn starts on when you are ready. You can change it later.</li>
+      <li><span class="label">Act when I start it.</span> Marked <span class="label">Recommended</span>,
+      and it is what the rest of this page assumes. Action switches are enabled for work you start;
+      this answer does not start an assistant by itself. Check the session's reported permissions.</li>
+      <li><span class="label">Act on its own.</span> Everything your permission
+      level allows is switched on, and it uses its own judgement instead of waiting for you.</li>
+    </ul>
+    <p>The button forward from this screen is not called Continue — it says
+    <span class="label">See what that sets</span>, because that is what it does.</p>
+  </li>
+
+  <li><span class="label">“Here is what those answers set.”</span> Every setting your three answers
+  produced, each one changeable here. Review these before finishing; the permission level chosen
+  earlier is already recorded. It lists what was switched
+  on, what was left off, and which of those are off because your permission level does not include
+  them. It also reports what it can prove about assistant readiness. The provider-neutral place to
+  install or sign in is the in-app guide, where the buttons do that work. Press
+  <span class="label">Finish setup</span>.</li>
+</ol>
+
+<p>The account row on Home opens <span class="label">Connect this computer</span> in Settings.
+That connects this copy to a ToolsEnabled account; it is separate from every assistant program's
+sign-in.</p>
+
+<p>Accepting every pre-selected answer takes five clicks from the first question to a working
+first page: <span class="label">Continue</span>, <span class="label">Continue</span>,
+<span class="label">Not now</span>, <span class="label">See what that sets</span>,
+<span class="label">Finish setup</span>.</p>
+
+<div class="note">
+<p><span class="label">From question 2 onward there is a “Skip the rest for now”, and it is not the
+same as clicking through.</span> Skipping applies the settings a computer that never ran setup
+already has — including “nothing that acts is switched on”. Clicking through applies the
+recommended answers, which leave you able to start an assistant. If you skip and then wonder where
+the start button is, that is why.</p>
+</div>
+
+<h2>4. What the permission levels actually mean</h2>
+
+<p>The level selects available ToolsEnabled tools and the requested write policy for new sessions.
+You can change it in Settings. A working folder is not a promise that files elsewhere cannot be read.</p>
+
+<div class="tier">
+  <h3>“I’m new to this” — Guided</h3>
+  <p>The assistant starts in one folder you pick. For Codex, Guided requests read-only work.
+  Files elsewhere on the computer may still be readable.</p>
+</div>
+
+<div class="tier">
+  <h3>“I’ve used AI coding tools before” — Standard</h3>
+  <p>The assistant starts in the projects you add. Standard requests a restricted write policy;
+  Codex can request writes within your projects and the program's temporary folders. Files elsewhere
+  may still be readable. Your tool choices can narrow what the session can do.</p>
+</div>
+
+<div class="tier">
+  <h3>“I run agents with permissions bypassed” — Unrestricted</h3>
+  <p>The assistant can read, change and delete files and run programs without asking, subject to the
+  operating-system account's access. Choose this only if you intend to allow that work.</p>
+</div>
+
+<div class="note">
+<p><span class="label">Check the running session's reported permissions before relying on a write
+restriction.</span> A session started or resumed here receives the requested permissions from that
+point; this does not undo earlier work. If you only watch a session that keeps running in another
+program, that program still controls its permissions. Choosing a level here does not change that process.</p>
+</div>
+
+<h2 id="assistant-program">5. Getting an assistant program or local model ready</h2>
+
+<p>ToolsEnabled starts the provider you select and records the attempt, but it does not replace the
+provider's account, quota or sign-in. The Setup page is the source of truth for what this build can
+run; a row that is unavailable stays unavailable rather than silently selecting another provider.</p>
+
+<ol class="steps">
+  <li>Open <span class="label">quick settings</span> with the gear, then press
+  <span class="label">all settings →</span>.</li>
+  <li>Choose <span class="label">Setup</span>, then press <span class="label">Open the guide</span>.</li>
+  <li>Under <span class="label">Your assistant programs and local models</span>, use the row for
+  Codex, Claude, Gemini or Grok. Press <span class="label">Install</span> if it is missing, or
+  <span class="label">Sign in</span> if the provider says it is not authenticated. A local model uses
+  the controls on this computer and has no provider sign-in.</li>
+  <li>Complete provider sign-in in the window the app opens. Enter provider credentials only in that
+  provider's sign-in flow. ToolsEnabled uses the resulting sign-in to launch the selected assistant.</li>
+  <li>Return to the setup review and press <span class="label">Check again</span>. Read each provider's
+  status and the model menu's availability message before starting; an unknown sign-in is not a confirmed failure.</li>
+  <li>To permit starts, turn on <span class="quote">Run an agent session</span> in Settings under
+  <span class="label">Write</span>, then press <span class="label">Save settings</span>. This switch controls
+  new starts; it does not erase saved trees.</li>
+</ol>
+
+<h2>6. Starting, talking to and stopping an agent</h2>
+
+<p>After a provider is ready and <span class="quote">Run an agent session</span> is on, open
+Computers. A role is optional: a blank role is valid. Leave <span class="label">No particular role</span>
+selected for an empty role, or choose one from the Role library when you want its directions.</p>
+
+<ol class="steps">
+  <li>On <code>#/computers</code>, choose a saved tree or press the dashed <span class="label">+</span>
+  circle to set up the first agent. The start panel asks for its role, model, thinking effort, working
+  folder and <span class="label">What do you want it to do?</span></li>
+  <li><span class="label">Set this agent</span> saves an unstarted draft.
+  <span class="label">Start this agent</span> saves the draft and requests a session. Press the
+  action you intend once, then read the status. A model row says if this copy cannot start it.</li>
+  <li>A refused or failed start keeps the node and its outcome visible. A resource hold can put a
+  start in the queue. Use <span class="label">Pause queue</span> or <span class="label">Cancel queued</span>
+  when offered; cancelling queued work does not stop a session already opening.</li>
+  <li>Select the node to open its rail. In <span class="label">Chat</span>, type a message and use
+  <span class="label">Send</span> or Enter. Read the result before retrying a refused or unconfirmed
+  send. Unaccepted text or a queued message can remain available to retry.</li>
+  <li>The composer's Stop control interrupts the running turn and keeps the session open.
+  <span class="label">Stop this agent</span> closes the session and drops queued messages; the
+  transcript remains. <span class="label">Resume with a fresh agent</span> resumes the saved
+  conversation. <span class="label">Start this conversation over</span> starts fresh without its earlier conversation.</li>
+  <li>The rail's <span class="label">Details</span> tab contains <span class="label">Start more work</span>,
+  with Launch, <span class="label">Team</span>, <span class="label">Loop</span> and Codex Cloud controls.
+  Each panel states its own requirements. Closing the rail leaves the node on the tree.</li>
+</ol>
+
+<p>Read the recorded outcome in the tree status and Metrics. A status of <span class="label">unknown</span>
+means the result was not established; it is not converted to idle, closed or done. Check the session
+before retrying an action whose acceptance was not confirmed.</p>
+
+<div class="note">
+<p><span class="label">Codex Cloud</span> launches real remote work. Launching requires the desktop app,
+the Cloud switch enabled and a usable authorized environment. The panel explains switched-off and
+unavailable states before those conditions are met. Review the repository, branch and account at
+confirmation. A task cannot be cancelled after acceptance from this panel.</p>
+</div>
+
+<h2>7. Pages and controls</h2>
+
+<p>The arrows form a loop. Direct links such as <code>#/computers</code>, <code>#/research</code> and
+<code>#/ledger?tab=t</code> open the same surfaces; an unrecognised hash returns to Home.</p>
+
+<div class="scroll"><table>
+  <tr><th>Page</th><th>What it shows</th><th>Useful controls</th></tr>
+  <tr data-guide-route="home"><td><span class="label">Home</span></td><td>Readiness, recent activity and the route to the rest of the app.</td><td>Page arrows, account row, quick settings and setup guidance.</td></tr>
+  <tr data-guide-route="computers"><td><span class="label">Computers</span></td><td>Saved trees, drafts, running agents and their conversations.</td><td>Set or start an agent, select its Chat or Details rail, resume or stop it, and manage queued starts. A role may be blank.</td></tr>
+  <tr data-guide-route="metrics"><td><span class="label">Metrics</span></td><td>Recorded run attempts, turns, usage and outcomes.</td><td>Period, Search runs, outcome filters, history paging and <span class="label">Export CSV</span>. Read missing-data explanations; a dash is not a measured zero.</td></tr>
+  <tr data-guide-route="research"><td><span class="label">Research</span></td><td>Benchmark builder, Experiment designer, Run board, Results, Local advisory tiers, Research queue, Report library, Method notes, Working lists and Assigned sessions.</td><td>Choose a module, prepare a benchmark or experiment, submit a run when enabled, then inspect its status and results. Read any unavailable reason before retrying.</td></tr>
+  <tr data-guide-route="comms"><td><span class="label">Comms</span></td><td>Agent conversations and delivery state.</td><td>Find a conversation, search messages, filter by agent or delivery issues, and load earlier messages.</td></tr>
+  <tr data-guide-route="ledger"><td><span class="label">Ledger</span></td><td>Tasks (T), Rules (R), Asks (A) and Purchases (P).</td><td>Choose a category, filter, hide or unhide rows and use the category's available actions. The four <span class="label">Reset…</span> buttons each open a warning; confirm only the category you intend to delete.</td></tr>
+  <tr data-guide-route="vault"><td><span class="label">Vault</span></td><td>The credentials this computer holds for you, what each one is called on screen, and which kinds of assistant may read it. The page never shows a stored value.</td><td>Give a credential a nickname to use in place of its real name, and tick or untick a role to allow or refuse that role's access to it. Every change is saved immediately and recorded in the audit; a refused change says so and puts the control back. A credential you have not ruled on stays readable.</td></tr>
+  <tr data-guide-route="checkout"><td><span class="label">Checkout</span></td><td>A purchase list supplied for this copy; the page is omitted when no list is available.</td><td>Select items, adjust quantities and press <span class="label">Review my choices</span>. <span class="label">Confirm and save my decision</span> saves a local note under the signed-in account. It does not charge a card, place an order or contact a vendor.</td></tr>
+  <tr data-guide-route="settings"><td><span class="label">Settings</span></td><td>Setup, Write, Accounts, appearance, accessibility, research and local-model settings.</td><td>Search all settings or choose a category. Review pending edits, then <span class="label">Save settings</span> or <span class="label">Discard</span>. Read partial-save messages; some changes may already have been saved.</td></tr>
+  <tr data-guide-route="tools"><td><span class="label">Tools</span></td><td>Each ToolsEnabled tool and the policy that makes it available or withheld.</td><td>Search tools and choose enabled, ask first or disabled within the selected permission level. Changes affect assistants started afterwards; running sessions keep their existing tools.</td></tr>
+  <tr data-guide-route="setup"><td><span class="label">Setup</span></td><td>The first-run permission, folder, account and autonomy questions, followed by a review.</td><td>Back, Continue, the offered skip controls, Check again and Finish setup. Existing answers can also be edited in Settings.</td></tr>
+  <tr data-guide-route="account"><td><span class="label">Account</span></td><td>The ToolsEnabled sign-in and account state, separate from provider sign-ins.</td><td>Use the sign-in or account controls offered here. Provider accounts are managed separately in Settings → Accounts.</td></tr>
+  <tr data-guide-route="subscribe"><td><span class="label">Subscription information</span></td><td>An old <code>#/subscribe</code> or <code>#/pricing</code> link opens the unavailable subscription page.</td><td>Subscriptions are not open yet. The product does not need a subscription to run; either page arrow returns Home.</td></tr>
+</table></div>
+
+<p>Tools, Setup and Account are extra pages outside the main arrow loop. Checkout is
+included only when its purchase list is available. The <code>#/guide</code> address opens the in-app
+guide within Settings.</p>
+
+<h3>Reliable human and agent input</h3>
+<p>Press a visible label or the control itself and wait for its state to settle before the next action.
+For a text box, confirm that the caret is in the field and that the text appears, then submit once.
+A covered, disabled or off-screen control is not a successful click. Browser automation should use
+real pointer and keyboard events, wait for the route status or visible result, and read the field back
+after typing; do not assign <code>.value</code> or call a hidden <code>.click()</code> as a substitute
+for a user action. On a slow computer, allow the status sentence to settle and capture the exact
+refusal before retrying.</p>
+
+<h3>Where lag comes from</h3>
+<p>First reads, provider startup, reconnecting services, large trees and a busy CPU or low memory can
+all delay a control. The app shows Connecting, Reconnecting, unavailable or an explicit refusal when
+it knows which case applies. Keep one action in flight, avoid duplicate Start/Send presses, and use
+Refresh or Check again only after the current read finishes. If a page remains slow, record the page,
+control, exact sentence, elapsed time and whether the problem occurred on Windows or Linux.</p>
+
+<h2>8. When the product says something is missing</h2>
+
+<p>ToolsEnabled refuses in sentences rather than error codes, and every refusal below is one that
+tells you what to do. These are the ones a new installation actually hits.</p>
+
+<div class="scroll">
+<table>
+  <tr><th>What it says</th><th>What it means</th><th>What to do</th></tr>
+  <tr>
+    <td>Codex is not installed on this computer</td>
+    <td>Correct — assistant programs are separate and we do not bundle them.</td>
+    <td><a href="#assistant-program">Step 5</a>, then press the program's Install button.</td>
+  </tr>
+  <tr>
+    <td>Codex is installed but nobody is signed in to it</td>
+    <td>The install worked; the sign-in has not happened or has expired.</td>
+    <td><a href="#assistant-program">Step 5</a>, then press <span class="label">Sign in to Codex</span>.</td>
+  </tr>
+  <tr>
+    <td>Codex … did not answer when asked its version</td>
+    <td>The version check did not finish successfully. A slow check, incomplete install or
+    broken launcher can cause this; the result does not prove which one happened.</td>
+    <td>Open <span class="label">What this copy needs</span> and use Codex's Install button again.
+    Its own output appears there if the install stops.</td>
+  </tr>
+  <tr>
+    <td>this computer has not been set up yet</td>
+    <td>The permission choice required for a new session has not been recorded. The start is refused.</td>
+    <td>Open <span class="label">Settings</span> and choose a permission level.</td>
+  </tr>
+  <tr>
+    <td>this copy shipped without … reinstall ToolsEnabled from a complete build</td>
+    <td>A piece of the application is genuinely missing from the copy you were given. Nothing you
+    can change will fix it.</td>
+    <td>Ask whoever sent you the installer for a complete one. This is our fault, not yours.</td>
+  </tr>
+</table>
+</div>
+
+<h2>9. Screens with no data yet</h2>
+
+<p>A page can be empty for several different reasons. A local page with no saved runs or ledger rows is
+showing your actual empty record. A relay-backed page can say disconnected, unavailable or waiting for
+history; those words mean the read was not established and must not be read as zero. The Computers page
+can have no saved trees until you set or start an agent, while Research and Comms can have no items even when the app is
+working.</p>
+
+<p>To see a worked example, open <span class="label">Settings</span> →
+<span class="label">What the screens show</span> and turn on
+<span class="label">Show the example fleet</span>. The example badge is explicit and does not connect
+to another computer or provider. Turn it off to return to your own records.</p>
+
+<h2>10. Starting over, and removing it</h2>
+
+<h3>Change the answers you gave</h3>
+<p>Everything the walkthrough set is in <span class="label">Settings</span>, individually, including
+the permission level. Change it there rather than reinstalling — a reinstall does not clear your
+answers, so it will not do what you want.</p>
+
+<h3>Uninstall</h3>
+<p>On Linux, remove the <code>toolsenabled</code> package with your package manager. This requires
+administrator permission and leaves your user data in place.</p>
+<p>On Windows, open Settings → <span class="label">Apps</span> → <span class="label">Installed apps</span> →
+<span class="label">ToolsEnabled</span> → <span class="label">Uninstall</span>. No administrator
+password is needed.</p>
+
+<div class="note">
+<p><span class="label">Uninstalling does not delete your data.</span> The record of what ran, your
+settings and your permission level stay in your user profile, so reinstalling picks up where you left off.
+On Windows these include <code>%APPDATA%\ToolsEnabled</code> and
+<code>%LOCALAPPDATA%\ToolsEnabled</code>. If you want
+them gone, delete those two folders by hand after uninstalling. That erases the signed record of
+everything that has run, which cannot be recovered.</p>
+</div>
+
+<h2 id="help">11. Getting help</h2>
+
+<p class="label">There is no support address, no help desk and no community forum. Not “we will get
+back to you slowly” — they do not exist yet.</p>
+
+<p>If somebody gave you the installer directly, contact that person for help. Include these two
+details so they can identify the problem:</p>
+
+<ul>
+  <li><span class="label">The exact sentence on the screen</span>, copied or photographed. This
+  product's refusals are written to name a cause; the sentence is worth far more than “it did not
+  work”.</li>
+  <li><span class="label">Which of the steps on this page you had completed</span> when it stopped.</li>
+</ul>
+
+<p>Two things can be genuinely somebody else's to fix, and going to them directly will be faster:</p>
+
+<ul>
+  <li><span class="label">The assistant program itself</span> — if its own install or sign-in window
+  reports a failure, copy that exact sentence. It comes from the program's maker; ToolsEnabled shows
+  the install output but does not replace or modify the provider's program.</li>
+  <li><span class="label">The SmartScreen warning</span> — that is Windows, doing what it is supposed
+  to do about a program with no code signature. Nothing we can change from your end; the fix is a
+  signed build, which has to come from us.</li>
+</ul>
+
+<p>The source repositories are private. Official installers are
+available at <span class="label">toolsenabled.ai/download</span>. Check that address before
+installing a download offered elsewhere.</p>
+
+<footer class="foot">
+<p>ToolsEnabled is free software, licensed under the MIT license. It was founded and created by
+Joshua Pinckard. ToolsEnabled does not need a paid subscription to run. Individual controls can still
+require a supported provider, sign-in, permission level or connected service; their status explains why.</p>
+<p>This page ships inside the application and is served from your own computer. It works with no
+internet connection and reports nothing to anyone.</p>
+</footer>
+
+</div>
+</body>
+</html>

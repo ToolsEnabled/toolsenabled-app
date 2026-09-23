@@ -1,0 +1,56 @@
+.agent-screen-voice-controls { margin: 8px 14px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--sheet); color: var(--ink); font-size: 12px; }
+.agent-screen-voice-controls > summary { cursor: pointer; padding: 10px 12px; font-weight: 600; }
+.agent-control-body { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(250px, 1fr); gap: 16px; padding: 0 12px 12px; }
+.agent-control-body h3 { margin: 4px 0 8px; font-size: 13px; }
+.agent-control-agents { display: flex; flex-wrap: wrap; gap: 8px; max-height: 120px; overflow: auto; padding: 6px 0; }
+.agent-control-agents label { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--line-2); border-radius: 7px; cursor: pointer; }
+.agent-control-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.agent-control-buttons button { padding: 7px 9px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg); color: inherit; cursor: pointer; }
+.agent-control-buttons button:disabled { opacity: .45; cursor: default; }
+.agent-control-hint { opacity: .75; font-size: 11px; line-height: 1.5; }
+.screen-access-controls { --screen-accent: var(--accent-2, #13758d); max-width: 740px; padding: 20px; border: 1px solid var(--line-2, #ccd3db); border-radius: 16px; background: var(--sheet, #fff); color: var(--ink, #192633); font: 13px/1.5 var(--font-ui, system-ui); }
+.screen-access-controls [hidden] { display: none !important; }
+.screen-access-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.screen-access-heading h3 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+.screen-access-heading p { margin: 2px 0 0; color: var(--ink-2, #546574); font-size: 12px; }
+.screen-access-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; color: var(--screen-accent); background: color-mix(in srgb, var(--screen-accent) 10%, transparent); }
+.screen-access-icon svg { width: 24px; height: 24px; }
+.screen-access-badge { margin-left: auto; border: 1px solid var(--line-2, #ccd3db); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 650; white-space: nowrap; }
+.screen-access-controls[data-state="ready"] .screen-access-badge, .screen-access-controls[data-state="controlling"] .screen-access-badge { color: var(--screen-accent); border-color: currentColor; }
+.screen-access-modes { border: 0; padding: 0; margin: 0 0 18px; display: grid; gap: 8px; }
+.screen-access-modes legend { padding: 0 0 10px; font-weight: 600; }
+.screen-access-modes label { display: flex; align-items: flex-start; gap: 10px; border: 1px solid var(--line-2, #ccd3db); border-radius: 10px; padding: 12px; cursor: pointer; transition: background 160ms ease, border-color 160ms ease; }
+.screen-access-modes label:has(:checked) { border-color: var(--screen-accent); background: color-mix(in srgb, var(--screen-accent) 6%, transparent); }
+.screen-access-controls input[type="radio"], .screen-access-controls input[type="checkbox"] { width: 17px; height: 17px; margin: 3px 0 0; flex: none; accent-color: var(--screen-accent); }
+.screen-access-controls strong { font-size: 13px; font-weight: 600; }
+.screen-access-controls small { display: block; color: var(--ink-2, #546574); font-size: 11px; line-height: 1.5; }
+.screen-access-search { display: grid; gap: 6px; color: var(--ink-2, #546574); font-size: 12px; }
+.screen-access-search input { box-sizing: border-box; width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid var(--line-2, #ccd3db); border-radius: 8px; background: var(--control-bg, transparent); color: inherit; font: inherit; }
+.screen-access-controls .agent-control-agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); max-height: 240px; gap: 6px; padding-top: 10px; }
+.screen-access-controls .agent-control-agents label { min-width: 0; padding: 10px; align-items: flex-start; gap: 9px; }
+.screen-access-controls .agent-control-agents label span { min-width: 0; overflow-wrap: anywhere; }
+.screen-access-controls .agent-control-agents label[data-allowed="true"] { border-color: color-mix(in srgb, var(--screen-accent) 55%, var(--line-2, #ccd3db)); }
+.screen-access-controls label:has(input:disabled) { cursor: default; opacity: .65; }
+.screen-access-holder { margin: 14px 0; padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--screen-accent); background: color-mix(in srgb, var(--screen-accent) 8%, transparent); font-weight: 550; overflow-wrap: anywhere; }
+.screen-access-controls .agent-control-buttons { gap: 8px; margin: 16px 0 10px; }
+.screen-access-controls .agent-control-buttons button { min-height: 38px; padding: 8px 12px; font: 550 12px/1.3 var(--font-ui, system-ui); }
+.screen-access-controls .agent-control-buttons .screen-access-enable { color: var(--sheet, #fff); background: var(--ink, #192633); border-color: var(--ink, #192633); }
+/* The emergency stop is read in every theme (T1451). --danger is defined
+   nowhere, so the light-theme red fallback was drawn on the dark cards too
+   (2.9:1 on Black). --s-serious is the status red each theme solves for its
+   own ground (role-colors.test.mjs holds it at 4.5:1). */
+.screen-access-controls [data-control-stop] { border-color: var(--s-serious, #b34550); color: var(--s-serious, #b34550); }
+.screen-access-controls [data-control-status] { min-height: 2.8em; margin: 0; font-size: 12px; }
+.screen-access-controls .agent-control-hint { opacity: 1; color: var(--ink-2, #546574); }
+.screen-access-controls kbd { font: inherit; font-size: 10px; border: 1px solid var(--line-2, #ccd3db); border-radius: 3px; padding: 1px 3px; white-space: nowrap; }
+.screen-access-controls :focus-visible { outline: 2px solid var(--screen-accent); outline-offset: 3px; }
+.agent-control-body > .screen-access-controls { padding: 14px; }
+:root[data-theme="black"] .screen-access-controls { --screen-accent: #7dd3fc; }
+@media (prefers-reduced-motion: reduce) { .screen-access-controls * { transition: none !important; } }
+@media (max-width: 480px) { .screen-access-controls { padding: 14px; } .screen-access-heading { gap: 8px; } .screen-access-heading h3 { font-size: 15px; } .screen-access-controls .agent-control-agents { grid-template-columns: minmax(0, 1fr); } }
+.node-contact-icon { position: absolute; top: 6px; left: 6px; width: 26px; height: 26px; padding: 5px; display: grid; place-items: center; color: #c5e5ff; background: #172838; border: 1px solid #638099; border-radius: 50%; z-index: 5; cursor: pointer; }
+.node-contact-icon svg { width: 14px; height: 14px; }
+.node-contact-icon:focus-visible { outline: 3px solid #7fe5ff; outline-offset: 3px; }
+.node-contact-icon[data-voice-selected="true"] { color: #092029; background: #72e1ff; border-color: white; }
+.node-contact-icon[data-screen-access="true"]::after { content: ''; position: absolute; right: -4px; bottom: -3px; width: 10px; height: 8px; border-radius: 2px; border: 2px solid #fff; background: #13aebb; box-shadow: 0 0 0 2px #132334; }
+@media (max-width: 760px) { .agent-control-body { grid-template-columns: minmax(0, 1fr); } }

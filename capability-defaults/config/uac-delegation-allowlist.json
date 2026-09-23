@@ -1,0 +1,13 @@
+{
+  "$comment": [
+    "SHIPPED DEFAULT elevated-operation allowlist for a fresh installation.",
+    "",
+    "No customer has pre-authorized an elevated operation merely by installing",
+    "ToolsEnabled. Installation-specific authority must never be inherited from",
+    "the source tree used to build the app. An empty list therefore means exactly",
+    "what it says: every UAC delegation request is refused until a future explicit",
+    "customer-owned configuration path writes a reviewed local allowlist."
+  ],
+  "schemaVersion": 1,
+  "operations": []
+}

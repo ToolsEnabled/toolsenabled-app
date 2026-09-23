@@ -1,0 +1,335 @@
+/* ============================================================
+   WEBSITE PREVIEW — the product's own design language, standalone.
+   ============================================================
+
+   WHY THE TOKENS ARE COPIED RATHER THAN IMPORTED. src/styles.css is bundled by
+   vite into a hashed asset; a file under public/ ships verbatim and cannot
+   reference it. Copying the token layer is therefore the only way this page can
+   look like the product without pulling the whole 700-module renderer onto a
+   visitor's machine — which is the other half of the point, because the owner's
+   standing directive is that this must work on a weak PC.
+
+   The copy is not left to drift: tools/test/preview-honesty.test.mjs reads the
+   role palette out of src/styles.css and fails if these six hexes stop matching
+   the product's. A preview that quietly diverges from the thing it previews is
+   a different kind of dishonesty from the one honesty.js polices, and it earns
+   the same treatment.
+
+   Values below are the product's own, taken from src/styles.css :root and its
+   two theme blocks. Do not re-derive them here; change them there.
+   ============================================================ */
+
+:root {
+  --bg: #f7f8fa;
+  --bg-2: #eef1f5;
+  --sheet: #ffffff;
+  --ink: #0e1726;
+  --ink-2: #4f5f70;
+  --ink-25: #5a6876;
+  --ink-3: #64727f;
+  --line: rgba(14, 23, 38, 0.07);
+  --line-2: rgba(14, 23, 38, 0.12);
+  --shadow-rgb: 14, 23, 38;
+  --shadow-k: 1;
+
+  --c-coordinator: #287f9b;
+  --c-helper:      #b6673f;
+  --c-shadow:      #2b876c;
+  --c-manager:     #855fb0;
+  --c-default:     #637e41;
+
+  --s-good: #198038;
+  --s-warn: #8e6a00;
+  --s-serious: #a2191f;
+
+  /* SIMULATED INK. The one token this sheet adds. Every value the simulation
+     produces is painted with it, and the frame around the simulation is drawn
+     from it. It is deliberately a different family from the product's own ink:
+     a visitor should be able to tell at a glance that this is not their fleet,
+     without having to read a badge. */
+  --sim-ink: #5b5470;
+  --sim-edge: rgba(91, 84, 112, 0.32);
+  --sim-wash: rgba(91, 84, 112, 0.05);
+
+  --r1: 8px;
+  --r2: 14px;
+  --dur: 0.22s;
+}
+
+:root[data-theme="tan"] {
+  --bg: #f2e5bc; --bg-2: #ebdbb2; --sheet: #fbf1c7;
+  --ink: #282828; --ink-2: #3c3836; --ink-25: #504945; --ink-3: #665c54;
+  --line: rgba(40, 40, 40, 0.10); --line-2: rgba(40, 40, 40, 0.17);
+  --shadow-rgb: 40, 40, 40; --shadow-k: 1;
+  --s-good: #0e6027; --s-warn: #684e00; --s-serious: #a2191f;
+  --sim-ink: #5a4a63; --sim-edge: rgba(90, 74, 99, 0.34); --sim-wash: rgba(90, 74, 99, 0.06);
+}
+
+:root[data-theme="black"] {
+  --bg: #212327; --bg-2: #292b30; --sheet: #2e3136;
+  --ink: #eef2f6; --ink-2: #b7c0ca; --ink-25: #a3adb8; --ink-3: #8f99a5;
+  --line: rgba(255, 255, 255, 0.08); --line-2: rgba(255, 255, 255, 0.14);
+  --shadow-rgb: 0, 0, 0; --shadow-k: 1.7;
+  --s-good: #42be65; --s-warn: #f1c21b; --s-serious: #fa4d56;
+  --sim-ink: #c2b8dd; --sim-edge: rgba(194, 184, 221, 0.34); --sim-wash: rgba(194, 184, 221, 0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { color-scheme: light; }
+:root[data-theme="black"] { color-scheme: dark; }
+
+/* THE PRODUCT'S OWN VOICE, NOT THE SYSTEM'S. This page exists to show a
+   stranger what the product looks like, and the product renders IBM Plex
+   Sans and JetBrains Mono (src/font-choice.js, DEFAULT_FONT = 'plex') — the
+   colour tokens were drift-guarded from day one while the typography
+   silently fell back to the platform stack (found by the paid-product lane,
+   reports/lanes/preview-renders-system-fonts.md). The two latin variable
+   woff2 ship BESIDE this page (~84 KB, from the same @fontsource-variable
+   packages the app bundles), so the preview keeps its no-egress rule and
+   the stacks below mirror src/font-choice.js verbatim. */
+@font-face {
+  font-family: 'IBM Plex Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 700;
+  src: url('./fonts/ibm-plex-sans-latin-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('./fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
+}
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font: 13px/1.55 "IBM Plex Sans Variable", "IBM Plex Sans", "Segoe UI Variable", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  padding: 0 0 48px;
+}
+
+/* ---------------------------------------------------------------- head */
+
+.pv-head { max-width: 1180px; margin: 0 auto; padding: 28px 20px 8px; }
+.pv-head-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pv-brand { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+
+.pv-theme { display: inline-flex; border: 1px solid var(--line-2); border-radius: 999px; overflow: hidden; }
+.pv-theme button {
+  font: inherit; font-size: 12.5px; padding: 7px 14px; min-height: 34px;
+  background: transparent; color: var(--ink-2); border: 0; cursor: pointer;
+}
+.pv-theme button + button { border-left: 1px solid var(--line-2); }
+.pv-theme button[data-current="true"] { background: var(--sheet); color: var(--ink); font-weight: 600; }
+
+.pv-title { font-size: 30px; line-height: 1.18; letter-spacing: -0.015em; margin: 22px 0 10px; font-weight: 650; }
+.pv-sub { font-size: 14px; color: var(--ink-2); max-width: 62ch; }
+
+/* ---------------------------------------------------------------- surface */
+
+.pv-main { max-width: 1180px; margin: 0 auto; padding: 20px; }
+.pv-root { min-height: 320px; }
+
+.sim-surface {
+  border: 1px solid var(--sim-edge);
+  border-radius: var(--r2);
+  background: var(--sheet);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), calc(0.05 * var(--shadow-k))),
+              0 12px 32px rgba(var(--shadow-rgb), calc(0.06 * var(--shadow-k)));
+  /* the hatch IS the marking: it is painted by the surface itself, under
+     everything the simulation draws, and it cannot be styled off by a child */
+  background-image: repeating-linear-gradient(
+    135deg, var(--sim-wash) 0 6px, transparent 6px 14px);
+}
+
+.sim-banner {
+  font-size: 12.5px; line-height: 1.5; color: var(--sim-ink);
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--sim-edge);
+  background: var(--sim-wash);
+  font-weight: 500;
+}
+
+.sim-body { padding: 0; }
+
+.sim-refusal {
+  border: 1px solid var(--s-serious); border-radius: var(--r2);
+  padding: 20px; background: var(--sheet); color: var(--ink);
+}
+.sim-refusal h2 { font-size: 17px; margin-bottom: 8px; color: var(--s-serious); }
+.sim-refusal p { color: var(--ink-2); max-width: 70ch; margin-bottom: 10px; }
+.sim-refusal ul { padding-left: 20px; color: var(--ink-2); font-size: 12.5px; }
+
+/* ---------------------------------------------------------------- tabs */
+
+.pv-tabs {
+  display: flex; gap: 2px; padding: 8px 10px 0; overflow-x: auto;
+  border-bottom: 1px solid var(--line); background: var(--bg-2);
+}
+.pv-tab {
+  font: inherit; font-size: 12.5px; padding: 9px 14px; min-height: 38px; white-space: nowrap;
+  background: transparent; border: 0; border-bottom: 2px solid transparent;
+  color: var(--ink-2); cursor: pointer; border-radius: var(--r1) var(--r1) 0 0;
+}
+.pv-tab:hover { color: var(--ink); background: var(--sheet); }
+.pv-tab[data-current="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--c-coordinator); background: var(--sheet); }
+
+.pv-stage { padding: 20px; }
+.pv-surface { display: block; }
+.pv-h { font-size: 18px; font-weight: 640; letter-spacing: -0.01em; margin-bottom: 6px; }
+.pv-sub { font-size: 14px; }
+.pv-lede { font-size: 13px; color: var(--ink-2); max-width: 74ch; margin-bottom: 18px; }
+.pv-note { font-size: 12.5px; color: var(--ink-3); max-width: 74ch; margin-top: 16px; }
+h3.pv-sub { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-25); margin: 22px 0 8px; }
+
+/* simulated values, everywhere */
+[data-sim="1"] { color: var(--sim-ink); }
+
+.sim-state {
+  display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 3px 8px; border-radius: 999px;
+  border: 1px dashed var(--sim-edge); color: var(--sim-ink); background: var(--sim-wash);
+}
+
+/* ---------------------------------------------------------------- overview */
+
+.pv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.pv-card { border: 1px solid var(--line-2); border-radius: var(--r1); padding: 15px; background: var(--sheet); }
+.pv-card[data-withheld="true"] { border-color: var(--s-warn); }
+.pv-card-h { font-size: 13px; font-weight: 640; margin-bottom: 6px; }
+.pv-card-b { font-size: 12.5px; color: var(--ink-2); }
+
+/* ---------------------------------------------------------------- tree */
+
+.pv-tree { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.pv-branch { border: 1px solid var(--line-2); border-radius: var(--r1); padding: 12px; background: var(--sheet); }
+.pv-branch-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.pv-branch-name { font-size: 13px; font-weight: 640; }
+.pv-branch-meta { font-size: 12.5px; }
+
+.pv-nodes { list-style: none; margin: 6px 0 0; }
+.pv-nodes .pv-nodes { margin-left: 16px; padding-left: 12px; border-left: 1px solid var(--line-2); }
+.pv-node-item { margin: 3px 0; }
+
+.pv-node {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  min-height: 40px; padding: 7px 10px;
+  font: inherit; text-align: left; cursor: pointer;
+  background: transparent; border: 1px solid transparent; border-radius: var(--r1);
+}
+.pv-node:hover { background: var(--bg-2); border-color: var(--line-2); }
+.pv-node[data-selected="true"] { border-color: var(--c-coordinator); background: var(--bg-2); }
+.pv-node-body { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1; min-width: 0; flex-wrap: wrap; }
+.pv-node-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.pv-node-name { font-weight: 600; font-size: 13px; }
+.pv-node-role { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.pv-node-state { display: flex; align-items: center; gap: 8px; }
+.pv-node-age { font-size: 12.5px; }
+
+.pv-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--role, var(--c-default)); flex: none; }
+
+.pv-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 16px; }
+.pv-legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+
+/* ---------------------------------------------------------------- agent */
+
+.pv-agent-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.pv-agent-name { font-size: 17px; font-weight: 640; }
+.pv-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 20px; }
+.pv-field { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pv-k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-25); }
+.pv-v { font-size: 13px; }
+
+.pv-feed { list-style: none; border: 1px solid var(--line-2); border-radius: var(--r1); overflow: hidden; }
+.pv-feed-line { display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; padding: 9px 12px; font-size: 13px; align-items: baseline; }
+.pv-feed-line + .pv-feed-line { border-top: 1px solid var(--line); }
+.pv-feed-who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.pv-feed-when { font-size: 12.5px; white-space: nowrap; }
+
+.pv-controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.pv-ctl {
+  font: inherit; font-size: 12.5px; min-height: 40px; padding: 9px 16px;
+  border-radius: var(--r1); border: 1px solid var(--line-2);
+  background: var(--sheet); color: var(--ink); cursor: pointer;
+}
+.pv-ctl:hover:not(:disabled) { border-color: var(--c-coordinator); }
+.pv-ctl:disabled { opacity: 0.55; cursor: not-allowed; }
+.pv-ctl-yes { border-color: var(--c-coordinator); color: var(--c-coordinator); font-weight: 600; }
+
+/* ---------------------------------------------------------------- requests */
+
+.pv-requests { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.pv-request { border: 1px solid var(--line-2); border-radius: var(--r1); padding: 14px; background: var(--sheet); display: flex; flex-direction: column; gap: 10px; }
+.pv-request-what { font-size: 13px; font-weight: 600; }
+.pv-request-why, .pv-request-scope { font-size: 12.5px; }
+.pv-request-actions { display: flex; gap: 8px; margin-top: auto; }
+.pv-request-outcome { font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 9px; }
+
+/* ---------------------------------------------------------------- spend */
+
+.pv-chart { display: flex; align-items: flex-end; gap: 12px; height: 190px; padding: 8px 0 0; }
+.pv-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; }
+.pv-bar { width: 100%; max-width: 46px; height: var(--h, 10%); border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--c-coordinator), var(--c-manager)); opacity: 0.72; }
+.pv-bar-v, .pv-bar-l { font-size: 11px; }
+.pv-table { width: 100%; border-collapse: collapse; margin-top: 22px; font-size: 12.5px; }
+.pv-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-25); padding: 8px 10px; border-bottom: 1px solid var(--line-2); }
+.pv-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+
+/* ---------------------------------------------------------------- record */
+
+.pv-ledger { list-style: none; border: 1px solid var(--line-2); border-radius: var(--r1); overflow: hidden; }
+.pv-ledger-item { display: grid; grid-template-columns: 74px 1fr auto; gap: 12px; padding: 10px 12px; align-items: baseline; font-size: 13px; }
+.pv-ledger-item + .pv-ledger-item { border-top: 1px solid var(--line); }
+.pv-ledger-id { font-variant-numeric: tabular-nums; font-weight: 600; }
+.pv-ledger-chain { font-family: "JetBrains Mono Variable", ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; }
+
+/* ---------------------------------------------------------------- exits */
+
+.pv-after { max-width: 1180px; margin: 8px auto 0; padding: 24px 20px 0; border-top: 1px solid var(--line-2); }
+.pv-after-h { font-size: 20px; font-weight: 640; margin-bottom: 8px; }
+.pv-after-p { font-size: 13px; color: var(--ink-2); max-width: 74ch; margin-bottom: 18px; }
+.pv-exits { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.pv-exits-pending { font-size: 12.5px; color: var(--ink-3); }
+.exit { max-width: 360px; }
+.exit-btn {
+  display: inline-block; font: inherit; font-size: 13px; font-weight: 600;
+  min-height: 44px; padding: 12px 22px; border-radius: var(--r1);
+  border: 1px solid var(--c-coordinator); background: var(--c-coordinator); color: #fff;
+  cursor: pointer; text-decoration: none;
+}
+/* The secondary treatment binds to the ANCHOR only. It used to bind to
+   .exit-btn, which is also the disabled button's class, and it out-specified
+   the :disabled rule — so a WITHHELD subscription control was painted in the
+   offered colours. Caught by looking at the screenshot, not by any assertion,
+   which is why the driver now measures the two states apart. A control that
+   looks offered and is not belongs to the same defect class this whole preview
+   is built against: paint that asserts something the state does not support. */
+.exit[data-exit="subscribe"] a.exit-btn { background: var(--sheet); color: var(--c-coordinator); }
+.exit .exit-btn:disabled {
+  background: var(--bg-2); border-color: var(--line-2); color: var(--ink-3);
+  cursor: not-allowed; box-shadow: none;
+}
+.exit-why { font-size: 12.5px; color: var(--ink-2); margin-top: 8px; max-width: 44ch; }
+
+.pv-foot { max-width: 1180px; margin: 34px auto 0; padding: 18px 20px 0; border-top: 1px solid var(--line); }
+.pv-foot p { font-size: 12.5px; color: var(--ink-3); max-width: 84ch; }
+.pv-noscript { max-width: 1180px; margin: 0 auto; padding: 20px; font-size: 13px; color: var(--s-serious); }
+
+/* ---------------------------------------------------------------- focus + motion */
+
+:focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: 2px; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+@media (max-width: 720px) {
+  .pv-title { font-size: 24px; }
+  .pv-feed-line { grid-template-columns: 1fr; gap: 2px; }
+  .pv-ledger-item { grid-template-columns: 1fr; gap: 2px; }
+  .pv-stage { padding: 14px; }
+}

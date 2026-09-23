@@ -1,0 +1,259 @@
+/* The same contact panel follows its controller between Home and the voice
+   dock. Keep its presentation above Home's older, less-specific rules. */
+section.voice-contact.voice-contact-panel {
+  width: min(100%, 320px);
+  min-width: 0;
+  box-sizing: border-box;
+  margin-top: 12px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--sheet);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  box-shadow: none;
+}
+
+.voice-contact-panel.voice-contact[data-expanded="true"] { width: min(100%, 440px); }
+.voice-screen-dock.voice-widget-dock {
+  width: min(320px, calc(100vw / var(--zoom, 1) - 24px));
+  max-width: min(440px, calc(100vw / var(--zoom, 1) - 24px));
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+.voice-screen-dock.voice-widget-dock:has(> [data-expanded="true"]) { width: min(440px, calc(100vw / var(--zoom, 1) - 24px)); }
+.voice-widget-dock > section.voice-contact.voice-contact-panel { width: 100%; margin-top: 0; }
+.voice-contact-panel .voice-widget-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 54px;
+  padding: 3px 5px;
+}
+.voice-contact-panel.voice-contact .voice-widget-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+}
+.voice-contact-panel.voice-contact .voice-widget-toggle:hover { background: var(--control-hover, var(--bg)); }
+.voice-contact-panel .voice-widget-label { display: grid; flex: 1; min-width: 0; gap: 1px; }
+.voice-contact-panel .voice-widget-heading { display: flex; align-items: baseline; gap: 7px; }
+.voice-contact-panel .voice-widget-contact {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.voice-contact-panel .voice-widget-chevron { flex: none; width: 14px; height: 14px; color: var(--ink-3); }
+.voice-contact-panel[data-expanded="true"] .voice-widget-chevron { transform: rotate(180deg); }
+.voice-contact-panel .voice-wave {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  width: 36px;
+  height: 32px;
+  padding: 4px 3px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-2) 5%, var(--surface));
+  color: var(--ink-3);
+}
+.voice-contact-panel .voice-wave i {
+  display: block;
+  width: 2px;
+  height: 24px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: scaleY(.08);
+}
+.voice-contact-panel:is([data-state="listening"], [data-state="speaking"]) .voice-wave { color: var(--theme-accent, var(--ui-accent)); }
+.voice-contact-panel .voice-widget-live { display: flex; align-items: center; gap: 2px; flex: none; }
+.voice-widget-live[hidden] { display: none; }
+.voice-contact-panel.voice-contact .voice-widget-live button {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  min-height: 44px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.voice-contact-panel.voice-contact .voice-widget-live button:hover:not(:disabled) { background: var(--control-hover, var(--bg)); color: var(--ink); }
+.voice-contact-panel .voice-widget-live svg { width: 16px; height: 16px; }
+.voice-contact-panel .voice-widget-live .voice-mute-slash { display: none; }
+.voice-contact-panel .voice-widget-live [aria-pressed="true"] .voice-mute-slash { display: block; }
+.voice-contact-panel .voice-widget-live [aria-pressed="true"] { color: var(--s-warn); }
+.voice-contact-panel .voice-widget-controls {
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--line);
+  font-size: inherit;
+  letter-spacing: normal;
+}
+.voice-contact-panel .voice-contact-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -.15px;
+  text-transform: none;
+}
+.voice-contact-panel .voice-contact-state {
+  flex: none;
+  color: var(--ink-3);
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: 500;
+  padding: 2px 5px; border: 1px solid var(--line); border-radius: 3px;
+}
+.voice-contact-panel[data-state="listening"] .voice-contact-state { color: var(--s-good); }
+.voice-contact-panel[data-state="speaking"] .voice-contact-state { color: var(--theme-accent, var(--ui-accent)); }
+.voice-contact-panel:is([data-state="connecting"], [data-state="muted"]) .voice-contact-state { color: var(--s-warn); }
+
+.voice-contact-panel.voice-contact label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin: 12px 0 0;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.voice-contact-panel.voice-contact .voice-contact-target { margin-top: 0; }
+.voice-contact-panel.voice-contact :is(select, input) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--control-border, var(--line-2));
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+}
+.voice-contact-panel.voice-contact select { cursor: pointer; }
+.voice-contact-panel.voice-contact input::placeholder { color: var(--ink-3); }
+.voice-contact-panel .voice-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.voice-contact-panel .voice-controls button {
+  flex: 1 0 auto;
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--control-border, var(--line-2));
+  border-radius: 4px;
+  background: var(--control-bg, var(--sheet));
+  color: var(--ink-2);
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: none;
+}
+.voice-contact-panel .voice-controls [data-voice-start] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--sheet);
+  font-weight: 600;
+}
+.voice-contact-panel .voice-controls button:hover:not(:disabled) {
+  border-color: var(--ink-3);
+  background: var(--control-hover, var(--bg));
+  color: var(--ink);
+}
+.voice-contact-panel .voice-controls [data-voice-start]:hover:not(:disabled) {
+  border-color: var(--ink-2);
+  background: var(--ink-2);
+  color: var(--sheet);
+}
+.voice-contact-panel.voice-contact :is(button, select, input):disabled {
+  opacity: 1;
+  border-color: var(--line);
+  background: var(--bg);
+  color: var(--ink-3);
+  cursor: default;
+}
+.voice-contact-panel.voice-contact :is(button, select, input, summary):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.voice-contact-panel.voice-contact p {
+  margin: 12px 0 0;
+  color: var(--ink-3);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.voice-contact-panel.voice-contact .voice-heard {
+  max-height: 84px;
+  overflow-y: auto;
+  padding-left: 10px;
+  border-left: 2px solid var(--line-2);
+  color: var(--ink-2);
+}
+.voice-contact-panel.voice-contact .voice-contact-connection {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  opacity: 1;
+}
+.voice-contact-panel.voice-contact summary {
+  display: list-item;
+  min-height: 40px;
+  padding-block: 8px;
+  box-sizing: border-box;
+  color: var(--ink-2);
+  font-weight: 500;
+  cursor: pointer;
+}
+.voice-contact-panel.voice-contact summary:hover { color: var(--ink); }
+.voice-contact-panel.voice-contact [hidden],
+.voice-contact-panel.voice-contact .voice-heard:empty { display: none; }
+
+@media (max-width: 480px), (pointer: coarse) {
+  .voice-contact-panel.voice-contact :is(button, select, input, summary) { min-height: 44px; }
+  .voice-contact-panel.voice-contact .voice-widget-live [data-voice-compact-mute] { min-width: 44px; }
+  .voice-contact-panel.voice-contact :is(select, input) { font-size: 16px; }
+}
+@media (max-width: 380px) {
+  .voice-contact-panel .voice-widget-controls { padding: 14px; }
+  .voice-contact-panel .voice-widget-toggle { gap: 6px; }
+  .voice-contact-panel .voice-controls [data-voice-start] { flex-basis: 100%; }
+}
+@media (forced-colors: active) {
+  .voice-contact-panel.voice-contact :is(button, select, input):disabled { color: GrayText; }
+}
+
+.home .home-ring-wrap > section.voice-contact.voice-contact-panel { margin-top: 20px; }
+.voice-contact-panel:focus-within { border-color: color-mix(in srgb, var(--accent-2) 60%, var(--line-2)); }

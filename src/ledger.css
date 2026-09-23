@@ -1,0 +1,866 @@
+/* LEDGER — a bare owner-request register. Hairlines and type carry the page;
+   only gate-class chips are boxed inside the register. */
+
+.ledger-page { scrollbar-gutter: stable; }
+.ledger-shell { width: min(var(--page-max), 100%); margin-inline: auto; padding-top: var(--s3); }
+.ledger-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* five bare figures, one measured strip */
+.ledger-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line-2);
+}
+/* The Purchases tab hides this strip (it draws the purchase queue's own), and
+   display:grid above beats the browser's [hidden] rule, so the strip stayed on
+   screen with the previous tab's numbers beside the queue's (T1360). */
+.ledger-summary[hidden] { display: none; }
+/* AND ON A PHONE FIVE ACROSS IS A COUNT THE ROW CANNOT PAY. Five equal columns
+   of a 288px content box (a 320px screen less the two 16px page gutters) are
+   57.6px each, and --s2 of padding either side leaves 41.6px of text. The labels
+   are 11px caps at --track-caps, so a single WORD is wider than that --
+   "PURCHASES" on the approvals screen, which shares this strip, measures ~73px,
+   "PROGRESS" on the ledger ~65px -- and a word that cannot fit its box does not
+   wrap, it hangs out of it. That overflow reaches .view-pad, whose overflow-y:
+   auto computes the unset x-axis to auto, and the page pans sideways. It failed
+   at all four phone widths, 430 included (63.6px of text against that 73px
+   word); five across needs ~477px of window before the widest label clears.
+   auto-fit DROPS THE COUNT instead of re-tuning the padding: 92px is the
+   narrowest track that still holds that word plus its padding, so the strip
+   folds to four and then three rather than overflowing.
+   SCOPED TO A MEDIA QUERY, not written into the rule above, and that is not a
+   preference: auto-fit collapses EMPTY tracks, and the approvals screen puts
+   only three tiles in this grid. Unscoped, those three would spread across the
+   whole 1240px column instead of holding the first three fifths of it -- a
+   desktop change, on a screen this pass is not entitled to redesign. Above 560
+   not one declaration here applies. */
+@media (max-width: 560px) {
+  .ledger-summary { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+}
+.ledger-stat {
+  min-width: 0;
+  padding: var(--s3) clamp(10px, 2vw, 24px) var(--s4);
+  border-right: 1px solid var(--line);
+}
+.ledger-stat:first-child { padding-left: 0; }
+.ledger-stat:last-child { border-right: 0; padding-right: 0; }
+.ledger-stat-value {
+  display: block;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 640;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.ledger-stat-label,
+.ledger-stat-note {
+  display: block;
+  margin-top: var(--s2);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.ledger-stat-note { margin-top: var(--s1); font-weight: 500; color: var(--ink-3); }
+
+.ledger-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s4) 0 var(--s3);
+}
+.ledger-register-note {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* register geometry: state | outline id | title | quiet metadata */
+.ledger-register { border-top: 1px solid var(--line-2); }
+.ledger-record {
+  border-bottom: 1px solid var(--line);
+  transition: background var(--dur-2) var(--ease);
+}
+.ledger-record:hover { background: color-mix(in oklab, var(--ink) 4%, transparent); }
+.ledger-line { position: relative; }
+.ledger-row {
+  width: 100%;
+  min-height: 45px;
+  display: grid;
+  grid-template-columns: 28px minmax(190px, 230px) minmax(210px, 1fr) max-content;
+  align-items: center;
+  gap: 0 var(--s3);
+  /* PADDING, NOT A FIFTH TRACK, MAKES ROOM FOR THE ×. The grid's four tracks
+     are read down as columns and adding a max-content track would have moved
+     every metadata rail left by the control's width on every breakpoint (five
+     places to keep in step). The control is absolutely placed in the 42px of
+     right padding instead: the columns never move, and the control's fixed
+     22px box can never widen over `.ledger-meta`. */
+  padding: 9px 42px 9px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+/* The R row is a plain div now -- it expands to nothing, so it is nothing to
+   press -- and must not promise a press with the pointer. */
+div.ledger-row { cursor: default; }
+.ledger-row:focus-visible,
+.ledger-root-toggle:focus-visible,
+.ledger-hide:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* THE × AT THE ROW'S RIGHT EDGE. Quiet grey at rest (an affordance, not
+   information, so it recedes until the cursor or focus is on the row), ink on
+   hover, and the ARMED state -- the first of its two presses -- is full ink on
+   a visible hairline so the row that is one press from leaving looks
+   different from its neighbours. Fixed 22×22: it never grows with its label,
+   so it can never widen over the metadata it sits beside.
+
+   RESTING INK IS --ink-3, NOT --ink-4. The × is a live control's own label, so
+   it owes WCAG 1.4.3's 4.5:1 at rest; --ink-4 measured on the painted page
+   (.lane-scratch/w3b/contrast.mjs --route=#/ledger) at 3.40:1 on black,
+   3.42:1 on white and 3.87:1 on tan. --ink-3 clears it on all five sheets and
+   still sits under the row's own ink, so the rest -> hover -> armed climb
+   (--ink-3 -> --ink-2 -> --ink) is kept. */
+.ledger-hide {
+  position: absolute;
+  z-index: 2;
+  right: 10px;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transform: translateY(-50%);
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+.ledger-record:hover .ledger-hide,
+.ledger-row:focus-visible ~ .ledger-hide { color: var(--ink-2); }
+.ledger-hide:hover,
+.ledger-hide:focus-visible { color: var(--ink); border-color: var(--line-2); }
+.ledger-hide[data-armed="true"] { color: var(--ink); border-color: var(--ink-3); }
+/* A hidden row shown on request: dimmed, with the put-back control. */
+.ledger-record[data-hidden] .ledger-row { opacity: .55; }
+/* Under the row, after the first press: what the second will do. Indented to
+   the title's x so it reads as the row's own sentence, not the register's. */
+.ledger-row-hint {
+  margin: 0;
+  padding: 0 42px 8px 252px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.ledger-row-hint[hidden] { display: none; }
+/* The toolbar's note about the last hide or put-back, and the small text
+   controls beside the counter (Show hidden / Hide them again / Undo). A text
+   button, not a boxed one: these sit inside a mono counter line and a box
+   there would read as a third segmented control. */
+.ledger-hidden-note {
+  margin: 0 0 var(--s3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 72ch;
+}
+.ledger-hidden-note[hidden] { display: none; }
+.ledger-hidden-toggle {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.ledger-hidden-toggle:hover { color: var(--ink); }
+.ledger-hidden-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ledger-hidden-toggle[hidden] { display: none; }
+
+.ledger-state {
+  width: 20px;
+  display: grid;
+  place-items: center;
+  justify-self: start;
+}
+/* The five state glyphs are set OPTICALLY, not geometrically. At one shared
+   13px they are centred on the same x — geometrically perfect and visually
+   uneven, because the font draws them at wildly different sizes: ◐ occupies
+   12px of advance while ● and ■ occupy 7.2px. The rail read as loud/loud/
+   quiet/quiet/loud and "open" — the commonest state — nearly vanished. Each
+   glyph now gets the size that makes its INK land at the same weight as its
+   neighbours, so the rail scans as one column of equal marks that differ only
+   in shape and hue. Every value is a per-glyph correction to one target, not
+   a hierarchy: no state is louder than another. */
+.ledger-glyph {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 750;
+  color: var(--ink-25);
+}
+.ledger-line[data-state="open"] .ledger-glyph { font-size: 16.5px; }      /* ● smallest ink; a disc needs ~1.13× a square to match it */
+.ledger-line[data-state="gated"] .ledger-glyph { font-size: 13px; }       /* ■ solid — the heaviest mark per unit, so it stays at the base */
+.ledger-line[data-state="in-progress"] .ledger-glyph { font-size: 11px; } /* ◐ widest ink */
+.ledger-line[data-state="done"] .ledger-glyph { font-size: 14px; }        /* ✓ thin open strokes */
+.ledger-line[data-state="in-progress"] .ledger-glyph,
+.ledger-stat[data-state="in-progress"] .ledger-stat-value {
+  color: color-mix(in oklab, var(--c-coordinator) 72%, var(--ink));
+}
+.ledger-line[data-state="gated"] .ledger-glyph,
+.ledger-stat[data-state="gated"] .ledger-stat-value { color: var(--s-warn); }
+.ledger-line[data-state="done"] .ledger-glyph,
+.ledger-stat[data-state="done"] .ledger-stat-value { color: var(--s-good); }
+.ledger-line[data-state="blocked"] .ledger-glyph,
+.ledger-stat[data-state="blocked"] .ledger-stat-value { color: var(--s-serious); }
+/* "Open" is the absence of a status colour, and the two places it appears say
+   that at their own scale: a quiet grey dot in a 13px rail, and plain ink at
+   30px. On --ink-25 the figure was the same grey as its own caps label, so
+   the one neutral cell in the strip read as a disabled zero next to four lit
+   ones. Plain ink is the house neutral for a figure (metrics .stat .tv). */
+.ledger-line[data-state="open"] .ledger-glyph { color: var(--ink-25); }
+.ledger-stat[data-state="open"] .ledger-stat-value { color: var(--ink); }
+
+/* A cell reading zero has nothing to be that colour ABOUT. The Q register
+   leaves three of the five at zero, and a scarlet 0 under BLOCKED is the one
+   thing on this page that says "look here" while meaning "there is nothing
+   here" — the strip was flying three alarm colours for five empty items. A
+   zero recedes, figure and label together, so the strip's colour appears only
+   where a count does. (Must follow the [data-state] rules: same specificity.) */
+.ledger-stat[data-empty] .ledger-stat-value { color: var(--ink-4); }
+.ledger-stat[data-empty] .ledger-stat-label { color: var(--ink-3); }
+
+.ledger-id-cell {
+  position: relative;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding-left: calc(22px + var(--depth, 0) * 20px);
+}
+.ledger-id {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1;
+  font-weight: 640;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* The rails run one exact row pitch: the id cell is the row minus its 9px
+   padding, so -10/-9 makes each rail (row + its 1px hairline) tall. Adjacent
+   rails then abut with no seam and no overhang — the last child's rail stops
+   ON the rule under it instead of poking into the next row. */
+.ledger-guides { position: absolute; inset: -10px 0 -9px; pointer-events: none; }
+/* Each rail stands exactly where its ancestor's id begins (22px + 20px per
+   level = the same padding-left the ids themselves use), so a level-3 row is
+   read by sliding up its own rail to the id that owns it. At 30px they stood
+   8px right of that — the rail struck through the parent's id instead of
+   descending from it, and the outline looked hand-placed rather than ruled. */
+.ledger-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(22px + var(--rail-index) * 20px);
+  width: 1px;
+  background: var(--line-2);
+}
+
+.ledger-title {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 550;
+  color: var(--ink);
+  /* A MEASURE, NOT A COLUMN WIDTH. The row's third track is `1fr`, so when the
+     ledger route stopped wasting half the window (W53: --page-max 1240 ->
+     2120) the title track went from 622px to 1502px -- measured, not guessed,
+     with tools/ledger-page-measure.ps1 at the owner's own 2560px. A single
+     line of prose 1502px long is not more readable for being longer; it is the
+     line a reader loses their place in. The track keeps the width, because the
+     metadata rails to its right are positioned by it and must stay where they
+     are; the TEXT inside it stops at a reading measure, the same rule
+     home.css and styles.css already apply to .md-p and .md-list. */
+  max-width: 90ch;
+}
+/* The right-hand metadata is THREE columns, not a flex run. As a flex run each
+   row sized itself: the row grid's last track is max-content, so a row that
+   carried a gate chip pushed its agent and age left by the chip's width and a
+   row without one did not. Measured on the R register that put the agent name
+   on three different rails (1218 / 1243 / 1336) and the age on three more —
+   a register whose whole promise is that you read DOWN a column. Fixed tracks
+   give every row the same three right-aligned rails whether or not it is
+   gated; the widths are the longest real token plus a lead, so nothing that
+   exists in the data can push a neighbour off its rail.
+   Track 1 is 0-wide on purpose: the branch count is a rare aside on collapsed
+   roots only, and it right-aligns into the slack the title column already
+   leaves rather than reserving 90px on every row for it. */
+.ledger-meta {
+  --led-agent: 90px;   /* "sandbox-w1" / "gem-lane-2" = 76px + lead */
+  --led-age: 62px;     /* "30h 0m" / "2d 13h" = 48px + lead */
+  --led-gate: 120px;   /* "IRREVERSIBLE" chip = 106px + lead */
+  min-width: 0;
+  justify-self: end;
+  display: grid;
+  grid-template-columns: 0 var(--led-agent) var(--led-age) var(--led-gate);
+  align-items: center;
+  justify-items: end;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1;
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ledger-branch-count { grid-column: 1; padding-right: var(--s3); color: var(--ink-3); font-family: var(--font-ui); }
+.ledger-agent { grid-column: 2; color: var(--ink-25); }
+/* A rule's checks in words ("1 of 2 checks still open", T1355) wrap inside
+   their rail instead of running under the chip beside them. */
+.ledger-agent[data-gates] { white-space: normal; text-align: right; line-height: 1.3; }
+.ledger-age { grid-column: 3; text-align: right; }
+/* Q items carry no gate class at all, so the register drops the gate rail
+   rather than ruling 120px of empty column down the whole page. */
+.ledger-record.is-question .ledger-meta { grid-template-columns: 0 var(--led-agent) var(--led-age) 0; }
+/* A QUESTION'S STATUS IS A SENTENCE, NOT A TOKEN (T1340): "answered — reap them
+   automatically" in a 90px rail ran under its package name ("…reap them
+   autsample/lane-policy"). Its two facts are a wrapping run instead, so they
+   sit side by side or on two lines and never on top of each other. */
+.ledger-record.is-question .ledger-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s1) var(--s3);
+  max-width: 100%;
+  line-height: 1.4;
+  white-space: normal;
+}
+.ledger-record.is-question .ledger-agent,
+.ledger-record.is-question .ledger-age { min-width: 0; overflow-wrap: break-word; text-align: right; }
+
+/* the one boxed thing in a bare register, so it stays a whisper: hairline at
+   a quarter of the state hue, a 5% wash, 3px square. It marks a class of
+   care, not a state — state is the glyph at the fixed left rail. */
+.ledger-gate {
+  grid-column: 4;
+  padding: 4px 6px;
+  border: 1px solid color-mix(in oklab, var(--s-warn) 26%, var(--line-2));
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--s-warn) 5%, transparent);
+  color: var(--s-warn);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 620;
+  letter-spacing: var(--track-caps);
+}
+
+.ledger-root-toggle {
+  position: absolute;
+  z-index: 2;
+  left: 38px;
+  top: 50%;
+  width: 18px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  transform: translateY(-50%);
+  background: transparent;
+  /* Decorative grey at rest, deliberately. A branch root carries TWO marks
+     within 18px of each other — the state glyph and this caret — and at
+     --ink-3 they read as equal siblings, so the eye had to work out which one
+     was the state. The caret is an affordance, not information (the button
+     carries the label; the span is aria-hidden), so it recedes until the
+     cursor or focus is on it. */
+  color: var(--ink-4);
+  cursor: pointer;
+  transition: color var(--dur-2) var(--ease);
+}
+.ledger-root-toggle span {
+  display: block;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform var(--dur-2) var(--ease);
+}
+.ledger-root-toggle[aria-expanded="false"] span { transform: rotate(-90deg); }
+.ledger-root-toggle:hover,
+.ledger-root-toggle:focus-visible,
+.ledger-record:hover .ledger-root-toggle { color: var(--ink-2); }
+.ledger-root-toggle:hover { color: var(--ink); }
+
+/* answered Qs recede one register below the question line */
+.ledger-answer {
+  display: grid;
+  grid-template-columns: 28px minmax(190px, 230px) minmax(0, 1fr) max-content;
+  gap: 0 var(--s3);
+  padding: 0 10px 10px;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.ledger-answer-mark { grid-column: 2; justify-self: end; color: var(--ink-4); }
+.ledger-answer span:last-child { grid-column: 3; }
+
+/* Detail opens inline with no reveal animation, including reduced motion.
+   Two alignment corrections:
+   · the gap was --s2 where the row it hangs under uses --s3, so the first
+     label started 8px LEFT of the title it belongs to — the one place on a
+     page built out of columns where a column visibly missed;
+   · the code track was 1fr, which threw claimed-at to the far right edge and
+     split one caption into two disconnected fragments a screen apart. With no
+     fr track and justify-content:start the whole run packs left under the
+     title and reads as the single line of provenance it is. */
+.ledger-detail {
+  display: grid;
+  grid-template-columns: 28px minmax(190px, 230px) max-content minmax(0, auto) max-content max-content max-content;
+  justify-content: start;
+  align-items: baseline;
+  gap: 0 var(--s3);
+  padding: 0 10px 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.ledger-detail[hidden] { display: none; }
+.ledger-detail > .ledger-detail-label:first-child { grid-column: 3; }
+.ledger-detail-label {
+  font-size: 11px;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.ledger-detail code,
+.ledger-detail time { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-2); }
+.ledger-detail code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ledger-detail-sep { color: var(--ink-4); }
+
+.ledger-empty {
+  margin: 0;
+  padding: var(--s5) 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 930px) {
+  .ledger-row { grid-template-columns: 28px 190px minmax(180px, 1fr); }
+  /* under the title the metadata is a wrapping run, not three rails: there is
+     no column left to hold, and fixed tracks would only rule empty air */
+  .ledger-meta {
+    display: flex; flex-wrap: wrap; justify-content: flex-start;
+    grid-column: 3; justify-self: start; margin-top: var(--s2); gap: var(--s2) var(--s3);
+  }
+  .ledger-branch-count, .ledger-agent, .ledger-age, .ledger-gate { grid-column: auto; }
+  .ledger-branch-count { padding-right: 0; }
+  .ledger-age { text-align: left; }
+  /* a wrapping run must stay inside the column, not under the × */
+  .ledger-meta { max-width: 100%; }
+  .ledger-answer { grid-template-columns: 28px 190px minmax(0, 1fr); }
+  .ledger-detail {
+    display: flex;
+    flex-wrap: wrap;
+    /* the title's x at this step: 10 + 28 + --s3 + 190 + --s3 (was 256, four
+       px past the column it hangs under) */
+    padding-left: 252px;
+  }
+}
+
+@media (max-width: 680px) {
+  .ledger-shell { padding-top: var(--s2); }
+  .ledger-stat { padding: var(--s3) var(--s2); }
+  .ledger-stat:first-child { padding-left: 0; }
+  .ledger-stat-value { font-size: 25px; }
+  .ledger-stat-note { letter-spacing: 0; text-transform: none; }
+  .ledger-toolbar { align-items: flex-start; flex-direction: column; gap: var(--s3); }
+  .ledger-row { grid-template-columns: 26px 152px minmax(140px, 1fr); gap: 0 var(--s2); padding-left: var(--s2); padding-right: calc(var(--s2) + 32px); }
+  .ledger-hide { right: var(--s2); }
+  .ledger-root-toggle { left: 32px; }
+  .ledger-answer { grid-template-columns: 26px 152px minmax(0, 1fr); gap: 0 var(--s2); padding-inline: var(--s2); }
+  /* --s2 + 26 + --s2 + 152 + --s2 = the title's x at this step (was 194) */
+  .ledger-detail { padding-left: 202px; padding-right: var(--s2); }
+  .ledger-row-hint { padding-left: 202px; padding-right: calc(var(--s2) + 32px); }
+  .ledger-meta { gap: var(--s2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ledger-record,
+  .ledger-root-toggle,
+  .ledger-root-toggle span { transition: none !important; }
+}
+body.reduce-motion .ledger-record,
+body.reduce-motion .ledger-root-toggle,
+body.reduce-motion .ledger-root-toggle span { transition: none !important; }
+
+/* THE SENTENCE UNDER A FIELD, WHICH THIS PANEL HAD NOWHERE TO PUT.
+ *
+ * The two forms on this page used to explain themselves inside their fields --
+ * `placeholder="its number, as shown in the list"` -- which is the worst place
+ * for an explanation: it is grey, it is gone the moment somebody types, and it
+ * was pointing at a list that in the state a first-time reader meets is empty.
+ * A hint is a sentence about the field, so it is a sentence UNDER the field,
+ * and it stays there while they type.
+ *
+ * It lives here rather than in src/styles.css because it is this page's panel.
+ * The size and colour are the label's, one step quieter, so a hint reads as
+ * subordinate to the thing it explains rather than competing with it. */
+.ledger-write-surface .write-form-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 62ch;
+  margin-top: calc(var(--s1) * -1);
+}
+/* A HINT THAT IS THE REASON A CONTROL IS OFF READS AS A STATE, NOT AS ADVICE.
+   Same channel the rest of this product uses for a refusal, so a person who has
+   met one anywhere else recognises it here. */
+.ledger-write-surface .write-form-hint[data-state='unavailable'] {
+  color: var(--ink-2);
+}
+
+/* [hidden] LOSES TO display:grid, AND THE SCREENSHOT IS HOW THAT WAS FOUND.
+ *
+ * The queued-work form is written `hidden` and revealed by its own button. The
+ * attribute was there, a probe that asked the DOM said "hidden: true", and the
+ * form was plainly on the screen: `.write-form` sets `display: grid`, and an
+ * author rule beats the user-agent rule that gives [hidden] display:none. So
+ * the panel opened at full complexity for everybody while every measurement of
+ * it said otherwise -- the exact shape of defect this lane exists to close, one
+ * level down. Text in the DOM is not text on the screen. */
+.ledger-write-surface .write-form[hidden] { display: none; }
+
+/* ------------------------------------------------------------------------
+   THE LIVE REGISTER (2026-09-02): the person's words under the row, the reach
+   chip, six tiles, the reach filter, the row controls, the editor, the file
+   box and the history note. Everything above this line is the page the owner
+   already liked; nothing here moves a column it laid down.
+   ------------------------------------------------------------------------ */
+
+/* Six bare figures now: "Waiting for you" joined the strip. The narrow rule
+   above (auto-fit at 560px) still folds it. */
+.ledger-page .ledger-summary { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 560px) {
+  .ledger-page .ledger-summary { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+}
+.ledger-line[data-state="proposed"] .ledger-glyph { font-size: 14px; }       /* ◇ open strokes, like ✓ */
+.ledger-line[data-state="removed"] .ledger-glyph { font-size: 15px; }        /* – a thin dash */
+.ledger-line[data-state="proposed"] .ledger-glyph,
+.ledger-stat[data-state="proposed"] .ledger-stat-value { color: color-mix(in oklab, var(--c-manager) 72%, var(--ink)); }
+.ledger-line[data-state="removed"] .ledger-glyph { color: var(--ink-4); }
+.ledger-line[data-state="removed"] ~ .ledger-words { color: var(--ink-4); text-decoration: line-through; text-decoration-color: var(--line-2); }
+
+/* The toolbar holds two segments now; they wrap as a pair before the counter
+   does. */
+.ledger-toolbar-groups { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+.ledger-find { display: inline-flex; align-items: center; }
+.ledger-find input { min-width: 12rem; max-width: 100%; padding: 4px 8px; font: inherit; font-size: 13px; }
+.ledger-scope-filter[hidden] { display: none; }
+
+/* THE PERSON'S OWN SENTENCE, under the rail and indented to the title's x so
+   it reads as the row's content, not the register's. Wraps; at most six lines
+   before it clips, because a register is a list and not a document.
+
+   overflow-wrap: break-word, NOT anywhere -- the same shape of box
+   (-webkit-line-clamp, white-space: normal, arbitrary un-pre-measured prose)
+   already proven to break mid-word at the first opportunity rather than the
+   last resort: `.node-name .nn-t` (tree-graph.css, commit c06c44c) and the
+   tree card copy rule (tree-graph.css, commit 0b0087e) both measured
+   `anywhere` turning an ordinary word into a fragment ("Coordinat" / "or 1")
+   the instant the clamped box ran out of room, even though normal
+   line-breaking had a space to fall back to first. `item.words` here is the
+   same kind of text -- a person's own free-form sentence, never pre-measured
+   -- clamped to 6 lines with overflow: hidden, so a word broken early is
+   silently lost past the clamp exactly like the tree card was. break-word
+   only forces a mid-word split once ordinary wrapping has nowhere left to
+   go. */
+.ledger-words {
+  margin: 0;
+  padding: 0 42px 9px 252px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  overflow: hidden;
+}
+.ledger-words:empty { display: none; }
+.ledger-filed-by {
+  display: inline-block;
+  margin-left: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+/* Under a row an agent filed and nobody has approved yet. */
+.ledger-row-note {
+  margin: 0;
+  padding: 0 42px 8px 252px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+/* THE REACH CHIP rides the gate rail (the one boxed thing in a bare register)
+   in the quiet colour, so it reads as a class of thing and not a state. */
+.ledger-scope {
+  grid-column: 4;
+  max-width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 620;
+  letter-spacing: var(--track-caps);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ledger-scope[data-scope="global"] { border-style: dashed; }
+
+/* THE ROW CONTROLS: small text buttons under the words, sized like the ×
+   (22px tall), quiet at rest, ink on hover. The armed state -- the first of
+   two presses on Delete or Decline -- is full ink on a visible hairline so a
+   row one press from changing looks different from its neighbours. */
+.ledger-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: 0 42px 9px 252px;
+}
+.ledger-ctl {
+  min-height: 22px;
+  padding: 2px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+.ledger-ctl:hover,
+.ledger-ctl:focus-visible { color: var(--ink); border-color: var(--ink-3); }
+.ledger-ctl:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ledger-ctl[data-armed="true"] { color: var(--ink); border-color: var(--ink); }
+.ledger-ctl.is-danger[data-armed="true"] { color: var(--s-serious); border-color: var(--s-serious); }
+.ledger-ctl:disabled { opacity: .5; cursor: default; }
+.ledger-reset-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.ledger-reset-controls[hidden] { display: none; }
+.ledger-reset-status:empty { display: none; }
+.ledger-reset-dialog { max-width: min(520px, calc(100vw / var(--zoom, 1) - 40px)); margin: auto; padding: 24px; border: 1px solid var(--ink-3); border-radius: 12px; background: var(--surface, #202126); color: var(--ink); }
+.ledger-reset-dialog::backdrop { background: #0009; }
+.ledger-reset-dialog h2 { margin: 0 0 16px; }
+.ledger-reset-dialog p { line-height: 1.5; }
+.ledger-reset-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.ledger-reset-actions .is-danger { border-color: var(--s-serious); color: var(--s-serious); }
+.ledger-reset-actions .ledger-ctl { min-height: 36px; padding: 8px 12px; }
+
+/* THE EDITOR SLOT under a row: the words box with Save and Cancel, or the
+   reason box before a Decline. Same indent as the words it replaces. */
+.ledger-row-editor { padding: 0 42px 9px 252px; }
+.ledger-row-editor[hidden] { display: none; }
+.ledger-editor {
+  width: 100%;
+  min-height: 64px;
+  margin-bottom: var(--s2);
+  padding: var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.ledger-editor:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.ledger-row-editor .ledger-row-actions { padding: 0; }
+.ledger-reason { display: grid; gap: var(--s1); font-size: 12px; color: var(--ink-3); }
+.ledger-reason-input {
+  padding: 5px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.ledger-row-hint[data-state="refused"] { color: var(--s-serious); }
+.ledger-row-hint[data-state="unavailable"] { color: var(--ink-2); }
+
+/* THE RESOLVE PICKER'S OWN SLOT (R's Resolve action, 2026-09-07). Same
+   indent and same hidden rule as .ledger-row-editor, which it sits beside
+   rather than inside -- it is its own slot, not that one, because the
+   Resolve control's whole lifecycle lives outside ledger-row-actions.js
+   (see src/views/ledger.js). Nothing here invents a new colour or size:
+   the statuses reuse .ledger-ctl-shaped spacing, the reason field is
+   literally .ledger-reason/.ledger-reason-input, already styled above. */
+.ledger-resolve-slot { padding: 0 42px 9px 252px; }
+.ledger-resolve-slot[hidden] { display: none; }
+.ledger-resolve-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+.ledger-resolve-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.ledger-resolve-option:has(input:checked) { color: var(--ink); border-color: var(--ink-3); }
+/* VISIBLE KEYBOARD FOCUS ON THE RADIO ITSELF, not just its label -- a
+   radio group is normally traversed input by input, and the same focus
+   ring every other control on this page earns must land on the exact
+   element that has focus. */
+.ledger-resolve-option input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ledger-resolve-slot .ledger-reason { margin-bottom: var(--s2); }
+.ledger-resolve-slot .ledger-row-actions { padding: 0; }
+
+/* THE HISTORY NOTE above the rows: a sentence in the failure colour when the
+   chained history broke or a record drifted; absent otherwise. */
+.ledger-chain-note {
+  margin: 0 0 var(--s3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  max-width: 72ch;
+  color: var(--ink-2);
+}
+.ledger-chain-note[data-state="refused"] { color: var(--s-serious); }
+.ledger-chain-note[hidden] { display: none; }
+
+/* THE FILE BOX at the foot of the page, drawn with the write surface's own
+   form vocabulary so it reads as one of the page's forms and not a stranger. */
+.ledger-file { margin: var(--s3) 0 var(--s5); padding: 0 0 var(--s4); border-bottom: 1px solid var(--line-2); }
+.ledger-file[hidden] { display: none; }
+.ledger-file .write-form-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 62ch;
+  margin-top: calc(var(--s1) * -1);
+}
+.ledger-file .write-form-hint[hidden] { display: none; }
+.ledger-file [data-file-key-row][hidden] { display: none; }
+.ledger-file textarea {
+  min-height: 72px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.ledger-file [data-action-output][data-state="refused"] { color: var(--s-serious); }
+.ledger-file [data-action-output][data-state="confirmed"] { color: var(--s-good); }
+
+@media (max-width: 930px) {
+  .ledger-words,
+  .ledger-row-note,
+  .ledger-row-actions,
+  .ledger-row-editor,
+  .ledger-resolve-slot { padding-left: 252px; }
+  .ledger-scope { grid-column: auto; }
+}
+
+@media (max-width: 680px) {
+  .ledger-words,
+  .ledger-row-note,
+  .ledger-row-actions,
+  .ledger-row-editor,
+  .ledger-resolve-slot { padding-left: 202px; padding-right: calc(var(--s2) + 32px); }
+}
+
+/* ---------------------------------------------------------------------------
+   THE OWNER'S TWO WAITING COLOURS.
+
+   The owner's words: "yellow for owner-asks/proposals, red for real
+   owner-waiting blockers, three colours user-pickable from quick settings,
+   per-theme sets."
+
+   The header of this file said "Open is the absence of a status colour", and
+   that is still true of `open` AS A STATE. What it could not say was whether
+   the OWNER is the one being waited on -- an A or a P at `open` is an ask, and
+   a T or an R at the same `open` is not -- so the register had exactly one
+   colour for that whole question, scarlet on `blocked`, and every ask on the
+   page wore the rail's neutral grey or the manager tint. These two rules carry
+   the second half of the question. src/views/ledger.js writes
+   `data-owner-status` from ownerWaitingStatus(), the same function Home's
+   circle is coloured by; nothing here re-derives it from a status word.
+
+   THE VALUE IS THE PERSON'S, AND ITS FALLBACK IS THE THEME'S. mountHomeStatusColors
+   puts the picked hex on this page as --home-ledger-blocked and
+   --home-ledger-attention, per theme. The fallback after the comma is not a
+   spare: it is what a copy renders with before that runs, or with no storage
+   at all, and --s-serious/--s-warn are already redefined by every theme
+   (src/theme-refinements.css), so the no-JS path is per-theme too.
+
+   AFTER the [data-state] rules on purpose -- same specificity (0,3,0), so
+   source order is what makes the owner's answer win over the state's.
+
+   THERE IS NO THIRD RULE HERE, and that is the honest mapping rather than a
+   gap. homeLedgerStatus answers four things, `blocked`, `attention`, `clear`
+   and `unknown`, and only the first two are properties a ROW can have: `clear`
+   and `unknown` are verdicts about the whole read (nothing is waiting / the
+   records could not be read), and no single record is either. The third picked
+   colour, `clear`, is spent where a whole-ledger verdict is actually drawn --
+   Home's circle. `unknown` stays uncoloured on both surfaces, because painting
+   "we could not read this" in any of the three would state a status nobody
+   measured. No fourth control was added for it. */
+.ledger-line[data-owner-status="blocked"] .ledger-glyph {
+  color: var(--home-ledger-blocked, var(--s-serious));
+}
+.ledger-line[data-owner-status="attention"] .ledger-glyph {
+  color: var(--home-ledger-attention, var(--s-warn));
+}
+/* THE STRIP AGREES WITH THE RAIL. The two tiles that count owner-waiting rows
+   take the same two picked colours, so a person cannot read one red in the
+   figure and a different red four rows below it. :not([data-empty]) keeps the
+   rule above it intact -- a tile reading zero still recedes, because a zero has
+   nothing to be that colour about. */
+.ledger-stat[data-state="blocked"]:not([data-empty]) .ledger-stat-value {
+  color: var(--home-ledger-blocked, var(--s-serious));
+}
+.ledger-stat[data-state="proposed"]:not([data-empty]) .ledger-stat-value {
+  color: var(--home-ledger-attention, var(--s-warn));
+}

@@ -1,0 +1,44 @@
+# Line-ending pin for shell hooks. NOT a style preference — a correctness fix.
+#
+# This repository has core.autocrlf=true (measured 2026-08-11) and, until this
+# file, no .gitattributes at all. Under that setting git rewrites LF to CRLF on
+# CHECKOUT. A /bin/sh script checked out with CRLF has a shebang of
+# "#!/bin/sh\r", which the interpreter cannot resolve — the hook then fails to
+# execute rather than refusing anything.
+#
+# That failure mode is silent and it is the dangerous one: git skips a hook it
+# cannot run without reporting anything, so .githooks/commit-msg would appear
+# installed while enforcing nothing. An inert guard is worse than an absent one,
+# because it stops anyone looking.
+#
+# Scoped deliberately to .githooks only. The engine repo
+# (Desktop/toolsenabled-current) solves this with a repo-wide `* -text`, which it
+# needs for FRA byte-fidelity hashing. This repo has no such requirement, and a
+# repo-wide rule here would change the checkout bytes of every file for all
+# worktrees sharing this repository — a far larger change than the problem.
+/.githooks/** text eol=lf
+
+# Font binaries must never be line-ending normalised: autocrlf rewriting a
+# CRLF byte pair inside a woff2 stream corrupts it silently (the website lane
+# hit exactly this shipping the same files).
+*.woff2 binary
+
+# SOURCE IS LF ON EVERY CHECKOUT. Measured 2026-09-02 on a fresh clone under
+# the machine-wide core.autocrlf=true this file already documents: five suites
+# that read shell/main.cjs, shell/agent-host.cjs and src/agent-session.js as
+# text and search for a column-zero closing brace failed on PRISTINE sources,
+# because checkout had rewritten them to CRLF. The sealed cut runs those suites
+# inside a worktree made the same way, so a cut from such a clone stops at the
+# test ratchet. Pinning the source extensions removes the dependence on the
+# cutting machine's global git configuration.
+#
+# WIDENED THE SAME DAY to every text file. The suites also read the design
+# docs, the stylesheets and JSON as text (fleet-trees-multi looks for a
+# "```bounds" fence followed by a bare LF; home-feed-dense-tokens and
+# rail-chrome match a selector, a comma and a bare LF in the CSS; preview-honesty compares prose
+# lines). Eight of them failed on a pristine worktree for the same reason the
+# five above did. Every blob in this repository is already LF (git ls-files
+# --eol reports no i/crlf), so this rule changes checkout bytes only, and it
+# makes them match what the tests and the packager expect on every machine.
+# The .githooks and woff2 rules above still stand on their own.
+* text=auto eol=lf

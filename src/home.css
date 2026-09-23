@@ -1,0 +1,1003 @@
+/* ============================================================
+   HOME polish (Lane T5) — additive only, scoped under .home /
+   .home-ring-wrap / .home-feed so nothing here leaks to other
+   pages that also use uptimeRing()/.brace/.feed-line markup.
+   ============================================================ */
+
+/* ---------- 1. ring breathes ---------- */
+.home-ring-stage { display: grid; place-items: center; width: 100%; min-width: 0; }
+/* The ring can be narrower than either the viewport or its grid column.
+   Size the readout from the rendered ring, including phone and text zoom. */
+.home-ring-stage .uring { container-type: inline-size; }
+/* The filled circle must fit its column after a sidebar, window resize or
+   text-size change. Explicit grid tracks keep the SVG's intrinsic width from
+   enlarging a percentage-sized ring beyond the available space. */
+.home:has(.home-circle) { container: home-circle-layout / inline-size; overflow-y: auto; }
+.home .home-ring-wrap, .home .home-ring-stage { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.home .home-circle { max-width: 100%; height: auto !important; aspect-ratio: 1; }
+.home .home-circle > svg { width: 100%; height: auto; }
+/* A desktop window can become narrow without entering the phone canvas.
+   Its single track must shrink below the activity panel's content width. */
+@media (max-width: 900px) {
+  .home:has(.home-circle) { grid-template-columns: minmax(0, 1fr); }
+}
+/* Stack from the space the page actually has, including the selected text
+   size, so the readout and activity remain usable beside either sidebar. */
+@container home-circle-layout (max-width: 980px) {
+  .home-ring-wrap, .home-feed-wrap { grid-column: 1 / -1; }
+  .home-ring-wrap { padding-block: 24px 0; }
+  .home .home-circle { max-width: var(--jelly-measure, min(100%, 420px)); }
+  .home-feed-wrap { justify-self: center; width: 100%; max-width: 700px; margin-bottom: 24px; }
+}
+/* EVERY `.home-ring-wrap .uring-digits` RULE IN THIS FILE NOW SAYS
+   `.home-ring-wrap .uring .uring-digits`, and it has to.
+   These rules size the clock in `cqw` -- container-query width units against
+   `.home-ring-stage .uring`, which is the only element on this page declaring
+   `container-type: inline-size`. That is correct for digits INSIDE the ring and
+   wrong for anything else, because a `cqw` outside `.uring` resolves against
+   the next container up (`.home:has(.home-circle)`, ~1150px here) and 12cqw of
+   that is a 138px digit.
+   It did not matter while the clock lived in the page header: `.home-ring-wrap`
+   did not contain it, so none of these rules matched. The clock is back above
+   the circle now (owner, 2026-09-18) and IS inside `.home-ring-wrap`, one level
+   outside `.uring` -- so without this the relocated clock would have been sized
+   off the wrong container. `.uring` is the honest guard: it names the element
+   the units are measured against. home-overview.css styles the relocated clock
+   from the type scale instead, in absolute steps, for the same reason. */
+.home-ring-wrap .uring .uring-digits .colon { font-size: 9cqw; padding: 0 1cqw; }
+.home-ring-stage .uring-inner { width: 72%; }
+.home-ring-wrap .uring .uring-digits .u { letter-spacing: .04em; }
+/* The voice panel shares the left column's ONE measure with the ring and the
+   facts; three centred boxes of three different widths is three alignment
+   axes pretending to be one. Colour and size both come from the token
+   source in home-circle.css. */
+.home .voice-contact { width: var(--jelly-measure, min(100%, 440px)); padding: var(--jspace-3) var(--jspace-4); border: 1px solid var(--jelly-line); border-radius: 14px; background: transparent; margin-top: var(--jspace-3); font-size: var(--type-0); text-align: left; box-sizing: border-box; }
+.voice-contact-heading { display: flex; align-items: center; gap: var(--jspace-2); letter-spacing: .12em; font-size: var(--type--1); text-transform: uppercase; color: var(--jelly-ink-3); margin-bottom: var(--jspace-3); }
+.voice-contact-heading [data-voice-state] { margin-left: auto; }
+.home .home-ring-wrap .voice-contact-state { padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--jelly-ink-2); font-weight: 650; }
+/* THREE STATES, ONE HUE. The dot carried #717982 grey, #69dfc4 mint and
+   #9abfff periwinkle -- three unrelated hue families on a screen allowed one,
+   for a control whose state is already named in words beside it. Off is the
+   neutral ramp (it is off); the two live states are the accent at two steps
+   of the accent ramp, far enough apart in L to tell at 7px. */
+.voice-indicator { width: 7px; height: 7px; border-radius: 50%; background: var(--jelly-n-55); }
+.voice-contact[data-state="listening"] .voice-indicator { background: var(--jelly-a-66); box-shadow: 0 0 10px color-mix(in oklab, var(--jelly-a-66) 40%, transparent); }
+.voice-contact[data-state="speaking"] .voice-indicator { background: var(--jelly-a-86); }
+.voice-contact label { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.voice-contact select, .voice-contact input { flex: 1; min-width: 0; max-width: 100%; color: inherit; background: var(--jelly-ground); border: 1px solid var(--jelly-line); border-radius: 5px; padding: 6px; font: inherit; }
+.voice-contact [hidden] { display: none; }
+.voice-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.voice-controls button { color: inherit; font: inherit; border: 1px solid var(--jelly-line); border-radius: 6px; padding: 7px 10px; background: transparent; cursor: pointer; }
+.voice-controls button:first-child { background: color-mix(in oklab, var(--jelly-structure) 12%, transparent); border-color: color-mix(in oklab, var(--jelly-structure) 40%, transparent); }
+.voice-controls button:disabled { opacity: .45; cursor: default; }
+.voice-contact p { margin: 8px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
+.voice-contact details { margin-top: 10px; opacity: .85; }
+.voice-contact summary { cursor: pointer; min-height: 44px; align-content: center; }
+.voice-heard { max-height: 70px; overflow: auto; }
+.voice-heard:empty { display: none; }
+.home .uring[data-voice="listening"] .arc-glow { animation: none; opacity: .35; }
+.home .uring[data-voice="speaking"] .arc-glow { animation: voice-answer 1s ease-in-out infinite; }
+@keyframes voice-answer { 0%, 100% { opacity: .2; } 50% { opacity: .7; } }
+@media (prefers-reduced-motion: reduce) { .home .uring[data-voice] .arc-glow { animation: none; } }
+@media (max-height: 850px) { .home:has(.voice-contact) { align-items: start; overflow-y: auto; padding-top: 20px; padding-bottom: 20px; } }
+/* professional-pass: was an animated blur+opacity bloom (infinite, idle,
+   self-advertising — the strongest "candy" signal on the page). The ring
+   still breathes, just without any light: a whisper of depth on the
+   already-unblurred under-stroke (styles.css .uring .arc-glow). */
+.home-ring-wrap .uring .arc-glow {
+  animation: home-ring-breathe 6.2s ease-in-out infinite;
+}
+@keyframes home-ring-breathe {
+  0%, 100% { opacity: calc(0.08 * var(--glow)); }
+  50%      { opacity: calc(0.14 * var(--glow)); }
+}
+
+/* arc-tip dot (positioned every frame from home.js) — a machined cap via a
+   crisp white stroke, not a light source (professional-pass) */
+.home-ring-wrap .uring-tip-dot {
+  stroke: var(--jelly-n-96);
+  stroke-width: 2px;
+  paint-order: stroke;
+}
+
+/* fixed-width, crossfading digit segments (no layout shift, no jump) */
+.home-ring-wrap .uring .uring-digits .n-stack {
+  position: relative;
+  display: inline-block;
+  min-width: 2ch;
+  height: 1.05em;
+  font-size: 12cqw;
+  text-align: center;
+}
+@container (max-width: 300px) {
+  .home-ring-wrap .uring .uring-digits .n-stack { font-size: 10.5cqw; }
+}
+/* Width audit (brief item 3), recorded so the next lane does not re-derive it:
+   every .n is position:absolute, so the stack has no in-flow content and its
+   width is the `min-width` above and nothing else — one constant, identical
+   for "00" and "59", for the fade-out span and the fade-in span. There is no
+   per-value measurement anywhere in the path, so the seconds column cannot
+   jitter by construction; the digits themselves take tabular figures, made
+   explicit below rather than left to inheritance from .uring-digits.
+   A hidden in-flow sizer (::before { content: attr(...) }) would make the box
+   an exact fit instead of a 2ch approximation, but it was tried and dropped:
+   it hands the inline-block a real text baseline where it currently
+   synthesises one from the margin edge, which moves every colon in the
+   readout ~3px against the digits. Not worth it for a box that is already
+   stable. */
+.home-ring-wrap .uring .uring-digits .n {
+  font-size: inherit;
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  font-variant-numeric: tabular-nums;
+  transition: opacity .14s var(--ease);
+  will-change: opacity;
+}
+/* The light carries the motion. Keep the readout on one baseline and settle
+   its brief fade before the next second, including on the smaller phone dial. */
+.home-ring-wrap .uring .uring-digits .n.next { opacity: 0; }
+.home-ring-wrap .uring .uring-digits .n.next.in { opacity: 1; }
+/* setDigit removes .cur before fading, so target .out directly. This also
+   keeps interrupted fades from leaving an older value over the new digit. */
+.home-ring-wrap .uring .uring-digits .n.out { opacity: 0; }
+
+/* ---------- 3. feed lines (the braces that framed them are gone from this page; see the card rule below) ---------- */
+
+/* ---- give the log the width that is already on the page ----
+   At 1600x900 the feed track resolved to its 500px cap, and the two 190px
+   braces plus the card inset took ~185px of it back — leaving roughly 40
+   monospace characters for lines that routinely run 50-62 ("watching
+   heartbeat freshness on fleet supervisor" is 47 before the agent prefix).
+   So the majority of lines ellipsised mid-phrase with a third of the column
+   still empty to their right, which is what made the panel read as a clipped
+   list. Two levers, both here: widen the track a step, and bring the braces
+   down one (156px is still ~12x the type size, so the sketch's giant quiet
+   braces still read as giant). Text gains ~125px, about 16 characters, and
+   the long tail of the vocabulary now lands inside the column.
+   The 13px mono size is NOT a lever — it is the reading floor.
+   Scoped to the desktop breakpoint on purpose: styles.css's <=900px
+   single-column rule has the same specificity and sits earlier in the
+   cascade, so an unscoped override here would silently undo it. */
+@media (min-width: 901px) {
+  .home { grid-template-columns: 1fr minmax(420px, 600px); }
+}
+/* ...and the 600px cap was still one step short on a wide screen. Measured at
+   1600x900: the feed track sat pinned at 600, .feed-line resolved to 421px of
+   text, and 6 of 54 sampled lines (11%) ellipsised mid-phrase — the ordinary
+   vocabulary runs to 491px ("gem-lane-3 · searching help-request tags in
+   coordination memory"). Meanwhile the ring column was 840px holding a 520px
+   ring, so 200px of page sat empty between the ring's right edge and the left
+   brace. Raising the cap to 700 at >=1500px takes truncation to 0/54 with
+   521px of text and still leaves a ~150px ring-to-brace gap. Below 1500px the
+   600px cap is honest — at 1280x800 the left column has only ~45px of slack,
+   so widening there would crush the ring instead of the whitespace. */
+@media (min-width: 1500px) {
+  .home { grid-template-columns: 1fr minmax(420px, 700px); }
+}
+/* ---- and then centre the pair, because 1fr does not ----
+   The grid itself was always centred; the ROW inside it was not. The ring
+   column is 1fr, so every pixel a wide screen adds lands in it: at 1600 the
+   column held a 520px ring in 740px and the feed's right edge finished 60px
+   from the page edge while the ring's left edge started 170px from it. The
+   composition read as shoved right, and it got worse as the screen grew
+   (270px of gutter difference at 1920).
+   Capping the row and centring it fixes the balance without moving the ring:
+   the start offset grows by exactly half of what the ring column loses, so
+   the ring stays at x=170 at 1600 for every cap in this range and only the
+   feed travels inward. 1360 is the cap that leaves the ring-to-brace gap
+   readable (~90px) while bringing the gutters to 170/120 -- taking them to
+   dead level would force the cap to 1260, which is the ring column shrunk
+   flush to the ring and only 40px between the ring and the bracket.
+   The text track is untouched at 700, so the truncation measured above
+   stays at 0/54. */
+/* ---- and then stop wasting the rest of a wide monitor ----
+   1360 was the cap that balanced the RING and FEED COLUMNS against each
+   other at the window widths measured then -- it does not size either column
+   on its own: the feed column is independently ceilinged at
+   minmax(420px, 700px) above, and the ring (homeRingSize, views/home.js) is
+   Math.min(520, height-300, width-2*gutter, height-120) -- at any window at
+   least this wide the width term is not the binding one (2560 gives
+   width-2*gutter=2440, height-300 and height-120 both clear 520 too at a
+   1048-1080px-tall window), so the ring sits at its flat 520px ceiling
+   either way. This outer box cap therefore only ever widens or narrows the
+   centred whitespace the two-column composition sits in.
+   Raised to 1960 (owner, R9: "the text does not go even near the boarder of
+   the screen we are wasting a lot of width"). Measured headless with
+   tools/page-width-measure.ps1 (this repo's own vite dev server + a CDP
+   render, not arithmetic on the sheet) at the
+   owner's own persisted window (AppData/Roaming/ToolsEnabled-Live/
+   shell-state.json: width 2559, maximized): the 1360 box sat at x=600..1960
+   in the 2560px-wide viewport -- 600px of bare page on each side, 46.9% of
+   the window outside the box entirely, with neither the ring nor the feed
+   text one pixel wider than at 1420px. Raising the cap does not lengthen the
+   feed's text (that stays inside minmax(420,700) and the 70ch prose cap
+   below) or grow the ring (height-driven, unaffected) -- it only returns
+   some of that measured margin to the page. 1960 gives back half of it
+   (600 -> 300px of margin per side at the owner's window), the ring-to-brace
+   math above is untouched, and every width at or below 1420px is untouched. */
+@media (min-width: 1420px) {
+  .home { max-width: 1960px; margin-inline: auto; }
+}
+
+/* ---- the braces have to BRACKET the context, not stand next to it ----
+   The bracket is drawn (home.js emits the path), not typeset. A glyph could
+   never do this job: '{' paints a fixed ~122px shape at the 156px it used to
+   be set at, while the block it encloses -- nine feed lines plus the hint --
+   is ~252px, so 71px of context hung above the brace and 59px below. Two
+   decorations parked beside the middle third, not a bracket.
+   font-size is the wrong lever for the same reason it was the only one: the
+   glyph is ~0.39em wide, so the ~322px needed to span 252px of ink would add
+   ~130px of width and take back everything the 1500px track step above just
+   gave the text. The path decouples the two -- height comes from
+   `align-self: stretch` (i.e. from the feed, exactly), width stays 22px --
+   and because it is laid out rather than measured it re-fits on resize, on
+   theme change and after the webfont swap with no JS in the loop at all. */
+/* THE PANEL IS A PLAIN CARD NOW; its surface, head grid and agent dropdown
+   are in home-context.css. The drawn braces are gone from this page. */
+
+/* ============================================================
+   The coordinator session thread — what the card holds now.
+   The one-line churn ticker and its click-to-open chat morph are
+   retired; their rules that live in styles.css (.feed-title,
+   .feed-line, .feed-hint, .home-feed.as-chat, the .home-feed
+   hover/morph plumbing) are shared-file territory and are left
+   in place unreferenced rather than edited from this lane.
+   ============================================================ */
+
+/* The feed block is no longer a button that morphs into a chat — it IS the
+   session, at rest. An explicit height (styles.css's content-sized
+   max-height:460px would leave nothing to scroll) is what makes the thread
+   scroll internally while the braces — `align-self: stretch` against this
+   box — keep spanning it edge to edge. 70vh keeps the composer on screen at
+   the 800-tall test size; the 620px cap stops the column towering so far
+   over the 520px ring that the page reads as two unrelated columns.
+
+   THE 70vh IS DIVIDED BY --zoom BECAUSE "ON SCREEN" IS THE WHOLE POINT OF IT.
+   A viewport unit is not scaled by the body zoom the Text size setting sets
+   while the painted box is, so at Large this asked for 70% of the window and
+   painted 78.4% of it -- 63px more than promised on an 800-tall window, taken
+   out of the space the composer below was standing in, and .view is
+   overflow:hidden so nothing scrolls to it. calc(70vh / 1) at Default is the
+   same length this always was. See --zoom at :root in src/styles.css. */
+.home .home-feed {
+  cursor: default;
+  height: min(calc(70vh / var(--zoom, 1)), 620px);
+  max-height: none;
+  display: flex; flex-direction: column;
+}
+/* ...but a panel holding an EMPTY state must shrink to it.
+   A fixed 620px column is right for a transcript, which is a scroller and has
+   to have a viewport. It is wrong for four lines of text: the braces are
+   `align-self: stretch` against this box, so they went on bracketing six
+   hundred pixels of nothing, and a calm empty state framed by two giant
+   brackets around whitespace reads as a container that failed to load rather
+   than as a considered blank. Auto height puts the brackets back around the
+   words, which is what the brackets are for. */
+.home[data-panel="empty"] .home-feed { height: auto; }
+.home[data-panel="empty"] .session-log { padding-top: 0; overflow: visible; }
+.home[data-panel="empty"] .session-view::before { content: none; }
+.home[data-panel="empty"] .projection-state {
+  min-height: 0;
+  padding: 28px 0 8px;
+  justify-items: start;
+  text-align: left;
+  gap: 10px;
+}
+.home[data-panel="empty"] .projection-state strong { font-size: 17px; font-weight: 640; }
+.home[data-panel="empty"] .projection-state span {
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  max-width: 46ch;
+}
+
+/* The one next step, where there genuinely is one. A link, styled as the
+   quietest possible button: this screen is not selling anything, it is telling
+   someone where the switch is. */
+.home-next {
+  margin-top: 6px;
+  display: inline-flex; align-items: center;
+  padding: 7px 14px;
+  border: 1px solid var(--line-2, var(--line));
+  border-radius: var(--r-md, 3px);
+  font-family: var(--font-ui);
+  font-size: 13px; font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition: background .18s var(--ease), color .18s var(--ease);
+}
+.home-next:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+.home-next:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ink) 55%, transparent);
+  outline-offset: 2px;
+}
+/* the hover tint was the old "this opens" affordance; nothing opens now */
+.home .home-feed:hover { background: transparent; }
+
+/* ---- subscription status ----
+   The last row of the panel's flex column. The disabled control and its visible
+   reason state the delayed offer without presenting a live-looking dead end. */
+.home .home-doors {
+  flex: none;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.home .home-door {
+  appearance: none;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color .18s var(--ease), border-color .18s var(--ease);
+}
+.home .home-door:hover { color: var(--ink); border-bottom-color: var(--line-2, var(--line)); }
+.home .home-door:disabled,
+.home .home-door:disabled:hover {
+  cursor: not-allowed;
+  color: var(--ink-4);
+  border-bottom-color: transparent;
+}
+.home .home-door:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ink) 55%, transparent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.home .home-door-reason {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* One quiet line names the surface; the braces do all the framing.
+   NOT uppercase, and that is the point of the change. This line used to render
+   "SESSION - SAMPLE TRANSCRIPT . DEMONSTRATION OF THIS VIEW" in tracked caps
+   beside a second caps badge, which is a headline in a technical document, not
+   a label on a panel. Caps are kept where they are a display treatment on two
+   or three words -- the ring's caption -- and dropped wherever the text is a
+   sentence a person is meant to read. */
+/* DENSE TOKENS (design/chat/picked-card.png "Dense -- light-mode palette";
+   design/chat/Sizes.dc.html): type steps 13.5/12/11/10.5, 3px radius. The
+   panel's own font-size/radius below and everywhere under session-head/
+   session-log/home-run/session-foot are style-unified onto that scale;
+   12.5px snaps to 12 (secondary/meta text), 11.5px to 11, 13px body text to
+   13.5. tools/test/home-feed-dense-tokens.test.mjs pins the snapped values. */
+.home .session-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  padding-bottom: var(--s3);
+  font-size: 12px;
+  font-weight: 640;
+  color: var(--ink-2);
+  margin-bottom: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
+.home .session-head > [data-panel-title] { min-width: 0; }
+/* The only badge left on this screen, and it exists for one reason: to make a
+   demonstration impossible to mistake for a recording. Warn-toned rather than
+   quiet, because "this is not your data" is not a footnote. */
+.home .panel-badge {
+  margin-left: 0;
+  flex: none;
+  font-size: 11px; font-weight: 640;
+  padding: 3px 8px;
+  border-radius: var(--r-md, 3px);
+  color: var(--s-warn);
+  border: 1px solid color-mix(in srgb, var(--s-warn) 45%, transparent);
+  background: color-mix(in srgb, var(--s-warn) 8%, transparent);
+}
+
+.home .session-view { position: relative; flex: 1; min-height: 0; }
+/* top padding gives the entry fade below somewhere to live that is not
+   glyphs.
+   THE SCROLLBAR IS HIDDEN, NOT THE SCROLLING. The owner, with the card in
+   front of him (verbatim): "i would want to scroll bar gone (not visible, it
+   can still function)". So the region still scrolls by wheel, touch and the
+   keyboard (it is a tab stop, see the focus mark below), and only the bar is
+   gone -- the same idiom the metrics panels use (styles.css, the
+   scrollbar-width: none / ::-webkit-scrollbar pair). The 12px right padding
+   that kept text clear of the bar goes with it. */
+.home .session-log {
+  height: 100%;
+  min-width: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 16px 0 4px 0;
+}
+.home .session-log::-webkit-scrollbar { display: none; }
+.home .log-turns { min-width: 0; }
+/* the log is a focusable scroll region (keyboard users page through history
+   with it), so it needs a visible focus mark; --ink-derived so it holds on
+   all three sheets without a per-theme override */
+.home .session-log:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ink) 55%, transparent);
+  outline-offset: -2px;
+}
+
+/* ---- the thread dissolves at its top edge instead of being cut ----
+   The scroller is pinned to the newest turn, so its top edge always slices
+   through an older line — the same problem the comms watch-pane masks away.
+   Same dissolve, different device: an overlay of the page's own colour
+   rather than mask-image, because a mask pushes the element onto its own
+   render surface and Chrome drops LCD subpixel antialiasing inside one —
+   the whole column would render softer to fade one line, a bad trade on
+   13px monospace (the reasoning recorded for the old ticker's tail fade,
+   still true). Full --bg at the very edge is right here where 58% was right
+   for the tail: the top row is mid-scroll debris, not something being read.
+   Edge to edge now that there is no scrollbar thumb to keep clear of. */
+.home .session-view::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 26px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--bg), color-mix(in srgb, var(--bg) 0%, transparent));
+}
+
+/* ---- turns: a transcript, not bubbles ----
+   Full-width text blocks, role-labelled, in the VSCode-session register:
+   the owner speaks in the UI face at full ink; the fleet speaks mono. The
+   only decoration is the 7px role dot the rest of the site already uses
+   for exactly this job (chat-head, graph nodes). */
+.home .turn { margin-top: var(--s3); min-width: 0; }
+.home .turn:first-child { margin-top: 0; }
+.home .turn.is-agent { margin-left: 0; }
+/* Speaker labels are names, and a name is not shouted. They keep the data face
+   and the role dot -- both carry meaning here -- and lose the uppercase, which
+   carried none. */
+.home .turn-who {
+  display: flex; align-items: center; gap: 0;
+  font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: 0.02em;
+  font-weight: 660; color: var(--ink-25);
+  margin-bottom: 3px;
+}
+.home .turn-text {
+  max-width: min(72ch, 100%);
+  font-family: var(--font-ui);
+  font-size: 13.5px; line-height: 1.55;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+/* THE MESS, AND MOST OF IT WAS THIS ONE MISSING RULE. Without a white-space
+   rule every newline collapsed to a space, so a reply with three paragraphs,
+   a list and a code block arrived as one unbroken run of text. The plain
+   renderer (the person's own lines, action lines) emits no block tags, so it
+   needs pre-wrap to keep the shape of what was typed. */
+.home .turn.is-owner .turn-text,
+.home .turn.is-act .turn-text { white-space: pre-wrap; }
+
+/* Rich message typography is shared in chat-content.css. */
+/* the owner is not a fleet role: UI face, full ink, no dot */
+.home .turn.is-owner .turn-who { font-family: var(--font-ui); }
+.home .turn.is-owner .turn-text { font-family: var(--font-ui); font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+/* delegation depth: fleet report-backs and tool lines sit one step in from
+   the two principals, the way nested output does in a session transcript */
+.home .run-turn.is-agent, .home .run-turn.is-act { margin-left: 18px; }
+/* action lines: the transcript's tool register — quiet, marked, unlabelled.
+   --ink-3 is the AA floor for 13px reading text, so quiet stops here. */
+.home .turn.is-act .turn-text { color: var(--ink-3); }
+.home .turn.is-act .turn-text::before { content: '\203A\00A0'; color: var(--ink-4); }
+
+/* ---- a long turn folds ----
+   The owner's instruction, with the two cards in front of him: "collapse the
+   context and such as it goes like we do in chat." The run list beside this
+   took it; the transcript never did, so one agent reply of a few hundred lines
+   pushed the whole conversation off the glass with no way to put it away.
+   Dressed as the fold a person already knows -- the same disclosure mark and
+   the same turning triangle as .home-run .run-fold and styles.css
+   .chat-action -- and SHIPPED OPEN: nothing that was visible before this rule
+   is hidden by it. */
+.home .turn-fold > .turn-fold-head {
+  display: flex; align-items: center; gap: 7px;
+  padding: 2px 0 4px;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: 0.02em;
+  color: var(--ink-3);
+}
+.home .turn-fold > .turn-fold-head::-webkit-details-marker { display: none; }
+.home .turn-fold[open] .chat-action-mark svg { transform: rotate(90deg); }
+/* Closed, the count is the whole of what is left of the turn, so it carries
+   the ink of a line a person is meant to read rather than the dim of a note
+   about one. */
+.home .turn-fold:not([open]) > .turn-fold-head { color: var(--ink-2); }
+
+/* arrivals settle in; body.reduce-motion's global clamp caps this to 1ms */
+.home .turn.fresh { animation: turnIn 0.5s var(--ease) both; }
+@keyframes turnIn { from { opacity: 0; transform: translateY(9px); } }
+
+/* the composer: the shared .chat-input idiom plus one hairline — the single
+   place in this column where separation is genuinely load-bearing (the
+   boundary between the record and the thing that appends to it) */
+.home .session-input {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+/* ============================================================
+   Home hero — the sketch's circle + left crescent (load status)
+   A plain rim, and a crescent of light hugging its outside-left
+   edge: an offset shadow made of light, not a progress sweep.
+   Colour = live fleet load, three states.
+   ============================================================ */
+/* `--cres-gain` scales the corona's brightness per sheet, and it exists because
+   the two grounds need different amounts of light to say the same thing. On
+   paper the corona composites as ink and reaches 4.3-6.1:1 against the sheet on
+   its own. On the near-black sheet it ADDS light instead, and at parity of gain
+   it measured only 2.2-2.5:1 — below the 3:1 floor this mark is held to, since
+   it is a non-text graphical object carrying the page's only status. Lifting
+   the dark sheet's gain is what brings it back over. Measured, not guessed; the
+   numbers are in the header of crescent-mount.js. */
+/* `--cres-chroma` is how much extra saturation rides the middle of the paper
+   ramp. The corona's composited colour is mixed from the sheet to the status hue
+   in OKLab rather than being left to the compositor, which fades in gamma space
+   and slides through desaturated grey — the mid-tone is most of the mark's area,
+   so that grey path is what made it read as a stain. 0.35 is the owner's choice
+   from a rendered comparison at 0 / 0.35 / 0.7. */
+.uring.crescent { --cres-halo-o: 0.85; --cres-gain: 1; --cres-state-gain: 1; --cres-chroma: 0.35; }
+.uring.crescent .uring-rim { stroke: var(--ink-4); }
+
+/* The three layers are elements wearing the computed light field as a mask
+   (src/crescent-field.js), not stroked arcs under a blur filter. Everything
+   below this line — the opacity ladder, the per-theme hue table, the halo dose,
+   the peak pulse, the reduced-motion opt-out — is unchanged and still targets
+   the same three class names, which is the point: the design is stated here and
+   only its rendering moved.
+
+   The box is positioned by components.js from crescentSpec(), because how far
+   the light reaches is a property of the light, not a number to keep in step by
+   hand. It sits UNDER the rim, as the arcs did when they were painted before
+   the rim circle in the same SVG; absolute positioning would otherwise lift it
+   above a static sibling. */
+/* The GPU corona. It sits under the rim, as the light always did — absolute
+   positioning would otherwise lift it above a static sibling. */
+.uring.crescent .cres-gl { position: absolute; z-index: 0; pointer-events: none; }
+/* On the near-black sheet the corona ADDS light, which is what makes it read as
+   an eclipse rather than as coloured ink. On the two paper sheets there is no
+   headroom to add into — every one of these hues is darker than the page — so
+   it composites normally and reads as pigment. Same shader, two grounds. */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .uring.crescent .cres-gl { mix-blend-mode: plus-lighter; }
+
+/* The colour carrier. Hidden, but a real element, so the transition below is
+   the ONE statement of how a state change is timed: the shader samples this
+   element while the browser interpolates it. */
+.uring.crescent .cres-probe {
+  position: absolute; width: 1px; height: 1px;
+  opacity: 0; pointer-events: none;
+  background-color: var(--load-col, var(--s-good));
+  transition: background-color 1.4s var(--ease);
+}
+
+.uring.crescent .cres-layers { position: absolute; z-index: 0; }
+.uring.crescent > svg { position: relative; z-index: 1; }
+.uring.crescent .uring-center { z-index: 2; }
+/* Masks arrive a few frames after mount. Until then these are three solid
+   rectangles, so they do not paint at all. */
+.uring.crescent .cres-layers:not([data-ready]) { visibility: hidden; }
+.uring.crescent .cres-haze,
+.uring.crescent .cres-halo,
+.uring.crescent .cres-core {
+  position: absolute; inset: 0;
+  background-color: var(--load-col, var(--s-good));
+  transition: background-color 1.4s var(--ease);
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+/* three layers, each wider + softer + fainter than the one inside it —
+   that gradient is what reads as light rather than a thick coloured stroke */
+.uring.crescent .cres-haze { opacity: calc(var(--cres-halo-o) * 0.42 * var(--glow)); }
+.uring.crescent .cres-halo { opacity: calc(var(--cres-halo-o) * 0.78 * var(--glow)); }
+.uring.crescent .cres-core { opacity: calc(0.95 * var(--glow)); }
+
+/* ---- the three load states, shared with the caption readout ----
+   These were one hardcoded triple for all three themes, and two thirds of it
+   did not survive contact with a light background. The crescent core and the
+   8px dot in .home-load are non-text graphical objects carrying the only
+   status this page reports, so 3:1 against the sheet is the floor. Measured
+   at the painted alpha (core is 0.95) against each theme's --bg:
+
+     old idle #2fa36b   white 2.85   tan 2.44   black 5.54    FAIL / FAIL
+     old busy #e08a1e   white 2.40   tan 2.05   black 6.53    FAIL / FAIL
+     old peak #d6452b   white 3.90   tan 3.34   black 4.00    thin on tan
+
+   "busy" — the state the fleet spends most of its time in — was the worst of
+   the three, a mid-orange at 2.05:1 on the tan sheet: legible as a smudge,
+   not as a colour anyone could name. The replacements below are measured the
+   same way and all clear 3:1 on the theme they belong to, and each set keeps
+   three unmistakably distinct hues (green / amber / red) so the state is
+   never carried by lightness alone. */
+
+/* THE RING TAKES THE LEDGER ACCENT'S HUE. IT USED TO PICK ITS OWN.
+
+   views/home.js maps ONE ledger status onto two things: `data-load` on the
+   crescent, and `--core-status-color` for the body and everything derived from
+   it. Until this change those two carried independently chosen hues for the
+   same signal, which is the "coral ring, maroon core" the owner saw. The
+   disagreement, in OKLCh (node .lane-scratch/w3b/load-col.mjs):
+
+     state  accent hue        ring hue (black/ember/cobalt)   apart
+     idle   clear     223.0   #35c17c  156.8                  66.3 deg
+     busy   attention  84.7   #f0a02e   70.2                  14.5 deg
+     peak   blocked    13.9   #fb4934   30.4                  16.5 deg
+
+   THE STANDARD §9 asks for hue within ~8 degrees of the accent. On the sheet
+   the owner was looking at, the ring was 16.5 degrees off the body it encircles,
+   and in the clear state the two were 66 degrees apart -- a green ring around a
+   teal body, for one status.
+
+   So the hue is now the accent's, carried through untouched by `h`, and only L
+   and C are the ring's own. WHAT THIS PRESERVES: the state is still never
+   carried by lightness alone, which is what the old triple was for -- the three
+   accent hues 223 / 85 / 14 are further apart than the 157 / 70 / 30 they
+   replace. WHAT IT CHANGES, AND IT IS VISIBLE: `idle` is no longer green. It is
+   the clear status's own hue, because that is what the body already shows for
+   the same state.
+
+   L AND C ARE THE MEASURED VALUES OF THE HEXES THEY REPLACE, per sheet and per
+   state, so the lightness each 3:1 reading was taken at is carried over rather
+   than re-guessed; the ratios are re-measured after the hue turn in
+   .lane-scratch/w3b/crescent-3to1.mjs because rotating hue at constant L still
+   moves relative luminance.
+
+   Only Home mounts a crescent -- components.js adds the class solely for
+   uptimeRing({ crescent: true }) and views/home.js:1092 is its one caller with
+   that option, views/agent.js calls uptimeRing without it -- so these rules are
+   scoped to .home and nothing outside Home changes. */
+/* CHROMA IS A MULTIPLE OF THE ACCENT'S OWN, NOT A CONSTANT. The first version
+   of this rule wrote a literal chroma (.155 on the dark sheets) and that was
+   wrong for a reason worth stating: the per-theme ledger palette is not one
+   colour at three hues, it is three DIFFERENT colours per theme, and on the
+   dark sheets they are low-chroma tints -- black's clear is #d6bea3, a beige of
+   chroma 0.035. Forcing .155 onto it produced rgb(225,145,5), a saturated
+   orange the palette never asked for, sitting 15 degrees from the same theme's
+   attention yellow. calc(c * k) carries the palette's own saturation through,
+   so a muted status stays muted and a vivid one stays vivid -- the same rule
+   the accent ramp in src/home-circle.css obeys, and for the same reason. */
+.home .uring.crescent { --load-col: oklch(from var(--core-status-color) var(--load-l) calc(c * var(--load-k)) h); }
+
+/* default + white sheet (#f7f8fa) — the hexes these replace measured 4.02 / 3.85 / 4.58 */
+.home .uring.crescent[data-load="idle"] { --load-l: .547; --load-k: 1.35; }
+.home .uring.crescent[data-load="busy"] { --load-l: .583; --load-k: 1.35; }
+.home .uring.crescent[data-load="peak"] { --load-l: .552; --load-k: 1.35; }
+
+/* "unknown" — a real fourth state added for live data: no reading is
+   available yet (or the source is unreachable), so this must NOT fall
+   through to --s-good (the crescent's unset-var default) and read as a
+   quiet green "all clear". Same neutral --ink-4 the rim already uses,
+   theme-aware without needing a per-theme override. */
+.home .uring.crescent[data-load="unknown"] { --load-col: var(--ink-4); }
+/* ...and it barely glows. Driving the PACKAGED build caught this: in `unknown`
+   the hue is neutral --ink-4, so on a paper sheet there is no colour to carry
+   the light and the corona reads as a plain grey drop shadow hanging off the
+   circle — the exact failure this design was rebuilt to escape. Quieting it is
+   also the honest reading of the state: no measurement has arrived, so there is
+   nothing for the light to say. The rim still draws the circle; the fact row
+   below still says it in words. A separate token from --cres-gain so the black
+   sheet's lift and this can both apply without a specificity fight. */
+.uring.crescent[data-load="unknown"] { --cres-state-gain: 0.28; }
+
+/* TAN (#f2e5bc) — Gruvbox Light Soft, so the states take the published faded
+   family the rest of this theme is built from rather than a second palette:
+   faded aqua #427b58, faded red #9d0006, and a darkened faded yellow (the
+   published #b57614 only reaches 2.81:1 on bg0_s). 3.68 / 3.84 / 6.50 */
+:root[data-theme="tan"] .home .uring.crescent[data-load="idle"] { --load-l: .534; }
+:root[data-theme="tan"] .home .uring.crescent[data-load="busy"] { --load-l: .536; }
+:root[data-theme="tan"] .home .uring.crescent[data-load="peak"] { --load-l: .437; }
+
+/* BLACK (#0d0f12) — the old triple technically passed here, but a dark
+   saturated stroke on a near-black field reads as muddy rather than as a
+   signal. Lifting the ramp costs nothing and buys headroom: 7.55 / 8.16 /
+   5.11. The blurred halo is also far louder over black than over paper, so
+   it comes down a step — the crescent stays a state indicator, not a bloom. */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .uring.crescent { --cres-halo-o: 0.5; --cres-gain: 1.9; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .uring.crescent[data-load="idle"] { --load-l: .721; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .uring.crescent[data-load="busy"] { --load-l: .768; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .uring.crescent[data-load="peak"] { --load-l: .660; }
+
+/* a peak fleet breathes — the only motion the hero carries.
+   Stated relative to --cres-halo-o so the per-theme halo level survives the
+   animation (opacity keyframes otherwise overwrite it outright). */
+.uring.crescent[data-load="peak"] .cres-haze { animation: cresPulse 2.6s var(--ease) infinite; }
+@keyframes cresPulse {
+  0%, 100% { opacity: calc(var(--cres-halo-o) * 0.34 * var(--glow)); }
+  50%      { opacity: calc(var(--cres-halo-o) * 0.60 * var(--glow)); }
+}
+body.reduce-motion .uring.crescent .cres-haze { animation: none; }
+
+/* ============================================================
+   The short true statements under the caption.
+
+   This replaced `.home-load`, which set 12.5px at 0.14em tracking in UPPERCASE
+   and was handed whole sentences to render: "SOURCE UNAVAILABLE", "APPROVALS
+   WAITING 0". Tracked caps are a display treatment for a two-word label; a
+   sentence set that way reads as a system message, which is exactly what the
+   owner meant by "all the symbols in the writing, that's a readme". Sentence
+   case, ordinary sentence tracking, and the dot keeps its job -- it is the one
+   piece of colour on this page and it carries state, so it stays.
+   ============================================================ */
+.home-facts {
+  margin-top: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.home-ring-stage > .home-facts { width: var(--jelly-measure, min(100%, 440px)); margin: var(--jspace-3) 0 var(--jspace-1); }
+.home-fact {
+  display: flex; align-items: center; gap: var(--jspace-2);
+  font-size: var(--type-0); font-weight: 450;
+  color: var(--jelly-ink-3);
+  text-decoration: none;
+  max-width: min(34ch, 100%);
+  text-align: left;
+}
+.home-fact span { min-width: 0; overflow-wrap: anywhere; }
+.home-fact i {
+  width: 5px; height: 5px; border-radius: 50%;
+  flex: none;
+  background: var(--jelly-ink-3);
+  transition: background 1.4s var(--ease);
+}
+/* Only the rows that go somewhere look like they go somewhere -- AND THEY HAVE
+   TO LOOK IT AT REST, not only under a pointer.
+
+   MEASURED: the one link out of the home screen was identical in colour,
+   weight, size and decoration to the two plain statements beside it. The only
+   things distinguishing it were `cursor: pointer` and a hover underline, and
+   neither exists for somebody who is not already moving a mouse across it.
+   That link is now the route to the connect screen -- the whole paid journey --
+   so it wears a resting underline and the hover just firms it up. */
+a.home-fact span {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}
+a.home-fact:hover span { text-decoration-color: currentColor; }
+a.home-fact:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--jelly-ink) 55%, transparent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* A clock with no instant to count from does not render. Four dashes under the
+   word SECONDS is a broken clock and a person reads it as one -- that reading
+   was the single loudest thing wrong with this screen. `hidden` alone loses to
+   the flex display on .uring-digits, so it is stated here. */
+.home-ring-wrap .uring .uring-digits[hidden] { display: none; }
+/* ...and with the digits gone the caption is the top of the stack, so it stops
+   reserving the gap that separated it from them. */
+.home-ring-wrap .uring .uring-digits[hidden] + .uring-caption { margin-top: 0; }
+
+/* The headline under the caption is a sentence now, not a machine-readable
+   line of counts and interpuncts, so it takes the reading face rather than the
+   data face and is allowed to wrap inside the disc. */
+.home-ring-wrap .uring-sub {
+  font-family: var(--font-ui);
+  max-width: min(34ch, 100%);
+  margin-inline: auto;
+  line-height: 1.45;
+  color: var(--jelly-ink-3);
+}
+/* With no clock in it, the ring is a 500px disc around a small paragraph, and
+   the hero stops being a hero. The headline takes the space the digits gave
+   back rather than leaving a hole where they were: same composition, same
+   optical centre, one statement carrying the weight instead of four numbers. */
+.home[data-clock="none"] .home-ring-wrap .uring-caption { order: -1; margin-top: 0; }
+.home[data-clock="none"] .home-ring-wrap .uring-inner { display: flex; flex-direction: column; align-items: center; }
+/* One step of the scale, not a clamp of its own. */
+.home[data-clock="none"] .home-ring-wrap .uring-sub {
+  margin-top: var(--jspace-2);
+  font-size: var(--type-1);
+  font-weight: 500;
+  line-height: 1.4;
+  max-width: min(30ch, 100%);
+  color: var(--jelly-ink-2);
+}
+
+/* ============================================================
+   What has actually run on this computer.
+   ============================================================ */
+.home-runs {
+  list-style: none;
+  margin: 0; padding: 0;
+}
+/* ONE LINE PER RUN, AND A FOLD UNDER IT.
+   The owner's words: "collapse the context and such as it goes like we do in
+   chat." The head is the run, its verdict, one clipped line of what it was
+   about and when; the body, one press away, is the question, the lines
+   between, what it did and what it said back. Every one of those lines is
+   omitted when the record does not carry it, so a row with nothing to add is
+   a head and nothing else. Native <details>, dressed like the chat's own
+   context block and action rows (styles.css .chat-context / .chat-action) so
+   the fold reads as the one a person already knows. */
+.home-run {
+  display: block;
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.home-run:last-child { border-bottom: 0; }
+.home-run .run-head {
+  display: flex; align-items: baseline; gap: 12px;
+  min-width: 0;
+  padding: 8px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.home-run .run-head::-webkit-details-marker { display: none; }
+/* The disclosure mark turns when the row is open, the way the chat's rows do
+   (styles.css .chat-action[open]). */
+.home-run .run-fold[open] > .run-head > .chat-action-mark svg,
+.home-run .run-transcript[open] > summary .chat-action-mark svg { transform: rotate(90deg); }
+.home-run .run-identity, .home-run .run-overview, .home-run .run-status { display: contents; }
+.home-run .run-summary-work { display: none; }
+.home-run .run-what { color: var(--ink-2); }
+.home-run .run-agent,
+.home-run .run-asked,
+.home-run .run-did,
+.home-run .run-said,
+.home-run .run-why,
+.home-run .run-gap {
+  min-width: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+/* The closed line's one clue: the brief (or the reason, or the gap), clipped to
+   what fits, and gone when the row is open and the full lines are below it. */
+.home-run .run-brief {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.home-run .run-fold[open] .run-brief { display: none; }
+/* The agent's own role reads as its name, so it carries the ink the head does
+   rather than the dim of the lines under it. */
+.home-run .run-agent { flex: none; color: var(--ink-2); }
+.home-run .run-why { color: var(--c-failed, #c24b4b); }
+/* The open body: the lines in the order they happened, set in from the mark. */
+.home-run .run-body {
+  display: grid;
+  gap: 4px;
+  padding: 0 0 8px 21px;
+  min-width: 0;
+}
+/* The lines between the question and the answer, in the transcript's own
+   markup (.turn, shared with the coordinator thread above). A message break
+   inside one line is kept as a paragraph here; the one-line head flattens it. */
+.home-run .run-turns { display: grid; gap: 8px; }
+/* `[hidden] { display: none }` is the user agent's rule and the grid above
+   beats it, origin over specificity -- this repository's own convention
+   (styles.css .ctl-btn[hidden]; gate: tools/test/hidden-display-honesty.test.mjs). */
+.home-run .run-turns[hidden] { display: none; }
+.home-run .run-transcript[hidden] { display: none; }
+.home-run .run-transcript > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 8px 0;
+  color: var(--ink-2);
+  font: 600 12px/1.5 var(--font-ui);
+  list-style: none;
+  cursor: pointer;
+}
+.home-run .run-transcript > summary::-webkit-details-marker { display: none; }
+.home-run .run-transcript > summary:focus-visible {
+  outline: 2px solid var(--ink-2);
+  outline-offset: 3px;
+}
+.home-run .run-turns .turn { margin: 0; }
+.home > .home-feed-wrap .home-run .run-turns .turn { border-top: 0; padding: 6px 10px 6px 24px; }
+.home-run .run-turns .turn-text,
+.home-run .run-said { white-space: pre-line; }
+/* WHAT IT DID and WHAT IT SAID, which are the two lines the owner's report was
+   about. The answer carries the ink a person reads first, because it is the
+   output; the turn line sits at the dim of the other supporting lines because
+   it is a measurement about the answer rather than the answer. */
+.home-run .run-said {
+  color: var(--ink-2);
+  border-left: 2px solid var(--line);
+  padding-left: 8px;
+}
+/* A run whose brief or answer was never written down says so, quietly. It is
+   not a fault, so it does not carry the failure colour, and it is not a fact
+   about the agent, so it does not carry the ink of one. */
+.home-run .run-gap { font-style: italic; opacity: 0.85; }
+/* The door to the run's real chat, where one exists. It wears .home-next, whose
+   inline-flex would beat the user agent's [hidden]; re-asserted for the same
+   reason as .run-turns above. */
+.home-run .run-door { margin-top: 4px; justify-self: start; }
+.home-next[hidden] { display: none; }
+/* Live, and only while this window is actually watching the turn arrive. */
+.home-run .run-live {
+  flex: none;
+  color: var(--s-good, #3fa66a);
+  font-size: 12px;
+}
+.home-run .run-live::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: home-run-live 1.6s ease-in-out infinite;
+}
+@keyframes home-run-live { 0%, 100% { opacity: 1 } 50% { opacity: 0.25 } }
+@media (prefers-reduced-motion: reduce) {
+  .home-run .run-live::before { animation: none; }
+}
+/* The time sits at the right rail so a column of them scans as one list rather
+   than as ragged prose. */
+.home-run .run-when {
+  margin-left: auto;
+  flex: none;
+  text-align: right;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+/* THE FOOT IS A WARNING OR NOTHING. It used to carry a paragraph under every
+   healthy list ("Written down on this computer as it happened, and the record
+   of all 19 runs still checks out..."); the owner, reading it: "this little
+   dialog box is kind of pointless". It is hidden on every healthy record now
+   and speaks only when the record no longer checks out, so it is set as a
+   quiet line with no rule of its own -- a rule under nothing is a gap. */
+.home .session-foot {
+  flex: none;
+  margin-top: var(--s2);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+/* The global "you are seeing example data" banner is suppressed on home, and
+   only here. Home now states its own source in its own words, and the banner
+   sat directly under it saying a second, differently-worded version of the same
+   thing -- which is how "ToolsEnabled already works on this one computer"
+   came to sit two inches below "No local agent fleet host detected on this
+   machine". Serious notices (an invalid or unreadable profile) are real faults
+   and are never hidden. */
+body[data-route="home"] .fleet-profile-notice:not(.is-serious) { display: none; }
+
+/* ------------------------------------------------------------------
+   THE FULL PAGE.
+   ------------------------------------------------------------------
+   The panel element is MOVED in here rather than copied, so these rules
+   size a container and never restate the panel's own appearance. The one
+   thing they must guarantee is room: the owner asked for a view bigger
+   than page 2's, and page 2's chat is a rail inside a page. */
+
+.home .session-expand {
+  margin-left: auto;
+  flex: none;
+  height: 26px;
+  padding: 0 var(--s2);
+  color: var(--ink-25);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  font: 600 11px/1 var(--font-ui);
+  cursor: pointer;
+}
+.home .session-expand:hover,
+.home .session-expand:focus-visible { color: var(--ink); border-color: var(--ink-3); }

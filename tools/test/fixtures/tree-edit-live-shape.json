@@ -1,0 +1,192 @@
+{
+  "counts": {
+    "nodes": 26,
+    "nonemptyTreeKeys": 2,
+    "unresolvedManagers": 8,
+    "missingManagers": 2
+  },
+  "agents": [
+    {
+      "id": "agent-0",
+      "name": "agent-0",
+      "parentId": null,
+      "treeKey": "tree-0",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-1",
+      "name": "agent-1",
+      "parentId": "agent-0",
+      "treeKey": "tree-0",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-2",
+      "name": "agent-2",
+      "parentId": "agent-0",
+      "treeKey": "tree-0",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-3",
+      "name": "agent-3",
+      "parentId": "missing-manager-0",
+      "treeKey": "tree-0",
+      "unresolvedManager": true
+    },
+    {
+      "id": "agent-4",
+      "name": "agent-4",
+      "parentId": "missing-manager-0",
+      "treeKey": "tree-0",
+      "unresolvedManager": true
+    },
+    {
+      "id": "agent-5",
+      "name": "agent-5",
+      "parentId": "missing-manager-1",
+      "treeKey": "tree-1",
+      "unresolvedManager": true
+    },
+    {
+      "id": "agent-6",
+      "name": "agent-6",
+      "parentId": "missing-manager-1",
+      "treeKey": "tree-1",
+      "unresolvedManager": true
+    },
+    {
+      "id": "agent-7",
+      "name": "agent-7",
+      "parentId": "missing-manager-1",
+      "treeKey": "tree-1",
+      "unresolvedManager": true
+    },
+    {
+      "id": "agent-8",
+      "name": "agent-8",
+      "parentId": "missing-manager-1",
+      "treeKey": "tree-1",
+      "unresolvedManager": true
+    },
+    {
+      "id": "agent-9",
+      "name": "agent-9",
+      "parentId": "missing-manager-1",
+      "treeKey": "tree-1",
+      "unresolvedManager": true
+    },
+    {
+      "id": "agent-10",
+      "name": "agent-10",
+      "parentId": "missing-manager-1",
+      "treeKey": "tree-1",
+      "unresolvedManager": true
+    },
+    {
+      "id": "agent-11",
+      "name": "agent-11",
+      "parentId": "agent-5",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-12",
+      "name": "agent-12",
+      "parentId": "agent-6",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-13",
+      "name": "agent-13",
+      "parentId": "agent-6",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-14",
+      "name": "agent-14",
+      "parentId": "agent-6",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-15",
+      "name": "agent-15",
+      "parentId": "agent-6",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-16",
+      "name": "agent-16",
+      "parentId": "agent-7",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-17",
+      "name": "agent-17",
+      "parentId": "agent-7",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-18",
+      "name": "agent-18",
+      "parentId": "agent-7",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-19",
+      "name": "agent-19",
+      "parentId": "agent-9",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-20",
+      "name": "agent-20",
+      "parentId": "agent-6",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-21",
+      "name": "agent-21",
+      "parentId": null,
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-22",
+      "name": "agent-22",
+      "parentId": "agent-10",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-23",
+      "name": "agent-23",
+      "parentId": "agent-10",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-24",
+      "name": "agent-24",
+      "parentId": "agent-10",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    },
+    {
+      "id": "agent-25",
+      "name": "agent-25",
+      "parentId": "agent-10",
+      "treeKey": "tree-1",
+      "unresolvedManager": false
+    }
+  ]
+}

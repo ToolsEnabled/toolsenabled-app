@@ -1,0 +1,404 @@
+/* THIS COMPUTER — the Settings section the empty screens point at.
+ *
+ * These rules came from src/guide.css, which styled the page called "What this
+ * copy needs". The page is gone; the part of it a person acts on -- what is
+ * installed here, which accounts exist, what a local model needs -- is now a
+ * section in Settings, and it is drawn by src/this-computer-settings.js with
+ * the same class names, so the rules move rather than being rewritten.
+ *
+ * The page-only rules went with the page: the masthead, the reading measure,
+ * the lede, the numbered steps, the quoted refusal, the footer links and the
+ * one rule that suppressed the floating notice on `body[data-route="guide"]`.
+ * Nothing else lost a rule, because everything else here is still drawn.
+ *
+ * THE .host-absent FAMILY BELOW IS NOT THIS SECTION'S, and it is why this file
+ * is bigger than the section it is named for. The fleet graph, the comms board
+ * and the settings section notes all draw that empty-state door, and it lives
+ * in one sheet so the three cannot drift into looking like three products.
+ * It travelled with this file rather than being split out, so that the move is
+ * a move and not a redesign of a surface nobody asked about.
+ *
+ * The one deliberate emphasis is the state tag on each program. A person has
+ * to be able to tell "you can use this here now" from "nothing here starts it"
+ * without reading a paragraph, because the second one is what stops them
+ * hunting through Settings for a switch this product does not have. */
+
+.guide-need {
+  padding: var(--s5) 0;
+  border-bottom: 1px solid var(--line);
+}
+.guide-need-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+.guide-need-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.guide-need-tag {
+  margin: 0;
+  flex: none;
+  font-size: 11px;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.guide-need-body {
+  margin: var(--s3) 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.66;
+}
+
+/* `color` and the grid column travelled with the numbered steps this used to
+   share a rule with; both are declared here now so the command line looks the
+   same on the account rows and the install log as it did on the page. */
+.guide-command {
+  grid-column: 1;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  /* Selectable and obviously so: this line exists to be copied into a
+     terminal. */
+  user-select: all;
+  padding: 2px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  justify-self: start;
+}
+.guide-step-note {
+  grid-column: 1;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+/* THE THREE ASSISTANT PROGRAMS.
+ *
+ * Indented behind a left rule so the three read as parts of one answer rather
+ * than as three more rows of Settings -- this section sits in a page that is
+ * already a long column of rows, and a person scanning for "what about Claude"
+ * needs the group to be findable as a group.
+ *
+ * THE REACH COLOURS ARE THE POINT AND THE MIDDLE ONE IS NOT AMBER. Green is "you
+ * can use it here now". Grey is "nothing here starts it", which is a fact and not
+ * a fault, so it is drawn as one. The middle value gets the
+ * ordinary ink instead of a warning colour, because Claude working on one screen
+ * and not another is a limit of this version and not something wrong with the
+ * person's computer. Painting any of these amber would send somebody hunting for
+ * a fault that is not there, which is the mistake the block above this one
+ * already documents. */
+.guide-provider {
+  margin: var(--s5) 0 0;
+  padding-left: var(--s4);
+  border-left: 2px solid var(--line-2);
+}
+.guide-provider .guide-need-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15.5px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+/* WHAT THIS MACHINE ACTUALLY HAS. Monospace and small, because it is a reading
+   of the computer rather than the product's voice -- the same distinction the
+   quote block above draws. It carries `hidden` until the read answers, so a
+   build with no bridge behind it shows nothing rather than an empty line. */
+.guide-presence {
+  margin: var(--s3) 0 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.guide-presence[data-presence="ready"] { color: var(--s-good); }
+
+.guide-provider[data-reach="tree"] .guide-need-tag { color: var(--s-good); }
+.guide-provider[data-reach="not-from-tree"] .guide-need-tag { color: var(--ink-2); }
+.guide-provider[data-reach="none"] .guide-need-tag { color: var(--ink-3); }
+
+.guide-works-list {
+  margin: var(--s4) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--s3);
+}
+.guide-works-list li {
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.6;
+  padding-left: var(--s4);
+  position: relative;
+}
+.guide-works-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--s-good);
+}
+
+@media (max-width: 720px) {
+  .guide-need-head { flex-direction: column; align-items: flex-start; gap: var(--s1); }
+}
+
+/* The empty-state door that the fleet graph and the comms board draw. It lives
+   here rather than in each view's sheet so the two cannot drift into looking
+   like two different products. */
+.host-absent {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+  max-width: 64ch;
+}
+.host-absent-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+.host-absent-body {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.host-absent-reason {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+.host-absent-action {
+  margin-top: var(--s2);
+  color: var(--accent-2);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+.host-absent-action:hover { color: var(--ink); }
+
+/* THE COMMS BOARD'S CHIP PREVIEW is a small scrolling box, so the same notice
+   has to sit down inside one without pushing the chip out of shape. The words do
+   not change; the measure and the leading do. */
+.comms .chip-preview .host-absent,
+.comms .chat-log .host-absent {
+  max-width: none;
+  gap: var(--s1);
+  padding: var(--s2) 0;
+}
+/* THE PREVIEW IS A TWO-COLUMN GRID whose first track is `max-content` -- it is a
+   name rail, so every message line's sender aligns down the pane. A block
+   dropped into it lands in that track and is sized to its longest line, which is
+   why the first version of this notice ran off the right edge behind a
+   horizontal scrollbar with the explanation half-read ("No agent host has
+   repo"). Span both tracks and allow the text to wrap. Caught by looking at a
+   screenshot; every text assertion in the driver passed while it was broken,
+   because the words WERE on the page. */
+.comms .chip-preview .host-absent {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.comms .chip-preview .host-absent > *,
+.comms .chat-log .host-absent > * {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.comms .chip-preview .host-absent-title { font-size: 13px; }
+.comms .chip-preview .host-absent-body,
+.comms .chat-log .host-absent-body { font-size: 12px; line-height: 1.55; }
+.comms .chip-preview .host-absent-reason,
+.comms .chat-log .host-absent-reason { font-size: 11.5px; }
+
+/* Inside the fleet graph's empty panel, which centres its children. */
+.computers .graph-empty .host-absent {
+  justify-items: center;
+  text-align: center;
+}
+/* And inside the graph's narrow stats rail, where the same notice has to fit a
+   sidebar rather than a page. */
+.computers .rail-sub .host-absent.is-compact { max-width: none; gap: 3px; }
+.computers .rail-sub .host-absent-title { font-size: 12.5px; }
+.computers .rail-sub .host-absent-body { font-size: 11.5px; line-height: 1.5; }
+.computers .rail-sub .host-absent-reason { font-size: 11px; }
+.computers .rail-sub .host-absent-action { font-size: 11.5px; margin-top: var(--s1); }
+
+/* Settings section notes sit under a title in a dense list, so the link runs on
+   after the sentence rather than sitting on its own line. */
+.settings-section-note {
+  margin: var(--s2) 0 var(--s4);
+  max-width: 72ch;
+}
+.settings-section-note .host-absent-action { margin-left: 6px; }
+
+/* THE ACCOUNTS A PERSON HAS ADDED FOR ONE PROGRAM.
+ *
+ * It sits INSIDE .guide-provider, behind the same left rule, because it is more
+ * of the answer to "what about Claude" rather than a new subject. It carries
+ * `hidden` until the read answers, for the reason .guide-presence does: a build
+ * with no bridge behind it must show the commands and nothing that pretends to
+ * be a control. */
+.guide-accounts-panel {
+  margin: var(--s4) 0 0;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  display: grid;
+  gap: var(--s2);
+}
+/* The grid rules on this panel and on .guide-signin beat the UA's
+   `[hidden] { display: none }`; this-computer-settings.js ships both hidden
+   until their state is known. Gate: tools/test/hidden-display-honesty.test.mjs. */
+.guide-accounts-panel[hidden],
+.guide-signin[hidden] { display: none; }
+.guide-accounts-head {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 620;
+}
+.guide-accounts-note {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.55;
+  max-width: 72ch;
+}
+.guide-account-list {
+  margin: var(--s2) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--s3);
+}
+.guide-account {
+  display: grid;
+  gap: 4px;
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--line-2);
+}
+.guide-account-list > .guide-account:first-child { border-top: none; }
+.guide-account-line {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.guide-account-name { color: var(--ink); font-size: 13.5px; font-weight: 620; }
+/* "In use now" is the one green thing in the row: it is the account this
+   computer actually switched to, which is the fact a person scans for. */
+.guide-account-tag {
+  color: var(--s-good);
+  font-size: 11.5px;
+  font-weight: 620;
+  letter-spacing: 0.02em;
+}
+.guide-account-state { color: var(--ink-3); font-size: 12px; }
+/* The folder is the person's OWN words read back to them, so it is monospaced
+   like the command that uses it rather than set as prose. */
+.guide-account-folder {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  word-break: break-all;
+}
+.guide-account .guide-command { justify-self: start; max-width: 100%; overflow-wrap: anywhere; }
+.guide-account-add {
+  margin: var(--s2) 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: center;
+}
+.guide-account-field {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.guide-account-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  justify-self: start;
+}
+.guide-account-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+
+/* THE FOUR THINGS A PERSON IS OWED BEFORE THEY RUN CLAUDE ON THEIR OWN ACCOUNT.
+ *
+ * Bordered and numbered rather than styled as a warning banner. It is not an
+ * alarm -- nothing is wrong, and painting it amber would send somebody hunting
+ * for a fault, which is the mistake .guide-provider's own note documents. It is
+ * four facts, in the order they matter, and the numbering is what makes them
+ * readable as four rather than as a paragraph. */
+.guide-risk {
+  margin: var(--s4) 0 0;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--ink-3);
+  border-radius: var(--r-sm);
+}
+.guide-risk-head {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 620;
+}
+.guide-risk-points {
+  margin: var(--s2) 0 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: var(--s2);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.6;
+  max-width: 72ch;
+}
+.guide-risk-today {
+  margin: var(--s3) 0 0;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.6;
+  max-width: 72ch;
+}
+
+/* The sign-in button and the stream under it. The disabled state must still
+   read as a control with a reason beside it, never as decoration. */
+.guide-signin {
+  margin-top: var(--s3);
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+.guide-signin-row { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.guide-signin-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.guide-signin-log {
+  max-width: 72ch;
+  max-height: 16em;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

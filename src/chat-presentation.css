@@ -1,0 +1,288 @@
+/* Shared conversation, composer and activity treatment. Color comes from the
+   selected theme; the small identity marks retain the speaking agent's role. */
+.chat[data-chat-panel] {
+  --chat-accent: var(--ui-accent, var(--theme-accent, var(--chat-role)));
+  --chat-measure: var(--reading-max, 100%);
+  /* The one colour on this surface that means "words are arriving now".
+     It is deliberately NOT --chat-accent or --chat-role: those carry theme
+     and speaker identity, and a live-progress mark that borrowed either
+     would change meaning with the theme and say nothing on its own. The
+     pair of values follows --guide-blue in src/first-use-guidance.css --
+     a blue that holds contrast on paper, a lighter one that holds it on
+     the dark themes. */
+  --chat-stream-blue: #185dc7;
+  container-type: inline-size;
+  isolation: isolate;
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .chat[data-chat-panel] { --chat-stream-blue: #a3c9ff; }
+.chat[data-chat-panel] .chat-head { gap: 10px; padding-bottom: 14px; margin-bottom: 0; }
+.chat[data-chat-panel] .chat-head .role-dot {
+  width: 12px; height: 12px; border-radius: 4px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--chat-role) 10%, transparent);
+}
+.chat[data-chat-panel] .chat-head .t { font-size: 14px; letter-spacing: -.015em; }
+.chat[data-chat-panel] .chat-head .s { margin-top: 3px; font-size: 12px; color: var(--ink-3); }
+.chat[data-chat-panel] .chat-log { gap: 22px; padding-block: 24px; scrollbar-width: thin; }
+.chat[data-chat-panel] .msg { flex: none; font-size: 15px; line-height: 1.75; letter-spacing: -.006em; }
+.chat[data-chat-panel] .msg.me {
+  align-self: flex-end; width: fit-content; max-width: min(85%, 68ch);
+  margin: 0; padding: 13px 18px; border: 1px solid color-mix(in srgb, var(--chat-accent) 15%, var(--line));
+  border-radius: 18px 18px 5px 18px; color: var(--ink);
+  background: color-mix(in srgb, var(--chat-accent) 7%, var(--sheet));
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--ink) 3%, transparent);
+}
+.chat[data-chat-panel] .msg.them { padding: 4px 0 4px 32px; background: transparent; border: 0; }
+.chat[data-chat-panel] .msg.them::before {
+  left: 2px; top: 8px; width: 15px; height: 15px; border: 1px solid color-mix(in srgb, var(--chat-role) 55%, transparent);
+  border-radius: 5px; background: radial-gradient(circle, var(--chat-role) 0 2px, transparent 3px), color-mix(in srgb, var(--chat-role) 9%, var(--sheet));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--chat-role) 4%, transparent);
+}
+.chat[data-chat-panel] .msg .who { margin-bottom: 7px; font: 650 12px/1.4 var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--ink-2); }
+.chat[data-chat-panel] .msg.me .who { color: var(--ink-3); }
+.chat[data-chat-panel] .chat-msg-footer { justify-content: flex-start; gap: 10px; min-height: 20px; margin-top: 9px; }
+.chat[data-chat-panel] .chat-message-body { font-size: inherit; line-height: inherit; }
+.chat[data-chat-panel] .chat-message-time { font: 400 10.5px/1.4 var(--font-ui); color: var(--ink-3); }
+.chat[data-chat-panel] .chat-message-copy { margin-left: 0; min-height: 24px; padding: 3px 6px; font-size: 11px; font-weight: 500; border-radius: 5px; color: var(--ink-3); }
+.chat[data-chat-panel] .chat-message-copy:hover { color: var(--ink); background: var(--control-hover); }
+.chat[data-chat-panel] .chat-time-divider { gap: 14px; margin-block: 0; font: 500 10px/1.5 var(--font-ui); letter-spacing: .04em; color: var(--ink-3); }
+.chat[data-chat-panel] .msg.note { border: 0; border-radius: 8px; background: color-mix(in srgb, var(--ink) 3%, transparent); padding: 7px 12px; font-size: 12px; }
+.chat[data-chat-panel] .chat-message-body .md-h { letter-spacing: -.025em; line-height: 1.35; }
+.chat[data-chat-panel] .chat-message-body .md-code-block { border-radius: 12px; border-color: var(--line-2); box-shadow: 0 2px 6px color-mix(in srgb, var(--ink) 3%, transparent); }
+.chat[data-chat-panel] .chat-message-body .md-code-head { background: color-mix(in srgb, var(--chat-accent) 4%, var(--sheet)); padding: 9px 12px; }
+.chat[data-chat-panel] .chat-message-body .md-pre { padding: 16px; font-size: 12.5px; line-height: 1.7; }
+.chat[data-chat-panel] .chat-message-body .md-table-wrap { border-radius: 10px; }
+.chat[data-chat-panel] .chat-message-body .md-quote { border-left-color: color-mix(in srgb, var(--chat-accent) 50%, var(--line)); border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--chat-accent) 4%, transparent); padding: 10px 16px; }
+.chat[data-chat-panel] :is(.chat-action-run, .chat-action, .chat-context, .msg.thinking, .chat-approval) { border-radius: 10px; border-color: var(--line-2); background: color-mix(in srgb, var(--ink) 2%, var(--sheet)); }
+.chat[data-chat-panel] .chat-action-run { margin-left: 32px; }
+.chat[data-chat-panel] .chat-action-run-head { padding: 10px 12px; }
+.chat[data-chat-panel] .chat-approval { gap: 8px; padding: 14px; border-color: color-mix(in srgb, var(--s-warn) 35%, var(--line)); }
+.chat[data-chat-panel] .chat-approval-actions button { border-radius: 7px; min-height: 32px; }
+.chat[data-chat-panel] [data-chat-diff-card] { align-self: flex-start; width: fit-content; max-width: calc(100% - 32px); margin-left: 32px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--ink) 2%, var(--sheet)); }
+.chat[data-chat-panel] .chat-diff-head { gap: 8px; padding: 8px 10px; }
+.chat[data-chat-panel] [data-chat-diff-status] { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; background: color-mix(in srgb, var(--chat-accent) 9%, var(--sheet)); color: var(--ink-2); }
+.chat[data-chat-panel] [data-chat-diff-path] { font: 500 12px/1.4 var(--font-ui); }
+
+/* One composer surface, with the changes tab attached to its upper edge. */
+.chat[data-chat-panel] .chat-composer-dock { position: relative; z-index: 3; flex: none; width: 100%; max-width: var(--chat-measure); min-width: 0; margin-inline: auto; padding-top: 8px; }
+.chat[data-chat-panel] .chat-compose-surface {
+  position: relative; padding: 10px 12px 9px; border: 1px solid var(--line-2); border-radius: 16px;
+  background: color-mix(in srgb, var(--sheet) 96%, var(--chat-accent));
+  box-shadow: 0 3px 6px color-mix(in srgb, var(--ink) 3%, transparent), 0 12px 28px -16px color-mix(in srgb, var(--ink) 24%, transparent);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.chat[data-chat-panel] .chat-compose-surface:focus-within {
+  border-color: color-mix(in srgb, var(--chat-accent) 60%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--chat-accent) 8%, transparent), 0 12px 28px -16px color-mix(in srgb, var(--ink) 24%, transparent);
+}
+.chat[data-chat-panel] .chat-input { gap: 6px; width: 100%; max-width: none; margin: 0; padding: 0; border: 0; }
+.chat[data-chat-panel] .chat-input input { height: 50px; min-height: 0; padding: 8px; font-size: 14px; line-height: 1.5; border: 0; border-radius: 8px; background: transparent; box-shadow: none; }
+.chat[data-chat-panel] .chat-input input:focus { outline: none; box-shadow: none; }
+.chat[data-chat-panel] .chat-composer-control { width: 32px; height: 32px; min-width: 32px; min-height: 32px; padding: 7px; border: 0; border-radius: 8px; color: var(--ink-3); background: transparent; }
+.chat[data-chat-panel] .chat-composer-control:hover { background: var(--control-hover); color: var(--ink); }
+.chat[data-chat-panel] .chat-send { width: 38px; height: 38px; min-height: 38px; border-radius: 11px; color: var(--bg); background: var(--ink); box-shadow: 0 2px 5px color-mix(in srgb, var(--ink) 12%, transparent); }
+.chat[data-chat-panel] .chat-send:hover { background: var(--ink-2); box-shadow: 0 3px 10px color-mix(in srgb, var(--ink) 20%, transparent); }
+.chat[data-chat-panel] .chat-send.is-stop { background: var(--chat-accent); color: var(--bg); }
+.chat[data-chat-panel] .chat-chips { max-width: none; margin: 3px 0 0; padding: 6px 3px 0; border-top: 1px solid var(--line); }
+.chat[data-chat-panel] .chat-chip { min-height: 24px; padding: 3px 7px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-3); font: 500 11px/1.4 var(--font-ui); }
+.chat[data-chat-panel] .chat-chip:hover { background: var(--control-hover); color: var(--ink); }
+.chat[data-chat-panel] .chat-chip-sendnow { color: var(--ink-2); }
+.chat[data-chat-panel] .chat-compose-hint { padding-left: 5px; color: var(--ink-3); font: 400 10.5px/1.4 var(--font-ui); }
+.chat-chips-left:has(.chat-chip:not([hidden])) .chat-compose-hint { display: none; }
+.chat[data-chat-panel] .chat-common-actions { gap: 6px; margin: 0 0 4px; }
+.chat[data-chat-panel] .chat-common-action { min-height: 28px; gap: 4px; padding: 2px 8px 2px 3px; border-radius: 7px; font-size: 11px; box-shadow: none; }
+.chat[data-chat-panel] .chat-common-action .common-command-icon { --command-size: 22px; }
+.chat[data-chat-panel] .chat-attach-strip { margin: 0 0 5px; padding: 4px; border: 0; background: transparent; }
+.chat[data-chat-panel] .chat-attachment-chip { border-radius: 7px; }
+.chat[data-chat-panel] .chat-queue-strip { max-height: 120px; overflow-y: auto; margin: 0 0 8px; }
+.chat[data-chat-panel] .chat-queue-row { padding: 6px 10px; border-style: solid; border-radius: 9px; background: color-mix(in srgb, var(--sheet) 65%, transparent); }
+.chat[data-chat-panel] .chat-nosend { margin: 0 0 8px; padding: 9px 12px; border-radius: 8px; font-size: 12px; }
+.chat[data-chat-panel] .chat-new-below { align-self: center; width: auto; padding: 6px 12px; border-radius: 20px; box-shadow: var(--elev-1); }
+
+/* Pending images remain readable without taking over the conversation. */
+.chat[data-chat-panel] .chat-image-queue-strip {
+  flex: none; min-width: 0; max-height: min(280px, 45vh); overflow-y: auto;
+  margin: 0 0 8px; padding: 10px; border: 1px solid var(--line-2); border-radius: 10px;
+  color: var(--ink); background: var(--sheet); font: 400 12.5px/1.5 var(--font-ui);
+}
+.chat[data-chat-panel] .chat-image-queue-strip[hidden] { display: none; }
+.chat[data-chat-panel] .chat-image-queue-head,
+.chat[data-chat-panel] .chat-image-queue-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.chat[data-chat-panel] .chat-image-queue-head { justify-content: space-between; font-weight: 600; }
+.chat[data-chat-panel] .chat-image-queue-row { padding: 9px 0; border-top: 1px solid var(--line); margin-top: 8px; }
+.chat[data-chat-panel] .chat-image-queue-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat[data-chat-panel] .chat-image-queue-meta { margin-top: 6px; color: var(--ink-3); }
+.chat[data-chat-panel] .chat-image-queue-state { color: var(--ink-2); }
+.chat[data-chat-panel] .chat-image-queue-notice { margin: 6px 0 0; color: var(--ink-3); }
+.chat[data-chat-panel] .chat-image-queue-strip button {
+  flex: none; min-height: 30px; padding: 4px 9px; border: 1px solid var(--line);
+  border-radius: 6px; color: var(--ink-2); background: var(--control-bg); font: inherit; cursor: pointer;
+}
+.chat[data-chat-panel] .chat-image-queue-strip button:hover { background: var(--control-hover); color: var(--ink); }
+.chat[data-chat-panel] .chat-image-queue-strip button:focus-visible { outline: 2px solid var(--chat-accent); outline-offset: 2px; }
+.chat[data-chat-panel] .chat-image-queue-strip button:disabled { opacity: .6; cursor: default; }
+
+
+/* Activity follows actual busy/stream lifecycle. No timer claims progress. */
+.chat[data-chat-panel] .working-step {
+  display: flex; align-items: center; gap: 10px; width: 100%; max-width: none; min-height: 48px;
+  margin: 0 0 8px; padding: 6px 10px 6px 3px; border: 0; border-radius: 12px; background: transparent;
+}
+.chat[data-chat-panel] .working-step[hidden] { display: none; }
+.chat[data-chat-panel] .working-step::before { display: none; }
+.chat[data-chat-panel] .chat-activity-orbit { order: 0; display: block; flex: none; width: 36px; height: 36px; color: var(--chat-accent); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--chat-accent) 18%, transparent)); }
+.chat-activity-orbit svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.chat-orbit-track { stroke: currentColor; stroke-width: 1; opacity: .12; }
+.chat-orbit-outer { stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 24 77; transform-origin: 20px 20px; animation: chat-orbit-turn 2.8s linear infinite; }
+.chat-orbit-inner { stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 12 19.4; opacity: .65; transform-origin: 20px 20px; animation: chat-orbit-turn 3.8s linear infinite reverse; }
+.chat-orbit-core { fill: currentColor; transform-origin: 20px 20px; animation: chat-core-breathe 2.4s ease-in-out infinite; }
+.chat[data-chat-panel] .working-step [data-chat-working-step] { order: 1; flex: 1; min-width: 0; overflow-wrap: anywhere; font: 550 12.5px/1.5 var(--font-ui); color: var(--ink-2); }
+.chat[data-chat-panel] .working-step [data-chat-working-counters] { order: 2; color: var(--ink-3); font-size: 10.5px; }
+.chat[data-chat-panel] .working-step button { order: 3; flex: none; border: 0; border-radius: 6px; min-height: 28px; padding: 4px 8px; background: var(--control-bg); color: var(--ink-3); font-size: 11px; }
+.chat[data-chat-panel] .working-step button:hover { color: var(--ink); background: var(--control-hover); }
+.chat[data-chat-panel] .chat-typing { display: none; }
+.chat[data-chat-panel]:not([data-chat-activity="idle"]) .chat-compose-surface::before {
+  content: ''; position: absolute; top: -1px; left: 16px; right: 16px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent 15%, var(--chat-accent) 50%, transparent 85%); background-size: 200% 100%;
+  animation: chat-composer-sheen 3s ease-in-out infinite;
+}
+.chat[data-chat-panel] .msg.them[aria-busy="true"]::before { animation: chat-core-breathe 2.4s ease-in-out infinite; }
+.chat[data-chat-panel] .msg.them[aria-busy="true"] .chat-msg-text:empty { min-height: 0; }
+.chat[data-chat-panel] .msg.them[aria-busy="true"]:not([data-chat-stream="pending"]):has(.chat-msg-text:empty) { display: none; }
+.chat[data-chat-panel] .msg.them[aria-busy="true"] .chat-msg-footer { visibility: hidden; }
+
+/* Live and settled text use their full height. The outer transcript follows
+   new content only while the reader stays at its bottom. */
+/* AND IT SAYS SO WHILE IT IS SAYING IT. Until now a turn that was still
+   arriving looked exactly like a turn that had finished: the only live
+   signal on the message itself was the identity dot's breath, which is the
+   same mark whether or not any words are coming. A person watching a slow
+   reply had no way to tell "still writing" from "stopped, and that is all
+   it said" except by waiting to see if anything more appeared.
+
+   This is that signal, at the bottom of the message. It is drawn on ::after -- ::before is the speaker's role
+   dot and carries identity, which this must not overwrite -- and it is
+   qualified by [aria-busy="true"], so close() takes it away in the same
+   breath. A settled answer carries no live mark.
+
+   IT DOES NOT REACH INTO THE GRAPH. src/tree-graph.css clamps
+   `.static-tree-graph .node *` to `animation: none !important` and sanctions
+   exactly one exception (laneSweep); nothing here is inside a node, and no
+   part of that clamp is loosened to make this run. */
+/* A ROW THAT HAS NOT BEEN TOLD WHAT IT IS YET, AND SAYS SO.
+   A turn can be accepted seconds before its first packet arrives. Until one
+   does, nothing is known about what this row will hold: an answer, a run of
+   tool calls, or nothing. Until now that gap was hidden outright -- the
+   :not() added to the empty-row rule above is what used to swallow it -- so
+   a person watching a slow start saw an unchanged page and could not tell it
+   from a turn that had died.
+
+   The temporary row states what is happening and holds the place the words
+   will take. It is deliberately quieter than settled speech and carries no
+   copy control or timestamp, because there is nothing here yet to copy or to
+   stamp; both return with the real content. src/components.js converts the
+   row on the first classified text (streamCategoryAfter) and that decision
+   is never revised, so a message a person has already read can never fall
+   back into a placeholder. */
+.chat[data-chat-panel] .msg.them[data-chat-stream="pending"] .chat-stream-pending {
+  color: var(--ink-3); font: 500 12.5px/1.5 var(--font-ui);
+}
+.chat[data-chat-panel] .msg.them[data-chat-stream="pending"] .chat-msg-text:empty { display: none; }
+.chat[data-chat-panel] .msg.them[data-chat-stream="pending"] .chat-msg-footer { display: none; }
+
+/* T404. WHEN THE WORDS STOP, SAY SO RATHER THAN SHOWING NOTHING.
+   src/chat-readable-stream.js withholds an unfinished table, link or code span
+   at the tail so it is painted once instead of flickering into shape, and
+   src/components.js marks the row `data-chat-held` for as long as that is in
+   force. While a reply is arriving normally the hold lasts a frame or two and
+   must not draw anything -- an explanation that appears and vanishes twice a
+   second is worse than the flicker it explains. So the note is in the DOM from
+   the first held frame, which is what a test can read, and only BECOMES
+   VISIBLE once the hold outlasts a normal gap between packets. After that the
+   person is reading a named state instead of an answer that stopped
+   mid-sentence for no stated reason. Cleared by close(): a finished turn has
+   painted everything that arrived. */
+.chat[data-chat-panel] .msg.them .chat-stream-held {
+  margin-top: 6px; color: var(--ink-3); font: 500 12.5px/1.5 var(--font-ui);
+  opacity: 0;
+}
+.chat[data-chat-panel] .msg.them[data-chat-held] .chat-stream-held {
+  animation: chat-stream-held-reveal 0s linear 2.5s forwards;
+}
+@keyframes chat-stream-held-reveal { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .chat[data-chat-panel] .msg.them[data-chat-held] .chat-stream-held {
+    animation: none; transition: opacity 0s linear 2.5s; opacity: 1;
+  }
+}
+
+.chat[data-chat-panel] .msg.them[aria-busy="true"]::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  border-radius: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent 8%, var(--chat-stream-blue) 50%, transparent 92%);
+  background-size: 240% 100%;
+  animation: chat-stream-flow 1.9s ease-in-out infinite;
+}
+
+/* Full view reads as a conversation on the page, with one composed input. */
+.home-takeover .home-takeover-stage { background: radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--home-chat-accent) 4%, transparent), transparent 65%); }
+.home-takeover-stage > .chat[data-chat-panel] { padding: 0 12px; border: 0; background: transparent; box-shadow: none; }
+.home-takeover .chat[data-chat-panel] .chat-head { width: 100%; max-width: var(--reading-max); margin-inline: auto; }
+.home-takeover .home-agent-workspace { border-color: transparent; background: transparent; box-shadow: none; }
+.home-takeover .chat[data-chat-panel] .chat-log { padding-inline: max(2px, calc((100% - var(--reading-max)) / 2)); }
+.home-takeover .chat[data-chat-panel] .chat-compose-surface { padding: 12px 14px 10px; }
+.home .home-takeover[data-subject-kind="coordinator"] .home-feed { background: transparent; border: 0; box-shadow: none; }
+.home .home-takeover .log-turns .thread-turn { margin-top: 22px; padding-block: 6px; }
+.home .home-takeover .log-turns .thread-turn.is-owner { width: fit-content; max-width: 85%; margin-left: auto; padding: 13px 18px; border: 1px solid color-mix(in srgb, var(--home-chat-accent) 15%, var(--line)); border-radius: 18px 18px 5px 18px; background: color-mix(in srgb, var(--home-chat-accent) 7%, var(--sheet)); }
+.home .home-takeover .log-turns .turn-who { margin-bottom: 7px; font: 650 12px/1.4 var(--font-ui); letter-spacing: 0; }
+.home .home-takeover .session-input { padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 16px; background: var(--sheet); box-shadow: var(--elev-1); }
+.home .home-takeover .session-input:focus-within { border-color: var(--home-chat-accent); }
+.home .home-takeover .session-input input { min-height: 44px; border: 0; background: transparent; box-shadow: none; }
+.home .home-takeover .session-input .chat-send { border-radius: 11px; }
+
+@container (max-width: 480px) {
+  .chat[data-chat-panel] .chat-log { gap: 18px; padding-block: 16px; }
+  .chat[data-chat-panel] .msg { font-size: 13.5px; line-height: 1.65; }
+  .chat[data-chat-panel] .msg.me { max-width: 94%; padding: 10px 12px; border-radius: 14px 14px 4px 14px; }
+  .chat[data-chat-panel] .msg.them { padding-left: 24px; }
+  .chat[data-chat-panel] .msg.them::before { width: 12px; height: 12px; border-radius: 4px; }
+  .chat[data-chat-panel] .chat-action-run { margin-left: 24px; }
+  .chat[data-chat-panel] [data-chat-diff-card] { margin-left: 24px; max-width: calc(100% - 24px); }
+  .chat[data-chat-panel] .chat-compose-surface { padding: 7px 8px; border-radius: 13px; }
+  .chat[data-chat-panel] .chat-input { flex-wrap: wrap; gap: 4px; }
+  .chat[data-chat-panel] .chat-input input { flex-basis: calc(100% - 46px); order: 1; height: 44px; padding-inline: 4px; font-size: 13px; }
+  .chat[data-chat-panel] .chat-input .chat-send { order: 2; width: 34px; height: 34px; min-height: 34px; border-radius: 9px; }
+  .chat[data-chat-panel] .chat-composer-control { width: 28px; height: 28px; min-width: 28px; min-height: 28px; }
+  .chat[data-chat-panel] .chat-chips { margin-top: 2px; padding-top: 4px; }
+  .chat[data-chat-panel] .working-step { gap: 6px; min-height: 40px; margin-bottom: 4px; padding: 2px 0; }
+  .chat[data-chat-panel] .chat-activity-orbit { width: 30px; height: 30px; }
+  .chat[data-chat-panel] .working-step [data-chat-working-step] { font-size: 12px; }
+  .chat[data-chat-panel] .working-step [data-chat-working-counters] { font-size: 9px; }
+  .chat[data-chat-panel] .chat-queue-row { flex-wrap: wrap; gap: 5px; }
+  .chat[data-chat-panel] .chat-queue-text { flex-basis: calc(100% - 24px); }
+  .chat[data-chat-panel] .chat-queue-row button { flex: 1; min-width: 0; padding-inline: 2px; font-size: 10.5px; min-height: 26px; white-space: nowrap; }
+}
+@keyframes chat-orbit-turn { to { transform: rotate(360deg); } }
+@keyframes chat-core-breathe { 0%, 100% { opacity: .65; transform: scale(.88); } 50% { opacity: 1; transform: scale(1.08); } }
+@keyframes chat-message-arrive { from { opacity: 0; } to { opacity: 1; } }
+@keyframes chat-composer-sheen { 0%, 100% { background-position: 100% 0; opacity: .5; } 50% { background-position: 0 0; opacity: 1; } }
+@keyframes chat-stream-flow { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+body.reduce-motion .chat[data-chat-panel] :is(.msg, .chat-orbit-outer, .chat-orbit-inner, .chat-orbit-core),
+body.reduce-motion .chat[data-chat-panel] .msg.them::before,
+body.reduce-motion .chat[data-chat-panel] .chat-compose-surface::before { animation: none; }
+/* The live mark holds STILL rather than disappearing -- the same choice
+   src/tree-graph.css makes for the lane sweep under reduce-motion ("a still
+   meter, not a dark one"). Someone who has asked for less movement still
+   needs to know the answer is not finished; removing the mark would answer
+   a motion preference by taking away a fact. */
+body.reduce-motion .chat[data-chat-panel] .msg.them[aria-busy="true"]::after {
+  animation: none; background: var(--chat-stream-blue); opacity: .55;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat[data-chat-panel] :is(.msg, .chat-orbit-outer, .chat-orbit-inner, .chat-orbit-core),
+  .chat[data-chat-panel] .msg.them::before,
+  .chat[data-chat-panel] .chat-compose-surface::before { animation: none; }
+  .chat[data-chat-panel] .msg.them[aria-busy="true"]::after {
+    animation: none; background: var(--chat-stream-blue); opacity: .55;
+  }
+  .chat[data-chat-panel] .chat-compose-surface { transition: none; }
+}

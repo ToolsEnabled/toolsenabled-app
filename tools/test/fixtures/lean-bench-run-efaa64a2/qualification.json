@@ -1,0 +1,1179 @@
+{
+  "format": "research-benchmark-qualification",
+  "version": 1,
+  "projectSha256": "efaa64a29e87a38b48893fee77a06599382dafc1bb8a9ef0e21f5832ef0c1dc2",
+  "runtimeSources": {
+    "cli.mjs": "808cb4f60f3da5f8e10ac208810d0bc81335e5dd068b1297ce8b8c67d39b26e7",
+    "prompts.mjs": "dd64dd5e28c11a5e4665e49533f0307274325851d7525b1bc5f6e810f91007f8",
+    "study.mjs": "ad4fcb02395f8c1259e7b849eb2defc507f0ab27c60bc439b20da04ac06c4f07",
+    "runner.mjs": "01a56f019c1ff7b5a92a5c29f3563f8702ead3a0b1ca08b6e23aa912fa1be0ff",
+    "module-host.mjs": "c1aa7d39e5812bf32de58398b429ba2f267727e07635fb6fc773993a7d4a7d7f",
+    "lean.mjs": "fca6de65c39f26ac8809d201823217bd28f065512309fb7df3833ef4e29c99cc",
+    "lean-codegen.mjs": "298e8002ec57be0bf73934c21dd58233362d20e87c3809fde0f6cc3763db86fd",
+    "lean-reference.py": "d89e498d525cc99e9698cdba46dde260e3aee1f9cd3d6728b0576df3897c3fe2",
+    "starters.mjs": "9075d6c6545fdb92be8887508f0aa667617a8feceeb27672f32053f0374580f2",
+    "qualify.mjs": "3d3ba860351f8af91655ae1c597a62cad9708acd05f7568ae91f613cb43eca56",
+    "lean-grade.mjs": "494343e9dd20cd8b265a18228b3b9c69ea7ea7c33bf108805da919e70d3ad868",
+    "lean-data.py": "dd73e23f9fb52ae98e28e51a81624747c21b479765844b1897fa97a64914eeec",
+    "lean-cases.mjs": "530426145f64e6e6257fc80a8683c5dc67fa9b6009e349094d0a4f1894d0bb79",
+    "analysis.mjs": "2206066203ec3fc5fdda7c69763ab2ec0fb528bf5ca0c985feff3e0bdb841e98",
+    "report.mjs": "08ac27002735c98b96dde618d30b64cd89e266c188bdd274a5ea941f58bc253c",
+    "corpus.mjs": "f919fa4f42ad4f3bd1b641fb15d6c385a793274fc0ad20f2076f6c8bea3f69db",
+    "information.mjs": "302bb91e19bcf7e623f7a233831bbdee1318cd21f285aedf93f2901730f4bf0d",
+    "tasks.mjs": "6b97b35c5222a495b076f1788a9bbb7bcc66e195567948621e20298ca7be21a2",
+    "conventions.mjs": "a97eb653821a3302bb78db6873d84ee8e03014791b76f7434ebbd75989a7b484",
+    "audit.mjs": "e0afa74bf39386c374fedc29d340e821a907b2a08f03fbecf70888e5f6ea4e4f",
+    "lean-observations.mjs": "9c1dfd2475fb08ad544a9fd8c9cfe8a590cc7af8610d402c1c09ee09027386d9",
+    "observations.mjs": "eafc58ccb8d83c77c1ada226bb839ccf6fc41c5f3a31a8148ecd6e7f2b8ae848",
+    "execution.mjs": "06b62e6446d3df97a90ff15094349aed9e0cb4fdb4f714fd0e22257686b93349",
+    "execution_reference.py": "0dd144fa95644b2263b6b8afae0e3dabb96ba6571d285e37ac80d45a024f4e66",
+    "execution-lean.mjs": "6b36560ca674ac0388499481153f6e80de0e42c284fdf103c780795ba07a2011",
+    "execution_lean.py": "d4741e979ba76268748ef32619ef2ba98a1e40caa8086b6bdd48893f742e563e",
+    "composition.mjs": "3452b77e8d817dc05197408091711e96ef1b33baa50ad38d16383485a1abe521",
+    "trading-ir.mjs": "511a877fb583575aedd668b691108334dd4f006d480cfa45b56e587270c7b4e1",
+    "trading-runtime.mjs": "05724d4a9688032735354ab6522077f2bcde916c2e6a121a4a96829c22acf515",
+    "trading_reference.py": "ae2b6522b7f5a9d40af8a0623524539668015f09e8072337bf5458ca42efc6d4",
+    "trading-lean.mjs": "733e7f287734519729301b5dbaab8adde77c36526dd31604b92fc0934900698d",
+    "trading_lean.py": "5a40c7b5cfc40488435542020d54fcfc6cec9157877599c5d9cde9a761001bba",
+    "trading-observations.mjs": "51a7e532113dbfe78c26978c23b47ebdb9deb0e8a43a5a97a4dc001f0a6a2521",
+    "trading-market.mjs": "605d5728d3765e25f68bc39e9eaaad9841ec3bd5507d5db5748ef55017f1aab1",
+    "trading_market.py": "4ee2cc57004cb8b7a38101e287b03a357d7b057cbea401df079d90bf008eca49",
+    "trading_broker.py": "79b6912bae30391f82c05093e22b65bf4294d11ebfcf7a9b674c9d2d348bcc11",
+    "trading-study.mjs": "f046f060aec09de89029913b16b647b178cf26387799689e34a36a7536967baa",
+    "trading-catalog.mjs": "31fbfff13c695a748aeecb03be945be6e21fac4e15748c21546250ebd651dfd7",
+    "requirements.mjs": "609cf8e1fcc8caac1dbbb41f0e4971602b4e9293cc4c8c0d54954f2d33001c04",
+    "shrinking.mjs": "d719aeffe5edb3f494bcfc79a3779b252d47c95433f77cbb967ad90c068b6815",
+    "workflow.mjs": "8e762f0747db89ffab15b107ddabe9bc586a461d42a08eea5b3c826cb25503cb",
+    "templates.mjs": "8cafcdfd93f843959dd1e59be516a91817b376e4b526b470327480eb800a6082",
+    "resource-effects.mjs": "62967ace5f961bec6fe46890a8bc6fb71b687bd0a8d2558b21330b8be53a5227",
+    "readiness.mjs": "abd4e7368a482fef7110aa8fd1fd2ac7369006348780071331f4fb3fff1df9bb",
+    "requirement-fields.mjs": "e173b99b41ffe625e9e1750e71aaf19630f73520f849e44eae6181c940fd660c"
+  },
+  "environment": {
+    "node": "v22.19.0",
+    "platform": "linux",
+    "architecture": "x64",
+    "python": "python3"
+  },
+  "checks": [
+    {
+      "fixtureId": "flat-canary",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 1001400,
+        "lots": {},
+        "coverage": [
+          "root/strategy:buy",
+          "root/strategy:sell"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 1001400,
+          "coverage": [
+            "root/strategy:buy",
+            "root/strategy:sell"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 1001400, \"coverage\": [\"root/strategy:buy\", \"root/strategy:sell\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "fixtureId": "parallel-private-lots",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy/first",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 0,
+            "path": "root/strategy/second",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/first",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/second",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 1002800,
+        "lots": {},
+        "coverage": [
+          "root/strategy/first:buy",
+          "root/strategy/first:sell",
+          "root/strategy/second:buy",
+          "root/strategy/second:sell"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 1002800,
+          "coverage": [
+            "root/strategy/first:buy",
+            "root/strategy/first:sell",
+            "root/strategy/second:buy",
+            "root/strategy/second:sell"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy/first",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 0,
+              "path": "root/strategy/second",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/first",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/second",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 1002800, \"coverage\": [\"root/strategy/first:buy\", \"root/strategy/first:sell\", \"root/strategy/second:buy\", \"root/strategy/second:sell\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy/first\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 0, \"path\": \"root/strategy/second\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/first\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/second\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "fixtureId": "cash-contention",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy/first",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/first",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 3,
+            "path": "root/strategy/second",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 9900,
+            "reason": "buy"
+          },
+          {
+            "bar": 4,
+            "path": "root/strategy/second",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10800,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 23200,
+        "lots": {},
+        "coverage": [
+          "root/strategy/first:buy",
+          "root/strategy/first:sell",
+          "root/strategy/second:buy",
+          "root/strategy/second:sell"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 23200,
+          "coverage": [
+            "root/strategy/first:buy",
+            "root/strategy/first:sell",
+            "root/strategy/second:buy",
+            "root/strategy/second:sell"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy/first",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/first",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 3,
+              "path": "root/strategy/second",
+              "priceCents": 9900,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 4,
+              "path": "root/strategy/second",
+              "priceCents": 10800,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 23200, \"coverage\": [\"root/strategy/first:buy\", \"root/strategy/first:sell\", \"root/strategy/second:buy\", \"root/strategy/second:sell\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy/first\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/first\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 3, \"path\": \"root/strategy/second\", \"priceCents\": 9900, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 4, \"path\": \"root/strategy/second\", \"priceCents\": 10800, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "fixtureId": "sequence-handoff",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy/first",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/first",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 3,
+            "path": "root/strategy/second",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 9900,
+            "reason": "buy"
+          },
+          {
+            "bar": 4,
+            "path": "root/strategy/second",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10800,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 1003200,
+        "lots": {},
+        "coverage": [
+          "root/strategy/first:buy",
+          "root/strategy/first:sell",
+          "root/strategy/second:buy",
+          "root/strategy/second:sell",
+          "root/strategy:advance"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 1003200,
+          "coverage": [
+            "root/strategy/first:buy",
+            "root/strategy/first:sell",
+            "root/strategy/second:buy",
+            "root/strategy/second:sell",
+            "root/strategy:advance"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy/first",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/first",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 3,
+              "path": "root/strategy/second",
+              "priceCents": 9900,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 4,
+              "path": "root/strategy/second",
+              "priceCents": 10800,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 1003200, \"coverage\": [\"root/strategy/first:buy\", \"root/strategy/first:sell\", \"root/strategy/second:buy\", \"root/strategy/second:sell\", \"root/strategy:advance\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy/first\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/first\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 3, \"path\": \"root/strategy/second\", \"priceCents\": 9900, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 4, \"path\": \"root/strategy/second\", \"priceCents\": 10800, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "fixtureId": "race-nested-owner",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy/first/first",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/first/first",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 3,
+            "path": "root/strategy/first/second",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 9900,
+            "reason": "buy"
+          },
+          {
+            "bar": 4,
+            "path": "root/strategy/first/second",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10800,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 1003200,
+        "lots": {},
+        "coverage": [
+          "root/strategy/first/first:buy",
+          "root/strategy/first/first:sell",
+          "root/strategy/first/second:buy",
+          "root/strategy/first/second:sell",
+          "root/strategy/first:advance",
+          "root/strategy:winner"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 1003200,
+          "coverage": [
+            "root/strategy/first/first:buy",
+            "root/strategy/first/first:sell",
+            "root/strategy/first/second:buy",
+            "root/strategy/first/second:sell",
+            "root/strategy/first:advance",
+            "root/strategy:winner"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy/first/first",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/first/first",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 3,
+              "path": "root/strategy/first/second",
+              "priceCents": 9900,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 4,
+              "path": "root/strategy/first/second",
+              "priceCents": 10800,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 1003200, \"coverage\": [\"root/strategy/first/first:buy\", \"root/strategy/first/first:sell\", \"root/strategy/first/second:buy\", \"root/strategy/first/second:sell\", \"root/strategy/first:advance\", \"root/strategy:winner\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy/first/first\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/first/first\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 3, \"path\": \"root/strategy/first/second\", \"priceCents\": 9900, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 4, \"path\": \"root/strategy/first/second\", \"priceCents\": 10800, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "fixtureId": "depth-seven",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy/first/first/first/first/first/first/first",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 0,
+            "path": "root/strategy/first/first/first/first/first/first/second",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 0,
+            "path": "root/strategy/first/first/first/second",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 0,
+            "path": "root/strategy/second",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/first/first/first/first/first/first/first",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/first/first/first/first/first/first/second",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/first/first/first/second",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/second",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 3,
+            "path": "root/strategy/first/first/first/first/first/second",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 9900,
+            "reason": "buy"
+          },
+          {
+            "bar": 4,
+            "path": "root/strategy/first/first/first/first/first/second",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10800,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 1007400,
+        "lots": {},
+        "coverage": [
+          "root/strategy/first/first/first/first/first/first/first:buy",
+          "root/strategy/first/first/first/first/first/first/first:sell",
+          "root/strategy/first/first/first/first/first/first/second:buy",
+          "root/strategy/first/first/first/first/first/first/second:sell",
+          "root/strategy/first/first/first/first/first/second:buy",
+          "root/strategy/first/first/first/first/first/second:sell",
+          "root/strategy/first/first/first/first/first:advance",
+          "root/strategy/first/first/first/first:winner",
+          "root/strategy/first/first/first/second:buy",
+          "root/strategy/first/first/first/second:sell",
+          "root/strategy/first/first:advance",
+          "root/strategy/first:winner",
+          "root/strategy/second:buy",
+          "root/strategy/second:sell"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 1007400,
+          "coverage": [
+            "root/strategy/first/first/first/first/first/first/first:buy",
+            "root/strategy/first/first/first/first/first/first/first:sell",
+            "root/strategy/first/first/first/first/first/first/second:buy",
+            "root/strategy/first/first/first/first/first/first/second:sell",
+            "root/strategy/first/first/first/first/first/second:buy",
+            "root/strategy/first/first/first/first/first/second:sell",
+            "root/strategy/first/first/first/first/first:advance",
+            "root/strategy/first/first/first/first:winner",
+            "root/strategy/first/first/first/second:buy",
+            "root/strategy/first/first/first/second:sell",
+            "root/strategy/first/first:advance",
+            "root/strategy/first:winner",
+            "root/strategy/second:buy",
+            "root/strategy/second:sell"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy/first/first/first/first/first/first/first",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 0,
+              "path": "root/strategy/first/first/first/first/first/first/second",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 0,
+              "path": "root/strategy/first/first/first/second",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 0,
+              "path": "root/strategy/second",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/first/first/first/first/first/first/first",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/first/first/first/first/first/first/second",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/first/first/first/second",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/second",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 3,
+              "path": "root/strategy/first/first/first/first/first/second",
+              "priceCents": 9900,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 4,
+              "path": "root/strategy/first/first/first/first/first/second",
+              "priceCents": 10800,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 1007400, \"coverage\": [\"root/strategy/first/first/first/first/first/first/first:buy\", \"root/strategy/first/first/first/first/first/first/first:sell\", \"root/strategy/first/first/first/first/first/first/second:buy\", \"root/strategy/first/first/first/first/first/first/second:sell\", \"root/strategy/first/first/first/first/first/second:buy\", \"root/strategy/first/first/first/first/first/second:sell\", \"root/strategy/first/first/first/first/first:advance\", \"root/strategy/first/first/first/first:winner\", \"root/strategy/first/first/first/second:buy\", \"root/strategy/first/first/first/second:sell\", \"root/strategy/first/first:advance\", \"root/strategy/first:winner\", \"root/strategy/second:buy\", \"root/strategy/second:sell\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy/first/first/first/first/first/first/first\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 0, \"path\": \"root/strategy/first/first/first/first/first/first/second\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 0, \"path\": \"root/strategy/first/first/first/second\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 0, \"path\": \"root/strategy/second\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/first/first/first/first/first/first/first\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/first/first/first/first/first/first/second\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/first/first/first/second\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/second\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 3, \"path\": \"root/strategy/first/first/first/first/first/second\", \"priceCents\": 9900, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 4, \"path\": \"root/strategy/first/first/first/first/first/second\", \"priceCents\": 10800, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "fixtureId": "reset-reactivation",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy/child",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 1,
+            "path": "root/strategy/child",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 8500,
+            "reason": "reset"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/child",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 3,
+            "path": "root/strategy/child",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10800,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 98600,
+        "lots": {},
+        "coverage": [
+          "root/strategy/child:buy",
+          "root/strategy/child:reset",
+          "root/strategy/child:sell",
+          "root/strategy:reset"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 98600,
+          "coverage": [
+            "root/strategy/child:buy",
+            "root/strategy/child:reset",
+            "root/strategy/child:sell",
+            "root/strategy:reset"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy/child",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 1,
+              "path": "root/strategy/child",
+              "priceCents": 8500,
+              "quantity": -2,
+              "reason": "reset",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/child",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 3,
+              "path": "root/strategy/child",
+              "priceCents": 10800,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 98600, \"coverage\": [\"root/strategy/child:buy\", \"root/strategy/child:reset\", \"root/strategy/child:sell\", \"root/strategy:reset\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy/child\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 1, \"path\": \"root/strategy/child\", \"priceCents\": 8500, \"quantity\": -2, \"reason\": \"reset\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/child\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 3, \"path\": \"root/strategy/child\", \"priceCents\": 10800, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "fixtureId": "state-gate-exits",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy/child",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 1,
+            "path": "root/strategy/child",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 8500,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 97000,
+        "lots": {},
+        "coverage": [
+          "root/strategy/child:buy",
+          "root/strategy/child:sell",
+          "root/strategy:open"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 97000,
+          "coverage": [
+            "root/strategy/child:buy",
+            "root/strategy/child:sell",
+            "root/strategy:open"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy/child",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 1,
+              "path": "root/strategy/child",
+              "priceCents": 8500,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 97000, \"coverage\": [\"root/strategy/child:buy\", \"root/strategy/child:sell\", \"root/strategy:open\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy/child\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 1, \"path\": \"root/strategy/child\", \"priceCents\": 8500, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "fixtureId": "cash-partial-missing-price",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 4,
+            "path": "root/strategy",
+            "symbol": "SPY",
+            "quantity": -1,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 5,
+            "path": "root/strategy",
+            "symbol": "SPY",
+            "quantity": -1,
+            "priceCents": 10800,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 101500,
+        "lots": {},
+        "coverage": [
+          "root/strategy:buy",
+          "root/strategy:sell"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 101500,
+          "coverage": [
+            "root/strategy:buy",
+            "root/strategy:sell"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 4,
+              "path": "root/strategy",
+              "priceCents": 10700,
+              "quantity": -1,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 5,
+              "path": "root/strategy",
+              "priceCents": 10800,
+              "quantity": -1,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 101500, \"coverage\": [\"root/strategy:buy\", \"root/strategy:sell\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 4, \"path\": \"root/strategy\", \"priceCents\": 10700, \"quantity\": -1, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 5, \"path\": \"root/strategy\", \"priceCents\": 10800, \"quantity\": -1, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "fixtureId": "reverse-race-order",
+      "passed": true,
+      "kind": "apparatus-control",
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy/second/first",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy/second/first",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          },
+          {
+            "bar": 3,
+            "path": "root/strategy/second/second",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 9900,
+            "reason": "buy"
+          },
+          {
+            "bar": 4,
+            "path": "root/strategy/second/second",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10800,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 1003200,
+        "lots": {},
+        "coverage": [
+          "root/strategy/second/first:buy",
+          "root/strategy/second/first:sell",
+          "root/strategy/second/second:buy",
+          "root/strategy/second/second:sell",
+          "root/strategy/second:advance",
+          "root/strategy:winner"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 1003200,
+          "coverage": [
+            "root/strategy/second/first:buy",
+            "root/strategy/second/first:sell",
+            "root/strategy/second/second:buy",
+            "root/strategy/second/second:sell",
+            "root/strategy/second:advance",
+            "root/strategy:winner"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy/second/first",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy/second/first",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 3,
+              "path": "root/strategy/second/second",
+              "priceCents": 9900,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 4,
+              "path": "root/strategy/second/second",
+              "priceCents": 10800,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 1003200, \"coverage\": [\"root/strategy/second/first:buy\", \"root/strategy/second/first:sell\", \"root/strategy/second/second:buy\", \"root/strategy/second/second:sell\", \"root/strategy/second:advance\", \"root/strategy:winner\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy/second/first\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy/second/first\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}, {\"bar\": 3, \"path\": \"root/strategy/second/second\", \"priceCents\": 9900, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 4, \"path\": \"root/strategy/second/second\", \"priceCents\": 10800, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "taskId": "flat-canary",
+      "passed": true,
+      "kind": "independent-interpretation",
+      "expected": [
+        {
+          "bar": 0,
+          "path": "root/strategy",
+          "symbol": "SPY",
+          "quantity": 2,
+          "priceCents": 10000,
+          "reason": "buy"
+        },
+        {
+          "bar": 2,
+          "path": "root/strategy",
+          "symbol": "SPY",
+          "quantity": -2,
+          "priceCents": 10700,
+          "reason": "sell"
+        }
+      ],
+      "javascript": {
+        "trace": [
+          {
+            "bar": 0,
+            "path": "root/strategy",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          }
+        ],
+        "cashCents": 1001400,
+        "lots": {},
+        "coverage": [
+          "root/strategy:buy",
+          "root/strategy:sell"
+        ]
+      },
+      "python": {
+        "result": {
+          "cashCents": 1001400,
+          "coverage": [
+            "root/strategy:buy",
+            "root/strategy:sell"
+          ],
+          "lots": {},
+          "trace": [
+            {
+              "bar": 0,
+              "path": "root/strategy",
+              "priceCents": 10000,
+              "quantity": 2,
+              "reason": "buy",
+              "symbol": "SPY"
+            },
+            {
+              "bar": 2,
+              "path": "root/strategy",
+              "priceCents": 10700,
+              "quantity": -2,
+              "reason": "sell",
+              "symbol": "SPY"
+            }
+          ]
+        },
+        "process": {
+          "stdout": "{\"cashCents\": 1001400, \"coverage\": [\"root/strategy:buy\", \"root/strategy:sell\"], \"lots\": {}, \"trace\": [{\"bar\": 0, \"path\": \"root/strategy\", \"priceCents\": 10000, \"quantity\": 2, \"reason\": \"buy\", \"symbol\": \"SPY\"}, {\"bar\": 2, \"path\": \"root/strategy\", \"priceCents\": 10700, \"quantity\": -2, \"reason\": \"sell\", \"symbol\": \"SPY\"}]}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    }
+  ],
+  "scope": "Local compiler/interpreter and declared-answer checks. This record does not execute a model or the LEAN engine, approve bundles, or certify a counted study."
+}

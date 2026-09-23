@@ -1,0 +1,63 @@
+/* The tools page adds five things to the settings page's own control language,
+   and deliberately nothing else: the list, the row anatomy, the state control
+   and the two markings are all classes settings.css already defines, so a tool
+   row reads as part of this product rather than as a panel bolted to it. */
+
+.tools-lede { max-width: 68ch; }
+
+.tools-status {
+  margin-top: var(--s2);
+  max-width: 68ch;
+}
+
+.tools-summary {
+  margin-top: var(--s4);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--line-2);
+}
+
+.tools-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: var(--s3) 0 var(--s4);
+}
+
+.tools-bulk button {
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.tools-bulk button:hover:not(:disabled) {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.tools-bulk button:disabled { opacity: 0.5; cursor: default; }
+
+/* Three labels are wider than the two- and three-letter words this control
+   usually carries, so it is allowed to wrap onto a second line on a narrow
+   window rather than squeezing every label past reading. */
+.tools-seg { flex-wrap: wrap; }
+.tools-seg button { white-space: nowrap; }
+
+/* A withheld row keeps the row anatomy so the eye reads down one column of
+   names, and is dimmed so it is plainly not a control. It is dimmed rather
+   than hidden because being able to see it is the entire repair. */
+.tools-row.is-withheld .settings-name { color: var(--ink-3); }
+
+.tools-withheld-tag {
+  align-self: start;
+  padding: var(--s1) var(--s2);
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-sm);
+  color: var(--ink-3);
+  font-size: 11.5px;
+  white-space: nowrap;
+}

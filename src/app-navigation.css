@@ -1,0 +1,318 @@
+.app-nav-brand, .app-nav-icon, .app-nav-footer, .app-nav-badge { display: none; }
+
+/* Desktop preloads reserve a draggable strip. Fit the full-height navigation
+   below it, including when the Text size setting zooms the renderer. */
+html.in-shell body[data-navigation="side"] .topbar {
+  top: var(--shell-titlebar-height, 36px);
+  height: calc(100% - var(--shell-titlebar-height, 36px));
+}
+html.in-shell body[data-navigation="side"] #stage {
+  height: calc(100% - var(--shell-titlebar-height, 36px));
+}
+
+/* ==========================================================================
+   THE RAIL (owner, 2026-09-19 late: "the left sidebar needs a real upgrade").
+   A considered surface of its own: one step off the page, a hairline edge
+   with a faint inner light on the dark sheets, 16px of side padding. On it,
+   one row for everything -- the brand, the pages, Settings, Guide, Quick
+   settings -- 40px tall with a 20px icon box, a 12px gap and one label
+   style; one plate on hover; the current page on a filled accent plate with
+   its icon in the accent and a 3px bar at the edge. Groups are parted by one
+   hairline with 20px of air. The collapsed rail is the same rows as 40px
+   squares in a 56px column. Nothing here changes what the controls do or how
+   they are named.
+   ========================================================================== */
+body[data-navigation="side"] {
+  --navigation-width: 232px;
+  --navigation-inset: 16px;
+  --navigation-accent: var(--ui-accent, var(--theme-accent, var(--c-coordinator)));
+  --nav-row: 40px;
+  --nav-icon: 20px;
+  --nav-gap: 12px;
+  --nav-pad-x: 10px;
+  --nav-radius: 8px;
+  --nav-surface: color-mix(in srgb, var(--ink) 2.5%, var(--bg));
+  --nav-edge: var(--line);
+  --nav-inner-light: transparent;
+  --nav-ink: var(--ink);
+  --nav-ink-rest: var(--ink-2);
+  --nav-icon-rest: var(--ink-2);
+  --nav-plate-hover: color-mix(in srgb, var(--ink) 6%, transparent);
+  --nav-plate-current: color-mix(in srgb, var(--navigation-accent) 13%, transparent);
+  --nav-line: var(--line);
+  --nav-tile: color-mix(in srgb, var(--navigation-accent) 16%, transparent);
+  --nav-tile-ink: var(--navigation-accent);
+  --nav-badge: var(--navigation-accent);
+  --nav-badge-ink: #fff;
+  --nav-foot: color-mix(in srgb, var(--ink) 3%, var(--nav-surface));
+  --nav-seg: color-mix(in srgb, var(--ink) 2%, var(--nav-surface));
+  --nav-seg-line: var(--line);
+  --nav-ink-off: var(--ink-4, var(--ink-3));
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) body[data-navigation="side"] {
+  --nav-surface: color-mix(in srgb, var(--ink) 4%, var(--bg));
+  --nav-edge: var(--line-2);
+  --nav-inner-light: rgb(255 255 255 / .035);
+  --nav-plate-hover: color-mix(in srgb, var(--ink) 8%, transparent);
+  --nav-plate-current: color-mix(in srgb, var(--navigation-accent) 20%, transparent);
+  --nav-tile: color-mix(in srgb, var(--navigation-accent) 24%, transparent);
+  --nav-tile-ink: color-mix(in srgb, var(--navigation-accent) 70%, #fff);
+  --nav-foot: color-mix(in srgb, #000 16%, var(--nav-surface));
+  --nav-seg: color-mix(in srgb, #fff 3%, var(--nav-foot));
+  --nav-seg-line: var(--line-2);
+}
+/* THE TOP STRIP'S BACKING PLATE STAYS OFF WITH THE RAIL (styles.css draws
+   .topbar::before as a fixed 58px band for the floating strip; the rail is a
+   full-height bar and has nothing to back). */
+body[data-navigation="side"] .topbar::before { content: none; }
+body[data-navigation="side"] .topbar {
+  position: fixed; inset: 0 auto 0 0;
+  width: var(--navigation-width); height: 100%;
+  display: flex; flex-direction: column; align-items: stretch; gap: 0;
+  padding: 14px var(--navigation-inset) 14px;
+  background: var(--nav-surface); border: 0; border-right: 1px solid var(--nav-edge);
+  box-shadow: inset -1px 0 0 var(--nav-inner-light);
+  pointer-events: auto; transform: none;
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  transition: width 160ms ease;
+}
+
+/* ---- THE ROW. One rule, six kinds of control. ---- */
+body[data-navigation="side"] :is(.tb-nav a, .app-nav-home, .app-nav-footer .first-use-launch:not([hidden]), #open-settings) {
+  position: relative; box-sizing: border-box; isolation: auto;
+  display: flex; align-items: center; justify-content: flex-start; gap: var(--nav-gap);
+  width: 100%; min-height: var(--nav-row); height: var(--nav-row); padding: 0 var(--nav-pad-x);
+  margin: 0; border: 0; border-radius: var(--nav-radius);
+  color: var(--nav-ink-rest); background: transparent; box-shadow: none; text-decoration: none;
+  font: 500 14px/1.2 var(--font-ui); letter-spacing: 0; text-transform: none; text-align: left; white-space: nowrap;
+  cursor: pointer; transform: none;
+  transition: color 120ms ease, background 120ms ease;
+}
+body[data-navigation="side"] :is(.tb-nav a, .app-nav-footer .first-use-launch, #open-settings):hover {
+  color: var(--nav-ink); background: var(--nav-plate-hover); box-shadow: none; transform: none;
+}
+body[data-navigation="side"] :is(.tb-nav a, .app-nav-home, .app-nav-footer .first-use-launch, #open-settings, .app-nav-history .icon-btn, .app-nav-collapse):focus-visible {
+  outline: 2px solid var(--navigation-accent); outline-offset: 2px;
+}
+body[data-navigation="side"] :is(.tb-nav a, .app-nav-footer .first-use-launch, #open-settings):active { transform: none; background: var(--nav-plate-hover); box-shadow: none; }
+/* the strip's own pseudo-elements (press glow, underline) are off in the rail */
+body[data-navigation="side"] .tb-nav a::before { display: none; content: none; }
+body[data-navigation="side"] .tb-nav a::after {
+  content: ''; display: block; position: absolute; inset: auto; left: -1px; top: 10px; bottom: 10px; width: 3px; z-index: 0;
+  border-radius: 2px; background: var(--navigation-accent); opacity: 0; transform: scaleY(.6); transform-origin: center; pointer-events: none;
+  transition: opacity 120ms ease, transform 160ms ease;
+}
+
+/* THE ICON BOX: 20px for every row; the stroke set fills it at 20px. The
+   controls' own drawings (Quick settings' gear, the history chevrons) are
+   hidden here; the rail draws its own from one set. */
+body[data-navigation="side"] .app-nav-icon {
+  display: grid; place-items: center; flex: none; order: -1;
+  width: var(--nav-icon); height: var(--nav-icon); margin: 0; padding: 0;
+  color: var(--nav-icon-rest); background: none; border: 0; border-radius: 0; box-shadow: none;
+  transition: color 120ms ease;
+}
+body[data-navigation="side"] .app-nav-icon svg { display: block; width: 20px; height: 20px; stroke-width: 1.75px; }
+body[data-navigation="side"] :is(#open-settings, .app-nav-history .icon-btn) > svg:not(.app-nav-icon svg) { display: none; }
+body[data-navigation="side"] :is(.tb-nav a, .app-nav-footer .first-use-launch, #open-settings):hover .app-nav-icon { color: var(--nav-ink); }
+/* THE LABEL: one style; the Quick settings word is the same label. */
+body[data-navigation="side"] :is(.app-nav-label, .tb-settings-label) {
+  font: inherit; color: inherit; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+body[data-navigation="side"] #open-settings .tb-settings-label { order: 0; }
+body[data-navigation="side"] #open-settings:hover .tb-settings-label { color: inherit; }
+/* THE COUNT: a small pill at the row's end, drawn only when set. */
+body[data-navigation="side"] .app-nav-badge {
+  display: inline-flex; align-items: center; justify-content: center; margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: 999px; background: var(--nav-badge); color: var(--nav-badge-ink);
+  font: 650 11px/1 var(--font-ui); font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+body[data-navigation="side"] .app-nav-badge[hidden] { display: none; }
+
+/* THE CURRENT PAGE: the plate in the accent, the bar at the left edge, the
+   label in full ink and the icon in the accent. The bar is the one cue that
+   survives the collapsed rail. */
+body[data-navigation="side"] :is(.tb-nav a.active, #open-settings[aria-expanded="true"]) { color: var(--nav-ink); font-weight: 600; background: var(--nav-plate-current); }
+body[data-navigation="side"] :is(.tb-nav a.active, #open-settings[aria-expanded="true"]):hover { background: var(--nav-plate-current); }
+body[data-navigation="side"] .tb-nav a.active::after { opacity: 1; transform: scaleY(1); }
+body[data-navigation="side"] :is(.tb-nav a.active .app-nav-icon, #open-settings[aria-expanded="true"] .app-nav-icon, .tb-nav a.active:hover .app-nav-icon) { color: var(--navigation-accent); }
+
+/* ---- THE BRAND ROW: the same row; the mark as a 28px rounded tile in the
+   accent family, the wordmark as its label, the collapse control as a quiet
+   round button at the row's end. A hairline under the row parts it from the
+   pages. ---- */
+body[data-navigation="side"] .app-nav-brand {
+  position: relative; display: flex; align-items: center; gap: 4px;
+  padding: 0 0 12px; margin: 0 0 12px; border: 0; border-bottom: 1px solid var(--nav-line);
+}
+body[data-navigation="side"] .app-nav-home { flex: 1 1 auto; min-width: 0; padding-left: 6px; color: var(--nav-ink); cursor: pointer; }
+body[data-navigation="side"] .app-nav-home:hover { background: var(--nav-plate-hover); }
+body[data-navigation="side"] .app-nav-mark {
+  display: grid; place-items: center; flex: none; order: -1;
+  width: 28px; height: 28px; margin: 0; padding: 0;
+  /* THE TE MARK AS IT WAS BUILT (fa583fde, 2026-09-08, "Match the navigation
+     TE logo to the active theme"; owner, 2026-09-19: "we had a specific
+     toolsenabled icon that changed colors based on the page and we had built
+     that specifically"): a plate in the page's own ground with the glyph in
+     black, white on the dark trio, and a hairline -- not an accent tile. */
+  color: #000; background: var(--bg); border: 1px solid var(--nav-line); border-radius: 8px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) body[data-navigation="side"] .app-nav-mark { color: #fff; }
+body[data-navigation="side"] .app-nav-mark svg { display: block; width: 20px; height: 20px; }
+body[data-navigation="side"] .app-nav-wordmark { font: 650 15px/1.2 var(--font-ui); letter-spacing: -.01em; color: var(--nav-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-navigation="side"] .app-nav-collapse {
+  display: grid; place-items: center; flex: none;
+  width: 28px; height: 28px; padding: 0; margin: 0;
+  color: var(--nav-icon-rest); background: transparent; border: 0; border-radius: 50%; cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+body[data-navigation="side"] .app-nav-collapse svg { width: 16px; height: 16px; stroke-width: 1.75px; }
+body[data-navigation="side"] .app-nav-collapse:hover { color: var(--nav-ink); background: var(--nav-plate-hover); }
+
+/* ---- THE GROUPS: pages, then Settings, then the footer; one hairline
+   between groups with 20px of air; 6px between rows. ---- */
+body[data-navigation="side"] .tb-nav {
+  display: flex; flex: 0 0 auto; flex-direction: column; gap: 6px;
+  padding: 0; margin: 0; width: 100%; min-width: 0; border: 0; background: none; box-shadow: none;
+}
+body[data-navigation="side"] .tb-nav a[data-route="settings"] { margin-top: 20px; }
+body[data-navigation="side"] .tb-nav a[data-route="settings"]::before {
+  display: block; content: ''; position: absolute; left: 0; right: 0; top: -13px; height: 1px; background: var(--nav-line);
+}
+/* ---- THE FOOTER (owner, 2026-09-19 late: "i dont like the buttons at the
+   bottom"): one quiet band at the base of the rail, a tone deeper than the
+   rail with a hairline above it, running edge to edge. On it, Guide and
+   Quick settings as two compact utility rows -- smaller than the pages,
+   because they are not pages -- and Back and Next as ONE segmented control
+   the width of the rail, two halves with a hairline between, chevrons
+   centred, greyed when there is nowhere to go. ---- */
+body[data-navigation="side"] .app-nav-footer {
+  display: flex; flex-direction: column; gap: 2px;
+  margin: auto calc(-1 * var(--navigation-inset)) -14px; padding: 10px var(--navigation-inset) 10px;
+  background: var(--nav-foot); border-top: 1px solid var(--nav-line);
+}
+body[data-navigation="side"] .app-nav-footer .first-use-launch::before { content: none; }
+body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) {
+  min-height: 32px; height: 32px; padding: 0 var(--nav-pad-x); gap: 9px;
+  font-size: 13px; color: var(--nav-ink-rest);
+}
+body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) .app-nav-icon { width: 16px; height: 16px; }
+body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) .app-nav-icon svg { width: 16px; height: 16px; }
+body[data-navigation="side"] .app-nav-history {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  margin: 8px 0 0; padding: 0; overflow: hidden;
+  background: var(--nav-seg); border: 1px solid var(--nav-seg-line); border-radius: var(--nav-radius);
+}
+body[data-navigation="side"] .app-nav-history .icon-btn {
+  display: grid; place-items: center; box-sizing: border-box;
+  width: auto; height: 28px; min-height: 0; padding: 0; margin: 0;
+  color: var(--nav-icon-rest); background: transparent; border: 0; border-radius: 0; box-shadow: none;
+  cursor: pointer; transform: none; transition: color 120ms ease, background 120ms ease;
+}
+body[data-navigation="side"] .app-nav-history .icon-btn + .icon-btn { border-left: 1px solid var(--nav-seg-line); }
+body[data-navigation="side"] .app-nav-history .icon-btn .app-nav-icon { order: 0; width: 16px; height: 16px; }
+body[data-navigation="side"] .app-nav-history .icon-btn .app-nav-icon svg { width: 16px; height: 16px; }
+body[data-navigation="side"] .app-nav-history .icon-btn:hover { color: var(--nav-ink); background: var(--nav-plate-hover); transform: none; box-shadow: none; }
+body[data-navigation="side"] .app-nav-history .icon-btn:hover .app-nav-icon { color: var(--nav-ink); }
+body[data-navigation="side"] .app-nav-history .icon-btn[disabled] { opacity: 1; color: var(--nav-ink-off); cursor: default; }
+body[data-navigation="side"] .app-nav-history .icon-btn[disabled] .app-nav-icon { color: var(--nav-ink-off); }
+body[data-navigation="side"] .app-nav-history .icon-btn[disabled]:hover { background: transparent; }
+/* THE ARROW'S DESTINATION WORD, WHERE IT CAN BE READ (T1558). The caption
+   (styles.css, .topbar .icon-btn[data-dest]::after) was made for the top bar
+   and hangs BELOW its arrow; in the rail the arrows sit on the window's bottom
+   edge, so the word was drawn under it and never showed, and the segment's
+   overflow clipped it anyway. Here it rises ABOVE its arrow on the rail's own
+   plate, anchored outward like the top bar's, and the segment keeps its round
+   corners on the buttons instead of by clipping. The collapsed rail has no
+   room for a word; there the arrow keeps its name and tooltip only. */
+body[data-navigation="side"] .app-nav-history { overflow: visible; }
+body[data-navigation="side"] .app-nav-history .icon-btn:first-child { border-radius: calc(var(--nav-radius) - 1px) 0 0 calc(var(--nav-radius) - 1px); }
+body[data-navigation="side"] .app-nav-history .icon-btn:last-child { border-radius: 0 calc(var(--nav-radius) - 1px) calc(var(--nav-radius) - 1px) 0; }
+body[data-navigation="side"] .app-nav-history .icon-btn[data-dest]:not([data-dest=""])::after {
+  top: auto; bottom: calc(100% + 4px); z-index: 1;
+  padding: 2px 6px; border-radius: 6px;
+  color: var(--nav-ink); background: var(--nav-seg); border: 1px solid var(--nav-seg-line);
+  transform: translateY(3px);
+}
+body[data-navigation="side"] .app-nav-history #nav-back[data-dest]:not([data-dest=""])::after { left: 0; right: auto; }
+body[data-navigation="side"] .app-nav-history #nav-next[data-dest]:not([data-dest=""])::after { right: 0; left: auto; }
+body[data-navigation="side"] .app-nav-history .icon-btn[data-dest]:not([data-dest=""]):is(:hover, :focus-visible)::after { transform: translateY(0); }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn::after { display: none; }
+
+body[data-navigation="side"] #stage { margin-left: var(--navigation-width); width: calc(100% - var(--navigation-width)); padding-top: 24px; transition: margin-left 160ms ease, width 160ms ease; }
+body[data-navigation="side"] .view { top: 24px; }
+body[data-navigation="side"] .home-takeover { left: var(--navigation-width); }
+/* THE WINDOW NOTICE BAR STAYS OFF THE RAIL. styles.css centres .settings-recovery
+   on the WINDOW, which was right while navigation was a strip at the top. With
+   the rail, the window's bottom-left corner is where Guide, Quick settings and
+   Back/Forward live, and the centred bar was painted over them (measured in a
+   1440x900 window: bar 100..1340px over a 232px rail; Quick settings, Guide and
+   Forward unreachable until Dismiss; all four at 1280x800). Centre it on the
+   stage instead -- the same --navigation-width the stage and the takeover use,
+   so the collapsed and the narrow-window rail follow without another rule.
+   With the drawer open styles.css pins right:346px and width:auto; from the
+   window's centre that left a 250px column, so start at the stage's gutter. */
+body[data-navigation="side"] .settings-recovery {
+  left: calc(var(--navigation-width) + (100% - var(--navigation-width)) / 2);
+  width: min(var(--page-max), calc(100% - var(--navigation-width) - 2 * var(--page-gutter)));
+}
+body[data-navigation="side"] .drawer.open ~ .settings-recovery {
+  left: calc(var(--navigation-width) + var(--page-gutter));
+  transform: none;
+}
+
+/* ---- THE COLLAPSED RAIL: a 56px column, the same rows as 40px squares, no
+   labels; the tile and the collapse control stacked; the bar stays; the
+   native title is the tooltip. ---- */
+body[data-navigation="side"][data-navigation-collapsed="true"] { --navigation-width: 56px; --navigation-inset: 8px; }
+body[data-navigation="side"][data-navigation-collapsed="true"] :is(.app-nav-wordmark, .app-nav-label, .tb-settings-label, .app-nav-badge) { display: none; }
+body[data-navigation="side"][data-navigation-collapsed="true"] :is(.tb-nav a, .app-nav-home, .app-nav-footer .first-use-launch, #open-settings) { justify-content: center; padding: 0; gap: 0; width: 40px; margin-inline: auto; }
+body[data-navigation="side"][data-navigation-collapsed="true"] :is(.app-nav-footer .first-use-launch, #open-settings) { font-size: 0; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-brand { flex-direction: column; gap: 6px; align-items: center; padding-bottom: 10px; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-home { padding: 0; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-collapse svg { transform: rotate(180deg); }
+body[data-navigation="side"][data-navigation-collapsed="true"] .tb-nav a::after { left: -8px; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-footer { margin-inline: calc(-1 * var(--navigation-inset)); padding-inline: 8px; }
+body[data-navigation="side"][data-navigation-collapsed="true"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) { width: 36px; min-width: 0; height: 36px; margin-inline: auto; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history { grid-template-columns: 1fr; width: 36px; margin-inline: auto; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn { height: 30px; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn + .icon-btn { border-left: 0; border-top: 1px solid var(--nav-seg-line); }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn:first-child { border-radius: calc(var(--nav-radius) - 1px) calc(var(--nav-radius) - 1px) 0 0; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn:last-child { border-radius: 0 0 calc(var(--nav-radius) - 1px) calc(var(--nav-radius) - 1px); }
+@media (max-width: 1100px) {
+  body[data-navigation="side"] { --navigation-width: 56px; --navigation-inset: 8px; }
+  body[data-navigation="side"] :is(.app-nav-wordmark, .app-nav-label, .tb-settings-label, .app-nav-collapse, .app-nav-badge) { display: none; }
+  body[data-navigation="side"] :is(.tb-nav a, .app-nav-home, .app-nav-footer .first-use-launch, #open-settings) { justify-content: center; padding: 0; gap: 0; width: 40px; margin-inline: auto; }
+  body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) { font-size: 0; padding: 0; gap: 0; }
+  body[data-navigation="side"] .app-nav-brand { flex-direction: column; align-items: center; }
+  body[data-navigation="side"] .app-nav-home { padding: 0; }
+  body[data-navigation="side"] .tb-nav a::after { left: -8px; }
+  body[data-navigation="side"] .app-nav-footer { padding-inline: 8px; }
+  body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) { width: 36px; min-width: 0; height: 36px; margin-inline: auto; }
+  body[data-navigation="side"] .app-nav-history { grid-template-columns: 1fr; width: 36px; margin-inline: auto; }
+  body[data-navigation="side"] .app-nav-history .icon-btn { height: 30px; }
+  body[data-navigation="side"] .app-nav-history .icon-btn + .icon-btn { border-left: 0; border-top: 1px solid var(--nav-seg-line); }
+  body[data-navigation="side"] .app-nav-history .icon-btn:first-child { border-radius: calc(var(--nav-radius) - 1px) calc(var(--nav-radius) - 1px) 0 0; }
+  body[data-navigation="side"] .app-nav-history .icon-btn:last-child { border-radius: 0 0 calc(var(--nav-radius) - 1px) calc(var(--nav-radius) - 1px); }
+  body[data-navigation="side"] .app-nav-history .icon-btn::after { display: none; }
+}
+/* WHICH PAGE YOU ARE ON, IN WINDOWS HIGH CONTRAST (T1595). The current item
+   is marked with a tinted plate and an accent bar, both backgrounds, and forced
+   colors turns both into Canvas: every item looked the same. The current item
+   takes the person's own highlight pair instead. !important because the
+   resting rule reaches (1,2,1) through the #open-settings argument of its
+   :is(), which no class selector here can outrank. */
+@media (forced-colors: active) {
+  .tb-nav a.active, .tb-nav a[aria-current="page"] {
+    color: HighlightText !important;
+    background: Highlight !important;
+  }
+  .tb-nav a.active :is(.app-nav-icon, .app-nav-label, span, svg), .tb-nav a[aria-current="page"] :is(.app-nav-icon, .app-nav-label, span, svg) {
+    color: HighlightText !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-navigation="side"] :is(.topbar, #stage, .tb-nav a, .app-nav-collapse, #open-settings, .first-use-launch, .app-nav-history .icon-btn, .app-nav-icon) { transition: none; }
+  body[data-navigation="side"] .tb-nav a::after { transition: none; }
+}

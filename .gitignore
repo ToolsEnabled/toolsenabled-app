@@ -1,0 +1,114 @@
+# node_modules/, dist/, release/ below have NO leading slash, so each
+# matches a directory of that name AT ANY DEPTH, not just at the repo root
+# -- this silently swallowed tools/release/ for an entire session (an
+# unrelated new tool directory happened to share release/'s bare name) with
+# no error, no warning: `git status` simply never mentioned it, so it read
+# as "the tool doesn't exist" in every clone despite being present on disk.
+# Confirm with `git check-ignore -v <path>` before assuming a new directory
+# is tracked. If you need a NEW top-level dir literally named node_modules,
+# dist, release, or matching server.log/npm-install.log anywhere below repo
+# root, anchor your own pattern with a leading slash (see /private/ below)
+# so it does not also swallow something with a plausible-but-different name.
+node_modules/
+# LIVE generations use a dependency symlink on Linux. A trailing-slash rule
+# ignores directories/Windows junctions but not that symlink. Ignore only the
+# same top-level dependency mount; source and runtime-byte checks stay intact.
+/node_modules
+dist/
+release/
+# A second build output used when release/win-unpacked is held open by another
+# process (other Claude sessions' MCP servers read the workspace .mcp.json, which
+# the app rewrites to point at whatever build it last ran from). Same artifacts,
+# same gitignore reasons.
+release-cut/
+server.log
+npm-install.log
+# The Codex CLI cloud client writes error.log here on a failed run. It is a
+# diagnostic artifact, never product bytes, and as an untracked file it fails
+# tools/require-clean-tree.mjs and so blocks the packaged build outright.
+#
+# It must also never be committed for a second and harder reason: it records
+# account identifiers and the parsed GitHub origin, which carries the owner's
+# real name. That is exactly what check-no-owner-data refuses to ship. The
+# engine tree already ignores this filename; this worktree carries its own
+# .gitignore and did not, so the same file was safe there and a blocker here.
+error.log
+# The gated-dist run writes .dist-gated.log beside the repo root. Same trap as
+# error.log directly above: a diagnostic artifact, never product bytes, and as
+# an untracked file it makes `git status --porcelain` non-empty -- which
+# require-clean-tree.mjs reads as "any output at all means dirty" and refuses,
+# so one build's log blocks the NEXT build in that tree. Found 2026-08-17 with
+# the file sitting untracked in this checkout after a dist run.
+.dist-gated.log
+.dist.log
+/private/
+# The staged capability payload. Derived output, like dist/ and release/:
+# `npm run pack:capability` cuts it fresh from the capability-layer source
+# tree, so committing it would freeze a copy that silently stops matching the
+# code it was cut from. Anchored with a leading slash, per the warning above,
+# because "capability" is a plausible name for a future source directory and a
+# bare pattern would swallow it at any depth.
+#
+# It also must not be committed for a second and harder reason: until the
+# capability-layer source is purged, the staged payload carries the builder's
+# name, home-directory paths and LAN addresses. The packer marks such a payload
+# UNSHIPPABLE-OWNER-DATA.txt and `npm run dist` refuses it, but neither of
+# those would stop a `git add -A`. This line does.
+/capability/
+
+# Harness output: tools/owner-popup-qa.cjs writes screenshots here by default and
+# tools/packaged-qa-suite.mjs can be pointed here with --logs. Untracked files
+# fail tools/require-clean-tree.mjs and so block `npm run dist` outright -- the
+# same trap error.log above was added for. Anchored with a leading slash, per the
+# warning at the top of this file, so it cannot swallow a future tools/artifacts/.
+/artifacts/
+
+# QA run outputs, same class as /artifacts/ above: written by the accessibility
+# and keyboard harnesses on every run. Evidence, not source; untracked files here
+# fail require-clean-tree and block `npm run dist`.
+/reports/a11y/
+/reports/a11y-keyboard-last-run.json
+
+# offline-routes-qa rewrites its route transcript here on every run;
+# a harness-owned artifact must not hold require-clean-tree hostage.
+/reports/lanes/team2-b7-transcript.json
+
+# Same class again, 2026-08-19: the 272-tool agent sweep streams its per-batch
+# events and summaries here while it runs, and the node-removal drive writes its
+# screenshots here. Both are evidence a harness produces, not source anyone
+# reproduces from git -- and both blocked a cut by being untracked.
+/reports/agent-tools/
+/reports/node-remove-drive/
+
+# Agent working logs. Never product content -- reports/ is the tracked
+# evidence directory; this is scratch that must not reach a published cut.
+logs/
+
+# Generated immediately before a restricted auxiliary presentation child is
+# spawned. It contains the checkout's absolute guard path, so it is runtime
+# state and must never be committed or mirrored as portable source.
+/auxiliary/presentation/agent-settings.json
+
+# Python test imports create bytecode caches in-place. They are generated
+# diagnostics, not source, and must not make the release tree dirty.
+__pycache__/
+*.py[cod]
+# Private, generated portable Python/dependency/model payload. Rebuilt and
+# hash-verified by pack:voice; never source, a venv link, or an owner cache.
+/voice-runtime/bundle/
+
+# Agent working notes written to the repo root. Product evidence lives in
+# reports/, which IS tracked; these are scratch and must not reach a cut.
+REPORT-*.md
+
+# Worker 87 lane evidence. TAP transcripts and mutation records; scrubbed of
+# profile paths, but this directory is never part of a commit.
+/.w87-evidence/
+
+# Worker 87 token-lane scratch: redirected state stores for the end-to-end driver.
+/.w87-scratch/
+/.w87-scratch-gated/
+/.w87-e2e-state/
+
+# Machine-local pointer to this operator's research data server; never a product asset.
+public/research-workspace.json

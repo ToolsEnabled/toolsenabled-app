@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Presentation Suite · Live</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="pausedOverlay" class="paused-overlay hidden">
+    <div class="paused-card">
+      <div class="paused-icon">⏸</div>
+      <div class="paused-title">EDITS PAUSED</div>
+      <div class="paused-sub" id="pausedSub">All editors are locked out.</div>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot" id="connDot" role="img" title="connection"></span>
+      <div>
+        <div class="brand-title" id="deckTitle">Untitled Presentation</div>
+        <div class="brand-sub"><span id="revLabel">rev 0</span> · <span id="slideCount">0 slides</span> · <span id="timingLabel" title="estimated speaking time from visible slide text, not a real rehearsal">~0:00</span></div>
+      </div>
+    </div>
+
+    <div class="status" id="statusPill" role="status" aria-live="polite">
+      <span class="status-live">● LIVE</span>
+    </div>
+
+    <div class="actions">
+      <input type="search" id="deckSearch" class="search-input"
+        placeholder="Find a slide… (/)"
+        aria-label="Search slide titles, bullets, body text, and notes. Enter jumps to the next match, Shift+Enter to the previous, Escape clears.">
+      <span class="search-count" id="searchCount"></span>
+      <div class="editors" id="editors" title="connected editors"></div>
+      <span id="fastModeControl" class="fast-mode-slot"></span>
+      <button class="btn ghost" id="downloadBtn" type="button">⤓ .pptx</button>
+      <button class="btn ghost" id="exportPdfBtn" title="export the current deck to PDF, then download">⤓ .pdf</button>
+      <button class="btn ghost" id="undoBtn" title="undo the last edit" disabled>↶ Undo</button>
+      <button class="btn ghost" id="redoBtn" title="redo the last undone edit" disabled>↷ Redo</button>
+      <button class="btn pause" id="pauseBtn">⏸ Pause</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="deck" id="deck"></section>
+
+    <aside class="rail">
+      <section class="board">
+        <div class="board-head">
+          <span>📌 Message Board</span>
+          <span class="rules-count" id="rulesCount"></span>
+        </div>
+
+        <form class="composer" id="composer">
+          <textarea id="noteText" rows="2" aria-label="Message for the other editor sessions" placeholder="Leave a note for the editor sessions…  (Ctrl+Enter to post)"></textarea>
+          <div class="composer-row">
+            <label class="pin-toggle"><input type="checkbox" id="pinCheck" /> 📌 Pin as house rule</label>
+            <span class="as-name">as <input id="asName" spellcheck="false" aria-label="Post as" /></span>
+            <button class="btn send" id="sendNote" type="submit">Post</button>
+          </div>
+        </form>
+
+        <div class="board-scroll">
+          <div class="rules-label" id="rulesLabel">House rules</div>
+          <div class="rules" id="rules"></div>
+          <div class="notes-label">Messages</div>
+          <div class="notes" id="notes"></div>
+        </div>
+      </section>
+
+      <section class="loops" id="loopsPanel">
+        <div class="board-head">
+          <span>🔁 Standing Loops</span>
+          <span class="rules-count loops-count" id="loopsCount"></span>
+        </div>
+        <form class="composer" id="loopComposer">
+          <!-- rows=2 like #noteText: this placeholder wraps to two lines at the rail's
+               width, and rows=1 sliced the second line through the middle. -->
+          <textarea id="loopText" rows="2" aria-label="Standing loop check description" placeholder="A recurring check the sessions keep running…  (Ctrl+Enter)"></textarea>
+          <div class="composer-row">
+            <span class="as-name">every <input id="loopEvery" spellcheck="false" aria-label="Loop cadence" placeholder="10m (optional)" /></span>
+            <button class="btn send" id="sendLoop" type="submit">Add loop</button>
+          </div>
+        </form>
+        <div class="board-scroll">
+          <div class="looplist" id="looplist"></div>
+        </div>
+      </section>
+
+      <section class="tasks" id="tasksPanel">
+        <div class="board-head">
+          <span>✅ Tasks</span>
+          <span class="rules-count tasks-count" id="tasksCount"></span>
+        </div>
+        <form class="composer" id="taskComposer">
+          <textarea id="taskText" rows="1" aria-label="Task description" placeholder="Assign a task to a session…  (Ctrl+Enter to add)"></textarea>
+          <div class="composer-row">
+            <span class="as-name">for <input id="taskFor" spellcheck="false" aria-label="Assign task to" placeholder="anyone" /></span>
+            <button class="btn send" id="sendTask" type="submit">Add task</button>
+          </div>
+        </form>
+        <div class="board-scroll">
+          <div class="tasklist" id="tasklist"></div>
+        </div>
+      </section>
+
+      <section class="lint" id="lintPanel">
+        <div class="board-head">
+          <span>🔍 House-Rule Lint</span>
+          <span class="rules-count lint-count" id="lintCount"></span>
+        </div>
+        <div class="board-scroll">
+          <div class="lintlist" id="lintlist"></div>
+        </div>
+      </section>
+
+      <section class="feed">
+        <div class="feed-head">Activity</div>
+        <div class="feed-list" id="feed"></div>
+      </section>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

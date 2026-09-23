@@ -1,0 +1,402 @@
+{
+  "syntheticValues": true,
+  "schemaSource": {
+    "engineRef": "b59634bcc6cfa05e66a83f824a7ace20dbda7938",
+    "path": "config/settings-registry.json",
+    "sha256": "c011347139670cf5a2ebc3e7601dc589f3d98e89bcb19fef6e7d392f784b4149"
+  },
+  "rows": [
+    {
+      "id": "agent.agent_api",
+      "control": "seg",
+      "options": [
+        "Only",
+        "Enabled",
+        "Disabled"
+      ],
+      "depth": 1,
+      "applies": "next-session",
+      "default": "Only",
+      "consequence": "Choose which tools new agent sessions receive. Only uses ToolsEnabled API tools and restricts native tools. Enabled offers both the API and the provider’s native tools. Disabled withholds the ToolsEnabled API and keeps native tools within the existing role and permission limits. Restart an existing session to apply a change. API outcome summaries follow Tool activity audit; native tool activity is not added to that API audit.",
+      "capabilities": [
+        "Choose API tools only, both tool sets, or native tools for new sessions.",
+        "API calls keep their permissions, approvals and required signed security records. Tool activity audit controls outcome summaries."
+      ],
+      "risks": [
+        "Only can prevent a task when the API has no working equivalent for a native tool.",
+        "Enabled lets an agent choose native tools whose actions are not in the ToolsEnabled API audit.",
+        "Disabled removes API-based coordination and integrations. Providers with no native tools may have no tools available."
+      ],
+      "label": "Available tool sets",
+      "present": true,
+      "applicable": true,
+      "value": "Only",
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "agent.tool_approvals",
+      "control": "toggle",
+      "depth": 1,
+      "default": true,
+      "consequence": "Some tools ask you to confirm before they run: running a shell command, removing a stored credential, deploying, cancelling a payment. On, each one puts a box on your screen and waits, and nothing consequential happens that you did not personally agree to. Off, those same tools run when an agent calls them, with no box and no waiting. Off does not widen what you are allowed to do: your permission level, the kill switch and the reserved-from-agents list all still decide what is possible, and this only decides whether you are asked first. It is on when the product is installed, because someone new to agents should meet the question before they meet the consequence.",
+      "capabilities": [
+        "Work finishes while you are away, because no tool stops to ask you to confirm it."
+      ],
+      "risks": [
+        "Consequential tools run without asking, including ones that change files on this computer. You read about them in the audit trail afterwards rather than agreeing to them beforehand."
+      ],
+      "label": "Asking you to confirm before a consequential tool runs",
+      "present": true,
+      "applicable": true,
+      "value": true,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "agent.persistent_continuation",
+      "control": "toggle",
+      "depth": 1,
+      "applies": "next-call",
+      "default": false,
+      "consequence": "Keep assistants working through applicable open and in-progress ledger tasks. Saved conversations recover after this app restarts, through the same account, role and permission gates. Transient failures retry with bounded backoff; interrupted turns are checked against their saved conversation before another turn. Stop, permission and account failures remain paused. Unchanged tasks pause after three follow-ups until their checkpoint changes; other eligible tasks can continue. Recurring schedules and separate Research opt-ins stay separate.",
+      "capabilities": [
+        "Continue authorized task and workflow progress without another message after each successful turn."
+      ],
+      "risks": [
+        "Automatic follow-up turns can consume account quota while unfinished work remains."
+      ],
+      "label": "Continue unfinished ledger work",
+      "present": true,
+      "applicable": true,
+      "value": false,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "agent.blocked_question",
+      "control": "seg",
+      "options": [
+        "Stop and wait for me",
+        "Switch to other work",
+        "Decide for itself"
+      ],
+      "depth": 1,
+      "applies": "next-call",
+      "default": "Stop and wait for me",
+      "consequence": "When an assistant uses system.ask, wait for your answer, file the question in your Ledger and continue other work, or use the assistant’s supplied decision within your permission level. Reserved purchases still wait for you. Provider-native questions follow the provider’s own approval controls.",
+      "capabilities": [
+        "On \"decide for itself\", an agent that needs permission keeps going instead of pausing until you answer."
+      ],
+      "risks": [
+        "It then does things you would have been asked about, including running commands that change files."
+      ],
+      "label": "What an agent does when it needs to ask you something",
+      "present": true,
+      "applicable": true,
+      "value": "Stop and wait for me",
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "agent.blocked_question_per_node",
+      "control": "toggle",
+      "depth": 3,
+      "default": true,
+      "consequence": "Lets an individual agent in the tree have its own answer to the question above, instead of every agent sharing one. On, you can set a node that only reads and researches to decide for itself while a node that edits files still stops and asks you, which is usually what you want once more than one thing is running. Off, every agent follows the single setting above, which is simpler to reason about but means the most cautious node and the most harmless one are treated identically. A node you have not given its own answer follows the shared setting either way.",
+      "capabilities": [
+        "Lets a read-only research agent decide for itself while an agent that edits files still stops and waits, instead of one answer for all of them."
+      ],
+      "risks": [
+        "More places to look when an agent behaves differently from what the shared setting says."
+      ],
+      "label": "Letting individual agents answer that question differently",
+      "present": true,
+      "applicable": true,
+      "value": true,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "agent.tool_summary",
+      "control": "toggle",
+      "depth": 1,
+      "applies": "next-session",
+      "default": true,
+      "consequence": "On, every agent this program starts is handed a few short lines at the start of its session saying which tools this computer actually offers at your permission level, which ones it reaches for constantly, and which ones this level withholds -- so you never have to teach an agent what exists or explain why a withheld tool is not a breakage. The note is generated from the real permitted list at the moment the session starts, so it cannot claim a tool your level refuses. Off, agents are told nothing about the toolkit and only discover tools you name yourself.",
+      "capabilities": [
+        "A new agent knows what it can reach and what it cannot, without you naming tools for it -- including that saved credentials are requested through the guarded owner form, never read."
+      ],
+      "risks": [
+        "The note rides at the start of each session, so the model provider receives a short description of which tool families this computer offers, and it costs a few hundred tokens per session."
+      ],
+      "label": "Telling each new agent which tools exist here",
+      "present": true,
+      "applicable": true,
+      "value": true,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "agent.capability_recall",
+      "control": "toggle",
+      "depth": 1,
+      "default": true,
+      "consequence": "On, every time you type something to an agent, it is handed up to three ToolsEnabled tools that might fit what you just said -- by exact id, with one line each -- so you do not have to know the name of the tool to get it used. Most of the time it is handed nothing at all: \"hi\", \"thanks\" and \"keep going\" get silence, and so does anything the match is not confident about. It only ever names tools your permission level actually offers. Off, agents are told nothing per message and find tools only from the session-start note above or from what you name yourself. The cost when it does speak is about a hundred and twenty tokens on that one message; your words are used to pick the tools and are not written down anywhere by this.",
+      "capabilities": [
+        "You can ask for what you want in your own words -- \"what is on my calendar today\", \"put this on my clipboard\" -- and the agent is shown the tool that does it, instead of you having to know its id."
+      ],
+      "risks": [
+        "When it does have something to say, the short list rides on that message, so the model provider receives up to three tool ids and their one-line descriptions along with what you typed.",
+        "A suggestion is only a suggestion: the agent may take the named tool when a different one, or none, was the better answer."
+      ],
+      "label": "Naming the few tools that might fit what you just asked",
+      "present": true,
+      "applicable": true,
+      "value": true,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "tools.throughput",
+      "control": "seg",
+      "options": [
+        "fast",
+        "strict"
+      ],
+      "depth": 2,
+      "default": "fast",
+      "consequence": "Fast, the default: when several assistants call tools at once, their calls run side by side. Calls that only read run together; calls that change something keep their order for each assistant, so an assistant's second change never overtakes its first. Records selected by Tool activity audit, and all required security records, are saved before the call answers. Records from calls that arrive together are saved in one batch instead of one at a time, and that saving happens on a helper thread instead of the thread that draws this window. Strict: the older behaviour, one call at a time per assistant and one record saved per call, which is slower and can make this window hesitate while many assistants are working. It applies to the next call; no restart is needed.",
+      "capabilities": [
+        "Many assistants can work at once without waiting on each other or slowing the window down."
+      ],
+      "risks": [
+        "Two assistants changing the same thing at the same time are ordered by the store they change, not by arrival at this computer, which is what already happens across two computers."
+      ],
+      "label": "How fast assistants' tool calls are handled",
+      "present": true,
+      "applicable": true,
+      "value": "fast",
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "tools.audit_batch_window_ms",
+      "control": "number",
+      "depth": 3,
+      "unit": "ms",
+      "applies": "next-call",
+      "default": 1,
+      "consequence": "Wait this many milliseconds to collect activity records into a batch. A tool still waits for its required record to be durable before it answers.",
+      "capabilities": [
+        "Collect simultaneous activity into fewer writes when many assistants are working."
+      ],
+      "risks": [
+        "Longer waits add delay before a queued tool call can receive its audit receipt."
+      ],
+      "label": "Activity record batching delay",
+      "present": true,
+      "applicable": true,
+      "value": 1,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      },
+      "min": 0,
+      "max": 25,
+      "step": 1
+    },
+    {
+      "id": "tools.audit_batch_size",
+      "control": "number",
+      "depth": 3,
+      "unit": "records",
+      "applies": "next-call",
+      "default": 512,
+      "consequence": "Limit how many activity records share one writer transaction. Larger batches reduce writer overhead when many assistants are active.",
+      "capabilities": [
+        "Control how much activity can be recorded together during a burst of tool calls."
+      ],
+      "risks": [
+        "Very large batches hold the ledger writer longer and can delay other queued calls."
+      ],
+      "label": "Maximum activity records per batch",
+      "present": true,
+      "applicable": true,
+      "value": 512,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      },
+      "min": 1,
+      "max": 4096,
+      "step": 1
+    },
+    {
+      "id": "tools.credential_check_interval_seconds",
+      "control": "number",
+      "depth": 3,
+      "unit": "seconds",
+      "applies": "next-call",
+      "default": 0,
+      "consequence": "Zero reuses a presence result only while the encrypted vault is unchanged. A positive value also repeats the secure helper check after this many seconds. Every call checks the vault content digest; this does not cache permission, sign-in validity or revocation. Linux always consults its secure backend.",
+      "capabilities": [
+        "Choose how often Windows repeats a presence check when the encrypted vault has not changed."
+      ],
+      "risks": [
+        "Short intervals repeatedly start the Windows helper even when no vault record changed."
+      ],
+      "label": "Repeat Windows vault presence checks",
+      "present": true,
+      "applicable": true,
+      "value": 0,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      },
+      "min": 0,
+      "max": 300,
+      "step": 1
+    },
+    {
+      "id": "agent.message_screening",
+      "control": "seg",
+      "options": [
+        "Refuse look-alikes",
+        "Allow code names",
+        "Off"
+      ],
+      "depth": 1,
+      "default": "Allow code names",
+      "consequence": "Every message your agents send each other is checked for anything that looks like a password or key, and a message that trips the check is refused rather than stored. This decides how strict that check is. The middle setting lets a message quote this product's own error codes and tool names -- SECRET_NOT_CONFIGURED, system.credential_request -- which read like credentials to a strict check but are printed in this product's own screens.",
+      "capabilities": [
+        "On \"Allow code names\", agents fixing the vault can quote the error code they are looking at to each other instead of having the message refused.",
+        "On \"Off\", no message between agents is inspected or refused, which is the fastest setting and the only one that never refuses a message you meant to send."
+      ],
+      "risks": [
+        "On \"Off\", a password or key an agent happens to include is written into durable message history exactly as typed, and nothing warns you.",
+        "On \"Refuse look-alikes\", ordinary messages about this product's own error codes are refused, and the agent has to reword them to say anything."
+      ],
+      "label": "Screening messages between agents for credentials",
+      "present": true,
+      "applicable": true,
+      "value": "Allow code names",
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "capability.elevation_duration",
+      "control": "duration",
+      "depth": 3,
+      "unit": "minutes",
+      "applies": "next-call",
+      "default": 60,
+      "consequence": "Sometimes you give an assistant extra reach beyond what it normally has, just for now. This is how many minutes that extra reach lasts before it automatically expires and the assistant is back to its normal limits, whether or not you remembered to take it away yourself. If you want the wider reach to stick around permanently instead of on a timer, change the setting above instead, where it is visible and easy to find again.",
+      "capabilities": [
+        "A longer window means a task that needs extra reach can finish without you granting it again halfway through."
+      ],
+      "risks": [
+        "The extra reach stays live for the whole window, including after the task that needed it has finished."
+      ],
+      "label": "How long temporary extra access lasts",
+      "present": true,
+      "applicable": true,
+      "value": 60,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "capability.elevation_survives_restart",
+      "control": "toggle",
+      "depth": 3,
+      "default": false,
+      "consequence": "Sometimes you give an assistant extra reach beyond what it normally has, just for now. This decides whether that temporary grant is still active the next time you open the program, or whether closing the program cancels it automatically along with everything else. Off, the shipped setting, is the safer choice: the extra access goes away when you close the program, even if you forgot to take it back yourself. On, a grant you gave for one moment can still be active days later, long after you meant it to end.",
+      "capabilities": [
+        "On, a grant survives closing the program, so a long job does not lose it when you restart."
+      ],
+      "risks": [
+        "A grant you meant for one moment can still be active days later, and closing the program no longer takes it back for you."
+      ],
+      "label": "Whether temporary extra access survives closing the program",
+      "present": true,
+      "applicable": true,
+      "value": false,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    },
+    {
+      "id": "tools.policy_enforcement",
+      "control": "toggle",
+      "depth": 4,
+      "applies": "restart",
+      "default": false,
+      "consequence": "Require a durable scoped policy decision for consequential tool calls. Calls without one are refused. This experimental policy is off by default.",
+      "capabilities": [
+        "Require explicit scoped authorization before an assistant performs consequential tool calls."
+      ],
+      "risks": [
+        "An assistant without a scoped policy authorization will be unable to perform consequential tool calls."
+      ],
+      "label": "Require scoped policy decisions (P13)",
+      "present": true,
+      "applicable": true,
+      "value": false,
+      "provenance": {
+        "source": "user"
+      },
+      "enforcement": {
+        "declared": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+/* The approvals screen's demonstration marking, and nothing else.
+ *
+ * The badge is home's badge -- same weight, same warn tone, same pill -- and
+ * the source line is the research page's source line, because these three
+ * screens are labelling the same state and a person should read one label,
+ * not three dialects of it. The rules are duplicated rather than reaching
+ * into home.css/research.css: both scope their selectors to their own page
+ * (.home .panel-badge, .research-mast .research-source), and widening those
+ * scopes belongs to their owners. Colour comes from the same tokens.
+ */
+
+.ledger-prompt-queue .approvals-badge {
+  flex: none;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 640;
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-lg);
+  color: var(--s-warn);
+  border: 1px solid color-mix(in srgb, var(--s-warn) 45%, transparent);
+  background: color-mix(in srgb, var(--s-warn) 8%, transparent);
+}
+
+.ledger-prompt-queue .approvals-source {
+  margin: 0 0 var(--s3);
+  color: var(--ink-25);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* An example card reads at a slight remove: the same card, visibly not armed.
+   The controls inside it are disabled by the view; this only says so. */
+.ledger-prompt-queue [data-example='true'] {
+  opacity: 0.92;
+}

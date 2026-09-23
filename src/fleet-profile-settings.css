@@ -1,0 +1,288 @@
+/* System setup stays in the settings register's clinical language: hairlines,
+   open whitespace and the existing control skin. The first version used
+   generic form cards, which made connection truth look like a separate app
+   bolted inside Settings and visually promoted “configured” into “healthy.” */
+
+.fleet-profile-notice {
+  position: fixed;
+  right: var(--s4);
+  bottom: var(--s4);
+  z-index: 190;
+  /* 100% AND NOT 100vw. This notice is `position: fixed`, so a percentage
+     resolves against the viewport in the ZOOMED coordinate space and lands
+     inside the window at every Text size; the viewport unit does not scale
+     with the body zoom while the painted box does, so at Large the notice was
+     12% wider than it asked to be and pushed its own right edge under the
+     window's -- the same defect, and the same fix, as .topbar in
+     src/styles.css. */
+  max-width: min(420px, calc(100% - var(--s5) * 2));
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--s-warn);
+  /* OPAQUE, deliberately. The 94%-mix let 6% of whatever body copy sat under
+     this fixed panel bleed through the blur — which read not as a toast over a
+     page but as two pieces of text printed on each other (owner screenshot,
+     2026-08-13). A floating notice earns its float by covering cleanly. */
+  background: var(--bg);
+  box-shadow: var(--elev-1);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+/* AND IT IS NOT DRAWN OVER THE TWO SCREENS WHOSE PRIMARY BUTTON IT COVERS.
+ *
+ * MEASURED at 1446x906 on #/account: this panel is `position: fixed`,
+ * `z-index: 190`, `pointer-events: auto`, and it sat over the centre of "Create
+ * account". elementFromPoint at that button's centre returned the banner, and a
+ * real mouse click navigated to Settings -- so the one action a person came to
+ * that screen to take silently did something else. Home, guide, agent and
+ * settings were already suppressed for the same reason; account and subscribe
+ * were missed, and they are the two screens where the thing underneath is the
+ * whole point of the visit.
+ *
+ * `:not(.is-serious)` matches the existing rules exactly: a serious notice is a
+ * fault report and still shows everywhere, because a covered button is a better
+ * outcome than an unreported broken profile. */
+body[data-route="account"] .fleet-profile-notice:not(.is-serious),
+body[data-route="subscribe"] .fleet-profile-notice:not(.is-serious) { display: none; }
+
+.fleet-profile-notice.is-serious { border-left-color: var(--s-serious); }
+.fleet-profile-notice:hover { color: var(--ink); border-color: var(--ink-3); }
+.fleet-profile-notice:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: var(--s1);
+}
+
+.fleet-profile-status,
+.fleet-profile-probe {
+  display: grid;
+  gap: var(--s1);
+  margin: var(--s3) 0 var(--s4);
+  padding: var(--s2) 0 var(--s2) var(--s3);
+  border-left: 2px solid var(--line-2);
+  color: var(--ink-3);
+}
+
+.fleet-profile-status strong,
+.fleet-profile-probe strong {
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 620;
+  line-height: 1.35;
+}
+
+.fleet-profile-status span,
+.fleet-profile-probe span {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.fleet-profile-status.is-good { border-left-color: var(--s-good); }
+.fleet-profile-status.is-warn { border-left-color: var(--s-warn); }
+.fleet-profile-status.is-serious,
+.fleet-profile-probe.is-serious { border-left-color: var(--s-serious); }
+.fleet-profile-status.is-serious strong,
+.fleet-profile-probe.is-serious strong { color: var(--s-serious); }
+
+.fleet-inline-control { width: min(100%, calc(var(--s5) * 12)); }
+
+.fleet-profile-input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s2) 0;
+  border: none;
+  border-bottom: 1px solid var(--line-2);
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.2;
+  transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+
+.fleet-profile-input::placeholder { color: var(--ink-3); }
+.fleet-profile-input:hover { border-bottom-color: var(--ink-3); }
+.fleet-profile-input:focus { color: var(--ink); border-bottom-color: var(--focus-ring); }
+.fleet-profile-input:disabled { cursor: not-allowed; opacity: .52; }
+
+.fleet-profile-block {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  padding-block: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+.fleet-profile-fields,
+.fleet-source-control {
+  display: grid;
+  gap: var(--s3);
+  min-width: 0;
+}
+
+.fleet-machine {
+  display: grid;
+  grid-template-columns: minmax(120px, .8fr) minmax(200px, 1.35fr) auto;
+  align-items: end;
+  gap: var(--s3);
+  padding: var(--s2) 0 var(--s3);
+  border-bottom: 1px solid var(--line-2);
+}
+
+.fleet-machine label,
+.fleet-transport label {
+  display: grid;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+.fleet-machine label > span,
+.fleet-transport label > span {
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: var(--track-caps);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.fleet-transport {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, .8fr);
+  align-items: end;
+  gap: var(--s4);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--line-2);
+}
+
+.fleet-transport small,
+.fleet-source-control small {
+  color: var(--ink-3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.fleet-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--s2);
+}
+
+.fleet-profile-section .ctl-btn:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+  transform: none;
+}
+
+/* THE SIGN-IN SCREEN NEVER GOT THAT RULE, AND A CUSTOMER FOUND OUT.
+ *
+ * The owner installed 1.0.26 from the site, opened it, pressed "Sign in with
+ * Google" and nothing happened. Measured in the running window, on the row
+ * src/account-markup.js googleOptionMarkup() renders when this copy has no
+ * Google application id: the button carried `disabled`, and its computed style
+ * was `cursor: pointer`, `opacity: 1`, the full white .ctl-btn card, --elev-1,
+ * and the base `.ctl-btn:hover` lifting it 1px under the pointer. It was
+ * pixel-for-pixel a live control. Pressing it did nothing, because a disabled
+ * button eats the click -- so the product looked broken rather than
+ * unconfigured, which is exactly what was reported.
+ *
+ * THE RULE ABOVE DID NOT APPLY because this row is not inside
+ * `.fleet-profile-section`. The sign-in question renders into
+ * `section.settings-section.setup-section` on BOTH surfaces it appears on --
+ * [data-account-section] in src/views/account.js and [data-setup-section] in the
+ * first-run walkthrough -- and every `.ctl-btn:disabled` rule in the product is
+ * scoped to somewhere else: .board-page, .computers .stats-page,
+ * .agentv-panels .ctl-actions, and the one above. Verified in the SHIPPED
+ * artifact, not just the tree: all seven occurrences in
+ * resources/app.asar are scoped away from this screen.
+ *
+ * src/connect-computer-settings.css already wrote this finding down once --
+ * "A BUTTON THAT IS BUSY HAS TO LOOK BUSY, and until this rule there was no
+ * .ctl-btn styling anywhere for either kind of off" -- and fixed it for its own
+ * section only. This is the same defect on the screen a stranger meets first.
+ *
+ * THE HOVER LINE IS NOT REDUNDANT. `.ctl-btn:hover` in styles.css is
+ * unconditional: without neutralising it, a button dimmed by the block above
+ * still brightens, darkens its ink and rises when the pointer crosses it, which
+ * is the one moment a person is deciding whether it can be pressed.
+ *
+ * SCOPED TO THE ROW, DELIBERATELY. The rest of this screen has the same hole --
+ * "Create account", "Sign in" and "Not now" all render `disabled` while a
+ * sign-in is in flight and all three keep the live treatment. That is a wider
+ * repair on somebody else's surface; this closes the one a customer reported.
+ */
+[data-google-signin] .ctl-btn:disabled,
+[data-google-signin] .ctl-btn:disabled:hover {
+  cursor: not-allowed;
+  opacity: .48;
+  transform: none;
+  box-shadow: none;
+  background: rgba(255,255,255,calc(0.62 * var(--wa)));
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+
+.fleet-profile-empty {
+  margin: 0;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line-2);
+  color: var(--s-warn);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.fleet-profile-commit { border-bottom: 1px solid var(--line); }
+
+.fleet-profile-probe ul {
+  display: grid;
+  gap: 0;
+  margin: var(--s1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fleet-probe-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s1) var(--s3);
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--line-2);
+}
+
+.fleet-probe-line span { color: var(--ink-2); }
+.fleet-probe-line b {
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 680;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+.fleet-probe-line small {
+  grid-column: 1 / -1;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.fleet-probe-line.is-reachable b,
+.fleet-probe-line.is-ready b { color: var(--s-good); }
+.fleet-probe-line.is-unverified b,
+.fleet-probe-line.is-not-configured b { color: var(--s-warn); }
+.fleet-probe-line.is-unreachable b,
+.fleet-probe-line.is-unavailable b { color: var(--s-serious); }
+
+@media (max-width: 760px) {
+  .fleet-profile-notice {
+    right: var(--s2);
+    bottom: var(--s2);
+    max-width: calc(100% - var(--s4));
+  }
+
+  .fleet-machine,
+  .fleet-transport { grid-template-columns: 1fr; align-items: stretch; }
+}

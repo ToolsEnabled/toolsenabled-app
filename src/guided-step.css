@@ -1,0 +1,242 @@
+/* A RUN OF WITHHELD BLOCKS, FOLDED. Seven of these open at once measured
+   1,850px on the packaged build and pushed three of the settings page's four
+   groups below the fold. The summary line is styled as the page's other
+   disclosures are, so it reads as the same offer rather than as a new kind of
+   control. */
+.guided-withheld-run { display: block; }
+.guided-withheld-run > .guided-summary {
+  cursor: pointer;
+  padding: var(--s2) 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 560;
+}
+.guided-withheld-run > .guided-summary:hover { color: var(--ink); }
+.guided-withheld-run[open] > .guided-summary { margin-bottom: var(--s2); }
+
+/* The disclosure that carries a setting's capabilities, its risks, and any step
+   this product will walk you through rather than take for you.
+
+   It borrows the page's existing type scale rather than inventing one: the
+   summary sits at the .settings-desc size so it reads as part of the row it
+   hangs under, and the small caps label is the same 11px / --track-caps micro
+   label used by .settings-prefix and .drawer-group-label. Nothing here is a new
+   colour; every value is a token the theme already defines, so the three themes
+   need no separate rules. */
+
+.guided-note {
+  margin-top: var(--s1);
+}
+
+.guided-summary {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s1);
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+  list-style: none;
+  transition: color var(--t-hover, 120ms) ease;
+}
+
+.guided-summary::-webkit-details-marker { display: none; }
+
+.guided-summary::after {
+  content: "⌄";
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.75;
+}
+
+.guided-note[open] > .guided-summary::after { content: "⌃"; }
+.guided-summary:hover { color: var(--ink-2); }
+
+.guided-summary:focus-visible {
+  outline: 1px solid var(--line-2);
+  outline-offset: var(--s1);
+}
+
+.guided-body {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s2);
+  padding-left: var(--s3);
+  border-left: 1px solid var(--line-2);
+}
+
+.guided-group { display: grid; gap: var(--s1); }
+
+.guided-label,
+.guided-label-inline {
+  color: var(--ink-25);
+  font-size: 11px;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.guided-label-inline { margin-right: var(--s1); }
+
+.guided-list {
+  display: grid;
+  gap: var(--s1);
+  margin: 0;
+  padding-left: var(--s3);
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.guided-list > li { padding-left: var(--s1); }
+
+/* A RUN OF WITHHELD BLOCKS, FOLDED. Seven of these open at once measured
+   1,850px on the packaged build and pushed three of the settings page's four
+   groups below the fold. The summary line is styled as the page's other
+   disclosures are, so it reads as the same offer rather than as a new kind of
+   control. */
+.guided-withheld-run { display: block; }
+.guided-withheld-run > .guided-summary {
+  cursor: pointer;
+  padding: var(--s2) 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 560;
+}
+.guided-withheld-run > .guided-summary:hover { color: var(--ink); }
+.guided-withheld-run[open] > .guided-summary { margin-bottom: var(--s2); }
+
+/* The step block. Set off from the capabilities and risks above it because it
+   is a different kind of thing: those describe a switch in this product, this
+   describes something you would do outside it. */
+.guided-step {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s2) 0 0;
+  border-top: 1px solid var(--line-2);
+}
+
+.guided-steps {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding-left: var(--s3);
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.guided-steps > li { padding-left: var(--s1); }
+
+.guided-do {
+  display: block;
+  color: var(--ink-2);
+}
+
+.guided-why {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* A RUN OF WITHHELD BLOCKS, FOLDED. Seven of these open at once measured
+   1,850px on the packaged build and pushed three of the settings page's four
+   groups below the fold. The summary line is styled as the page's other
+   disclosures are, so it reads as the same offer rather than as a new kind of
+   control. */
+.guided-withheld-run { display: block; }
+.guided-withheld-run > .guided-summary {
+  cursor: pointer;
+  padding: var(--s2) 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 560;
+}
+.guided-withheld-run > .guided-summary:hover { color: var(--ink); }
+.guided-withheld-run[open] > .guided-summary { margin-bottom: var(--s2); }
+
+/* The two sentences that must not be scanned past: that the step is optional,
+   and that this program never takes it for you. Emphasis is weight and colour,
+   never a coloured panel -- a warning box would read as pressure, which is the
+   opposite of what these two say. */
+.guided-optional,
+.guided-never {
+  color: var(--ink-2);
+}
+
+.guided-unknown { color: var(--ink-3); }
+
+.guided-note.is-undeclared > .guided-summary { color: var(--ink-25); }
+
+/* A RUN OF WITHHELD BLOCKS, FOLDED. Seven of these open at once measured
+   1,850px on the packaged build and pushed three of the settings page's four
+   groups below the fold. The summary line is styled as the page's other
+   disclosures are, so it reads as the same offer rather than as a new kind of
+   control. */
+.guided-withheld-run { display: block; }
+.guided-withheld-run > .guided-summary {
+  cursor: pointer;
+  padding: var(--s2) 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 560;
+}
+.guided-withheld-run > .guided-summary:hover { color: var(--ink); }
+.guided-withheld-run[open] > .guided-summary { margin-bottom: var(--s2); }
+
+/* In the quick-settings drawer the disclosure sits under a .set-row rather than
+   inside a .settings-row, so it takes the drawer's tighter rhythm. */
+.drawer-body .guided-note { margin: 0 0 var(--s2); }
+.drawer-body .guided-summary { font-size: 11.5px; }
+.drawer-body .guided-body { gap: var(--s1); }
+
+/* A RUN OF WITHHELD BLOCKS, FOLDED. Seven of these open at once measured
+   1,850px on the packaged build and pushed three of the settings page's four
+   groups below the fold. The summary line is styled as the page's other
+   disclosures are, so it reads as the same offer rather than as a new kind of
+   control. */
+.guided-withheld-run { display: block; }
+.guided-withheld-run > .guided-summary {
+  cursor: pointer;
+  padding: var(--s2) 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 560;
+}
+.guided-withheld-run > .guided-summary:hover { color: var(--ink); }
+.guided-withheld-run[open] > .guided-summary { margin-bottom: var(--s2); }
+
+/* HOW OFTEN THIS WANTS SOMETHING FROM YOU (owner, R1536).
+
+   First line of the block, and deliberately quiet. The question it answers --
+   "is this going to ask me for something?" -- comes before every other question
+   on the row, so it has to be readable at a glance; but a loud badge on a line
+   whose whole point is that the step is OPTIONAL would read as a warning, which
+   is the pressure this mechanism exists to avoid. Weight and spacing, no panel,
+   no colour that means alarm.
+
+   The two tiers look the same on purpose. A person should not have to learn
+   that a differently-coloured badge means "we actually read your computer";
+   the sentence underneath already says which it is, in words. */
+.guided-frequency {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 var(--s1);
+}
+
+.guided-frequency-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink-2);
+}
+
+.guided-frequency-detail {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}

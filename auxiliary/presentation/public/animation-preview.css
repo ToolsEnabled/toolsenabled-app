@@ -1,0 +1,286 @@
+/*
+ * Studio motion preview.
+ *
+ * The final PowerPoint thumbnail remains the canonical slide image. Pending
+ * entrance objects are covered only in single-slide mode with a model-derived
+ * reconstruction of their bounding region, then revealed from model geometry.
+ * This is intentionally labelled "Approx. builds": a final raster cannot
+ * provide the exact pre-animation pixels or PowerPoint's rendering engine.
+ */
+.sap-media-preview {
+  position: absolute;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.sap-media-preview.sap-media-clickable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.sap-media-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  background: transparent;
+}
+
+.sap-media-clickable .sap-media-video {
+  cursor: pointer;
+}
+
+.sap-media-clickable .sap-media-video:focus-visible {
+  outline: 3px solid #f1b82d;
+  outline-offset: -3px;
+}
+
+.sap-media-video[hidden] {
+  display: none !important;
+}
+
+.sap-cover,
+.sap-reveal {
+  position: absolute;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.sap-cover[hidden],
+.sap-reveal[hidden] {
+  display: none !important;
+}
+
+.sap-reveal {
+  z-index: 4;
+  overflow: visible;
+}
+
+.sap-reconstruction-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sap-slide-reconstruction {
+  position: absolute;
+  overflow: hidden;
+  container-type: size;
+  background: #fff;
+}
+
+.sap-model-object {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.sap-model-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1px 4px;
+  line-height: 1.12;
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+}
+
+.sap-model-picture > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.sap-model-unavailable {
+  background: transparent;
+}
+
+.sap-controls {
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  bottom: 10px;
+  max-width: calc(100% - 20px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  border: 1px solid color-mix(in srgb, #fff 42%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, #071a33 88%, transparent);
+  box-shadow: 0 5px 18px rgb(0 0 0 / .24);
+  color: #fff;
+  font: 600 11px/1.15 "Segoe UI", sans-serif;
+  white-space: nowrap;
+  backdrop-filter: blur(7px);
+}
+
+.sap-controls button {
+  appearance: none;
+  border: 1px solid rgb(255 255 255 / .34);
+  border-radius: 5px;
+  padding: 4px 7px;
+  background: rgb(255 255 255 / .12);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sap-controls button:hover:not(:disabled) {
+  background: rgb(255 255 255 / .24);
+}
+
+.sap-controls button:focus-visible {
+  outline: 2px solid #f1b82d;
+  outline-offset: 2px;
+}
+
+.sap-controls button:disabled {
+  opacity: .42;
+  cursor: default;
+}
+
+.sap-caveat {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #f1b82d;
+  color: #071a33;
+  font-weight: 800;
+  letter-spacing: .015em;
+}
+
+.sap-progress {
+  width: 68px;
+  height: 7px;
+  accent-color: #23d8ff;
+}
+
+.sap-status {
+  max-width: min(38vw, 280px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #e7eef8;
+  font-weight: 500;
+}
+
+.sap-controls.sap-static .sap-caveat {
+  background: #cbd5e1;
+}
+
+.sap-media-controls {
+  position: absolute;
+  z-index: 12;
+  top: 10px;
+  right: 10px;
+  max-width: calc(100% - 20px);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  border: 1px solid color-mix(in srgb, #fff 42%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, #071a33 88%, transparent);
+  box-shadow: 0 5px 18px rgb(0 0 0 / .24);
+  color: #fff;
+  font: 600 11px/1.15 "Segoe UI", sans-serif;
+  white-space: nowrap;
+  backdrop-filter: blur(7px);
+}
+
+.sap-media-controls button {
+  appearance: none;
+  border: 1px solid rgb(255 255 255 / .34);
+  border-radius: 5px;
+  padding: 4px 7px;
+  background: rgb(255 255 255 / .12);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sap-media-controls button:hover:not(:disabled) {
+  background: rgb(255 255 255 / .24);
+}
+
+.sap-media-controls button:focus-visible {
+  outline: 2px solid #f1b82d;
+  outline-offset: 2px;
+}
+
+.sap-media-controls button:disabled {
+  opacity: .42;
+  cursor: default;
+}
+
+.sap-media-caveat {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #23d8ff;
+  color: #071a33;
+  font-weight: 800;
+  letter-spacing: .015em;
+}
+
+.sap-media-status {
+  max-width: min(38vw, 300px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #e7eef8;
+  font-weight: 500;
+}
+
+.sap-media-controls.sap-media-static .sap-media-caveat {
+  background: #cbd5e1;
+}
+
+@media (max-width: 720px) {
+  .sap-controls {
+    gap: 3px;
+    bottom: 6px;
+    padding: 4px;
+  }
+  .sap-controls button {
+    padding: 4px 5px;
+  }
+  .sap-caveat,
+  .sap-progress {
+    display: none;
+  }
+  .sap-status {
+    max-width: 30vw;
+  }
+  .sap-media-controls {
+    top: 6px;
+    right: 6px;
+    gap: 3px;
+    padding: 4px;
+  }
+  .sap-media-controls button {
+    padding: 4px 5px;
+  }
+  .sap-media-caveat {
+    display: none;
+  }
+  .sap-media-status {
+    max-width: 38vw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sap-cover,
+  .sap-reveal,
+  .sap-controls,
+  .sap-media-controls {
+    scroll-behavior: auto;
+    transition: none !important;
+    animation: none !important;
+  }
+}

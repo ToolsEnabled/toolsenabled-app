@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.toolsenabled.local/schema/purchase-catalog.schema.json",
+  "title": "Purchase catalogue",
+  "description": "The list of things the owner may choose to buy, rendered by the checkout screen at #/checkout. THE RENDERER OWNS THIS SCHEMA; the purchase-catalog lane owns the CONTENT of public/data/purchase-catalog.json. tools/check-data-schemas.mjs validates one against the other on every build, so a field that is not declared here fails the build rather than reaching the screen. Money is written in MAJOR units (dollars) with at most two decimal places; the renderer converts to exact minor units once, at load, and never does floating-point arithmetic on a total afterwards.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "generatedAt", "currency", "spendPolicy", "categories", "items"],
+  "properties": {
+    "version": { "const": 2 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217. Every price in the file is in this currency; the renderer refuses a file that mixes them rather than inventing a conversion rate."
+    },
+    "spendPolicy": { "$ref": "#/$defs/spendPolicy" },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "Rendered in exactly this order. The order is the argument the page makes, so it is authored, not sorted.",
+      "items": { "$ref": "#/$defs/category" }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "$defs": {
+    "money": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1000000,
+      "description": "Major units (dollars). At most two decimal places -- enforced exactly at load by src/checkout-catalog.js, because this validator has no multipleOf and a third decimal place is a rounding bug about the owner's money."
+    },
+    "spendPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dailyLimitUsd", "source", "readAt"],
+      "description": "The engine's real spend cap, carried as DATA so the screen can cite where the number came from instead of asserting one. A null limit means it could not be read, and the screen then says the cap is unknown rather than implying there is none.",
+      "properties": {
+        "dailyLimitUsd": { "type": ["number", "null"], "minimum": 0, "maximum": 1000000 },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Exact file and key the cap was read from, named precisely enough that a reader can check it, e.g. '<config file> <key path>'. Never an absolute path: this string is rendered on the checkout screen, so a drive-rooted one would put the operator's own directory layout in front of whoever is reading it. This schema is a product asset and ships, so it carries no example naming a real internal file either -- the catalogue it describes is the operator's own document and lives outside the payload."
+        },
+        "readAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "category": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "blurb"],
+      "properties": {
+        "id": {
+          "enum": ["required-to-ship", "required-before-charging", "optional-defensive", "do-not-buy", "no-cost"],
+          "description": "Closed on purpose. The renderer gives each of these four a distinct treatment -- do-not-buy in particular is rendered as advice against buying and cannot be selected -- so a fifth id would render as an unstyled surprise."
+        },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "blurb": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "One sentence under the heading saying what this group MEANS, so the grouping is self-explaining rather than jargon."
+        }
+      }
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "summary", "severity"],
+      "description": "A reason this cannot safely be bought YET. severity 'blocking' makes the item unselectable with the summary shown at the point of choice; 'caution' leaves it selectable and marks it. Distinct from `warning`, which is a hazard that survives the purchase.",
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,47}$" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "severity": { "enum": ["blocking", "caution"] }
+      }
+    },
+    "estimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lowUsd", "highUsd", "basis"],
+      "description": "A range where no quote exists. An estimate is NOT a price: an item carrying one still has firstYearUsd null, is still unselectable, and is never added to any total the owner might act on.",
+      "properties": {
+        "lowUsd": { "$ref": "#/$defs/money" },
+        "highUsd": { "$ref": "#/$defs/money" },
+        "basis": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600,
+          "description": "Where the range came from. Rendered verbatim, because an unattributed range is indistinguishable from a guess."
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "vendor", "category", "cadence",
+        "firstYearUsd", "renewalUsd", "priceVerified", "priceVerifiedDate",
+        "quantityMax", "defaultSelected",
+        "whatItIs", "whatBreaksWithout", "whyHeWantedIt",
+        "sourceUrl", "warning", "blockers", "notes"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "vendor": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "category": { "enum": ["required-to-ship", "required-before-charging", "optional-defensive", "do-not-buy", "no-cost"] },
+        "cadence": {
+          "enum": ["one-off", "annual", "monthly"],
+          "description": "Decides which of the two totals this lands in. one-off counts only toward cash today; annual and monthly count toward cash today AND toward the recurring annual commitment (monthly x12)."
+        },
+        "firstYearUsd": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "null means the price is genuinely unknown. The item then renders as 'No quote yet', is NOT selectable, and is excluded from both totals. Never write 0 to mean unknown."
+        },
+        "renewalUsd": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "null means renewal is not a separate number (a one-off, or it renews at the same price). It does NOT mean unknown -- unknown is carried by firstYearUsd null. Set this ONLY when it genuinely differs, because a difference is what triggers the first-year-versus-renewal callout the owner asked for."
+        },
+        "estimateUsd": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/estimate" }],
+          "description": "Optional. Present only where firstYearUsd is null but a real range exists."
+        },
+        "priceVerified": {
+          "type": "boolean",
+          "description": "true ONLY where the vendor's own live page was read. A true here with a null priceVerifiedDate, or with a null firstYearUsd, fails validation below -- an unfalsifiable verification claim is worse than an admitted unknown."
+        },
+        "priceVerifiedDate": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "quantityMax": { "type": "integer", "minimum": 1, "maximum": 99 },
+        "defaultSelected": {
+          "type": "boolean",
+          "description": "RENDERS AS A 'Recommended' MARK, AND NOTHING MORE. The cart deliberately starts empty on a first run: a running total the owner did not assemble himself is the one number on this screen he could act on while believing he chose it. This flag instead marks the item and feeds the per-group 'Select recommended' control, so every figure he sees is one he picked."
+        },
+        "whatItIs": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "One plain sentence. The first line of the card, above the price. Several of these are things nobody has bought before ('registered agent', 'merchant of record') and the list is unreadable without it."
+        },
+        "whatBreaksWithout": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "whyHeWantedIt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 900,
+          "description": "Provenance in the owner's own terms. Required: he asked for his own list back, and the provenance IS the feature. Must carry no personal identity -- tools/check-no-owner-data.mjs rejects the build for it."
+        },
+        "sourceUrl": {
+          "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^https://", "maxLength": 300 }],
+          "description": "https only. The renderer prints it as text and never as a live link: this page has no business opening a browser, and a clickable vendor link on a checkout screen invites exactly the confusion that this screen does not buy anything."
+        },
+        "warning": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 1200,
+          "description": "A hazard that SURVIVES the purchase and fires later -- a franchise-tax default that bills five figures a year from now, an eligibility path that buying this actively closes. Rendered loudly on the item. It does not gate the purchase, which is exactly why it must be impossible to miss."
+        },
+        "blockers": { "type": "array", "minItems": 0, "maxItems": 6, "items": { "$ref": "#/$defs/blocker" } },
+        "notes": { "type": ["string", "null"], "minLength": 1, "maxLength": 1500 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "priceVerified": { "const": true } }, "required": ["priceVerified"] },
+          "then": {
+            "properties": {
+              "priceVerifiedDate": { "type": "string" },
+              "firstYearUsd": { "type": "number" }
+            },
+            "required": ["priceVerifiedDate", "firstYearUsd"]
+          }
+        },
+        {
+          "if": { "properties": { "firstYearUsd": { "type": "null" } }, "required": ["firstYearUsd"] },
+          "then": {
+            "properties": {
+              "defaultSelected": { "const": false },
+              "renewalUsd": { "type": "null" }
+            },
+            "required": ["defaultSelected", "renewalUsd"]
+          }
+        },
+        {
+          "if": { "properties": { "category": { "const": "do-not-buy" } }, "required": ["category"] },
+          "then": {
+            "properties": { "defaultSelected": { "const": false } },
+            "required": ["defaultSelected"]
+          }
+        },
+        {
+          "if": { "properties": { "cadence": { "const": "one-off" } }, "required": ["cadence"] },
+          "then": {
+            "properties": { "renewalUsd": { "type": "null" } },
+            "required": ["renewalUsd"]
+          }
+        }
+      ]
+    }
+  }
+}

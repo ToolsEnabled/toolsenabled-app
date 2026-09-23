@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "domain": "ledger",
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "ok": false,
+  "reason": "No local agent fleet host detected on this machine.",
+  "sources": [],
+  "data": null
+}

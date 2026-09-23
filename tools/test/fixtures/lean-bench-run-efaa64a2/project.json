@@ -1,0 +1,1759 @@
+{
+  "format": "research-benchmark",
+  "version": 2,
+  "spec": {
+    "schemaVersion": 2,
+    "id": "lean-bench-minimal-apparatus",
+    "name": "Lean Bench minimal apparatus-development run",
+    "domain": "lean-bench",
+    "requireReview": true,
+    "catalog": [
+      {
+        "id": "below-price",
+        "version": "1",
+        "kind": "atom",
+        "role": "buy_reason",
+        "text": "Buy when the close is below {{threshold}} cents.",
+        "parameters": {
+          "threshold": 10100
+        },
+        "semantics": {
+          "kind": "below",
+          "value": "{{threshold}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "below-price",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "628b71a63a42137422f2a84d1680353293eea8fa70c6deffd489bdbedf277cb5",
+          "rootSha256": "0b327f1dabbffd602be2a6d3f9f3e12451363a8ca0add45917ef87e407ae3576"
+        }
+      },
+      {
+        "id": "above-price",
+        "version": "1",
+        "kind": "atom",
+        "role": "buy_reason",
+        "text": "Buy when the close is above {{threshold}} cents.",
+        "parameters": {
+          "threshold": 9900
+        },
+        "semantics": {
+          "kind": "above",
+          "value": "{{threshold}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "above-price",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "da8640ba2a1b6ea2d718c3b1ff9200761c78cda01c2a021fb6a928b24fb541c1",
+          "rootSha256": "049d65682d8098f91db342ada7c3d37004f16fc1c2b42ddbc7622ac2426359f1"
+        }
+      },
+      {
+        "id": "cross-up",
+        "version": "1",
+        "kind": "atom",
+        "role": "buy_reason",
+        "text": "Buy when the close crosses from at or below to above {{threshold}} cents; require two observed prices.",
+        "parameters": {
+          "threshold": 10000
+        },
+        "semantics": {
+          "kind": "cross_up",
+          "value": "{{threshold}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "cross-up",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "c6056e39a814d78afe14ffedbd31b31c8c9696eaa3ea99bca5968208fab46273",
+          "rootSha256": "28aff8fd302f1b11454836042e447aa232b01502d2aef5822757a18649d8149b"
+        }
+      },
+      {
+        "id": "above-average",
+        "version": "1",
+        "kind": "atom",
+        "role": "buy_reason",
+        "text": "Buy when the close exceeds its {{period}}-observation simple moving average, after a complete window.",
+        "parameters": {
+          "period": 3
+        },
+        "semantics": {
+          "kind": "above_sma",
+          "period": "{{period}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "above-average",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "15f4808d4c8bf5f886426267b8edcb43e4ddf86f0194d4038013a51caa7e2e64",
+          "rootSha256": "638d699e438ae0f288ccbe8e10e2421256da40b63deec5d8d79f20016ae15c76"
+        }
+      },
+      {
+        "id": "fixed-shares",
+        "version": "1",
+        "kind": "atom",
+        "role": "buy_process",
+        "text": "Buy {{quantity}} whole shares if the shared cash covers the entire order; otherwise skip it.",
+        "parameters": {
+          "quantity": 2
+        },
+        "semantics": {
+          "kind": "shares",
+          "quantity": "{{quantity}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "fixed-shares",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "531e9e84c22a6bc7a591732f9857b66286a33cf2db8dc64103bf5136a1fafffb",
+          "rootSha256": "11d8e783f9e723396e1f0062dc402e08f98d0f211a9d13814ef10e5f84b53c35"
+        }
+      },
+      {
+        "id": "cash-fraction",
+        "version": "1",
+        "kind": "atom",
+        "role": "buy_process",
+        "text": "Buy floor({{basisPoints}} / 10000 of currently available cash divided by the close), in whole shares.",
+        "parameters": {
+          "basisPoints": 2500
+        },
+        "semantics": {
+          "kind": "cash_fraction",
+          "basisPoints": "{{basisPoints}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "cash-fraction",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "536e08d5940e70ba677cd23def6f757028c9d4c499a5e91faeb4391a5330952a",
+          "rootSha256": "1b552782463cef897590b04e9ba6ab80ab3c5efc3080052db9e70bbb383fe50c"
+        }
+      },
+      {
+        "id": "exit-above",
+        "version": "1",
+        "kind": "atom",
+        "role": "sell_reason",
+        "text": "Sell when the close exceeds {{threshold}} cents.",
+        "parameters": {
+          "threshold": 10500
+        },
+        "semantics": {
+          "kind": "above",
+          "value": "{{threshold}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "exit-above",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "fb5730e3f32d43fd56fcc3b08e54f432b048949beffcc1e4c6932551f237dfdd",
+          "rootSha256": "ebd2813e9a7ef4bc0893cae0f85744ce59fdb0ae5905a65ae912110417dc93f9"
+        }
+      },
+      {
+        "id": "exit-below",
+        "version": "1",
+        "kind": "atom",
+        "role": "sell_reason",
+        "text": "Sell when the close falls below {{threshold}} cents.",
+        "parameters": {
+          "threshold": 9500
+        },
+        "semantics": {
+          "kind": "below",
+          "value": "{{threshold}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "exit-below",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "66742026ba62634fde3172f946614ed2f1dd0784b7fa93e3eaa605ee6556d7b7",
+          "rootSha256": "49e140266297660981d1ec688a2f764301c4098c5f8da90e56a242049da10452"
+        }
+      },
+      {
+        "id": "holding-period",
+        "version": "1",
+        "kind": "atom",
+        "role": "sell_reason",
+        "text": "Sell after at least {{bars}} input bars have elapsed since this strategy bought.",
+        "parameters": {
+          "bars": 2
+        },
+        "semantics": {
+          "kind": "after",
+          "bars": "{{bars}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "holding-period",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "167cbf175206b883d7e08dc997c240c6917a6d7783dec6c97661d15dab703564",
+          "rootSha256": "d1e3a4cc52621c4aff5c02437d1e5750df4159293421393872c8dac0e6d03dc1"
+        }
+      },
+      {
+        "id": "sell-all",
+        "version": "1",
+        "kind": "atom",
+        "role": "sell_process",
+        "text": "Sell all shares privately owned by this strategy.",
+        "parameters": {},
+        "semantics": {
+          "kind": "all"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "sell-all",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "da0a1a8d090fb1c8f6ecd17660b953c36d8bd0662031e1f15075218fa9787316",
+          "rootSha256": "2c2dc29ad900b9bd394cdd8fe9951e6291bd8099186e30cc412ac7908161b7c8"
+        }
+      },
+      {
+        "id": "sell-fraction",
+        "version": "1",
+        "kind": "atom",
+        "role": "sell_process",
+        "text": "Sell floor({{basisPoints}} / 10000 of this strategy’s own shares), with a minimum of one share, on each qualifying bar.",
+        "parameters": {
+          "basisPoints": 5000
+        },
+        "semantics": {
+          "kind": "fraction",
+          "basisPoints": "{{basisPoints}}"
+        },
+        "state": "Private strategy state; no portfolio-wide ownership inference.",
+        "dependencies": [
+          "constitution-v1"
+        ],
+        "hooks": {
+          "evaluate": "See lean-reference.py and lean.mjs in the review packet."
+        },
+        "tests": [
+          "Compare the included synthetic bars against independently recorded expected traces."
+        ],
+        "review": {
+          "bundleId": "sell-fraction",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "392cc928c5c42f807422b386dc64a0cfe60598b602a3e9cf2e8860330cb9d87b",
+          "rootSha256": "bff6abfb0e6b6e95bda6d953be7dad30822619a892a88d3cd0056165b2d3bb45"
+        }
+      },
+      {
+        "id": "strategy",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "parameters": {
+          "symbol": "SPY"
+        },
+        "slots": {
+          "buy_reason": "buy_reason",
+          "buy_process": "buy_process",
+          "sell_reason": "sell_reason",
+          "sell_process": "sell_process"
+        },
+        "text": "Strategy for {{symbol}} (private lots, one round trip):\nBuy reason: {{slot:buy_reason}}\nBuy process: {{slot:buy_process}}\nSell reason: {{slot:sell_reason}}\nSell process: {{slot:sell_process}}",
+        "semantics": {
+          "kind": "strategy",
+          "symbol": "{{symbol}}"
+        },
+        "review": {
+          "bundleId": "strategy",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "504e861732078fa7ba9df17bf23b653acd06c4cc006917dd753672aca1e09e5f",
+          "rootSha256": "409502b0d5f0d6f00b89a9692644a898eed1046975fb34cfb09fc66dfc29028e"
+        },
+        "slotOrder": [
+          "buy_reason",
+          "buy_process",
+          "sell_reason",
+          "sell_process"
+        ]
+      },
+      {
+        "id": "parallel",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "slots": {
+          "first": "node",
+          "second": "node"
+        },
+        "text": "PARALLEL according to the constitution. First child:\n{{slot:first}}\nSecond child:\n{{slot:second}}",
+        "semantics": {
+          "kind": "parallel"
+        },
+        "review": {
+          "bundleId": "parallel",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "bf5684d527b1269308f2932aa988a73ae2e35cc2a7546e96a1a6eaf0fdddc6c4",
+          "rootSha256": "fb281de9fdec01bc28a354925643546a3c6c24ee77901f8dfb5d5e73e3a754e1"
+        },
+        "slotOrder": [
+          "first",
+          "second"
+        ]
+      },
+      {
+        "id": "sequence",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "slots": {
+          "first": "node",
+          "second": "node"
+        },
+        "text": "SEQUENCE according to the constitution. First child:\n{{slot:first}}\nSecond child:\n{{slot:second}}",
+        "semantics": {
+          "kind": "sequence"
+        },
+        "review": {
+          "bundleId": "sequence",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "4c974e82889fa9d38f43a1398f985c744ddf80b411861a357ab4103a951f3b32",
+          "rootSha256": "d128b757f1104544ec1891d92e166b55f2942de9076ad0b8c7352e94ce5dbf0b"
+        },
+        "slotOrder": [
+          "first",
+          "second"
+        ]
+      },
+      {
+        "id": "race",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "slots": {
+          "first": "node",
+          "second": "node"
+        },
+        "text": "RACE according to the constitution. First child:\n{{slot:first}}\nSecond child:\n{{slot:second}}",
+        "semantics": {
+          "kind": "race"
+        },
+        "review": {
+          "bundleId": "race",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "dbe34ff34fda49c5a2b8cd96ddf7ffab01e0f070ad9320fb675b0dcbe922a0ab",
+          "rootSha256": "9627dd910e2884aa9ae177bdb0bf512229160f6d203af4ecb803b0d2b1513e3e"
+        },
+        "slotOrder": [
+          "first",
+          "second"
+        ]
+      },
+      {
+        "id": "state-gate",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "parameters": {
+          "symbol": "SPY",
+          "threshold": 9900
+        },
+        "slots": {
+          "child": "node"
+        },
+        "text": "State gate: {{symbol}} close must exceed {{threshold}} cents to permit new entries. Continue managing exits.\n{{slot:child}}",
+        "semantics": {
+          "kind": "state_gate",
+          "symbol": "{{symbol}}",
+          "predicate": {
+            "kind": "above",
+            "value": "{{threshold}}"
+          }
+        },
+        "review": {
+          "bundleId": "state-gate",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "e4c27e68f122db61bbbc6e57dcc609f9f602b1a5e3a93ea4b99576e8ddd43bfa",
+          "rootSha256": "2d198ff2335410efb1bc8ef71b0a321d81bd4662a7b0da7ac14a5e85df98846a"
+        },
+        "slotOrder": [
+          "child"
+        ]
+      },
+      {
+        "id": "event-gate",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "parameters": {
+          "symbol": "SPY",
+          "threshold": 9900
+        },
+        "slots": {
+          "child": "node"
+        },
+        "text": "Latched event gate: {{symbol}} close must exceed {{threshold}} cents to permit new entries. Continue managing exits.\n{{slot:child}}",
+        "semantics": {
+          "kind": "event_gate",
+          "symbol": "{{symbol}}",
+          "predicate": {
+            "kind": "above",
+            "value": "{{threshold}}"
+          }
+        },
+        "review": {
+          "bundleId": "event-gate",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "b7f7052aa7ca4c15c60c113a212d52b5c7d0525fa6731be540547853e270a656",
+          "rootSha256": "b557c2bfcb87b64acac380feba5e4096f63fec5602d2b311839d3103c6e096c9"
+        },
+        "slotOrder": [
+          "child"
+        ]
+      },
+      {
+        "id": "reset",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "parameters": {
+          "symbol": "SPY",
+          "threshold": 9000
+        },
+        "slots": {
+          "child": "node"
+        },
+        "text": "Reset: when {{symbol}} closes below {{threshold}} cents, liquidate the subtree’s private lots together if all their prices are available; clear all state and wait until the next bar before entries.\n{{slot:child}}",
+        "semantics": {
+          "kind": "reset",
+          "symbol": "{{symbol}}",
+          "predicate": {
+            "kind": "below",
+            "value": "{{threshold}}"
+          }
+        },
+        "review": {
+          "bundleId": "reset",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "38001b1a9accb9412559de281c3d6eb9885c8dba923697de7a3919f797517fa6",
+          "rootSha256": "682ba9c6defe5fc8f159135a182eb59afed6abf12fa6910241969d043f625ad1"
+        },
+        "slotOrder": [
+          "child"
+        ]
+      },
+      {
+        "id": "constitution-v1",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "slots": {
+          "strategy": "node"
+        },
+        "text": "Draft deterministic equity constitution, version 1.\nEvaluate each completed bar once in input order. Prices and cash are integer cents; quantities are whole shares. Orders fill fully at that bar's close with zero fees and slippage. Missing or nonpositive prices suppress that symbol's actions. Indicators require their full window of observed prices. Sells precede buys within a strategy; no same-bar re-entry. Each strategy owns private lots even when symbols overlap. Sibling order is the declared slot order; insufficient cash skips the entire purchase. Strategies complete after one full round trip. Partial exits sell at least one share. Parallel completes when all children complete. Sequence activates its next child on the following bar. Race assigns ownership to the first subtree that actually buys, with declared order breaking ties. A state gate blocks new entries while false but continues exits. An event gate opens once and remains open. Reset liquidates all owned lots when every held symbol has a price, clears subtree state, and permits reactivation on the next bar. Reset takes priority over ordinary actions. No implicit end-of-data liquidation. These rules must be reviewed before a counted study; they do not model partial fills, margin, shorts, options, fees, or live execution.\n\nImplement the following strategy tree as class FrozenBenchmark(QCAlgorithm) in QuantConnect LEAN Python. Follow the response format in the execution appendix. Submit native market orders with each order tag exactly <compiled strategy path>|buy, |sell or |reset. The execution appendix supplies compiled paths, UTC bar-close timestamps and integer-cent inputs. Grading reads actual engine OrderEvents and order tags; printed or logged traces do not count as fills.\n\n{{slot:strategy}}",
+        "semantics": {
+          "kind": "constitution"
+        },
+        "state": "Integer-cents shared cash and per-node private whole-share lots.",
+        "dependencies": [],
+        "hooks": {
+          "runtime": "lean-reference.py",
+          "independentInterpreter": "lean.mjs",
+          "sourceHashes": {
+            "cli.mjs": "808cb4f60f3da5f8e10ac208810d0bc81335e5dd068b1297ce8b8c67d39b26e7",
+            "prompts.mjs": "dd64dd5e28c11a5e4665e49533f0307274325851d7525b1bc5f6e810f91007f8",
+            "study.mjs": "ad4fcb02395f8c1259e7b849eb2defc507f0ab27c60bc439b20da04ac06c4f07",
+            "runner.mjs": "01a56f019c1ff7b5a92a5c29f3563f8702ead3a0b1ca08b6e23aa912fa1be0ff",
+            "module-host.mjs": "c1aa7d39e5812bf32de58398b429ba2f267727e07635fb6fc773993a7d4a7d7f",
+            "lean.mjs": "fca6de65c39f26ac8809d201823217bd28f065512309fb7df3833ef4e29c99cc",
+            "lean-codegen.mjs": "298e8002ec57be0bf73934c21dd58233362d20e87c3809fde0f6cc3763db86fd",
+            "lean-reference.py": "d89e498d525cc99e9698cdba46dde260e3aee1f9cd3d6728b0576df3897c3fe2",
+            "starters.mjs": "9075d6c6545fdb92be8887508f0aa667617a8feceeb27672f32053f0374580f2",
+            "qualify.mjs": "3d3ba860351f8af91655ae1c597a62cad9708acd05f7568ae91f613cb43eca56",
+            "lean-grade.mjs": "494343e9dd20cd8b265a18228b3b9c69ea7ea7c33bf108805da919e70d3ad868",
+            "lean-data.py": "dd73e23f9fb52ae98e28e51a81624747c21b479765844b1897fa97a64914eeec",
+            "lean-cases.mjs": "530426145f64e6e6257fc80a8683c5dc67fa9b6009e349094d0a4f1894d0bb79",
+            "analysis.mjs": "2206066203ec3fc5fdda7c69763ab2ec0fb528bf5ca0c985feff3e0bdb841e98",
+            "report.mjs": "08ac27002735c98b96dde618d30b64cd89e266c188bdd274a5ea941f58bc253c",
+            "corpus.mjs": "f919fa4f42ad4f3bd1b641fb15d6c385a793274fc0ad20f2076f6c8bea3f69db",
+            "information.mjs": "302bb91e19bcf7e623f7a233831bbdee1318cd21f285aedf93f2901730f4bf0d",
+            "tasks.mjs": "6b97b35c5222a495b076f1788a9bbb7bcc66e195567948621e20298ca7be21a2",
+            "conventions.mjs": "a97eb653821a3302bb78db6873d84ee8e03014791b76f7434ebbd75989a7b484",
+            "audit.mjs": "e0afa74bf39386c374fedc29d340e821a907b2a08f03fbecf70888e5f6ea4e4f",
+            "lean-observations.mjs": "9c1dfd2475fb08ad544a9fd8c9cfe8a590cc7af8610d402c1c09ee09027386d9",
+            "observations.mjs": "eafc58ccb8d83c77c1ada226bb839ccf6fc41c5f3a31a8148ecd6e7f2b8ae848",
+            "execution.mjs": "06b62e6446d3df97a90ff15094349aed9e0cb4fdb4f714fd0e22257686b93349",
+            "execution_reference.py": "0dd144fa95644b2263b6b8afae0e3dabb96ba6571d285e37ac80d45a024f4e66",
+            "execution-lean.mjs": "6b36560ca674ac0388499481153f6e80de0e42c284fdf103c780795ba07a2011",
+            "execution_lean.py": "d4741e979ba76268748ef32619ef2ba98a1e40caa8086b6bdd48893f742e563e",
+            "composition.mjs": "3452b77e8d817dc05197408091711e96ef1b33baa50ad38d16383485a1abe521",
+            "trading-ir.mjs": "511a877fb583575aedd668b691108334dd4f006d480cfa45b56e587270c7b4e1",
+            "trading-runtime.mjs": "05724d4a9688032735354ab6522077f2bcde916c2e6a121a4a96829c22acf515",
+            "trading_reference.py": "ae2b6522b7f5a9d40af8a0623524539668015f09e8072337bf5458ca42efc6d4",
+            "trading-lean.mjs": "733e7f287734519729301b5dbaab8adde77c36526dd31604b92fc0934900698d",
+            "trading_lean.py": "5a40c7b5cfc40488435542020d54fcfc6cec9157877599c5d9cde9a761001bba",
+            "trading-observations.mjs": "51a7e532113dbfe78c26978c23b47ebdb9deb0e8a43a5a97a4dc001f0a6a2521",
+            "trading-market.mjs": "605d5728d3765e25f68bc39e9eaaad9841ec3bd5507d5db5748ef55017f1aab1",
+            "trading_market.py": "4ee2cc57004cb8b7a38101e287b03a357d7b057cbea401df079d90bf008eca49",
+            "trading_broker.py": "79b6912bae30391f82c05093e22b65bf4294d11ebfcf7a9b674c9d2d348bcc11",
+            "trading-study.mjs": "f046f060aec09de89029913b16b647b178cf26387799689e34a36a7536967baa",
+            "trading-catalog.mjs": "31fbfff13c695a748aeecb03be945be6e21fac4e15748c21546250ebd651dfd7",
+            "requirements.mjs": "609cf8e1fcc8caac1dbbb41f0e4971602b4e9293cc4c8c0d54954f2d33001c04",
+            "shrinking.mjs": "d719aeffe5edb3f494bcfc79a3779b252d47c95433f77cbb967ad90c068b6815",
+            "workflow.mjs": "8e762f0747db89ffab15b107ddabe9bc586a461d42a08eea5b3c826cb25503cb",
+            "templates.mjs": "8cafcdfd93f843959dd1e59be516a91817b376e4b526b470327480eb800a6082",
+            "resource-effects.mjs": "62967ace5f961bec6fe46890a8bc6fb71b687bd0a8d2558b21330b8be53a5227",
+            "readiness.mjs": "abd4e7368a482fef7110aa8fd1fd2ac7369006348780071331f4fb3fff1df9bb",
+            "requirement-fields.mjs": "e173b99b41ffe625e9e1750e71aaf19630f73520f849e44eae6181c940fd660c"
+          }
+        },
+        "tests": [
+          "Flat, shared-symbol, nested sequence/race, gates, reset, cash-contention, missing-price and mutation controls."
+        ],
+        "review": {
+          "bundleId": "constitution-v1",
+          "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+          "decision": "approved",
+          "at": "2026-09-10T00:00:00.000Z",
+          "sha256": "4e87f6f9a146810dbeb4b2e2088b739af1b9cd88623e52ff5e33ed6009be7aa3",
+          "rootSha256": "75ce025ec6a9d06e87f1d17e0acb3b565ab92530b76f73bb44e5d3fc2a016bc1"
+        },
+        "slotOrder": [
+          "strategy"
+        ]
+      }
+    ],
+    "tasks": [
+      {
+        "id": "flat-canary",
+        "root": {
+          "use": "constitution-v1",
+          "slots": {
+            "strategy": {
+              "use": "strategy",
+              "params": {
+                "symbol": "SPY"
+              },
+              "slots": {
+                "buy_reason": {
+                  "use": "below-price"
+                },
+                "buy_process": {
+                  "use": "fixed-shares"
+                },
+                "sell_reason": {
+                  "use": "exit-above"
+                },
+                "sell_process": {
+                  "use": "sell-all"
+                }
+              }
+            }
+          }
+        },
+        "input": {
+          "cashCents": 1000000,
+          "bars": [
+            {
+              "time": "2024-01-02T14:31:00Z",
+              "prices": {
+                "SPY": 10000
+              }
+            },
+            {
+              "time": "2024-01-02T14:32:00Z",
+              "prices": {
+                "SPY": 9800
+              }
+            },
+            {
+              "time": "2024-01-02T14:33:00Z",
+              "prices": {
+                "SPY": 10700
+              }
+            },
+            {
+              "time": "2024-01-02T14:34:00Z",
+              "prices": {
+                "SPY": 9900
+              }
+            },
+            {
+              "time": "2024-01-02T14:35:00Z",
+              "prices": {
+                "SPY": 10800
+              }
+            }
+          ]
+        },
+        "expected": [
+          {
+            "bar": 0,
+            "path": "root/strategy",
+            "symbol": "SPY",
+            "quantity": 2,
+            "priceCents": 10000,
+            "reason": "buy"
+          },
+          {
+            "bar": 2,
+            "path": "root/strategy",
+            "symbol": "SPY",
+            "quantity": -2,
+            "priceCents": 10700,
+            "reason": "sell"
+          }
+        ],
+        "split": "development"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "recorded",
+        "label": "Known trace canary",
+        "model": {
+          "provider": "fixture",
+          "id": "flat-canary-v1",
+          "settings": {}
+        },
+        "adapter": {
+          "kind": "replay",
+          "responses": {
+            "flat-canary": [
+              {
+                "bar": 0,
+                "path": "root/strategy",
+                "symbol": "SPY",
+                "quantity": 2,
+                "priceCents": 10000,
+                "reason": "buy"
+              },
+              {
+                "bar": 2,
+                "path": "root/strategy",
+                "symbol": "SPY",
+                "quantity": -2,
+                "priceCents": 10700,
+                "reason": "sell"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "reference-program",
+        "label": "Trusted generated reference program (apparatus control)",
+        "model": {
+          "provider": "apparatus-control",
+          "id": "generated-reference-program",
+          "surface": "local-command",
+          "settings": {}
+        },
+        "adapter": {
+          "kind": "command",
+          "command": "node",
+          "args": [
+            "adapters/reference-program.mjs"
+          ]
+        }
+      },
+      {
+        "id": "claude-cli",
+        "label": "Local Claude CLI, non-interactive print mode",
+        "model": {
+          "provider": "anthropic-claude-cli",
+          "id": "claude-sonnet-5",
+          "surface": "local-cli-print-mode",
+          "settings": {
+            "outputFormat": "json",
+            "strictMcpConfig": true,
+            "allowedTools": "none",
+            "workingDirectory": "fresh-empty-temporary-directory"
+          }
+        },
+        "collection": {
+          "comparisonUnit": "model",
+          "instructions": {
+            "system": null,
+            "developer": null
+          },
+          "tools": [],
+          "contextConstruction": "frozen-public-request",
+          "sessionIsolation": "fresh-request"
+        },
+        "adapter": {
+          "kind": "command",
+          "command": "node",
+          "args": [
+            "adapters/claude-cli.mjs"
+          ],
+          "env": [
+            "HOME"
+          ]
+        }
+      }
+    ],
+    "protocol": {
+      "seed": 42,
+      "replicates": 1,
+      "maxAttemptsPerTrial": 2,
+      "maxTotalAttempts": 12,
+      "timeoutMs": 900000,
+      "maxDurationMs": 5400000,
+      "grading": {
+        "kind": "lean-python",
+        "executionTimeoutMs": 420000
+      },
+      "selection": "All frozen tasks; first completed attempt. Transport failures alone may retry.",
+      "stopping": "Stop at the fixed attempt or elapsed-time budget.",
+      "analysis": "Per-condition scores over completed trials; report scheduled, failed, interrupted, and pending counts separately."
+    },
+    "inputs": [
+      {
+        "path": "adapters/reference-program.mjs",
+        "sha256": "28f7c2f12d03842d855398c3396bfcfbb862f2095a9da998cd4dfce182612c5c"
+      },
+      {
+        "path": "adapters/claude-cli.mjs",
+        "sha256": "0a1f7e5872504c43f48bc669386bf4a9733c50edd55a4572fa1964378b071884"
+      }
+    ],
+    "environment": {
+      "node": ">=22",
+      "python": ">=3.10",
+      "dependencies": [],
+      "leanImage": "quantconnect/lean@sha256:cc27d5608d209fc9276c8419af3dd8e598ba49075c6f5c44ca38bf637eaef216",
+      "instructions": "Apparatus-development run. The pinned LEAN image digest is present locally; `docker image inspect` resolves it. Python 3.10 or later generates the deterministic minute files. No counted study is authorized by this project."
+    },
+    "analysisPlan": {
+      "version": 1,
+      "cohort": "qualification",
+      "primaryDenominator": "scheduled",
+      "uncertainty": null,
+      "contrasts": [],
+      "multiplicity": "none-descriptive",
+      "rationale": "Apparatus-development computations on one task. The purpose is to exercise the compile/collect/native-grade/report path end to end and show every step, not to measure a model. One task and one replicate cannot support an interval, a contrast or any inference about a provider; the per-condition rates below are descriptions of three single trials.",
+      "primaryPopulation": "all"
+    },
+    "decisions": "Apparatus-development cohort. The catalog carries a synthetic marker in place of a personal review; no bundle has been reviewed by a person and no counted study is authorized. Three conditions exercise three different response origins against the same frozen prompt: the starter’s recorded canary, a trusted generated reference program, and the local Claude CLI. Native grading reads engine OrderEvents, never printed traces.",
+    "executionPlan": {
+      "version": 1,
+      "purpose": "apparatus-development"
+    },
+    "runtimeSources": {
+      "cli.mjs": "808cb4f60f3da5f8e10ac208810d0bc81335e5dd068b1297ce8b8c67d39b26e7",
+      "prompts.mjs": "dd64dd5e28c11a5e4665e49533f0307274325851d7525b1bc5f6e810f91007f8",
+      "study.mjs": "ad4fcb02395f8c1259e7b849eb2defc507f0ab27c60bc439b20da04ac06c4f07",
+      "runner.mjs": "01a56f019c1ff7b5a92a5c29f3563f8702ead3a0b1ca08b6e23aa912fa1be0ff",
+      "module-host.mjs": "c1aa7d39e5812bf32de58398b429ba2f267727e07635fb6fc773993a7d4a7d7f",
+      "lean.mjs": "fca6de65c39f26ac8809d201823217bd28f065512309fb7df3833ef4e29c99cc",
+      "lean-codegen.mjs": "298e8002ec57be0bf73934c21dd58233362d20e87c3809fde0f6cc3763db86fd",
+      "lean-reference.py": "d89e498d525cc99e9698cdba46dde260e3aee1f9cd3d6728b0576df3897c3fe2",
+      "starters.mjs": "9075d6c6545fdb92be8887508f0aa667617a8feceeb27672f32053f0374580f2",
+      "qualify.mjs": "3d3ba860351f8af91655ae1c597a62cad9708acd05f7568ae91f613cb43eca56",
+      "lean-grade.mjs": "494343e9dd20cd8b265a18228b3b9c69ea7ea7c33bf108805da919e70d3ad868",
+      "lean-data.py": "dd73e23f9fb52ae98e28e51a81624747c21b479765844b1897fa97a64914eeec",
+      "lean-cases.mjs": "530426145f64e6e6257fc80a8683c5dc67fa9b6009e349094d0a4f1894d0bb79",
+      "analysis.mjs": "2206066203ec3fc5fdda7c69763ab2ec0fb528bf5ca0c985feff3e0bdb841e98",
+      "report.mjs": "08ac27002735c98b96dde618d30b64cd89e266c188bdd274a5ea941f58bc253c",
+      "corpus.mjs": "f919fa4f42ad4f3bd1b641fb15d6c385a793274fc0ad20f2076f6c8bea3f69db",
+      "information.mjs": "302bb91e19bcf7e623f7a233831bbdee1318cd21f285aedf93f2901730f4bf0d",
+      "tasks.mjs": "6b97b35c5222a495b076f1788a9bbb7bcc66e195567948621e20298ca7be21a2",
+      "conventions.mjs": "a97eb653821a3302bb78db6873d84ee8e03014791b76f7434ebbd75989a7b484",
+      "audit.mjs": "e0afa74bf39386c374fedc29d340e821a907b2a08f03fbecf70888e5f6ea4e4f",
+      "lean-observations.mjs": "9c1dfd2475fb08ad544a9fd8c9cfe8a590cc7af8610d402c1c09ee09027386d9",
+      "observations.mjs": "eafc58ccb8d83c77c1ada226bb839ccf6fc41c5f3a31a8148ecd6e7f2b8ae848",
+      "execution.mjs": "06b62e6446d3df97a90ff15094349aed9e0cb4fdb4f714fd0e22257686b93349",
+      "execution_reference.py": "0dd144fa95644b2263b6b8afae0e3dabb96ba6571d285e37ac80d45a024f4e66",
+      "execution-lean.mjs": "6b36560ca674ac0388499481153f6e80de0e42c284fdf103c780795ba07a2011",
+      "execution_lean.py": "d4741e979ba76268748ef32619ef2ba98a1e40caa8086b6bdd48893f742e563e",
+      "composition.mjs": "3452b77e8d817dc05197408091711e96ef1b33baa50ad38d16383485a1abe521",
+      "trading-ir.mjs": "511a877fb583575aedd668b691108334dd4f006d480cfa45b56e587270c7b4e1",
+      "trading-runtime.mjs": "05724d4a9688032735354ab6522077f2bcde916c2e6a121a4a96829c22acf515",
+      "trading_reference.py": "ae2b6522b7f5a9d40af8a0623524539668015f09e8072337bf5458ca42efc6d4",
+      "trading-lean.mjs": "733e7f287734519729301b5dbaab8adde77c36526dd31604b92fc0934900698d",
+      "trading_lean.py": "5a40c7b5cfc40488435542020d54fcfc6cec9157877599c5d9cde9a761001bba",
+      "trading-observations.mjs": "51a7e532113dbfe78c26978c23b47ebdb9deb0e8a43a5a97a4dc001f0a6a2521",
+      "trading-market.mjs": "605d5728d3765e25f68bc39e9eaaad9841ec3bd5507d5db5748ef55017f1aab1",
+      "trading_market.py": "4ee2cc57004cb8b7a38101e287b03a357d7b057cbea401df079d90bf008eca49",
+      "trading_broker.py": "79b6912bae30391f82c05093e22b65bf4294d11ebfcf7a9b674c9d2d348bcc11",
+      "trading-study.mjs": "f046f060aec09de89029913b16b647b178cf26387799689e34a36a7536967baa",
+      "trading-catalog.mjs": "31fbfff13c695a748aeecb03be945be6e21fac4e15748c21546250ebd651dfd7",
+      "requirements.mjs": "609cf8e1fcc8caac1dbbb41f0e4971602b4e9293cc4c8c0d54954f2d33001c04",
+      "shrinking.mjs": "d719aeffe5edb3f494bcfc79a3779b252d47c95433f77cbb967ad90c068b6815",
+      "workflow.mjs": "8e762f0747db89ffab15b107ddabe9bc586a461d42a08eea5b3c826cb25503cb",
+      "templates.mjs": "8cafcdfd93f843959dd1e59be516a91817b376e4b526b470327480eb800a6082",
+      "resource-effects.mjs": "62967ace5f961bec6fe46890a8bc6fb71b687bd0a8d2558b21330b8be53a5227",
+      "readiness.mjs": "abd4e7368a482fef7110aa8fd1fd2ac7369006348780071331f4fb3fff1df9bb",
+      "requirement-fields.mjs": "e173b99b41ffe625e9e1750e71aaf19630f73520f849e44eae6181c940fd660c"
+    }
+  },
+  "tasks": [
+    {
+      "id": "flat-canary",
+      "root": {
+        "use": "constitution-v1",
+        "slots": {
+          "strategy": {
+            "use": "strategy",
+            "params": {
+              "symbol": "SPY"
+            },
+            "slots": {
+              "buy_reason": {
+                "use": "below-price"
+              },
+              "buy_process": {
+                "use": "fixed-shares"
+              },
+              "sell_reason": {
+                "use": "exit-above"
+              },
+              "sell_process": {
+                "use": "sell-all"
+              }
+            }
+          }
+        }
+      },
+      "input": {
+        "cashCents": 1000000,
+        "bars": [
+          {
+            "time": "2024-01-02T14:31:00Z",
+            "prices": {
+              "SPY": 10000
+            }
+          },
+          {
+            "time": "2024-01-02T14:32:00Z",
+            "prices": {
+              "SPY": 9800
+            }
+          },
+          {
+            "time": "2024-01-02T14:33:00Z",
+            "prices": {
+              "SPY": 10700
+            }
+          },
+          {
+            "time": "2024-01-02T14:34:00Z",
+            "prices": {
+              "SPY": 9900
+            }
+          },
+          {
+            "time": "2024-01-02T14:35:00Z",
+            "prices": {
+              "SPY": 10800
+            }
+          }
+        ]
+      },
+      "expected": [
+        {
+          "bar": 0,
+          "path": "root/strategy",
+          "symbol": "SPY",
+          "quantity": 2,
+          "priceCents": 10000,
+          "reason": "buy"
+        },
+        {
+          "bar": 2,
+          "path": "root/strategy",
+          "symbol": "SPY",
+          "quantity": -2,
+          "priceCents": 10700,
+          "reason": "sell"
+        }
+      ],
+      "split": "development",
+      "compiled": {
+        "text": "Draft deterministic equity constitution, version 1.\nEvaluate each completed bar once in input order. Prices and cash are integer cents; quantities are whole shares. Orders fill fully at that bar's close with zero fees and slippage. Missing or nonpositive prices suppress that symbol's actions. Indicators require their full window of observed prices. Sells precede buys within a strategy; no same-bar re-entry. Each strategy owns private lots even when symbols overlap. Sibling order is the declared slot order; insufficient cash skips the entire purchase. Strategies complete after one full round trip. Partial exits sell at least one share. Parallel completes when all children complete. Sequence activates its next child on the following bar. Race assigns ownership to the first subtree that actually buys, with declared order breaking ties. A state gate blocks new entries while false but continues exits. An event gate opens once and remains open. Reset liquidates all owned lots when every held symbol has a price, clears subtree state, and permits reactivation on the next bar. Reset takes priority over ordinary actions. No implicit end-of-data liquidation. These rules must be reviewed before a counted study; they do not model partial fills, margin, shorts, options, fees, or live execution.\n\nImplement the following strategy tree as class FrozenBenchmark(QCAlgorithm) in QuantConnect LEAN Python. Follow the response format in the execution appendix. Submit native market orders with each order tag exactly <compiled strategy path>|buy, |sell or |reset. The execution appendix supplies compiled paths, UTC bar-close timestamps and integer-cent inputs. Grading reads actual engine OrderEvents and order tags; printed or logged traces do not count as fills.\n\nStrategy for SPY (private lots, one round trip):\nBuy reason: Buy when the close is below 10100 cents.\nBuy process: Buy 2 whole shares if the shared cash covers the entire order; otherwise skip it.\nSell reason: Sell when the close exceeds 10500 cents.\nSell process: Sell all shares privately owned by this strategy.\n\nExecution appendix (part of this exact prompt):\nImplement class FrozenBenchmark(QCAlgorithm). Return only Python source or one fenced python block. Configure UTC time, the declared dates, cash and RAW minute equity subscriptions; zero fees and slippage. Native order tags must be the exact strategy path followed by |buy, |sell or |reset. Actual filled order events, quantities, times, prices and tags are graded; printed trace claims are ignored. Do not liquidate at end of data.\nStrategy paths: [{\"path\":\"root/strategy\",\"symbol\":\"SPY\"}]\nFrozen completed-bar inputs (integer cents): {\"bars\":[{\"prices\":{\"SPY\":10000},\"time\":\"2024-01-02T14:31:00Z\"},{\"prices\":{\"SPY\":9800},\"time\":\"2024-01-02T14:32:00Z\"},{\"prices\":{\"SPY\":10700},\"time\":\"2024-01-02T14:33:00Z\"},{\"prices\":{\"SPY\":9900},\"time\":\"2024-01-02T14:34:00Z\"},{\"prices\":{\"SPY\":10800},\"time\":\"2024-01-02T14:35:00Z\"}],\"cashCents\":1000000}",
+        "sourceMap": [
+          {
+            "path": "root",
+            "start": 0,
+            "end": 2082,
+            "requirementId": "root#constitution-v1",
+            "bundleId": "constitution-v1"
+          },
+          {
+            "path": "root/strategy",
+            "start": 1768,
+            "end": 2082,
+            "requirementId": "root/strategy#strategy",
+            "bundleId": "strategy"
+          },
+          {
+            "path": "root/strategy/buy_reason",
+            "start": 1829,
+            "end": 1869,
+            "requirementId": "root/strategy/buy_reason#below-price",
+            "bundleId": "below-price"
+          },
+          {
+            "path": "root/strategy/buy_process",
+            "start": 1883,
+            "end": 1964,
+            "requirementId": "root/strategy/buy_process#fixed-shares",
+            "bundleId": "fixed-shares"
+          },
+          {
+            "path": "root/strategy/sell_reason",
+            "start": 1978,
+            "end": 2018,
+            "requirementId": "root/strategy/sell_reason#exit-above",
+            "bundleId": "exit-above"
+          },
+          {
+            "path": "root/strategy/sell_process",
+            "start": 2033,
+            "end": 2082,
+            "requirementId": "root/strategy/sell_process#sell-all",
+            "bundleId": "sell-all"
+          },
+          {
+            "path": "runtime",
+            "requirementId": "runtime#execution-contract",
+            "bundleId": null,
+            "start": 2082,
+            "end": 2971
+          }
+        ],
+        "sourceMapUnit": "UTF-16 code units",
+        "nodeCount": 6,
+        "depth": 2,
+        "composition": {
+          "appendices": [
+            {
+              "id": "execution-contract",
+              "sha256": "6b97b35c5222a495b076f1788a9bbb7bcc66e195567948621e20298ca7be21a2",
+              "source": "tasks.mjs",
+              "text": "\n\nExecution appendix (part of this exact prompt):\nImplement class FrozenBenchmark(QCAlgorithm). Return only Python source or one fenced python block. Configure UTC time, the declared dates, cash and RAW minute equity subscriptions; zero fees and slippage. Native order tags must be the exact strategy path followed by |buy, |sell or |reset. Actual filled order events, quantities, times, prices and tags are graded; printed trace claims are ignored. Do not liquidate at end of data.\nStrategy paths: [{\"path\":\"root/strategy\",\"symbol\":\"SPY\"}]\nFrozen completed-bar inputs (integer cents): {\"bars\":[{\"prices\":{\"SPY\":10000},\"time\":\"2024-01-02T14:31:00Z\"},{\"prices\":{\"SPY\":9800},\"time\":\"2024-01-02T14:32:00Z\"},{\"prices\":{\"SPY\":10700},\"time\":\"2024-01-02T14:33:00Z\"},{\"prices\":{\"SPY\":9900},\"time\":\"2024-01-02T14:34:00Z\"},{\"prices\":{\"SPY\":10800},\"time\":\"2024-01-02T14:35:00Z\"}],\"cashCents\":1000000}"
+            }
+          ],
+          "format": "benchmark-composition-ir",
+          "nodes": [
+            {
+              "bundle": {
+                "id": "constitution-v1",
+                "rootSha256": "75ce025ec6a9d06e87f1d17e0acb3b565ab92530b76f73bb44e5d3fc2a016bc1",
+                "sha256": "4e87f6f9a146810dbeb4b2e2088b739af1b9cd88623e52ff5e33ed6009be7aa3",
+                "version": "1"
+              },
+              "disclosed": true,
+              "fragments": [
+                {
+                  "kind": "text",
+                  "value": "Draft deterministic equity constitution, version 1.\nEvaluate each completed bar once in input order. Prices and cash are integer cents; quantities are whole shares. Orders fill fully at that bar's close with zero fees and slippage. Missing or nonpositive prices suppress that symbol's actions. Indicators require their full window of observed prices. Sells precede buys within a strategy; no same-bar re-entry. Each strategy owns private lots even when symbols overlap. Sibling order is the declared slot order; insufficient cash skips the entire purchase. Strategies complete after one full round trip. Partial exits sell at least one share. Parallel completes when all children complete. Sequence activates its next child on the following bar. Race assigns ownership to the first subtree that actually buys, with declared order breaking ties. A state gate blocks new entries while false but continues exits. An event gate opens once and remains open. Reset liquidates all owned lots when every held symbol has a price, clears subtree state, and permits reactivation on the next bar. Reset takes priority over ordinary actions. No implicit end-of-data liquidation. These rules must be reviewed before a counted study; they do not model partial fills, margin, shorts, options, fees, or live execution.\n\nImplement the following strategy tree as class FrozenBenchmark(QCAlgorithm) in QuantConnect LEAN Python. Follow the response format in the execution appendix. Submit native market orders with each order tag exactly <compiled strategy path>|buy, |sell or |reset. The execution appendix supplies compiled paths, UTC bar-close timestamps and integer-cent inputs. Grading reads actual engine OrderEvents and order tags; printed or logged traces do not count as fills.\n\n"
+                },
+                {
+                  "kind": "slot",
+                  "name": "strategy"
+                },
+                {
+                  "kind": "text",
+                  "value": ""
+                }
+              ],
+              "kind": "template",
+              "parameters": {},
+              "parentPath": null,
+              "path": "root",
+              "ports": [
+                {
+                  "name": "strategy",
+                  "path": "root/strategy",
+                  "role": "node"
+                }
+              ],
+              "requirement": "Draft deterministic equity constitution, version 1.\nEvaluate each completed bar once in input order. Prices and cash are integer cents; quantities are whole shares. Orders fill fully at that bar's close with zero fees and slippage. Missing or nonpositive prices suppress that symbol's actions. Indicators require their full window of observed prices. Sells precede buys within a strategy; no same-bar re-entry. Each strategy owns private lots even when symbols overlap. Sibling order is the declared slot order; insufficient cash skips the entire purchase. Strategies complete after one full round trip. Partial exits sell at least one share. Parallel completes when all children complete. Sequence activates its next child on the following bar. Race assigns ownership to the first subtree that actually buys, with declared order breaking ties. A state gate blocks new entries while false but continues exits. An event gate opens once and remains open. Reset liquidates all owned lots when every held symbol has a price, clears subtree state, and permits reactivation on the next bar. Reset takes priority over ordinary actions. No implicit end-of-data liquidation. These rules must be reviewed before a counted study; they do not model partial fills, margin, shorts, options, fees, or live execution.\n\nImplement the following strategy tree as class FrozenBenchmark(QCAlgorithm) in QuantConnect LEAN Python. Follow the response format in the execution appendix. Submit native market orders with each order tag exactly <compiled strategy path>|buy, |sell or |reset. The execution appendix supplies compiled paths, UTC bar-close timestamps and integer-cent inputs. Grading reads actual engine OrderEvents and order tags; printed or logged traces do not count as fills.\n\n[child requirements]",
+              "role": "node",
+              "semantic": {
+                "kind": "constitution"
+              },
+              "slot": null
+            },
+            {
+              "bundle": {
+                "id": "strategy",
+                "rootSha256": "409502b0d5f0d6f00b89a9692644a898eed1046975fb34cfb09fc66dfc29028e",
+                "sha256": "504e861732078fa7ba9df17bf23b653acd06c4cc006917dd753672aca1e09e5f",
+                "version": "1"
+              },
+              "disclosed": true,
+              "fragments": [
+                {
+                  "kind": "text",
+                  "value": "Strategy for SPY (private lots, one round trip):\nBuy reason: "
+                },
+                {
+                  "kind": "slot",
+                  "name": "buy_reason"
+                },
+                {
+                  "kind": "text",
+                  "value": "\nBuy process: "
+                },
+                {
+                  "kind": "slot",
+                  "name": "buy_process"
+                },
+                {
+                  "kind": "text",
+                  "value": "\nSell reason: "
+                },
+                {
+                  "kind": "slot",
+                  "name": "sell_reason"
+                },
+                {
+                  "kind": "text",
+                  "value": "\nSell process: "
+                },
+                {
+                  "kind": "slot",
+                  "name": "sell_process"
+                },
+                {
+                  "kind": "text",
+                  "value": ""
+                }
+              ],
+              "kind": "template",
+              "parameters": {
+                "symbol": "SPY"
+              },
+              "parentPath": "root",
+              "path": "root/strategy",
+              "ports": [
+                {
+                  "name": "buy_reason",
+                  "path": "root/strategy/buy_reason",
+                  "role": "buy_reason"
+                },
+                {
+                  "name": "buy_process",
+                  "path": "root/strategy/buy_process",
+                  "role": "buy_process"
+                },
+                {
+                  "name": "sell_reason",
+                  "path": "root/strategy/sell_reason",
+                  "role": "sell_reason"
+                },
+                {
+                  "name": "sell_process",
+                  "path": "root/strategy/sell_process",
+                  "role": "sell_process"
+                }
+              ],
+              "requirement": "Strategy for SPY (private lots, one round trip):\nBuy reason: [child requirements]\nBuy process: [child requirements]\nSell reason: [child requirements]\nSell process: [child requirements]",
+              "role": "node",
+              "semantic": {
+                "kind": "strategy",
+                "symbol": "SPY"
+              },
+              "slot": "strategy"
+            },
+            {
+              "bundle": {
+                "id": "below-price",
+                "rootSha256": "0b327f1dabbffd602be2a6d3f9f3e12451363a8ca0add45917ef87e407ae3576",
+                "sha256": "628b71a63a42137422f2a84d1680353293eea8fa70c6deffd489bdbedf277cb5",
+                "version": "1"
+              },
+              "disclosed": true,
+              "fragments": [
+                {
+                  "kind": "text",
+                  "value": "Buy when the close is below 10100 cents."
+                }
+              ],
+              "kind": "atom",
+              "parameters": {
+                "threshold": 10100
+              },
+              "parentPath": "root/strategy",
+              "path": "root/strategy/buy_reason",
+              "ports": [],
+              "requirement": "Buy when the close is below 10100 cents.",
+              "role": "buy_reason",
+              "semantic": {
+                "kind": "below",
+                "value": 10100
+              },
+              "slot": "buy_reason"
+            },
+            {
+              "bundle": {
+                "id": "fixed-shares",
+                "rootSha256": "11d8e783f9e723396e1f0062dc402e08f98d0f211a9d13814ef10e5f84b53c35",
+                "sha256": "531e9e84c22a6bc7a591732f9857b66286a33cf2db8dc64103bf5136a1fafffb",
+                "version": "1"
+              },
+              "disclosed": true,
+              "fragments": [
+                {
+                  "kind": "text",
+                  "value": "Buy 2 whole shares if the shared cash covers the entire order; otherwise skip it."
+                }
+              ],
+              "kind": "atom",
+              "parameters": {
+                "quantity": 2
+              },
+              "parentPath": "root/strategy",
+              "path": "root/strategy/buy_process",
+              "ports": [],
+              "requirement": "Buy 2 whole shares if the shared cash covers the entire order; otherwise skip it.",
+              "role": "buy_process",
+              "semantic": {
+                "kind": "shares",
+                "quantity": 2
+              },
+              "slot": "buy_process"
+            },
+            {
+              "bundle": {
+                "id": "exit-above",
+                "rootSha256": "ebd2813e9a7ef4bc0893cae0f85744ce59fdb0ae5905a65ae912110417dc93f9",
+                "sha256": "fb5730e3f32d43fd56fcc3b08e54f432b048949beffcc1e4c6932551f237dfdd",
+                "version": "1"
+              },
+              "disclosed": true,
+              "fragments": [
+                {
+                  "kind": "text",
+                  "value": "Sell when the close exceeds 10500 cents."
+                }
+              ],
+              "kind": "atom",
+              "parameters": {
+                "threshold": 10500
+              },
+              "parentPath": "root/strategy",
+              "path": "root/strategy/sell_reason",
+              "ports": [],
+              "requirement": "Sell when the close exceeds 10500 cents.",
+              "role": "sell_reason",
+              "semantic": {
+                "kind": "above",
+                "value": 10500
+              },
+              "slot": "sell_reason"
+            },
+            {
+              "bundle": {
+                "id": "sell-all",
+                "rootSha256": "2c2dc29ad900b9bd394cdd8fe9951e6291bd8099186e30cc412ac7908161b7c8",
+                "sha256": "da0a1a8d090fb1c8f6ecd17660b953c36d8bd0662031e1f15075218fa9787316",
+                "version": "1"
+              },
+              "disclosed": true,
+              "fragments": [
+                {
+                  "kind": "text",
+                  "value": "Sell all shares privately owned by this strategy."
+                }
+              ],
+              "kind": "atom",
+              "parameters": {},
+              "parentPath": "root/strategy",
+              "path": "root/strategy/sell_process",
+              "ports": [],
+              "requirement": "Sell all shares privately owned by this strategy.",
+              "role": "sell_process",
+              "semantic": {
+                "kind": "all"
+              },
+              "slot": "sell_process"
+            }
+          ],
+          "rootPath": "root",
+          "version": 1
+        },
+        "semantic": {
+          "kind": "constitution",
+          "path": "root",
+          "childOrder": [
+            "strategy"
+          ],
+          "children": {
+            "strategy": {
+              "kind": "strategy",
+              "symbol": "SPY",
+              "path": "root/strategy",
+              "childOrder": [
+                "buy_reason",
+                "buy_process",
+                "sell_reason",
+                "sell_process"
+              ],
+              "children": {
+                "buy_reason": {
+                  "kind": "below",
+                  "value": 10100,
+                  "path": "root/strategy/buy_reason",
+                  "childOrder": [],
+                  "children": {}
+                },
+                "buy_process": {
+                  "kind": "shares",
+                  "quantity": 2,
+                  "path": "root/strategy/buy_process",
+                  "childOrder": [],
+                  "children": {}
+                },
+                "sell_reason": {
+                  "kind": "above",
+                  "value": 10500,
+                  "path": "root/strategy/sell_reason",
+                  "childOrder": [],
+                  "children": {}
+                },
+                "sell_process": {
+                  "kind": "all",
+                  "path": "root/strategy/sell_process",
+                  "childOrder": [],
+                  "children": {}
+                }
+              }
+            }
+          }
+        },
+        "checklist": [
+          {
+            "path": "root",
+            "bundleId": "constitution-v1",
+            "version": "1",
+            "disclosed": true,
+            "requirementId": "root#constitution-v1",
+            "sha256": "4e87f6f9a146810dbeb4b2e2088b739af1b9cd88623e52ff5e33ed6009be7aa3",
+            "rootSha256": "75ce025ec6a9d06e87f1d17e0acb3b565ab92530b76f73bb44e5d3fc2a016bc1",
+            "role": "node",
+            "requirement": "Draft deterministic equity constitution, version 1.\nEvaluate each completed bar once in input order. Prices and cash are integer cents; quantities are whole shares. Orders fill fully at that bar's close with zero fees and slippage. Missing or nonpositive prices suppress that symbol's actions. Indicators require their full window of observed prices. Sells precede buys within a strategy; no same-bar re-entry. Each strategy owns private lots even when symbols overlap. Sibling order is the declared slot order; insufficient cash skips the entire purchase. Strategies complete after one full round trip. Partial exits sell at least one share. Parallel completes when all children complete. Sequence activates its next child on the following bar. Race assigns ownership to the first subtree that actually buys, with declared order breaking ties. A state gate blocks new entries while false but continues exits. An event gate opens once and remains open. Reset liquidates all owned lots when every held symbol has a price, clears subtree state, and permits reactivation on the next bar. Reset takes priority over ordinary actions. No implicit end-of-data liquidation. These rules must be reviewed before a counted study; they do not model partial fills, margin, shorts, options, fees, or live execution.\n\nImplement the following strategy tree as class FrozenBenchmark(QCAlgorithm) in QuantConnect LEAN Python. Follow the response format in the execution appendix. Submit native market orders with each order tag exactly <compiled strategy path>|buy, |sell or |reset. The execution appendix supplies compiled paths, UTC bar-close timestamps and integer-cent inputs. Grading reads actual engine OrderEvents and order tags; printed or logged traces do not count as fills.\n\n[child requirements]"
+          },
+          {
+            "path": "root/strategy",
+            "bundleId": "strategy",
+            "version": "1",
+            "disclosed": true,
+            "requirementId": "root/strategy#strategy",
+            "sha256": "504e861732078fa7ba9df17bf23b653acd06c4cc006917dd753672aca1e09e5f",
+            "rootSha256": "409502b0d5f0d6f00b89a9692644a898eed1046975fb34cfb09fc66dfc29028e",
+            "role": "node",
+            "requirement": "Strategy for SPY (private lots, one round trip):\nBuy reason: [child requirements]\nBuy process: [child requirements]\nSell reason: [child requirements]\nSell process: [child requirements]"
+          },
+          {
+            "path": "root/strategy/buy_reason",
+            "bundleId": "below-price",
+            "version": "1",
+            "disclosed": true,
+            "requirementId": "root/strategy/buy_reason#below-price",
+            "sha256": "628b71a63a42137422f2a84d1680353293eea8fa70c6deffd489bdbedf277cb5",
+            "rootSha256": "0b327f1dabbffd602be2a6d3f9f3e12451363a8ca0add45917ef87e407ae3576",
+            "role": "buy_reason",
+            "requirement": "Buy when the close is below 10100 cents."
+          },
+          {
+            "path": "root/strategy/buy_process",
+            "bundleId": "fixed-shares",
+            "version": "1",
+            "disclosed": true,
+            "requirementId": "root/strategy/buy_process#fixed-shares",
+            "sha256": "531e9e84c22a6bc7a591732f9857b66286a33cf2db8dc64103bf5136a1fafffb",
+            "rootSha256": "11d8e783f9e723396e1f0062dc402e08f98d0f211a9d13814ef10e5f84b53c35",
+            "role": "buy_process",
+            "requirement": "Buy 2 whole shares if the shared cash covers the entire order; otherwise skip it."
+          },
+          {
+            "path": "root/strategy/sell_reason",
+            "bundleId": "exit-above",
+            "version": "1",
+            "disclosed": true,
+            "requirementId": "root/strategy/sell_reason#exit-above",
+            "sha256": "fb5730e3f32d43fd56fcc3b08e54f432b048949beffcc1e4c6932551f237dfdd",
+            "rootSha256": "ebd2813e9a7ef4bc0893cae0f85744ce59fdb0ae5905a65ae912110417dc93f9",
+            "role": "sell_reason",
+            "requirement": "Sell when the close exceeds 10500 cents."
+          },
+          {
+            "path": "root/strategy/sell_process",
+            "bundleId": "sell-all",
+            "version": "1",
+            "disclosed": true,
+            "requirementId": "root/strategy/sell_process#sell-all",
+            "sha256": "da0a1a8d090fb1c8f6ecd17660b953c36d8bd0662031e1f15075218fa9787316",
+            "rootSha256": "2c2dc29ad900b9bd394cdd8fe9951e6291bd8099186e30cc412ac7908161b7c8",
+            "role": "sell_process",
+            "requirement": "Sell all shares privately owned by this strategy."
+          },
+          {
+            "requirementId": "runtime#execution-contract",
+            "path": "runtime",
+            "bundleId": null,
+            "source": "tasks.mjs",
+            "sha256": "6b97b35c5222a495b076f1788a9bbb7bcc66e195567948621e20298ca7be21a2",
+            "role": "execution-contract",
+            "disclosed": true,
+            "requirement": "\n\nExecution appendix (part of this exact prompt):\nImplement class FrozenBenchmark(QCAlgorithm). Return only Python source or one fenced python block. Configure UTC time, the declared dates, cash and RAW minute equity subscriptions; zero fees and slippage. Native order tags must be the exact strategy path followed by |buy, |sell or |reset. Actual filled order events, quantities, times, prices and tags are graded; printed trace claims are ignored. Do not liquidate at end of data.\nStrategy paths: [{\"path\":\"root/strategy\",\"symbol\":\"SPY\"}]\nFrozen completed-bar inputs (integer cents): {\"bars\":[{\"prices\":{\"SPY\":10000},\"time\":\"2024-01-02T14:31:00Z\"},{\"prices\":{\"SPY\":9800},\"time\":\"2024-01-02T14:32:00Z\"},{\"prices\":{\"SPY\":10700},\"time\":\"2024-01-02T14:33:00Z\"},{\"prices\":{\"SPY\":9900},\"time\":\"2024-01-02T14:34:00Z\"},{\"prices\":{\"SPY\":10800},\"time\":\"2024-01-02T14:35:00Z\"}],\"cashCents\":1000000}"
+          }
+        ],
+        "bundles": [
+          {
+            "id": "below-price",
+            "hash": "628b71a63a42137422f2a84d1680353293eea8fa70c6deffd489bdbedf277cb5",
+            "rootSha256": "0b327f1dabbffd602be2a6d3f9f3e12451363a8ca0add45917ef87e407ae3576",
+            "dependencies": [
+              {
+                "id": "constitution-v1",
+                "rootSha256": "75ce025ec6a9d06e87f1d17e0acb3b565ab92530b76f73bb44e5d3fc2a016bc1"
+              }
+            ],
+            "approved": true,
+            "review": {
+              "bundleId": "below-price",
+              "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+              "decision": "approved",
+              "at": "2026-09-10T00:00:00.000Z",
+              "sha256": "628b71a63a42137422f2a84d1680353293eea8fa70c6deffd489bdbedf277cb5",
+              "rootSha256": "0b327f1dabbffd602be2a6d3f9f3e12451363a8ca0add45917ef87e407ae3576"
+            }
+          },
+          {
+            "id": "constitution-v1",
+            "hash": "4e87f6f9a146810dbeb4b2e2088b739af1b9cd88623e52ff5e33ed6009be7aa3",
+            "rootSha256": "75ce025ec6a9d06e87f1d17e0acb3b565ab92530b76f73bb44e5d3fc2a016bc1",
+            "dependencies": [],
+            "approved": true,
+            "review": {
+              "bundleId": "constitution-v1",
+              "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+              "decision": "approved",
+              "at": "2026-09-10T00:00:00.000Z",
+              "sha256": "4e87f6f9a146810dbeb4b2e2088b739af1b9cd88623e52ff5e33ed6009be7aa3",
+              "rootSha256": "75ce025ec6a9d06e87f1d17e0acb3b565ab92530b76f73bb44e5d3fc2a016bc1"
+            }
+          },
+          {
+            "id": "exit-above",
+            "hash": "fb5730e3f32d43fd56fcc3b08e54f432b048949beffcc1e4c6932551f237dfdd",
+            "rootSha256": "ebd2813e9a7ef4bc0893cae0f85744ce59fdb0ae5905a65ae912110417dc93f9",
+            "dependencies": [
+              {
+                "id": "constitution-v1",
+                "rootSha256": "75ce025ec6a9d06e87f1d17e0acb3b565ab92530b76f73bb44e5d3fc2a016bc1"
+              }
+            ],
+            "approved": true,
+            "review": {
+              "bundleId": "exit-above",
+              "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+              "decision": "approved",
+              "at": "2026-09-10T00:00:00.000Z",
+              "sha256": "fb5730e3f32d43fd56fcc3b08e54f432b048949beffcc1e4c6932551f237dfdd",
+              "rootSha256": "ebd2813e9a7ef4bc0893cae0f85744ce59fdb0ae5905a65ae912110417dc93f9"
+            }
+          },
+          {
+            "id": "fixed-shares",
+            "hash": "531e9e84c22a6bc7a591732f9857b66286a33cf2db8dc64103bf5136a1fafffb",
+            "rootSha256": "11d8e783f9e723396e1f0062dc402e08f98d0f211a9d13814ef10e5f84b53c35",
+            "dependencies": [
+              {
+                "id": "constitution-v1",
+                "rootSha256": "75ce025ec6a9d06e87f1d17e0acb3b565ab92530b76f73bb44e5d3fc2a016bc1"
+              }
+            ],
+            "approved": true,
+            "review": {
+              "bundleId": "fixed-shares",
+              "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+              "decision": "approved",
+              "at": "2026-09-10T00:00:00.000Z",
+              "sha256": "531e9e84c22a6bc7a591732f9857b66286a33cf2db8dc64103bf5136a1fafffb",
+              "rootSha256": "11d8e783f9e723396e1f0062dc402e08f98d0f211a9d13814ef10e5f84b53c35"
+            }
+          },
+          {
+            "id": "sell-all",
+            "hash": "da0a1a8d090fb1c8f6ecd17660b953c36d8bd0662031e1f15075218fa9787316",
+            "rootSha256": "2c2dc29ad900b9bd394cdd8fe9951e6291bd8099186e30cc412ac7908161b7c8",
+            "dependencies": [
+              {
+                "id": "constitution-v1",
+                "rootSha256": "75ce025ec6a9d06e87f1d17e0acb3b565ab92530b76f73bb44e5d3fc2a016bc1"
+              }
+            ],
+            "approved": true,
+            "review": {
+              "bundleId": "sell-all",
+              "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+              "decision": "approved",
+              "at": "2026-09-10T00:00:00.000Z",
+              "sha256": "da0a1a8d090fb1c8f6ecd17660b953c36d8bd0662031e1f15075218fa9787316",
+              "rootSha256": "2c2dc29ad900b9bd394cdd8fe9951e6291bd8099186e30cc412ac7908161b7c8"
+            }
+          },
+          {
+            "id": "strategy",
+            "hash": "504e861732078fa7ba9df17bf23b653acd06c4cc006917dd753672aca1e09e5f",
+            "rootSha256": "409502b0d5f0d6f00b89a9692644a898eed1046975fb34cfb09fc66dfc29028e",
+            "dependencies": [],
+            "approved": true,
+            "review": {
+              "bundleId": "strategy",
+              "reviewer": "SYNTHETIC APPARATUS-DEVELOPMENT MARKER — NOT A PERSON, NOT A REVIEW",
+              "decision": "approved",
+              "at": "2026-09-10T00:00:00.000Z",
+              "sha256": "504e861732078fa7ba9df17bf23b653acd06c4cc006917dd753672aca1e09e5f",
+              "rootSha256": "409502b0d5f0d6f00b89a9692644a898eed1046975fb34cfb09fc66dfc29028e"
+            }
+          }
+        ],
+        "promptSha256": "0a5db1edf39adc329d6cf0067d4423104369be2a5755d4e71367dd9d57419189",
+        "compilerVersion": "1.2.0"
+      },
+      "semanticId": "1664622e1cef5ae3cfc7f0c1c88bbed047e0d2a7318e101133e480f9187fbd5b"
+    }
+  ],
+  "schedule": [
+    {
+      "id": "flat-canary.claude-cli.1",
+      "taskId": "flat-canary",
+      "conditionId": "claude-cli",
+      "replicate": 1
+    },
+    {
+      "id": "flat-canary.recorded.1",
+      "taskId": "flat-canary",
+      "conditionId": "recorded",
+      "replicate": 1
+    },
+    {
+      "id": "flat-canary.reference-program.1",
+      "taskId": "flat-canary",
+      "conditionId": "reference-program",
+      "replicate": 1
+    }
+  ],
+  "primaryPopulation": {
+    "selection": "all",
+    "label": "All frozen tasks",
+    "taskIds": [
+      "flat-canary"
+    ],
+    "ledger": [
+      {
+        "taskId": "flat-canary",
+        "split": "development",
+        "included": true,
+        "reason": null
+      }
+    ]
+  },
+  "runtimeFiles": [
+    "cli.mjs",
+    "prompts.mjs",
+    "study.mjs",
+    "runner.mjs",
+    "module-host.mjs",
+    "lean.mjs",
+    "lean-codegen.mjs",
+    "lean-reference.py",
+    "starters.mjs",
+    "qualify.mjs",
+    "lean-grade.mjs",
+    "lean-data.py",
+    "lean-cases.mjs",
+    "analysis.mjs",
+    "report.mjs",
+    "corpus.mjs",
+    "information.mjs",
+    "tasks.mjs",
+    "conventions.mjs",
+    "audit.mjs",
+    "lean-observations.mjs",
+    "observations.mjs",
+    "execution.mjs",
+    "execution_reference.py",
+    "execution-lean.mjs",
+    "execution_lean.py",
+    "composition.mjs",
+    "trading-ir.mjs",
+    "trading-runtime.mjs",
+    "trading_reference.py",
+    "trading-lean.mjs",
+    "trading_lean.py",
+    "trading-observations.mjs",
+    "trading-market.mjs",
+    "trading_market.py",
+    "trading_broker.py",
+    "trading-study.mjs",
+    "trading-catalog.mjs",
+    "requirements.mjs",
+    "shrinking.mjs",
+    "workflow.mjs",
+    "templates.mjs",
+    "resource-effects.mjs",
+    "readiness.mjs",
+    "requirement-fields.mjs"
+  ],
+  "readiness": {
+    "format": "research-experiment-readiness",
+    "version": 1,
+    "purpose": "apparatus-development",
+    "profile": {
+      "id": "lean-native-unadmitted",
+      "version": 1,
+      "scope": "Candidate code needs native source/image/data/observer/control admission; semantic answer qualification is insufficient."
+    },
+    "design": null,
+    "population": {
+      "selection": "all",
+      "label": "All frozen tasks",
+      "taskIds": [
+        "flat-canary"
+      ],
+      "ledger": [
+        {
+          "taskId": "flat-canary",
+          "split": "development",
+          "included": true,
+          "reason": null
+        }
+      ]
+    },
+    "coverage": null,
+    "referenceAncestry": null,
+    "endpoint": {
+      "kind": "binary-pass",
+      "grading": {
+        "kind": "lean-python",
+        "executionTimeoutMs": 420000
+      }
+    },
+    "requiredProofs": [],
+    "capabilities": {
+      "collectors": [
+        "replay",
+        "http"
+      ],
+      "interaction": "one-public-request",
+      "state": "no-candidate-resource-execution",
+      "tools": [],
+      "identity": "adapter-reported-agreement-only",
+      "transportHost": "trusted-embedding-no-authored-capability-flags",
+      "requestedContext": {
+        "scope": "Sent-request context only: the ordinary request contains the frozen public prompt and input; a selected workflow sends only its declared task visibility and ancestor output projections. Fresh-session values request no implicit history. Provider adherence, hidden history and actual session isolation remain unobserved.",
+        "conditions": []
+      },
+      "conditionOrigins": [
+        {
+          "conditionId": "recorded",
+          "origin": "recorded-response"
+        },
+        {
+          "conditionId": "reference-program",
+          "origin": "external-collection"
+        },
+        {
+          "conditionId": "claude-cli",
+          "origin": "external-collection"
+        }
+      ]
+    },
+    "limits": {
+      "maxAttemptsPerTrial": 2,
+      "maxTotalAttempts": 12,
+      "timeoutMs": 900000,
+      "maxDurationMs": 5400000,
+      "preparation": null
+    },
+    "blockers": [],
+    "scientificBlockers": [
+      {
+        "code": "native-admission-unavailable",
+        "path": "protocol.grading.kind",
+        "message": "Native candidate collection remains blocked until its source, image, data, observer and control admission mechanism is implemented and the original gates are satisfied."
+      },
+      {
+        "code": "experiment-design-required",
+        "path": "executionPlan.design",
+        "message": "Experimental admission requires the explicit supported schedule, outcome and dependence design."
+      },
+      {
+        "code": "collector-unsupported",
+        "path": "conditions.reference-program.adapter.kind",
+        "message": "This experiment profile supports recorded replay or the bounded public HTTPS request; command/module collectors need a registered execution contract."
+      },
+      {
+        "code": "collection-controls-required",
+        "path": "conditions.reference-program.collection",
+        "message": "Declare model comparison, exact instructions, no tools and the public/fresh-request collection boundary."
+      },
+      {
+        "code": "reported-identity-required",
+        "path": "observationPlan",
+        "message": "External experiment collection requires matching reported provider and model id; this is not provider authentication."
+      },
+      {
+        "code": "reported-completion-required",
+        "path": "observationPlan",
+        "message": "External experiment collection requires complete reported generation before admitting an outcome."
+      },
+      {
+        "code": "collector-unsupported",
+        "path": "conditions.claude-cli.adapter.kind",
+        "message": "This experiment profile supports recorded replay or the bounded public HTTPS request; command/module collectors need a registered execution contract."
+      }
+    ],
+    "scope": "Apparatus development computations only; no scientific inference or experimental admission. Static operation eligibility only. Fresh required qualification, remaining budgets, durable evidence and existing personal/native/release gates are separate. No authenticated execution or scientific correctness is inferred.",
+    "bindings": {
+      "specificationSha256": "49012ea8918e3165cfbaa755a6692b381e5fe2b326e264e9c70929c408e8ee82",
+      "tasksSha256": "316b7571aa195aa0ccf48e18a0cfd2e94d853d032fbbadb1a0cf70937e889464",
+      "scheduleSha256": "be8b656b2a052792b21f84d05ab90a1312e27922044ebb4089f270f430e40c9b",
+      "populationSha256": "e14f034cc9a5b6bbfa29b1d672db6dd42b47e9ddddd541502f551d691b51229c",
+      "runtimeFilesSha256": "f80a595feb0ce6d49ffeebd8ff6efb279391269cb720c7ef3a22a2b1d20fc0fc",
+      "runtimeSourcesSha256": "904ccc12453762c187adc62e30abee142645bde15c9929e94e6a9c7829ae636e",
+      "inputsSha256": "6908112ee16d845f3a745313de87fcce3d143a0cc5975326d3aff63042335204",
+      "endpointSha256": "a2b477a0f4413ece56662b0bdccb20d8a59d6c7a140dc26c09808c4652c558bd",
+      "requirementsSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "experimentTemplateSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "auditSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "workflowsSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    },
+    "sha256": "2882dd72acee46aab550b8aa74d034ec4af5f626f30045da89978205926d0b3a"
+  },
+  "sha256": "efaa64a29e87a38b48893fee77a06599382dafc1bb8a9ef0e21f5832ef0c1dc2"
+}

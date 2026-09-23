@@ -1,0 +1,102 @@
+/* Activity refinement. Kept separate so the saved Home can be restored together. */
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 12px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-tools :is(input, select) { min-width: 0; min-height: 34px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--home-context-surface); color: var(--ink); font: 400 12.5px/1.4 var(--font-ui); padding: 6px 10px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-tools input { flex: 1 1 150px; width: 150px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-tools input::placeholder { color: var(--ink-3); opacity: 1; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-tools select { flex: 0 1 132px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-filter-note { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 12px; color: var(--ink-2); font: 400 12px/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-filter-note[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-filter-note button { border: 0; background: transparent; color: var(--ink); padding: 4px 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable thead th:first-child { width: auto; padding-left: 8px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable thead th:last-child { width: 88px; text-align: right; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-row > td { padding: 12px 8px; vertical-align: top; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 7px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-name { overflow: visible; white-space: normal; overflow-wrap: anywhere; font-size: 14px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-mono { width: 23px; height: 23px; font-size: 10px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-pill { font-size: 11px; padding: 2px 7px; gap: 5px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-dot { width: 5px; height: 5px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-doing-text { display: block; color: var(--ink); white-space: normal; overflow-wrap: anywhere; font: 400 13px/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-facts { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: anywhere; margin-top: 4px; color: var(--ink-2); font: 400 12px/1.5 var(--font-ui); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-facts[hidden] { display: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-since { display: block; padding: 2px 0 8px; white-space: normal; color: var(--ink-3); font-size: 11px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-actions button { display: block; margin-left: auto; min-width: 64px; min-height: 29px; padding: 3px 8px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-details { margin-top: 4px; border: 1px solid var(--line-2); border-radius: 7px; background: transparent; color: var(--ink-2); font: 500 12px/1.4 var(--font-ui); cursor: pointer; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-details:hover, .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-details[aria-expanded="true"] { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) :is(.home-roster-tools input, .home-roster-tools select, .home-roster-details, [data-roster-reset]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-group th { padding: 14px 8px 8px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-group-count { margin-left: 6px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-head { flex-wrap: wrap; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows { gap: 12px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-detail-rows dd { line-height: 1.6; }
+
+/* Page ground, a soft gray container, then individual paper surfaces. */
+.home :is(.home-feed-wrap, .home-chat-pane-body):has(.home-roster-readable) {
+  --home-context-surface: color-mix(in srgb, var(--ink) 7%, var(--bg));
+  --home-agent-paper: var(--bg);
+  --home-agent-line: color-mix(in srgb, var(--ink) 11%, transparent);
+  --home-agent-hover: color-mix(in srgb, var(--ink) 2%, var(--home-agent-paper));
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home :is(.home-feed-wrap, .home-chat-pane-body):has(.home-roster-readable) {
+  --home-context-surface: color-mix(in srgb, var(--ink) 3%, var(--bg));
+  --home-agent-paper: color-mix(in srgb, var(--ink) 7%, var(--bg));
+  --home-agent-line: color-mix(in srgb, var(--ink) 9%, transparent);
+  --home-agent-hover: color-mix(in srgb, var(--ink) 10%, var(--bg));
+}
+.home :is(.home-feed-wrap, .home-chat-pane-body):has(.home-roster-readable) > .home-feed {
+  background: var(--home-context-surface);
+  border-color: color-mix(in srgb, var(--ink) 15%, transparent);
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgb(0 0 0 / .045);
+}
+.home :is(.home-feed-wrap, .home-chat-pane-body):has(.home-roster-readable) .session-head { padding-bottom: 14px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body):has(.home-roster-readable) .home-agent-pick,
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-tools :is(input, select) {
+  background: var(--home-agent-paper);
+  border: 1px solid var(--home-agent-line);
+  border-radius: 9px;
+  min-height: 36px;
+}
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-tools { margin: 0 0 6px; gap: 8px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-agents-strip { margin: 2px 0 12px; padding: 0; border: 0; gap: 10px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-agents-summary { gap: 6px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-agents-stat {
+  gap: 5px; padding: 8px 9px; border: 1px solid var(--home-agent-line);
+  border-radius: 9px; background: var(--home-agent-paper);
+}
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-agents-stat > b { font-size: 17px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-agents-stat > span { font-size: 11.5px; color: var(--ink-2); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-agents-ledger { margin-left: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable { border-collapse: separate; border-spacing: 0 8px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable thead th { border: 0; padding-top: 4px; padding-bottom: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable thead th:first-child { width: auto; padding-left: 14px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable thead th:last-child { width: 92px; padding-right: 14px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-group th { padding: 10px 3px 0; background: none; border: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-group-count { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-row > td {
+  padding: 14px; background: var(--home-agent-paper);
+  border-top: 1px solid var(--home-agent-line); border-bottom: 1px solid var(--home-agent-line);
+}
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-row > td:first-child { border-left: 1px solid var(--home-agent-line); border-radius: 11px 0 0 11px; padding-right: 8px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-row > td:last-child { border-right: 1px solid var(--home-agent-line); border-radius: 0 11px 11px 0; padding-left: 6px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-row:hover > td { background: var(--home-agent-hover); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-row.is-selected > td { background: color-mix(in srgb, var(--accent-2) 4%, var(--home-agent-paper)); border-color: color-mix(in srgb, var(--accent-2) 35%, var(--home-agent-line)); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-row.is-selected > td:first-child { box-shadow: none; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-identity { gap: 6px 8px; margin-bottom: 9px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-mono { width: 27px; height: 27px; font-size: 10.5px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-doing-text { line-height: 1.55; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-facts { margin-top: 6px; color: var(--ink-3); }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-since { padding: 3px 0 10px; font-size: 11px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-actions button { min-height: 31px; border-radius: 7px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-details { border-color: var(--home-agent-line); margin-top: 5px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-detail-row > td { padding: 0; border: 0; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-detail { margin: 0; padding: 16px 16px 16px 20px; background: var(--home-agent-paper); border-color: var(--home-agent-line); box-shadow: none; border-radius: 11px; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-detail::before { top: 16px; bottom: 16px; left: 8px; width: 2px; opacity: .7; }
+.home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-agents-empty { padding: 18px; border: 1px solid var(--home-agent-line); border-radius: 11px; background: var(--home-agent-paper); }
+
+@container home-context (max-width: 360px) {
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable thead th:last-child { width: 74px; padding-right: 9px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-row > td { padding: 11px 9px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-row > td:first-child { padding-right: 5px; }
+  .home :is(.home-feed-wrap, .home-chat-pane-body) .home-agents .home-roster-readable .home-roster-actions button { min-width: 55px; padding: 3px 6px; }
+}

@@ -1,0 +1,2064 @@
+/* THE PHONE CANVAS, AS A DRESS.
+ *
+ * READ src/phone-canvas.js FIRST. Every rule in this file begins with
+ * `[data-phone-canvas="on"]`, an attribute written by exactly one function in
+ * that module and by nothing else in this repository. There is not one media
+ * query here and there must never be one: a width cannot reach these rules, so
+ * a desktop window at any size, and the site in any ordinary browser, cannot
+ * be moved by a single declaration below. tools/test/phone-canvas.test.mjs
+ * fails if any selector here loses the attribute.
+ *
+ * THE THEME IS NOT NEGOTIABLE HERE. The owner: "the look and design around
+ * that functionality is largely open except it must strictly agree with the
+ * theme". So every colour, radius, space, font and letter-spacing below is a
+ * token — var(--ink*), var(--line*), var(--sheet), var(--s1..5),
+ * var(--r-sm/md/lg), var(--font-ui/mono), var(--elev-3), var(--track-caps).
+ * There is not one new hex value, not one new radius and not one invented
+ * token. Three bare pixel values are geometry quoted from controls
+ * that already ship — the 30px control height and 12px type of the zoom
+ * cluster this sheet's opener stands beside, and the 32px close button of
+ * src/owner-popup.css — and each one is named in the pass report. The owner's
+ * phone touch floor is composed from the existing spacing scale below.
+ */
+
+/* ------------------------------------------------------------------
+   1. THE PAGE BOX. It renders exactly in the screen and it does not move.
+   ------------------------------------------------------------------ */
+/* `--phone-canvas-h` is the VISUAL viewport height, written by
+   src/phone-canvas.js and re-written whenever the URL bar or the keyboard
+   moves. The fallback matters: if script somehow never measures, 100% of a
+   fixed body is still the window rather than iOS's taller `100vh`.
+
+   `touch-action: pan-y` at the root is the pinch lock and the double-tap lock
+   at once — the value list has no `pinch-zoom` in it, and double-tap-to-zoom
+   is a non-standard gesture that only `auto` permits. It still allows the
+   sheet below to scroll, because scrolling is implemented by the sheet and the
+   browser stops intersecting touch-action there.
+
+   `overscroll-behavior: none` is the rubber-band lock, and `position: fixed` on
+   the body is the same lock again for engines older than it. */
+[data-phone-canvas="on"] .metrics .m-activity-picker:not([hidden]) {
+  display: grid;
+  gap: var(--s3);
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line);
+}
+[data-phone-canvas="on"] .m-activity-picker-title { margin: 0; font-weight: 600; }
+[data-phone-canvas="on"] .m-activity-picker-field label { display: block; margin-bottom: var(--s2); color: var(--ink-3); }
+[data-phone-canvas="on"] .m-activity-picker-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: var(--s2); }
+[data-phone-canvas="on"] .m-activity-picker-row button { min-width: 44px; min-height: 44px; font-size: 24px; padding: 0; }
+[data-phone-canvas="on"] .m-activity-picker-row button:disabled { opacity: .4; cursor: default; }
+[data-phone-canvas="on"] .m-activity-picker-row select { min-width: 0; width: 100%; min-height: 44px; font-size: 16px; padding: var(--s2); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); }
+[data-phone-canvas="on"] .m-activity-picker-source { margin: 0; color: var(--ink-3); font-size: 12px; }
+[data-phone-canvas="on"] .m-activity-picker-result { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+
+html[data-phone-canvas="on"] {
+  height: var(--phone-canvas-h, 100%);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+  /* Not a size choice: 100% means "leave the author's sizes alone", and stops
+     Safari inflating text inside a box that can no longer grow. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+html[data-phone-canvas="on"] body {
+  position: fixed;
+  inset: 0;
+  top: var(--phone-canvas-body-top, 0);
+  width: 100%;
+  /* The physical measurement and this zoom-adjusted CSS-pixel value are written
+     together by measureBox. The percentage fallback is load-bearing: it keeps
+     the page fitted while that first measurement is being taken. */
+  height: var(--phone-canvas-body-h, 100%);
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+}
+/* `#stage` is 100% everywhere else too now, so this rule restates rather than
+   overrides -- and it stays, because the reason differs: there it is the Text
+   size zoom that makes a viewport unit lie (see --zoom at :root in
+   src/styles.css), here it is iOS's taller `100vh`. 100% of a body that is
+   already pinned to the visual viewport is the window, exactly.
+
+   THE TOPBAR'S CLEARANCE IS DELIBERATELY NOT TOUCHED. The chevrons and the gear
+   stay, along with the 82px the product already leaves for them, because
+   re-deciding that clearance here would mean writing a new number for a
+   relationship the app has already settled. The desktop-only direct navigation
+   is removed by the next rule, so the two retained edge groups return to the
+   same space-between arrangement this surface had before that navigation was
+   added. */
+[data-phone-canvas="on"] #stage {
+  height: 100%;
+}
+
+/* A live call follows the user off Home. Reserve its controls below the
+   page so even the collapsed disclosure cannot intercept a form-field tap.
+   The body already follows the visual viewport, including keyboard changes;
+   the expanded controller scrolls within its share without ending the call. */
+html[data-phone-canvas="on"] body:has(> .voice-screen-dock:not([hidden])) {
+  display: flex;
+  flex-direction: column;
+}
+html[data-phone-canvas="on"] body:has(> .voice-screen-dock:not([hidden])) > #stage {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+}
+[data-phone-canvas="on"] body > .voice-screen-dock:not([hidden]) {
+  position: relative;
+  inset: auto;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 40%;
+  max-width: none;
+  align-self: stretch;
+  margin: var(--s2) var(--s3);
+}
+
+/* The explicit demo notice and profile faults must not float over page
+   controls. Share the fitted body with the stage, as the voice dock does.
+   Route-specific display:none rules still remove notices that do not apply. */
+html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) {
+  display: flex;
+  flex-direction: column;
+}
+html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) > #stage {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+}
+[data-phone-canvas="on"] body > .fleet-profile-notice {
+  position: relative;
+  inset: auto;
+  flex: 0 1 auto;
+  min-height: 44px;
+  max-height: 25%;
+  max-width: none;
+  overflow: auto;
+  margin: var(--s2);
+}
+
+/* The centered page links are desktop navigation. Phone mode keeps its compact
+   back/forward controls and quick settings, but does not inherit that extra
+   row of destinations. This is gated by the semantic mode attribute rather
+   than viewport width: a narrow desktop still has desktop navigation, and a
+   wide phone canvas still does not. */
+/* Keep the wordmark centered between equal side columns even though the
+   right side holds two controls. The existing desktop navigation stays intact. */
+[data-phone-canvas="on"] .topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: 0;
+  width: calc(100% - 2 * var(--s2));
+}
+[data-phone-canvas="on"] .topbar .tb-side { gap: 0; }
+[data-phone-canvas="on"] .phone-home-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: -0.025em;
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--r-sm);
+}
+[data-phone-canvas="on"] .phone-home-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: var(--s1);
+}
+[data-phone-canvas="on"] .tb-nav {
+  display: none;
+}
+
+/* ------------------------------------------------------------------
+   2. THE TOUCH FLOOR. A finger gets the same minimum target everywhere.
+   ------------------------------------------------------------------ */
+/* The shipped controls declare hit sizes from 18px through 40px across the
+   product's sheets. That compact register remains the desktop register: this
+   floor exists only after the phone decision has written its attribute. The
+   important flag is the policy boundary here, not a specificity shortcut --
+   later-loaded page sheets carry their own size declarations and none of them
+   may lower the touch floor after phone mode is on. The scale already has an
+   exact answer: --s5 (24px) + --s4 (16px) + --s1 (4px). That answer is a
+   PAINTED 44px, so it is divided by the body's Text size zoom just as every
+   other window-bound length is: measured before this division, Small painted
+   39.6px and no longer met the finger floor. */
+[data-phone-canvas="on"] a[href]:not([hidden]),
+[data-phone-canvas="on"] button:not([hidden]),
+[data-phone-canvas="on"] input:not([type="hidden"]):not([hidden]),
+[data-phone-canvas="on"] select:not([hidden]),
+[data-phone-canvas="on"] textarea:not([hidden]),
+[data-phone-canvas="on"] summary:not([hidden]),
+[data-phone-canvas="on"] [role="button"]:not([hidden]),
+[data-phone-canvas="on"] [role="tab"]:not([hidden]),
+[data-phone-canvas="on"] [role="switch"]:not([hidden]) {
+  min-width: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1)) !important;
+  min-height: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1)) !important;
+}
+/* A minimum size does not apply to a non-replaced inline box. Keep links in
+   the same text flow while giving their declared floor a box it can size. */
+[data-phone-canvas="on"] a[href]:not([hidden]):not(.fleet-profile-notice) {
+  display: inline-flex;
+  align-items: center;
+}
+/* The compose panel's field labels are press targets (a press toggles the
+   field's tip — src/agent-compose-panel.js fieldLabel), and a label is an
+   inline box the floor above cannot size. Same floor, same recipe as the
+   links: a flex box tall enough for a finger, the text still on its line. */
+[data-phone-canvas="on"] .agent-compose-field > .cl {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1));
+}
+
+/* Quick-settings switches are activated by their entire label row. */
+[data-phone-canvas="on"] .set-row.set-toggle {
+  min-height: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1));
+}
+[data-phone-canvas="on"] input:focus,
+[data-phone-canvas="on"] textarea:focus,
+[data-phone-canvas="on"] [contenteditable="true"]:focus {
+  scroll-margin-bottom: var(--s4);
+}
+
+/* Settings segments must grow with their 44px buttons. The desktop trough
+   fixes its height at 32px, which otherwise leaves labels below the surface.
+   Wrapped choices use the selected button's own surface so the one-row moving
+   indicator cannot stretch across a second row. */
+[data-phone-canvas="on"] label:has(> input[type="checkbox"]),
+[data-phone-canvas="on"] label:has(> input[type="radio"]) {
+  display: inline-flex;
+  min-width: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1));
+  min-height: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1));
+  align-items: center;
+}
+/* The label supplies the touch target; enlarging the native square itself
+   made Research's module choices dominate the page on iOS. */
+[data-phone-canvas="on"] label > input[type="checkbox"]:not([hidden]),
+[data-phone-canvas="on"] .acct-field > span > input[type="checkbox"]:not([hidden]),
+[data-phone-canvas="on"] label > input[type="radio"]:not([hidden]) {
+  width: calc(var(--s4) + var(--s1)) !important;
+  height: calc(var(--s4) + var(--s1)) !important;
+  min-width: calc(var(--s4) + var(--s1)) !important;
+  min-height: calc(var(--s4) + var(--s1)) !important;
+  flex: 0 0 calc(var(--s4) + var(--s1)) !important;
+  accent-color: var(--ink-2);
+}
+/* Account recovery wraps its checkbox in a span. Keep the complete label
+   tappable without inflating the native square or its surrounding text. */
+[data-phone-canvas="on"] .acct-field:has(input[type="checkbox"]) {
+  min-height: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1));
+  justify-content: center;
+}
+[data-phone-canvas="on"] .acct-field > span:has(> input[type="checkbox"]) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--s2);
+}
+[data-phone-canvas="on"] .acct-limits {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+/* The desktop limit row's fixed side columns exceed a compact phone at
+   Large text. Put each slider below its own name and value. */
+[data-phone-canvas="on"] .acct-limit {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+[data-phone-canvas="on"] .acct-limit-name { grid-area: 1 / 1; }
+[data-phone-canvas="on"] .acct-limit-figure { grid-area: 1 / 2; }
+[data-phone-canvas="on"] .acct-slider {
+  grid-area: 2 / 1 / auto / -1;
+  min-width: 0;
+}
+[data-phone-canvas="on"] .research-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s3);
+  padding-block: var(--s3);
+}
+[data-phone-canvas="on"] .research-bar > .spacer { display: none; }
+[data-phone-canvas="on"] .metrics .m-edit-btn {
+  /* Keep Done at its full touch size after the first Android tap. */
+  transform: none;
+}
+[data-phone-canvas="on"] .research-bar > .m-edit-btn {
+  /* The shared pressed scale would shrink a 44px phone target to 42px. */
+  transform: none;
+  width: 100%;
+  padding-inline: var(--s3);
+  white-space: normal;
+  border-radius: var(--r-md);
+}
+/* Keep the shared active fill: its white Done label needs that contrast. */
+[data-phone-canvas="on"] .research-bar > .m-edit-btn:not(.on) {
+  background: var(--sheet);
+}
+[data-phone-canvas="on"] .research-project-bar {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: var(--s2) var(--s3);
+}
+[data-phone-canvas="on"] .research-project-bar > label {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+[data-phone-canvas="on"] .research-project-bar select {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+[data-phone-canvas="on"] .research-popover {
+  box-sizing: border-box;
+  max-width: calc(100% - var(--s4) * 2);
+  max-height: calc(var(--phone-canvas-h, 100%) * .55 / var(--zoom, 1));
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--r-md);
+}
+[data-phone-canvas="on"] .settings-page .seg:has(> button),
+[data-phone-canvas="on"] .metrics .seg:has(> button),
+[data-phone-canvas="on"] .comms .seg:has(> button),
+[data-phone-canvas="on"] .ledger-page .seg:has(> button) {
+  height: auto;
+  flex-wrap: wrap;
+  gap: var(--s1);
+}
+[data-phone-canvas="on"] .settings-page .seg > button,
+[data-phone-canvas="on"] .metrics .seg > button,
+[data-phone-canvas="on"] .comms .seg > button,
+[data-phone-canvas="on"] .ledger-page .seg > button {
+  flex: 1 1 auto;
+  white-space: normal;
+  justify-content: center;
+  text-align: center;
+  padding-block: var(--s2);
+  line-height: 1.4;
+}
+[data-phone-canvas="on"] .settings-page .seg > .seg-ind,
+[data-phone-canvas="on"] .metrics .seg > .seg-ind,
+[data-phone-canvas="on"] .comms .seg > .seg-ind,
+[data-phone-canvas="on"] .ledger-page .seg > .seg-ind { opacity: 0; }
+[data-phone-canvas="on"] .settings-page .seg > button.on,
+[data-phone-canvas="on"] .metrics .seg > button.on,
+[data-phone-canvas="on"] .comms .seg > button.on,
+[data-phone-canvas="on"] .ledger-page .seg > button.on { background: var(--sheet); }
+
+/* The single-column phone rail must travel with the page. A sticky rail
+   otherwise paints over section headings and controls as they scroll up. */
+[data-phone-canvas="on"] .settings-page .settings-rail {
+  position: static;
+}
+
+/* Ledger prose and its controls use the row's width on a phone. The desktop
+   outline column otherwise leaves a 202px blank gutter before every sentence. */
+[data-phone-canvas="on"] .ledger-page .ledger-words,
+[data-phone-canvas="on"] .ledger-page .ledger-row-note,
+[data-phone-canvas="on"] .ledger-page .ledger-row-actions,
+[data-phone-canvas="on"] .ledger-page .ledger-row-editor {
+  padding-inline: var(--s4);
+}
+
+/* The corona's transparent padding belongs to the decorative stage, not to
+   the home scroller. Voice remains outside that stage and can grow normally. */
+[data-phone-canvas="on"] .home { grid-template-columns: minmax(0, 1fr); }
+[data-phone-canvas="on"] .home-ring-wrap { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+[data-phone-canvas="on"] .home-ring-stage { contain: paint; }
+[data-phone-canvas="on"] .home-ring-stage .uring {
+  width: min(100%, 320px) !important;
+  height: auto !important;
+  aspect-ratio: 1;
+}
+[data-phone-canvas="on"] .home-ring-stage .uring > svg { width: 100%; height: auto; }
+/* The visible rim is inset from the SVG box to leave room for its glow.
+   Keep the readout within that circle, including enlarged text on 320px
+   phones. Compact separators leave more space for the actual time values. */
+[data-phone-canvas="on"] .home-ring-stage .uring-inner { width: 75%; }
+[data-phone-canvas="on"] .home-ring-wrap .uring-digits .n-stack { font-size: 9.5cqw; }
+[data-phone-canvas="on"] .home-ring-wrap .uring-digits .colon { font-size: 6cqw; padding: 0; }
+[data-phone-canvas="on"] .home-ring-wrap .uring-digits .u { font-size: clamp(9px, 3.4cqw, 11px); }
+/* A native Safari select must not widen its label's row on a narrow phone. */
+[data-phone-canvas="on"] .voice-contact label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-phone-canvas="on"] .voice-contact label[hidden] { display: none; }
+[data-phone-canvas="on"] .voice-contact label > select { width: 100%; text-overflow: ellipsis; }
+
+/* ------------------------------------------------------------------
+   3. THE COMPUTERS PAGE: the choice of computer, and the tree.
+   ------------------------------------------------------------------ */
+[data-phone-canvas="on"] .computers {
+  width: calc(100% - 2 * var(--s2));
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 0;
+  gap: var(--s2);
+  /* The sheet is absolute inside this box, so this is what contains it. */
+  position: relative;
+}
+/* The rail has moved into the sheet, so the second column has nothing to hold
+   and the tree takes the whole width. */
+[data-phone-canvas="on"] .comp-body {
+  display: block;
+  min-height: 0;
+  height: 100%;
+}
+[data-phone-canvas="on"] .graph-wrap {
+  height: 100%;
+}
+/* Choosing a computer is one of the two things the owner kept on this screen,
+   and an account with several computers must not push the later ones off the
+   edge. The strip scrolls sideways under its own finger; `pan-x` is what tells
+   the browser that this one element may. */
+[data-phone-canvas="on"] .computers .tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+[data-phone-canvas="on"] .computers .tabs::-webkit-scrollbar {
+  display: none;
+}
+[data-phone-canvas="on"] .computers .tabs .tab {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* THE ACCOUNTS PANEL FITS THE SPACE BELOW ITS OWN TRIGGER. Its ordinary 70vh
+   ceiling is enough in portrait, but sideways the trigger already starts 82px
+   below the window top: measured at 844x390, the 273px panel ended at y=411,
+   clipping the scrollbar's end and the last 21px of the panel inside a page
+   that cannot scroll. account-switcher.css keeps its desktop ceiling and
+   accepts this optional second one; only this mode writes it.
+
+   The subtraction is the actual vertical route to the menu: the shared 82px
+   topbar clearance, one phone-row inset, the 44px touch-floor trigger, its 8px
+   disclosure gap, and one 8px lower inset. `--phone-canvas-h` is the measured
+   visual app box rather than iOS's taller 100vh, and division by `--zoom`
+   keeps the painted edge in the same place at every offered text size. The
+   390px fallback is the shortest side in the phone register; in the normal
+   boot path measureBox writes the live value before this menu can open. */
+[data-phone-canvas="on"] .acct-menu {
+  --acct-menu-available-height: calc(
+    var(--phone-canvas-h, 390px) / var(--zoom, 1)
+    - 82px
+    - var(--s2)
+    - var(--s5) - var(--s4) - var(--s1)
+    - var(--s2)
+    - var(--s2)
+  );
+}
+/* THE BAR STACKS, BECAUSE 52 FIXED PIXELS CANNOT HOLD THREE JOBS AT 390.
+   The desktop bar is one 52px flex row -- name, the trees strip, the tool
+   chips -- and on a phone those three fought for the same line: the strip's
+   chips drew UNDER and OVER the Start control (measured on the owner's own
+   phone, 2026-08-27, chips overlapping Start tree). Each job now takes its
+   own full row: the name first, the controls a person presses second, the
+   strip of trees third with its own sideways scroll. Height goes auto; the
+   canvas below simply starts lower, which the slot's own flex absorbs. */
+[data-phone-canvas="on"] .computers .graph-bar {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 0;
+  padding: var(--s2);
+  row-gap: var(--s2);
+  column-gap: var(--s2);
+  /* AND IT GIVES UP `flex: none`, so the canvas floor below can win. A bar
+     that grows without limit is how a phone held sideways ended up with a
+     151px bar in a 152px pane and no tree at all; here it takes what is left
+     and scrolls if that is not enough, which is the same answer the trees
+     strip inside it already gives. */
+  flex: 0 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+[data-phone-canvas="on"] .computers .graph-bar-lead {
+  flex: 1 1 100%;
+  min-width: 0;
+  order: 1;
+}
+[data-phone-canvas="on"] .computers .graph-tools {
+  flex: 1 1 100%;
+  order: 2;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--s2);
+}
+[data-phone-canvas="on"] .computers .graph-bar-trees {
+  flex: 1 1 100%;
+  order: 3;
+  min-width: 0;
+  touch-action: pan-x;
+  /* The strip's children carry the phone touch floor, and a strip that keeps
+     its desktop height lets 44px chips hang out of the bar's bottom edge --
+     measured bleeding into the ledger's first row and overlapping its press
+     targets. Two steps of the scale is the floor with room to breathe. */
+  min-height: calc(var(--s5) + var(--s5));
+  align-items: center;
+  /* Phone mode hides the edge arrows; their desktop gutters no longer need
+     to displace the first selector. Keep a scale inset under the edge fade. */
+  padding-inline: var(--s1);
+  scroll-padding-inline: var(--s1);
+}
+/* The selector frame must contain the touch-sized buttons, just as the
+   sheet's Chat/Details segment does. Its desktop height clips the active tab. */
+[data-phone-canvas="on"] .computers .graph-bar-trees .seg:where(:has(> button)) {
+  height: auto;
+  min-height: var(--seg-h);
+}
+/* SIDEWAYS, THE THREE ROWS ARE A PORTRAIT ANSWER TO A PORTRAIT PROBLEM.
+ *
+ * The stack above exists because 390 pixels of width cannot hold the bar's
+ * three jobs on one line. A phone held sideways has 750, and the bar's own
+ * measured demand is 490 -- it fits, twice over. Keeping the stack there cost
+ * the product its entire canvas: measured 2026-08-28 at 750x342 on the served
+ * build, in Chromium and WebKit alike, the bar came out 151px tall inside a
+ * 152px graph pane, `.graph-canvas-slot` resolved to ZERO pixels high, and all
+ * five agents were laid out 200-390px below the screen with no page scroll, no
+ * pan and no zoom that could reach them. The only way back was to rotate the
+ * phone, and nothing on screen said so.
+ *
+ * So in landscape each group takes the width it needs and the bar is one row
+ * again. The order is kept, the wrap is kept -- a bar that still cannot fit
+ * wraps rather than hides its end, which is the rule the width-stepped sheet
+ * in tree-graph.css already states -- and the canvas gets the rest of the
+ * pane. `data-phone-shape` is written by the same one function that writes the
+ * mode; there is no media query here and there must never be one. */
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers .graph-bar-lead,
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers .graph-tools {
+  flex: 0 1 auto;
+}
+/* The sideways selector scrolls within the space after the computer name.
+   Using its entire content width to choose a flex line needlessly stacks it. */
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers .graph-bar-trees {
+  flex: 1 1 0;
+}
+/* AND THE CANVAS KEEPS A FLOOR THE BAR CANNOT EAT. One row is what the bar
+   asks for today; the floor is what stops the next control added to it from
+   taking the tree away again. The bar gives up its `flex: none` so the floor
+   can win, and what will not fit in the bar reaches a finger the way the
+   trees strip already does -- by scrolling, not by pushing the canvas to
+   nothing. Three steps of the scale, which is under what the bar leaves in
+   every shape shipped today (measured: 92px free at 750x342) so the floor
+   never takes room from the controls -- it is the wall for the next control
+   added to the bar, not a claim on the room it has now. */
+/* The strip's sticky edge arrows exist because a mouse wheel is vertical and
+   a desktop had no gesture for a horizontal scroller. A phone has the direct
+   one -- the strip pans under the finger -- and at 390px the pinned arrows
+   sat ON TOP of the chips they were meant to reveal (measured on the owner's
+   phone: a tree chip half-covered by the arrow above it). The crutch is a
+   desktop crutch; here it is the obstruction, and the pan it duplicated is
+   native. */
+[data-phone-canvas="on"] .computers .graph-bar-trees > .graph-tree-scroll {
+  display: none;
+}
+/* THE CANVAS CLAIMS ITS OWN GESTURES, AND KEEPS A FLOOR THE BAR CANNOT EAT.
+   src/tree-graph.js already pans this host by pointer drag and already zooms
+   it; without `touch-action` the browser would try to read the same drag as a
+   scroll first. `none` here is the intersection that also stops a pinch that
+   starts on the tree.
+   The floor is the second half of the sideways fix above: one row is what the
+   bar asks for today, and this is what stops the next control added to it from
+   taking the tree away again. Three steps of the scale, which is under what the
+   bar leaves in every shape shipped today (measured: 92px free at 750x342), so
+   it never takes room from the controls -- it is a wall for later, not a claim
+   on the room there is now. */
+[data-phone-canvas="on"] .computers .graph-canvas-slot {
+  touch-action: none;
+  min-height: calc(var(--s5) + var(--s5) + var(--s5));
+}
+
+/* ------------------------------------------------------------------
+   4. THE CONTROL THAT OPENS THE SHEET.
+   ------------------------------------------------------------------ */
+/* Dressed as the zoom cluster's buttons are dressed, because it stands beside
+   them: same control height, same mono voice, same hairline, same sheet fill.
+   The radius is the token rather than the cluster's own 4px — 3px is the
+   product's radius and this is a new control, so it takes the token. */
+[data-phone-canvas="on"] .computers .phone-sheet-open {
+  flex: none;
+  min-height: 30px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--sheet);
+  color: var(--ink-2);
+  font: 600 12px/1 var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+[data-phone-canvas="on"] .computers .phone-sheet-open:hover {
+  background: color-mix(in oklab, var(--ink) 5%, var(--sheet));
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------
+   5. THE SHEET. Contained, closeable, and never a browser dialog.
+   ------------------------------------------------------------------ */
+/* Absolute inside `.computers`, which is inside the fixed page box. It cannot
+   scroll the page behind it because nothing in this mode can. */
+[data-phone-canvas="on"] .phone-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+[data-phone-canvas="on"] .phone-sheet[hidden] {
+  display: none;
+}
+/* WHILE IT IS FALLING IT IS STILL ON THE PAGE, AND IT MUST NOT CATCH ANYTHING.
+   `hidden` is deferred until the card has left the glass (SHEET_FALL_MS in
+   src/phone-canvas.js), so for those few hundred milliseconds a full-screen
+   scrim is still in the document. Without this a press aimed at the row under
+   a closing sheet landed on the scrim and re-closed nothing. */
+[data-phone-canvas="on"] .phone-sheet:not(.is-up) {
+  pointer-events: none;
+}
+/* The scrim is a real button so that a press on it is a press on a named
+   control to a screen reader as well as to a thumb. */
+/* AND IT DIMS RATHER THAN LIGHTENS, ON EVERY THEME. It was `--ink` at 34%:
+   ink is near-white on the night theme, so the veil over a dark page made the
+   page BRIGHTER — measured on the black theme at 390x664, the trees strip
+   behind the card came back lighter than the card. `--bg` at 74% is the recipe
+   the product's own modal already uses (src/owner-popup.css
+   .owner-popup-overlay): the page's own ground, so every theme is veiled in
+   its own direction. */
+[data-phone-canvas="on"] .phone-sheet-scrim {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: color-mix(in oklab, var(--bg) 74%, transparent);
+  opacity: 0;
+  transition: opacity var(--dur-3) var(--ease);
+  cursor: pointer;
+}
+[data-phone-canvas="on"] .phone-sheet.is-up .phone-sheet-scrim {
+  opacity: 1;
+}
+/* THE CARD TAKES THE SCREEN, LESS ONE TOUCH TARGET.
+ *
+ * It was `height: 78%`, and 78% is where the conversation ran out of room. The
+ * budget, measured on the served build at 390x664, 2026-08-28: a 413px card
+ * spends 61 on its own head, 56 on the relocated tool row, 20 on the rail's
+ * padding, 34 on the rail's title row and 64 on the Chat/Details segment --
+ * 247px of chrome, 60% of the card -- and hands the chat the 152 that are
+ * left. The chat needs 206 for an agent that cannot be written to (its head,
+ * the refusal, and the composer), so the composer rendered at y=664 on a 664px
+ * screen: entirely below the glass, with nothing in thirteen ancestors able to
+ * scroll to it.
+ *
+ * The share is now stated as what it is for: everything except one touch
+ * target, which is the scrim a thumb presses to dismiss the sheet. The scrim
+ * keeps a full 44px band -- the same floor section 2 gives every other control
+ * -- and the conversation gets the other 75px. Written in the scale's own
+ * tokens rather than a percentage, so the promise is "the scrim stays
+ * pressable" rather than "78, for some reason". */
+/* SIDEWAYS, THERE IS NO STRIP TO KEEP. A phone held sideways gives this sheet
+   264 pixels, and its own head, tool row, title and tabs want 194 of them --
+   so the conversation began BELOW the fold and the message box could only be
+   reached by scrolling to it (measured 2026-08-28: composer centre at y=407 on
+   a 390px screen). The 44px band above the card is a press target for
+   dismissing the sheet, and sideways it is the difference between a chat a
+   person can use and one they cannot. It goes; the sheet's own close button
+   carries the same 44px floor, sits in the head where a thumb already is, and
+   Escape still closes. Portrait is untouched -- there the strip costs nothing
+   and a press outside a sheet is worth having. */
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-sheet-card {
+  height: 100%;
+}
+/* THE PULL-UP ITSELF. Owner, twice: the chat surface "needs to pull up super
+   clean and easy ... this is actually the pinnacle page". A sheet that is
+   bottom-anchored, rounded only at the top and travelling its own height is the
+   grammar every phone already taught; the previous 24px keyframe nudge read as
+   a popup appearing, and could not play at all on the way out because `hidden`
+   removed the element in the same frame. One transform, one decelerating curve
+   with no overshoot (an overshoot on a bottom-anchored card opens a gap under
+   it), the scrim fading on the same duration. */
+[data-phone-canvas="on"] .phone-sheet-card {
+  position: relative;
+  height: calc(100% - var(--s5) - var(--s4) - var(--s1));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: var(--sheet);
+  box-shadow: var(--elev-3);
+  font-family: var(--font-ui);
+  color: var(--ink);
+  transform: translateY(100%);
+  transition: transform var(--dur-3) var(--ease);
+  will-change: transform;
+}
+[data-phone-canvas="on"] .phone-sheet.is-up .phone-sheet-card {
+  transform: none;
+}
+/* The grab bar: 4px of ink ramp, the width a thumb reads as a handle. It is
+   the first thing in the card because that is where every sheet on this
+   platform puts it. */
+[data-phone-canvas="on"] .phone-sheet-grab {
+  flex: none;
+  align-self: center;
+  width: calc(var(--s5) + var(--s4));
+  height: var(--s1);
+  margin: var(--s2) 0 var(--s1);
+  border-radius: var(--r-sm);
+  background: var(--ink-4);
+}
+/* The head lost a step of vertical padding when the grab bar took one: the
+   two together are what the head used to spend alone. */
+[data-phone-canvas="on"] .phone-sheet-head {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s1) var(--s3) var(--s2);
+  border-bottom: 1px solid var(--line-2);
+}
+[data-phone-canvas="on"] .phone-sheet-heading {
+  flex: 1;
+  min-width: 0;
+}
+[data-phone-canvas="on"] .phone-sheet-example {
+  display: block;
+  color: var(--ink-2);
+  font: 600 11px/1.4 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+[data-phone-canvas="on"] .phone-sheet-example[hidden] {
+  display: none;
+}
+/* A FULL-HEIGHT SIDEWAYS SHEET HAS NOTHING FOR A GRAB HANDLE TO POINT AT. The
+   card already gives up its dismiss strip in this shape and fills the app box;
+   retaining the decorative handle plus the head's portrait padding spent 28px
+   of the shortest dimension before the scrollable rail began. Measured at
+   844x390, that put 9px of the 44px composer below the rail's clip; at 667x375
+   it lost 24px. The close button still supplies the full touch target, so the
+   head can take exactly its content height here. Portrait keeps both pieces. */
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-sheet-grab {
+  display: none;
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-sheet-head {
+  padding-block: 0;
+}
+/* THE HEAD, WHEN A ROW WAS PRESSED. Role bar, name, lineage, and the vitals on
+   the right — the same four facts the ledger row carries, from the same
+   records, so the sheet opens already saying who it is about instead of saying
+   "Details" over somebody's conversation. Hidden (the attribute, not a rule)
+   whenever the sheet was opened about the machine rather than an agent. */
+[data-phone-canvas="on"] .phone-sheet-subject {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 3px minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--s2);
+  row-gap: var(--s1);
+}
+[data-phone-canvas="on"] .phone-sheet-subject[hidden] {
+  display: none;
+}
+[data-phone-canvas="on"] .phone-sheet-rolebar {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  flex: none;
+  width: 3px;
+  height: calc(100% - var(--s1));
+  border-radius: var(--r-sm);
+  background: var(--ink-4);
+}
+[data-phone-canvas="on"] .phone-sheet-who {
+  grid-column: 2;
+  grid-row: 1;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: var(--s1);
+}
+[data-phone-canvas="on"] .phone-sheet-name {
+  font: 640 15px/1.3 var(--font-ui);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+[data-phone-canvas="on"] .phone-sheet-line {
+  font: 400 11px/1.4 var(--font-ui);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-phone-canvas="on"] .phone-sheet-vitals {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  text-align: left;
+}
+[data-phone-canvas="on"] .phone-sheet-run {
+  font: 500 11px/1.2 var(--font-mono);
+  color: var(--ink-25);
+}
+/* Ember only where the system has a pulse — the live clock and the running
+   word, and nothing else on this surface. */
+[data-phone-canvas="on"] .phone-sheet-run[data-live="true"] {
+  color: var(--pulse);
+}
+[data-phone-canvas="on"] .phone-sheet-state {
+  font: 550 11px/1.4 var(--font-ui);
+  color: var(--ink-25);
+}
+[data-phone-canvas="on"] .phone-sheet-state[data-mark="run"] {
+  color: var(--ink);
+}
+/* The rail carries its own title for whichever page it is showing, so this one
+   names the container and nothing else — the same caps micro-label the rail's
+   own section headings use. */
+[data-phone-canvas="on"] .phone-sheet-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 1;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+[data-phone-canvas="on"] .phone-sheet-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-3);
+  font: 300 24px/1 var(--font-ui);
+  cursor: pointer;
+}
+[data-phone-canvas="on"] .phone-sheet-close:hover {
+  color: var(--ink);
+  background: color-mix(in oklab, var(--ink) 5%, transparent);
+}
+[data-phone-canvas="on"] .phone-sheet-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+[data-phone-canvas="on"] .phone-sheet-tools {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: max-content;
+  max-width: calc(var(--phone-canvas-w) - var(--s5) * 2);
+  padding: var(--s2);
+  background: var(--sheet);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  box-shadow: 0 6px 18px color-mix(in oklab, var(--ink) 15%, transparent);
+}
+[data-phone-canvas="on"] .phone-sheet-actions {
+  position: relative;
+  flex: none;
+}
+[data-phone-canvas="on"] .phone-sheet-actions-summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: var(--s2);
+  cursor: pointer;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  font-weight: 600;
+}
+[data-phone-canvas="on"] .phone-sheet-actions .graph-tool-set {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+/* In the bar this group was fenced off from the zoom cluster by a hairline.
+   In the sheet it is the first thing there is, so it has nothing to be fenced
+   from. */
+[data-phone-canvas="on"] .phone-sheet-tools .graph-tool-set::before {
+  display: none;
+}
+/* A card inside a card reads as a mistake. The rail keeps every rule that
+   makes it the rail; it gives up only the frame it no longer needs. */
+[data-phone-canvas="on"] .phone-sheet-body .rail {
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+[data-phone-canvas="on"] .phone-sheet-body .rail::before,
+[data-phone-canvas="on"] .phone-sheet-body .rail::after {
+  display: none;
+}
+/* The desktop side-panel close sits at an absolute top-right coordinate.
+   In a sheet that is the Details tab's touch target. The sheet already owns
+   its close button and focus restoration; keep only that working close. */
+[data-phone-canvas="on"] .phone-sheet-body .tree-rail-close {
+  display: none;
+}
+/* The rail's own pages are absolutely positioned and pad themselves for a
+   desktop column; on a phone that padding is most of the width. The step down
+   is one stop on the same scale, never a new value.
+
+   AND THE COLUMN SCROLLS, WHICH IS THE OTHER HALF OF THE COMPOSER DEFECT.
+   `.rail-page` is `position: absolute; inset: 0` inside a rail that clips
+   (`overflow-y: hidden`), and every element between it and the chat is
+   `overflow: visible`. On a desktop that shape never bites because the rail is
+   800px tall. In the sheet it is 294, and anything the column could not fit
+   was simply painted past the bottom of the phone with no way to reach it:
+   measured 2026-08-28, thirteen ancestors of `.chat-input` and not one of them
+   able to scroll, 24 real touch drags moving nothing. The column now carries
+   the scroll itself. `contain` stops it handing overscroll to a page that must
+   not move, and `pan-y` is the same permission the sheet body above already
+   grants. */
+[data-phone-canvas="on"] .phone-sheet-body .rail-page {
+  padding: var(--s3) var(--s3) var(--s2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+/* THE COMPOSER IS THE FLOOR OF THE CONVERSATION AND IT DOES NOT SCROLL AWAY.
+   Scrolling alone would only mean a person has to go looking for the message
+   box; on a phone the box belongs at the bottom of the view, where a thumb
+   already is. Sticky against the column above resolves to exactly that: while
+   the chat's own bottom edge is below the visible band the composer rides at
+   the foot of it, and once the whole conversation fits it sits at its natural
+   place and nothing has moved. The fill is the sheet's own, so the refusal and
+   the transcript pass BEHIND it rather than through it. */
+[data-phone-canvas="on"] .phone-sheet-body .chat-input {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--sheet);
+}
+/* AND THE CONVERSATION KEEPS A FLOOR OF ITS OWN. The log is the only
+   shrinkable child of the chat, so it took the whole shortfall and collapsed
+   to its 8px of padding: 75px of content in an 8px window, which is why the
+   sheet showed an agent's name, a refusal, and no messages at all. Two steps
+   of the scale is a readable last exchange; anything the column still cannot
+   give it is reached by the scroll above. */
+[data-phone-canvas="on"] .phone-sheet-body .chat-log {
+  min-height: calc(var(--s5) + var(--s5));
+}
+/* AND THE CONVERSATION IS NEVER CRUSHED TO NOTHING. `.chat` carries
+   `min-height: 0` for the desktop rail, which lets a flex parent shrink it
+   past its own contents -- and in the sheet's shortest shape it did exactly
+   that: measured 2026-08-28 at 844x390, a `.chat` THREE PIXELS TALL holding
+   188px of conversation, with its transcript's own 8px scroller inside it.
+   The column above scrolls now, so the honest minimum is the chat's content;
+   the log keeps its own `min-height` (0 when there is a refusal to read
+   instead) so this floor never becomes "the whole transcript or nothing". */
+/* AND THE COLUMN'S OWN CHROME DOES NOT PAY FOR IT. Wherever the conversation
+   claims its content height it becomes the biggest thing in the column, and
+   flexbox takes the shortfall from whichever sibling will give: measured
+   2026-08-28, the Chat/Details segment was squeezed from 52px to 30 with its
+   two 44px buttons standing outside their own pill. The scroll above is what
+   absorbs a column that does not fit; a control deforming is not, and without
+   this the deformation also SILENCES the measurement -- the column stops
+   overflowing because a control gave way, so every gate reads green. */
+[data-phone-canvas="on"] .phone-sheet-body .rail-title-row,
+[data-phone-canvas="on"] .phone-sheet-body .rail-tabs {
+  flex: none;
+}
+/* AND THE NAV ROW STOPS SPENDING A DESKTOP'S WIDTH ON ITS EDGES. Its three
+   columns are 116px / 1fr / 116px, which on a 390px phone leaves the middle
+   slot 110px -- so "AGENT IN YOUR TREE" set in caps wrapped onto two centred
+   lines directly under a head that had just named the same agent. The columns
+   stay CONSTANT, because the owner's defect 6 is that the back button's centre
+   must not move between pages; they are simply the width the two labels
+   actually need here ("Actions" and the widest forward label at this type
+   size), and the title gets the rest and fits on one line. */
+[data-phone-canvas="on"] .phone-sheet-body .rail-title-row {
+  grid-template-columns: 84px 1fr 84px;
+}
+/* Keep navigation and the panel choice together on a short, wide phone.
+   Their existing buttons and handlers move intact, keeping the touch floor. */
+[data-phone-canvas="on"] .phone-agent-nav {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  flex: none;
+}
+/* The sheet heading already identifies the selected agent. Keep Back and
+   Chat/Details together instead of spending another row on that same title. */
+[data-phone-canvas="on"] .phone-agent-nav .rail-title-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  grid-template-columns: auto auto;
+}
+[data-phone-canvas="on"] .phone-agent-nav .rail-title-slot-title {
+  display: none;
+}
+[data-phone-canvas="on"] .phone-agent-nav .rail-tabs {
+  margin: 0;
+}
+[data-phone-canvas="on"] .phone-sheet-body .chat-head {
+  padding-block: var(--s1);
+  margin-bottom: var(--s1);
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-agent-nav {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s2);
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-agent-nav .rail-title-row {
+  flex: 1;
+  min-width: 0;
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-agent-nav .rail-tabs {
+  margin: 0;
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-sheet-body .chat-head {
+  padding-bottom: var(--s1);
+  margin-bottom: var(--s1);
+}
+/* A read-only explanation and its composer form one footer. Moving them
+   together keeps the actual explanation height above the input at any text
+   size, while the conversation remains scrollable above it. The footer stays
+   in flow: inside a chat that keeps its content height, a sticky footer of
+   this size would rise over the head and the refusal it explains. The real
+   rail scroller carries it, and src/phone-canvas.js reveals the composer on
+   entry. */
+[data-phone-canvas="on"] .phone-chat-footer {
+  position: static;
+  flex: none;
+  background: var(--sheet);
+}
+[data-phone-canvas="on"] .phone-chat-footer .chat-input {
+  position: static;
+}
+/* The narrow desktop composer wraps its utility control ahead of the field.
+   With the phone's 44px floor that became three rows. Keep all three actual
+   controls on one line and let only the message field give up width. */
+[data-phone-canvas="on"] .phone-sheet-body .chat[data-chat-panel] .chat-input {
+  flex-wrap: nowrap;
+}
+[data-phone-canvas="on"] .phone-sheet-body .chat[data-chat-panel] .chat-input input {
+  flex: 1 1 0;
+  width: 0;
+  font-size: 16px;
+}
+[data-phone-canvas="on"] .phone-sheet-body .chat[data-chat-panel] .chat-input > button {
+  flex: none;
+}
+/* SIDEWAYS ONLY, AND THAT SCOPE IS THE WHOLE OF THE JUDGEMENT. Lifting the
+   floor makes the column take its CONTENT height, which is right when the
+   column has less room than its contents need and wrong when it does not: in
+   portrait it grew the transcript to its full 75px, overflowed the column by
+   48, and slid the refusal underneath the composer -- trading the sentence a
+   person needs for a transcript they can already scroll. Upright the column
+   fits and nothing here applies; sideways it cannot, and a chat three pixels
+   tall is the alternative. */
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-sheet-body .rail-chat-body,
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-sheet-body .rail-chat-host,
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-sheet-body .chat {
+  min-height: auto;
+}
+/* UPRIGHT TOO, ONCE THE SENTENCE AND THE COMPOSER SHARE A FOOTER. The
+   judgement above was measured before the refusal and the composer became one
+   footer, and it kept the shrunk chat for portrait because that footer flowed
+   after the transcript anyway and the column scrolled to it. What the shrunk
+   box still did was misstate its own size: measured 2026-09-10 at 320x568
+   with Large text, a 128px chat holding a 98px head, a refusal and a 49px
+   composer, its footer painted outside the box that owns it. In the read-only
+   state the chat now keeps its content height in every shape -- the same
+   geometry the column already scrolled, with an honest box around it. A live
+   composer keeps the floor rule above. */
+[data-phone-canvas="on"] .phone-sheet-body .rail-chat-body:has(.chat-cannot-send),
+[data-phone-canvas="on"] .phone-sheet-body .rail-chat-host:has(.chat-cannot-send),
+[data-phone-canvas="on"] .phone-sheet-body .chat.chat-cannot-send {
+  min-height: auto;
+}
+/* AND ITS TRANSCRIPT TAKES THE ROOM THE BOX GIVES IT, NOT THE OTHER WAY
+   ROUND. A content-height chat would otherwise stretch to the length of a
+   long history and carry the refusal and the composer thousands of pixels
+   down the column: measured 2026-09-10 with sixty rows at 320x568, a 12,623px
+   chat and its composer at y=12,631. Size containment keeps the history out of
+   the box's own height; it still scrolls inside the room flex gives it. */
+[data-phone-canvas="on"] .phone-sheet-body .chat.chat-cannot-send .chat-log {
+  contain: size;
+}
+/* EXCEPT WHERE THE SENTENCE MATTERS MORE THAN THE SILENCE. An agent that
+   cannot be written to has, by definition, no exchange in flight -- the log
+   holds its own "nothing here yet" note -- and it does have a paragraph
+   explaining why. With the floor above in force those two competed and the
+   refusal lost: measured 2026-08-28 at 390x664, `.chat-nosend` sat half behind
+   the composer until the column was scrolled, which is the same defect as the
+   composer being off screen wearing a different hat. In this one state the
+   transcript's floor gives way to the sentence, and the whole column fits with
+   nothing overlapping and nothing to scroll. */
+[data-phone-canvas="on"] .phone-sheet-body .chat-cannot-send .chat-log {
+  min-height: 0;
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .phone-sheet-body .chat-cannot-send .chat-log {
+  min-height: calc(var(--s5) + var(--s5) + var(--s5) + var(--s5));
+}
+/* THE CHAT/DETAILS SEGMENT GROWS WITH ITS OWN BUTTONS. The desktop segment is
+   a fixed --seg-h (32px) box; the touch floor above raises every button in it
+   to 44px, and a 44px button inside a 32px box overflows by 12px -- measured
+   on the phone press-through (2026-08-27): the active tab's white pill drawn
+   over the agent heading on every sheet open, the most-seen visual break of
+   the whole pass. The segment sizes to its content in this mode; the floor
+   token stays the minimum so an empty segment keeps its shape. */
+[data-phone-canvas="on"] .phone-sheet-body .seg:where(:has(> button)) {
+  height: auto;
+  min-height: var(--seg-h);
+}
+
+/* ------------------------------------------------------------------
+   6. PHONE-WIDTH CONTENT THAT MUST NOT WIDEN THE PAGE.
+   ------------------------------------------------------------------ */
+/* The compose page's narrow-width dress uses overflow-x: clip to pair a visible
+   y-axis with a clipped x-axis. iOS 15 does not implement clip, so it ignores
+   that declaration and the body's base overflow-y:auto remains a second
+   scroller. In phone mode the sheet body already clips both axes at its own
+   boundary; making the compose body visible in both axes leaves that one
+   supported ancestor as the only scroller and works on the first-generation
+   iPhone SE's last Safari. Canvas mode also runs in wide web workspaces, where
+   the narrow-layout media query does not remove flex shrinking. Keep both
+   containers at their content height so fields cannot overlap the action row. */
+[data-phone-canvas="on"] .computers .rail-page.compose-page .agent-compose {
+  flex: none;
+}
+[data-phone-canvas="on"] .computers .rail-page.compose-page .agent-compose-body {
+  flex: none;
+  overflow: visible;
+}
+
+/* At the <=680px ledger step, the row's three minimum tracks, gaps and padding
+   ask for 382px inside the 288px column of a 320px screen. The state keeps its
+   intrinsic column; the id and title share whatever remains. Metadata already
+   wraps beneath column three at this breakpoint, and the id ellipsis contains
+   its deliberately unbroken mono value inside its new flexible track. */
+[data-phone-canvas="on"] .ledger-row {
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+}
+[data-phone-canvas="on"] .ledger-id {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Account notices and account records place runtime addresses, vault keys,
+   usernames and directories inside inline code. Those values are not prose and
+   can have no natural break point, so let the phone line break them instead of
+   turning the fixed page into a sideways pan. Desktop keeps the single-line
+   treatment from the account sheets. */
+[data-phone-canvas="on"] [data-account-section] code {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------
+   7. THE CHAT, WHICH IS ALREADY A CONTAINED POPUP.
+   ------------------------------------------------------------------ */
+/* Pressing a monitoring chip already opens a chat CARD inside the canvas host —
+   src/tree-graph.js positions it there, clamps it to the host's width and
+   closes it with its own Collapse control. So on a phone this is not rebuilt.
+   It is BOUNDED.
+
+   The card takes its height from a 250-368px band, and a phone held sideways
+   can leave the canvas shorter than the floor of that band. `.graph-wrap`
+   clips, so what would be lost is the composer at the bottom of the card — the
+   half a person needs. Capping the card against its host makes it shrink
+   instead of being cut, and every message and every control stays reachable. */
+[data-phone-canvas="on"] .computers .static-tree-chip.as-chat {
+  max-width: calc(100% - var(--s4));
+  max-height: calc(100% - var(--s4));
+}
+/* The log and the rail are the two things inside the locked page that should
+   still take a finger. `contain` is what stops either of them handing its
+   overscroll up to a page that must not move. */
+[data-phone-canvas="on"] .computers .static-tree-chip.as-chat .chat-log,
+[data-phone-canvas="on"] .phone-sheet-body .rail-scroll {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+/* THE ACTIONS QUICK-PICK TAKES THE SHEET'S MEASURE, NOT THE CHAT'S LEFTOVER.
+   On the desktop the popup anchors in `.chat` (position: relative in
+   styles.css) and caps at min(340px, 70%) of it -- and in the sheet that chat
+   box is ~240px tall, so 70% of it minus the floor-raised filter left the
+   scrollable list 46px: one visible row of a ~16-row menu, measured on the
+   phone press-through (2026-08-27). In this mode the chat gives up its
+   positioning role and the popup anchors to the nearest positioned ancestor
+   instead: `.rail-page`, the sheet's whole rail column. Same left/right/
+   bottom offsets, so it still rises from just above the composer -- but its
+   70% cap now reads the rail column, and the list (flex: 1 in the popup's own
+   column) receives the height. Bottom-anchored with a <=70% cap, its top edge
+   stays inside the rail at every height the register holds, so nothing
+   clips the filter off. The canvas chat CARDS keep their own anchoring --
+   this names the sheet body alone. */
+[data-phone-canvas="on"] .phone-sheet-body .chat {
+  position: static;
+}
+
+/* THE ACCOUNT RETRY CONTROLS TAKE ONE ROW ON A PHONE. d839fa41 put them under
+   the chat; stacked, they took about 236px of the sheet and squeezed the chat
+   to nothing at 568px tall (providers-qa Page 2 harness: chatNotSquashed).
+   One scrollable row of 44px targets leaves the chat its room, and the long
+   explanation stays on the desktop rail. The checkboxes' own boxes take the
+   target's height (noSquashedControls reads the input, not its label) and keep
+   section 2's width; Chromium paints the largest centred square that fits, so
+   the drawn square keeps the size section 2 chose for it. Every minimum still
+   comes from section 2's one floor rule; these rules only set heights. */
+[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls {
+  flex: none;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--s2);
+  max-height: calc((var(--s5) + var(--s4) + var(--s1) + var(--s2)) / var(--zoom, 1));
+  overflow: auto;
+  touch-action: pan-x pan-y;
+  padding: 0 var(--s2);
+}
+[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls > *,
+[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls .ctl-row {
+  flex: none;
+  margin: 0;
+  white-space: nowrap;
+}
+[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls .ctl-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--s2);
+}
+[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls > .is-dim {
+  display: none;
+}
+/* The floor already makes the summary 44px tall; one line of that height
+   centres its words and keeps the disclosure marker. */
+[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls summary {
+  line-height: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1));
+}
+[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls label > input[type="checkbox"]:not([hidden]) {
+  height: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1)) !important;
+  margin-block: 0;
+}
+
+/* ------------------------------------------------------------------
+   8. THE PHONE LEDGER. The tree as rows, behind ITS OWN second gate.
+   ------------------------------------------------------------------ */
+/* READ src/phone-ledger.js FIRST. Every selector below also requires
+   `.phone-ledger-mode`, a class written by exactly one function in that
+   module, and that module returns null unless its stored choice
+   (mc.phoneLedger) is 'on' — a door only /app/?ledger=1 opens. So these rules
+   are doubly unreachable: never on a desktop (the canvas attribute), and
+   never on the canonical phone surface (the choice). The graph still mounts
+   and still owns every behaviour; this section only decides visibility, so
+   removing it returns the canonical surface untouched. */
+/* IN LEDGER MODE THE SLOT SHOWS THE LEDGER, AND ONLY THE LEDGER. Naming the
+   graph's pieces one by one missed one: the chip overlay mounts beside the
+   canvas, not inside it, and its invisible chips sat above the rows STEALING
+   THEIR PRESSES -- hit-tested on both engines, a row's centre press landed on
+   a chip nobody could see. Everything in the slot that is not the ledger, its
+   zoom, its Details door, or the page's own status line is out of this mode. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .graph-canvas-slot > :not(.phone-ledger):not(.phone-ledger-zoom):not(.phone-sheet-open):not(.org-status),
+[data-phone-canvas="on"] .computers.phone-ledger-mode .graph-zoomer {
+  display: none;
+}
+/* The ledger is the slot's scroller; the page around it still cannot move.
+   The scale token is the zoom contract — three steps, buttons only. */
+/* The slot is the ledger's world, and it has to SAY SO: without its own
+   position the ledger's inset resolved against .graph-wrap -- the bar
+   included -- and rows rode up underneath the tree chips, measured as four
+   overlapping press targets at the exact strip row. */
+/* Rows keep the computer heading and its controls on one wrapping line.
+   The tree selector retains its own full-width, horizontally scrolling row. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .graph-bar-lead {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s2);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .graph-tools {
+  flex: 0 1 auto;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .graph-canvas-slot {
+  position: relative;
+}
+
+/* Landscape Rows (T1312) gives its header stack a scroll path while the sheet and
+   computer selector keep their fixed containing box. The inner ledger still
+   reserves its existing bottom strip for Details and zoom. */
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers.phone-ledger-mode > .comp-body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers.phone-ledger-mode > .comp-body > .graph-wrap {
+  height: auto;
+  min-height: 100%;
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers.phone-ledger-mode > .comp-body > .graph-wrap > .graph-bar {
+  flex: none;
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers.phone-ledger-mode .graph-canvas-slot {
+  flex: none;
+  min-height: calc(var(--s5) * 16);
+  touch-action: pan-y;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger {
+  position: absolute;
+  /* The bottom is RESERVED, not padded: the zoom cluster and the Details
+     control float in the strip below this box, and a scroller that merely
+     padded its end still slid every mid-scroll row underneath them -- the
+     geometry gate measured a row's press target overlapping the zoom buttons
+     by 44x29px. The ledger now ends where the controls begin, so no scroll
+     position can put a row under a button. */
+  inset: 0 0 calc(var(--s5) + var(--s5) + var(--s4)) 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  background: var(--bg);
+  font-family: var(--font-ui);
+  padding: 0 0 var(--s2);
+}
+/* Check-in controls travel with the list so a short screen can spend its
+   space on agents once the person scrolls. Every number comes from the same
+   records as the rows; the heading is absent behind the sign-in door. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-heading {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3) var(--s2);
+}
+/* A wide, short screen has room beside the summary for search. Sharing that
+   row leaves the dropdown entries visible before the first scroll. */
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers.phone-ledger-mode .phone-ledger-heading {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-heading[hidden] {
+  display: none;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-heading-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-heading-text {
+  min-width: 0;
+  flex: 1 0 150px;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-heading-actions {
+  display: flex;
+  flex: 1 0 auto;
+  justify-content: flex-end;
+  gap: var(--s2);
+}
+[data-phone-canvas="on"] .computers .graph-example-badge {
+  white-space: normal !important;
+  max-width: 55%;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-voice {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--sheet);
+  color: var(--ink-2);
+  font: 500 12px/1.2 var(--font-ui);
+  text-decoration: none;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-title {
+  margin: 0;
+  font: 650 18px/1.25 var(--font-ui);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-summary {
+  margin: var(--s1) 0 0;
+  font: 400 12px/1.4 var(--font-ui);
+  color: var(--ink-2);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-fold-all {
+  flex: none;
+  padding: 0 var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--sheet);
+  color: var(--ink-2);
+  font: 500 12px/1.2 var(--font-ui);
+  cursor: pointer;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-fold-all:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-search {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--sheet);
+  color: var(--ink);
+  font: 400 16px/1.4 var(--font-ui);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-search::placeholder {
+  color: var(--ink-3);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--s2);
+  padding: var(--s5) var(--s4);
+  border-top: 1px solid var(--line);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-empty-title {
+  margin: 0;
+  color: var(--ink);
+  font: 600 15px/1.4 var(--font-ui);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-empty-text {
+  margin: 0;
+  color: var(--ink-2);
+  font: 400 13px/1.5 var(--font-ui);
+  max-width: 30ch;
+}
+/* Native saved trees remain distinct, including trees with no agent rows. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-tree {
+  min-width: 0;
+  margin-bottom: var(--s3);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-tree-heading {
+  margin: 0;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-tree-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--s3) var(--s2);
+  border: 0;
+  border-top: 1px solid var(--line-2);
+  background: var(--sheet);
+  color: var(--ink);
+  font: 600 15px/1.4 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-tree-name {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-tree-count {
+  flex: none;
+  color: var(--ink-2);
+  font: 400 12px/1.4 var(--font-ui);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-tree-mark {
+  flex: none;
+  color: var(--ink-2);
+  font: 500 18px/1 var(--font-ui);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-tree-empty {
+  margin: 0;
+  padding: var(--s3) var(--s2);
+  color: var(--ink-2);
+  font: 400 13px/1.5 var(--font-ui);
+}
+/* THE SIGN-IN DOOR (routing law, owner's final ruling: "house mark, one
+   sentence, sign in, nothing else"). Fills the ledger's own scroller in
+   place of rows -- src/phone-ledger.js swaps buildSignInDoor() in for the
+   row list, never both at once -- so it needs no display:none pairing with
+   the row rules above it. Centered rather than left-aligned like the rows:
+   this is the one screen in ledger mode that is not a list. */
+/* The account entrance replaces the whole fleet surface, including sample
+   machine names and tree tabs above the ledger. */
+[data-phone-canvas="on"] .computers.phone-ledger-auth-required .comp-topbar,
+[data-phone-canvas="on"] .computers.phone-ledger-auth-required .graph-bar,
+[data-phone-canvas="on"] .computers.phone-ledger-auth-required .org-status,
+[data-phone-canvas="on"] .computers.phone-ledger-auth-required .phone-ledger-zoom {
+  display: none;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-auth-required .graph-wrap {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+[data-phone-canvas="on"] .computers .phone-ledger-door {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  height: 100%;
+  padding: var(--s5) var(--s4);
+  text-align: center;
+}
+[data-phone-canvas="on"] .computers .phone-ledger-door-mark {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+[data-phone-canvas="on"] .computers .phone-ledger-door-mark:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: var(--s1);
+}
+[data-phone-canvas="on"] .computers .phone-ledger-door-sentence {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 0;
+  max-width: 28ch;
+}
+/* .ctl-btn IS the button's whole visual language, reused as-is (see
+   src/phone-ledger.js's own note on this class); this rule adds only the
+   one thing the flex gap above does not give the door's own single action —
+   a touch of extra room above it, so "Sign in" does not read as glued to
+   the sentence above it the way an inline link would. */
+[data-phone-canvas="on"] .computers .phone-ledger-door-signin {
+  margin-top: var(--s1);
+}
+[data-phone-canvas="on"] .computers .phone-ledger-demo-choice {
+  display: grid;
+  grid-column: 1 / -1;
+  justify-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+[data-phone-canvas="on"] .computers .phone-ledger-door-demo {
+  background: transparent;
+  color: var(--ink-2);
+}
+[data-phone-canvas="on"] .computers .phone-ledger-door-error {
+  margin: 0;
+  max-width: 28ch;
+  font: 400 13px/1.5 var(--font-ui);
+  color: var(--ink);
+}
+[data-phone-canvas="on"] .computers .phone-ledger-door-error:empty { display: none; }
+[data-phone-canvas="on"] .computers .phone-ledger-door-signin:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: var(--s1);
+}
+/* The signed-out action shares a short landscape pane with the computer
+   toolbar. Keep its full touch target alongside the copy, without requiring
+   a scroll just to discover how to enter the workspace. */
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers.phone-ledger-mode .phone-ledger:has(.phone-ledger-door) {
+  /* Sign-out hides the zoom and Details controls. Their reserved bottom strip
+     must return to the gate, or a compact landscape leaves only 43px for it. */
+  bottom: 0;
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers .phone-ledger-door {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto;
+  align-content: center;
+  justify-content: center;
+  justify-items: start;
+  column-gap: var(--s5);
+  row-gap: var(--s1);
+  min-height: 100%;
+  height: auto;
+  padding: var(--s2) var(--s4);
+  text-align: left;
+}
+[data-phone-canvas="on"][data-phone-shape="landscape"] .computers .phone-ledger-door-signin {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  margin-top: 0;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-row,
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-add {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  /* The zoom step scales the ROW, not just the type inside it. "Larger rows"
+     used to grow the text inside a fixed 56px box, which is where the 1.18x
+     name-crush started -- bigger glyphs fighting for the same square inches
+     (phone press-through, 2026-08-27). The floor is the same two-steps-and-a-
+     breath of the scale, multiplied by the control's own token. */
+  min-height: calc((var(--s5) + var(--s5) + var(--s2)) * var(--phone-ledger-scale, 1));
+  border-top: 1px solid var(--line);
+  padding: 0 var(--s2);
+}
+/* THE INDENT IS A SPACER, NOT A PADDING. The sheet's spacing gate licenses
+   padding only to the bare scale, and depth is a multiplier — so kinship is
+   drawn by a zero-content flex spacer whose WIDTH carries the depth. Same
+   geometry, and the gate keeps its whole meaning. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-row::before,
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-add::before {
+  content: "";
+  flex: none;
+  width: min(calc(var(--phone-ledger-depth, 0) * var(--s3)), 20%);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-fold {
+  flex: none;
+  display: grid;
+  place-items: center;
+  grid-auto-flow: column;
+  gap: var(--s1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-3);
+  font: 500 calc(13px * var(--phone-ledger-scale, 1))/1 var(--font-mono);
+  cursor: pointer;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-fold-glyph {
+  display: inline-block;
+  transition: transform var(--dur-1) var(--ease);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-fold.is-shut .phone-ledger-fold-glyph {
+  transform: rotate(-90deg);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-fold-count {
+  font: 500 calc(9px * var(--phone-ledger-scale, 1))/1 var(--font-mono);
+  color: var(--ink-25);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-leaf {
+  flex: none;
+  /* Match the branch control's painted touch floor so only depth determines
+     the name's inset; a leaf must not jump left of its own parent. */
+  width: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1));
+  text-align: center;
+  color: var(--ink-4);
+  font: 400 calc(13px * var(--phone-ledger-scale, 1))/1 var(--font-mono);
+}
+/* The press is the row: name and lineage lead, the clock and the word keep
+   the right edge. The role bar is the graph's colour vocabulary carried over,
+   set per row as --rc by the module from ROLES — the same channel the rail
+   already uses. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-press {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 3px minmax(calc(var(--s5) * 3), 1fr) var(--s4);
+  align-items: center;
+  column-gap: var(--s2);
+  row-gap: var(--s1);
+  padding: var(--s2);
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-press:active {
+  background: color-mix(in oklab, var(--ink) 5%, transparent);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-rolebar {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  width: 3px;
+  height: calc(100% - var(--s1));
+  border-radius: var(--r-sm);
+  background: var(--rc, var(--ink-4));
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-who {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  display: grid;
+  gap: var(--s1);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-name {
+  font: 640 calc(14px * var(--phone-ledger-scale, 1))/1.35 var(--font-ui);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-lineage {
+  font: 400 max(11px, calc(11px * var(--phone-ledger-scale, 1)))/1.4 var(--font-ui);
+  letter-spacing: 0;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Runtime and status share a wrapping metadata row below the agent name. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-runtime {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1);
+  min-width: 0;
+  font: 400 max(11px, calc(11px * var(--phone-ledger-scale, 1)))/1.4 var(--font-mono);
+  color: var(--ink-25);
+  text-align: left;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-runtime-value {
+  min-width: 0;
+}
+/* THE UNIT RIDES WITH THE VALUE. `0:00:00` is the shape a wall clock uses, and
+   src/runtime-duration.js is a whole file about that ambiguity; the product's
+   own answer there is to put the unit next to the number rather than in a
+   column header nobody reads. Empty when the value is already a sentence. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-runtime-unit {
+  font: 400 calc(8px * var(--phone-ledger-scale, 1))/1.2 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+/* Ember only where the system has a pulse — the live clock and the running
+   word. Everything else keeps the ink ramp. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-runtime.is-live .phone-ledger-runtime-value {
+  color: var(--pulse);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-status {
+  min-width: 0;
+  font: 550 max(11px, calc(11px * var(--phone-ledger-scale, 1)))/1.4 var(--font-ui);
+  color: var(--ink-25);
+  text-align: left;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-status[data-live="true"] {
+  color: var(--ink);
+}
+/* EVERY STATE GETS A MARK, NOT ONLY THE LIVE ONE. A column where three of four
+   states are bare text and the fourth has a dot reads as "one row is special"
+   rather than as four states; the glyph is what lets a thumb sort the ledger
+   without reading it. The mark is set from `agent.state` in the module, never
+   from the status sentence, so editing the vocabulary cannot desynchronise it.
+   Ember for the pulse, ink for the rest: a failure is stated by weight, not by
+   a colour this product's palette does not carry. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-status[data-mark="run"]::before {
+  content: "● ";
+  color: var(--pulse);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-status[data-mark="done"]::before {
+  content: "◆ ";
+  color: var(--ink-3);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-status[data-mark="off"]::before {
+  content: "○ ";
+  color: var(--ink-4);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-status[data-mark="fail"] {
+  color: var(--ink);
+  font-weight: 700;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-status[data-mark="fail"]::before {
+  content: "! ";
+  color: var(--ink);
+}
+/* The graph's dashed circles as rows: same offer, same destination. */
+/* AND IT GIVES UP THE BUTTON'S OWN BORDER FIRST. The shared row rule above
+   sets `border-top` only, so an add-row kept the user agent's default
+   `2px outset` on its other three sides — a grey box drawn around every dashed
+   row, which on the night theme read as a rendering fault (measured on the
+   served build: right/bottom/left all `2px outset`, two of them stacked
+   between adjacent add-rows). `border: 0` first, then the hairline it is
+   supposed to have. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-add {
+  gap: var(--s3);
+  border: 0;
+  border-top: 1px solid var(--line);
+  min-height: calc(var(--s5) + var(--s4) + var(--s1));
+  background: transparent;
+  color: var(--ink-2);
+  font: 500 max(12px, calc(12px * var(--phone-ledger-scale, 1)))/1.4 var(--font-ui);
+  cursor: pointer;
+  text-align: left;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-add-mark {
+  flex: none;
+  width: calc(var(--s5) - var(--s1));
+  height: calc(var(--s5) - var(--s1));
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--line-2);
+  /* The graph's slots are circles; this mark takes the product radius
+     instead, because 3px IS this product's shape and the ledger is rows,
+     not bubbles. */
+  border-radius: var(--r-md);
+  color: var(--ink-25);
+}
+/* The ledger's own zoom cluster, dressed as the graph's was: same control
+   height, same mono voice, parked in the same corner. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-zoom {
+  position: absolute;
+  right: var(--s3);
+  bottom: var(--s3);
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--sheet);
+  box-shadow: var(--elev-2);
+}
+/* `hidden` is a DOM state, but this cluster also has an author-level
+   `display: flex` declaration immediately above. Without an author-level
+   hidden rule, the latter wins over the browser's presentation hint and an
+   unsigned visitor sees a clipped, unusable zoom cluster under the sign-in
+   door. The sign-in gate sets `zoom.hidden`; this makes that state real on
+   the rendered canvas. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-zoom[hidden] {
+  display: none;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-zoom-in,
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-zoom-out {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font: 500 15px/1 var(--font-mono);
+  cursor: pointer;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-zoom-level {
+  min-width: calc(var(--s5) + var(--s5));
+  text-align: center;
+  color: var(--ink-25);
+  font: 500 10px/1 var(--font-mono);
+}
+/* THE BAR'S THIRD ROW GOES, BECAUSE IN THIS MODE IT HOLDS NOTHING.
+   `.graph-tools` carries the graph's zoom cluster (hidden here — the ledger
+   draws its own), the three tool chips (moved into the sheet by
+   mountPhoneCanvas) and the Details door (moved to the foot of the ledger by
+   mountPhoneLedger). What was left was an empty full-width row costing 44px
+   plus its gap, measured pushing the first row to y=288 on a 664px phone —
+   43% of the screen spent before a single agent. It gives up its own line
+   rather than being hidden, so if anything is ever added back to it the
+   control appears beside the name instead of disappearing. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .graph-tools {
+  flex: 0 1 auto;
+}
+/* Rows show the computer's agents, not one of the graph's canvases. Shape,
+   card size, linking by node and split-canvas selection act on the hidden
+   graph, so they must not occupy the row toolbar. They return unchanged when
+   Graph is selected in quick settings. Fleet overview and row controls stay. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .tree-display-controls,
+[data-phone-canvas="on"] .computers.phone-ledger-mode .tree-active-zoom,
+[data-phone-canvas="on"] .computers.phone-ledger-mode .tree-workspace-controls,
+[data-phone-canvas="on"] .computers.phone-ledger-mode .tree-window-add,
+[data-phone-canvas="on"] .computers.phone-ledger-mode .tree-window-header {
+  display: none;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode > .comp-body > .graph-wrap > .graph-bar > .graph-bar-lead {
+  flex: 1 1 auto;
+}
+/* The Details door, at the foot of the ledger's own world and opposite the
+   zoom cluster — where the owner's composition puts it, and what the slot's
+   `:not(.phone-sheet-open)` exception at the top of this section has always
+   been written for. Same control, same handler, moved by the module. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .graph-canvas-slot > .phone-sheet-open {
+  position: absolute;
+  left: var(--s3);
+  bottom: var(--s3);
+  z-index: 8;
+  box-shadow: var(--elev-2);
+}
+
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-meta {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s3);
+  min-width: 0;
+}
+
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-open-mark {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  justify-self: end;
+  color: var(--ink-3);
+  font: 400 22px/1 var(--font-ui);
+}
+
+/* The small phone dial changes value atomically. Overlapping crossfaded
+   numerals are hard to read during every second's tick on the narrow dial. */
+[data-phone-canvas="on"] .home-ring-wrap .uring-digits .n {
+  transition: none;
+  transform: none;
+}
+[data-phone-canvas="on"] .home-ring-wrap .uring-digits .n.next {
+  opacity: 1;
+}
+[data-phone-canvas="on"] .home-ring-wrap .uring-digits .n.out {
+  opacity: 0;
+}
+
+/* Home activity keeps its native disclosure and gives each summary field
+   room on phones: identity, brief, then status and time. */
+[data-phone-canvas="on"] .home .home-run .run-head {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--s2) calc(var(--s2) + var(--s1) / 2);
+  padding: var(--s4) 0;
+}
+[data-phone-canvas="on"] .home .home-run .run-head > .chat-action-mark {
+  grid-column: 1;
+  grid-row: 1;
+}
+[data-phone-canvas="on"] .home .home-run .run-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s3);
+  grid-column: 2 / -1;
+  grid-row: 1;
+  min-width: 0;
+}
+[data-phone-canvas="on"] .home .home-run .run-overview {
+  display: block;
+  grid-column: 2 / -1;
+  grid-row: 2;
+  min-width: 0;
+}
+[data-phone-canvas="on"] .home .home-run .run-brief {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+[data-phone-canvas="on"] .home .home-run .run-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s2);
+  grid-column: 2;
+  grid-row: 3;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-phone-canvas="on"] .home .home-run .run-when {
+  grid-column: 3;
+  grid-row: 3;
+  margin-left: 0;
+}
+
+/* Keep the introduction above the Research examples so it cannot squeeze
+   both labels into narrow columns. Wide phone layouts can share a row. */
+[data-phone-canvas="on"] .research-exp-templates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--s2);
+}
+[data-phone-canvas="on"] .research-exp-templates > .research-designer-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+[data-phone-canvas="on"] .research-exp-templates > button {
+  min-width: 0;
+  width: 100%;
+  height: auto;
+  padding: calc(var(--s2) + var(--s1) / 2) var(--s3);
+  white-space: normal;
+}
+
+/* Metrics filter labels stay with their controls in the phone mode. */
+[data-phone-canvas="on"] .m-filter .mf-control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2);
+  min-width: 0;
+  max-width: 100%;
+}
+[data-phone-canvas="on"] .m-filter .mf-face { flex-basis: 100%; }
+[data-phone-canvas="on"] .m-filter .mf-sep { display: none; }
+[data-phone-canvas="on"] .m-filter .mf-note { flex-basis: 100%; }
+
+/* Saved graph mode uses the same signed-out entrance as the dropdown. */
+[data-phone-canvas="on"] .computers.phone-graph-auth-required > .comp-topbar,
+[data-phone-canvas="on"] .computers.phone-graph-auth-required > .comp-body,
+[data-phone-canvas="on"] .computers .phone-ledger-door[hidden] { display: none; }
+
+/* Root rows anchor each expandable group without changing its structure. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-row[data-depth="0"] {
+  background: color-mix(in oklab, var(--sheet) 60%, transparent);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-row[data-depth="0"] .phone-ledger-name {
+  font-weight: 700;
+}
+
+/* Separate state from elapsed time without changing the dropdown's data or
+   hierarchy. Quiet status badges and room around each name improve scanning. */
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-press {
+  padding-block: var(--s3);
+  row-gap: var(--s2);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-meta {
+  gap: var(--s2);
+  align-items: center;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--sheet);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-runtime {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-runtime-value:not(:empty) {
+  font-variant-numeric: tabular-nums;
+}
+[data-phone-canvas="on"] .computers.phone-ledger-mode .phone-ledger-fold {
+  color: var(--ink-2);
+}
+
+/* THE FIRST-USE LAUNCH TOPBAR, moved here from src/first-use-guidance.css.
+   Gate 2 of tools/test/phone-canvas.test.mjs holds that the phone dress lives
+   in exactly ONE sheet -- "the mode is a mode, not a media query smeared
+   through the sheets" -- and those two rules were a second sheet declaring it.
+
+   first-use-guidance.css keeps its own plain @media (max-width: 720px) twin of
+   the first rule. That one is a WIDTH and belongs there; this one is the MODE
+   and belongs here, which is exactly the distinction the gate protects.
+
+   The padding moved onto the scale (14px -> var(--s3)) because this sheet
+   admits no bare pixel spacing. It paints identically: .phone-home-link is an
+   <a href>, so the touch floor above already forces a 44px min-height with
+   !important, and at 12px/1 the natural height was 40px BEFORE this change --
+   already under that floor. 36px is still under it. The padding is internal
+   slack beneath an !important floor, and it only ever shrank. */
+[data-phone-canvas="on"] .topbar:has(.first-use-launch:not([hidden])) { grid-template-columns: auto minmax(0, 1fr) auto; }
+[data-phone-canvas="on"] .topbar:has(.first-use-launch:not([hidden])) .phone-home-link { display: block; overflow: hidden; text-overflow: ellipsis; text-align: center; padding: var(--s3) var(--s1); }

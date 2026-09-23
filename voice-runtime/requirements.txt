@@ -1,0 +1,16 @@
+# Tested native Windows / CPython 3.13 speech stack. No decision-making LLM.
+pipecat-ai[webrtc,whisper,kokoro]==1.8.1
+faster-whisper==1.2.1
+ctranslate2==4.8.2
+kokoro-onnx==0.6.1
+aiortc==1.15.0
+aiohttp==3.14.3
+# Pipecat and kokoro require the CPU distribution name. Install the matching
+# GPU wheel LAST (see setup.ps1) because both distributions own onnxruntime/.
+onnxruntime==1.24.4
+nvidia-cublas-cu12==12.9.2.10
+nvidia-cudnn-cu12==9.25.1.1
+nvidia-cuda-runtime-cu12==12.9.79
+nvidia-cufft-cu12==11.4.1.4
+nvidia-curand-cu12==10.3.10.19
+

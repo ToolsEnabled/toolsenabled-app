@@ -1,0 +1,1162 @@
+/* /studio — minimal viewer: grid or single slide, glow on whatever just
+   changed. Deliberately thin: no board, no lint, no loops, no task queue.
+   That all lives at / (the dashboard), studio's only job is the view. */
+:root {
+  --ucr-blue: #2A78D6;
+  --ucr-blue-ink: #14417F;
+  --ucr-gold: #F1B82D;
+  --ucr-gold-ink: #B8860B;
+  --bg: #1a1d24;
+  --panel: #23262f;
+  --line: #343844;
+  --text: #eef0f4;
+  --text-dim: #9aa1b0;
+  --glow: var(--ucr-blue);
+  --glow-ink: var(--ucr-blue-ink);
+  --live: #16a34a;
+  --paused: #d97706;
+  --protection: #7c3aed;
+  --protection-soft: #a78bfa;
+  --side-panel-w: min(390px, 40vw);
+  --object-history-w: clamp(370px, 32vw, 480px);
+  --active-panel-w: var(--side-panel-w);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg: #f3f5f9; --panel: #ffffff; --line: #dde1ea; --text: #1a1d24; --text-dim: #6b7080; color-scheme: light; }
+}
+
+/* The layer order, in one place. Everything the human CONTROLS sits above the
+   paused scrim; everything pause FREEZES sits below it and dims. That single
+   rule is what turns pause from an obstruction into a legible visual channel. */
+:root {
+  --z-hud: 20;      /* passive status, pointer-events:none, always */
+  --z-paused: 50;   /* the PAUSED scrim (pointer-events:none since Phase 0) */
+  --z-chrome: 55;   /* the floating control strip */
+  --z-panel: 58;    /* overlay panels */
+  --z-chat: 60;     /* the chat pill, reachable even while paused */
+  --z-toast: 70;
+}
+
+* { box-sizing: border-box; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font: 15px/1.4 -apple-system, Segoe UI, Inter, system-ui, sans-serif; height: 100%; }
+/* NOT a flex column any more. The stage is the only in-flow element and takes
+   the whole viewport; chrome, panels and chat are all fixed overlays. */
+body { display: block; overflow: hidden; }
+
+/* ------------------------------------------------------- chrome strip */
+.chrome {
+  position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-chrome);
+  display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(1.15);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  flex-wrap: wrap; row-gap: 8px;
+}
+/* the deck title is injected at runtime and can run ~70 chars; without a
+   min-width:0 floor-breaker it sets a hard floor in this no-wrap bar and the
+   deficit is taken out of the controls (the mode toggle slices its own labels). */
+.brand { min-width: 0; }
+.brand-title { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-sub { font-size: 12px; color: var(--text-dim); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); flex: none; transition: background .3s; }
+.dot.ok { background: var(--live); box-shadow: 0 0 0 4px color-mix(in srgb, var(--live) 22%, transparent); }
+.dot.bad { background: #dc2626; }
+.spacer { flex: 1; }
+.mode-toggle { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+/* controls never absorb the brand's overflow (.stale-dot already opts out) */
+.mode-toggle, .btn { flex: 0 0 auto; }
+.mode-toggle button {
+  border: none; background: transparent; color: var(--text-dim); padding: 6px 14px;
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.mode-toggle button.active { background: var(--glow); color: #fff; }
+.stale-dot { width: 9px; height: 9px; border-radius: 50%; background: #3a9d4d; flex: 0 0 auto; transition: background .3s; }
+.stale-dot.amber { background: var(--ucr-gold); }
+.stale-dot.red { background: #d94b4b; }
+.btn {
+  border: 1px solid var(--line); background: transparent; color: var(--text); padding: 6px 12px;
+  border-radius: 7px; font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; display: inline-block;
+}
+.btn:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.btn.pause { border-color: var(--ucr-gold-ink); color: var(--ucr-gold-ink); font-weight: 600; }
+.btn.pause.resumed { border-color: var(--glow); color: var(--glow); }
+
+/* pointer-events:none so the PAUSED scrim stays purely visual, ported from the
+   dashboard (styles.css) where this was already debugged: without it the scrim
+   swallowed every click on the page. That matters more here than it did there,
+   because the board is explicitly ungated by pause (you can keep briefing the
+   lead while editing is frozen) and because every overlay panel this page is
+   growing sits above z50 and would otherwise be dead whenever the deck is
+   paused, which is a routine state, not an exceptional one. */
+.paused-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: color-mix(in srgb, var(--paused) 16%, rgba(0,0,0,.35));
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  /* keep the card clear of the chat dock. The dashboard reserves padding-right
+     for its 360px rail; studio's chrome is at the bottom instead. */
+  padding-bottom: var(--chat-h, 0px);
+}
+.paused-overlay.hidden { display: none; }
+.paused-card { background: var(--panel); border: 2px solid var(--ucr-gold); border-radius: 14px; padding: 28px 36px; text-align: center;
+  pointer-events: none; }
+.paused-title { font-weight: 800; font-size: 20px; letter-spacing: .04em; margin: 6px 0; }
+.paused-sub { color: var(--text-dim); font-size: 14px; }
+
+/* -------------------------------------------------------------- stage */
+/* position:fixed rather than 100dvh: it resolves against the viewport directly,
+   so there is no vh/dvh question and no reflow when browser chrome shows/hides. */
+#stage { position: fixed; inset: 0; overflow: auto; z-index: 0; }
+
+/* Grid reserves only what is MEASURED. --chrome-h / --chat-h are published by a
+   ResizeObserver in studio.js (the chat pill grows as its textarea grows, which
+   fires no window resize, so an observer is required, not merely preferred). */
+#stage.mode-grid {
+  padding: calc(var(--chrome-h, 52px) + 16px) 18px calc(var(--chat-h, 64px) + 22px);
+  scroll-padding-top: calc(var(--chrome-h, 52px) + 16px);
+  scroll-padding-bottom: calc(var(--chat-h, 64px) + 22px);
+}
+#stage.mode-grid .deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+#stage.mode-grid .card.single-only { display: none; }
+
+/* Single mode subtracts NOTHING. The old cap encoded "topbar + dock + padding +
+   card head = 400px" as a literal, and every one of those became an overlay.
+   Letterboxing on both axes against the full viewport cannot produce a zero or
+   negative box, so the defensive max(320px, ...) floor that used to be needed
+   here is now structurally unreachable and is gone. */
+#stage.mode-single { padding: 10px; display: grid; place-items: center; }
+#stage.mode-single .deck { display: grid; place-items: center; width: 100%; height: 100%; }
+#stage.mode-single .card { display: none; }
+/* Letterbox by picking the SMALLER of the two constraints as the width, then
+   letting aspect-ratio derive the height. Setting height:100% alongside
+   max-width:100% does NOT work: when the width clamps, the explicit height
+   cannot shrink to match and the slide renders stretched (measured 1.614
+   against a true 1.778). The max() keeps the width positive on a viewport too
+   short for the height-derived term, so the slide can never vanish. */
+#stage.mode-single .card.current {
+  display: block;
+  width: min(100%, max(160px, calc((100vh - 20px) * var(--deck-ar, 1.7777))));
+  aspect-ratio: var(--deck-ar, 1.7777);
+  height: auto;
+  margin: 0; border: 0; border-radius: 0;
+}
+/* An active rehearsal reserves one compact row BELOW the slide. The readout is
+   presenter chrome rather than a slide overlay, so it never covers deck pixels
+   and can never be exported with them. */
+#stage.mode-single.pace-running {
+  grid-template-rows: minmax(0, 1fr) 24px;
+  row-gap: 4px;
+}
+#stage.mode-single.pace-running .deck {
+  grid-row: 1; min-height: 0;
+}
+#stage.mode-single.pace-running .card.current {
+  width: min(100%, max(160px, calc((100vh - 52px) * var(--deck-ar, 1.7777))));
+}
+.rehearsal-pace-readout { display: none; }
+#stage.mode-single.pace-running .rehearsal-pace-readout:not([hidden]) {
+  grid-row: 2; display: inline-flex; align-items: center; justify-content: center;
+  align-self: center; justify-self: center; min-height: 22px; padding: 2px 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 999px; background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--text-dim); font-size: 11px; font-weight: 750; letter-spacing: .02em;
+  line-height: 1; white-space: nowrap; pointer-events: none;
+}
+#stage.mode-single.pace-running .rehearsal-pace-readout.behind {
+  color: #8dffbf; border-color: color-mix(in srgb, #39ff88 55%, var(--line));
+  box-shadow: 0 0 10px color-mix(in srgb, #39ff88 18%, transparent);
+}
+#stage.mode-single.pace-running .rehearsal-pace-readout.qa { color: var(--text-dim); }
+/* The head must not eat slide height in single mode, so it becomes an overlay
+   chip that appears on hover/focus. .card's overflow:hidden contains it. */
+#stage.mode-single .card.current .card-head {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  backdrop-filter: blur(8px);
+  opacity: 0; transition: opacity .15s;
+}
+#stage.mode-single .card.current:hover .card-head,
+#stage.mode-single .card.current:focus-within .card-head { opacity: 1; }
+/* An agent tag or claim tag lives INSIDE the head, so a transparent head would
+   hide the very attribution it is carrying. Force it visible when it has one. */
+#stage.mode-single .card.current .card-head:has(.agent-tag.show),
+#stage.mode-single .card.current .card-head:has(.claim-tag) { opacity: 1; }
+
+.deck-empty-msg {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--text-dim); font-size: 15px;
+}
+.deck-empty-msg[hidden] { display: none; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.card:focus-visible { outline: 2px solid var(--ucr-blue); outline-offset: 2px; }
+.card-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 12px; color: var(--text-dim); position: relative; }
+.card-head .n { font-weight: 700; color: var(--text); }
+/* the slide id: a flex item defaults to min-width:auto, so a long id refuses to
+   shrink, gets sliced by .card's overflow:hidden AND shoves the right-aligned
+   claim tag out of the card. Matched by exclusion because the claim/agent tags
+   are also bare-appended spans (so :last-of-type would catch the wrong one). */
+.card-head > span:not(.n):not(.claim-tag):not(.agent-tag):not(.protection-tag):not(.selection-tag) {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card-lock-toggle {
+  margin-left: auto; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px;
+  min-height: 27px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 7px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent); color: var(--text-dim);
+  font: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer;
+}
+.card-lock-toggle:hover { color: var(--text); background: color-mix(in srgb, var(--text) 9%, var(--panel)); }
+.card-lock-toggle.is-locked {
+  color: #fff; border-color: var(--protection); background: var(--protection);
+}
+.card-lock-toggle:disabled { opacity: .56; cursor: wait; }
+
+/* frame keeps the exact PNG aspect ratio; object-fit:fill (not contain) so
+   the hotspot overlay's % coords land pixel-exact (the export is 1100x619,
+   0.038% off true 13.333/7.5, contain pillarboxes that gap, fill removes it) */
+.frame { position: relative; aspect-ratio: var(--thumb-aspect, 13.333 / 7.5); background: #fff; container-type: size; }
+.frame img { display: block; width: 100%; height: 100%; object-fit: fill; position: relative; z-index: 1; }
+
+/* Behind-schedule cue: a restrained gold breathing line confined to the
+   bottom timeline/character band (board spec n91cd9adf). Presenter-legible,
+   ambient to the audience: deck-native gold instead of an alien neon, slow
+   2.4s breath in a .20-.34 opacity window, sharp corners. It adds no fill
+   over content, sits below the lock frame, and cannot intercept slide
+   selection or media controls. */
+#stage.mode-single .card.current.pace-behind .frame::before {
+  content: ''; position: absolute; z-index: 6; pointer-events: none;
+  left: 1.8%; right: 1.8%; bottom: 1.5%; height: 18%;
+  border-bottom: 2px solid color-mix(in srgb, #F1B82D 28%, transparent);
+  border-radius: 0;
+  box-shadow: 0 4px 12px color-mix(in srgb, #F1B82D 16%, transparent);
+  opacity: .27;
+  animation: rehearsal-pace-breathe 2.4s ease-in-out infinite alternate;
+}
+@keyframes rehearsal-pace-breathe {
+  from { opacity: .20; }
+  to { opacity: .34; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #stage.mode-single .card.current.pace-behind .frame::before {
+    animation: none; opacity: .28; filter: none;
+  }
+}
+
+/* Model-derived fallback, revealed only when the PNG is missing. The thumbnail
+   is the real view; this keeps a PowerPoint/COM failure from turning the whole
+   deck into blank white boxes, which matters now that studio is the only
+   surface. Sits under the <img> so a successful load simply covers it. */
+.fallback { position: absolute; inset: 0; overflow: hidden; background: #fff; color: #14161d; }
+.frame.noimg img { display: none; }
+.fb-decor { position: absolute; }
+.fb-el {
+  position: absolute; overflow: hidden; box-sizing: border-box; padding: 1px 4px;
+  display: flex; flex-direction: column; justify-content: center;
+  line-height: 1.12; border-radius: 3px;
+}
+
+/* ------------------------------------------------------------ hotspots */
+.spot {
+  position: absolute; z-index: 2; pointer-events: none;
+  appearance: none; border: 0; padding: 0; margin: 0; border-radius: 2px;
+  background: transparent; color: inherit; font: inherit;
+  --agent: var(--glow); --agent-ink: var(--glow-ink);
+}
+.spot.claimed { outline: 2px dashed var(--agent); outline-offset: -2px; border-radius: 3px; }
+.spot.landed::after {
+  content: ''; position: absolute; inset: -5px; border-radius: 6px; pointer-events: none;
+  animation: settle 4.5s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+/* INK carries the outline + ring (so gold #F1B82D at 1.81:1 on white is not
+   invisible); the translucent CHIP wash is the only place the raw chip shows. */
+@keyframes settle {
+  0%   { background: color-mix(in srgb, var(--agent) 42%, transparent);
+         outline: 3px solid var(--agent-ink);
+         box-shadow: 0 0 0 6px color-mix(in srgb, var(--agent-ink) 30%, transparent); }
+  55%  { background: color-mix(in srgb, var(--agent) 16%, transparent); }
+  100% { background: transparent; outline: 3px solid transparent; box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spot.landed::after { animation-duration: .01s; }
+}
+
+/* Name tag on an agent-caused glow: color alone is not attribution (hue-only
+   fails for colorblind viewers), so the acting agent's name floats and fades
+   over the same 4.5s the glow itself runs. */
+.agent-tag {
+  position: absolute; z-index: 5; pointer-events: none; white-space: nowrap;
+  font-size: 11px; font-weight: 700; line-height: 1; padding: 2px 6px; border-radius: 4px;
+  background: var(--agent-ink, var(--glow-ink)); color: #fff;
+  opacity: 0; transform: translateY(3px);
+}
+.agent-tag.show { animation: tag-fade 4.5s ease-out forwards; }
+@keyframes tag-fade {
+  0%   { opacity: 0; transform: translateY(3px); }
+  8%   { opacity: 1; transform: translateY(0); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .agent-tag.show { animation-duration: .01s; } }
+/* anchored just above a (often tiny) hotspot, never inside it */
+.spot .agent-tag { left: 0; top: -18px; }
+/* dropped just BELOW the 29px header, over the slide image: the header's right
+   edge is already taken by .claim-tag (margin-left:auto), and a claimed slide
+   being edited is the normal worker flow, so the two used to overlap. Solid ink
+   on white stays legible, and it is inside the card so nothing clips it. */
+.card-head .agent-tag { right: 8px; top: calc(100% + 2px); }
+
+/* whole-slide ring for a full-deck (structural) change, where no single
+   element/decor id is meaningfully "the" thing that changed */
+.card { --agent-ink: var(--glow-ink); }
+.card.landed { animation: card-ring 4.5s cubic-bezier(.2, .7, .3, 1) forwards; }
+@keyframes card-ring {
+  0%   { box-shadow: 0 0 0 3px var(--agent-ink); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .card.landed { animation-duration: .01s; } }
+
+/* /find hit. Deliberately NOT .landed and NOT .claimed: a search result is the
+   human's own query, not an edit that just landed and not a slide an agent is
+   holding, and it must never be read as either. So it is a steady gold frame
+   (no settle animation, no dash) that simply expires after 12s. Gold is the
+   pin/house-rule colour, the other "this is yours, not the team's" channel. */
+.card.search-hit {
+  outline: 3px solid var(--ucr-gold-ink); outline-offset: 3px; border-radius: 4px;
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--ucr-gold) 26%, transparent);
+}
+/* .landed animates box-shadow to transparent, so a card that is both a hit and
+   a fresh edit keeps the outline (the ring is the part that fades). */
+
+/* region indicator: a worker's persistent dashed rail while it holds a slide
+   lock (the 30-60s read before its first edit, and through its edits) */
+.card.claimed { outline: 2px dashed var(--agent-ink); outline-offset: 2px; }
+.claim-tag { margin-left: auto; font-size: 11px; font-weight: 700;
+  flex: 0 0 auto; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Durable human protection is a solid violet channel with a literal lock label.
+   Temporary collaborator ownership remains the dashed, agent-coloured rail
+   above. A card may carry both without either indicator replacing the other. */
+.card.protected-slide .frame::after {
+  content: ''; position: absolute; inset: 0; z-index: 7; pointer-events: none;
+  border: 4px solid var(--protection);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, #fff 72%, transparent);
+}
+.spot.protected-object {
+  outline: 3px solid var(--protection); outline-offset: -2px;
+  background: color-mix(in srgb, var(--protection-soft) 18%, transparent);
+}
+.spot.protected-object::before {
+  content: '🔒'; position: absolute; right: 0; top: 0; z-index: 3;
+  min-width: 18px; height: 18px; display: grid; place-items: center;
+  border-radius: 0 0 0 5px; background: var(--protection); color: #fff;
+  font-size: 10px; line-height: 1; pointer-events: none;
+}
+.spot.unlocked-object {
+  outline: 3px solid var(--live); outline-offset: -2px;
+  background: color-mix(in srgb, var(--live) 15%, transparent);
+}
+.spot.unlocked-object::before {
+  content: '🔓'; position: absolute; right: 0; top: 0; z-index: 3;
+  min-width: 18px; height: 18px; display: grid; place-items: center;
+  border-radius: 0 0 0 5px; background: var(--live); color: #fff;
+  font-size: 10px; line-height: 1; pointer-events: none;
+}
+.spot.selected-object {
+  z-index: 5;
+  box-shadow: inset 0 0 0 2px #fff, 0 0 0 3px #0891b2, 0 0 0 7px color-mix(in srgb, #0891b2 24%, transparent);
+}
+.spot.protection-pending { opacity: .68; }
+.protection-tag {
+  flex: 0 1 auto; min-width: 0; max-width: 48%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; padding: 2px 6px;
+  border-radius: 999px; background: var(--protection); color: #fff;
+  font-size: 10.5px; font-weight: 750;
+}
+.selection-tag {
+  position: absolute; z-index: 6; left: 8px; top: calc(100% + 2px);
+  max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; padding: 2px 7px; border-radius: 4px;
+  background: #0e7490; color: #fff; font-size: 10.5px; font-weight: 700;
+}
+
+/* One compact rule strip for the common workflow. Object toggles intentionally
+   do not live here: double-clicking the object is the control. */
+.lock-quickbar {
+  position: fixed; z-index: 56; top: calc(var(--chrome-h, 52px) + 10px); left: 12px;
+  max-width: min(620px, calc(100vw - 24px)); display: flex; align-items: center; gap: 7px;
+  padding: 7px; border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  border-radius: 11px; background: var(--panel); color: var(--text);
+  box-shadow: 0 9px 28px color-mix(in srgb, #000 28%, transparent);
+}
+.lock-quickbar[hidden] { display: none; }
+.lock-quick-target { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.lock-quick-copy { min-width: 0; display: flex; flex-direction: column; }
+.lock-quick-copy small { color: var(--text-dim); font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em; }
+.lock-quick-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; }
+.lock-manage-button {
+  flex: 0 0 auto; min-height: 30px; padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: 7px; background: transparent; color: var(--text-dim); font: inherit;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.lock-manage-button:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+
+/* ------------------------------------------------------ agent chips (topbar) */
+.agent-chips { display: flex; gap: 6px; align-items: center; margin-left: 6px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; color: var(--agent-ink);
+  background: color-mix(in srgb, var(--agent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--agent-ink) 45%, transparent);
+}
+.chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--agent); flex: 0 0 auto; }
+.chip-interrupt { margin-left: 1px; background: transparent; border: none; color: inherit; opacity: .55;
+  font-size: 10px; line-height: 1; padding: 0 0 0 2px; cursor: pointer; }
+.chip-interrupt:hover { opacity: 1; }
+.dismiss { margin-left: 4px; background: transparent; border: 1px solid var(--line); color: var(--text-dim);
+  border-radius: 999px; padding: 2px 10px; font: inherit; font-size: 11px; cursor: pointer; }
+.dismiss:hover { color: var(--text); border-color: var(--text-dim); }
+/* the live tool name: deliberately quiet, it changes several times a turn and
+   must never out-shout the agent's own name next to it */
+.chip-tool { font-weight: 500; opacity: .72; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-pool { padding: 0 4px; border-radius: 999px; font-size: 8px; line-height: 14px;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim);
+  border: 1px solid color-mix(in srgb, var(--agent-ink) 25%, transparent); }
+.chip-pool.media { color: #087ea4; border-color: color-mix(in srgb, #2bd8ff 55%, transparent);
+  background: color-mix(in srgb, #2bd8ff 11%, transparent); }
+/* a model mismatch means the cost attribution is wrong, which is worth the
+   same caution gold the pause button uses, on top of the agent's own colour */
+.chip.mismatch { border-color: var(--ucr-gold-ink); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ucr-gold) 26%, transparent); }
+.chip-warn { color: var(--ucr-gold-ink); font-weight: 800; white-space: nowrap; }
+
+/* ------------------------------------------- spend readout + usage profile */
+/* One line in the chips row, never a panel: this is a number you glance at
+   while deciding whether to keep going, not a report you sit and read. */
+.spend { display: inline-flex; align-items: baseline; gap: 6px; margin-left: 6px;
+  font-size: 11px; color: var(--text-dim); white-space: nowrap; flex: 0 0 auto; cursor: default; }
+.spend b { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+/* scoped to .spend: "rl" is short enough to collide with a future class */
+.spend .rl { padding: 1px 6px; border-radius: 999px; font-variant-numeric: tabular-nums;
+  border: 1px solid color-mix(in srgb, var(--text-dim) 40%, transparent); }
+/* two escalation steps, one hue: agents share the human's OAuth pool, so a hot
+   number here means their own terminal is about to be throttled */
+.spend .rl.hot { color: var(--ucr-gold-ink); font-weight: 700;
+  border-color: var(--ucr-gold-ink); background: color-mix(in srgb, var(--ucr-gold) 18%, transparent); }
+.spend .rl.crit { background: var(--ucr-gold); border-color: var(--ucr-gold); color: #14161d; }
+/* Turns the running total cannot price (the Codex CLI reports tokens and no
+   dollar figure). Caution gold, same as the rate limit's first escalation: this
+   is not an error, it is a number that does not mean what it looks like. */
+.spend .unpriced { padding: 1px 6px; border-radius: 999px; font-weight: 700;
+  color: var(--ucr-gold-ink); border: 1px solid color-mix(in srgb, var(--ucr-gold-ink) 45%, transparent);
+  background: color-mix(in srgb, var(--ucr-gold) 14%, transparent); }
+
+.profile-ctl { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; flex: 0 0 auto; }
+.profile-lab { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-dim); cursor: help; }
+/* reuses .mode-toggle wholesale (same segmented row, same .active), just sized
+   down to chip scale: no new visual vocabulary for a second toggle in one bar */
+.mode-toggle.profile-toggle button { padding: 3px 9px; font-size: 11px; }
+/* low is unmarked on purpose: cheap is the resting look. Extra uses caution
+   gold. BEAST is the explicit full-access, ultra-reasoning, standard-speed
+   endpoint and gets a stronger cyan/gold signal so it cannot be selected
+   accidentally. */
+.profile-toggle button[data-profile="extra"] { color: var(--ucr-gold-ink); }
+.profile-toggle button[data-profile="extra"].active { background: var(--ucr-gold); color: #14161d; }
+.profile-toggle button[data-profile="beast"] { color: #087ea4; font-weight: 800; letter-spacing: .03em; }
+.profile-toggle button[data-profile="beast"].active {
+  color: #061729;
+  background: linear-gradient(115deg, #2bd8ff 0 52%, var(--ucr-gold) 52% 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 55%, transparent),
+    0 0 11px color-mix(in srgb, #2bd8ff 38%, transparent);
+}
+/* pending: the selected profile is NOT what the running agents are on. Ringed
+   rather than recoloured, so it reads as "not applied yet" on any of the three
+   states, and the ·next suffix carries the same fact without relying on hue. */
+.profile-ctl.pending .profile-toggle { border-color: var(--ucr-gold-ink);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ucr-gold) 24%, transparent); }
+.profile-next { font-size: 9px; font-weight: 700; margin-left: 3px; opacity: .95; }
+
+/* Fast reuses the existing one-line segmented control. Its saved preference is
+   still clickable under Claude, while adjacent text says it is not applied. */
+.fast-ctl .fast-scope { max-width: 104px; color: var(--text-dim); font-size: 9.5px; line-height: 1.1; }
+.fast-ctl.unavailable .fast-toggle button { color: var(--text-dim); }
+.fast-ctl:not(.unavailable) .fast-toggle button.active { color: var(--live); }
+.fast-ctl .fast-toggle button:disabled { opacity: .5; cursor: wait; }
+
+/* ---- provider control: the profile toggle's twin, so it inherits .profile-ctl
+   and .profile-toggle wholesale and only says what differs. No new component:
+   two controls in one bar that look different would read as two unrelated
+   settings, when they are the same decision made twice. */
+/* Neither provider is the expensive state (that is what the profile decides),
+   so unlike [data-profile="extra"] no option here is gold. The active state is
+   the shared .mode-toggle .active glow. */
+.provider-ctl .prov-model { font-size: 10px; color: var(--text-dim); font-variant-numeric: tabular-nums;
+  cursor: help; white-space: nowrap; }
+/* Unavailable: the executable is missing, so the server would 409. Struck and
+   dimmed rather than removed, because "codex exists and cannot start here" is
+   the useful message, and it keeps the title tooltip that says why. Not the
+   disabled attribute: that would kill pointer events and the tooltip with it. */
+.provider-toggle button.off { opacity: .4; text-decoration: line-through; cursor: not-allowed; }
+.provider-toggle button.off:hover { background: transparent; }
+
+/* Desktop keeps the original direct controls. At a narrow viewport, the
+   secondary session work moves into this one discoverable, non-modal layer. */
+.compact-controls { display: none; }
+
+/* ---------------- toast ---------------- */
+/* Anchored under the chrome strip, not the bottom: the chat pill owns the
+   bottom centre, so a bottom-docked toast (the main dashboard's pattern) would
+   land behind it. Offset tracks the measured chrome height now that the strip
+   can wrap to two rows. */
+.toast { position: fixed; top: calc(var(--chrome-h, 52px) + 10px); left: 50%; transform: translateX(-50%) translateY(-10px);
+  background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 9px; font-weight: 600;
+  font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: var(--z-toast); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.err { background: #dc2626; color: #fff; }
+.chip-dot.pulse { animation: chip-pulse 1.1s ease-in-out infinite; }
+@keyframes chip-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .chip-dot.pulse { animation: none; } }
+
+/* ------------------------------------------------------------ chat pill */
+/* A centred floating pill, not a full-width dock. The dock used to be a flex
+   sibling that never yielded, so one long message ate two rows of the grid;
+   floating it removes that whole failure mode. Above the paused scrim on
+   purpose: the board is explicitly ungated by pause. */
+.chat {
+  position: fixed; z-index: var(--z-chat);
+  left: 50%; transform: translateX(-50%); bottom: 14px;
+  width: min(780px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: 6px;
+}
+.chatlog {
+  overflow-y: auto; min-height: 0; max-height: 0; padding: 0 14px;
+  display: flex; flex-direction: column; gap: 7px;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 14px; opacity: 0;
+  transition: max-height .16s ease, opacity .16s ease, padding .16s ease;
+}
+/* The log only takes space once you are actually in the conversation. */
+.chat.open .chatlog { max-height: min(46vh, 420px); opacity: 1; padding: 10px 14px; }
+.chat-empty { font-size: 12.5px; color: var(--text-dim); font-style: italic; padding: 4px 2px; }
+.msg { max-width: 78%; padding: 6px 10px; border-radius: 10px; font-size: 13px; line-height: 1.35; }
+.msg-head { font-size: 11px; font-weight: 700; color: var(--text-dim); margin-bottom: 2px;
+  display: flex; gap: 8px; align-items: baseline; }
+.msg-t { color: var(--text-dim); font-weight: 400; font-size: 10px; }
+.msg-text { white-space: pre-wrap; word-break: break-word; }
+.msg.mine { align-self: flex-end; background: color-mix(in srgb, var(--ucr-blue) 16%, var(--bg)); }
+.msg.mine .msg-head { color: var(--ucr-blue-ink); }
+.msg.agent { align-self: flex-start; background: var(--bg); border: 1px solid var(--line);
+  border-left: 3px solid var(--agent, var(--line)); }
+.msg.agent .msg-head { color: var(--agent, var(--text-dim)); }
+/* This page confirming its own action, not a voice in the conversation. Centred
+   and dashed so it reads as a receipt at a glance and can never be mistaken for
+   something the human said (right, solid) or an agent said (left, tinted). */
+.msg.system {
+  align-self: center; max-width: 92%; font-size: 12px; text-align: left;
+  color: var(--text-dim); background: color-mix(in srgb, var(--text) 5%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--line) 90%, transparent);
+}
+.msg.system .msg-t { display: block; margin-top: 3px; }
+/* A refused write is the one system line that must not read as a confirmation. */
+.msg.system.err {
+  color: var(--text); background: color-mix(in srgb, #dc2626 14%, transparent);
+  border-color: color-mix(in srgb, #dc2626 55%, transparent);
+}
+.chatform {
+  display: flex; gap: 8px; align-items: flex-end; padding: 7px 8px 7px 10px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  border-radius: 14px; box-shadow: 0 8px 32px color-mix(in srgb, #000 32%, transparent);
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+/* Legible BEFORE you type, so you learn the deck is frozen from the bar itself
+   rather than from a rejected message. */
+body.paused .chatform { border-left: 3px solid var(--paused); }
+/* A textarea, not an input: briefing a lead is multi-sentence work and the old
+   single-line input silently hid the author's own text. Auto-grows in JS. */
+.chatinput {
+  flex: 1; background: transparent; color: var(--text); border: none;
+  padding: 7px 4px; font: inherit; font-size: 14px; resize: none;
+  max-height: 8.5em; overflow-y: auto; line-height: 1.4;
+}
+.chatinput:focus { outline: none; }
+.chatform:focus-within { border-color: color-mix(in srgb, var(--ucr-blue) 70%, transparent); }
+.chatform[data-delivery="sending"] { border-color: color-mix(in srgb, var(--ucr-blue) 62%, var(--line)); }
+.chatform[data-delivery="error"] {
+  border-color: color-mix(in srgb, #dc2626 58%, var(--line));
+  box-shadow: 0 8px 32px color-mix(in srgb, #000 32%, transparent), 0 0 14px color-mix(in srgb, #dc2626 10%, transparent);
+}
+.chat-delivery {
+  align-self: center; box-sizing: border-box; max-width: 100%;
+  padding: 5px 9px; border: 1px solid color-mix(in srgb, #dc2626 38%, var(--line));
+  border-radius: 8px; background: color-mix(in srgb, #dc2626 9%, var(--panel));
+  color: var(--text-dim); font-size: 11.5px; line-height: 1.35; text-align: center;
+}
+.chat-delivery[hidden] { display: none; }
+.pinbtn {
+  background: transparent; border: 1px solid transparent; border-radius: 8px;
+  font-size: 14px; line-height: 1; padding: 6px 7px; cursor: pointer; opacity: .45;
+  align-self: flex-end;
+}
+.pinbtn:hover { opacity: .85; }
+/* Pinning is sticky, invisible state that constrains every future edit, so it
+   gets a deliberate click and a loud armed state, never an inference. */
+.pinbtn[aria-pressed="true"] {
+  opacity: 1; background: color-mix(in srgb, var(--ucr-gold) 22%, transparent);
+  border-color: var(--ucr-gold-ink);
+}
+.chatsend { background: var(--ucr-blue); color: #fff; border: none; border-radius: 9px;
+  padding: 8px 16px; font: inherit; font-weight: 600; cursor: pointer; align-self: flex-end; }
+.chatsend:hover { background: var(--ucr-blue-ink); }
+.chatsend:disabled { cursor: wait; opacity: .74; }
+
+/* --------------------------------------------------------- overlay panels */
+/* 86% + blur is contrast-checked, not eyeballed: worst case dark is ~8:1 and
+   worst case light ~11:1 for body text over an arbitrary slide underneath. */
+.panel {
+  position: fixed; z-index: var(--z-panel);
+  top: calc(var(--chrome-h, 52px) + 10px);
+  bottom: calc(var(--chat-h, 64px) + 18px);
+  right: 12px; width: var(--side-panel-w);
+  display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  box-shadow: -18px 0 48px color-mix(in srgb, #000 30%, transparent);
+}
+/* .panel sets display:flex, which beats the UA stylesheet's [hidden] rule. */
+.panel[hidden] { display: none; }
+/* Peek: opacity AND pointer-events together. Invisible-but-clickable is the
+   same bug class the paused scrim already cost this project once. */
+body.peek .panel { opacity: .12; pointer-events: none; transition: opacity .14s; }
+
+/* Desktop panels are docked workspaces, not overlays. Reserving their width
+   keeps the complete slide and every primary control visible while a panel is
+   open. Item history is a little wider and fully solid because comparison is
+   the focused task; the same layout mechanism applies to every other panel. */
+body.object-history-open { --active-panel-w: var(--object-history-w); }
+body.panel-open #stage,
+body.panel-open .chrome,
+body.panel-open .hud {
+  right: calc(var(--active-panel-w) + 24px);
+}
+body.panel-open .chat {
+  left: calc((100vw - var(--active-panel-w) - 24px) / 2);
+  width: min(780px, calc(100vw - var(--active-panel-w) - 56px));
+}
+body.panel-open .toast {
+  left: calc((100vw - var(--active-panel-w) - 24px) / 2);
+}
+body.panel-open .lock-quickbar {
+  max-width: min(620px, calc(100vw - var(--active-panel-w) - 48px));
+}
+
+.object-history-panel {
+  top: 0; right: 0; bottom: 0; width: var(--object-history-w);
+  border-width: 0 0 0 1px; border-radius: 0;
+  background: var(--panel); backdrop-filter: none;
+  box-shadow: -12px 0 34px color-mix(in srgb, #000 32%, transparent);
+}
+.object-history-panel:focus { outline: none; }
+
+.panel-head {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  font-weight: 650; font-size: 13.5px; flex: none;
+}
+.panel-title { flex: 0 0 auto; }
+.panel-count { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--text-dim); }
+.panel-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px; }
+
+.composer { flex: none; padding: 10px 12px; border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.composer textarea {
+  width: 100%; resize: vertical; font: inherit; font-size: 13px; border-radius: 8px;
+  padding: 7px 9px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+}
+.composer-row { display: flex; align-items: center; gap: 8px; margin-top: 7px; flex-wrap: wrap; }
+.as-name { font-size: 11.5px; color: var(--text-dim); display: flex; align-items: center; gap: 5px; }
+.as-name input {
+  background: var(--bg); border: 1px solid var(--line); color: var(--text);
+  border-radius: 6px; padding: 3px 7px; font: inherit; font-size: 11.5px; width: 116px;
+}
+.pin-toggle { font-size: 11.5px; color: var(--text-dim); display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.btn.send { margin-left: auto; background: var(--ucr-blue); border-color: var(--ucr-blue); color: #fff; font-weight: 600; padding: 5px 14px; }
+.btn.send:hover { background: var(--ucr-blue-ink); }
+
+/* panel content ------------------------------------------------------- */
+.rules-label, .notes-label {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-dim); font-weight: 700; margin: 2px 0 6px;
+}
+.notes-label { margin-top: 14px; }
+.rule, .note, .task, .loop, .lint-issue {
+  display: flex; gap: 7px; align-items: flex-start; padding: 7px 9px;
+  border-radius: 9px; font-size: 12.5px; line-height: 1.35; margin-bottom: 6px;
+}
+.rule { background: color-mix(in srgb, var(--ucr-gold) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ucr-gold-ink) 35%, transparent); }
+.note { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.task { background: color-mix(in srgb, var(--ucr-blue) 10%, transparent); }
+.loop { background: color-mix(in srgb, var(--live) 10%, transparent); }
+.lint-issue { background: color-mix(in srgb, #dc2626 12%, transparent); }
+.rule-text, .note-text, .task-text, .loop-text { overflow-wrap: anywhere; white-space: pre-wrap; flex: 1 1 auto; min-width: 0; }
+.rule-text { font-weight: 600; }
+.note-who, .task-who, .loop-who { font-size: 10.5px; color: var(--text-dim); margin-top: 3px; }
+.mini-x, .mini-btn {
+  background: transparent; border: none; color: var(--text-dim); cursor: pointer;
+  font: inherit; font-size: 15px; line-height: 1; padding: 1px 5px; border-radius: 6px;
+  opacity: .65; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; min-height: 24px;
+}
+.mini-x:hover { opacity: 1; color: #dc2626; }
+.mini-btn:hover { opacity: 1; color: var(--live); }
+.panel-empty { font-size: 12.5px; color: var(--text-dim); font-style: italic; padding: 4px 2px; }
+
+/* Durable protection panel -------------------------------------------- */
+.protection-selection {
+  flex: none; padding: 10px 12px; border-bottom: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.protection-selection-row {
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  min-width: 0;
+}
+.protection-selection-row > div { min-width: 0; display: flex; flex-direction: column; }
+.protection-selection-copy { flex: 1 1 auto; }
+.protection-title-line { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.protection-selection-row strong {
+  display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-size: 12.5px;
+}
+.protection-state {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 3px;
+  padding: 1px 5px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--text-dim); font-size: 9.5px; font-weight: 750;
+}
+.protection-state.is-locked { border-color: var(--protection); color: var(--protection-soft); }
+.protection-state.is-editable { border-color: var(--live); color: var(--live); }
+.protection-kicker {
+  color: var(--text-dim); font-size: 10px; font-weight: 750;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.protection-selection-tip, .protection-selection-empty, .temporary-claim-note,
+.protection-saving, .protection-help, .protection-scope-note {
+  color: var(--text-dim); font-size: 11.5px; line-height: 1.4;
+}
+.protection-selection-tip { display: flex; flex-direction: column; gap: 2px; }
+.protection-selection-tip strong { color: var(--text); }
+.protection-scope-note {
+  padding: 5px 7px; border-left: 3px solid var(--live);
+  background: color-mix(in srgb, var(--live) 8%, transparent);
+}
+.temporary-claim-note {
+  padding: 5px 7px; border-left: 3px dashed var(--text-dim);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+.protection-saving { color: var(--protection-soft); font-weight: 650; }
+.protection-action, .protection-unlock, .protection-relock {
+  flex: 0 0 auto; min-height: 30px; border: 1px solid var(--protection);
+  border-radius: 7px; padding: 5px 9px; background: transparent;
+  color: var(--text); font: inherit; font-size: 11.5px; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+}
+.protection-action:hover, .protection-unlock:hover, .protection-relock:hover {
+  background: color-mix(in srgb, var(--protection) 18%, transparent);
+}
+.protection-action:disabled, .protection-unlock:disabled, .protection-relock:disabled { opacity: .5; cursor: wait; }
+.protection-legend {
+  flex: none; display: flex; flex-wrap: wrap; gap: 7px 13px; padding: 7px 12px;
+  border-bottom: 1px solid var(--line); color: var(--text-dim); font-size: 10.5px;
+}
+.protection-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.protection-swatch { width: 19px; height: 10px; display: inline-block; border-radius: 2px; }
+.protection-swatch.persistent { border: 3px solid var(--protection); }
+.protection-swatch.temporary { border: 2px dashed var(--text-dim); }
+.protection-help { margin: 0 0 10px; }
+.protection-list-label {
+  margin: 0 0 6px; color: var(--text-dim); font-size: 10px; font-weight: 750;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.protection-list { display: flex; flex-direction: column; gap: 6px; }
+.protection-row {
+  display: flex; gap: 8px; align-items: center; padding: 7px 8px;
+  border-radius: 9px; border: 1px solid color-mix(in srgb, var(--protection) 42%, var(--line));
+  background: color-mix(in srgb, var(--protection) 10%, transparent);
+}
+.protection-row.pending { opacity: .68; }
+.protection-row.exception {
+  border-color: color-mix(in srgb, var(--live) 46%, var(--line));
+  background: color-mix(in srgb, var(--live) 9%, transparent);
+}
+.protection-lock { flex: 0 0 auto; }
+.protection-row-copy { flex: 1 1 auto; min-width: 0; }
+.protection-row-copy strong {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px;
+}
+.protection-row-copy small {
+  display: flex; flex-wrap: wrap; gap: 2px 7px; color: var(--text-dim);
+  font-size: 10.5px; overflow-wrap: anywhere;
+}
+.protection-unlock, .protection-relock { min-height: 27px; padding: 3px 7px; color: var(--protection-soft); }
+.protection-relock { border-color: var(--live); color: var(--live); }
+
+/* Per-item durable history -------------------------------------------- */
+.object-history-context {
+  flex: none; display: flex; flex-direction: column; gap: 9px; padding: 12px;
+  border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.object-history-target { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.object-history-title-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.object-history-title-line strong {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13px;
+}
+.object-history-undo {
+  width: 100%; min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--ucr-blue) 72%, var(--line)); border-radius: 6px;
+  background: var(--ucr-blue); color: #fff; font: inherit; font-size: 12.5px; font-weight: 750;
+  cursor: pointer;
+}
+.object-history-undo small {
+  padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, #000 22%, transparent);
+  font-size: 10px; font-weight: 750;
+}
+.object-history-undo:hover { background: var(--ucr-blue-ink); }
+.object-history-undo:disabled, .object-history-restore:disabled { opacity: .48; cursor: default; }
+.object-history-blocked {
+  padding: 7px 8px; border-left: 3px solid var(--paused);
+  background: color-mix(in srgb, var(--paused) 11%, transparent);
+  color: var(--text-dim); font-size: 11.5px; line-height: 1.38;
+}
+.object-history-saving { color: var(--ucr-blue); font-size: 11.5px; font-weight: 700; }
+.object-history-list { display: flex; flex-direction: column; gap: 9px; background: var(--panel); }
+.object-history-version {
+  padding: 10px; border: 1px solid var(--line); border-radius: 6px;
+  background: color-mix(in srgb, var(--text) 4%, var(--panel));
+}
+.object-history-version.current {
+  border-color: color-mix(in srgb, var(--live) 65%, var(--line));
+  box-shadow: inset 3px 0 0 var(--live);
+}
+.object-history-version-head { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.object-history-version-number {
+  flex: 0 0 auto; color: var(--text); font-size: 11px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .045em;
+}
+.object-history-version.current .object-history-version-number { color: var(--live); }
+.object-history-version-head time {
+  margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; color: var(--text-dim); font-size: 10px;
+}
+.object-history-summary {
+  margin: 5px 0 8px; color: var(--text-dim); font-size: 11.5px; line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.object-history-preview {
+  min-height: 62px; max-height: 150px; overflow: hidden; border: 1px solid var(--line);
+  border-radius: 4px; background: var(--bg);
+}
+.object-history-preview.text-preview {
+  padding: 9px; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto;
+  color: var(--text); font-size: 12px; line-height: 1.3;
+}
+.object-history-preview.media-preview { display: grid; place-items: center; background: #0a0b0e; }
+.object-history-preview.media-preview img,
+.object-history-preview.media-preview video { display: block; width: 100%; max-height: 150px; object-fit: contain; }
+.object-history-preview.object-preview {
+  display: flex; align-items: center; justify-content: center; gap: 7px; padding: 10px;
+  color: var(--text-dim); font-size: 17px;
+}
+.object-history-preview.object-preview strong {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text); font-size: 11.5px;
+}
+.object-history-fill {
+  width: 22px; height: 22px; flex: 0 0 auto; border: 1px solid color-mix(in srgb, #fff 55%, var(--line));
+}
+.object-history-geometry {
+  position: relative; width: 82px; aspect-ratio: 16 / 9; margin: 7px 0 4px;
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--text) 5%, var(--bg));
+}
+.object-history-geometry span {
+  position: absolute; min-width: 2px; min-height: 2px;
+  border: 1px solid var(--ucr-gold); background: color-mix(in srgb, var(--ucr-gold) 28%, transparent);
+}
+.object-history-boxmeta {
+  min-height: 14px; color: var(--text-dim); font-size: 9.5px; overflow-wrap: anywhere;
+}
+.object-history-restore {
+  width: 100%; min-height: 31px; margin-top: 8px; border: 1px solid var(--ucr-blue);
+  border-radius: 5px; background: transparent; color: var(--text); font: inherit;
+  font-size: 11.5px; font-weight: 700; cursor: pointer;
+}
+.object-history-restore:not(:disabled):hover {
+  background: color-mix(in srgb, var(--ucr-blue) 17%, transparent);
+}
+.object-history-loading {
+  display: flex; align-items: center; gap: 5px; padding: 14px 4px;
+  color: var(--text-dim); font-size: 12px;
+}
+.object-history-loading span {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--ucr-blue);
+  animation: history-pulse 1s ease-in-out infinite;
+}
+.object-history-loading span:nth-child(2) { animation-delay: .13s; }
+.object-history-loading span:nth-child(3) { animation-delay: .26s; margin-right: 4px; }
+@keyframes history-pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.object-history-error {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px;
+  border-left: 3px solid #dc2626; background: color-mix(in srgb, #dc2626 10%, transparent);
+  font-size: 12px;
+}
+.object-history-error span { color: var(--text-dim); overflow-wrap: anywhere; }
+.object-history-error button {
+  min-height: 29px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 5px;
+  background: transparent; color: var(--text); font: inherit; font-size: 11.5px; cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) { .object-history-loading span { animation: none; opacity: .75; } }
+
+.loop-toggle { background: transparent; border: 1px solid var(--line); color: var(--text-dim);
+  border-radius: 6px; font: inherit; font-size: 10.5px; padding: 2px 7px; cursor: pointer; flex: 0 0 auto; }
+.loop-toggle.on { color: var(--live); border-color: color-mix(in srgb, var(--live) 55%, transparent); }
+.runner-state { font-size: 11.5px; padding: 6px 9px; border-radius: 8px; margin-bottom: 9px;
+  background: color-mix(in srgb, var(--paused) 14%, transparent); color: var(--text); }
+.runner-state.on { background: color-mix(in srgb, var(--live) 13%, transparent); }
+/* Enabled but unable to fire (paused, or nobody watching). Green would say "this
+   is running", which is the exact false impression this state exists to correct,
+   so it drops back to the same caution amber as the off state and adds a rail. */
+.runner-state.on.blocked {
+  background: color-mix(in srgb, var(--paused) 16%, transparent);
+  border-left: 3px solid var(--paused);
+}
+.runner-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.runner-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700; color: var(--text-dim); }
+.runner-line { margin-top: 4px; line-height: 1.4; overflow-wrap: anywhere; }
+.runner-line:first-child { margin-top: 0; }
+/* The live countdown. Tabular figures so a 1s tick does not reflow the sentence
+   around it every second. */
+.runner-count { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text); }
+/* Same "text, never colour alone" contract as .loop-toggle: this switch decides
+   whether the machine spends tokens on its own, so its state has to survive a
+   colourblind reading. */
+.runner-toggle {
+  margin-left: auto; background: transparent; border: 1px solid var(--line);
+  color: var(--text-dim); border-radius: 6px; font: inherit; font-size: 10.5px;
+  font-weight: 700; padding: 2px 10px; cursor: pointer; flex: 0 0 auto;
+  min-height: 22px;
+}
+.runner-toggle.on { color: var(--live); border-color: color-mix(in srgb, var(--live) 55%, transparent); }
+.runner-toggle:hover { background: color-mix(in srgb, var(--text) 9%, transparent); }
+.runner-toggle:disabled { opacity: .5; cursor: default; }
+.feed-item { display: flex; gap: 8px; align-items: flex-start; padding: 5px 7px; border-radius: 8px; font-size: 12px; }
+.feed-item .ic { flex: none; width: 18px; text-align: center; }
+.feed-item .who { font-weight: 600; }
+.feed-item .what { color: var(--text-dim); overflow-wrap: anywhere; }
+.feed-item .t { margin-left: auto; color: var(--text-dim); font-size: 10px; white-space: nowrap; }
+
+/* ---------------------------------------------------------- panel toggles */
+.ptogs { display: flex; gap: 2px; align-items: center; flex: 0 0 auto; }
+.ptog {
+  background: transparent; border: 1px solid transparent; border-radius: 8px;
+  color: var(--text-dim); font: inherit; font-size: 14px; line-height: 1;
+  padding: 5px 7px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+  min-height: 30px;
+}
+.ptog:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.ptog[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ucr-blue) 20%, transparent);
+  border-color: color-mix(in srgb, var(--ucr-blue) 55%, transparent); color: var(--text);
+}
+.pcount { font-size: 10.5px; font-weight: 700; color: var(--text-dim); }
+.ptog[aria-pressed="true"] .pcount { color: var(--text); }
+.pcount:empty { display: none; }
+.pcount.warn { color: #dc2626; }
+.pcount.ok { color: var(--live); }
+
+/* ------------------------------------------------------------- passive HUD */
+/* Status only. pointer-events:none is not an optimisation here, it is the
+   contract: anything that scrolls or clicks belongs in a panel, not the HUD. */
+.hud {
+  position: fixed; inset: 0; z-index: var(--z-hud); pointer-events: none;
+  padding: calc(var(--chrome-h, 52px) + 10px) 16px calc(var(--chat-h, 64px) + 14px);
+}
+.hud-pos {
+  position: absolute; right: 16px; bottom: calc(var(--chat-h, 64px) + 14px);
+  font-size: 11.5px; font-weight: 700; color: var(--text-dim);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  padding: 3px 9px; border-radius: 999px; backdrop-filter: blur(6px);
+}
+.hud-pos:empty { display: none; }
+.ticker {
+  position: absolute; left: 16px; bottom: calc(var(--chat-h, 64px) + 14px);
+  display: flex; flex-direction: column; gap: 4px; max-width: min(420px, 40vw);
+}
+.tick {
+  font-size: 11.5px; color: var(--text-dim);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  padding: 3px 9px; border-radius: 8px; backdrop-filter: blur(6px);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  animation: tick-fade 8s ease-out forwards;
+}
+@keyframes tick-fade { 0% { opacity: 0; } 6% { opacity: 1; } 78% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tick { animation-duration: .01s; animation-delay: 7.9s; } }
+
+/* -------------------------------------------------------------- fallbacks */
+/* Mandatory, not polish: without the blur, 86% over slide text is unreadable.
+   This differs from a scrim, where losing the blur is merely cosmetic. */
+@supports not (backdrop-filter: blur(2px)) {
+  .panel, .chatlog, .chatform, .chrome, .compact-menu, .hud-pos, .tick { background: color-mix(in srgb, var(--panel) 97%, transparent); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .panel, .chatlog, .chatform, .chrome, .compact-menu { background: var(--panel); backdrop-filter: none; }
+}
+@media (forced-colors: active) {
+  .panel, .chatform, .chrome, .compact-menu { background: Canvas; border: 1px solid CanvasText; backdrop-filter: none; }
+}
+
+/* focus-visible for every interactive control on this page, in one place */
+.btn:focus-visible, .ptog:focus-visible, .mode-toggle button:focus-visible,
+.chatsend:focus-visible, .pinbtn:focus-visible, .mini-x:focus-visible,
+.mini-btn:focus-visible, .loop-toggle:focus-visible, .chip-interrupt:focus-visible,
+.dismiss:focus-visible, .compact-menu-button:focus-visible, .compact-close:focus-visible,
+.compact-action:focus-visible, .chatform:focus-within, [data-profile]:focus-visible,
+.composer textarea:focus-visible, .as-name input:focus-visible,
+.protection-action:focus-visible, .protection-unlock:focus-visible, .protection-relock:focus-visible,
+.card-lock-toggle:focus-visible, .lock-manage-button:focus-visible, .spot:focus-visible,
+.object-history-undo:focus-visible, .object-history-restore:focus-visible,
+.object-history-error button:focus-visible {
+  outline: 2px solid var(--ucr-blue); outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------- responsive */
+@media (max-width: 980px) {
+  /* At a genuinely narrow width a dock would make the slide unusably small.
+     Panels become bottom sheets here, with the top controls and chat still
+     outside their bounds. The stage gives up the same measured sheet height,
+     so even this responsive form never covers the slide. */
+  body.panel-open { --bottom-panel-h: min(58vh, 520px); }
+  body.panel-open #stage {
+    right: 0; bottom: calc(var(--chat-h, 64px) + var(--bottom-panel-h) + 24px);
+  }
+  body.panel-open .hud { right: 0; bottom: 0; }
+  body.panel-open .hud-pos,
+  body.panel-open .ticker {
+    bottom: calc(var(--chat-h, 64px) + var(--bottom-panel-h) + 24px);
+  }
+  body.panel-open .chrome { right: 0; }
+  body.panel-open .chat {
+    left: 50%; width: min(780px, calc(100vw - 32px));
+  }
+  body.panel-open .toast { left: 50%; }
+  body.panel-open .lock-quickbar { max-width: min(620px, calc(100vw - 24px)); }
+  .panel, .object-history-panel {
+    left: 10px; right: 10px; top: auto; bottom: calc(var(--chat-h, 64px) + 14px);
+    width: auto; height: var(--bottom-panel-h); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 -12px 34px color-mix(in srgb, #000 32%, transparent);
+  }
+}
+@media (max-width: 900px) {
+  body.panel-open { --bottom-panel-h: min(58vh, 460px); }
+  /* Two intentional rows. The old flex wrapping put every control in the
+     chrome and produced a different, noisy toolbar at each narrow width. */
+  .chrome {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "dot brand more"
+      "panels view pause";
+    column-gap: 8px;
+    row-gap: 7px;
+    padding: 8px 14px;
+  }
+  .chrome > .dot { grid-area: dot; }
+  .chrome > .brand { grid-area: brand; }
+  .chrome > .agent-chips, .chrome > .spacer, .chrome > .stale-dot,
+  #undoBtn, #redoBtn, #downloadBtn, #exportPdfBtn { display: none; }
+  .chrome > .ptogs { grid-area: panels; justify-self: start; }
+  .chrome > .mode-toggle { grid-area: view; justify-self: end; }
+  #pauseBtn { grid-area: pause; justify-self: end; }
+  .compact-controls { display: block; grid-area: more; position: relative; justify-self: end; }
+  .compact-menu-button {
+    border: 1px solid var(--line); background: transparent; color: var(--text);
+    border-radius: 7px; padding: 6px 10px; font: inherit; font-size: 12px;
+    font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .compact-menu-button[aria-expanded="true"] { background: color-mix(in srgb, var(--ucr-blue) 18%, transparent); border-color: var(--ucr-blue); }
+  .compact-menu {
+    position: absolute; z-index: calc(var(--z-toast) + 1); right: 0; top: calc(100% + 8px);
+    width: min(334px, calc(100vw - 20px)); max-height: calc(100vh - var(--chrome-h, 90px) - 20px);
+    overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 11px;
+    background: color-mix(in srgb, var(--panel) 96%, transparent); backdrop-filter: blur(16px) saturate(1.2);
+    border: 1px solid color-mix(in srgb, var(--line) 80%, transparent); border-radius: 12px;
+    box-shadow: 0 14px 38px color-mix(in srgb, #000 38%, transparent);
+  }
+  .compact-menu[hidden] { display: none; }
+  .compact-menu-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; }
+  .compact-close { margin-left: auto; min-width: 26px; min-height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--text-dim); font: inherit; font-size: 18px; line-height: 1; cursor: pointer; }
+  .compact-close:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+  .compact-roster:empty, .compact-meta:empty { display: none; }
+  .compact-roster { display: flex; flex-wrap: wrap; gap: 6px; }
+  .compact-meta { display: flex; flex-direction: column; align-items: stretch; gap: 9px; }
+  .compact-meta .spend { margin: 0; padding: 5px 7px; border-radius: 8px; background: color-mix(in srgb, var(--text) 6%, transparent); }
+  .compact-meta .profile-ctl { margin: 0; justify-content: space-between; }
+  .compact-meta .profile-toggle { margin-left: auto; }
+  .compact-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .compact-action { min-height: 34px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text); padding: 7px 9px; font: inherit; font-size: 12px; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; }
+  .compact-action:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .compact-action:disabled { opacity: .42; cursor: default; }
+  /* The <=980 rule already docks every panel below the reduced-height stage. */
+}
+@media (max-width: 520px) {
+  .chrome { padding: 7px 10px; column-gap: 6px; row-gap: 6px; }
+  .brand-sub { display: none; }
+  .brand-title { font-size: 14px; }
+  .ptogs { gap: 1px; }
+  .ptog { min-width: 28px; padding: 5px 4px; }
+  .chrome > .mode-toggle button { padding: 5px 8px; font-size: 12px; }
+  #pauseBtn { min-width: 0; padding: 6px 9px; font-size: 12px; }
+  .compact-menu-button { padding: 6px 9px; }
+  .lock-quickbar { right: 10px; left: 10px; max-width: none; }
+  .lock-quick-copy strong { white-space: normal; line-height: 1.2; }
+}
+@media (max-width: 360px) {
+  .chrome {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "dot brand more"
+      "panels panels pause"
+      "view view view";
+  }
+  .chrome > .mode-toggle { justify-self: center; }
+}
+@media (max-height: 560px) {
+  .chrome { padding: 4px 10px; font-size: 12px; }
+  .chat.open .chatlog { max-height: 32vh; }
+}
+@media (max-height: 560px) and (max-width: 980px) {
+  body.panel-open {
+    --bottom-panel-h: min(50vh, 320px);
+  }
+  .panel, .object-history-panel {
+    left: 8px; right: 8px; bottom: calc(var(--chat-h, 56px) + 8px);
+  }
+  body.panel-open #stage {
+    bottom: calc(var(--chat-h, 56px) + var(--bottom-panel-h) + 18px);
+  }
+}
+
+/* Present mode (f): chrome and HUD out of the way for an actual talk. No idle
+   auto-hide, because hiding the pause button the moment you reach for it is a
+   bad trade; this is an explicit mode you turn on and off. */
+body.present .chrome, body.present .hud { opacity: 0; pointer-events: none; transition: opacity .2s; }
+body.present .chat { opacity: .25; transition: opacity .2s; }
+body.present .chat:focus-within, body.present .chat:hover { opacity: 1; }

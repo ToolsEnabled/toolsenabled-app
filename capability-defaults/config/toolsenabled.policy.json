@@ -1,0 +1,148 @@
+{
+  "$comment": [
+    "SHIPPED DEFAULT policy for a fresh installation.",
+    "",
+    "The capability layer cannot start without this file, so it has to ship. The",
+    "builder's own copy is not the file to ship: it carries a live Google Cloud",
+    "project id belonging to a third party, a standing authorization naming an",
+    "internal mission, and a provider note recording a private decision. None of",
+    "that is true for, or any business of, someone who installs this product.",
+    "",
+    "WHAT CHANGED FROM THE BUILDER'S COPY, AND NOTHING ELSE CHANGED:",
+    "  * approvals.standingAuthorizations is empty. A standing authorization is a",
+    "    pre-granted permission to perform one exact action with one exact set of",
+    "    arguments without asking again. A fresh installation has granted none, so",
+    "    an empty list is the truthful value -- and shipping the builder's would",
+    "    have pre-authorized an API call against a project the installer does not",
+    "    own and cannot reach.",
+    "  * providers.discord is gone: Discord left the product on 2026-08-22 by owner",
+    "    ruling, and the engine's policy no longer carries the namespace.",
+    "",
+    "Everything else is the product's own default and is deliberately identical:",
+    "the approval action list, the research fetch bounds, the Tavily pool sizes",
+    "(which match the fallbacks in src/lib/providers/web.js) and the provider",
+    "enablement flags. `enabled` means the policy permits a provider, not that it",
+    "is usable -- every one of them still needs credentials the vault does not have",
+    "on a fresh machine.",
+    "",
+    "limits.defaultDailySpendUsd is carried over unchanged at 100. It is a product",
+    "default rather than owner data, but a spending ceiling nobody chose is worth",
+    "a deliberate decision rather than inheritance; that decision belongs to the",
+    "payments work, not to packaging."
+  ],
+  "version": 1,
+  "mode": "autonomous",
+  "killswitchFile": "KILLSWITCH",
+  "audit": {
+    "enabled": true,
+    "jsonlFile": "logs/actions.jsonl",
+    "textFile": "logs/actions.log"
+  },
+  "browser": {
+    "profileDirectory": "profiles/chrome",
+    "allowedSchemes": [
+      "https"
+    ],
+    "headless": false
+  },
+  "limits": {
+    "maxScheduledJobs": 50,
+    "defaultDailySpendUsd": 100,
+    "maxInstagramPublishesPerRun": 1
+  },
+  "localInference": {
+    "hermesAdvisoryEnabled": true,
+    "strongAdvisoryEnabled": true
+  },
+  "overnightAdvisory": {
+    "enabled": true
+  },
+  "approvals": {
+    "enabled": true,
+    "externalWrites": true,
+    "actions": [
+      "scheduler.create",
+      "scheduler.remove",
+      "scheduler.reconcile",
+      "host.exec",
+      "browser.stop",
+      "window.close",
+      "sandbox.reap",
+      "sandbox.auth_profile_create",
+      "sandbox.auth_profile_revoke",
+      "system.credential_remove",
+      "paddle.transaction_cancel",
+      "paddle.subscription_cancel"
+    ],
+    "autoApproveBrowserStart": true,
+    "allowScheduledActions": true,
+    "standingAuthorizations": [],
+    "timeoutSeconds": 60
+  },
+  "http": {
+    "allowedHosts": [],
+    "vaultKeys": {}
+  },
+  "research": {
+    "search": {
+      "provider": "searxng",
+      "searxngUrl": "http://127.0.0.1:8888/search"
+    },
+    "fetch": {
+      "allowHttp": false,
+      "robotsTtlMs": 86400000,
+      "hostIntervalMs": 5000,
+      "globalConcurrency": 4,
+      "maxResponseBytes": 10485760,
+      "maxRedirects": 5,
+      "timeoutMs": 30000
+    },
+    "tavily": {
+      "routineMonthlyPool": 700,
+      "researchMonthlyPool": 200,
+      "applicationHardStop": 900
+    }
+  },
+  "providers": {
+    "instagram": {
+      "enabled": true,
+      "apiVersion": "v25.0"
+    },
+    "firebase": {
+      "enabled": true
+    },
+    "googleCloud": {
+      "enabled": true
+    },
+    "vercel": {
+      "enabled": true
+    },
+    "cloudflare": {
+      "enabled": true
+    },
+    "chromeWebStore": {
+      "enabled": true
+    },
+    "extension": {
+      "enabled": true
+    },
+    "google": {
+      "enabled": true
+    },
+    "github": {
+      "enabled": true
+    },
+    "web": {
+      "enabled": true
+    },
+    "stripe": {
+      "enabled": true
+    },
+    "paddle": {
+      "enabled": true
+    },
+    "codexCloud": {
+      "enabled": true
+    }
+  }
+}

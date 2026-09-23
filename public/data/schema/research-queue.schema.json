@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.toolsenabled.local/data/schema/research-queue.schema.json",
+  "title": "ToolsEnabled research queue v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "items"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "items": {
+      "type": "array",
+      "minItems": 0,
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "status", "provenance", "observation", "researchQuestion"],
+      "properties": {
+        "id": { "type": "string", "pattern": "\\S", "maxLength": 120 },
+        "title": { "type": "string", "pattern": "\\S", "maxLength": 240 },
+        "status": { "enum": ["queued", "in-progress", "complete"] },
+        "provenance": { "type": "string", "pattern": "\\S", "maxLength": 80 },
+        "observation": { "type": "string", "pattern": "\\S", "maxLength": 2000 },
+        "researchQuestion": { "type": "string", "pattern": "\\S", "maxLength": 1000 },
+        "relatedTo": { "type": "string" }
+      }
+    }
+  }
+}

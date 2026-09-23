@@ -1,0 +1,1723 @@
+/* Page 2's static whiteboard register. This sheet is deliberately scoped to
+   .computers so FleetGraph on the agent detail route keeps its existing skin. */
+
+.computers .graph-wrap.glass,
+.computers .rail.glass {
+  background: var(--sheet);
+  border: 1px solid var(--line-2);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.computers .graph-wrap.glass::before,
+.computers .graph-wrap.glass::after,
+.computers .rail.glass::before,
+.computers .rail.glass::after { display: none; }
+.computers .graph-wrap.glass:hover,
+.computers .rail.glass:hover { border-color: var(--line-2); box-shadow: none; }
+
+.computers .tab {
+  background: var(--sheet);
+  border-color: var(--line-2);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: color 160ms var(--ease), background 160ms var(--ease), border-color 160ms var(--ease);
+}
+.computers .tab:hover { background: color-mix(in oklab, var(--ink) 4%, var(--sheet)); }
+.computers .tab.active {
+  background: color-mix(in oklab, var(--c-coordinator) 6%, var(--sheet));
+  border-color: color-mix(in oklab, var(--c-coordinator) 34%, var(--line-2));
+  box-shadow: none;
+}
+
+/* ...BUT THE FOCUS RING IN THIS DESIGN SYSTEM IS A BOX-SHADOW, and flattening
+   the tabs above took the keyboard's only indicator with it.
+   MEASURED with Tab on the packaged build (tools/a11y-keyboard-qa.mjs, sterile
+   profile): on `.computers .tab.active` the browser matched `box-shadow: none`
+   from the two rules above AND `outline: none` from the shared focus recipe in
+   styles.css, computing to outline-style `none` and box-shadow `none` while
+   `:focus-visible` was true. The computer tab is the FIRST stop inside the page
+   a keyboard user crosses to reach an agent, and it lit up in no way at all.
+   Only :focus-visible is restored, so the flat resting skin this sheet exists
+   for is untouched; the recipe is the site one, repeated here rather than
+   re-invented, because it has to keep looking like every other focused control
+   on the page. */
+.computers .tab:focus-visible,
+.computers .tab.active:focus-visible {
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, calc(0.95 * var(--wa))),
+    0 0 0 3.5px var(--focus-ring);
+}
+
+/* ONE REAL BAR PER PANE (owner, iteration 6). The title, the switcher and
+   the tools used to be absolute siblings sharing one band over the canvas —
+   right-anchored shrink-to-fit vs a left-anchored title, kept apart by
+   nothing but luck in their widths, and the strip painted over the title the
+   moment enough trees existed. Normal flow ends that argument for good: the
+   bar has three slots in a fixed order, the title ellipsises, the TREES slot
+   alone scrolls sideways behind edge fades, and the tools wrap onto another
+   row when the pane cannot hold all three slots. */
+.computers .graph-wrap { display: flex; flex-direction: column; }
+/* Keep a saved wide rail from consuming the canvas when the window shrinks.
+   Retain the preference so widening the window restores the requested width.
+
+   R1207 ("widen the tree"): the DEFAULT share was lowered here, and only the
+   default. `--comp-rail-width` stays the first argument of var(), so a width
+   the person dragged still wins outright -- a var() fallback is read only when
+   the property is not set, and src/views/computers.js sets it inline on this
+   same .comp-body element from the saved mc.comp-body.rail-w. Discarding a
+   saved rail width would be a worse defect than the narrow canvas it fixes.
+
+   The three numbers, none of them to taste:
+     320px  the bottom of the clamp now equals the track's own minmax floor
+            below, so the default and the hard minimum stop disagreeing.
+     26vw   the share at rest, down from 36.1vw.
+     480px  the ceiling, down from 600px, consistent with that smaller share.
+   The percentage ceiling drops 50% -> 40%, which is the rule in one number:
+   the canvas keeps at least 60% of the body at every window width. */
+@media (min-width: 1024px) {
+  .computers .comp-body {
+    grid-template-columns: minmax(0, 1fr) auto minmax(320px, min(var(--comp-rail-width, clamp(320px, calc(26vw / var(--zoom, 1)), 480px)), 40%));
+  }
+}
+.computers .graph-bar {
+  flex: none;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 12px 8px 16px;
+  row-gap: 8px;
+  border-bottom: 1px solid var(--line-2);
+  background: var(--sheet);
+}
+/* WHOSE PAGE THIS IS, and it no longer surrenders its room. `.graph-title` was
+   `flex: 0 1 auto` next to a flexible tree strip and a paragraph about the
+   research page, and the arithmetic went the only way it could: measured on the
+   staged build, the computer's name rendered as "This..." at 1512x945 and was
+   gone entirely at 1280x800, taking the whole tree switcher with it. The lead
+   slot is `flex: none`, so the name is the one thing here that keeps its width;
+   a genuinely long name still ellipsises inside its own 38% budget. */
+.computers .graph-bar-lead {
+  flex: none;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+}
+/* The first of the bar's two hairlines. They are drawn by the slots themselves
+   rather than by divider elements, so there is nothing to leave behind when a
+   group is empty and nothing to fall into the wrong order. */
+.computers .graph-bar-lead::after {
+  content: '';
+  flex: none;
+  width: 1px;
+  height: 20px;
+  margin-left: 14px;
+  background: var(--line-2);
+}
+.computers .graph-canvas-slot {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+/* The only thing in the bar with title weight. Everything else is a control,
+   and a control that competes with the name of the machine is what "no
+   hierarchy" looks like. */
+.computers .graph-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+/* The scroll function the owner asked for lives HERE and only here: the
+   trees slot slides its buttons sideways with the scrollbar hidden (the
+   .agentv-panels recipe) and tells the eye there is more via edge fades.
+   The seg inside must keep its natural width — a shrunken seg is how the
+   squashed glitch box happened. */
+.computers .graph-bar-trees {
+  flex: 1 1 120px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  /* THE ARROWS' FOOTPRINT IS RESERVED, NOT FLOATED OVER. QA measured the
+     sticky arrows (22px + 6px margin) parking on top of the first and last
+     tree buttons on a phone: the centre press of "Every tree" answered as
+     "Scroll to earlier trees" on both engines at 390x844 and 320x568. Sticky
+     pins to the scrollport edge, but the scroller's own inline padding is
+     dead space no snapped button occupies — and scroll-padding makes the
+     snap positions honor it, so a button can PASS under an arrow mid-scroll
+     (the overlay affordance) but can never come to REST there where a finger
+     would press it. */
+  padding-inline: 28px;
+  scroll-padding-inline: 56px;
+  mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
+.computers .graph-bar-trees::-webkit-scrollbar { display: none; }
+
+/* THE STRIP SCROLLED AND NOTHING SAID SO (owner, 2026-08-26: "Theres no button
+   to take me to the rest of the trees ... i need some kind of scroller").
+ *
+ * The scroller above is real -- overflow-x:auto, snap points, edge fades. What
+ * it had was no AFFORDANCE. `scrollbar-width: none` and the two 14px mask fades
+ * are the whole of what a person sees, and on a desktop that is nothing: the
+ * fade reads as the bar ending, there is no track to grab, and a mouse wheel is
+ * VERTICAL, so the one gesture most people try over a horizontal scroller moves
+ * it not at all. A tree past the right edge was therefore unreachable by any
+ * input the owner had. Hiding the scrollbar was right for the look and wrong on
+ * its own; the missing half is arrows.
+ *
+ * STICKY, NOT ABSOLUTE, and that is what avoids the trap board.css records: an
+ * absolutely positioned child of a scroller scrolls away with the content, and
+ * an inner scrollbar inside the seg's fixed box "rendered as the squashed
+ * glitch strip" on iteration 5. A sticky flex item pins itself to the visible
+ * edge while the row slides underneath, needs no wrapper element, and adds no
+ * second scroller anywhere. `order` places them at the ends, so the JS can
+ * append both without disturbing the prepend order the switcher relies on. */
+.computers .graph-bar-trees > .graph-tree-scroll {
+  flex: none;
+  position: sticky;
+  z-index: 2;
+  width: 22px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--sheet);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
+  scroll-snap-align: none;
+}
+.computers .graph-bar-trees > .graph-tree-scroll[data-edge="start"] { order: -1; left: 0; margin-right: 6px; }
+.computers .graph-bar-trees > .graph-tree-scroll[data-edge="end"] { order: 999; right: 0; margin-left: 6px; }
+.computers .graph-bar-trees > .graph-tree-scroll:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-3); }
+/* Disabled rather than removed at either end of the travel: hiding it would
+   reflow the strip under the cursor mid-press, and the arrow's presence is
+   itself the message that the row continues. Both are hidden together only
+   when there is no overflow at all -- then the whole affordance is absent,
+   which is the one case this codebase hides rather than disables. */
+.computers .graph-bar-trees > .graph-tree-scroll:disabled { opacity: 0.35; cursor: default; }
+/* A dead arrow must not eat the press meant for the chip beneath it. The
+   arrows are sticky ON TOP of the row's content by design -- the row slides
+   underneath -- so at either end of the travel the disabled arrow is sitting
+   on a live chip, and without this line it swallows that chip's press and
+   answers with nothing. Measured at 390x844: "Every tree" lost its centre
+   press to the disabled start arrow. */
+.computers .graph-bar-trees > .graph-tree-scroll:disabled { pointer-events: none; }
+.computers .graph-bar-trees > .graph-tree-scroll[hidden] { display: none; }
+/* THE ARROWS ARE A MOUSE CRUTCH, AND A FINGER ALREADY HAS THE GESTURE.
+   phone-canvas.css hides them when the canvas is on, for a reason measured on
+   the owner's phone: at 390px the pinned arrows sit ON TOP of the chips they
+   exist to reveal. The routing law then made canonical /app/ on a phone show
+   the DESKTOP graph -- phone canvas off -- so that fix stopped covering the
+   surface a phone user actually gets, and the same overlap came back on
+   /app/ under phone emulation (two chips losing their centre press, measured
+   by the surface-geometry driver). The condition that matters is not which
+   mode is on but what pointer the person has: a coarse pointer pans the strip
+   natively and has no wheel for the arrows to stand in for. So the crutch is
+   scoped to the pointer that needs it. */
+@media (pointer: coarse) {
+  .computers .graph-bar-trees > .graph-tree-scroll { display: none; }
+  .computers .graph-bar-trees { scroll-padding-inline: 28px; }
+}
+.computers .graph-tree-starts {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+  scroll-snap-align: start;
+}
+
+/* ON A PHONE THE BAR WRAPS, BECAUSE OTHERWISE ITS LAST SLOT IS NOWHERE.
+ *
+ * MEASURED at 390x844 in the browser preview, which is the destination of the
+ * website's primary button: .graph-bar is a single flex row whose scrollWidth
+ * is 490 inside a clientWidth of 349, it sets no overflow-x, and the page has
+ * no horizontal scroll of its own (documentElement 390/390). "Open agent
+ * detail" measured x=376 width=131 -- its whole box past the right edge of the
+ * screen, with nothing anywhere that scrolls to it and a wheel over it moving
+ * nothing. That control is the preview's only route into an agent, so on a
+ * phone the preview simply has no way in.
+ *
+ * WRAPPING RATHER THAN SCROLLING, because the trees slot inside this bar is
+ * already a horizontal scroller and nesting a second one under the same finger
+ * is a swipe that does the wrong thing about half the time. The tools drop to a
+ * second line, every control keeps its size, and the bar grows instead of
+ * hiding its own end. overflow-x is the backstop for anything that still cannot
+ * wrap -- a scrollbar nobody needs costs nothing, an unreachable button costs
+ * the visit. */
+@media (max-width: 720px) {
+  .computers .graph-bar {
+    height: auto;
+    min-height: 52px;
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    overflow-x: auto;
+  }
+  .computers .graph-bar-lead { max-width: 100%; }
+  .computers .graph-bar-lead::after { display: none; }
+}
+.computers .graph-hint {
+  top: 12px;
+  background: var(--sheet);
+  border: 1px solid var(--line-2);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: translateX(-50%);
+  transition: none;
+}
+.computers .graph-hint.show { transform: translateX(-50%); }
+
+/* TWO GROUPS, NOT ONE RUN OF CHIPS. src/tree-graph.js drops the zoom cluster in
+   here as the first child, so the strip is really "how you are looking at the
+   tree" followed by "what you can do to it". The hairline says so. */
+.computers .graph-tools {
+  position: static;
+  margin-left: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px 12px;
+  justify-content: flex-end;
+}
+.computers .graph-tools .tree-workspace-controls { margin-left: 0; }
+.static-tree-graph .tree-branch-count {
+  position: absolute;
+  right: -12px;
+  bottom: 0;
+  min-width: 24px;
+  padding: 3px 6px;
+  border: 1px solid var(--rc);
+  border-radius: 12px;
+  background: var(--sheet);
+  color: var(--ink-2);
+  font: 600 11px/1.2 var(--font-ui);
+}
+.static-tree-graph .tree-scope-group .node-glass { border-style: dashed; }
+.static-tree-chip-overlay .cl-scope { margin-top: 5px; font-size: 11px; color: var(--ink-2); }
+.computers .graph-tool-set {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.computers .graph-tool-set::before {
+  content: '';
+  flex: none;
+  width: 1px;
+  height: 20px;
+  margin-right: 4px;
+  background: var(--line-2);
+}
+/* ONE CHIP, THREE BUTTONS. Same height as the zoom cluster beside them, same
+   radius, same type — the bar reads as one row of controls instead of four
+   different opinions about what a button is. */
+.computers .graph-tree-start,
+.computers .graph-roles-btn,
+.computers .graph-edit-btn,
+.computers .graph-reset-btn {
+  position: static;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 13px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: var(--sheet);
+  color: var(--ink-2);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  font: 640 12.5px/1 var(--font-ui);
+  cursor: pointer;
+  transition: color 160ms var(--ease), background 160ms var(--ease), border-color 160ms var(--ease);
+}
+.computers .graph-reset-btn {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-3);
+}
+.computers .graph-reset-btn[hidden] { display: none; }
+.computers .graph-roles-btn[hidden] { display: none; }
+.computers .graph-tree-start:hover,
+.computers .graph-roles-btn:hover,
+.computers .graph-edit-btn:hover,
+.computers .graph-reset-btn:hover {
+  color: var(--ink);
+  background: color-mix(in oklab, var(--ink) 5%, var(--sheet));
+}
+/* A CHIP THAT CANNOT ACT SAYS SO WITH ITS FACE, whichever of the two idioms
+   switched it off. These chips had NO disabled dress at all — measured on the
+   phone press-through (2026-08-27): Start tree disabled with its whole
+   explanation in `title`, drawn at full strength with cursor:pointer, which
+   on a touch screen is a silent dead control by THE RULE. `[disabled]` is the
+   momentary state (a batch mid-start); `[aria-disabled="true"]` is the stated
+   one — the control stays pressable so the press can be ANSWERED in words
+   (the Edit/Start handlers put the sentence in the page's own status line),
+   which is the only channel a finger has. */
+.computers .graph-tree-start[disabled],
+.computers .graph-roles-btn[disabled],
+.computers .graph-tree-start[aria-disabled="true"],
+.computers .graph-edit-btn[disabled],
+.computers .graph-edit-btn[aria-disabled="true"],
+.computers .graph-open-btn[aria-disabled="true"] {
+  color: var(--ink-3);
+  border-style: dashed;
+  cursor: default;
+}
+.computers .graph-tree-start[aria-disabled="true"]:hover,
+.computers .graph-edit-btn[aria-disabled="true"]:hover,
+.computers .graph-open-btn[aria-disabled="true"]:hover {
+  color: var(--ink-3);
+  background: var(--sheet);
+  border-color: var(--line-2);
+}
+/* The open chip's accent marks the one control that LEAVES this page; while
+   it cannot leave, the accent comes off with the availability. */
+.computers .graph-open-btn[aria-disabled="true"] {
+  background: var(--sheet);
+  border-color: var(--line-2);
+}
+.computers .graph-edit-btn.on {
+  color: var(--ink);
+  border-color: color-mix(in oklab, var(--c-coordinator) 42%, var(--line-2));
+  background: color-mix(in oklab, var(--c-coordinator) 8%, var(--sheet));
+  box-shadow: none;
+}
+/* The named way into the drill-in. Same chip geometry as Edit beside it, so the
+   strip stays one row of controls rather than a row with a banner in it; the
+   accent border is what marks it as the one that LEAVES this page. */
+.computers .graph-open-btn {
+  position: static;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 13px;
+  border: 1px solid color-mix(in oklab, var(--c-coordinator) 38%, var(--line-2));
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--c-coordinator) 7%, var(--sheet));
+  color: var(--ink);
+  font: 640 12.5px/1 var(--font-ui);
+  cursor: pointer;
+  transition: color 160ms var(--ease), background 160ms var(--ease), border-color 160ms var(--ease);
+}
+.computers .graph-open-btn:hover {
+  background: color-mix(in oklab, var(--c-coordinator) 14%, var(--sheet));
+  border-color: color-mix(in oklab, var(--c-coordinator) 58%, var(--line-2));
+}
+/* `hidden` has to beat the inline-flex above, or the absent state renders as a
+   visible button that does nothing — the exact defect this control exists to
+   avoid making worse. */
+.computers .graph-open-btn[hidden] { display: none; }
+
+/* The no-fleet explanation. Occupies the canvas slot, so it is what the eye
+   lands on rather than a footnote in the side rail. */
+.computers .graph-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 40px;
+  text-align: center;
+}
+.computers .graph-empty-h {
+  font: 640 15px/1.3 var(--font-ui);
+  color: var(--ink);
+}
+.computers .graph-empty-reason {
+  font: 500 12.5px/1.45 var(--font-ui);
+  color: var(--ink-3);
+  max-width: 52ch;
+}
+.computers .graph-empty-body {
+  font: 400 13px/1.55 var(--font-ui);
+  color: var(--ink-2);
+  max-width: 56ch;
+}
+.computers .graph-empty-action {
+  margin-top: 6px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 15px;
+  border: 1px solid color-mix(in oklab, var(--c-coordinator) 38%, var(--line-2));
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--c-coordinator) 7%, var(--sheet));
+  color: var(--ink);
+  font: 640 12.5px/1 var(--font-ui);
+  text-decoration: none;
+  transition: background 160ms var(--ease), border-color 160ms var(--ease);
+}
+.computers .graph-empty-action:hover {
+  background: color-mix(in oklab, var(--c-coordinator) 14%, var(--sheet));
+  border-color: color-mix(in oklab, var(--c-coordinator) 58%, var(--line-2));
+}
+.computers .graph-empty-note {
+  font: 400 12px/1.45 var(--font-ui);
+  color: var(--ink-3);
+  max-width: 48ch;
+}
+
+.computers .graph-edit-note {
+  display: none;
+  position: static;
+  order: 4;
+  color: var(--ink-3);
+  font: 600 11.5px/1.35 var(--font-ui);
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.computers .graph-wrap.editing .graph-edit-note {
+  display: block;
+}
+
+.static-tree-graph {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  overflow: visible;
+}
+.static-tree-graph > svg.static-tree-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: none;
+  pointer-events: none;
+}
+.computers .static-tree-graph .tree-link {
+  stroke: color-mix(in oklab, var(--ink-3) 45%, transparent);
+  stroke-width: 1.25 !important;
+  stroke-linecap: round;
+  opacity: 1 !important;
+  fill: none;
+}
+.computers .static-tree-graph .tree-link.link-soft {
+  stroke-dasharray: 2 3;
+  opacity: 0.3 !important;
+}
+.computers .static-tree-graph .tree-hierarchy-strokes { opacity: 0.45; }
+.computers .static-tree-graph .tree-hierarchy-strokes > .tree-link { stroke: var(--ink-3); }
+.static-tree-graph[data-edit-mode] .tree-link:not(.link-soft) { stroke-dasharray: 5 7; }
+
+.static-tree-graph .node {
+  transform: translate(-50%, -50%) scale(var(--node-scale, 1));
+  will-change: auto;
+  cursor: default;
+  opacity: 1;
+}
+.static-tree-graph[data-edit-mode] .node { cursor: grab; }
+.static-tree-graph[data-edit-mode] .node.dragging { cursor: grabbing; }
+.static-tree-graph .node::before,
+.static-tree-graph .node-ripple { display: none !important; }
+.static-tree-graph .node,
+.static-tree-graph .node *,
+.static-tree-graph .node::before,
+.static-tree-graph .node::after {
+  animation: none !important;
+}
+.computers .static-tree-graph .node-glass {
+  --circle-stroke: clamp(0.85px, calc(1.75px * var(--link-marker-scale, 1) / var(--node-scale, 1)), 3px);
+  position: relative;
+  width: var(--d);
+  height: var(--d);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--rc) 3%, var(--sheet));
+  border: var(--circle-stroke) solid var(--rc);
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: border-color 180ms var(--ease), border-width 180ms var(--ease), background 180ms var(--ease);
+}
+.computers .static-tree-graph .node .node-glass::before,
+.computers .static-tree-graph .node .node-glass::after {
+  display: none !important;
+  content: none !important;
+  animation: none !important;
+}
+.static-tree-graph .node:hover .node-glass,
+.static-tree-graph .node.focusable:hover .node-glass {
+  border-width: calc(var(--circle-stroke) * 1.25);
+  border-color: var(--rc);
+  background: color-mix(in oklab, var(--rc) 6%, var(--sheet));
+  box-shadow: none;
+  transform: none;
+}
+.computers .static-tree-graph .node.dragging .node-glass {
+  transform: none;
+  box-shadow: none !important;
+}
+.static-tree-graph .node.focusable .node-glass { border-width: var(--circle-stroke); }
+.static-tree-graph .node.selected .node-glass {
+  border-width: calc(var(--circle-stroke) * 1.25);
+  border-color: var(--rc);
+  outline: 1px solid color-mix(in oklab, var(--rc) 35%, transparent);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+.static-tree-graph .node.drop-ok .node-glass {
+  border-width: 2px;
+  border-color: var(--rc);
+  outline: 2px solid color-mix(in oklab, var(--rc) 40%, transparent);
+  outline-offset: 3px;
+  box-shadow: none;
+  transform: none;
+}
+.static-tree-graph .node.refuse .node-glass {
+  border-color: var(--s-serious-text, var(--s-serious));
+  outline: 1px solid color-mix(in oklab, var(--s-serious) 38%, transparent);
+  outline-offset: 3px;
+  transition: none;
+}
+.static-tree-graph .node .rt {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.static-tree-graph .node .node-runtime {
+  width: 100%;
+  text-align: center;
+}
+.static-tree-graph .node .rl {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.static-tree-graph .node .node-name { color: var(--ink-2); }
+.static-tree-graph .node .node-role { color: var(--ink-3); }
+.static-tree-graph .node.tree-node-adding,
+.static-tree-graph .node.tree-branch-entering { opacity: 0; }
+.static-tree-graph .node.tree-node-adding,
+.static-tree-graph .node.tree-node-removing,
+.static-tree-graph .node.tree-branch-entering {
+  transition: opacity 150ms linear;
+}
+.static-tree-graph .node.tree-node-removing { opacity: 0; }
+.static-tree-graph .node.tree-node-removing .node-glass { transform: none; }
+.static-tree-graph .node.rerooting { z-index: 7; }
+
+/* ============================================================
+   THE SWARM BOX AND THE DRIFT LIGHT — a cloud lane's two marks
+   ============================================================
+
+   What appears when is decided in src/lane-marks.js; where it sits is
+   computed in tree-graph.js (_renderLaneMarks). This sheet only dresses
+   them, in the flat register the rest of this tree wears: sheet-filled
+   chip, hairline rim mixed from the mark's own hue — the bubble's rim
+   recipe at chip scale — no glass, no shadow, no glow.
+
+   THE ONE SANCTIONED ANIMATION. This sheet kills every animation on a node
+   and its descendants (see the blanket rule near the top) because the tree
+   is a chart, not a show. The swarm box's sweep is the deliberate exception
+   — owner: "the sweep action always is going" — and it is opacity-only so
+   the canvas's 60fps budget never pays for transforms. The reduced-motion
+   clamps at the foot of this sheet close over it. */
+.static-tree-graph .node .node-lane-box,
+.static-tree-graph .node .node-drift-light {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  border-radius: 3px;
+  --lane-symbol: color-mix(in oklab, var(--lm, var(--ink-25)) 65%, var(--ink));
+  background: var(--sheet);
+  border: 1.5px solid color-mix(in oklab, var(--lane-symbol) 80%, var(--line-2));
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  cursor: help;
+  color: var(--lane-symbol);
+  z-index: 3;
+}
+/* the burn hue; no data-burn = tokens nobody measured = the neutral edge */
+.static-tree-graph .node .node-lane-box[data-burn="blue"]  { --lm: var(--c-coordinator); }
+.static-tree-graph .node .node-lane-box[data-burn="green"] { --lm: var(--lane-green); }
+.static-tree-graph .node .node-lane-box[data-burn="gold"]  { --lm: var(--lane-gold); }
+.static-tree-graph .node .node-lane-box[data-burn="red"]   { --lm: var(--lane-red); }
+.static-tree-graph .node .node-lane-box .lane-cloud { width: 20px; height: 20px; align-self: start; margin-top: 1px; }
+.static-tree-graph .node .node-lane-box .lb {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  display: grid;
+  grid-template-columns: repeat(3, 2px);
+  gap: 1.5px;
+  padding: 1px;
+  background: var(--sheet);
+}
+.static-tree-graph .node .node-lane-box .lb i {
+  width: 2px;
+  height: 2px;
+  border-radius: 0;
+  background: currentColor;
+  opacity: 0.18;
+  /* !important is load-bearing: it is what wins over the blanket
+     `animation: none !important` on `.node *` above. */
+  animation: laneSweep 1.5s var(--ease) infinite !important;
+}
+.static-tree-graph .node .node-lane-box .lb i:nth-child(3n+2) { animation-delay: 0.14s !important; }
+.static-tree-graph .node .node-lane-box .lb i:nth-child(3n)   { animation-delay: 0.28s !important; }
+@keyframes laneSweep {
+  0%, 55%, 100% { opacity: 0.18; }
+  18% { opacity: 0.95; }
+}
+/* the drift light: two stages, gold then red; below gold it does not exist */
+.static-tree-graph .node .node-drift-light[data-stage="gold"] { --lm: var(--lane-gold); }
+.static-tree-graph .node .node-drift-light[data-stage="red"]  { --lm: var(--lane-red); }
+.static-tree-graph .node .node-drift-light svg { width: 20px; height: 20px; }
+/* it POPS UP — a warning arriving is an event; same !important as the sweep */
+.static-tree-graph .node .node-drift-light {
+  animation: driftLightIn 240ms var(--ease) both !important;
+}
+@keyframes driftLightIn {
+  from { opacity: 0; transform: scale(0.8); }
+}
+
+/* A RESTING --rc, DECLARED BEFORE THE ROLE RULES SO EVERY ONE OF THEM WINS.
+   The whole block below is one custom property, and the rim is the only mark
+   that says "this is an agent": `.node-glass` is `border: 1.5px solid
+   var(--rc)`, and an UNDECLARED --rc does not leave the rim a default colour —
+   it makes the shorthand invalid at computed-value time, so border-style takes
+   its initial `none` and the circle loses its outline entirely. The same
+   substitution empties the hover background (a color-mix over --rc) and the
+   selected/drop outlines. src/vocab.js rimRole() is the authority that keeps
+   the class inside the declared set; this line is what stops the failure from
+   being total if any future surface writes the class itself. Neutral grey, so
+   an unstyled role reads as an agent whose kind is not known rather than
+   borrowing a role's identity. */
+.static-tree-graph .node,
+.static-tree-chip { --rc: var(--c-spawned); }
+.static-tree-graph .role-coordinator,
+.static-tree-chip.role-coordinator { --rc: var(--c-coordinator); }
+.static-tree-graph .role-helper,
+.static-tree-chip.role-helper { --rc: var(--c-helper); }
+.static-tree-graph .role-shadow,
+.static-tree-chip.role-shadow { --rc: var(--c-shadow); }
+.static-tree-graph .role-manager,
+.static-tree-chip.role-manager { --rc: var(--c-manager); }
+.static-tree-graph .role-default,
+.static-tree-chip.role-default { --rc: var(--c-default); }
+.static-tree-graph .role-spawned,
+.static-tree-chip.role-spawned { --rc: var(--c-spawned); }
+/* The organisation's own declared roles (ENGINE_ROLES in
+   src/orchestration-controls.js), added once src/vocab.js ROLES carried an
+   entry for each of them and rimRole() started returning them instead of
+   'default'. Same rule, same shape, one row per id. */
+.static-tree-graph .role-controller,
+.static-tree-chip.role-controller { --rc: var(--c-controller); }
+.static-tree-graph .role-shadow-manager,
+.static-tree-chip.role-shadow-manager { --rc: var(--c-shadow-manager); }
+.static-tree-graph .role-planner,
+.static-tree-chip.role-planner { --rc: var(--c-planner); }
+.static-tree-graph .role-coordinator-assistant,
+.static-tree-chip.role-coordinator-assistant { --rc: var(--c-coordinator-assistant); }
+.static-tree-graph .role-builder,
+.static-tree-chip.role-builder { --rc: var(--c-builder); }
+.static-tree-graph .role-reviewer,
+.static-tree-chip.role-reviewer { --rc: var(--c-reviewer); }
+.static-tree-graph .role-worker,
+.static-tree-chip.role-worker { --rc: var(--c-worker); }
+.static-tree-graph .role-observer,
+.static-tree-chip.role-observer { --rc: var(--c-observer); }
+
+/* ============================================================
+   EMPTY SLOTS — a hole in the tree, drawn so it can be pressed
+   ============================================================
+
+   THE JOB. A person has to be able to tell, at a glance and without reading a
+   word, that this circle is NOT an agent and that pressing it will do
+   something. Three signals do that, and they are deliberately redundant
+   because any one of them alone is a guess:
+     - the ring is DASHED where every agent's ring is solid: the universal
+       drawing convention for a thing that is not there yet;
+     - it is EMPTY where every agent carries a runtime clock or a state word,
+       and it carries no name and no role beneath it;
+     - it holds a "+", which is the one mark that means "add" without copy.
+   It is also the smallest circle on the canvas, so it sits under its family
+   rather than competing with it.
+
+   WHY NOT `.node` / `.static-tree-node`. Explained at length in
+   src/tree-graph.js: those classes mean "a running agent" to this sheet, to
+   the shared graph skin in src/styles.css, and to nine QA harnesses. Every
+   property a slot needs from them — the absolute placement and the
+   centre-origin transform — is four lines, and repeating those four lines is
+   far cheaper than a circle that is an agent to half the tree. */
+.static-tree-graph .tree-empty-node {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  /* The graph positions by CENTRE. Every left/top written by the layout is the
+     middle of the circle, for agents and for slots alike. */
+  transform: translate(-50%, -50%) scale(var(--node-scale, 1));
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* A `hidden` slot is one the packer had no room for. The display above would
+   otherwise beat the UA's [hidden] rule and paint it anyway. */
+.static-tree-graph .tree-empty-node[hidden] { display: none; }
+.computers .static-tree-graph .tree-empty-node .tree-empty-ring {
+  width: var(--d);
+  height: var(--d);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  /* Dashed, not solid: the ring says "nothing is here yet" before any label
+     is read. Sized in the same --d the node records use, so a slot shrinks
+     with the tree when the vertical fitter shrinks it. */
+  border: 1.5px dashed color-mix(in oklab, var(--ink-3) 58%, transparent);
+  background: transparent;
+  transition: border-color 180ms var(--ease), background 180ms var(--ease);
+}
+.computers .static-tree-graph[data-node-style="boxes"] .tree-empty-node[data-empty-kind="new-tree"] .tree-empty-ring {
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--ink-3) 8%, var(--sheet));
+}
+.static-tree-graph .node.tree-view-dragging { opacity: .65; }
+.computers .static-tree-graph .tree-empty-node .tree-empty-mark {
+  color: var(--ink-3);
+  font: 400 21px/1 var(--font-ui);
+  transition: color 180ms var(--ease);
+}
+.computers .static-tree-graph .tree-empty-node:hover .tree-empty-ring {
+  border-color: color-mix(in oklab, var(--c-coordinator) 62%, var(--line-2));
+  background: color-mix(in oklab, var(--c-coordinator) 6%, var(--sheet));
+}
+.computers .static-tree-graph .tree-empty-node:hover .tree-empty-mark { color: var(--ink); }
+.computers .static-tree-graph .tree-empty-node:active .tree-empty-ring {
+  background: color-mix(in oklab, var(--c-coordinator) 12%, var(--sheet));
+}
+
+/* THE KEYBOARD HAS TO SEE IT TOO, AND THIS SHEET IS WHERE THAT GETS LOST.
+   Read the note at the top of this file: `.computers` flattens the page by
+   setting `box-shadow: none`, the design system's focus indicator IS a
+   box-shadow, and the computer tabs shipped with no keyboard indicator at all
+   because of it. The node skin does the same thing harder — `.computers
+   .static-tree-graph .node-glass` carries `box-shadow: none !important` — so a
+   focus ring written the ordinary way on a circle in this graph computes to
+   nothing. The ring below therefore carries !important on purpose: it is not
+   specificity noise, it is the counterweight to a declaration that would
+   otherwise silently delete the only thing a keyboard user has to go on. The
+   recipe is the site's, repeated rather than re-invented, so a focused slot
+   looks like every other focused control in the app. */
+.computers .static-tree-graph .tree-empty-node:focus-visible { outline: none; }
+.computers .static-tree-graph .tree-empty-node:focus-visible .tree-empty-ring {
+  border-color: color-mix(in oklab, var(--c-coordinator) 70%, var(--line-2));
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, calc(0.95 * var(--wa))),
+    0 0 0 3.5px var(--focus-ring) !important;
+}
+/* Keep the ring visible for anyone who cannot see a 1.5px dashed hairline: in
+   forced-colours the whole colour system is replaced, so ask for the system's
+   own button text colour rather than a token that no longer exists. */
+@media (forced-colors: active) {
+  .computers .static-tree-graph .tree-empty-node .tree-empty-ring {
+    border-color: ButtonText;
+  }
+  .computers .static-tree-graph .tree-empty-node .tree-empty-mark { color: ButtonText; }
+}
+
+/* The trunk down to a slot: the same elbow every child gets, drawn lighter and
+   dashed so it reads as a place rather than as a relationship. */
+.computers .static-tree-graph .tree-link.link-empty {
+  stroke: color-mix(in oklab, var(--ink-3) 32%, transparent);
+  stroke-dasharray: 3 4;
+}
+
+.static-tree-chip-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+}
+.static-tree-chip-overlay .graph-chip-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.static-tree-chip-overlay .graph-chip-leader {
+  stroke: color-mix(in oklab, var(--ink-3) 42%, transparent);
+  stroke-width: 1;
+  opacity: 0;
+  transition: none;
+}
+.static-tree-chip-overlay .graph-chip-leader.visible { opacity: 1; }
+.static-tree-chip-overlay .static-tree-chip {
+  position: absolute;
+  box-sizing: border-box;
+  min-height: 70px;
+  z-index: 1;
+  padding: 7px 15px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: visible;
+  transition: width 500ms var(--ease), height 500ms var(--ease);
+}
+.static-tree-chip-overlay .static-tree-chip.screen-chip-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.static-tree-chip-overlay .static-tree-chip.chat-is-open .cl-open { color: var(--rc); }
+.static-tree-chip-overlay[data-edit-mode] .static-tree-chip,
+.static-tree-chip-overlay[data-edit-mode] .graph-chip-leader {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+.static-tree-chip-overlay .static-tree-chip:hover:not(.as-chat) {
+  background: color-mix(in oklab, var(--rc) 4%, transparent);
+}
+.static-tree-chip-overlay .static-tree-chip::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  display: block;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--rc) var(--rim-role), var(--line-2));
+}
+.static-tree-chip-overlay .chip-preview {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-ui);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--tree-preview-height, 160px) - 14px);
+  min-height: 0;
+}
+.static-tree-chip-overlay .chip-preview-activity { min-height: 0; overflow: hidden; }
+.static-tree-chip-overlay .cl-name,
+.static-tree-chip-overlay .cl-open { flex: none; }
+.static-tree-chip-overlay .cl-open { margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--ink-2); }
+.static-tree-chip-overlay .cl {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+}
+.static-tree-chip-overlay .cl-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
+}
+.static-tree-chip-overlay .cl-name b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-2);
+  text-overflow: ellipsis;
+}
+.static-tree-chip-overlay .inline-agent { color: var(--ink-2); }
+.static-tree-chip-overlay .chip-runtime {
+  flex: none;
+  margin-left: auto;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.static-tree-chip-overlay .cl-facts {
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.static-tree-chip-overlay .cl-current {
+  margin-top: 4px;
+  color: var(--ink-25);
+}
+.static-tree-chip-overlay .cl-previous,
+.static-tree-chip-overlay .cl-tool,
+.static-tree-chip-overlay .cl-chat { margin-top: 2px; color: var(--ink-3); }
+.static-tree-chip-overlay .cl-tool { color: var(--ink-25); }
+.static-tree-chip-overlay .cl-chat {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  /* -webkit-line-clamp lived here as `3` until W16e. It never took effect:
+     the later, same-specificity `.cl-current, .cl-previous, .cl-chat,
+     .cl-unavailable` block below (added by d6063d5) repeats this selector
+     and wins on line-clamp by source order, so this box's real clamp was
+     always that block's value, not this one. Removed rather than left to
+     disagree with the number that actually renders -- see that block for
+     the current value and the arithmetic behind it. */
+}
+
+.static-tree-chip-overlay .monitor-brace {
+  --mbx: 1;
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 1px;
+  width: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  color: color-mix(in oklab, var(--rc) 38%, var(--ink-3));
+  opacity: 1;
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+  transform: scaleX(var(--mbx));
+  transform-origin: center;
+}
+.static-tree-chip-overlay .monitor-brace.is-right {
+  --mbx: -1;
+  left: auto;
+  right: 1px;
+}
+.static-tree-chip-overlay .monitor-brace > svg { display: block; flex: none; overflow: visible; }
+.static-tree-chip-overlay .monitor-brace path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.static-tree-chip-overlay .monitor-brace > svg.monitor-brace-arm {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 12px;
+}
+/* Adjacent strokes meet at their endpoints. Overlapping round caps made
+   darker joints, especially where a long arm met the centre curve. */
+.static-tree-chip-overlay .monitor-brace > svg + svg { margin-top: 0; }
+
+/* THE OPEN CARD, AND THE ROOM ITS BRACES ASKED FOR (owner, 2026-08-18: "the
+   chatbox ui when open the border how the braces go it needs a bit more
+   space"). Measured on the staged build before the change: the gap between a
+   brace's inner edge and the chat beside it was 2px, on both sides. The brace
+   sits at x 1..13 and the content began at 15.
+
+   TWO EDGES WERE ALSO DRAWING THE SAME LINE. `.static-tree-chip::before` is the
+   role rim, a 2px bar at left:13px -- right on top of the brace. It earns its
+   place on the COLLAPSED chip, which shows no role anywhere else; the open card
+   already names the role in its header beside a role-coloured dot, so here the
+   rim was a second border crowding the first. The braces own this edge now. */
+.static-tree-chip-overlay .static-tree-chip.as-chat {
+  /* 13px all round now that the braces are gone from this view: the 26px
+     horizontal gutter existed to house them, and without them it read as two
+     blank margins nobody chose. */
+  padding: 13px;
+  background: var(--sheet);
+  border: 1px solid var(--line-2);
+  box-shadow: none;
+  overflow: hidden;
+}
+.static-tree-chip-overlay .static-tree-chip.as-chat::before { display: none; }
+.static-tree-chip-overlay .static-tree-chip.as-chat .chip-preview { display: none; }
+.static-tree-chip-overlay .static-tree-chip .chat { display: none; }
+.static-tree-chip-overlay .static-tree-chip.as-chat .chat { display: flex; animation: none; }
+/* THE BRACES ARE THE COLLAPSED MONITOR'S COSTUME, AND ONLY ITS (owner,
+   2026-08-24): they stay on the standard chip, and disappear the moment the
+   chip becomes a conversation -- chat view and the full-window view alike. An
+   earlier rule styled them INSIDE the open card (7px of air, arms stopped
+   short of the corners); that is the exact rendering the owner pointed at and
+   asked to be gone. `.as-chat-full` always co-exists with `.as-chat`, so this
+   one rule covers both views. */
+.static-tree-chip-overlay .static-tree-chip.as-chat .monitor-brace { display: none; }
+
+/* THE CARD'S OWN CORNER GRIP -- ITS BUILDER IS GONE, SO THE POINTER NAMES WHAT
+   REPLACED IT. `see _attachChatCardResize in src/tree-graph.js` was true until
+   05a703e4 (2026-09-08) turned separate resizable cards into tabs and deleted
+   that method with them. Nothing in src/ builds an `.as-chat-resize` element
+   today -- two searches, `git grep as-chat-resize` and a recursive grep over
+   the tree, find the class in this file and in the historical capture under
+   captures-w16e/ and nowhere else -- so the rules below paint nothing and are
+   kept as the record of the size a card opened at.
+
+   WHAT SIZES A CONVERSATION NOW: _buildConversationShelf in src/tree-graph.js
+   builds one `.tree-shelf-resize` separator along the shelf's top edge and
+   wires it through attachResizeHandle (src/resize-handle.js) on the y axis,
+   persisted under 'mc.tree.chat-height.v1'. The height is therefore a property
+   of the whole conversation workspace, not of each card, and one drag resizes
+   every open tab at once.
+
+   A single square at the bottom-right corner dragged both width and height; a
+   diagonal cue (not col/row-resize) said so. Hidden while as-chat-full covers
+   the window, since there is no "bigger" than the whole host to drag to. */
+.static-tree-chip-overlay .static-tree-chip.as-chat .as-chat-resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 1;
+}
+.static-tree-chip-overlay .static-tree-chip.as-chat .as-chat-resize::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--line-2);
+  border-bottom: 2px solid var(--line-2);
+  border-radius: 0 0 2px 0;
+  transition: border-color var(--dur-2);
+}
+.static-tree-chip-overlay .static-tree-chip.as-chat .as-chat-resize:hover::after,
+.static-tree-chip-overlay .static-tree-chip.as-chat .as-chat-resize.is-dragging::after {
+  border-color: var(--c-coordinator);
+}
+.static-tree-chip-overlay .static-tree-chip.as-chat .as-chat-resize:focus-visible { outline: none; }
+.static-tree-chip-overlay .static-tree-chip.as-chat .as-chat-resize:focus-visible::after { border-color: var(--c-coordinator); }
+.static-tree-chip-overlay .static-tree-chip.as-chat-full .as-chat-resize { display: none; }
+
+/* The full-window view: geometry is set inline by the placer (left/top 0 and
+   the host's own size), so this only settles what the transition and the
+   corners do. Radius 0 because a panel filling the window is not a card
+   floating over it, and a rounded corner against the window edge reads as a
+   rendering gap. */
+.static-tree-chip-overlay .static-tree-chip.as-chat-full {
+  border-radius: 0;
+  border-color: transparent;
+}
+
+.static-tree-host .graph-fit {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 9;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--sheet);
+  color: var(--ink-2);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  font: 600 11.5px/1 var(--font-mono);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: none;
+  transition: background 160ms var(--ease), color 160ms var(--ease), border-color 160ms var(--ease);
+}
+.static-tree-host .graph-fit.show { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
+.static-tree-host .graph-fit:hover { background: color-mix(in oklab, var(--ink) 5%, var(--sheet)); box-shadow: none; }
+
+.computers .rail-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--s5);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: none;
+  transition: opacity 180ms linear, visibility 0s linear 180ms;
+}
+.computers .rail-page.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.computers .rail-page.off-r,
+.computers .rail-page.off-l { transform: none; }
+.computers .rail-title,
+.computers .rail-back,
+.computers .ctl-btn,
+.computers .board-box,
+.computers .task-chip,
+.computers .bar-fill,
+.computers .leg i {
+  box-shadow: none;
+}
+.computers .board-page .agent-head .role-dot,
+.computers .board-page .board-box,
+.computers .board-page .ctl-btn.armed,
+.computers .task-chip,
+.computers .leg i {
+  background-image: none;
+}
+.computers .board-page .agent-head .role-dot { background: var(--role); }
+/* The box keeps board.css's own fill here. This rule used to force
+   `background: var(--sheet)`, which overwrote the ink-mix fill on the ONE
+   page the fill was added for — five boxes reading as five hairlines around
+   identical grey text, which is what "unreadable" looked like. Only the
+   shadow is dropped, because the canvas beside it is flat. */
+.computers .board-page .board-box { box-shadow: none; }
+.computers .board-page .ctl-btn.armed {
+  background: color-mix(in oklab, var(--role) 8%, var(--sheet));
+  box-shadow: none;
+}
+.computers .board-page .board-legend .leg.is-self {
+  box-shadow: none;
+  outline: 1px solid color-mix(in oklab, var(--lc) 28%, transparent);
+  outline-offset: 2px;
+}
+.computers .board-page .board-legend .leg.is-self i { box-shadow: none; }
+.computers .bar-fill,
+.computers .task-chip,
+.computers .task-chip i { transition: none; animation: none; }
+.computers .bar-fill { background: var(--m-load, var(--ink-2)); }
+.computers .leg i { background: var(--lc); }
+.computers .board-page .uring .arc-glow { display: none; }
+
+/* ============================================================
+   R1198 tidy-up — the five defects the owner named on launch
+   ============================================================ */
+
+/* 3. Labels. Middle-truncation ("assi…ant", "reco…ile") destroyed the word.
+   The two rows become one centred stack that WRAPS to two lines, so the name
+   and its role read whole; the layout budgets characters for two lines. */
+/* The layout side of this constant is TREE_LABEL_STACK in src/tree-layout.js
+   (58): two 17px name lines + one 14px role line + the 6px gap + descender
+   pad. Written once here so the sheet and the layout cannot drift; a guard
+   test compares them. If you change one, you are changing both. */
+.static-tree-graph { --tree-label-stack: 58px; }
+.static-tree-graph .node .node-labels {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(var(--d) + 118px), var(--nn-max, 9999px));
+  max-width: max(82px, calc(var(--nn-max, 9999px) / var(--node-scale, 1)));
+  max-height: var(--tree-label-stack);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+  /* No background on the STACK: the stack spans the label column's full
+     width, and an opaque box that wide painted over the neighbouring
+     circle whenever ranks ran tight. The occlusion the background exists
+     for -- the trunk passing behind the words, not through them -- moves
+     onto the two text rows below, each shrink-wrapped to its own line. */
+  padding: 0 0 2px;
+}
+.static-tree-graph .node .node-name,
+.static-tree-graph .node .node-role {
+  position: static;
+  transform: none;
+  width: fit-content;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  /* Same ground as the panel, so this is occlusion and not a box: the trunk
+     dropping out of a parent circle passes BEHIND its own name instead of
+     ruling a line through the middle of it -- but only exactly as wide as
+     the words themselves. */
+  background: var(--sheet);
+  padding: 1px 4px;
+}
+.static-tree-graph .node .node-name {
+  justify-content: center;
+  align-items: flex-start;
+  gap: 5px;
+  line-height: 1.25;
+}
+.static-tree-graph .node .node-name i { margin-top: 4px; flex: none; }
+.static-tree-graph .node .node-name .nn-t {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  text-overflow: clip;
+  /* break-word, not anywhere: `anywhere` broke names mid-word at the first
+     opportunity ("Coordinat / or 1" — owner walkthrough, iteration 6).
+     labelFor() now guarantees every word it emits fits one line, so this
+     rule is the backstop for text it never measured, and it only breaks a
+     word that would otherwise overflow the box. */
+  overflow-wrap: break-word;
+  line-height: 1.25;
+}
+.static-tree-graph .node .node-role {
+  display: -webkit-box;
+  /* ONE line, deliberately, so TREE_LABEL_STACK's worst case is computable:
+     roles are a closed vocabulary and every string in it fits one line at
+     this size ("Coordinator's Helper" included, at the full stack width).
+     Two lines here would make the stack's real height exceed the constant
+     the layout reserves, which is exactly the drift the shared custom
+     property exists to prevent. */
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+  /* "Coordinator's Helper" is the longest role string and it was ellipsising
+     its FIRST word. The caps row gives back the extra tracking it was carrying
+     and is allowed the full stack width rather than the name's budget. */
+  max-width: none;
+  letter-spacing: var(--track-caps);
+  font-size: 10px;
+}
+
+/* 4. Empty circles. A node with no clock says what it does know instead of
+   showing an empty ring, and the layout sizes it for that one word. */
+.computers .static-tree-graph .node.no-telemetry .rl { display: block; }
+.static-tree-graph .node .rt-state {
+  color: var(--ink-25);
+  font: 600 10.5px/1.1 var(--font-ui);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.static-tree-graph .node.no-telemetry .rl {
+  margin-top: 2px;
+  font-size: 9.5px;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* 1. Cards vs connectors. The blocks paint on the SAME ground as the panel
+   (--sheet is the graph card's own background), so this is occlusion, not a
+   box: nothing new is drawn, a connector simply cannot show through the text.
+   Placement already avoids the connector lanes; this is the safety net. */
+.static-tree-chip-overlay .static-tree-chip.screen-chip-visible { background: var(--sheet); }
+.static-tree-chip-overlay .static-tree-chip.screen-chip-visible:hover:not(.as-chat) {
+  background: color-mix(in oklab, var(--rc) 4%, var(--sheet));
+}
+
+/* 2. Attribution. The leader wears the node's role hue and lands on the
+   card's near edge, with a bead at the circle, so card and node read as one
+   object instead of two things that happen to be near each other. */
+.static-tree-chip-overlay .graph-chip-leader {
+  stroke: color-mix(in oklab, var(--rc, var(--ink-3)) 52%, transparent);
+  stroke-width: 1.25;
+}
+.static-tree-chip-overlay .graph-chip-leader-dot {
+  fill: color-mix(in oklab, var(--rc, var(--ink-3)) 70%, transparent);
+  opacity: 0;
+}
+.static-tree-chip-overlay .graph-chip-leader-dot.visible { opacity: 1; }
+.static-tree-chip-overlay .graph-chip-leader.role-coordinator,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-coordinator { --rc: var(--c-coordinator); }
+.static-tree-chip-overlay .graph-chip-leader.role-helper,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-helper { --rc: var(--c-helper); }
+.static-tree-chip-overlay .graph-chip-leader.role-shadow,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-shadow { --rc: var(--c-shadow); }
+.static-tree-chip-overlay .graph-chip-leader.role-manager,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-manager { --rc: var(--c-manager); }
+.static-tree-chip-overlay .graph-chip-leader.role-default,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-default { --rc: var(--c-default); }
+.static-tree-chip-overlay .graph-chip-leader.role-spawned,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-spawned { --rc: var(--c-spawned); }
+.static-tree-chip-overlay .graph-chip-leader.role-controller,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-controller { --rc: var(--c-controller); }
+.static-tree-chip-overlay .graph-chip-leader.role-shadow-manager,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-shadow-manager { --rc: var(--c-shadow-manager); }
+.static-tree-chip-overlay .graph-chip-leader.role-planner,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-planner { --rc: var(--c-planner); }
+.static-tree-chip-overlay .graph-chip-leader.role-coordinator-assistant,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-coordinator-assistant { --rc: var(--c-coordinator-assistant); }
+.static-tree-chip-overlay .graph-chip-leader.role-builder,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-builder { --rc: var(--c-builder); }
+.static-tree-chip-overlay .graph-chip-leader.role-reviewer,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-reviewer { --rc: var(--c-reviewer); }
+.static-tree-chip-overlay .graph-chip-leader.role-worker,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-worker { --rc: var(--c-worker); }
+.static-tree-chip-overlay .graph-chip-leader.role-observer,
+.static-tree-chip-overlay .graph-chip-leader-dot.role-observer { --rc: var(--c-observer); }
+
+/* Card copy. Every line ending in "…" is a line the owner cannot read, and he
+   asked for readable context: the activity lines wrap to two lines instead. */
+.static-tree-chip-overlay .cl-unavailable {
+  margin-top: 3px;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-style: italic;
+}
+/* A preview, not a second transcript. The old sixteen-line ceiling was based
+   on spare space in one capture; at Large it covered neighbouring nodes or
+   prevented the placer from showing any card at all. Three lines per excerpt
+   plus the canvas-relative height budget preserve a useful glance. The visible
+   Open conversation affordance reaches the full, unchanged text. */
+.static-tree-chip-overlay .cl-current,
+.static-tree-chip-overlay .cl-previous,
+.static-tree-chip-overlay .cl-chat,
+.static-tree-chip-overlay .cl-unavailable {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow-wrap: break-word;
+  /* THE CLAMP HAS TO SAY SO WHEN IT CUTS. `clip` here suppressed the ellipsis
+     Blink draws at a `-webkit-line-clamp` boundary, so a card too narrow for
+     its own text cut off mid-word with nothing on screen saying more was
+     said -- measured on the owner's own window: "asked: ok look a",
+     "controller was w" (Manager), "It remembers noth" (Worker 4). Nothing
+     about `clip` was ever explained by the comment this rule sits under (see
+     above): that comment covers only `overflow-wrap: break-word`. `ellipsis`
+     is the one change that makes a clamped line say it was clamped, without
+     touching the break-word backstop the comment does justify. */
+  text-overflow: ellipsis;
+}
+.static-tree-chip-overlay .cl-name b {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-overflow: ellipsis;
+}
+
+/* Zoom: a control he can see. The fit button used to appear only once he was
+   already lost; the cluster is always there, and states the factor.
+ *
+ * EVERY SELECTOR PAIR BELOW WAS BROKEN, and it is most of why the owner called
+ * this bar "super ugly". Each rule read
+ *
+ *     .graph-bar .graph-zoomer,
+ *     .static-tree-host .graph-zoomer button { ... }
+ *
+ * -- the bar's half was pasted in front of the host's WITHOUT the descendant
+ * that made it mean anything. So in the bar the CONTAINER collected every
+ * button declaration (border:0, transparent, 26px, mono) and the three buttons
+ * inside it collected nothing at all. `.graph-fit` fared worst: its only other
+ * rule is `.static-tree-host .graph-fit`, which the bar is not inside, so the
+ * zoom readout rendered as a bare browser button. Measured on the staged build
+ * at 1512x945: a 46px-tall bar containing a 22px unstyled `−1.00×+` strip.
+ * Each part now names both surfaces properly. */
+.graph-bar .graph-zoomer,
+.static-tree-host .graph-zoomer {
+  position: static;
+  z-index: 9;
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: var(--sheet);
+  overflow: hidden;
+}
+/* Let the host fallback's z-index keep its controls above the graph canvas. */
+.static-tree-host > .graph-zoomer { position: relative; }
+.graph-bar .graph-zoomer button,
+.static-tree-host .graph-zoomer button {
+  min-width: 28px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font: 600 12px/1 var(--font-mono);
+  cursor: pointer;
+  transition: background 160ms var(--ease), color 160ms var(--ease);
+}
+.graph-bar .graph-zoomer button + button,
+.static-tree-host .graph-zoomer button + button { border-left: 1px solid var(--line-2); }
+.graph-bar .graph-zoomer button:hover,
+.static-tree-host .graph-zoomer button:hover { background: color-mix(in oklab, var(--ink) 5%, var(--sheet)); color: var(--ink); }
+.graph-bar .graph-zoomer .gz-level,
+.static-tree-host .graph-zoomer .gz-level {
+  min-width: 56px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.graph-bar .graph-zoomer .gz-level.is-off,
+.static-tree-host .graph-zoomer .gz-level.is-off { color: var(--ink); }
+/* the cluster's own reset button is always available, unlike the old floating
+   fit chip that only appeared once the reader was already displaced */
+.graph-bar .graph-zoomer .graph-fit,
+.static-tree-host .graph-zoomer .graph-fit {
+  position: static;
+  left: auto;
+  bottom: auto;
+  border: 0;
+  border-radius: 0;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.static-tree-host.panning { cursor: grabbing; }
+
+body.reduce-motion .static-tree-graph .node,
+body.reduce-motion .static-tree-graph .node-glass,
+body.reduce-motion .static-tree-graph .tree-empty-ring,
+body.reduce-motion .static-tree-graph .tree-empty-mark,
+body.reduce-motion .static-tree-chip-overlay .static-tree-chip,
+body.reduce-motion .computers .rail-page,
+body.reduce-motion .computers .graph-hint,
+body.reduce-motion .computers .graph-edit-note {
+  transition: none !important;
+}
+/* the lane marks' sanctioned animations close under the same clamp: the
+   sweep's dots hold at half strength (a still meter, not a dark one) and
+   the drift light simply appears */
+body.reduce-motion .static-tree-graph .node .node-lane-box .lb i,
+body.reduce-motion .static-tree-graph .node .node-drift-light {
+  animation: none !important;
+}
+body.reduce-motion .static-tree-graph .node .node-lane-box .lb i { opacity: 0.5; }
+@media (prefers-reduced-motion: reduce) {
+  .static-tree-graph .node,
+  .static-tree-graph .node-glass,
+  .static-tree-graph .tree-empty-ring,
+  .static-tree-graph .tree-empty-mark,
+  .static-tree-chip-overlay .static-tree-chip,
+  .computers .rail-page,
+  .computers .graph-hint,
+  .computers .graph-edit-note { transition: none !important; }
+  .static-tree-graph .node .node-lane-box .lb i,
+  .static-tree-graph .node .node-drift-light { animation: none !important; }
+  .static-tree-graph .node .node-lane-box .lb i { opacity: 0.5; }
+}
+
+/* Multiple conversations share a scrollable shelf. Tree navigation never
+   moves their transcript/composer DOM or takes away another open chat. */
+.tree-workspace-controls { display: flex; align-items: center; gap: 6px; }
+.tree-more { position: relative; }
+.tree-more:not([open]) > .tree-more-menu { display: none; }
+.tree-more > summary { list-style: none; cursor: pointer; min-height: 30px; display: flex; align-items: center; padding: 5px 10px; box-sizing: border-box; border: 1px solid var(--line-2); border-radius: 4px; color: var(--ink-2); font: 500 12px/1.3 var(--font-ui); }
+.tree-more > summary::-webkit-details-marker { display: none; }
+.tree-more > summary::after { content: '⌄'; margin-left: 7px; }
+.tree-more > summary:focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: 2px; }
+.tree-more-menu { position: absolute; top: calc(100% + 7px); right: 0; z-index: 40; min-width: 225px; display: flex; flex-direction: column; gap: 6px; padding: 10px; box-sizing: border-box; background: var(--sheet); border: 1px solid var(--line-2); border-radius: 5px; box-shadow: 0 6px 18px #0002; }
+.tree-more-menu > button, .tree-more-menu .graph-tool-set > button { width: 100%; justify-content: flex-start; text-align: left; }
+.tree-more-menu > label { display: flex; flex-direction: column; gap: 5px; color: var(--ink-3); font: 12px var(--font-ui); padding-top: 8px; border-top: 1px solid var(--line-2); }
+.tree-more-menu p { margin: 4px 0 0; color: var(--ink-3); font: 11px/1.6 var(--font-ui); }
+.tree-more-menu .graph-tool-set { display: flex; flex-direction: column; gap: 6px; }
+.tree-more-menu .graph-tool-set::before { display: none; }
+.computers [data-tree-start-controls] .graph-tree-starts { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+.computers .graph-bar-lead::after { display: none; }
+.tree-workspace-controls button,
+.tree-conversations-bar button,
+.tree-chat-picker {
+  min-height: 30px; padding: 5px 9px; border: 1px solid var(--line-2);
+  border-radius: 4px; background: var(--sheet); color: var(--ink-2);
+  font: 500 12px/1.3 var(--font-ui); cursor: pointer;
+}
+.tree-workspace-controls button:hover, .tree-conversations-bar button:hover { background: var(--surface); }
+.tree-workspace-controls button:focus-visible, .tree-conversations-bar button:focus-visible,
+.tree-chat-picker:focus-visible, .tree-conversation-track:focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: 2px; }
+.tree-pan-hint {
+  position: absolute; bottom: 6px; left: 10px; z-index: 7; pointer-events: none;
+  padding: 3px 6px; color: var(--ink-3); background: var(--sheet); font: 11px/1.4 var(--font-ui);
+}
+.static-tree-graph .tree-empty-node.tree-add-compact { min-width: 28px; min-height: 28px; }
+.static-tree-graph .tree-add-compact .tree-empty-mark { font-size: 16px; }
+.tree-conversations {
+  position: relative; display: flex; flex-direction: column; flex: none;
+  height: var(--conversation-height, 360px); min-height: min(320px, calc(100% - 140px));
+  max-height: calc(100% - 140px); border-top: 1px solid var(--line-2);
+  background: var(--sheet); z-index: 8;
+}
+.tree-conversations [hidden], .tree-conversations[hidden] { display: none; }
+.tree-conversations-bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 10px 0; min-width: 0; border-bottom: 1px solid var(--line); }
+.tree-chat-tabs { display: flex; gap: 3px; min-width: 0; overflow-x: auto; scrollbar-width: thin; align-self: stretch; }
+.tree-chat-tab-wrap { display: flex; flex: none; align-items: center; border: 1px solid transparent; border-bottom: 0; border-radius: 5px 5px 0 0; }
+.tree-chat-tab-wrap.is-active { border-color: var(--line-2); background: var(--surface); box-shadow: inset 0 2px var(--rc, var(--c-coordinator)); }
+.tree-conversations-bar .tree-chat-tab { border: 0; background: transparent; font: 600 13px/1.4 var(--font-ui); padding: 9px 8px 9px 12px; white-space: nowrap; max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
+.tree-conversations-bar .tree-chat-tab-close { border: 0; background: transparent; padding: 3px 6px; margin-right: 4px; font-size: 17px; color: var(--ink-3); }
+.tree-conversations-bar .tree-chat-tab-close:hover { color: var(--ink); background: var(--line); }
+.tree-conversations-bar .tree-chat-add { flex: none; font-size: 22px; width: 32px; height: 32px; padding: 0; border-color: transparent; margin-bottom: 5px; }
+.tree-chat-window-controls { display: flex; gap: 5px; flex: none; margin-left: auto; padding-bottom: 5px; }
+.tree-chat-chooser { position: absolute; top: 48px; left: 12px; width: min(360px, calc(100% - 24px)); max-height: calc(100% - 60px); display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; z-index: 5; background: var(--sheet); border: 1px solid var(--line-2); border-radius: 6px; box-shadow: 0 8px 25px #0002; }
+.tree-chat-chooser[hidden] { display: none; }
+.tree-chat-picker { width: 100%; min-width: 0; padding: 8px 10px; box-sizing: border-box; }
+.tree-chat-options { display: flex; flex-direction: column; min-height: 0; max-height: 220px; overflow-y: auto; margin-top: 6px; }
+.tree-chat-options button { flex: none; }
+.tree-chat-options button { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left; padding: 9px 8px; border: 0; background: transparent; }
+.tree-chat-options button:hover, .tree-chat-options button:focus-visible { background: var(--surface); outline: 1px solid var(--c-coordinator); outline-offset: -1px; }
+.tree-chat-options small { color: var(--ink-3); }
+.tree-chat-empty { padding: 20px; color: var(--ink-3); }
+.tree-conversation-track { display: flex; flex: 1; min-height: 0; position: relative; overflow: hidden; }
+.tree-conversation { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; padding: 12px 18px; box-sizing: border-box; overflow-y: auto; }
+.tree-conversation:focus-visible { outline: 2px solid var(--rc); outline-offset: -2px; }
+.tree-conversation .chat { display: flex; width: 100%; min-width: 0; min-height: 0; height: 100%; animation: none; }
+.tree-conversation .chat-log { padding: 12px 4px; overscroll-behavior: contain; }
+.tree-conversation .chat-msg-text { font-size: 14px; line-height: 1.55; max-width: 85ch; }
+.tree-conversation .chat-input input { font-size: 14px; }
+.tree-conversations.is-expanded { position: absolute; inset: 0; height: 100%; min-height: 0; max-height: none; z-index: 25; }
+@media (max-width: 600px) {
+  .tree-conversations-bar { gap: 3px; padding: 4px 5px 0; flex-wrap: wrap; }
+  .tree-chat-tabs { flex: 1; }
+  .tree-chat-window-controls { width: 100%; justify-content: flex-end; }
+  .tree-conversation { padding: 8px; }
+}
+.static-tree-chip-overlay .static-tree-chip:not(.as-chat) { height: var(--tree-preview-height, 160px); transition: none; }
+.static-tree-chip-overlay[hidden] { display: none; }
+.static-tree-chip-overlay .chip-preview { height: calc(var(--tree-preview-height, 160px) - 14px); }
+.static-tree-chip-overlay .chip-preview-activity { flex: 1; }
+.static-tree-chip-overlay .cl-current { -webkit-line-clamp: 1; }
+.static-tree-chip-overlay .cl-chat { -webkit-line-clamp: 4; }
+.tree-conversations.is-empty:not(.is-expanded) { height: 120px; min-height: 0; }
+.tree-conversations.is-collapsed { height: auto; }
+.tree-conversations.is-expanded { height: 100%; max-height: none; }
+.tree-shelf-resize { position: absolute; top: -5px; left: 0; right: 0; height: 10px; z-index: 2; cursor: row-resize; touch-action: none; }
+.tree-shelf-resize::after { content: ''; position: absolute; width: 40px; height: 3px; left: calc(50% - 20px); top: 3px; border-radius: 2px; background: var(--line-2); }
+.tree-shelf-resize:hover::after, .tree-shelf-resize.is-dragging::after { background: var(--c-coordinator); }
+.tree-shelf-resize:focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: -2px; }
+.tree-conversations.is-expanded .tree-shelf-resize, .tree-conversations.is-collapsed .tree-shelf-resize,
+.tree-conversations.is-empty .tree-shelf-resize { display: none; }
+.tree-pan-hint { max-width: calc(100% - 20px); box-sizing: border-box; overflow-wrap: anywhere; }
+.computers .comp-body.tree-workspace-wide { grid-template-columns: minmax(0, 1fr); }
+.computers .comp-body.tree-workspace-wide > .rail,
+.computers .comp-body.tree-workspace-wide > .comp-body-resize { display: none; }
+/* A modal inside display:none still makes the page inert but has no box.
+   Keep its sidebar ancestor rendered only while the role workspace is open.
+   The sidebar stays invisible and out of the tree's layout; only the native
+   modal receives input. Closing it restores the normal hidden sidebar. */
+.computers .comp-body.tree-workspace-wide > .rail:has(dialog.role-studio[open]) {
+  display: block;
+  position: fixed;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.computers .comp-body.tree-workspace-wide > .rail dialog.role-studio[open] {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+
+.static-tree-chip-overlay .cl { font-size: 13px; line-height: 1.45; }
+.static-tree-chip-overlay .cl-chat, .static-tree-chip-overlay .cl-previous { font-size: 12.5px; }
+.static-tree-chip-overlay .cl-open { font-size: 12px; padding-block: 4px; }
+
+.static-tree-graph .tree-link.link-direct { stroke: var(--c-coordinator); stroke-width: 1.6; stroke-dasharray: 5 4; opacity: .85; }
+.tree-link-marker { pointer-events: all; cursor: pointer; }
+.tree-link-marker circle { fill: var(--sheet); stroke: var(--c-coordinator); stroke-width: 1.2px; }
+.tree-link-marker text { fill: var(--c-coordinator); font: 700 25px var(--font-ui); }
+.tree-link-marker:hover circle, .tree-link-marker:focus-visible circle { stroke-width: 2.5px; }
+.is-linking .node { cursor: crosshair; }
+.static-tree-graph .node.link-source { filter: drop-shadow(0 0 5px var(--c-coordinator)); }
+.tree-link-status { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 18; padding: 8px 12px; max-width: calc(100% - 40px); width: max-content; box-sizing: border-box; background: var(--sheet); border: 1px solid var(--line-2); border-radius: 5px; color: var(--ink-2); font: 13px/1.45 var(--font-ui); pointer-events: none; }
+.tree-link-status[hidden] { display: none; }
+.tree-link-popover { --link-popover-top: clamp(12px, var(--link-popover-y, 60px), max(12px, calc(100dvh / var(--zoom, 1) - var(--link-popover-height, 300px) - 12px))); position: fixed; inset: auto; left: clamp(12px, var(--link-popover-x, 12px), max(12px, calc(100vw / var(--zoom, 1) - 372px))); top: var(--link-popover-top); z-index: 40; display: flex; flex-direction: column; width: min(360px, calc(100vw / var(--zoom, 1) - 24px)); max-height: calc(100dvh / var(--zoom, 1) - var(--link-popover-top) - 12px); margin: 0; padding: 0; overflow: hidden; box-sizing: border-box; background: var(--sheet); color: var(--ink); border: 1px solid var(--line-2); border-top: 2px solid var(--c-coordinator); border-radius: 3px; box-shadow: 0 8px 28px #0003; font: 13px/1.45 var(--font-ui); }
+.tree-link-popover[popover]:not(:popover-open) { display: none; }
+.tree-link-popover > header { display: flex; flex: none; align-items: center; gap: 10px; padding: 13px 14px; border-bottom: 1px solid var(--line); }
+.tree-link-popover > header > div { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.tree-link-popover > header strong { font-size: 14px; font-weight: 650; }
+.tree-link-popover > header > div > span { color: var(--ink-3); font-size: 12px; }
+.tree-link-popover .link-symbol { color: var(--c-coordinator); font: 650 30px/1 var(--font-ui); }
+.tree-link-popover button { flex: none; padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 2px; background: transparent; color: var(--ink-2); font: 600 12px/1.3 var(--font-ui); cursor: pointer; white-space: nowrap; }
+.tree-link-popover button:hover { color: var(--ink); background: color-mix(in oklab, var(--ink) 5%, var(--sheet)); }
+.tree-link-popover button:focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: 2px; }
+.tree-link-popover button:disabled { opacity: .5; cursor: default; }
+.tree-link-popover .link-dismiss { align-self: flex-start; width: 28px; height: 28px; padding: 0; border-color: transparent; font-size: 22px; font-weight: 400; line-height: 1; }
+.tree-link-popover .link-peer-list { min-height: 0; overflow: auto; padding: 0 14px; }
+.tree-link-popover .link-peer { display: flex; align-items: center; gap: 14px; padding: 14px 0; }
+.tree-link-popover .link-peer + .link-peer { border-top: 1px solid var(--line); }
+.tree-link-popover .link-peer > div { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.tree-link-popover .link-agent-name { font-size: 13px; font-weight: 600; overflow-wrap: break-word; }
+.tree-link-popover .link-agent-role { color: var(--ink-3); font-size: 12px; }
+.tree-link-popover .link-peer button > span { margin-left: 4px; color: var(--ink-3); }
+.tree-link-popover > footer { display: flex; flex: none; justify-content: flex-end; padding: 10px 14px; border-top: 1px solid var(--line); }
+.tree-link-popover .link-remove { color: var(--s-serious); border-color: color-mix(in oklab, var(--s-serious) 35%, var(--line)); }
+.tree-link-popover .link-remove:hover { background: color-mix(in oklab, var(--s-serious) 7%, var(--sheet)); }
+.tree-link-popover .link-action-error { margin: 0; padding: 8px 14px; color: var(--s-serious); font-size: 12px; overflow-wrap: break-word; }
+
+.static-tree-graph .node .node-name { font-size: 14px; }
+.static-tree-graph .node .node-name .nn-t { overflow-wrap: normal; word-break: normal; }
+.tree-workspace-controls .tree-input-mode { color: var(--ink-2); background: var(--sheet); border: 1px solid var(--line-2); border-radius: 3px; font: 12px var(--font-ui); padding: 7px 8px; }
+
+.tree-conversation .chat > :is(.chat-head, .chat-log, .chat-chips, .chat-common-actions, .working-step, .chat-search, .chat-attach-strip, .chat-queue-strip, .chat-nosend, .chat-input) { width: min(920px, 100%); align-self: center; box-sizing: border-box; }
+.tree-conversation .chat-head { padding-bottom: 8px; margin-bottom: 0; }
+.tree-conversation .chat-head .t { display: none; }
+.tree-conversation .chat-actions-pop { width: min(920px, calc(100% - 16px)); left: 50%; right: auto; transform: translateX(-50%); }
+.tree-conversation.as-chat-full .chat > :is(.chat-head, .chat-log, .chat-chips, .chat-common-actions, .working-step, .chat-search, .chat-attach-strip, .chat-queue-strip, .chat-nosend, .chat-input) { width: 100%; align-self: stretch; }
+.tree-conversation.as-chat-full .chat-msg-text { max-width: none; }
+.tree-conversation.as-chat-full .chat-actions-pop { width: calc(100% - 16px); }
+.graph-zoomer output.gz-level { display: flex; align-items: center; justify-content: center; min-width: 48px; font: 12px var(--font-mono); color: var(--ink-2); }
+.graph-bar .graph-zoomer .graph-fit,
+.static-tree-host .graph-zoomer .graph-fit { border-left: 1px solid var(--line-2); margin-left: 4px; }
+.tree-context-control { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.tree-context-size { max-width: 125px; border: 1px solid var(--line-2); border-radius: 5px; padding: 5px; background: var(--sheet); color: var(--ink); font: inherit; }
+.tree-context-notice { flex-basis: 100%; font-size: 12px; color: var(--ink-2); white-space: normal; }
+.tree-context-notice:empty { display: none; }
+.tree-context-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.static-tree-chip-overlay .cl-current { -webkit-line-clamp: var(--tree-current-lines, 2); }
+.static-tree-chip-overlay .cl-chat { -webkit-line-clamp: var(--tree-chat-lines, 4); }
+
+/* Research is the tree's workspace, independent of its agents' roles. */
+.tree-research-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  color: var(--ink-2);
+  background: var(--sheet);
+  font: 600 11px/1 var(--font-mono, monospace);
+  letter-spacing: 0;
+  box-shadow: 0 1px 3px #0001;
+}
+.static-tree-graph .node > .tree-research-badge {
+  position: absolute;
+  top: 4%;
+  right: 4%;
+  z-index: 5;
+}
+.tree-box-actions .tree-research-badge { margin-inline-end: 3px; }

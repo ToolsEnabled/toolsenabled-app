@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "revision": 0,
+  "updatedAt": "2026-09-03",
+  "statusVocabulary": {
+    "proposed": "Filed by an agent; waiting for you.",
+    "open": "Accepted, not started.",
+    "in-progress": "Actively being worked.",
+    "partial": "Substantially delivered with a stated shortfall.",
+    "blocked-external": "Cannot proceed without owner action.",
+    "done": "Delivered and independently verified.",
+    "not-possible-as-asked": "The literal request cannot be satisfied.",
+    "declined": "You declined it.",
+    "removed": "You deleted it; kept for the record."
+  },
+  "requests": []
+}

@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "$comment": [
+    "WHAT MAY LEAVE THIS MACHINE FOR THE PRIVATE CLOUD MIRROR OF THE APP REPOSITORY.",
+    "",
+    "READ BY the engine's src/lib/cloud-agent/cloud-mirror.js. Nothing is sent unless",
+    "a rule here selects it, and a tracked path that matches no rule at all REFUSES",
+    "the publish by name (CLOUD_MIRROR_UNCLASSIFIED) rather than being sent or",
+    "silently skipped.",
+    "",
+    "THIS IS NOT config/payload-boundary.json. That file answers whether something",
+    "may be published PUBLICLY under the open-source licence; this one answers",
+    "whether it may leave this machine into a PRIVATE repository that a cloud agent",
+    "clones. The two questions have genuinely different answers and are kept apart on",
+    "purpose. The mechanism, the vocabulary and the fail-closed rules are the same so",
+    "that the two are READ the same way.",
+    "",
+    "WHY THIS REPOSITORY IS THE URGENT ONE, MEASURED 2026-08-24. Cloud agents working",
+    "on this repository were diffing against origin/packaging/capability-layer, which",
+    "is 467 commits behind local HEAD (origin/main is 756 behind). Their harvests came",
+    "back as empty applies, as 'fixes' already present in the tree, and as citations",
+    "pointing at unrelated code. The engine's branch is 5 behind and its harvests were",
+    "clean the same night. That correlation is the whole diagnosis, and this manifest",
+    "is what lets the current tree be sent instead.",
+    "",
+    "ROOT-LEVEL FILES ARE NAMED EXACTLY AND DELIBERATELY, and this repository is the",
+    "reason the rule is worth its cost: the root is where a stray instruction or",
+    "account-specific file lands. A new one stops the publish until somebody reads",
+    "and classifies that exact path."
+  ],
+
+  "mirror": {
+    "$comment": [
+      "Everything a cloud agent needs to read, build, test and change the app.",
+      "",
+      "FOUR OF THESE PREFIXES ARE EXCLUDED BY config/payload-boundary.json's",
+      "source.excluded -- auxiliary/, reports/, docs/coordinator/, and retained root",
+      "reports -- AND MIRRORING THEM IS A DELIBERATE DIVERGENCE,",
+      "not an oversight. They are excluded there because they are internal working",
+      "material that should not appear in a public open-source publish. A private",
+      "mirror is exactly where current internal source and retained provenance belong.",
+      "Current authority comes from AGENTS.md and the active task, never a historical",
+      "brief. The one class this manifest and that one AGREE on is private/, which",
+      "is the owner's own data rather than the project's -- and it is withheld",
+      "below."
+    ],
+    "prefixes": [
+      ".githooks/",
+      ".github/",
+      "auxiliary/",
+      "build/",
+      "capability-defaults/",
+      "config/",
+      "design/",
+      "docs/",
+      "public/",
+      "reports/",
+      "shell/",
+      "src/",
+      "tools/"
+    ],
+    "paths": [
+      ".gitattributes",
+      ".gitignore",
+      "AGENTS.md",
+      "COMMERCIAL-LICENSE.md",
+      "CONTRIBUTING.md",
+      "CONTRIBUTORS.md",
+      "LICENSE",
+      "LICENSING.md",
+      "NOTICE",
+      "P1-REPORT.md",
+      "P2-REPORT.md",
+      "R1152-AGENT-CONTROL-DATA-REPORT.md",
+      "R1152-AGENT-VIEW-CRASH-REPORT.md",
+      "R1152-AGENT-VIEW-CRASH-REVIEW.md",
+      "R1152-LIVE-AGENT-CLOCK-REPORT.md",
+      "R1152-PHASE2-DATA-REPORT.md",
+      "R1152-PHASE2-LABEL-FIX-REPORT.md",
+      "README.md",
+      "THIRD-PARTY-LICENSES.md",
+      "index.html",
+      "package-lock.json",
+      "package.json"
+    ]
+  },
+
+  "withhold": {
+    "$comment": [
+      "private/ is the one directory in this tree named for what it is, and its own",
+      "files say so. private/fleet-profile.owner.json calls itself 'the fleet the",
+      "product was built against, preserved verbatim', with the owner's machines and",
+      "their addresses in it. private/research-queue.authored.json holds owner",
+      "observations transcribed as provenance, and the app's own ledger doctrine",
+      "treats his verbatim words as an authority -- which is exactly the material",
+      "that should not be handed to a third-party-hosted worker to read.",
+      "",
+      "NOTHING IN THE TREE REQUIRES EITHER FILE. Both are loaded by hand at runtime",
+      "(the profile's own note gives the localStorage.setItem line a person types),",
+      "and each is deliberately outside public/ and outside build.files so that",
+      "neither vite nor electron-builder can pack it. A clone of the mirror without",
+      "them builds and tests identically."
+    ],
+    "prefixes": [
+      "private/"
+    ],
+    "paths": []
+  },
+
+  "credentialScanAcknowledged": {
+    "$comment": "Not read as rules. A key here is a path or directory prefix; a value is why credential-SHAPED text is expected there.",
+    "tools/test/": "Test fixtures deliberately carry credential-SHAPED strings so the scrubbers and refusal paths have something realistic to be tested against. Measured 2026-08-24: 7 files under this prefix match the detector, every one an obvious fixture whose own value says so -- their tails read ...would-bill, ...must-never-be-echoed, ...shouldneverbeused. The heads are deliberately NOT quoted here: this file is scanned like any other, and quoting a full provider prefix made it refuse its own mirror publish twice. THE HOLE IS STATED RATHER THAN HIDDEN: this covers the whole prefix, so a real credential committed under tools/test/ would not be caught by the content scan. The vault discipline and the classification above are what stand there.",
+    "tools/subscribe-page-drive.mjs": "A page driver that posts a fixed Paddle TEST-mode key (a Paddle TEST-mode key whose own tail reads ...drivenbyharness; the head is not spelled here because this file is scanned like any other) to the local subscribe endpoint so the checkout surface can be exercised without a live transaction. It is a harness value authored in the file, not a key for any account."
+  }
+}

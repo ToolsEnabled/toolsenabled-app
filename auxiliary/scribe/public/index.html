@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scribe</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="doc-id">
+    <span class="dot" id="health-dot" title="connecting"></span>
+    <button id="doc-name" type="button" title="Open a Word document">open document</button>
+    <input id="doc-file" type="file"
+      accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      hidden>
+  </div>
+  <div class="topbar-right">
+    <button id="rail-toggle" class="ghost rail-toggle" type="button"
+      aria-controls="rail" aria-expanded="false"
+      aria-label="Show conversation and agent activity">chat</button>
+    <span class="rev" id="rev" title="Document revision" role="status"
+      aria-live="polite" hidden>revision 0</span>
+    <span class="edit-detail" id="edit-detail" role="status"
+      aria-live="polite" aria-atomic="true" hidden></span>
+    <button id="format-toggle" class="ghost format-toggle" type="button"
+      aria-pressed="false" aria-describedby="format-status" data-state="off"
+      title="AI formatting is off. When on, it changes formatting only—never your words—and waits for about 600 added words and 90 seconds of quiet.">format</button>
+    <span id="format-status" class="sr-only" role="status"
+      aria-live="polite" aria-atomic="true">AI formatting is off.</span>
+    <button id="watch-toggle" class="ghost watch-toggle" type="button"
+      aria-pressed="false" data-state="off"
+      title="When Watch is on, a separate read-only model reviews after 25 seconds of quiet. Alt+Shift+W reviews now.">watch</button>
+    <button id="undo" class="ghost" title="Undo the last utterance">undo</button>
+    <button id="save-original" class="ghost save-original" type="button" hidden
+      title="Save the current version over the original file you opened">save</button>
+    <button id="pause" class="ghost" title="Pause all editing (space)">pause</button>
+  </div>
+</header>
+
+<dialog id="save-dialog" class="save-dialog" aria-labelledby="save-dialog-title">
+  <form method="dialog" class="save-dialog-form">
+    <h2 id="save-dialog-title">Overwrite the original?</h2>
+    <p id="save-dialog-body"></p>
+    <div class="save-dialog-actions">
+      <button type="submit" value="cancel" class="ghost">cancel</button>
+      <button type="submit" value="confirm" id="save-dialog-confirm"
+        class="ghost save-dialog-confirm">save over original</button>
+    </div>
+  </form>
+</dialog>
+
+<main>
+  <section class="paper-wrap" id="paper-wrap">
+    <article class="paper is-empty" id="paper" aria-label="document">
+      <div class="empty-state">
+        <button id="empty-open" class="empty-open" type="button">
+          <span>open a Word document</span><span aria-hidden="true">&rarr;</span>
+        </button>
+        <p>Scribe edits a working copy. Your original stays untouched.</p>
+      </div>
+    </article>
+  </section>
+
+  <aside class="rail" id="rail" aria-label="Conversation and agent activity">
+    <section class="work-panel" aria-label="Agent work">
+      <div class="agent-panel">
+        <div class="agent-line">
+          <span class="agent-state" id="agent-state" data-state="off">off</span>
+          <span class="agent-actions">
+            <label class="model-picker" title="Choose the editing model and CLI provider">
+              <span class="sr-only">Editing model</span>
+              <select id="model-btn" class="ghost tiny model" aria-label="Editing model">
+                <optgroup label="Claude CLI">
+                  <option value="sonnet">Sonnet</option>
+                  <option value="opus">Opus</option>
+                </optgroup>
+                <optgroup label="Codex CLI">
+                  <option value="terra">Terra</option>
+                  <option value="sol">Sol</option>
+                </optgroup>
+              </select>
+            </label>
+            <span class="model-pool-wrap" id="model-pool-wrap">
+              <button id="model-pool-btn" class="ghost tiny model-pool-btn" type="button"
+                aria-expanded="false" aria-controls="model-pool"
+                title="Choose which models automatic work may use">auto 4</button>
+              <span id="model-pool" class="model-pool" role="group"
+                aria-label="Models available to automatic work" hidden>
+                <span class="model-pool-head">
+                  <span>auto pool</span>
+                  <span>future jobs only</span>
+                </span>
+                <span class="model-pool-grid">
+                  <button type="button" class="model-pool-toggle" data-model="sonnet"
+                    aria-pressed="true"><span class="model-pool-dot"></span>Sonnet</button>
+                  <button type="button" class="model-pool-toggle" data-model="opus"
+                    aria-pressed="true"><span class="model-pool-dot"></span>Opus</button>
+                  <button type="button" class="model-pool-toggle" data-model="terra"
+                    aria-pressed="true"><span class="model-pool-dot"></span>Terra</button>
+                  <button type="button" class="model-pool-toggle" data-model="sol"
+                    aria-pressed="true"><span class="model-pool-dot"></span>Sol</button>
+                </span>
+                <span class="model-pool-route" id="model-pool-route"></span>
+              </span>
+            </span>
+            <button id="agent-btn" class="ghost tiny" aria-label="Stop editing agent" hidden>stop</button>
+          </span>
+        </div>
+        <div class="agent-meta" id="agent-meta"></div>
+        <div class="think" id="think" hidden><span class="think-bar"></span><span id="think-n"></span></div>
+      </div>
+
+      <div class="rail-head">work<span class="rail-hint" id="lane-hint" role="status" aria-live="polite"></span></div>
+      <div class="lane" id="lane"></div>
+    </section>
+
+    <section class="draft-recovery" id="draft-recovery"
+      aria-label="Recovered document typing" role="status" aria-live="polite"
+      aria-atomic="false" hidden>
+      <div class="draft-recovery-head">recovered typing</div>
+      <div class="draft-recovery-items" id="draft-recovery-items"></div>
+    </section>
+
+    <section class="conversation" id="conversation" aria-label="Conversation" hidden>
+      <div class="conversation-head">conversation</div>
+      <div class="conversation-turns" id="conversation-turns" aria-live="polite"></div>
+    </section>
+
+    <ol class="trail" id="trail" hidden aria-hidden="true"></ol>
+  </aside>
+</main>
+
+<footer class="dock">
+  <section class="proposal" id="proposal" hidden>
+    <div class="prop-head">
+      <span class="prop-intent" id="prop-intent"></span>
+      <button class="ghost tiny" id="prop-dismiss">none of these</button>
+    </div>
+    <div class="opts" id="opts"></div>
+    <details class="grounding" id="grounding">
+      <summary><span id="ground-n"></span></summary>
+      <ul id="ground-list"></ul>
+    </details>
+  </section>
+
+  <form class="bar" id="bar" autocomplete="off">
+    <button id="mic-btn" type="button" class="mic" aria-label="microphone" title="Talk (m)">
+      <span class="mic-dot"></span>
+    </button>
+    <input id="say" type="text" placeholder="say something" aria-label="message" />
+    <button id="send" type="submit" aria-label="send">&rarr;</button>
+  </form>
+</footer>
+
+<div class="scrim" id="scrim" hidden><div class="scrim-card">paused</div></div>
+
+<script src="/mic.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

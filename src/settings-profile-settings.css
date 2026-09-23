@@ -1,0 +1,173 @@
+/* THE QUICK STRIP ON THE SETTINGS LANDING PAGE. Owner, 2026-09-15: "i dont
+   like the dropdown lets change that. there should be a few sliders for
+   different things to be changed quickly and they should be easily accessible
+   on the settings landing page." Every slider is in view the moment Settings
+   opens: the working profile first, then one cell per quick row
+   (src/settings-quick-sliders.js). No disclosure, and -- owner, 2026-09-09 --
+   no boxes: cells are separated by the page's hairline, not framed. The value
+   review is the one thing that folds, under the whole strip, because it is a
+   table and not a control. */
+.settings-quick {
+  position: relative;
+  display: block;
+  margin: 0 0 20px;
+  padding: 0 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+  container-type: inline-size;
+  container-name: quick-strip;
+}
+/* An explicit `display` beats the user agent's [hidden] rule, so the strip
+   needs its own, exactly as .ledger-file does. Without this the landing-only
+   rule in src/views/settings.js sets the attribute and nothing moves. */
+.settings-quick[hidden] { display: none; }
+.settings-quick-title { margin: 0 0 4px; color: var(--ink); font-size: 15px; font-weight: 600; line-height: 1.5; }
+.settings-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 8px 32px;
+  align-items: start;
+  min-width: 0;
+}
+.quick-slider { position: relative; display: block; min-width: 0; padding: 6px 0 8px; border: 0; background: transparent; }
+.settings-working-profile { grid-column: 1 / -1; }
+.quick-slider-head { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: baseline; gap: 2px 14px; min-width: 0; }
+.quick-slider-title { color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.5; }
+.quick-slider-state { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 0; color: var(--ink-2); font-size: 13px; line-height: 20px; }
+.quick-slider-state strong { font-weight: 500; color: var(--ink-2); }
+.working-profile-lead { cursor: default; }
+.working-profile-title { font-size: 15px; }
+/* THE AA TONE, NOT THE RAW ACCENT, BECAUSE THIS IS 13px BODY TEXT.
+
+   --ui-accent is `var(--c-coordinator)` (src/styles.css), which is the RING
+   colour for the coordinator role -- the hue a circle is drawn in, chosen to
+   sit against a surface rather than to be read on one. As small text it is
+   under AA on every theme the product ships. Measured, accent against the two
+   grounds this label can sit on:
+
+     black  #428ea7  3.52:1 on --sheet, 4.24:1 on --bg
+     white  #287f9b  4.57:1 on --sheet, 4.25:1 on --bg
+     tan    #277b96  4.25:1 on --sheet, 3.83:1 on --bg
+
+   Only one of those six clears 4.5. --role-text-<id> is this product's answer:
+   src/role-colors.js tones each role colour to 4.5:1 against the LIVE theme
+   before writing it, which is why the fix is a different token rather than a
+   different literal. The decorative readers of --ui-accent -- carets, meter
+   bars, focus rings, 8% wash fills -- are right to take the raw accent; a word
+   a person has to read is not. */
+.working-profile-current-name { font-style: normal; font-weight: 600; color: var(--role-text-coordinator, var(--ink)); }
+/* Same token, same size class, same fix as the label above. */
+.working-profile-state span { color: var(--role-text-coordinator, var(--ink)); font-size: 12.5px; }
+.working-profile-state span:empty { display: none; }
+.quick-slider[data-state="pending"] .quick-slider-state { color: var(--role-text-coordinator, var(--ink)); }
+/* UNAVAILABLE DIMS THE CONTROL, NOT THE SENTENCE THAT SAYS WHY (T1523). The
+   whole picker used to go to 60%, and the picker holds the one line that
+   explains why the slider cannot move and what to do (2.8:1 on White). The
+   track and stops say 'not now' by themselves: disabled, they already dim to
+   50%; only one that is not disabled is dimmed here. */
+.quick-slider[data-state="unavailable"] .quick-slider-picker :is(input[type="range"], .quick-slider-stops button):not(:disabled) { opacity: .6; }
+
+/* A NORMAL SLIDER. Owner, 2026-09-10: "please just make a normal slider bar".
+   The control is the plain native range, styled by the page-wide
+   `.settings-page input[type="range"]` rules like every other range here.
+   Under it, the stop names in equal cells; the current one in full ink. Then
+   the staged stop's one-line description. Nothing else. */
+.quick-slider-picker { min-width: 0; container-type: inline-size; }
+.quick-slider-picker input[type="range"] { width: 100%; }
+.quick-slider-picker input:disabled { cursor: not-allowed; opacity: .5; }
+/* No preset in effect (T1438): the thumb only marks where the slider starts, so
+   it is drawn hollow and faint instead of as a chosen stop. */
+.settings-working-profile[data-profile-state="custom"] input[type="range"]::-webkit-slider-thumb { background: transparent; opacity: .45; }
+.quick-slider-stops { display: grid; grid-template-columns: repeat(var(--stops, 3), minmax(0, 1fr)); margin: 0; }
+.quick-slider-stops button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-2);
+  font: 600 13px/1.5 var(--font-ui);
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.quick-slider-stops button:first-child { text-align: left; }
+.quick-slider-stops button:last-child { text-align: right; }
+.quick-slider-stops button:hover { color: var(--ink); }
+.quick-slider-stops button[aria-pressed="true"] { color: var(--ink); }
+.quick-slider-stops button:disabled { cursor: not-allowed; opacity: .5; }
+.quick-slider-help { margin: 2px 0 0; min-height: calc(2 * 1.6 * 14px); color: var(--ink-2); font-size: 14px; line-height: 1.6; }
+.quick-slider-sets { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+.quick-slider-sets:empty { display: none; }
+.quick-slider-message { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+.quick-slider-message:empty { display: none; }
+.settings-working-profile .quick-slider-help { min-height: 0; }
+
+.working-profile-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; min-width: 0; margin-top: 6px; }
+.working-profile-link {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-2);
+  font: 500 13px/1.6 var(--font-ui);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--ink-3) 45%, transparent);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+.working-profile-link:hover { color: var(--ink); text-decoration-color: currentColor; }
+.working-profile-link:disabled { cursor: not-allowed; opacity: .5; }
+.settings-quick :is(input, button, summary):focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+
+/* The value review folds under the whole strip and opens in flow at full
+   width, including at larger text. */
+.working-profile-review { margin: 4px 0 0; border: 0; min-width: 0; }
+.working-profile-review > summary { list-style: none; white-space: normal; text-align: left; }
+.working-profile-review > summary::-webkit-details-marker { display: none; }
+.working-profile-review[open] > [data-working-profile-review]:not(:empty) { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.working-profile-review p, .working-profile-review li { font-size: .8rem; line-height: 1.6; overflow-wrap: anywhere; }
+.working-profile-review h3 { font-size: .9rem; }
+.working-profile-review ul { padding-left: 20px; }
+.working-profile-review li + li { margin-top: 8px; }
+.working-profile-table { max-width: 100%; overflow-x: auto; }
+.working-profile-table table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: .8rem; }
+.working-profile-table :is(th, td) { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.working-profile-table th { font-weight: 500; }
+.working-profile-table tr > :first-child { width: 42%; }
+.working-profile-table small { display: block; margin-top: 5px; color: var(--ink-2); font-weight: normal; line-height: 1.5; }
+
+/* Give every stop its full name when the available picker width shrinks,
+   including at the app's Large text size. The native slider keeps its stops. */
+@container (max-width: 680px) {
+  .working-profile-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .working-profile-options button:is(:first-child, :last-child) { text-align: center; }
+}
+@container (max-width: 340px) {
+  .working-profile-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quick-slider-stops:not(.working-profile-options) button { font-size: 12px; }
+}
+@container quick-strip (max-width: 680px) {
+  .settings-quick-grid { grid-template-columns: minmax(0, 1fr); gap: 4px 0; }
+  .quick-slider-head { grid-template-columns: minmax(0, 1fr); }
+  .working-profile-link { white-space: normal; }
+}
+@media (max-width: 600px) {
+  .working-profile-table :is(th, td) { padding: 8px 4px; }
+  /* Give each policy its own full-width heading when the app rail and larger
+     text leave too little room for three readable comparison columns. Keep
+     the table header available to assistive technology. */
+  .working-profile-table thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .working-profile-table :is(table, tbody) { display: block; }
+  .working-profile-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .working-profile-table tbody th { grid-column: 1 / -1; padding-top: 16px; border-bottom: 0; }
+  .working-profile-table tbody tr > :first-child { width: auto; }
+  .working-profile-table td::before { display: block; margin-bottom: 6px; color: var(--ink-2); font-size: .72rem; line-height: 1.5; }
+  .working-profile-table td:nth-child(2)::before { content: 'Current or pending'; }
+  .working-profile-table td:nth-child(3)::before { content: 'Profile value'; }
+}

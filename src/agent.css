@@ -1,0 +1,730 @@
+/* ============================================================
+   AGENT PAGE — scoped under .agentv so nothing here leaks to other
+   pages that also use .glass / .apanel markup.
+
+   REDONE. Everything that used to live at the top of this file —
+   rim arcs on bubbles, the hover-reveal context chip, the .cx-badge,
+   the .cx-tight density escalation, the .cx-link leader hairlines,
+   and the transform-parking rules that stopped graph.js and the
+   placement solver racing each other within a frame — described a
+   layout that positioned text absolutely and then spent five rounds
+   of solver work discovering the overlaps that caused. It is gone
+   with the geometry it served. What replaces it is a grid of cards
+   in normal flow, which cannot overlap, so none of those rules has
+   anything left to do. See src/agent-roster.js for the reasoning.
+   ============================================================ */
+
+/* ---------- the page column ---------- */
+.agentv { overflow-y: auto; }
+
+.agentv-top {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3, 12px);
+  flex-wrap: wrap;
+}
+/* THE BREADCRUMB JOINS THE FLOW, and it has to be told to.
+   styles.css gives `.graph-crumb` `position: absolute; top: 14px; left: 16px;
+   z-index: 5` -- correct when it was an overlay pinned inside the old graph
+   panel, and wrong the moment it became a flex child of a normal row: an
+   absolutely positioned box is out of flow, so it took no space and printed
+   straight through the example-data banner beside it. Caught by eye on the black
+   theme at 1280x800, not by the overlap assertion, which only walked the roster
+   -- the check has since been widened to every text-bearing element on the page.
+   Static here rather than edited in styles.css: the computers page still uses
+   the overlay form, and this is the one page that does not. */
+.agentv-top .graph-crumb {
+  position: static;
+  flex: 0 0 auto;
+  z-index: auto;
+}
+.agentv-top .graph-crumb,
+.agentv-top .graph-crumb button,
+.agentv-top .graph-crumb .sep { font-size: 12.5px; }
+
+/* ---------- provenance: what this page's data actually is -------------
+   A normal-flow row, never an overlay. The app-wide notice this replaces on
+   this route is `position: fixed`, which is exactly why the owner saw it
+   sitting on the panel beneath it. Anything that states what is real has to
+   be the one thing on the page guaranteed not to cover something else. */
+.agent-provenance {
+  flex: 1 1 320px;
+  min-width: 0;
+  padding: 7px 12px;
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--ink-4);
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--sheet) 92%, transparent);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 12.5px;              /* interface-text floor */
+  line-height: 1.45;
+}
+/* Example data is the one state that must not be missable, so it takes the
+   warning edge and the page's strongest small-text ink. It is deliberately
+   NOT a colour-only signal: the sentence itself says "Example data" first,
+   so a greyscale screenshot or a colour-blind reader loses nothing. */
+.agent-provenance[data-kind="example"] {
+  border-left-color: var(--s-warn);
+  background: color-mix(in oklab, var(--s-warn) 8%, var(--sheet));
+  color: var(--ink);
+  font-weight: 560;
+}
+.agent-provenance[data-kind="declared"] { border-left-color: var(--s-good); }
+
+/* TWO NOTICES THAT DISAGREE IS WORSE THAN EITHER ALONE. The app-wide
+   `.fleet-profile-notice` is keyed to the FLEET PROFILE being unconfigured,
+   not to this view's data being simulated, so on this route it can assert
+   "some screens show example data" over a page showing a real declared
+   topology — while also physically covering the Controls panel, since it is
+   fixed to the bottom-right at z-index 190. This page states its own
+   provenance above, in flow, so the floating one is suppressed here. The
+   serious variant is left alone: it carries failures, not this claim, and
+   home.css and setup.css already use exactly this `:not(.is-serious)` carve
+   for the same reason. */
+body[data-route="agent"] .fleet-profile-notice:not(.is-serious) { display: none; }
+
+/* THE LIVE PAGE HAS ONE MORE BOX AROUND IT THAN THE DEMONSTRATION DOES, AND
+   THAT BOX HAD NO HEIGHT.
+   `.agentv` is `height: 100%` and is designed as a bounded flex column whose
+   panels carry their own scrollers -- that is the whole mechanism the roster
+   bound below depends on. It works when `.agentv` is mounted straight into
+   `.view`, which is what the demonstration and `/example` routes do.
+   The LIVE route -- the one every customer is on -- does not: agentView()
+   returns a `.data-live-mode` wrapper first and swaps the built page into it
+   once the projection resolves, so `height: 100%` resolves against a parent
+   with an indefinite height, falls back to auto, and the column grows to its
+   content instead of to the window. `.view` is `overflow: hidden`, so the rest
+   of the page is not merely below the fold; it is cut off with nothing to
+   scroll.
+   MEASURED, on the packaged build, on a sterile profile, in a really-resized
+   window (tools/window-size-sweep-qa.mjs): at 1024x768 the lowest text on the
+   page -- "No session started from this app is running for this agent" -- sat
+   1019px below the bottom of the view, and twelve real mouse-wheel notches over
+   the middle of the window moved it 44px (an inner panel absorbing the wheel),
+   leaving it 975px out of reach. The same at all five swept widths: 1019px at
+   1024, 950 at 1280, 850 at 1440, 805 at 1600, 725 at 1920. It is a height
+   defect, so a wider window does not fix it.
+   The wrapper is created in src/views/agent.js, which is fenced to another lane
+   this wave, so the missing height is restored here rather than by giving that
+   element a class of its own. Scoped to the route so the same generic
+   `.data-live-mode` class on the comms page is untouched. */
+body[data-route="agent"] #stage > .view > .data-live-mode {
+  height: 100%;
+  min-height: 0;
+}
+
+/* ---------- the roster ---------- */
+/* THE ROSTER IS BOUNDED, and that is what keeps Chat and Controls on screen.
+   `.agentv` is a fixed-height flex column, so an unbounded roster simply pushes
+   the panels below the fold -- measured at 1280x800, which is the smallest
+   window this product ships at and exactly where the owner reported CHAT and
+   CONTROLS cut off. The roster is the right thing to bound rather than the
+   panels: it is a list, a list that scrolls is a normal thing, and a control
+   that is half a control is not. So the roster takes a share and scrolls its own
+   overflow, and the panels keep a floor. */
+.agentv-roster {
+  /* THE FLOOR IS THE POINT, and both ways of getting it wrong were measured.
+     `.agentv` is a fixed-height flex column whose content genuinely exceeds the
+     window, so any region left freely shrinkable absorbs the entire shortfall:
+     with `min-height: 0` the roster measured 35px at 1600x900 and 27px at
+     1280x800 -- its header row and ZERO cards -- while every other assertion on
+     this page still passed, because clipped cards keep perfectly good bounding
+     boxes. Pinning it to a fixed 40vh share instead was the opposite failure,
+     greedy rather than collapsing, and pushed the panels 306px past the bottom
+     edge at 1600x900.
+     `flex: 1 1 auto` with a real floor is the shape that works: the roster takes
+     whatever the other three regions leave, generous on a tall window and
+     compact on a short one, but it stops at 150px and scrolls its own overflow
+     rather than continuing down to nothing. */
+  flex: 1 1 auto;
+  min-height: 150px;
+  /* 40% OF THE WINDOW, DIVIDED BY --zoom SO IT STAYS 40% OF IT. The ceiling
+     exists to stop this region pushing the panels below it off the bottom
+     edge (measured at 306px past it, above); a raw viewport unit is not
+     scaled by the body zoom the Text size setting applies while the painted
+     roster is, so at Large the ceiling was worth 44.8vh and gave back 4.8% of
+     the window of the very overrun it was written to prevent. Identical
+     length at Default -- calc(40vh / 1). See --zoom at :root in
+     src/styles.css. */
+  max-height: calc(40vh / var(--zoom, 1));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2, 8px);
+  padding: 16px 18px 18px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  /* AND IT HAS TO LOOK LIKE A SCROLLER, which is the half the reasoning above
+     did not cover. The bound is correct and the panels stay on screen because
+     of it -- but a grid of cards sliced dead flat against the container's
+     bottom edge reads as a rendering fault rather than as "there are more".
+     Twelve agents on the owner's own build showed one full row and a second row
+     cut exactly through the middle of five cards. The fade is the same recipe
+     the pane bar's tree strip already uses for the same reason, and it moves no
+     box, so every geometry harness on this page measures what it measured
+     before. */
+  mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent 100%);
+}
+.ar-head-row {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3, 12px);
+}
+.ar-title {
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 640;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ar-count {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+/* SAID ONCE, ABOVE THE CARDS. That this computer could not be asked which
+   accounts its agents are on is a fact about the computer, not about any agent
+   on it, so it is not repeated twenty times down the roster. It wraps to its
+   own line rather than squeezing the title, because it is a whole sentence. */
+.ar-accounts-note {
+  flex: 1 1 100%;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-4);
+}
+
+/* THE WHOLE COLLISION FIX, IN ONE DECLARATION.
+   `auto-fill` + a `minmax` track means the browser decides how many columns
+   fit and every card gets a real box with real gutters. Nothing is placed at
+   a coordinate, so nothing can be placed on top of anything — at any window
+   size, any zoom, any agent count, and with no code running. The previous
+   layout needed a depth-first search over lane runs to reach a weaker version
+   of this guarantee, and still withheld cards it could not place. */
+.agent-roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+  gap: var(--s3, 12px);
+  align-content: start;
+}
+
+.ar-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;                 /* see .ar-text — grid items default to auto */
+  padding: 13px 14px 14px;
+  text-align: left;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--sheet) 86%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,calc(0.55 * var(--wa)));
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color .2s var(--ease), background .2s var(--ease), transform .12s var(--ease);
+}
+.ar-card:hover {
+  border-color: color-mix(in oklab, var(--rc) 42%, var(--line-2));
+  background: color-mix(in oklab, var(--sheet) 96%, transparent);
+}
+.ar-card:active { transform: scale(0.995); }
+.ar-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+/* The card you asked for. A left rule in the role colour rather than a filled
+   background: this card sits in a grid of its peers and has to read as "the
+   one you named", not as a different kind of object. */
+.ar-card.is-selected {
+  border-color: color-mix(in oklab, var(--rc) 55%, var(--line-2));
+  border-left: 3px solid var(--rc);
+  padding-left: 12px;
+  background: color-mix(in oklab, var(--rc) 6%, var(--sheet));
+}
+
+.ar-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* `min-width: 0` is load-bearing, not defensive. A flex item's default
+   `min-width: auto` refuses to shrink below its longest unbreakable word, so
+   without this a long agent name pushes the card past its grid track and the
+   row overflows sideways — which is the one way a grid CAN produce the
+   overlap this layout exists to prevent. */
+.ar-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ar-name {
+  font-family: var(--font-mono);
+  font-size: 13px;              /* mono-content floor */
+  font-weight: 650;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ar-role {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rc);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* the dial: role colour, minute sweep, no text inside it ever */
+.ar-dial { flex: none; width: 34px; height: 34px; }
+.ar-dial svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ar-dial-track { stroke: var(--line-2); stroke-width: 4; }
+.ar-dial-sweep {
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.9;
+  transition: stroke-dasharray .9s linear;
+}
+.ar-dial[data-running="false"] .ar-dial-sweep { opacity: 0.28; }
+
+/* THE RUNTIME ROW. Full card width, its own line, units inside the value.
+   `16h 27m 58s` cannot be read as a time of day; `16:27:58` under the word
+   RUNTIME very much could, and was. */
+.ar-runtime {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.ar-runtime-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 640;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ar-runtime-value.is-absent {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+/* The verb, carrying the state. Not a dot, not a colour — a stopped agent
+   says "stopped" in words, so the state survives greyscale and colour-blind
+   reading, and a frozen figure is never mistaken for a stalled clock. */
+.ar-runtime-note {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ar-card[data-runtime-state="stopped"] .ar-runtime-value { color: var(--ink-2); }
+.ar-card[data-runtime-state="stopped"] .ar-runtime-note { color: var(--s-warn); }
+
+/* WHICH SIGN-IN THIS AGENT IS SPENDING. A row of the card in normal flow, like
+   every other fact here, so it cannot collide with anything and reserves no
+   space on a card that has no account to name. `min-width: 0` on the name is
+   what lets a long account name ellipsis instead of pushing the card wider
+   than its grid track — the same rule the head row states for itself. */
+.ar-account {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+.ar-account-label {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  flex: 0 0 auto;
+}
+.ar-account-name {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* THE SIGN-IN HAS RUN OUT — words, and colour only as a second copy of them.
+   `flex: 0 0 auto` so this never gets ellipsised: the name beside it is the
+   part that may be shortened, and a mark reading "at its l…" would be worse
+   than none. */
+.ar-account-spent {
+  flex: 0 0 auto;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--warn, #d69a2c);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 1.5;
+}
+
+/* THE STATUS ROW — what used to float above the graph with no tie to its
+   agent. It is inside its agent's own card, so the question the leader lines
+   were drawn to answer does not arise. Clamped so one long sentence cannot
+   make its card taller than the rest of the row. */
+.ar-status {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.ar-status-current {
+  font-family: var(--font-mono);
+  font-size: 13px;              /* mono-content floor */
+  line-height: 1.4;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+.ar-status-previous {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A DESCRIPTION IS NOT A FAULT, and it must not be painted as one.
+   `.write-surface [data-state="unavailable"]` resolves to --s-serious, so the
+   confinement sentences -- an accurate description of a perfectly healthy
+   Guided install -- rendered in alarm red on all three themes. Seen by eye in
+   the screenshots; no assertion could have caught it, because every word was
+   correct. The state is `note`, styled as ordinary ink, so the only red left on
+   this control is the refusal above it, which really is one. */
+.agentv .agent-session-surface [data-action-output][data-state="note"] { color: var(--ink-2); }
+
+/* The measured confinement sentences. Mono, because every fact in them is a
+   fact about this machine, and they sit under a mono form. Never clamped: a
+   sentence about what an agent may do to your disk is not a place to hide the
+   second half behind an ellipsis. */
+.agentv .agent-session-surface [data-action-output] {
+  grid-column: 1 / -1;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- 4. grey mono header strip: name · role · pool · model ------- */
+.agent-strip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;                  /* type floor: mono content >= 13px */
+  letter-spacing: 0.02em;
+  /* --ink-25, not --ink-3: these spans are facts (role · pool · model), and
+     over the page composite --ink-3 measured 4.52:1 on white — no margin. */
+  color: var(--ink-25);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.agent-strip .as-name { color: var(--ink-2); font-weight: 650; }
+.agent-strip .as-sep { color: var(--ink-4); }
+/* On the LIVE page this strip repeated the selected roster card word for word,
+   so it renders nothing there and stays only as the anchor the three write
+   surfaces mount after (see views/agent.js). `[hidden]` on its own would lose
+   to the `display: flex` above — the same trap this stylesheet's sibling
+   records for the rail's buttons — so it is stated. */
+.agent-strip[hidden] { display: none; }
+
+/* ============================================================
+   Chat and Controls, side by side.
+   ============================================================ */
+.agentv-panels-wrap { position: relative; flex: 1 1 auto; min-height: 300px; }
+
+/* SHORT WINDOWS. At 800px of viewport the column has ~698px to spend and the
+   session control alone wants ~190 of it, so the roster's 40vh share and the
+   panels' 300px floor cannot both be paid. The roster yields — one row of cards
+   with its own scrollbar still answers "which agents exist", where a panel
+   showing its title and nothing else answers nothing. Both panels keep their own
+   internal scrollers, so a smaller floor costs reachability nowhere. */
+/* SHORT WINDOWS, and the arithmetic rather than a guess.
+   At 1280x800 the column has 698px to spend. Measured on the real packaged
+   window: the header row wants 34, the strip 23, the session control 307, and
+   the panels 236 — 600 before the roster gets anything, against 698 with four
+   12px gaps to pay. It does not fit, and pretending otherwise is what produced
+   the first attempt at this rule: `flex: 0 1 auto` with `min-height: 0` let the
+   roster absorb the entire shortfall and collapse to 27px, which is its header
+   and no cards at all. A region that shrinks to nothing is worse than a page
+   that scrolls, because nothing on screen says it happened.
+   So the roster gets a FLOOR it cannot be squeezed below, compact cards to make
+   that floor buy a real row, and the page scrolls the remainder. Every region
+   stays a usable size and the scroll is visible. */
+@media (max-height: 960px) {
+  .agentv-roster {
+    flex: 0 0 auto;
+    min-height: 168px;
+    max-height: 204px;
+    padding: 11px 14px 12px;
+  }
+  .agent-roster { grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: var(--s2, 8px); }
+  .ar-card { gap: 7px; padding: 10px 11px 11px; }
+  .ar-card.is-selected { padding-left: 9px; }
+  .ar-dial { width: 28px; height: 28px; }
+  .ar-status { padding-top: 6px; }
+  .ar-status-previous { display: none; }   /* the current line is the one that matters */
+  .agentv-panels-wrap { flex: 0 0 auto; min-height: 236px; }
+}
+/* 520px FLOOR ON THE CHAT COLUMN, per the picked chat card's Panel width
+   (design/chat/picked-card.png "Dense -- light-mode palette"; SIZING LAW,
+   design/chat/Sizes.dc.html: Card 420 / Panel 520 / Full, and a width change
+   may never touch a padding, type size, radius or border -- only which of
+   those three is showing). Undragged, Chat still takes 1.15fr of whatever
+   room is left above 520px; below that the fraction can no longer shrink it
+   and 520px wins, the same way `minmax(0, 1fr)` already protects Controls.
+   Safe at this product's stated 1024x768 desktop floor: this grid is replaced
+   by a single column below the 1000px breakpoint further down this file, and
+   at 1001-1024px window widths the 520px chat floor plus the 8px handle and
+   two 12px gaps still leaves Controls ~400px, not a squeeze that overflows.
+
+   THE NUMBER LIVES HERE ONCE, AS A CUSTOM PROPERTY. src/views/agent.js's
+   attachResizeHandle() call used to carry its own, unrelated `min: 280` --
+   a manual drag could pull the column narrower than this rule ever allows,
+   so the handle and the grid disagreed about the floor. That JS now reads
+   --agentv-chat-floor off this element via getComputedStyle() rather than
+   repeating "520" as a second, driftable literal. Change the number here
+   and the drag floor follows without touching agent.js. */
+.agentv-panels-wrap > .agentv-panels {
+  --agentv-chat-floor: 520px;
+  position: absolute; inset: 0;
+  display: grid;
+  grid-template-columns: minmax(var(--agentv-chat-floor), 1.15fr) auto minmax(0, 1fr);
+  gap: var(--s3, 12px);
+  overflow: visible;
+}
+/* CHAT AND CONTROLS, RESIZABLE. The auto column above is the 8px handle's
+   own lane; undragged it changes nothing about the 1.15fr/1fr split. A drag
+   (or a size restored from one) sets THIS element's grid-template-columns to
+   a fixed px for Chat, `auto` for the handle, `1fr` for Controls -- see
+   attachResizeHandle in src/views/agent.js. */
+.agentv-panels-resize {
+  width: 8px;
+  cursor: col-resize;
+  position: relative;
+  touch-action: none;
+}
+.agentv-panels-resize::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--line-2);
+  transition: background var(--dur-2), width var(--dur-2);
+}
+.agentv-panels-resize:hover::after, .agentv-panels-resize.is-dragging::after {
+  width: 3px;
+  background: var(--c-coordinator);
+}
+.agentv-panels-resize:focus-visible { outline: none; }
+.agentv-panels-resize:focus-visible::after { width: 3px; background: var(--c-coordinator); }
+.agentv-panels .apanel {
+  min-width: 0; min-height: 0;
+  overflow: hidden;                       /* the inner scroller owns the overflow */
+  padding: 20px 26px 24px;
+}
+.agentv-panels .apanel > .rail-scroll,
+.agentv-panels .chat-panel .chat { min-height: 0; }
+.agentv .apanel-title { font-size: 12.5px; margin-bottom: 12px; }
+.agentv .agent-ring-wrap { padding: 10px 0 12px; }
+.agentv .rail-sec { font-size: 12.5px; margin: 26px 0 14px; }
+.agentv .rail-scroll > .rail-sec:first-child { margin-top: 2px; }
+
+/* A NAMED ABSENCE, WHERE THREE INERT SLIDERS USED TO BE.
+ *
+ * `Context budget`, `Wake interval` and `Verbosity` are gone from
+ * src/views/agent.js -- they had no listener, so dragging one moved the thumb
+ * and changed nothing. This is what stands in their place, and it is styled as
+ * QUIET PROSE rather than as disabled controls, which is the same decision
+ * src/board.css section 13 records for the same three sliders on page 2: a
+ * greyed-out slider still looks like a slider that might come back, and there
+ * is nothing here to come back to.
+ *
+ * One idea per line, so it reads as three short statements rather than a
+ * paragraph in a 260px rail. No new colour or font enters: --ink-3 and the
+ * rail's own 12.5px are what every other quiet line on this panel uses. */
+.agentv .ctl-absent {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  margin: 0 2px 8px;
+}
+.agentv .rail-scroll > .ctl-absent:first-child { margin-top: 2px; }
+.agentv .ctl-grid { gap: 10px; }
+.agentv .ctl-row { padding: 11px 2px; gap: var(--s3, 12px); }
+.agentv .ctl-row .cl {
+  font-size: 12.5px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agentv .ctl-row .cv {
+  font-size: 13px;                                      /* mono content */
+  min-width: 4ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.agentv .uring.compact .uring-caption { font-size: 12.5px; }
+.agentv .uring.ctl-ring-sm .uring-digits .n { font-size: 20px; }
+.agentv .uring.ctl-ring-sm .uring-digits .colon { font-size: 15px; padding: 0 2px; transform: translateY(-1px); }
+.agentv .uring.ctl-ring-sm .uring-caption { font-size: 11px; margin-top: var(--s1, 4px); }
+.agentv .chat-head .s { font-size: 13px; }              /* mono content */
+.agentv .msg { font-size: 13px; }                       /* chat content */
+.agentv .msg .who { font-size: 13px; }
+
+/* Controls: a scroller that admits it is one, plus a pinned action row, so a
+   control is never half-visible on the panel's bottom edge. */
+.agentv-panels .ctl-panel .rail-scroll {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: var(--s2, 8px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 44px), rgba(0,0,0,0.42) calc(100% - 30px), rgba(0,0,0,0.10) calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 44px), rgba(0,0,0,0.42) calc(100% - 30px), rgba(0,0,0,0.10) calc(100% - 12px), transparent 100%);
+}
+/* mask-image cannot tween between a gradient and none, so this snaps on
+   purpose rather than pretending to animate */
+.agentv-panels .ctl-panel .rail-scroll.at-end {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.agentv-panels .ctl-panel .rail-scroll::-webkit-scrollbar { width: 6px; }
+.agentv-panels .ctl-panel .rail-scroll::-webkit-scrollbar-track { background: transparent; }
+.agentv-panels .ctl-panel .rail-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb); border-radius: 3px;
+}
+.agentv-panels .ctl-panel .rail-scroll::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+.agentv-panels .ctl-panel > .ctl-actions {
+  flex: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  margin-top: var(--s3, 12px);
+  padding-top: var(--s3, 12px);
+  border-top: 1px solid var(--line);
+}
+.agentv-panels .ctl-actions .ctl-btn {
+  min-width: 0;
+  height: 48px;
+  padding: 5px 6px;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.05;
+}
+.agentv-panels .ctl-actions .ctl-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agentv-panels .ctl-actions .ctl-note {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 550;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+.agentv-panels .ctl-actions .ctl-declared-state {
+  cursor: default;
+  color: var(--ink-2);
+  background: color-mix(in oklab, var(--sheet) 88%, var(--c-coordinator));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,calc(0.75 * var(--wa)));
+}
+.agentv-panels .ctl-actions .ctl-declared-state:hover {
+  color: var(--ink-2);
+  transform: none;
+  background: color-mix(in oklab, var(--sheet) 88%, var(--c-coordinator));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,calc(0.75 * var(--wa)));
+}
+.agentv-panels .ctl-actions button.ctl-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,calc(0.6 * var(--wa)));
+}
+.agentv-panels .ctl-actions button.ctl-btn:disabled:hover {
+  color: var(--ink-2);
+  border-color: rgba(255,255,255,calc(0.85 * var(--wa)));
+  background: rgba(255,255,255,calc(0.62 * var(--wa)));
+  transform: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,calc(0.6 * var(--wa)));
+}
+.agentv-panels .ctl-actions .ctl-btn.is-confirming {
+  color: var(--s-serious);
+  border-color: color-mix(in oklab, var(--s-serious) 48%, var(--sheet));
+  background: color-mix(in oklab, var(--s-serious) 12%, var(--sheet));
+}
+.agentv-panels .ctl-actions button.ctl-btn.is-pending:disabled {
+  opacity: 1;
+  color: var(--s-warn);
+  border-color: color-mix(in oklab, var(--s-warn) 42%, var(--sheet));
+  background: color-mix(in oklab, var(--s-warn) 10%, var(--sheet));
+}
+.agentv-panels .ctl-actions button.ctl-btn.is-success:disabled {
+  opacity: 1;
+  color: var(--s-good);
+  border-color: color-mix(in oklab, var(--s-good) 42%, var(--sheet));
+  background: color-mix(in oklab, var(--s-good) 10%, var(--sheet));
+}
+.agentv-panels .ctl-panel > .ctl-result {
+  flex: none;
+  min-height: 30px;
+  padding: 7px 2px 0;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.agentv-panels .ctl-result[data-phase="confirm"],
+.agentv-panels .ctl-result[data-phase="refused"] { color: var(--s-serious); }
+.agentv-panels .ctl-result[data-phase="pending"],
+.agentv-panels .ctl-result[data-phase="retry"] { color: var(--s-warn); }
+.agentv-panels .ctl-result[data-phase="success"] { color: var(--s-good); }
+
+/* ---------- narrow windows ----------
+   The roster reflows on its own (auto-fill), so only the panel pair needs a
+   breakpoint: below ~1000px two columns stop being two readable columns. */
+@media (max-width: 1000px) {
+  .agentv-panels-wrap > .agentv-panels {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(260px, auto);
+    overflow-y: auto;
+  }
+  /* No side-by-side boundary to drag once the pair stacks. */
+  .agentv-panels-resize { display: none; }
+}
+@media (max-width: 640px) {
+  .agent-roster { grid-template-columns: minmax(0, 1fr); }
+}

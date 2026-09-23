@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en" data-theme="white">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Research report regression fixture</title></head>
+<body>
+<main class="research" style="max-width:1480px;margin:40px auto;padding:24px">
+  <h1>Research report · isolated test records</h1>
+  <p class="research-observed-empty">Renderer regression fixture. These are synthetic records, not a completed study or LIVE evidence.</p>
+  <section id="report" class="research-results-exp"></section>
+  <div id="chart" style="height:220px;margin-top:24px"></div>
+</main>
+<script type="module">
+  import '../../../src/styles.css'
+  import '../../../src/theme-refinements.css'
+  import { researchView, serviceResultsTableMarkup } from '../../../src/views/research.js'
+  import { resultTableModel, resultsExport, chartableColumn } from '../../../src/research-runs.js'
+  import { buildExperiment, parseExperimentsRow } from '../../../src/research-experiments.js'
+  import { createResultChart, chartRows } from '../../../src/research-result-charts.js'
+  const task = evidenceStatus => ({status:'succeeded',result:evidenceStatus ? {evidenceStatus} : {}})
+  const runs = [
+    {runId:'fixture-collected',params:{score:5,status:'input A'},task:task('collected')},
+    {runId:'fixture-dispatch',params:{score:7,status:'input B'},task:task('dispatch-only')},
+    {runId:'fixture-execution',params:{score:9,status:'input C'},task:task('execution-only')},
+    {runId:'fixture-legacy',params:{score:11,status:'input D'},task:task()},
+  ]
+  const schema={fields:{score:'number',status:'string',okay:'boolean'}}
+  const model=resultTableModel({runs,resultSchema:schema,resultsByRun:new Map([
+    ['fixture-collected',{ok:true,results:[{resultId:'fixture-result',recordKind:'summary',recordHash:'1'.repeat(64),artifactPath:'attempt-2/out.json',record:{score:99,status:'reported A',okay:false}}]}],
+    ['fixture-dispatch',{ok:true,results:[]}],
+    ['fixture-execution',{ok:true,results:[]}],
+    ['fixture-legacy',{ok:false,reason:'Synthetic read refusal: preserved, not replaced with zero records'}],
+  ])})
+  document.querySelector('#report').innerHTML=serviceResultsTableMarkup(model)
+  const column=chartableColumn(model,schema)
+  let chart=createResultChart(document.querySelector('#chart'),{model,column})
+  window.researchReport={
+    mount(theme){document.documentElement.dataset.theme=theme;chart?.destroy();chart=createResultChart(document.querySelector('#chart'),{model,column});return this.measure()},
+    measure(){return {headers:[...document.querySelectorAll('th')].map(n=>n.textContent),rows:[...document.querySelectorAll('tbody tr')].map(row=>[...row.cells].map(n=>n.textContent)),evidence:[...document.querySelectorAll('[data-research-evidence]')].map(n=>n.dataset.researchEvidence),chart:chartRows(model,column),json:JSON.parse(resultsExport(model,'json')),overflow:document.documentElement.scrollWidth>innerWidth}},
+  }
+  // Actual designer controls over an in-page synthetic account. Every fetch
+  // is answered here; the fixture cannot reach LIVE or run a provider.
+  window.researchReport.checkDesigner = async () => {
+    const originalFetch = window.fetch
+    const syntheticRunner = { kind:'process', command:'not-executed', args:['','  exact argument  '], stdin:'params-json',
+      pinnedFiles:[{path:'C:\\synthetic-declared-input.txt',sha256:'a'.repeat(64)}], futureReceiptSettings:{retain:true} }
+    const built = buildExperiment({name:'Synthetic designer',axes:[{id:'sample',values:['1']}],runner:syntheticRunner,runsPerCell:1},{experiments:[]})
+    const rows = new Map([['research_experiments',built.serialized]])
+    let writes=0, view
+    const refused=[]
+    const ensure=(condition,reason)=>{if(!condition)throw Error(reason)}
+    const settle=()=>new Promise(resolve=>setTimeout(resolve,30))
+    window.mcShell={getBridgeProof:async()=>({ok:true,proof:'synthetic-proof'.padEnd(43,'0')}),getBridgeEndpoint:async()=>({ok:true,baseUrl:location.origin,pid:1})}
+    window.mcAccount={getSetting:async key=>({ok:true,key,value:rows.get(key)??null}),putSetting:async(key,value)=>{writes++;rows.set(key,value);return {ok:true}}}
+    window.fetch=async input=>{
+      const url=String(input),answer=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}})
+      if(url.endsWith('/v1/runtime'))return answer({ok:true,baseUrl:location.origin,port:Number(location.port),startedAt:'2026-09-04T00:00:00.000Z',pid:1})
+      if(url.includes('/v1/bootstrap'))return answer({ok:true,token:'synthetic-fixture-token'})
+      if(url.endsWith('/v1/actions/research-snapshot'))return answer({ok:true,receipt:{projects:[],experiments:{},assignments:[],settings:{},lifecycle:{}}})
+      if(url.endsWith('/data/research-queue.json'))return answer({schemaVersion:1,items:[]})
+      return answer({error:{message:'Synthetic fixture: request not supported'}},503)
+    }
+    try {
+      view=researchView();document.body.append(view.el)
+      for(let i=0;i<100&&!view.el.querySelector('[data-exp-duplicate]');i++)await settle()
+      ensure(view.el.querySelector('[data-exp-duplicate]'),'The real designer did not load the synthetic account row')
+      view.el.querySelector('[data-exp-duplicate]').click()
+      let form=view.el.querySelector('[data-exp-form]')
+      ensure(form.querySelector('[data-pin-path]').value===syntheticRunner.pinnedFiles[0].path,'Duplicate lost the pinned path')
+      ensure(JSON.parse(form.elements.runnerOptions.value).futureReceiptSettings.retain,'Duplicate hid the receipt settings')
+      ensure(!form.querySelector('[data-pinned-inputs]').hidden,'Process pins are not visible')
+      form.elements.name.value='Synthetic copied design';form.requestSubmit();await settle()
+      ensure(writes===1,'The real Save control did not persist exactly one account row')
+      const saved=parseExperimentsRow(rows.get('research_experiments')).experiments.at(-1)
+      ensure(Object.keys(saved.runner).length===Object.keys(syntheticRunner).length,'Save changed the runner fields')
+      for(const [key,value] of Object.entries(syntheticRunner))ensure(JSON.stringify(saved.runner[key])===JSON.stringify(value),`Save changed ${key}`)
+      view.el.querySelector('[data-exp-duplicate]').click();form=view.el.querySelector('[data-exp-form]')
+      form.elements.runnerOptions.value='';form.elements.runnerOptions.dispatchEvent(new Event('input',{bubbles:true}))
+      for(const kind of ['http','agent']) {
+        form.elements.runnerKind.value=kind;form.elements.runnerKind.dispatchEvent(new Event('change',{bubbles:true}))
+        form.elements.runnerDetail.value=kind==='http'?'https://example.invalid':'Synthetic task.'
+        form.requestSubmit();await settle()
+        ensure(writes===1,`Pins were saved under ${kind}`)
+        ensure(!form.querySelector('[data-pinned-inputs]').hidden,'Incompatible pins were hidden instead of removable')
+        const sentence=form.querySelector('[data-exp-form-status]').textContent
+        ensure(sentence.includes('Pinned inputs are supported only'),sentence)
+        refused.push(kind)
+      }
+      return {writes,pins:saved.runner.pinnedFiles.length,stdin:saved.runner.stdin,args:saved.runner.args,receiptSettings:saved.runner.futureReceiptSettings,refused}
+    } finally {view?.destroy();view?.el.remove();window.fetch=originalFetch;delete window.mcShell;delete window.mcAccount}
+  }
+  window.researchReportReady=true
+</script>
+</body>
+</html>

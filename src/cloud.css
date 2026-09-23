@@ -1,0 +1,292 @@
+/* Codex Cloud.
+ *
+ * Deliberately small. The launch form and the board box are built from the
+ * write-surface and board-box vocabularies that already exist, so the only new
+ * rules here are for the one thing neither vocabulary has: a list of remote
+ * tasks with a state on each row. Adding a second visual language for "an agent
+ * that happens to run elsewhere" would have been the strongest possible signal
+ * that it is a different kind of thing, which is exactly what it is not.
+ *
+ * Every colour is a token. --s-good / --s-serious are the same two the write
+ * surfaces use for confirmed and refused, so a finished cloud task and a
+ * confirmed local action read the same, and nothing here needs a per-theme rule.
+ */
+
+/* ---- the reading column, and where its dead space came from ----
+ *
+ * MEASURED, not guessed. `.write-surface-grid` stretches both of its children
+ * to the height of the taller one, so the task column is as tall as the launch
+ * form whether or not it has anything in it. Its own rows are auto-sized, and a
+ * grid whose `align-content` is left at `normal` STRETCHES auto rows to fill the
+ * box — so every one of those four rows absorbed a quarter of the surplus. At
+ * 1920 that put ~80px between a heading, a button and two status lines that
+ * together need about 90px, which is the "large dead gaps" in the owner's
+ * screenshot. `align-content: start` is the whole fix: the column keeps its
+ * height, the rows keep theirs, and the difference is left at the bottom where
+ * empty space belongs.
+ *
+ * It is also NOT A FORM — a heading, a status line and a list — so it does not
+ * inherit the launch form's two-column, bottom-aligned track either. */
+.cloud-surface .cloud-list {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  align-content: start;
+  gap: var(--s2);
+}
+
+/* Refresh belongs ON the title row: it is the verb for the thing the title
+   names. Below it, in the left half of a two-column grid, it read as a lone
+   button in an empty column. */
+.cloud-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.cloud-surface .cloud-list-head button { flex: none; }
+
+/* The switched-off panel states one thing, so it is one column of text at a
+   readable measure rather than a half-width block with an empty half beside it.
+   Same treatment its neighbour on this page already has. */
+.cloud-surface[data-cloud-off] .write-form { align-content: start; }
+.cloud-surface[data-cloud-off] [data-cloud-off-reason] { max-width: 68ch; }
+/* `margin-left: auto` is right for the board box's header row and wrong inside
+   a grid cell, where it pushes the switch to the far edge of the column. */
+.cloud-surface[data-cloud-off] .cloud-enable { margin-left: 0; justify-self: start; }
+
+.cloud-task-list {
+  grid-column: 1 / -1;
+  max-height: 260px;
+  overflow: auto;
+  margin: var(--s1) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1px;
+  align-content: start;
+}
+
+.cloud-task {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px var(--s2);
+  padding: var(--s1) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.cloud-task-state {
+  grid-row: 1 / 3;
+  font: 620 11px/1.4 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* The four honest outcomes, plus the two the product must never dress up.
+   `unknown` is deliberately NOT painted as a fault: a task the searched window
+   did not contain is not a failure, and colouring it like one would push people
+   to relaunch work that is very likely already running. */
+.cloud-task-state[data-tone="good"] { color: var(--s-good); }
+.cloud-task-state[data-tone="bad"] { color: var(--s-serious); }
+.cloud-task-state[data-tone="pending"] { color: var(--ink-2); }
+.cloud-task-state[data-tone="unknown"] { color: var(--ink-3); }
+
+.cloud-task-title {
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.cloud-task-meta {
+  grid-column: 2;
+  font: 11.5px/1.45 var(--font-mono);
+  color: var(--ink-4);
+  overflow-wrap: anywhere;
+}
+
+/* The board box reuses .ctl-field, which sizes its own controls; a textarea is
+   the one control the rail has never carried, so it gets the matching rule
+   rather than an inline style. */
+.board-cloud-box .ctl-textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: 12.5px/1.4 var(--font-mono);
+  resize: vertical;
+}
+
+.board-cloud-box .ctl-cloud-prompt { align-items: start; }
+.board-cloud-box .cloud-env { width: 100%; font-family: var(--font-mono); }
+.board-cloud-box .cloud-task-list { max-height: 200px; }
+
+/* The binding line and the watch line are the same kind of thing -- a sentence
+   about state, in the meta voice the task rows already use -- so they share it
+   rather than inventing a third. */
+.cloud-binding,
+.cloud-watch {
+  grid-column: 1 / -1;
+  font: 11.5px/1.5 var(--font-mono);
+  color: var(--ink-4);
+  overflow-wrap: anywhere;
+}
+
+.cloud-watch[data-state="confirmed"] { color: var(--s-good); }
+.cloud-watch[data-state="refused"] { color: var(--s-serious); }
+
+/* THE RECEIPT IS BORDERED AND QUIET ON PURPOSE. It is the one region of this
+   surface that never changes after it appears, and it has to read that way: a
+   record, not a status. The status that does change sits below it. */
+.cloud-receipt {
+  grid-column: 1 / -1;
+  margin-top: var(--s1);
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+}
+
+.cloud-receipt-title {
+  display: block;
+  font: 620 11px/1.4 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: var(--s1);
+}
+
+.cloud-receipt-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1px;
+}
+
+.cloud-receipt-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 128px) minmax(0, 1fr);
+  gap: var(--s2);
+  align-items: baseline;
+}
+
+.cloud-receipt-k { font: 11px/1.5 var(--font-mono); color: var(--ink-4); }
+.cloud-receipt-v { font: 11.5px/1.5 var(--font-mono); color: var(--ink-2); overflow-wrap: anywhere; }
+
+/* ---- getting a finished task's work back ----
+ *
+ * The control sits in the row's second column, under the task's own meta line,
+ * because it belongs to that task and to no other. It is deliberately quiet:
+ * it reads, it spends nothing, and a loud button next to a launch that costs
+ * money would be the wrong thing shouting.
+ */
+.cloud-get {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: 2px;
+  padding: 2px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-2);
+  font: 11.5px/1.4 var(--font-mono);
+  cursor: pointer;
+}
+
+.cloud-get:hover:not(:disabled) { border-color: var(--ink-3); color: var(--ink); }
+.cloud-get:disabled { color: var(--ink-4); cursor: default; }
+
+/* The answer. Bordered like the receipt, because it is the same kind of thing:
+   a record of something that happened elsewhere, not a control. */
+.cloud-diff {
+  grid-column: 1 / -1;
+  margin-top: var(--s2);
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+}
+
+.cloud-diff-title {
+  display: block;
+  font: 620 11px/1.4 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.cloud-diff-note {
+  margin: var(--s1) 0 0;
+  font: 11.5px/1.5 var(--font-mono);
+  color: var(--ink-4);
+  overflow-wrap: anywhere;
+}
+
+/* THE THREE ANSWERS ARE THREE COLOURS, and "changed nothing" is NOT one of the
+   loud ones: a task that changed no files is a real answer and painting it red
+   would push somebody to relaunch work that already ran. A truncated diff gets
+   the warning colour on its own, because it is the one case where the text on
+   screen looks complete and is not. */
+.cloud-diff[data-state="confirmed"] .cloud-diff-note { color: var(--s-good); }
+.cloud-diff[data-state="partial"] { border-color: var(--s-warn); }
+.cloud-diff[data-state="partial"] .cloud-diff-note { color: var(--s-warn); }
+.cloud-diff[data-state="refused"] .cloud-diff-note { color: var(--s-serious); }
+
+/* The diff itself scrolls in both directions and is never reflowed. A wrapped
+   diff is not a diff: the line a person is checking has to stay one line. */
+.cloud-diff-text {
+  margin: var(--s1) 0 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg-2, transparent);
+  color: var(--ink-2);
+  font: 11.5px/1.5 var(--font-mono);
+  white-space: pre;
+  tab-size: 4;
+}
+
+.board-cloud-box .cloud-diff-text { max-height: 220px; }
+
+/* The switch a switched-off panel offers, so the feature can be found and
+   turned on from where it lives instead of only from Settings. */
+.cloud-enable {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-2);
+  font: 11.5px/1.4 var(--font-mono);
+  cursor: pointer;
+}
+
+.cloud-enable:hover { border-color: var(--ink-3); color: var(--ink); }
+
+.board-cloud-box .ctl-select { width: 100%; min-width: 0; font-family: var(--font-mono); }
+
+/* "Not now" is the second half of the two-step launch and must vanish the moment
+   there is nothing armed. MEASURED on a real launched window: it did not --
+   `hidden` loses to the display rule the rail's buttons carry, so the panel kept
+   offering a way to cancel something that had already been sent, which is the
+   one thing this surface must never appear to offer. The same trap is recorded
+   in home.css for the uptime digits; stating it is the fix in both places. */
+.board-cloud-box .ctl-btn[hidden],
+.cloud-surface .write-form button[hidden] { display: none; }
+
+/* The armed state of the two-step launch. Same treatment the terminate control
+   uses for its confirm phase, so "select again to confirm" looks the same
+   wherever the product asks it. */
+.cloud-surface .write-form button.is-confirming,
+.board-cloud-box .ctl-btn.is-confirming {
+  border-color: var(--s-serious);
+  color: var(--s-serious);
+}

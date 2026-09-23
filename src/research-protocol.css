@@ -1,0 +1,111 @@
+/* Grouped protocol options. Hairlines, neutral theme tokens and compact
+   controls; detailed registered wording is available on demand.
+   .benchmark-builder styles label/button at (0,1,1) and `label > input` at
+   (0,2,2); compact rules here carry a class or a data hook to win. */
+.protocol-editor { color: var(--ink); margin-bottom: 18px; }
+.proto-head { margin: 4px 0 10px; }
+.proto-head h3 { margin: 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.protocol-editor .proto-intro { margin: 0 0 10px; max-width: 86ch; }
+.proto-hint { margin: 6px 0; max-width: 90ch; color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
+.proto-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 0; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
+.proto-count { margin-right: 6px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.proto-count b { font-size: 16px; font-weight: 650; color: var(--ink); }
+.protocol-editor button.proto-small { min-height: 0; padding: 3px 9px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+
+/* sections */
+.protocol-editor details.proto-section { margin: 0; border-bottom: 1px solid var(--line-2); }
+.protocol-editor details.proto-section > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 12px 0; cursor: pointer; list-style: none; }
+.protocol-editor details.proto-section > summary::-webkit-details-marker { display: none; }
+.protocol-editor details.proto-section > summary::before { content: '▸'; flex: 0 0 auto; width: 12px; color: var(--ink-3); font-size: 12px; }
+.protocol-editor details.proto-section[open] > summary::before { content: '▾'; }
+.proto-section-title { font-size: 16px; font-weight: 650; }
+.proto-meta { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.proto-section-tools { margin: 4px 0 14px; }
+.proto-section-tools button { margin: 6px 6px 0 0; }
+.protocol-editor summary { cursor: pointer; }
+.protocol-editor details.proto-examples { margin: 10px 0; font-size: 13px; }
+.proto-group { margin: 16px 0; }
+.protocol-editor .proto-group h4 { margin: 0 0 4px; font-size: 14px; }
+.proto-fields { display: grid; gap: 0 24px; margin: 0 0 12px; border-top: 1px solid var(--line); }
+.protocol-editor .proto-policy > label { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+.protocol-editor .proto-policy > select { width: auto; max-width: 100%; min-height: 0; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+.protocol-editor .proto-policy > details { margin: 8px 0; font-size: 13px; }
+.proto-policy > details > .proto-fields { margin-top: 8px; }
+
+/* one decision */
+.proto-field { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.proto-field-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.protocol-editor .proto-field-head label { display: inline; margin: 0; font-size: 14px; font-weight: 500; color: var(--ink); }
+.protocol-editor .proto-field-head label.proto-check { display: inline-flex; flex-direction: row; align-items: flex-start; gap: 8px; }
+.protocol-editor .proto-check > input { flex: 0 0 auto; width: auto; min-height: 0; margin: 3px 0 0; accent-color: var(--ink); }
+.proto-control { min-width: 0; max-width: 100%; width: 100%; }
+.protocol-editor .proto-field-details { width: 100%; margin: 0; font-size: 12px; color: var(--ink-2); }
+.protocol-editor .proto-field-details > summary { padding: 2px 0; color: var(--ink-3); }
+.proto-field-details .proto-selected { font-size: 13px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.proto-field-details .proto-hint { font-size: 12px; }
+.proto-state { color: var(--ink-3); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+.proto-origin { display: inline-block; padding: 1px 7px; border: 1px solid var(--line-2); border-radius: 999px; font-size: 11.5px; color: var(--ink-2); line-height: 1.5; white-space: nowrap; }
+.proto-origin[data-origin="owner"] { border-color: var(--ink); color: var(--ink); }
+.proto-origin[data-origin="proposal"], .proto-origin[data-origin="assumed"] { border-style: dashed; }
+.proto-previous { margin: 12px 0; padding: 10px 0; border-bottom: 1px solid var(--line-2); }
+.proto-previous summary { cursor: pointer; }
+.proto-previous dt { margin-top: 10px; font-weight: 600; }
+.proto-previous dd { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.protocol-editor .proto-legend { margin: 8px 0 0; max-width: 100ch; color: var(--ink-3); font-size: 12.5px; line-height: 1.7; }
+.protocol-editor .proto-source { margin: 0; max-width: 90ch; color: var(--ink-3); font-size: 12px; line-height: 1.45; font-style: italic; }
+.proto-field.is-decided .proto-state { color: var(--ink); }
+.protocol-editor .proto-control > select, .protocol-editor .proto-control > input, .protocol-editor .proto-number > input { min-height: 0; width: auto; min-width: 0; max-width: 100%; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+.protocol-editor .proto-control > select { max-width: 100%; }
+.protocol-editor .proto-control > input { width: min(100%, 640px); }
+.protocol-editor .proto-number > input { width: 130px; }
+.proto-number { display: inline-flex; align-items: center; gap: 8px; }
+.proto-unit { color: var(--ink-2); font-size: 13.5px; }
+.protocol-editor .proto-control > textarea { min-height: 0; width: min(100%, 860px); padding: 6px 8px; font-size: 14px; font-family: var(--font-ui); line-height: 1.5; }
+.proto-lb { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-top: 2px; }
+.proto-lb-value { color: var(--ink-2); font-size: 13px; line-height: 1.45; max-width: 90ch; }
+.protocol-editor .proto-why { margin: 0; max-width: 90ch; color: var(--ink-3); font-size: 12.5px; line-height: 1.45; }
+@media (min-width: 1100px) {
+  .proto-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* notes and preview */
+.proto-notes, .proto-preview { padding: 14px 0 4px; border-bottom: 1px solid var(--line-2); }
+.protocol-editor h4 { margin: 0 0 4px; font-size: 15px; font-weight: 650; }
+.protocol-editor .proto-notes textarea { width: 100%; min-height: 0; font-size: 14px; font-family: var(--font-ui); line-height: 1.5; }
+.protocol-editor .proto-preview pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; max-height: 420px; overflow: auto; font-size: 12.5px; line-height: 1.5; color: var(--ink-2); }
+
+/* the pipeline rows */
+.pipeline-editor { margin: 6px 0 18px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.pipe-head h3 { margin: 0 0 4px; font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
+.pipeline-editor .pipe-intro, .pipeline-editor .pipe-hint { margin: 4px 0 10px; max-width: 90ch; color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
+.pipeline-editor label.pipe-field { gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.pipeline-editor label.pipe-field > input, .pipeline-editor label.pipe-field > select { min-height: 0; width: auto; min-width: 0; max-width: 100%; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+.pipeline-editor label.pipe-field > input[data-pipe-root], .pipeline-editor label.pipe-field > input[data-pipe-exe] { width: min(100%, 520px); }
+.pipeline-editor label.pipe-field > input[data-pipe-model] { width: 220px; }
+.pipe-meta { margin-left: 8px; font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
+.pipe-rows { list-style: none; margin: 8px 0; padding: 0; border-top: 1px solid var(--line-2); }
+.pipe-rows > li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pipe-rows > li.pipe-hint { margin: 0; }
+.pipe-row-line { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; }
+.pipe-index { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-bottom: 4px; border: 1px solid var(--ink-2); border-radius: 50%; font-family: var(--font-mono); font-size: 12px; }
+.pipe-efforts { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; padding-bottom: 6px; }
+.pipeline-editor label.pipe-tick { display: flex; flex-direction: row; align-items: center; gap: 6px; padding-bottom: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink); }
+.pipeline-editor label.pipe-tick > input { min-height: 0; margin: 0; }
+.pipeline-editor .pipe-exe { margin-top: 6px; }
+.pipeline-editor button.pipe-small { min-height: 0; padding: 3px 9px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+.pipeline-editor button.pipe-drop { margin-left: auto; margin-bottom: 4px; padding: 1px 7px; font-size: 14px; color: var(--ink-3); border-color: transparent; }
+.pipeline-editor button.pipe-drop:hover:not(:disabled) { color: var(--ink); border-color: var(--line-2); }
+.pipe-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.pipeline-editor .pipe-preview { margin: 6px 0; max-width: 100ch; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.pipeline-editor .pipe-preview b { font-size: 16px; font-weight: 650; color: var(--ink); }
+.pipeline-editor .bench-primary { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; }
+.pipeline-editor .bench-primary:disabled { background: transparent; color: var(--ink-3); border-color: var(--line-2); opacity: 1; }
+.pipe-judges-head { margin-top: 18px; }
+.pipe-judges-head h4 { margin: 0 0 4px; font-size: 16px; font-weight: 650; }
+.pipeline-editor label.pipe-field > input[data-pipe-judge-count] { width: 110px; min-width: 0; }
+.pipeline-editor label.pipe-field > input[data-pipe-judge-model] { width: 220px; }
+.pipeline-editor label.pipe-field > input[data-pipe-judge-exe] { width: min(100%, 520px); }
+.pipeline-editor .pipe-prompt { margin-top: 6px; }
+.pipeline-editor .pipe-prompt > textarea { width: min(100%, 720px); min-height: 96px; padding: 6px 8px; font: inherit; font-size: 14px; font-weight: 400; color: var(--ink); resize: vertical; }
+.pipeline-editor .pipe-warn { display: block; margin-top: 4px; font-size: 13.5px; color: var(--ink); }
+.pipeline-editor .pipe-warn::before { content: "Check: "; font-weight: 650; }

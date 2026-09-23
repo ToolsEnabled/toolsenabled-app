@@ -1,0 +1,1285 @@
+/* Settings is a bare clinical register: headings, whitespace and hairlines.
+   Only the existing control skins are allowed to form enclosed surfaces. */
+
+.drawer .drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The drawer's two registers (R1520): the page group first, the app-wide
+   appearance group under it, separated by the same hairline the head uses.
+   Group heads are the app's 11px caps micro-label role. */
+.drawer-group { display: flex; flex-direction: column; gap: var(--s4); }
+.drawer-group + .drawer-group {
+  margin-top: var(--s2);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line);
+}
+.drawer-group-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 640;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  color: var(--ink-3);
+}
+/* the honest line for a page with no page-specific settings — prose, 13px floor */
+.drawer-page-empty { font-size: 13px; color: var(--ink-3); line-height: 1.65; }
+
+/* THE DESKTOP HAD NO HIT FLOOR IN THIS PANEL, AND THREE OF ITS CONTROLS WERE
+   UNDER IT.
+ *
+ * MEASURED with a real browser at 1366x768 on four routes (2026-08-27): the
+ * risk disclosures' summary lines were 16px tall, the glow slider's box 22px,
+ * and "Tools your assistants may use" — an anchor whose children are two
+ * inline spans — 17px. A phone has been protected since the canvas landed
+ * (src/phone-canvas.css raises every button, input, summary and link in phone
+ * mode to 44px, and it wins here because it carries !important), so the floor
+ * that was missing was the desktop one.
+ *
+ * --s5 IS 24px AND IS THE EXISTING SCALE. No new size token is introduced, and
+ * nothing that already clears the floor moves: min-height cannot shrink a box,
+ * and every control in this panel above 24px (the segments at 29, the toggles
+ * at 24) keeps the height it was tuned to.
+ *
+ * SCOPED TO THE DRAWER. `.guided-summary` and `.set-row` also appear on the
+ * settings page, which is a different column with its own measured rhythm;
+ * this pass drove the drawer, so this pass raises the drawer. */
+.drawer .drawer-body .guided-summary,
+.drawer .drawer-body .set-row.set-link,
+.drawer .drawer-body input[type="range"] {
+  min-height: var(--s5);
+}
+/* A summary is an inline-flex baseline row; given a taller box its text would
+   otherwise sit against the top edge of the new height. */
+.drawer .drawer-body .guided-summary { align-items: center; }
+/* The door is a two-span row, so its own box has to be the target rather than
+   the text inside it. */
+.drawer .drawer-body .set-row.set-link { align-items: center; }
+
+/* THE QUICK MOVE (R1520: "with a quick move to settings page"). This was a
+   13px ink-3 text line a cold reader could take for a caption; the owner asked
+   for a clearly visible action, so it now wears the app's segmented-control
+   skin (--seg-bg trough) as a full-width pressable row, pinned under the
+   scrolling body.
+
+   IT IS A REAL FOOTER NOW: edge to edge, its own hairline on top, mirroring
+   the head's hairline below the title. It used to float on margins with the
+   scroll fold running invisibly along its top — and whatever control the fold
+   happened to slice (the desktop press-through, 2026-08-27, caught the Glow
+   slider showing one sliver of knob) read as hidden BEHIND this bar rather
+   than as scrolled under it. A hairline names the fold; content cut at a
+   drawn edge reads as continuing, the way it does under the drawer head. */
+.drawer .drawer-all {
+  flex: none;
+  display: block;
+  margin: 0;
+  padding: var(--s3);
+  text-align: center;
+  background: var(--seg-bg);
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 640;
+  text-decoration: none;
+  transition: color var(--dur-2) var(--ease), background var(--dur-2) var(--ease);
+}
+
+/* AN AUTHOR `display` BEATS THE hidden ATTRIBUTE'S OWN RULE, and this footer
+   was the second place in this sheet to be caught by it — the first is
+   `.settings-rail-sections[hidden]` a few rules down, fixed the same way after
+   the same kind of screenshot.
+ *
+ * src/main.js sets `allSettings.hidden = route === 'settings'` and says why in
+ * full: "A door out of a room you are standing in is not a door." MEASURED on
+ * #/settings, 2026-08-27, with a real browser: `hidden` was true, the computed
+ * display was still `block`, the bar drew at 318x43 across the foot of the
+ * panel, and elementFromPoint at its centre answered `.drawer-all` — a link to
+ * the page underneath, live and pressable, on the one route where the app had
+ * decided it must not be. `display: block` above is (0,2,0) and the UA's
+ * `[hidden] { display: none }` is (0,0,1), so the intent never reached the
+ * screen. The guard is the same specificity plus the attribute, so it wins
+ * wherever the rule above applies and nowhere else. */
+.drawer .drawer-all[hidden] { display: none; }
+
+.drawer .drawer-all:hover { color: var(--ink); background: var(--sheet); }
+.drawer .drawer-all:active { transform: scale(0.98); }
+.drawer .drawer-all:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* A FLOATING NOTICE MUST NOT SIT ON TOP OF THE OPEN DRAWER.
+   The fleet-profile notice is position:fixed at z-index 190, above the drawer's
+   80, pinned to the same bottom-right corner as this "all settings" link. On
+   every route where the notice shows (home hides it; the settings route does
+   not) it painted over the link, so a person who opened the drawer there could
+   not press it -- measured by tools/account-isolation-leak-qa.mjs. The drawer is
+   a modal that takes focus while it is open, so the notice has nothing to add
+   until it closes; it is hidden for exactly that span rather than moved or
+   restyled. */
+body:has(#drawer.open) .fleet-profile-notice { display: none; }
+
+/* AND NOT ON TOP OF THE SETTINGS PAGE EITHER — the notice's own href points at
+   #/settings, so on that route it is a nag standing on its own destination.
+   Measured 2026-08-13 (owner screenshot): it painted over the System section's
+   "Your account" row, semi-transparent, swallowing the row's clicks. Same
+   remedy as the drawer above, same reasoning: on this route it has nothing to
+   add that the page it covers is not already saying. */
+body[data-route="settings"] .fleet-profile-notice { display: none; }
+
+.settings-shell {
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+}
+
+.settings-header.m-head {
+  align-items: center;
+  margin-bottom: calc(var(--s5) + var(--s2));
+  padding-inline: 0;
+}
+
+.settings-header .mt { margin: 0; }
+
+.settings-search {
+  /* 42% OF THE WINDOW, AND STILL 42% AT LARGE. A viewport unit is not scaled
+     by the Text size zoom while the box painted from it is, so this cap was
+     worth 47% of the window at Large and 37.8% at Small -- the one measure
+     here that is supposed to hold steady against the window was the one that
+     moved with the setting. Dividing by --zoom (see the token at :root in
+     src/styles.css) is the same length at Default. */
+  width: min(calc(var(--s5) * 12), calc(42vw / var(--zoom, 1)));
+}
+
+.settings-search input {
+  width: 100%;
+  padding: var(--s2) 0;
+  border: none;
+  border-bottom: 1px solid var(--line-2);
+  outline: none;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.2;
+  transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+
+.settings-search input::placeholder { color: var(--ink-3); }
+.settings-search input:hover { border-bottom-color: var(--ink-3); }
+.settings-search input:focus {
+  color: var(--ink);
+  border-bottom-color: var(--focus-ring);
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: calc(var(--s5) * 6) minmax(0, 1fr);
+  align-items: start;
+  gap: calc(var(--s5) * 2);
+}
+
+.settings-rail {
+  position: sticky;
+  top: var(--s2);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s3);
+}
+
+/* The rail carries both of this screen's levels: the group lines, and the
+   category buttons indented under whichever groups are open. Each of those
+   buttons is a page. */
+.settings-rail-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2);
+}
+
+/* Outranks `.settings-rail button`'s nowrap so a two-word group name wraps
+   instead of ending in an ellipsis -- read off the second screenshot pass.
+   The row is a flex line so the chevron cannot be the part the overflow rule
+   eats: it is this head's only "there is more under here" signal now that the
+   group heads in the main column are gone. */
+.settings-rail .settings-rail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--ink-2);
+  white-space: normal;
+}
+
+.settings-rail-head .settings-reveal-glyph { margin-left: 0; flex: none; }
+
+.settings-rail-sections {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding-left: var(--s3);
+  border-left: 1px solid var(--line-2);
+}
+
+/* An author `display` beats the hidden attribute's own rule, so a closed
+   group's rail list stayed on screen -- read off the first screenshot pass. */
+.settings-rail-sections[hidden] { display: none; }
+
+.settings-rail button {
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  line-height: 1.3;
+  text-align: left;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-2) var(--ease);
+}
+
+.settings-rail button:hover,
+.settings-rail button.is-active { color: var(--ink); }
+.settings-rail button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: var(--s1);
+  border-radius: var(--r-md);
+}
+
+.settings-main { min-width: 0; }
+
+/* ---------- the groups are in the rail, and nowhere else ----------
+ *
+ * Every `.settings-group*` rule that used to live here is gone with the long
+ * document it dressed: the sticky group head, the containment hairline down the
+ * left of a group body, the section list printed on a closed head. The page
+ * draws ONE category, so there is no container on it to draw and nothing above
+ * a section title to out-rank. The nesting a reader still needs -- which group
+ * this category belongs to, and what else is in it -- is the rail, which had
+ * the same two levels all along (see `.settings-rail-group` above). */
+
+.settings-section,
+.settings-results {
+  margin-bottom: calc(var(--s5) * 2);
+  scroll-margin-top: var(--s3);
+}
+
+.settings-section-title {
+  margin: 0 0 var(--s1);
+  padding: 0 0 var(--s2);
+  border-bottom: 1px solid var(--line-2);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 660;
+  letter-spacing: var(--track-caps);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.settings-section-rows,
+.settings-tier-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- #/account: the space between one section and the next ----------
+ *
+ * WHY THIS SCREEN NEEDS A RULE AND #/settings DOES NOT. On the settings page
+ * every section is its own <section class="settings-section">, and that
+ * element's own `margin-bottom: calc(var(--s5) * 2)` is the gap. The account
+ * screen is rendered INTO one .settings-section by src/views/account.js -- all
+ * four of its groups live inside it -- so there is no wrapper to hang the gap
+ * on, and the join between a list and the next heading is the only place left
+ * to put it. Without it the headings draw and the groups still run together,
+ * which is the defect the headings exist to fix.
+ *
+ * --s5, NOT THE SETTINGS PAGE'S 48px. Measured on a real 1002x650 window: this
+ * screen's primary action was already below the fold before any heading was
+ * added, so four joins at 48px would spend 192px this screen does not have.
+ *
+ * SCOPED TO [data-account-section] rather than written as a bare adjacency.
+ * The bare form happens not to match anything on #/settings today -- a title
+ * there is always the first child of its section -- and "happens not to match"
+ * is not a fence.
+ *
+ * `.setup-lede` IS NOT IN THIS LIST. It already carries a var(--s4) tail sized
+ * for whatever follows the page title, and stacking the join on top of that put
+ * 40px between the lede and the screen's first heading -- 24 of them spent
+ * above the fold on the one screen that cannot afford them. */
+[data-account-section] .settings-section-rows + .settings-section-title,
+[data-account-section] .settings-section-note + .settings-section-title,
+[data-account-section] .fleet-profile-status + .settings-section-title,
+[data-account-section] .setup-actions + .settings-section-title {
+  margin-top: var(--s5);
+}
+
+/* A BUTTON THAT CANNOT BE PRESSED HAS TO LOOK LIKE ONE, on the whole screen
+ * and not only on the row a customer happened to report.
+ *
+ * The finding is written up in full beside the Google row's own copy of this
+ * rule in src/fleet-profile-settings.css: a `.ctl-btn` carrying `disabled`
+ * computed `cursor: pointer`, `opacity: 1`, the full .ctl-btn card and --elev-1,
+ * and the unconditional `.ctl-btn:hover` in styles.css still lifted and
+ * brightened it under the pointer -- pixel-for-pixel a live control that eats
+ * the click. Every `.ctl-btn:disabled` rule in the product is scoped to
+ * .board-page, .computers .stats-page, .agentv-panels .ctl-actions or
+ * .fleet-profile-section, and none of those reach this screen.
+ *
+ * THE REST OF THE SCREEN HAS THE SAME HOLE. "Create account", "Sign in" and
+ * "Not now" all render `disabled` while a sign-in is in flight, and so does
+ * "Change", "Change password", both sign-out buttons and the removal control
+ * while the shell is answering. Same values as the Google row's rule, so the
+ * screen is consistent with itself.
+ *
+ * THE :hover TWIN IS NOT REDUNDANT: `.ctl-btn:hover` is unconditional, so
+ * without it a button dimmed by the block above brightens and rises again at
+ * exactly the moment somebody is deciding whether it can be pressed.
+ *
+ * SCOPED TO THIS SCREEN, DELIBERATELY. A bare `.ctl-btn:disabled` would reach
+ * every surface in the product, including ones nobody has looked at. */
+[data-account-section] .ctl-btn:disabled,
+[data-account-section] .ctl-btn:disabled:hover {
+  cursor: not-allowed;
+  opacity: .48;
+  transform: none;
+  box-shadow: none;
+  background: rgba(255,255,255,calc(0.62 * var(--wa)));
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+
+/* ONE ROW ANATOMY: name — state sentence — description — control — disclosure.
+   `align-items: start`, not center, and the disclosure on a full-width grid row
+   of its own, because the centred two-column row moved the control 14-81px
+   under the pointer whenever its guidance text opened mid-press (measured on
+   the driven build). With the control pinned to the row's top and everything
+   that grows placed BELOW it, nothing a pointer is over ever moves. */
+.settings-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--s5) * 9), auto);
+  align-items: start;
+  gap: var(--s2) var(--s5);
+  min-height: calc(var(--s5) * 3);
+  padding-block: var(--s2);
+}
+
+.settings-row > .settings-disclosure {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.settings-row > .settings-disclosure:empty { display: none; }
+
+/* The truth the switch shows, in words, directly under the name. It leads with
+   "On." or "Off." so it can never be read against the control beside it. */
+.settings-state {
+  margin-top: 2px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* One press to the thing this switch gates, instead of working out which page
+   it means and walking the ring to it. */
+.settings-jump {
+  display: inline-block;
+  margin-top: var(--s1);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.settings-jump:hover { color: var(--ink); }
+.settings-jump:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: var(--s1);
+  border-radius: var(--r-md);
+}
+
+.settings-row[hidden] { display: none; }
+.settings-row + .settings-row { margin-top: var(--s1); }
+
+/* THE ROW A LINK SENT SOMEBODY TO. A page with 219 controls scrolled to the
+   right one still looks like a page with 219 controls, so the row that was
+   asked for says so. It is a rule and an inset, not a colour on its own: the
+   accent is the second signal, and the row is already centred in the viewport
+   by the scroll, which is the first.
+   It persists rather than fading. A flash that has finished by the time the eye
+   arrives has told nobody anything, and this row is the answer to a question
+   the person asked one screen ago -- it stays until they render the page some
+   other way.
+   THE GUTTER THE ACCENT HANGS IN IS CLEAR. While the page was one long document
+   the accent landed three pixels from a group body's containment hairline and
+   the two read as one smudged line, so a landed row inside a group drew its
+   accent on its own left edge instead. There is no group body on this page now:
+   the row sits in the main column and this is the whole rule again -- the same
+   one search results and #/account use. */
+.settings-row.is-landed {
+  border-left: 2px solid var(--focus-ring, var(--ink-2));
+  padding-left: var(--s3);
+  margin-left: calc(-1 * var(--s3) - 2px);
+  background: color-mix(in oklab, var(--ink) 4%, transparent);
+  border-radius: var(--r-sm);
+}
+
+.settings-copy { min-width: 0; }
+.settings-name {
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.settings-desc {
+  margin-top: var(--s1);
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* Exact account and vault identifiers keep the product's data voice. Without
+   this rule the browser supplied its own monospace face inside otherwise
+   themed account rows. */
+[data-account-section] code { font-family: var(--font-mono); }
+
+.settings-prefix {
+  margin-bottom: var(--s1);
+  color: var(--ink-25);
+  font-size: 11px;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.settings-row.is-engineer .settings-name {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.settings-control {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/* Diagnostic files (T783): the three explicit actions on one closed file sit
+   together at the row's end and wrap on a narrow window instead of clipping. */
+.diagnostic-file-actions {
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.settings-seg { max-width: 100%; }
+.settings-seg > button { padding-inline: var(--s2); }
+
+/* THE PERMISSION LEVEL SLIDER. Owner, 2026-08-26: "a slider; up and down and
+   the higher up the more protected the more restricted the agents, at the
+   bottom the agents are not at all restricted".
+   It is the same segmented control turned on its side, so every behaviour --
+   focus order, aria-pressed, the handler, the writer, the unrestricted risk
+   gate -- is unchanged and only the axis is new. The rungs are rendered
+   top-to-bottom most-protected-first (setup-profile-settings.js preserves
+   TIER_CHOICES), and the two caps name the ends so the direction cannot be
+   guessed backwards.
+   Square corners: --r-sm/--r-md are the house radii, 3px used 73 times in
+   this stylesheet, and the owner has asked twice for square boxes. */
+.settings-level-slider {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid var(--line-2, #d8dae0);
+  border-radius: var(--r-md, 3px);
+  padding: var(--s1, 6px);
+  min-width: 15rem;
+}
+.settings-level-slider > button {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  justify-content: flex-start;
+  text-align: left;
+  border-radius: var(--r-sm, 2px);
+  padding-block: 0.4rem;
+}
+/* The rung marker: an outline that FILLS at the selected level, so the
+   position reads at a glance without relying on colour alone. */
+.settings-level-slider .level-slider-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border: 1.5px solid currentColor;
+  border-radius: var(--r-sm, 2px);
+  background: transparent;
+}
+.settings-level-slider > button.on .level-slider-dot { background: currentColor; }
+/* The ends, named. Not a legend a person has to decode -- the words sit where
+   the direction they describe actually is. */
+.settings-level-slider .level-slider-cap {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink-3, #6b7280);
+  padding-inline: 0.45rem;
+  padding-block: 0.15rem;
+}
+/* The update-policy control is a bare .seg on purpose (src/update-settings.js
+   says why it must not be a .settings-seg); it takes the same two measures. */
+.update-policy-seg { max-width: 100%; }
+.update-policy-seg > button { padding-inline: var(--s2); }
+.settings-toggle { flex: none; }
+
+.settings-range {
+  display: grid;
+  grid-template-columns: minmax(calc(var(--s5) * 5), calc(var(--s5) * 8)) calc(var(--s5) * 3);
+  align-items: center;
+  justify-content: end;
+  gap: var(--s3);
+  width: 100%;
+}
+
+.settings-range input { width: 100%; }
+.settings-range output,
+.settings-stepper output {
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.settings-stepper {
+  display: inline-grid;
+  grid-template-columns: var(--s5) minmax(calc(var(--s5) * 4), auto) var(--s5);
+  align-items: center;
+  gap: var(--s2);
+}
+
+.settings-stepper button {
+  width: var(--s5);
+  height: var(--s5);
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+
+.settings-stepper button:hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+.settings-stepper button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: var(--s1);
+}
+
+.settings-reveal {
+  display: block;
+  margin-top: var(--s2);
+  padding: var(--s1) 0;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur-2) var(--ease);
+}
+
+.settings-reveal:hover { color: var(--ink); }
+.settings-reveal-glyph {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 14px;
+  line-height: 1;
+  vertical-align: -1px;
+  transition: transform 160ms var(--ease);
+}
+.settings-reveal:hover .settings-reveal-glyph { transform: translateY(2px); }
+body.reduce-motion .settings-reveal-glyph { transition: none; transform: none; }
+.settings-reveal:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: var(--s1);
+  border-radius: var(--r-md);
+}
+
+.settings-tier {
+  position: relative;
+  max-height: 0;
+  margin-left: var(--s3);
+  padding-left: var(--s4);
+  overflow: hidden;
+  border-left: 1px solid var(--line-2);
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--s1)));
+  transition: max-height 220ms var(--ease), opacity 220ms var(--ease), transform 220ms var(--ease);
+}
+
+.settings-tier::before,
+.settings-tier::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: var(--s2);
+  height: 0;
+  border-top: 1px solid var(--line-2);
+}
+
+.settings-tier::before { top: 0; }
+.settings-tier::after { bottom: 0; }
+.settings-tier.is-open {
+  /* AN OPEN TIER IS SIZED BY ITS CONTENTS, NOT BY AN ANIMATION GUESS.
+   *
+   * This read `max-height: 2600px`, and the rule above it sets
+   * `overflow: hidden` so the transition has something to animate. Once a tier
+   * grew past that ceiling the two combined into a clip nothing could undo: the
+   * controls below 2600px were rendered, laid out, and UNREACHABLE -- not
+   * merely below the fold, but outside a container that does not scroll, so no
+   * amount of page scrolling brought them back.
+   *
+   * Measured in a real browser across the app routes: the Settings rail lost
+   * System, Your data, Agents & actions and Appearance & reading at 844x390,
+   * and Research lost More axes and Result columns at every width. A
+   * click-by-selector test passes all of them, because a script does not need a
+   * control on screen to dispatch to it.
+   *
+   * `none` keeps the fence useful while the tier is CLOSED -- which is where
+   * the clip is wanted -- without creating a second, unscrollable viewport once
+   * it is open. Opacity and transform still carry the opening transition, so
+   * nothing about how it looks changes. */
+  max-height: none;
+  opacity: 1;
+  transform: none;
+}
+
+.settings-tier .settings-reveal { margin-left: 0; }
+.settings-empty {
+  padding-block: var(--s4);
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.settings-footer {
+  padding: var(--s3) 0 var(--s5);
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.settings-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+body.reduce-motion .settings-tier {
+  transition: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-tier { transform: none; }
+}
+
+@media (max-width: 760px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+    gap: var(--s5);
+  }
+
+  .settings-rail {
+    top: 0;
+    flex-direction: row;
+    gap: var(--s4);
+    padding: var(--s2) 0;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+
+  .settings-rail button { flex: none; }
+
+  /* On a narrow screen the rail is one scrolling line: a group's sections
+     follow their group inline rather than stacking under it. */
+  .settings-rail-group {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--s4);
+  }
+
+  .settings-rail-sections {
+    flex-direction: row;
+    gap: var(--s4);
+    padding-left: 0;
+    border-left: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .settings-header.m-head {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--s3);
+  }
+
+  .settings-header .spacer { display: none; }
+  .settings-search { width: 100%; }
+  .settings-row {
+    grid-template-columns: 1fr;
+    gap: var(--s3);
+    padding-block: var(--s3);
+  }
+
+  .settings-control { justify-content: flex-start; }
+  .settings-range { justify-content: start; }
+  .settings-tier {
+    margin-left: var(--s2);
+    padding-left: var(--s3);
+  }
+}
+
+/* ---------- the research drawer's tool switches ---------- */
+.drawer-tools { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-2); }
+.drawer-tools-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.drawer-tools-count { font-size: 12px; color: var(--ink-3); }
+.drawer-tools-all { display: flex; gap: 8px; margin: 8px 0; }
+.drawer-tools-all button {
+  padding: 3px 10px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.drawer-tools-all button:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-3); }
+.drawer-tools-all button:disabled { opacity: 0.5; cursor: default; }
+.drawer-tools-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 2px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+}
+.drawer-tools-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.drawer-tools-row:hover { color: var(--ink); }
+.drawer-tools-note { margin: 8px 0 0; font-size: 12px; color: var(--ink-3); }
+
+/* ---------- settings-page reading rhythm ----------
+   The category pages keep their existing navigation, nesting and controls.
+   This layer only gives those pieces a calmer hierarchy: a legible page head,
+   a clear place marker in the rail, and enough containment around a category
+   that its rows can be scanned as one conversation. It is scoped to the page
+   because this sheet is also shared by the account and setup flows. */
+
+.settings-page .settings-shell { padding-bottom: var(--s5); }
+
+.settings-page .settings-header.m-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--s5) * 9), calc(var(--s5) * 15));
+  align-items: center;
+  gap: var(--s4);
+  margin-bottom: var(--s5);
+  padding: var(--s2) 0 var(--s3);
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-page .settings-header .spacer { display: none; }
+
+.settings-page .settings-header .mt {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  text-transform: none;
+}
+
+.settings-page .settings-title-stack {
+  display: grid;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+.settings-page .settings-header-summary {
+  max-width: 54ch;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.settings-page .settings-search { width: 100%; }
+
+.settings-page .settings-search input {
+  box-sizing: border-box;
+  min-height: calc(var(--s5) + var(--s3));
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--sheet) 74%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(0.55 * var(--wa)));
+}
+
+.settings-page .settings-search input:hover {
+  border-bottom-color: var(--line-2);
+  border-color: color-mix(in oklab, var(--ink-3) 52%, var(--line-2));
+}
+
+.settings-page .settings-search input:focus {
+  border-bottom-color: var(--focus-ring);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--focus-ring) 20%, transparent);
+}
+
+.settings-page .settings-layout {
+  grid-template-columns: minmax(calc(var(--s5) * 7), calc(var(--s5) * 9)) minmax(0, 1fr);
+  gap: var(--s5);
+}
+
+.settings-page .settings-rail {
+  top: var(--s3);
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: color-mix(in oklab, var(--sheet) 68%, transparent);
+  box-shadow: var(--elev-1);
+}
+
+.settings-page .settings-rail-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin: 0 0 var(--s1);
+  padding: 0 var(--s2) var(--s2);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-25);
+  font-size: 11px;
+  font-weight: 660;
+  letter-spacing: var(--track-caps);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.settings-page .settings-rail-count {
+  display: grid;
+  min-width: calc(var(--s5) + var(--s1));
+  min-height: calc(var(--s5) + var(--s1));
+  place-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--ink) 3%, var(--sheet));
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-page .settings-rail-group {
+  width: 100%;
+  gap: var(--s1);
+}
+
+.settings-page .settings-rail .settings-rail-head {
+  width: 100%;
+  min-height: calc(var(--s5) + var(--s1));
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-md);
+  color: var(--ink-2);
+}
+
+.settings-page .settings-rail .settings-rail-head:hover,
+.settings-page .settings-rail .settings-rail-head.is-active {
+  background: color-mix(in oklab, var(--ui-accent) 7%, var(--sheet));
+  color: var(--ink);
+}
+
+.settings-page .settings-rail-head .settings-reveal-glyph { margin-left: auto; }
+
+.settings-page .settings-rail-sections {
+  width: 100%;
+  gap: 2px;
+  margin-left: var(--s1);
+  padding-left: var(--s2);
+}
+
+.settings-page .settings-rail button[data-category] {
+  display: block;
+  width: 100%;
+  min-height: calc(var(--s5) + var(--s1));
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-sm);
+  color: var(--ink-3);
+  white-space: normal;
+}
+
+.settings-page .settings-rail button[data-category]:hover {
+  background: color-mix(in oklab, var(--ink) 4%, var(--sheet));
+  color: var(--ink-2);
+}
+
+.settings-page .settings-rail button[data-category].is-active {
+  background: color-mix(in oklab, var(--ui-accent) 12%, var(--sheet));
+  box-shadow: inset 2px 0 0 var(--ui-accent);
+  color: var(--ink);
+}
+
+.settings-page .settings-main-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: 0 0 var(--s2);
+  padding: 0 var(--s2);
+  /* The trail names the group AND the category, so it is long enough to meet
+     the count beside it on a narrow window -- and that count is `nowrap` on
+     purpose. Wrapping is the one of the two that costs nothing. */
+  flex-wrap: wrap;
+}
+
+.settings-page .settings-breadcrumb,
+.settings-page .settings-main-context-copy {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.settings-page .settings-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1);
+  min-width: 0;
+  color: var(--ink-25);
+  font-weight: 660;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+/* The step you are on is the one worth reading twice. */
+.settings-page .settings-breadcrumb [aria-current="page"] { color: var(--ink-2); }
+
+.settings-page .settings-breadcrumb-separator {
+  color: var(--ui-accent);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.settings-page .settings-main-context-copy {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.settings-page .settings-section {
+  margin-bottom: var(--s5);
+  padding: var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: color-mix(in oklab, var(--sheet) 70%, transparent);
+  box-shadow: var(--elev-1);
+}
+
+.settings-page .settings-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0 0 var(--s3);
+  border-bottom-color: var(--line-2);
+  color: var(--ink);
+}
+
+.settings-page .settings-section-title::before {
+  content: "";
+  width: 3px;
+  height: 1.15em;
+  flex: none;
+  border-radius: var(--r-sm);
+  background: var(--ui-accent);
+}
+
+.settings-page .settings-section-note {
+  margin: var(--s3) 0 0;
+  padding: var(--s2) var(--s3);
+  border-left: 2px solid color-mix(in oklab, var(--ui-accent) 58%, var(--line-2));
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: color-mix(in oklab, var(--ui-accent) 5%, var(--sheet));
+}
+
+.settings-page .settings-section .settings-row,
+.settings-page .settings-results > .settings-row {
+  gap: var(--s3) var(--s5);
+  padding: var(--s3) var(--s2);
+  border-radius: var(--r-md);
+  transition: background var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+
+.settings-page .settings-section-rows > .settings-row + .settings-row,
+.settings-page .settings-tier-inner > .settings-row + .settings-row,
+.settings-page .settings-section > .settings-row + .settings-row {
+  margin-top: 0;
+  border-top: 1px solid var(--line);
+}
+
+.settings-page .settings-section .settings-row:hover,
+.settings-page .settings-section .settings-row:focus-within,
+.settings-page .settings-results > .settings-row:hover,
+.settings-page .settings-results > .settings-row:focus-within {
+  background: color-mix(in oklab, var(--ui-accent) 5%, var(--sheet));
+}
+
+.settings-page .settings-copy { max-width: 70ch; }
+
+.settings-page .settings-name {
+  color: var(--ink);
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.settings-page .settings-state {
+  margin-top: var(--s1);
+  color: var(--ink-25);
+  line-height: 1.45;
+}
+
+.settings-page .settings-desc {
+  max-width: 68ch;
+  line-height: 1.55;
+}
+
+.settings-page .settings-control {
+  align-items: flex-start;
+  padding-top: var(--s1);
+}
+
+/* A mounted settings panel is content, not a small control beside a label. */
+.settings-page .settings-section .settings-row.settings-row-wide,
+.settings-page .settings-results > .settings-row.settings-row-wide,
+body[data-navigation="side"] .settings-page .settings-row.settings-row-wide { grid-template-columns: minmax(0, 1fr); }
+.settings-page .settings-row-wide > .settings-control { display: block; width: 100%; }
+.settings-page .settings-row-wide .settings-mount { min-width: 0; }
+
+/* Settings owns the presentation of the reusable profile fields here. The
+   data and event contracts remain in their respective controllers. */
+.settings-page .fleet-profile-input {
+  box-sizing: border-box;
+  min-height: calc(var(--s5) + var(--s3));
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-2);
+  border-bottom-color: var(--line-2);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--sheet) 78%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(0.5 * var(--wa)));
+}
+
+.settings-page .fleet-profile-input:hover {
+  border-bottom-color: var(--line-2);
+  border-color: color-mix(in oklab, var(--ink-3) 52%, var(--line-2));
+}
+
+.settings-page .fleet-profile-input:focus {
+  border-bottom-color: var(--focus-ring);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--focus-ring) 18%, transparent);
+}
+
+.settings-page .fleet-profile-status,
+.settings-page .fleet-profile-probe {
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-left-width: 2px;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: color-mix(in oklab, var(--ink) 2%, var(--sheet));
+}
+
+.settings-page .fleet-profile-empty {
+  margin: var(--s2) 0;
+  padding: var(--s2) var(--s3);
+  border: 1px solid color-mix(in oklab, var(--s-warn) 34%, var(--line-2));
+  border-left: 2px solid var(--s-warn);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: color-mix(in oklab, var(--s-warn) 6%, var(--sheet));
+}
+
+.settings-page .connect-code {
+  box-sizing: border-box;
+  padding-inline: var(--s3);
+  border: 1px solid var(--line-2);
+  border-bottom-color: var(--line-2);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--sheet) 78%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(0.5 * var(--wa)));
+}
+
+.settings-page .settings-reveal {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(var(--s5) + var(--s2));
+  margin-top: var(--s3);
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--seg-bg);
+  color: var(--ink-2);
+}
+
+.settings-page .settings-reveal:hover {
+  border-color: color-mix(in oklab, var(--ink-3) 56%, var(--line-2));
+  background: color-mix(in oklab, var(--sheet) 86%, var(--seg-bg));
+}
+
+.settings-page .settings-tier {
+  margin: var(--s2) 0 0 var(--s2);
+  padding-left: var(--s4);
+  border-left: 2px solid transparent;
+}
+
+.settings-page .settings-tier::before,
+.settings-page .settings-tier::after { display: none; }
+
+.settings-page .settings-tier.is-open {
+  padding: var(--s2) var(--s2) var(--s2) var(--s4);
+  border: 1px solid var(--line);
+  border-left: 2px solid color-mix(in oklab, var(--ui-accent) 54%, var(--line-2));
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: color-mix(in oklab, var(--ui-accent) 4%, var(--sheet));
+}
+
+.settings-page .settings-footer {
+  margin: 0;
+  padding: var(--s4) var(--s2) var(--s5);
+}
+
+@media (max-width: 760px) {
+  .settings-page .settings-header.m-head { grid-template-columns: 1fr; gap: var(--s3); }
+  .settings-page .settings-layout { grid-template-columns: 1fr; gap: var(--s4); }
+  /* THE CARD ABOVE IS A DESKTOP RULE, AND IT HAS TO BE UNDONE HERE BY NAME.
+     `@media` carries no specificity. `.settings-page .settings-rail` is two
+     classes, the narrow-window rule further up this sheet is one, so the card's
+     surface, border, rounding, shadow and tighter gap all won at EVERY width --
+     including the one where this is not a card at all but the full-width bar
+     that carries every category along one scrolling line. Every property the
+     card sets is restated here as the bar, because leaving any of them out is
+     the same leak in a smaller place.
+     `position` is deliberately not among them: at this width the layout is one
+     column, so the rail's grid area is its own height and a sticky rail has
+     nowhere to travel. Whatever it says there is inert, and saying it here
+     would be this file claiming a behaviour it does not have. */
+  .settings-page .settings-rail {
+    top: 0;
+    gap: var(--s4);
+    padding: var(--s2) 0;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--bg);
+    box-shadow: none;
+  }
+  .settings-page .settings-rail-intro { display: none; }
+  .settings-page .settings-rail-group,
+  .settings-page .settings-rail .settings-rail-head,
+  .settings-page .settings-rail-sections,
+  .settings-page .settings-rail button[data-category] {
+    flex: none;
+    width: max-content;
+  }
+  .settings-page .settings-rail .settings-rail-head,
+  .settings-page .settings-rail button[data-category] { white-space: nowrap; }
+  .settings-page .settings-rail-sections { margin-left: 0; }
+}
+
+@media (max-width: 620px) {
+  .settings-page .settings-section { padding: var(--s3); }
+  .settings-page .settings-main-context { padding-inline: 0; }
+  .settings-page .settings-section .settings-row,
+  .settings-page .settings-results > .settings-row { padding-inline: var(--s1); }
+  .settings-page .settings-control { padding-top: 0; }
+  .settings-page .settings-tier { margin-left: 0; }
+  .settings-page .settings-tier.is-open { padding-left: var(--s3); }
+}
+.settings-save-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 18px;
+}
+.settings-save-bar [role="status"] { flex: 1; min-width: 180px; }
+[data-transcript-settings] input[type="text"],
+[data-action-permissions] input:not([type="checkbox"]),
+[data-action-permissions] textarea { min-width: 0; width: min(100%, 440px); }
+[data-action-permissions] textarea { min-height: 96px; }
+
+/* ============================================================
+   PROMPT C -- THE SLIVER ABOVE THE STICKY COMMAND BAR
+   ============================================================
+   The View/Simple/Advanced/Expert/Enterprise row is sticky at `top: 0`. A
+   sticky offset is measured from the SCROLLPORT, which is the scroll
+   container's padding box -- and the scroll container here is
+   `.view-pad.settings-page`, whose `padding: var(--s2) ...` puts that padding
+   box eight pixels below its own top edge. So the stuck bar rested eight
+   pixels down and the content scrolling underneath painted through the strip
+   above it. Measured on the running page: the bar's top stayed a constant
+   7.94px below the scroller's top at every offset past the stick point, and
+   `document.elementFromPoint` in that strip returned a live INPUT, which is
+   the sheared text and the stray "Claude" the owner saw.
+
+   The offset is expressed in the SAME token that creates the padding rather
+   than as a literal 8px, so the two cannot drift apart. The rule that needs
+   this lives in src/settings-coherence.css and src/sidebar-pages.css, which
+   belong to other lanes; this overrides both from here, at a specificity
+   (0,4,0) that beats the coherence rule's (0,3,0) and the sidebar rule's
+   (0,2,1) whatever the load order turns out to be. */
+.view-pad.settings-page .settings-shell .settings-command-bar {
+  top: calc(var(--s2) * -1);
+}

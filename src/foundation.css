@@ -1,0 +1,582 @@
+/* ============================================================================
+   FOUNDATION — the visual base every page inherits (premium pass, 2026-09-22).
+
+   ONE MODEL, FIVE THEMES. Every screen is built from five layers. Each layer
+   has one ground, one edge and one depth, and a page never invents a sixth:
+
+     canvas    the page itself                 --surface-canvas   no edge     no depth
+     sunken    wells and troughs cut into a    --surface-sunken   hairline    none
+               layer (segmented troughs, code,
+               table heads, read-only values)
+     base      cards, panels, sections         --surface-base     default     --shadow-2
+     raised    controls sitting on a layer     --surface-raised   default     --shadow-1
+               (buttons, fields, the selected
+               segment)
+     overlay   drawer, dialogs, menus, tips,   --surface-overlay  default     --shadow-3 (menu)
+               tooltips                                                       --shadow-4 (dialog)
+
+   EDGES come in three weights and one solved field edge:
+     --border-hairline  dividers inside a layer, table rows
+     --border-default   the edge of a card, a control, an overlay
+     --border-strong    hover and emphasis; a separator that must be seen
+     --border-field     a text field's edge, solved to 3:1 against every ground
+                        it sits on (WCAG 1.4.11), because the edge is how a
+                        field is found
+
+   Light themes separate layers with a hairline and a soft warm shadow; dark
+   themes with a lighter tint per step, a hairline and a faint top light.
+
+   SQUARE BOXES. The owner has asked twice for square boxes (settings.css,
+   checkout.css). The radius scale stays small: 3px marks, 4px controls, 6px
+   cards, 8px overlays. Only a switch, a count badge or a status dot is a pill.
+
+   WHERE THINGS LIVE. The surface HEX values (--bg, --bg-2, --sheet) stay in
+   src/styles.css, because tools/test/preview-honesty.test.mjs holds them equal
+   to public/preview/preview.css; the layers here are derived from them. The
+   status colours (--s-*) stay in src/theme-refinements.css, which
+   tools/test/ledger-status-colors.test.mjs reads. This sheet is imported by
+   src/main.js right after those two, so at equal `:root[data-theme]`
+   specificity it is the last writer of every token below, and before every
+   page sheet, so any page rule still wins over the primitives here.
+
+   HOW A PAGE ADOPTS IT: spend these tokens (never a literal colour, radius or
+   shadow) or the primitives that already spend them (.ctl-btn, .icon-btn,
+   .seg, .theme-seg, .tab, .toggle, range, .mtable, .glass, .drawer,
+   .tooltip). design-0922/notes/FOUNDATION.md lists them with the old
+   patterns each replaces.
+   ========================================================================= */
+
+:root {
+  /* ---- RADIUS ---- */
+  --radius-xs: 3px;      /* marks inside a control: checkbox, tag, kbd, swatch */
+  --radius-sm: 4px;      /* controls: buttons, fields, segments, tabs, menu rows */
+  --radius-md: 6px;      /* cards, panels, wells, tables in a frame */
+  --radius-lg: 8px;      /* overlays: drawer, dialog, menu, popover, tip */
+  --radius-pill: 999px;  /* capsules only: switch, count badge, status dot */
+  --radius-control: var(--radius-sm);
+  --radius-card: var(--radius-md);
+  --radius-overlay: var(--radius-lg);
+
+  /* ---- TYPE — the tiers the product already uses, named. 11px is caps only. ---- */
+  --text-caps: 11px;     /* uppercase micro-labels, always with --track-caps */
+  --text-xs: 12px;       /* meta, timestamps, hints */
+  --text-sm: 12.5px;     /* interface chrome, control labels, values */
+  --text-md: 13.5px;     /* body floor (body inherits this) */
+  --text-base: 14px;     /* reading text in forms and tables */
+  --text-lg: 15px;       /* long reading (Research runs 15px/1.6) */
+  --text-xl: 17px;       /* section titles */
+  --text-2xl: 21px;      /* panel and dialog titles */
+  --text-3xl: 28px;      /* page titles */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 650;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+  --tracking-display: -0.02em;   /* page titles */
+  --tracking-title: -0.01em;     /* section, panel and dialog titles */
+  /* The caps micro-label tracking, narrowed from 0.12em: wide-set caps read as
+     decoration. Narrower only, so no label can outgrow its box. */
+  --track-caps: 0.08em;
+
+  /* ---- SPACE — the 4px rhythm (--s1..--s5 in styles.css), extended up. ---- */
+  --s6: 32px;
+  --s7: 40px;
+  --s8: 48px;
+
+  /* ---- MOTION — quick and quiet. Colour and hover 160ms, surfaces 260ms.
+     The reduced-motion clamps at the foot of styles.css still cap all three. ---- */
+  --dur-1: 100ms;
+  --dur-2: 160ms;
+  --dur-3: 260ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ---- FOCUS — one ring everywhere: 2px solid, 2px off the edge. An outline,
+     never a box-shadow, so forced colours repaint it instead of dropping it. ---- */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  --focus-outline: var(--focus-width) solid var(--focus-ring);
+
+  /* ---- DEPTH — one multiplier on every shadow alpha below (1 = as designed). ---- */
+  --depth: 1;
+}
+
+/* ============================================================================
+   THE THEMES ON THE MODEL.
+   --border-ink is the colour every edge is mixed from; the three weights are
+   percentages of it over transparent, so an edge reads the same on every layer.
+   --shadow-rgb / --shadow-k are the pair styles.css already scales its own
+   shadows by, re-tuned here so the old literals and the new scale agree.
+   ========================================================================= */
+
+/* WHITE — warm paper, warm ink, pine accent (the 2026-09-18 palette carried
+   through the whole ramp: theme-refinements.css still wrote cool slate greys
+   and blue-grey hairlines over it). Ratios on canvas / sunken / raised. */
+:root[data-theme="white"] {
+  --ink-2: #4a453f;          /* 8.57 / 7.85 / 9.48 */
+  --ink-25: #544e47;         /* 7.42 / 6.80 / 8.21 */
+  --ink-3: #605a51;          /* 6.16 / 5.65 / 6.82 — the AA floor for context text */
+  --ink-4: #8a8278;          /* 3.42 / 3.14 / 3.79 — decoration and edges only */
+  --surface-canvas: var(--bg);
+  --surface-sunken: var(--bg-2);
+  --surface-base: var(--sheet);
+  --surface-raised: #ffffff;
+  --surface-overlay: #ffffff;
+  --border-ink: #1b1a17;
+  --border-hairline: color-mix(in srgb, var(--border-ink) 8%, transparent);
+  --border-default: color-mix(in srgb, var(--border-ink) 14%, transparent);
+  --border-strong: color-mix(in srgb, var(--border-ink) 25%, transparent);
+  --border-field: #8a8278;   /* 3.42 on canvas, 3.14 sunken, 3.79 raised */
+  --state-hover: color-mix(in srgb, var(--border-ink) 4%, transparent);
+  --state-press: color-mix(in srgb, var(--border-ink) 8%, transparent);
+  --highlight: rgba(255, 255, 255, 0.7);
+  --shadow-rgb: 36, 30, 22;
+  --shadow-k: 1;
+  --focus-ring: #1f6f5c;     /* pine: 5.44 canvas, 6.02 raised */
+  --accent-2: #17594a;
+  --action-primary: var(--ink);
+  --action-primary-hover: #36332e;
+  --action-primary-ink: #fffdfa;
+  --selected-bg: color-mix(in oklab, var(--ui-accent) 8%, var(--surface-raised));
+  --selected-border: color-mix(in oklab, var(--ui-accent) 58%, var(--surface-raised));
+  --selected-ink: var(--ink);
+}
+
+/* TAN — Gruvbox Light soft: bg0_s canvas, bg1 wells, bg0 cards, a paler bg0
+   step for controls. */
+:root[data-theme="tan"] {
+  --surface-canvas: var(--bg);
+  --surface-sunken: var(--bg-2);
+  --surface-base: var(--sheet);
+  --surface-raised: #fcf6dc;
+  --surface-overlay: #fdf8e2;
+  --border-ink: #3c3020;
+  --border-hairline: color-mix(in srgb, var(--border-ink) 10%, transparent);
+  --border-default: color-mix(in srgb, var(--border-ink) 17%, transparent);
+  --border-strong: color-mix(in srgb, var(--border-ink) 29%, transparent);
+  --border-field: #7c6f64;   /* Gruvbox fg4: 3.87 canvas, 3.55 sunken, 4.45 raised */
+  --state-hover: color-mix(in srgb, var(--border-ink) 6%, transparent);
+  --state-press: color-mix(in srgb, var(--border-ink) 10%, transparent);
+  --highlight: rgba(255, 252, 236, 0.75);
+  --shadow-rgb: 60, 48, 32;
+  --shadow-k: 1;
+  --focus-ring: #4c6a55;     /* 4.77 canvas, 5.48 raised */
+  --action-primary: var(--ink);
+  --action-primary-hover: #3c3836;
+  --action-primary-ink: #fbf1c7;
+  --selected-bg: color-mix(in oklab, var(--ui-accent) 10%, var(--surface-raised));
+  --selected-border: color-mix(in oklab, var(--ui-accent) 62%, var(--surface-raised));
+  --selected-ink: var(--ink);
+}
+
+/* BLACK — soft charcoal, warm ink. Each layer one tint step lighter. */
+:root[data-theme="black"] {
+  --surface-canvas: var(--bg);
+  --surface-sunken: #1b1d20;
+  --surface-base: var(--sheet);
+  --surface-raised: #35383d;
+  --surface-overlay: #393c42;
+  --border-ink: #ffece2;
+  --border-hairline: color-mix(in srgb, var(--border-ink) 8%, transparent);
+  --border-default: color-mix(in srgb, var(--border-ink) 13%, transparent);
+  --border-strong: color-mix(in srgb, var(--border-ink) 23%, transparent);
+  --border-field: #8d857f;   /* 4.34 canvas, 3.60 base, 3.25 raised, 3.10 overlay */
+  --state-hover: color-mix(in srgb, var(--border-ink) 5%, transparent);
+  --state-press: color-mix(in srgb, var(--border-ink) 9%, transparent);
+  --highlight: rgba(255, 255, 255, 0.05);
+  --shadow-rgb: 0, 0, 0;
+  --shadow-k: 1.7;
+  --focus-ring: #9cbfb4;
+  --action-primary: var(--ink);
+  --action-primary-hover: #ffffff;
+  --action-primary-ink: #1d1f22;
+  --selected-bg: color-mix(in oklab, var(--ui-accent) 16%, var(--surface-raised));
+  --selected-border: color-mix(in oklab, var(--ui-accent) 70%, var(--surface-raised));
+  --selected-ink: var(--ink);
+}
+
+/* EMBER and COBALT — the glow themes. Their edges carry the accent; the light
+   comes from the rim, never from a wash over text. */
+:root:is([data-theme="ember"], [data-theme="cobalt"]) {
+  --surface-canvas: var(--bg);
+  --surface-base: var(--sheet);
+  --border-ink: var(--theme-accent);
+  --border-hairline: color-mix(in srgb, var(--border-ink) 14%, transparent);
+  --border-default: color-mix(in srgb, var(--border-ink) 24%, transparent);
+  --border-strong: color-mix(in srgb, var(--border-ink) 40%, transparent);
+  --state-hover: color-mix(in srgb, var(--border-ink) 8%, transparent);
+  --state-press: color-mix(in srgb, var(--border-ink) 14%, transparent);
+  --highlight: rgba(255, 255, 255, 0.05);
+  --shadow-rgb: 0, 0, 0;
+  --shadow-k: 1.8;
+  --action-primary: var(--theme-accent);
+  --action-primary-hover: color-mix(in srgb, var(--theme-accent) 84%, white);
+  --action-primary-ink: var(--bg);
+  --selected-bg: color-mix(in srgb, var(--theme-accent) 13%, var(--surface-raised));
+  --selected-border: color-mix(in srgb, var(--theme-accent) 62%, var(--surface-raised));
+  --selected-ink: var(--ink);
+}
+:root[data-theme="ember"] {
+  --surface-sunken: #12090e;
+  --surface-raised: #3a2230;
+  --surface-overlay: #3e2533;
+  --border-field: #a0697a;   /* 4.35 canvas, 3.66 base, 3.30 raised, 3.20 overlay */
+}
+:root[data-theme="cobalt"] {
+  --surface-sunken: #080e1c;
+  --surface-raised: #22324f;
+  --surface-overlay: #26375a;
+  --border-field: #6d88b3;   /* 5.18 canvas, 4.03 base, 3.56 raised, 3.32 overlay */
+}
+
+/* ============================================================================
+   ELEVATION AND THE LEGACY TOKENS, derived once from the theme values above.
+   `:root[data-theme]` and not a bare `:root`: the theme blocks in styles.css
+   and theme-refinements.css write --line, --seg-bg and friends at (0,2,0), and
+   this block has to be the last writer at that same weight.
+   ========================================================================= */
+:root[data-theme] {
+  /* THE ELEVATION SCALE — five steps, one per layer. Light themes: a contact
+     shadow plus a soft ambient pool. Dark themes: the same recipe at
+     --shadow-k strength (it mostly darkens the ground under an overlay) and
+     the layer's own lighter tint does the separating. */
+  --shadow-0: none;
+  --shadow-1:                                           /* raised: controls */
+    0 1px 1px rgba(var(--shadow-rgb), calc(0.05 * var(--shadow-k) * var(--depth)));
+  --shadow-2:                                           /* base: cards, panels */
+    0 1px 2px rgba(var(--shadow-rgb), calc(0.045 * var(--shadow-k) * var(--depth))),
+    0 2px 8px -2px rgba(var(--shadow-rgb), calc(0.06 * var(--shadow-k) * var(--depth)));
+  --shadow-3:                                           /* overlay: menus, popovers, tooltips */
+    0 2px 4px rgba(var(--shadow-rgb), calc(0.05 * var(--shadow-k) * var(--depth))),
+    0 12px 28px -8px rgba(var(--shadow-rgb), calc(0.16 * var(--shadow-k) * var(--depth)));
+  --shadow-4:                                           /* overlay: drawer, dialogs */
+    0 4px 10px rgba(var(--shadow-rgb), calc(0.05 * var(--shadow-k) * var(--depth))),
+    0 28px 60px -16px rgba(var(--shadow-rgb), calc(0.26 * var(--shadow-k) * var(--depth)));
+  /* the top light a raised or overlay surface carries: a lit bevel on paper, a
+     faint rim on charcoal */
+  --shadow-highlight: inset 0 1px 0 var(--highlight);
+  --shadow-control: var(--shadow-highlight), var(--shadow-1);
+  --shadow-card: var(--shadow-2);
+  --shadow-popover: var(--shadow-highlight), var(--shadow-3);
+  --shadow-overlay: var(--shadow-highlight), var(--shadow-4);
+
+  /* legacy names, mapped onto the scale so the ~500 rules that spend them move
+     together */
+  --elev-1: var(--shadow-1);
+  --elev-2: var(--shadow-2);
+  --elev-3: var(--shadow-3);
+  --r-sm: var(--radius-xs);
+  --r-md: var(--radius-sm);
+  --r-lg: var(--radius-md);
+  --line: var(--border-hairline);
+  --line-2: var(--border-default);
+
+  /* controls. On paper a control is the opaque raised step. A trough and a
+     disabled fill are translucent ink, so they read as cut into WHATEVER layer
+     holds them -- the page, a card or the drawer -- rather than as one fixed
+     grey that is a hole on one layer and a bump on the next. */
+  --control-bg: var(--surface-raised);
+  --control-hover: color-mix(in srgb, var(--border-ink) 3.5%, var(--surface-raised));
+  --control-press: color-mix(in srgb, var(--border-ink) 7%, var(--surface-raised));
+  --control-border: var(--border-default);
+  --control-border-hover: var(--border-strong);
+  --control-ink: var(--ink);
+  --control-disabled-bg: color-mix(in srgb, var(--border-ink) 4%, transparent);
+  --control-disabled-ink: var(--ink-3);
+  --field-bg: var(--surface-raised);
+  --field-border: var(--border-field);
+  --field-border-hover: var(--ink-3);
+  --field-border-invalid: var(--s-serious);
+  --theme-selected-bg: var(--selected-bg);
+  --theme-selected-border: var(--selected-border);
+  --seg-bg: color-mix(in srgb, var(--border-ink) 5%, transparent);
+  --seg-border: var(--border-hairline);
+
+  /* Native checkbox, radio and progress take the theme's accent instead of the
+     browser's blue. Inherited, so this one line reaches every page. */
+  accent-color: var(--accent-2);
+}
+
+/* On the dark themes every control step is relative too: a control is a film
+   of light over its layer, a field and a trough a film of shade. An opaque
+   "raised" grey was darker than the drawer it sat in. */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) {
+  --control-bg: rgba(255, 255, 255, 0.055);
+  --control-hover: rgba(255, 255, 255, 0.09);
+  --control-press: rgba(255, 255, 255, 0.03);
+  --control-disabled-bg: rgba(0, 0, 0, 0.12);
+  --field-bg: rgba(0, 0, 0, 0.16);
+  --seg-bg: rgba(0, 0, 0, 0.2);
+}
+
+::selection { background: color-mix(in oklab, var(--ui-accent) 20%, transparent); }
+:root:is([data-theme="ember"], [data-theme="cobalt"]) ::selection {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--theme-accent) 28%, var(--bg-2));
+}
+
+/* ============================================================================
+   PRIMITIVES. Same selectors as styles.css, so at equal specificity these win
+   by order; page sheets load later and still win over these.
+   ========================================================================= */
+
+/* ---- CARD: .glass is now an opaque base layer. The translucent white film,
+   the backdrop blur and the travelling specular sweep are gone: they fade to
+   nothing on the dark themes and read as haze on the light ones. ---- */
+.glass {
+  background: var(--surface-base);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+}
+.glass:hover { border-color: var(--border-default); box-shadow: var(--shadow-card); }
+:root:not([data-theme="ember"], [data-theme="cobalt"]) .glass::before,
+:root:not([data-theme="ember"], [data-theme="cobalt"]) .glass::after,
+.glass::after { content: none; }
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .glass,
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .glass:hover {
+  border-color: var(--border-default);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--shadow-card);
+}
+
+/* ---- BUTTON: .ctl-btn is the raised control. A real edge on every theme, no
+   lift on hover (the surface darkens a step instead), a pressed state that
+   goes down, and a disabled state that looks unpressable. ---- */
+.ctl-btn {
+  border-radius: var(--radius-control);
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+  box-shadow: var(--shadow-control);
+  color: var(--control-ink);
+  font-weight: var(--weight-semibold);
+  transition: background-color var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+}
+.ctl-btn:hover {
+  background: var(--control-hover);
+  border-color: var(--control-border-hover);
+  color: var(--control-ink);
+  transform: none;
+  box-shadow: var(--shadow-control);
+}
+.ctl-btn.armed {
+  color: var(--selected-ink);
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  box-shadow: var(--shadow-1);
+}
+.ctl-btn.armed:hover { background: color-mix(in oklab, var(--ui-accent) 14%, var(--surface-raised)); border-color: var(--selected-border); }
+.ctl-btn.danger:hover {
+  color: var(--s-serious);
+  border-color: color-mix(in srgb, var(--s-serious) 45%, var(--surface-raised));
+  background: color-mix(in srgb, var(--s-serious) 6%, var(--surface-raised));
+}
+.ctl-btn:disabled,
+.ctl-btn:disabled:hover {
+  cursor: not-allowed;
+  color: var(--control-disabled-ink);
+  background: var(--control-disabled-bg);
+  border-color: var(--border-hairline);
+  box-shadow: none;
+  transform: none;
+}
+
+/* The zero-specificity floor under buttons nobody styled: the same raised
+   control, so it can never look like the browser's grey default. */
+:where(button:not([class]), [role="button"]:not([class])) {
+  border-radius: var(--radius-control);
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+  box-shadow: var(--shadow-control);
+  color: var(--control-ink);
+  font-weight: var(--weight-semibold);
+}
+:where(button:not([class]), [role="button"]:not([class])):hover { color: var(--control-ink); background: var(--control-hover); border-color: var(--control-border-hover); }
+:where(button:not([class]), [role="button"]:not([class])):disabled { color: var(--control-disabled-ink); background: var(--control-disabled-bg); border-color: var(--border-hairline); box-shadow: none; opacity: 1; }
+
+/* ---- QUIET BUTTON: .icon-btn has no edge at rest; hover lays the state tint. ---- */
+.icon-btn { border-radius: var(--radius-control); }
+.icon-btn:hover { background: var(--state-hover); color: var(--ink); box-shadow: none; }
+.icon-btn:active { background: var(--state-press); transform: none; }
+
+/* ---- PRESS, every pressable primitive: down a step, no scale, no ring. ---- */
+.icon-btn:active, .tab:active, .ctl-btn:active, .rail-back:active, .graph-crumb button:active {
+  transform: none;
+  box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), calc(0.08 * var(--shadow-k)));
+}
+.ctl-btn:active:not(:disabled) { background: var(--control-press); }
+.ctl-btn:disabled:active { box-shadow: none; }
+
+/* ---- TABS: a quiet control on the canvas; the selected tab is the selected
+   tint with its edge (theme-refinements.css draws that state). ---- */
+.tab {
+  border-radius: var(--radius-control);
+  background: transparent;
+  border: 1px solid var(--border-hairline);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: background-color var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+}
+.tab:hover { color: var(--ink); background: var(--state-hover); border-color: var(--border-default); }
+
+/* ---- SEGMENTED CONTROL: a sunken trough, the chosen segment raised out of it.
+   The chosen segment keeps the selected tint and edge (theme-refinements.css),
+   so selection never rests on a shadow alone. ---- */
+.seg:where(:has(> button)) {
+  border-radius: var(--radius-control);
+  background: var(--seg-bg);
+  border: 1px solid var(--seg-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.seg > button { border-radius: calc(var(--radius-control) - 1px); color: var(--ink-25); }
+.seg > button:hover { color: var(--ink); }
+.seg-ind,
+.seg:not(:has(> .seg-ind.ready)) > button.on { border-radius: calc(var(--radius-control) - 1px); }
+.theme-seg {
+  border-radius: var(--radius-control);
+  background: var(--seg-bg);
+  border: 1px solid var(--border-hairline);
+}
+.theme-seg button { border-radius: calc(var(--radius-control) - 1px); color: var(--ink-25); }
+.theme-seg button:hover { color: var(--ink); }
+:root :is(.theme-seg button.on, .seg-ind, .seg:not(:has(> .seg-ind.ready)) > button.on, .tab.active):not(:focus-visible) {
+  box-shadow: inset 0 0 0 1px var(--selected-border), var(--shadow-1);
+}
+
+/* ---- SWITCH and SLIDER: the knob is the raised layer. ---- */
+.toggle i::after { box-shadow: 0 1px 2px rgba(var(--shadow-rgb), calc(0.22 * var(--shadow-k))), 0 0 0 0.5px rgba(var(--shadow-rgb), calc(0.12 * var(--shadow-k))); }
+input[type="range"]::-webkit-slider-thumb {
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), calc(0.2 * var(--shadow-k)));
+}
+input[type="range"]:active::-webkit-slider-thumb {
+  transform: none;
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), calc(0.2 * var(--shadow-k))), 0 0 0 4px color-mix(in oklab, var(--ui-accent) 18%, transparent);
+}
+.toggle:active i::after { width: 20px; }
+.toggle:active input:checked + i::after { transform: translateX(18px); }
+
+/* ---- TABLE: caps head on a default rule, hairline rows, state tint on hover. ---- */
+.mtable th { color: var(--ink-25); border-bottom: 1px solid var(--border-default); }
+.mtable td { border-bottom: 1px solid var(--border-hairline); }
+.mtable tbody tr:hover { background: var(--state-hover); }
+
+/* ---- OVERLAYS: drawer, tooltip. ---- */
+.drawer {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-overlay);
+  box-shadow: var(--shadow-overlay);
+}
+.drawer-head { border-bottom-color: var(--border-hairline); letter-spacing: 0; }
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .drawer {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-overlay), var(--theme-glow);
+}
+.tooltip {
+  border-radius: var(--radius-control);
+  background: var(--surface-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-popover);
+}
+
+/* ---- SCROLLBARS: the same 8px gutter (layouts measure it), the thumb inset
+   by a pixel and rounded. The thumb colours are the per-theme solved values in
+   styles.css and theme-refinements.css. ---- */
+::-webkit-scrollbar-thumb { border: 1px solid transparent; background-clip: padding-box; border-radius: var(--radius-pill); }
+
+/* ============================================================================
+   FLOORS — zero-specificity defaults for elements no rule has dressed. Any
+   page rule with a class wins on every property it sets.
+   ========================================================================= */
+
+/* Text fields and selects no rule has dressed: the raised layer, the solved
+   3:1 field edge, the control radius. Checkbox, radio, range, colour and file
+   keep their own shapes. */
+:where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"], [type="button"], [type="submit"], [type="reset"], [type="image"]), select, textarea) {
+  color: var(--ink);
+  background-color: var(--field-bg);
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-control);
+}
+:where(input, select, textarea):where(:hover:not(:disabled, :focus)) { border-color: var(--field-border-hover); }
+:where(input, select, textarea):where([aria-invalid="true"]) { border-color: var(--field-border-invalid); }
+:where(input, select, textarea):where(:disabled) {
+  color: var(--ink-3);
+  background-color: var(--surface-sunken);
+  border-color: var(--border-default);
+}
+
+/* A native dialog is an overlay. */
+:where(dialog) {
+  color: var(--ink);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-overlay);
+  box-shadow: var(--shadow-overlay);
+}
+:where(dialog)::backdrop { background: rgba(var(--shadow-rgb), 0.32); }
+
+:where(hr) { border: 0; border-top: 1px solid var(--border-hairline); }
+:where(kbd) {
+  padding: 1px 5px;
+  font: 500 var(--text-xs) / 1.4 var(--font-mono);
+  color: var(--ink-2);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-default);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-xs);
+}
+:where(h1, h2, h3) { text-wrap: balance; }
+
+/* ============================================================================
+   FOCUS — one ring. Anything focusable with no ring of its own gets the
+   token outline; the primitives that drew a box-shadow halo draw the same
+   outline instead (forced colours keeps an outline and drops a shadow).
+   ========================================================================= */
+:where(:focus-visible) {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+.icon-btn:focus-visible, .tab:focus-visible, .ctl-btn:focus-visible,
+.chat-close:focus-visible, .chat-expand:focus-visible, .rail-back:focus-visible,
+.graph-crumb button:focus-visible, .seg > button:focus-visible, .theme-seg button:focus-visible,
+input[type="range"]:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+  box-shadow: none;
+}
+.ctl-btn:focus-visible { box-shadow: var(--shadow-control); }
+.toggle input:focus-visible + i {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+  box-shadow: none;
+}
+:root:is([data-theme="ember"], [data-theme="cobalt"]) :is(.theme-seg button, .seg > button, .tab, .chat-send):focus-visible {
+  outline-offset: var(--focus-offset);
+}
+
+/* ============================================================================
+   FORCED COLOURS. Shadows and tints vanish there, so every layer that is set
+   apart only by a shadow or a tint gets a real edge back, and every control
+   keeps a boundary. Focus is already a 3px Highlight outline (styles.css).
+   ========================================================================= */
+@media (forced-colors: active) {
+  .glass, .drawer, .tooltip, :where(dialog) { border: 1px solid CanvasText; }
+  .ctl-btn, :where(button:not([class])) { border: 1px solid ButtonText; }
+  .ctl-btn:disabled { border-color: GrayText; color: GrayText; }
+  .ctl-btn.armed { border: 2px solid Highlight; }
+  .seg:where(:has(> button)), .theme-seg, .tab { border: 1px solid ButtonText; }
+  :where(input, select, textarea) { border-color: FieldText; }
+  .toggle i { border: 1px solid ButtonText; }
+}

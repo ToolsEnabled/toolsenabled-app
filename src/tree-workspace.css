@@ -1,0 +1,468 @@
+@import './tree-card-density.css';
+@import './agent-screen-voice-controls.css';
+
+/* Detached circle cards keep their fixed placement footprint. The braces
+   own the outer edge; copy sits on one quiet sheet with room on both sides. */
+.static-tree-chip-overlay .static-tree-chip:not(.as-chat) {
+  padding: 10px 22px;
+  border-radius: 2px;
+  background: var(--sheet);
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--ink) 5%, transparent);
+}
+.static-tree-chip-overlay .static-tree-chip:not(.as-chat)::before { display: none; }
+.static-tree-chip-overlay .static-tree-chip:hover:not(.as-chat) {
+  background: color-mix(in oklab, var(--rc) 3%, var(--sheet));
+  box-shadow: 0 3px 12px color-mix(in oklab, var(--ink) 8%, transparent);
+}
+.static-tree-chip-overlay .static-tree-chip:focus-visible:not(.as-chat) {
+  outline: 2px solid var(--rc);
+  outline-offset: 3px;
+}
+.static-tree-chip-overlay .chip-preview { height: 100%; max-height: none; }
+.static-tree-chip-overlay .chip-preview-header {
+  flex: none;
+  padding-bottom: 4px;
+  border-bottom: 1px solid color-mix(in oklab, var(--rc) 12%, var(--line));
+}
+.static-tree-chip-overlay .cl-name { gap: 8px; line-height: 18px; }
+.static-tree-chip-overlay .cl-name b {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.static-tree-chip-overlay .cl-name .inline-agent { color: inherit; }
+.static-tree-chip-overlay .chip-runtime { font-size: 10.5px; line-height: 16px; color: var(--ink-3); }
+.static-tree-chip-overlay .cl-meta { display: flex; align-items: baseline; gap: 7px; margin-top: 2px; line-height: 13px; }
+.static-tree-chip-overlay .chip-role {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 650 9.5px/13px var(--font-ui);
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--rc) 38%, var(--ink-2));
+}
+.static-tree-chip-overlay .cl-meta .cl-current {
+  flex: 1;
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding-left: 7px;
+  border-left: 1px solid var(--line-2);
+  color: var(--ink-25, var(--ink-2));
+  font-size: 11px;
+  line-height: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.static-tree-chip-overlay .static-tree-chip[data-context-size] .chip-preview-activity {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  min-height: 0;
+}
+.static-tree-chip-overlay .static-tree-chip[data-context-size] .chip-preview-activity > .cl {
+  display: block;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  color: var(--ink-2);
+  white-space: normal;
+  -webkit-line-clamp: unset;
+}
+.static-tree-chip-overlay .chip-context-caption { display: none; }
+.static-tree-chip-overlay .chip-context-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  text-overflow: ellipsis;
+  white-space: normal;
+  font: 400 12.5px/17.5px var(--font-ui);
+}
+.static-tree-chip-overlay .cl-tool .chip-context-text {
+  -webkit-line-clamp: 1;
+  color: var(--ink-25, var(--ink-2));
+  font-size: 12px;
+  line-height: 16px;
+}
+.static-tree-chip-overlay .chip-preview-activity:has(.cl-tool) :is(.cl-chat, .cl-previous, .cl-unavailable) .chip-context-text { -webkit-line-clamp: 2; }
+.static-tree-chip-overlay .cl-unavailable .chip-context-text { color: var(--ink-3); font-style: normal; }
+
+/* THE MODEL'S OWN WORKING, ON THE CARD -- AND NEVER READ AS WHAT IT SAID.
+   R1205 asks for "thinking tokens/context on what the agents are actually
+   doing". The row's budget is --tree-thinking-lines, written per card size
+   from TREE_CONTEXT_SIZES (src/tree-context-cards.js).
+
+   THIS SELECTOR IS DELIBERATELY LONGER THAN ITS NEIGHBOURS. The clamp that
+   governs an activity row is the one on .chip-context-text, not the one on
+   the .cl wrapper: `[data-context-size] .chip-preview-activity > .cl` sets
+   `display: block` and `-webkit-line-clamp: unset` on the wrapper, so a
+   wrapper-level clamp cannot bind. Matching that rule's weight is what makes
+   this budget real rather than decorative. */
+.static-tree-chip-overlay .static-tree-chip[data-context-size] .cl-thinking .chip-context-text {
+  -webkit-line-clamp: var(--tree-thinking-lines, 1);
+  color: var(--ink-3);
+}
+/* LABELLED WHEREVER IT IS SHOWN. Every other activity row may go captionless
+   below Large because none of them could be read as the agent speaking; this
+   one sits directly above the agent's own words and could. The caption floats
+   the way .cl-tool's already does at Large, so labelling it costs no line. */
+.static-tree-chip-overlay .static-tree-chip[data-context-size] .cl-thinking .chip-context-caption {
+  display: block;
+  float: left;
+  margin: 1px 6px 0 0;
+  font: 650 10px/16px var(--font-ui);
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+/* Small gets no thinking row at all: it clamps the context row to a single
+   line beside a tool row, so there is no line to take, and taking one would
+   trade the agent's own words for its working. Mini used to be named here too
+   and was the more extreme case -- it hid .cl-chat and .cl-previous outright.
+   That is why Mini is the size R1207 retired: a card that shows none of what
+   the agent said is the opposite of "THE WHOLE POINT IS TO INFORM THE USER". */
+.static-tree-chip-overlay .static-tree-chip[data-context-size="small"] .cl-thinking { display: none; }
+/* THE ROW IS PAID FOR, NOT ADDED. .chip-preview-activity is flex:1 with
+   overflow:hidden, so a row that does not fit is dropped with no ellipsis to
+   say so. While thinking is on screen the context row gives back the lines
+   thinking takes, so the region's total does not move and no card grew.
+   Both values are the worst case (a tool row present too); with no tool row
+   they leave a line spare rather than overflowing by one. */
+.static-tree-chip-overlay .static-tree-chip[data-context-size="medium"] .chip-preview-activity:has(.cl-thinking) :is(.cl-chat, .cl-previous, .cl-unavailable) .chip-context-text { -webkit-line-clamp: 1; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-preview-activity:has(.cl-thinking) :is(.cl-task, .cl-chat, .cl-previous, .cl-unavailable) .chip-context-text { -webkit-line-clamp: 3; }
+.static-tree-chip-overlay .cl-scope { flex: none; margin-top: 3px; font-size: 10px; line-height: 13px; color: var(--ink-3); }
+.static-tree-chip-overlay .chip-preview-footer { display: flex; align-items: baseline; gap: 10px; flex: none; margin-top: 4px; min-width: 0; }
+.static-tree-chip-overlay .cl-open { display: flex; align-items: baseline; gap: 7px; margin: 0; padding: 0; font-size: 11px; line-height: 15px; font-weight: 600; color: var(--ink-2); }
+.static-tree-chip-overlay .cl-open > span { color: var(--ink-3); }
+.static-tree-chip-overlay .chip-preview-footer .cl-facts { min-width: 0; margin: 0 0 0 auto; font-size: 11px; line-height: 13px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="small"]:not(.as-chat) { padding: 8px 20px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="small"] .chip-preview-header { padding-bottom: 3px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="small"] .cl-scope { display: none; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="small"] .chip-context-text { font-size: 12px; line-height: 16px; -webkit-line-clamp: 2; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="small"] .chip-preview-activity:has(.cl-tool) .chip-context-text { -webkit-line-clamp: 1; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"]:not(.as-chat) { padding: 12px 24px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-preview-header { padding-bottom: 6px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .cl-name,
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .cl-name b { font-size: 15px; line-height: 21px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-role { font-size: 10px; line-height: 14px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .cl-meta,
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .cl-meta .cl-current { font-size: 12px; line-height: 14px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-preview-activity { gap: 6px; padding-top: 8px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-context-caption { display: block; margin-bottom: 2px; font: 650 10.5px/12px var(--font-ui); color: var(--ink-3); }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-context-text { font-size: 14px; line-height: 20px; -webkit-line-clamp: 6; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .cl-tool .chip-context-caption { float: left; margin: 3px 7px 0 0; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .cl-tool .chip-context-text { display: block; white-space: nowrap; font-size: 12.5px; line-height: 18px; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-preview-activity:has(.cl-tool) :is(.cl-task, .cl-chat, .cl-previous, .cl-unavailable) .chip-context-text { -webkit-line-clamp: 5; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-preview-activity:has(.cl-task) :is(.cl-chat, .cl-previous) .chip-context-text,
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-preview-activity:has(.cl-chat, .cl-previous) .cl-task .chip-context-text { -webkit-line-clamp: 3; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"] .chip-preview-activity:has(.cl-task):has(.cl-tool) :is(.cl-chat, .cl-previous) .chip-context-text { -webkit-line-clamp: 2; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"][data-compact-context] .chip-context-text { -webkit-line-clamp: 5; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"][data-compact-context] .chip-preview-activity:has(.cl-tool) :is(.cl-task, .cl-chat, .cl-previous) .chip-context-text { -webkit-line-clamp: 4; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"][data-compact-context] .chip-preview-activity:has(.cl-task) :is(.cl-chat, .cl-previous) .chip-context-text,
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"][data-compact-context] .chip-preview-activity:has(.cl-chat, .cl-previous) .cl-task .chip-context-text { -webkit-line-clamp: 2; }
+.static-tree-chip-overlay .static-tree-chip[data-context-size="large"][data-compact-context] .chip-preview-activity:has(.cl-task):has(.cl-tool) :is(.cl-chat, .cl-previous) .chip-context-text { -webkit-line-clamp: 1; }
+
+/* A shared tree/chat workspace. Tabs sit above the canvas; chats cover its
+   body without unmounting the tree or turning into a second bottom pane. */
+.tree-workspace { display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; position: relative; }
+.tree-workspace [hidden] { display: none !important; }
+.tree-workspace-tabs-bar { display: flex; flex: none; align-items: center; min-width: 0; gap: 6px; padding: 5px 12px 0; min-height: 43px; border-bottom: 1px solid var(--line-2); background: color-mix(in oklab, var(--ink) 2%, var(--sheet)); }
+.tree-workspace .tree-chat-tabs { min-width: 0; flex: 0 1 auto; max-width: none; align-self: stretch; align-items: stretch; scrollbar-width: thin; }
+.tree-workspace button { font-family: var(--font-ui); cursor: pointer; }
+.tree-workspace-tabs-bar .tree-chat-tab { flex: none; border: 1px solid transparent; border-bottom: 0; background: transparent; color: var(--ink-2); padding: 10px 15px; font-size: 13px; font-weight: 550; border-radius: 3px 3px 0 0; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.tree-workspace-tabs-bar .tree-home-tab { min-width: 90px; }
+.tree-workspace .tree-home-tab[aria-selected="true"] { border-color: var(--line-2); background: var(--sheet); color: var(--ink); box-shadow: inset 0 2px var(--c-coordinator); }
+.tree-workspace .tree-chat-tab-wrap { border-radius: 3px 3px 0 0; }
+.tree-workspace .tree-chat-tab-wrap.is-active { background: var(--sheet); }
+.tree-workspace .tree-chat-tab-wrap .tree-chat-tab { border: 0; padding-right: 8px; }
+.tree-workspace .tree-chat-tab[aria-selected="true"] { color: var(--ink); }
+.tree-workspace-tabs-bar .tree-chat-tab-close { flex: none; margin-right: 5px; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: var(--ink-3); font-size: 18px; }
+.tree-workspace-tabs-bar .tree-chat-add { flex: none; width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: 3px; margin-bottom: 4px; color: var(--ink-2); background: transparent; font-size: 23px; }
+.tree-workspace-tabs-bar button:hover { color: var(--ink); background: color-mix(in oklab, var(--ink) 5%, var(--sheet)); }
+.tree-workspace button:focus-visible, .tree-workspace input:focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: -2px; }
+.tree-workspace-body { display: flex; flex: 1; min-height: 0; min-width: 0; position: relative; overflow: hidden; }
+.tree-workspace-body > .graph-canvas-slot { width: 100%; }
+.tree-workspace-chat { display: flex; flex-direction: column; position: absolute; inset: 0; z-index: 24; background: var(--sheet); min-height: 0; }
+.tree-workspace-chat-header { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
+.tree-workspace-chat-header > div { min-width: 0; display: flex; gap: 5px; flex-direction: column; }
+.tree-preview-label { font: 11px/1.4 var(--font-ui); color: var(--ink-3); }
+.tree-chat-heading { color: var(--ink); font-size: 16px; line-height: 1.4; }
+.tree-chat-header-actions { display: flex; align-items: center; gap: 10px; }
+.tree-chat-header-actions button { padding: 7px 10px; border: 1px solid var(--line-2); border-radius: 3px; color: var(--ink-2); background: transparent; font-size: 12px; }
+.tree-preview-close span { margin-left: 14px; font-size: 17px; }
+.tree-workspace .tree-chat-chooser { position: absolute; top: 48px; left: 12px; bottom: auto; z-index: 35; width: min(360px, calc(100% - 24px)); border-radius: 3px; box-shadow: 0 12px 35px #0002; }
+.tree-workspace .tree-chat-options { max-height: min(420px, calc(55vh / var(--zoom, 1))); }
+.tree-workspace .tree-conversation { padding: 14px 22px; }
+.tree-workspace .tree-conversation-track { width: 100%; }
+.tree-workspace .tree-conversation .chat-msg-text { font-size: 15px; line-height: 1.65; }
+.tree-workspace.is-chat-view .graph-canvas-slot { visibility: hidden; }
+
+/* An angular card with a role-colored cap and a quiet, readable body. The
+   frame stays inside the fixed node footprint used by layout and links. */
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box { --tree-box-header-height: 86px; width: 320px; height: 224px; border: 0; border-radius: 2px; background: transparent; overflow: visible; box-shadow: none; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box > .node-glass { position: relative; inset: auto; width: 100%; height: 100%; box-sizing: border-box; display: grid; grid-template-rows: 40px 22px minmax(0, 1fr) 24px; gap: 7px; padding: 12px 16px; border: 2px solid color-mix(in oklab, var(--rc) 40%, var(--ink-3)); border-top: 4px solid var(--rc); border-radius: 2px; background: linear-gradient(180deg, color-mix(in oklab, var(--rc) 15%, var(--sheet)) 0 var(--tree-box-header-height), var(--sheet) var(--tree-box-header-height)); transform: none; overflow: hidden; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box > .node-glass { align-items: stretch; justify-items: stretch; }
+.computers .static-tree-graph[data-node-style="boxes"] .tree-agent-box > .node-glass { border-width: 4px 2px 2px; box-shadow: 0 3px 0 color-mix(in oklab, var(--ink) 12%, transparent), 0 8px 20px color-mix(in oklab, var(--ink) 6%, transparent) !important; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box:hover > .node-glass,
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.selected > .node-glass { border-color: var(--rc); }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box:focus-visible { outline: 2px solid var(--rc); outline-offset: 4px; }
+.tree-box-heading { display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 8px; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-labels { position: static; transform: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: auto; max-width: calc(100% - 36px); min-width: 0; max-height: none; padding: 0; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-name { padding: 0; background: none; color: var(--ink); font: 750 calc(18px * var(--tree-box-text-scale, 1))/1.15 var(--font-ui); max-width: 100%; text-align: left; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-name { justify-content: flex-start; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-name i { display: none; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-name .nn-t { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: inherit; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-role { padding: 0; background: none; text-transform: uppercase; letter-spacing: .045em; font: 600 calc(12px * var(--tree-box-text-scale, 1))/1.2 var(--font-ui); color: var(--ink-2); text-align: left; }
+.tree-agent-box button { color: var(--ink-2); background: transparent; border: 0; font-family: var(--font-ui); cursor: pointer; }
+.tree-agent-box button:hover { color: var(--ink); background: color-mix(in oklab, var(--rc) 8%, transparent); }
+.tree-agent-box button:focus-visible { outline: 2px solid var(--rc); outline-offset: 2px; }
+.tree-agent-box .tree-box-chat { flex: none; width: 32px; height: 32px; padding: 0; border: 1.5px solid color-mix(in oklab, var(--rc) 50%, var(--ink-3)); background: var(--sheet); border-radius: 2px; font-size: 24px; font-weight: 650; line-height: 1; box-shadow: 0 2px 0 color-mix(in oklab, var(--rc) 18%, transparent); }
+.tree-agent-box .tree-box-chat:hover { color: var(--ink); background: color-mix(in oklab, var(--rc) 15%, var(--sheet)); border-color: var(--rc); }
+.tree-box-status-row { display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 8px; }
+.tree-box-status { font: 650 calc(12px * var(--tree-box-text-scale, 1))/1.25 var(--font-ui); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 0; }
+.tree-box-status::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; vertical-align: 1px; border: 1.5px solid currentColor; border-radius: 2px; box-sizing: border-box; }
+.tree-agent-box[data-status="running"] .tree-box-status::before { background: currentColor; }
+.tree-box-status-row .tree-box-branch { margin-left: auto; padding: 2px 5px; border-radius: 3px; color: var(--ink-2); font-size: calc(12px * var(--tree-box-text-scale, 1)); line-height: 1.25; font-weight: 650; white-space: nowrap; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-runtime { position: static; display: flex; transform: none; width: auto; height: auto; flex: none; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-runtime .rt { font: calc(12px * var(--tree-box-text-scale, 1))/1.4 var(--font-mono); color: var(--ink-3); }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-runtime :is(.rl, .rt-state) { display: none; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.tree-scope-group .node-runtime { display: none; }
+.computers .static-tree-graph[data-node-style="boxes"] .tree-agent-box.no-telemetry .rl { display: none; }
+.tree-box-context { min-height: 0; overflow: hidden; padding-top: 5px; border-top: 1px solid color-mix(in oklab, var(--rc) 18%, var(--line-2)); }
+.tree-box-context-label { display: block; color: var(--ink-25, var(--ink-2)); font: 600 calc(12px * var(--tree-box-text-scale, 1))/1.2 var(--font-ui); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-box-thinking { display: block; margin-bottom: 4px; }
+.tree-box-thinking[hidden] { display: none; }
+.tree-box-thinking-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; color: var(--ink-2); font: calc(14px * var(--tree-box-text-scale, 1))/1.35 var(--font-ui); overflow-wrap: break-word; }
+.tree-box-context p { margin: 0; color: var(--ink); font: calc(15px * var(--tree-box-text-scale, 1))/1.35 var(--font-ui); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: break-word; }
+.tree-box-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tree-box-footer button { padding: 1px 5px; border-radius: 3px; font-size: calc(12px * var(--tree-box-text-scale, 1)); line-height: 1.3; white-space: nowrap; }
+.tree-box-footer .tree-box-branch { color: color-mix(in oklab, var(--rc) 75%, var(--ink)); padding-left: 0; }
+.tree-box-add-agent { margin-left: auto; }
+.tree-box-open-hint { font: 600 calc(12px * var(--tree-box-text-scale, 1))/1.3 var(--font-ui); color: var(--ink-2); }
+.tree-box-footer { padding-top: 4px; border-top: 1px solid color-mix(in oklab, var(--rc) 18%, var(--line-2)); }
+.static-tree-graph[data-node-style="boxes"] .tree-link { stroke-width: 1.7px !important; }
+.graph-zoomer [hidden], .tree-more-menu [hidden] { display: none !important; }
+.graph-zoomer[hidden], .tree-workspace-controls > [hidden] { display: none !important; }
+.tree-window-grid { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); position: relative; min-width: 0; min-height: 0; gap: 0; padding: 0; overflow: hidden; box-sizing: border-box; }
+.tree-window-grid[data-windows="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tree-window-grid.is-editing > .tree-window:first-child { grid-column: 1 / -1; }
+.tree-window-grid.is-editing > .tree-window:not(:first-child) { display: none; }
+.tree-window-grid.is-editing :is(.tree-window-select, .tree-window-close, .tree-window-tree-picker) { display: none; }
+.computers .tree-window { min-width: 0; min-height: 0; height: 100%; border: 0; border-radius: 0; overflow: hidden; background: transparent; }
+.tree-window-grid[data-windows="2"] > .tree-window ~ .tree-window { border-left: 1px solid var(--line-2); }
+.computers .tree-window-header { flex: none; display: flex; align-items: center; gap: 12px; min-height: 0; padding: 12px 16px 8px; border: 0; background: transparent; }
+.tree-window-grid[data-windows="1"] .tree-window-label { display: none; }
+.tree-window-title { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
+.tree-window-label { font: 650 9px/1 var(--font-ui); letter-spacing: .11em; color: var(--ink-3); }
+.tree-window-title select { appearance: auto; width: 100%; min-width: 0; border: 0; border-radius: 4px; background: transparent; color: var(--ink); font: 650 13px/1.4 var(--font-ui); padding: 3px 18px 3px 0; cursor: pointer; text-overflow: ellipsis; }
+.tree-window-title select option { background: var(--sheet); color: var(--ink); }
+.tree-window-close { align-self: flex-start; padding: 0; width: 27px; height: 27px; border: 0; border-radius: 3px; color: var(--ink-3); background: transparent; font: 20px/1 var(--font-ui); }
+.tree-window-navigation { flex: none; display: flex; gap: 12px; align-items: center; min-height: 26px; padding: 0 16px 5px; border: 0; background: transparent; color: var(--ink-3); font: 11px/1.4 var(--font-ui); }
+.tree-window-back { padding: 3px 7px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); color: var(--ink-2); font: 600 11px/1.3 var(--font-ui); }
+.tree-window .graph-crumb { display: none; }
+.tree-window .tree-pan-hint { bottom: 10px; left: 12px; font-size: 10px; max-width: calc(100% - 24px); }
+.tree-window-add { margin-left: auto; align-self: center; flex: none; margin-bottom: 4px; padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); color: var(--ink-2); font: 600 12px/1.4 var(--font-ui); }
+.tree-window-links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 12; }
+.tree-cross-link { fill: none; stroke: var(--c-coordinator); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.tree-window-links g { pointer-events: auto; cursor: pointer; }
+.tree-window-links circle { fill: var(--sheet); stroke: var(--c-coordinator); stroke-width: 1.5; }
+.tree-window-links text { fill: var(--c-coordinator); font: 25px/1 var(--font-ui); }
+.tree-rail-close { position: absolute; right: 10px; top: 10px; z-index: 5; width: 28px; height: 28px; border: 0; background: transparent; color: var(--ink-3); font-size: 22px; cursor: pointer; border-radius: 3px; }
+.tree-rail-close:hover { color: var(--ink); background: var(--surface); }
+.tree-workspace.is-chat-view .tree-window-grid { visibility: hidden; }
+.tree-workspace.is-chat-view .tree-window-add { visibility: hidden; }
+@media (max-width: 700px) {
+  .tree-window-header { padding: 8px; gap: 4px; }
+  .tree-window-navigation { padding-inline: 8px; }
+  .tree-window-add { font-size: 11px; padding: 6px; }
+}
+.tree-agent-box[data-status="running"] .tree-box-status { color: var(--c-coordinator); }
+.tree-agent-box[data-status="finished"] .tree-box-status { color: var(--ink-3); }
+.tree-agent-box:is([data-status="failed"], [data-status="interrupted"], [data-status="cancelled"], [data-status="turn-failed"]) .tree-box-status { color: var(--c-warning, var(--ink)); }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.tree-scope-group .node-glass { border-style: solid; border-top-style: double; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.tree-scope-group .node-labels { max-width: 100%; }
+.static-tree-graph[data-node-style="boxes"][data-edit-mode="true"] .tree-agent-box :is(.tree-box-chat, .tree-box-add-agent) { pointer-events: none; opacity: .35; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .tree-box-lane-marks { display: flex; align-items: center; gap: 3px; flex: none; height: 22px; margin-left: auto; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box .tree-box-lane-marks :is(.node-lane-box, .node-drift-light) { position: relative; inset: auto; width: 22px; height: 22px; flex: none; border-radius: 2px; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.has-lane-marks .tree-box-status { min-width: 0; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.has-lane-marks .tree-box-status-row { gap: 6px; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.has-lane-marks .tree-box-status-row .node-runtime { display: none; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.has-lane-marks .tree-box-branch { flex: none; margin-left: 0; }
+.tree-box-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.has-contact .node-labels { max-width: calc(100% - 74px); }
+.static-tree-graph .node .node-contact-icon { color: var(--ink-2); background: var(--sheet); border: 1.5px solid color-mix(in oklab, var(--rc) 50%, var(--ink-3)); width: 30px; height: 30px; padding: 5px; left: -8px; top: -8px; border-radius: 50%; }
+.static-tree-graph .node .node-contact-icon svg { width: 18px; height: 18px; }
+.static-tree-graph .node .node-contact-icon:hover { color: var(--ink); background: color-mix(in oklab, var(--rc) 15%, var(--sheet)); }
+.static-tree-graph .node .node-contact-icon:focus-visible { outline: 2px solid var(--rc); outline-offset: 3px; }
+.static-tree-graph[data-node-style="boxes"] .node .node-contact-icon { position: relative; left: auto; top: auto; border-radius: 2px; width: 32px; height: 32px; }
+.static-tree-graph .node .node-contact-icon[data-voice-selected="true"] { color: var(--ink); background: color-mix(in oklab, var(--c-coordinator) 22%, var(--sheet)); border-color: var(--c-coordinator); }
+.static-tree-graph .node .node-contact-icon:is([data-voice-state="listening"], [data-voice-state="speaking"]) { box-shadow: inset 0 -3px var(--c-coordinator); }
+.static-tree-graph[data-edit-mode] .node-contact-icon,
+.static-tree-host.is-linking .node-contact-icon { visibility: hidden; pointer-events: none; }
+.computers .agent-screen-voice-controls.is-node-popover { position: fixed; z-index: 70; top: 110px; right: 24px; width: min(760px, calc(100vw / var(--zoom, 1) - 48px)); max-height: calc(100vh / var(--zoom, 1) - 140px); margin: 0; overflow: auto; border: 1px solid var(--ink-4); border-radius: 3px; box-shadow: 0 12px 40px #0002; font-size: 13px; }
+.computers .agent-screen-voice-controls.is-node-popover:not([open]) { display: none; }
+.computers .agent-screen-voice-controls.is-node-popover > summary { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line-2); margin-bottom: 12px; list-style: none; }
+.computers .agent-screen-voice-controls.is-node-popover > summary::after { content: '×'; margin-left: auto; padding-left: 12px; font-size: 22px; line-height: 1; }
+.computers .agent-screen-voice-controls.is-node-popover :is(.agent-control-agents label, .agent-control-buttons button) { border-radius: 3px; }
+.static-tree-graph[data-node-style="boxes"] .tree-empty-ring { border-radius: 3px; }
+@media (max-width: 640px) {
+  .tree-workspace-tabs-bar { padding-inline: 6px; }
+  .tree-workspace-chat-header { padding: 10px 12px; gap: 8px; }
+  .tree-workspace .tree-conversation { padding: 8px 12px; }
+  .tree-chat-header-actions button { padding: 6px; }
+}
+
+.tree-set-tab-wrap { display: flex; align-items: center; flex: none; border: 1px solid transparent; border-bottom: 0; border-radius: 3px 3px 0 0; }
+.tree-set-tab-wrap.is-active { border-color: var(--line-2); background: var(--sheet); box-shadow: inset 0 2px var(--c-coordinator); }
+.tree-workspace .tree-set-tab-wrap .tree-chat-tab { border: 0; padding-right: 8px; }
+.tree-new-workspace { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 10px; text-align: left; background: transparent; color: var(--ink); border: 0; border-bottom: 1px solid var(--line-2); }
+.tree-new-workspace b { font-size: 13px; font-weight: 600; }
+.tree-new-workspace small { font-size: 11px; color: var(--ink-3); }
+.tree-new-workspace:hover { background: var(--surface); }
+.tree-picker-label { display: block; padding: 12px 10px 5px; font: 600 10px/1.3 var(--font-ui); text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); }
+/* Tree selection belongs to the window; several selections share its canvas. */
+.computers .tree-window { position: relative; }
+.tree-window-select { width: 100%; padding: 3px 0; border: 0; background: transparent; color: var(--ink); font: 650 13px/1.4 var(--font-ui); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-window-tree-picker { position: absolute; top: 52px; left: 12px; z-index: 30; width: min(440px, calc(100% - 24px)); box-sizing: border-box; padding: 14px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); box-shadow: 0 8px 25px #0002; }
+.tree-window-tree-picker > strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 13px; }
+.tree-window-tree-picker > p { margin: 0 0 8px; color: var(--ink-3); font: 12px/1.5 var(--font-ui); }
+.tree-window-tree-choices { max-height: 270px; overflow: auto; }
+.tree-window-tree-choices label { display: flex; align-items: center; gap: 10px; padding: 11px 3px; cursor: pointer; font: 13px/1.4 var(--font-ui); color: var(--ink); border-bottom: 1px solid var(--line); }
+.tree-window-tree-choices label:hover { background: color-mix(in oklab, var(--ink) 3%, var(--sheet)); }
+.tree-window-choice-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.tree-window-choice-text strong { font-weight: 600; overflow-wrap: break-word; }
+.tree-window-choice-text > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12px; color: var(--ink-3); }
+.tree-window-tree-choices small { flex: none; margin-left: auto; color: var(--ink-3); font-size: 12px; }
+.tree-window-tree-choices input { flex: none; accent-color: var(--c-coordinator); }
+.tree-window-picker-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; }
+.tree-window-picker-actions button { padding: 7px 10px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); color: var(--ink); font: 12px/1.4 var(--font-ui); }
+.tree-window-picker-actions .tree-window-picker-apply { border-color: var(--c-coordinator); }
+.tree-window-picker-actions button:disabled { opacity: .45; cursor: default; }
+.tree-window-branch-title { color: var(--ink); font: 650 14px/1.4 var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-window-dropzone { position: absolute; inset: 82px 16px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; pointer-events: none; color: var(--ink-3); font: 13px/1.5 var(--font-ui); }
+/* Keep the empty-window placeholder hidden when its frame is populated:
+   tree-windows.js ships it hidden and toggles it per frame. */
+.tree-window-dropzone[hidden] { display: none; }
+.tree-window-dropzone strong { color: var(--ink-2); font-size: 18px; font-weight: 600; }
+.tree-window.is-empty .graph-canvas-slot { visibility: hidden; }
+.tree-window.is-drop-target { box-shadow: inset 0 0 0 2px var(--c-coordinator); background: color-mix(in oklab, var(--c-coordinator) 4%, var(--sheet)); }
+.tree-workspace.is-chat-view .graph-canvas-slot { opacity: 0; pointer-events: none; }
+.tree-workspace.is-chat-view .tree-window-grid { opacity: 0; pointer-events: none; }
+
+/* The selected canvas shares one action row with display and fleet controls. */
+.tree-toolbar-owner { container-type: inline-size; }
+.tree-toolbar-owner > .graph-bar { flex-wrap: wrap; gap: 8px 12px; }
+.tree-toolbar-owner > .graph-bar > .tree-action-bar { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
+.tree-action-bar .tree-display-controls { display: flex; align-items: center; gap: 4px; }
+.tree-action-bar .tree-display-controls select { width: auto; min-width: 76px; max-width: 100px; height: 30px; padding: 4px 6px; border: 1px solid var(--line-2); border-radius: 3px; color: var(--ink); background: var(--sheet); font: 12px/1.3 var(--font-ui); }
+.tree-action-bar .tree-display-controls select:focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: 2px; }
+.tree-action-bar .tree-active-zoom { flex: none; }
+.tree-action-bar .graph-zoomer { margin: 0; }
+.tree-action-bar .graph-zoomer button { min-width: 26px; padding-inline: 7px; }
+.tree-action-bar .graph-zoomer .graph-fit { min-width: 36px; }
+.tree-action-bar .tree-workspace-controls { margin: 0; }
+.tree-action-bar .tree-window-add { align-self: auto; margin: 0; padding: 6px 8px; font-size: 12px; }
+.tree-action-bar .tree-link-toggle { min-width: 40px; }
+.tree-toolbar-parking, .tree-window-header > .graph-tools[hidden] { display: none !important; }
+.tree-toolbar-owner .tree-window-header { padding-block: 9px 7px; }
+.tree-toolbar-owner .tree-window.is-toolbar-active .tree-window-header { box-shadow: inset 0 2px var(--c-coordinator); }
+/* 9px uppercase with .11em tracking is the smallest readable text on this
+   page, and the raw accent put it at 3.52:1. The toned variant is what the
+   product already uses wherever a role colour has to be read rather than seen. */
+.tree-toolbar-owner .tree-window.is-toolbar-active .tree-window-label { color: var(--role-text-coordinator, var(--ink-2)); }
+.tree-toolbar-owner:has(.tree-workspace.is-chat-view) > .graph-bar :is(.tree-display-controls, .tree-active-zoom, .tree-workspace-controls, .tree-window-add, .graph-tool-set) { display: none; }
+.tree-toolbar-owner:has(.tree-window-grid.is-editing) > .graph-bar :is(.tree-display-controls, .tree-workspace-controls, .tree-window-add, .tree-cards-toggle) { display: none; }
+.tree-toolbar-owner:has(.tree-window-grid.is-editing) .tree-chat-tabs { visibility: hidden; }
+@container (max-width: 760px) {
+  .tree-toolbar-owner > .graph-bar > .tree-action-bar { width: 100%; justify-content: flex-end; gap: 4px; }
+  .tree-action-bar .tree-display-controls select { min-width: 65px; padding-inline: 3px; font-size: 11px; }
+  .tree-action-bar .graph-zoomer .gz-level { min-width: 30px; padding-inline: 3px; font-size: 10px; }
+  .tree-action-bar .graph-open-btn { padding-inline: 6px; font-size: 11px; }
+  .tree-action-bar .tree-window-add { padding-inline: 6px; font-size: 11px; }
+}
+@container (max-width: 610px) {
+  .tree-action-bar .graph-zoomer .gz-level { display: none; }
+  .tree-action-bar .tree-display-controls select { min-width: 58px; font-size: 10px; }
+  .tree-action-bar .graph-zoomer button { padding-inline: 5px; }
+}
+@container (max-width: 500px) {
+  .tree-toolbar-owner > .graph-bar > .tree-action-bar { flex-wrap: wrap; justify-content: flex-start; }
+  .tree-action-bar > * { flex-shrink: 0; }
+}
+.graph-zoomer .tree-cards-toggle { padding-inline: 9px; border-left: 1px solid var(--line-2); }
+.graph-zoomer .tree-cards-toggle[aria-pressed="true"] { color: var(--c-coordinator); box-shadow: inset 0 -2px var(--c-coordinator); }
+
+.tree-edit-picker-backdrop { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; background: color-mix(in srgb, var(--ink) 22%, transparent); }
+.tree-edit-picker { display: flex; flex-direction: column; gap: 16px; width: min(440px, 100%); max-height: calc(100dvh / var(--zoom, 1) - 40px); padding: 22px; box-sizing: border-box; overflow: auto; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); color: var(--ink); font: 13px/1.5 var(--font-ui); box-shadow: 0 12px 36px #0002; }
+.tree-edit-picker h2 { margin: 0; font: 650 18px/1.35 var(--font-ui); }
+.tree-edit-picker-note, .tree-edit-picker-empty { margin: 0; color: var(--ink-2); }
+.tree-edit-picker-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tree-edit-picker-selection { color: var(--ink-3); font-size: 12px; }
+.tree-edit-picker-list { flex: 0 1 auto; min-width: 0; min-height: 0; max-height: min(360px, calc(45dvh / var(--zoom, 1))); overflow: auto; margin: 0; padding: 0; border: 0; }
+.tree-edit-picker-list legend { padding: 0 0 6px; color: var(--ink-3); font-size: 11px; font-weight: 600; }
+.tree-edit-picker-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.tree-edit-picker-row:last-child { border-bottom: 0; }
+.tree-edit-picker-row input { flex: none; accent-color: var(--c-coordinator); }
+.tree-edit-picker-name { flex: 1; min-width: 0; overflow-wrap: break-word; font-weight: 550; }
+.tree-edit-picker-count { flex: none; color: var(--ink-3); font-size: 12px; }
+.tree-edit-picker-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.tree-edit-picker button { min-height: 32px; padding: 6px 11px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); color: var(--ink); font: 600 12px/1.4 var(--font-ui); cursor: pointer; }
+/* --c-<id> is the RING colour; --role-text-<id> is the same colour toned to
+   4.5:1 against the current theme (src/role-colors.js). This is a text button,
+   and on the raw accent it measured 3.52:1 -- see the window label below, which
+   had the same swap for the same reason. */
+.tree-edit-picker .tree-edit-picker-select-all { min-height: 28px; padding: 3px 0; border: 0; color: var(--role-text-coordinator, var(--ink-2)); }
+.tree-edit-picker .tree-edit-picker-confirm { border-color: var(--c-coordinator); background: color-mix(in oklab, var(--c-coordinator) 8%, var(--sheet)); }
+.tree-edit-picker button:disabled { opacity: .5; cursor: default; }
+.tree-edit-picker :is(button, input):focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: 2px; }
+
+/* Standalone placement keeps the same tab and composer while a tree adopts it. */
+.tree-standalone-placement-status {
+  flex: none; margin: 0; padding: 7px 14px; border-bottom: 1px solid var(--line);
+  color: var(--ink-2); background: var(--sheet); font: 12px/1.4 var(--font-ui);
+}
+.tree-standalone-placement-status.is-error { color: var(--s-serious); }
+.tree-chat-tab[draggable="true"] { cursor: grab; }
+.tree-chat-tab.is-placing-agent { opacity: .65; cursor: grabbing; }
+.tree-workspace .tree-empty-node.standalone-drop-target .tree-empty-ring {
+  border-color: var(--c-coordinator); box-shadow: 0 0 0 3px color-mix(in oklab, var(--c-coordinator) 15%, transparent);
+  background: color-mix(in oklab, var(--c-coordinator) 8%, var(--sheet));
+}
+.tree-workspace .tree-empty-node.standalone-drop-target { opacity: 1; }
+.tree-chat-header-actions:has(.tree-standalone-place:not([hidden])) { flex-wrap: wrap; }
+.tree-standalone-placement {
+  position: fixed; inset: auto; margin: 0; padding: 0;
+  left: clamp(12px, var(--placement-x, 12px), max(12px, calc(100vw / var(--zoom, 1) - 372px)));
+  top: clamp(12px, var(--placement-y, 60px), max(12px, calc(100dvh / var(--zoom, 1) - 320px)));
+  width: min(360px, calc(100vw / var(--zoom, 1) - 24px));
+  max-height: calc(100dvh / var(--zoom, 1) - 24px); overflow: auto; box-sizing: border-box;
+  color: var(--ink); background: var(--sheet); border: 1px solid var(--line-2); border-top: 2px solid var(--c-coordinator);
+  border-radius: 3px; box-shadow: 0 8px 28px #0003; font: 13px/1.45 var(--font-ui);
+}
+.tree-standalone-placement header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.tree-standalone-placement button { padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 3px; color: var(--ink-2); background: var(--sheet); font: 600 12px/1.4 var(--font-ui); cursor: pointer; }
+.tree-standalone-placement button:hover { border-color: var(--c-coordinator); color: var(--ink); }
+.tree-standalone-placement button:focus-visible, .tree-standalone-placement select:focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: 2px; }
+.tree-standalone-placement button:disabled, .tree-standalone-placement select:disabled { opacity: .55; cursor: wait; }
+.tree-standalone-placement .tree-standalone-place-dismiss { width: 26px; height: 26px; padding: 0; border: 0; background: transparent; font-size: 21px; font-weight: 400; }
+.tree-standalone-placement .tree-standalone-place-name { margin: 12px 14px 8px; font-weight: 600; overflow-wrap: break-word; }
+.tree-standalone-placement label { display: grid; gap: 5px; padding: 0 14px; color: var(--ink-2); font-size: 12px; }
+.tree-standalone-placement select { box-sizing: border-box; min-width: 0; width: 100%; padding: 8px; border: 1px solid var(--line-2); border-radius: 3px; color: var(--ink); background: var(--sheet); font: 13px/1.4 var(--font-ui); }
+.tree-standalone-place-note { margin: 8px 14px 12px; color: var(--ink-3); font-size: 12px; }
+.tree-standalone-place-error { margin: 8px 14px; color: var(--s-serious); overflow-wrap: break-word; }
+.tree-standalone-placement footer { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.tree-standalone-placement .tree-standalone-place-confirm { border-color: var(--c-coordinator); color: var(--ink); }
+.tree-workspace .tree-box-add-agent.standalone-drop-target,
+.tree-workspace .tree-chat-add.standalone-drop-target,
+.tree-workspace .tree-chat-add.drop-ok { outline: 2px solid var(--c-coordinator); outline-offset: 2px; background: color-mix(in oklab, var(--c-coordinator) 10%, var(--sheet)); }

@@ -1,0 +1,52 @@
+{
+  "files": [
+    {
+      "path": "espeak-ng-1.52.0-source.tar.gz",
+      "bytes": 17747711,
+      "sha256": "cd83f84c4e495f281ac14e919aecf2834306ec1ea1b498de8ef6000f3a0f90de",
+      "url": "https://codeload.github.com/espeak-ng/espeak-ng/tar.gz/4870adfa25b1a32b4361592f1be8a40337c58d6c"
+    },
+    {
+      "path": "espeakng-loader-0.2.4-source.tar.gz",
+      "bytes": 4595,
+      "sha256": "c52fde6a08f790dc9f150b68205a35d3ce0aa95dbd5fa8be7b22989b26d1ba09",
+      "url": "https://codeload.github.com/thewh1teagle/espeakng-loader/tar.gz/0ddc87adf77e5850d7eeb542ac8a87d421b64daa"
+    },
+    {
+      "path": "espeak-ng-GPL-3.0.txt",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "url": "https://raw.githubusercontent.com/espeak-ng/espeak-ng/4870adfa25b1a32b4361592f1be8a40337c58d6c/COPYING"
+    },
+    {
+      "path": "espeakng-loader-MIT.txt",
+      "bytes": 1069,
+      "sha256": "b05c73bb1335b4320ec97edff106b3991c12d0acdc6e899c96f061a15039119f",
+      "url": "https://raw.githubusercontent.com/thewh1teagle/espeakng-loader/0ddc87adf77e5850d7eeb542ac8a87d421b64daa/LICENSE"
+    },
+    {
+      "path": "whisper-model-card.md",
+      "bytes": 2454,
+      "sha256": "0b54ba6aa7769ae8d03964d51c3b045d313a92741e248d03c2c258146745249c",
+      "url": "https://huggingface.co/deepdml/faster-whisper-large-v3-turbo-ct2/raw/4df90f75321148c3a29a9e2351b7ddf8f5b115a8/README.md"
+    },
+    {
+      "path": "whisper-MIT.txt",
+      "bytes": 1063,
+      "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d",
+      "url": "https://raw.githubusercontent.com/openai/whisper/main/LICENSE"
+    },
+    {
+      "path": "kokoro-model-card.md",
+      "bytes": 6348,
+      "sha256": "91dcabced89db6f109b8786642f50402d3ee87450e8189589b6f85520e7f4d78",
+      "url": "https://huggingface.co/hexgrad/Kokoro-82M/raw/f3ff3571791e39611d31c381e3a41a3af07b4987/README.md"
+    },
+    {
+      "path": "kokoro-Apache-2.0.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+    }
+  ]
+}

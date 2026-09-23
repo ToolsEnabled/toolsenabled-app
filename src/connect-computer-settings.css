@@ -1,0 +1,212 @@
+/* THE CONNECT SECTION'S OWN FIVE RULES.
+ *
+ * Everything else on this section is borrowed: .settings-section,
+ * .settings-row, .fleet-profile-block, .fleet-profile-status,
+ * .fleet-profile-input, .fleet-profile-actions and .ctl-btn all come from the
+ * page it lives on, so this section reads as part of Settings rather than as a
+ * visitor. What is here is only what nothing on the page already did: a code
+ * large enough to read off a screen and copy onto another device, and a refusal
+ * that cannot be mistaken for ordinary description text.
+ *
+ * NO COLOUR IS SPELLED OUT. Every value below is a token, so the three themes
+ * this product ships (white, tan, black) each get their own contrast without
+ * this file knowing which one is on.
+ */
+
+/* THE CODE. It is a read-only <input> for the keyboard reason written at
+   codeMarkup() in src/connect-computer-settings.js, so it has to be undressed
+   back down to a display: a field-looking box would invite somebody to type
+   their account name into the one element on this screen that cannot take it.
+
+   clamp() rather than a fixed size, and the middle term is measured against
+   the ROW, not the viewport. MEASURED 2026-09-18 on the packaged 1.0.45
+   candidate at 1440x900, Advanced view: the settings row splits copy and
+   control into two columns, the control column hands .connect-code-row 298px,
+   the Copy button and gap take 68px, and the input is 230px wide while twelve
+   mono characters at 34px with 0.06em tracking need 293px. The last three
+   characters were clipped: a person reading the code off the screen saw
+   "TC-MX9W-D" and the instruction beside it says to type the code into the
+   browser. 3.4vw at 1440px is 49px, so the viewport-relative clamp sat at its
+   34px ceiling and never noticed the narrow column. cqw sizes the type by the
+   row's own width, which is the only width that decides whether it fits:
+   twelve characters at 8cqw of 298px come to 24px and about 205px of text. The
+   lower bound keeps it readable if the row is narrower still. */
+.connect-code {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s2) 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-2);
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: clamp(18px, 8cqw, 34px);
+  font-weight: 620;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  cursor: text;
+}
+
+.connect-code:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: var(--s1);
+  border-radius: var(--r-sm);
+}
+
+/* --s2, not --s1, and it is measured rather than chosen: the focused code's
+   outline sits 4px outside its box, and at a 4px gap the ring's lower edge
+   landed exactly on the countdown line under it. */
+.connect-code-wrap {
+  display: grid;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+/* THE CODE AND ITS COPY BUTTON ON ONE LINE. `auto` on the button so it takes
+   only its label, `1fr` and min-width:0 on the code so the shrinking happens
+   there -- the code is already clamp()ed and can afford it; a button that
+   shrinks becomes a button with its label cut in half. `end` rather than
+   `center`, so the button's baseline sits with the hairline under the code
+   instead of floating beside 34px of type. */
+.connect-code-row {
+  /* The code's font-size is in cqw, so this row is its container. */
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--s3);
+  min-width: 0;
+  /* CAPPED, or the two do not read as one thing. MEASURED in the default
+     window: the row ran the full 1440px of the column, so the code ended around
+     x=770 and its Copy button sat at x=1800 -- a button a thousand pixels from
+     the thing it copies is a button about something else. 528px leaves about
+     440px for the code, and twelve mono characters at the clamp's 34px ceiling
+     need roughly 300px including the tracking. It also shortens the hairline
+     under the code to the width of the code, which is what a rule under a value
+     is for. */
+  max-width: calc(var(--s5) * 22);
+}
+
+/* Shorter than a .ctl-btn's 40px, because it is beside a line of text rather
+   than in a row of actions, and it must not read as the section's main
+   control -- that is "Stop waiting", further down. */
+.connect-copy {
+  height: 32px;
+  flex: none;
+  padding: 0 var(--s3);
+  white-space: nowrap;
+}
+
+/* The countdown. Tabular figures so the seconds place does not shove the
+   sentence sideways once a second while somebody is reading the code above
+   it. */
+.connect-remaining {
+  margin: 0;
+  color: var(--ink-25);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+
+/* The three steps, in the order they are done. Numbered because they are
+   ordered: a person doing step three first has nowhere to type the code. */
+.connect-steps {
+  margin: 0;
+  padding-left: var(--s4);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.connect-steps li + li { margin-top: var(--s1); }
+
+/* An address to be typed into a browser, and the name this computer will carry
+   on the account page. Mono for the same reason every other exact string in
+   this product is: it is transcribed, not read. */
+.connect-host {
+  font-family: var(--font-mono);
+  font-weight: 620;
+  color: var(--ink);
+}
+
+.connect-known {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* A REFUSAL MUST NOT READ AS DESCRIPTION. It wears the same left-rule idiom the
+   System section's refusals wear, in the serious colour.
+
+   IT NOW SITS WITH THE BUTTON rather than at the top of the section -- see
+   refusalMarkup() in src/connect-computer-settings.js for the two measurements
+   that moved it -- so the rule below is what makes a sentence appearing in the
+   middle of a form read as an answer rather than as more form. `font-weight`
+   and --ink-2 over 12.5px: the row description directly above it is the same
+   size in the same colour, and at equal weight the new sentence was simply the
+   next paragraph. */
+.connect-refusal {
+  margin: var(--s2) 0;
+  padding: var(--s2) 0 var(--s2) var(--s3);
+  border-left: 2px solid var(--s-serious);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 560;
+  line-height: 1.5;
+  max-width: calc(var(--s5) * 24);
+}
+
+/* A NOTE IS NOT A REFUSAL AND MUST NOT LOOK LIKE ONE. Same shape, same
+   measure, so it reads as part of the same conversation -- and the warn rule
+   rather than the serious one, because nothing has gone wrong: something the
+   person could not see has been dealt with, and they are being told. */
+.connect-note {
+  margin: var(--s2) 0;
+  padding: var(--s2) 0 var(--s2) var(--s3);
+  border-left: 2px solid var(--s-warn);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  max-width: calc(var(--s5) * 24);
+}
+
+.connect-name {
+  display: grid;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+.connect-name > span {
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: var(--track-caps);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+/* The section's own block keeps the name box from stretching the full width of
+   a wide window, where a 900px field for "My Windows computer" reads as a
+   mistake. The code above it is deliberately NOT capped: it is meant to be
+   large. */
+.connect-section .connect-name .fleet-profile-input { max-width: calc(var(--s5) * 14); }
+
+/* A BUTTON THAT IS BUSY HAS TO LOOK BUSY, and until this rule there was no
+   `.ctl-btn` styling anywhere for either kind of "off": the section's own
+   "Asking..." button carried the full armed treatment and read as a live
+   control that did nothing when pressed -- the exact defect the whole of this
+   screen was written to stop repeating. It is aria-disabled rather than
+   disabled so it can keep the keyboard focus (see buttonMarkup() in
+   src/connect-computer-settings.js); `pointer-events` stays ON, because a
+   pointer that passes through a control is a control that cannot even be
+   hovered, and the press is refused in the handler instead. */
+.connect-section .ctl-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}

@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToolsEnabled</title>
+  <!-- The favicon was the role palette at 16px — a coordinator ring around a
+       shadow-manager core. It was a stand-in from before this product had a
+       mark of its own. It now has one, so the favicon is the mark: the TE
+       monogram, plated, generated from the owner's artwork by
+       `node tools/gen-brand-icons.mjs` (see tools/brand-mark.mjs for why a
+       favicon gets the plate and the in-window mark does not). Do not hand-edit
+       brand-icon.svg; tools/test/brand-mark.test.mjs will fail if it drifts. -->
+  <link rel="icon" href="/brand-icon.svg" />
+  <!-- Settings storage, installed before anything reads a setting.
+       This is a CLASSIC script on purpose: it blocks and runs in document
+       order, so it is in place before the theme read directly below and long
+       before any module evaluates. It replaces localStorage with the shell's
+       durable settings file, because browser storage is keyed to the origin
+       and this application's origin is http://127.0.0.1:<port> with the port
+       chosen by a scan -- so a relaunch on a different port used to empty
+       every setting a person had chosen, silently. In a plain browser
+       (vite dev/preview) there is no shell and the file does nothing.
+       See public/durable-storage.js. -->
+  <script src="/durable-storage.js"></script>
+  <!-- theme before first paint: /src/main.js is a module (deferred), so
+       reading the stored theme there alone flashed the white page at every
+       tan/black user. Same key and same guarded read as main.js.
+       The font choice (mc.font, owner R1523) rides the same pre-paint script
+       for the same reason. The stacks are a deliberate copy of the register
+       in src/font-choice.js — a classic script cannot import a module, and
+       the theme line above accepts the identical duplication for the
+       identical reason. Keep the two in step. -->
+  <script>
+    try {
+      var t = localStorage.getItem('mc.theme')
+      document.documentElement.dataset.theme = (['tan', 'black', 'ember', 'cobalt'].includes(t)) ? t : 'white'
+    } catch (e) { document.documentElement.dataset.theme = 'white' }
+    try {
+      var fontStacks = {
+        plex: '"IBM Plex Sans Variable", "IBM Plex Sans", "Segoe UI Variable", system-ui, sans-serif',
+        manrope: '"Manrope Variable", "Segoe UI Variable", system-ui, sans-serif',
+        source: '"Source Sans 3 Variable", "Segoe UI Variable", system-ui, sans-serif',
+        system: '"Segoe UI Variable", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        grotesk: '"Space Grotesk Variable", "Space Grotesk", "Segoe UI Variable", system-ui, sans-serif',
+        mono: '"JetBrains Mono Variable", ui-monospace, "Cascadia Mono", Consolas, monospace'
+      }
+      var f = localStorage.getItem('mc.font')
+      if (fontStacks[f]) document.documentElement.style.setProperty('--font-ui', fontStacks[f])
+    } catch (e) {}
+  </script>
+  <!-- WITH JAVASCRIPT OFF THIS PAGE RENDERED THE WORD "settings" AND NOTHING
+       ELSE, and it is the destination of the website's primary button.
+
+       MEASURED: /app/ with scripting disabled draws "settings", "Settings" and
+       "all settings →" — the three strings that happen to be in the static
+       shell — on a white page with no stylesheet, because every stylesheet in
+       this application is imported by a module. A stranger who arrives with a
+       script blocker on sees three words and concludes the product is broken.
+
+       THE STYLES ARE IN <head> AND THE SENTENCE IS IN <body>, which is the one
+       arrangement that works: <noscript> in the head may hold a <style>, and
+       the rule below has to hide chrome that is written before the message.
+       Everything here is self-contained — no variables, no imported sheet,
+       because with scripting off there is no sheet to import from. -->
+  <noscript>
+    <style>
+      .topbar, #stage, .drawer { display: none !important; }
+      body {
+        margin: 0;
+        background: #f7f8fa;
+        color: #0e1726;
+        font: 16px/1.55 "Segoe UI Variable", system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+      }
+      .noscript-note {
+        max-width: 34rem;
+        margin: 0 auto;
+        padding: 3rem 1.5rem;
+      }
+      .noscript-note h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 1rem; }
+      .noscript-note p { margin: 0 0 1rem; }
+      .noscript-note a { color: #0e1726; }
+    </style>
+  </noscript>
+</head>
+<body data-navigation="side">
+  <a class="skip-link" href="#stage">Skip to main content</a>
+  <div class="sr-only" id="route-status" role="status" aria-live="polite" aria-atomic="true"></div>
+  <noscript>
+    <div class="noscript-note">
+      <h1>ToolsEnabled needs JavaScript to draw this page</h1>
+      <p>This page is the ToolsEnabled application itself, running in your browser. It is drawn entirely by script, so with JavaScript switched off there is nothing here to show you. Nothing is wrong with your computer and nothing failed to load.</p>
+      <p>Turn JavaScript on for this site and reload the page, and you will get a working preview of the product.</p>
+      <p>The preview is a look at the screens. The real thing is the version you install on your own computer, which is where agents actually run: <a href="/download/">download ToolsEnabled</a>.</p>
+    </div>
+  </noscript>
+
+  <!-- THE ICON BUTTONS HOLD NO TEXT, NOT EVEN A NEWLINE. Each one is named by
+       its aria-label (main.js rewrites the chevrons' per route: "Back to
+       computers"), but a text node of indentation whitespace between the tags
+       made textContent truthy-then-empty, so every tool that reads text before
+       aria-label — including this product's own drive harnesses — reported
+       four unlabeled buttons (measured by a geometry sweep, 2026-08-25).
+       The svg sits flush against its button tags so the label is the only
+       name there is. -->
+  <header class="topbar">
+    <div class="app-nav-brand">
+      <a class="app-nav-home" href="#/" aria-label="ToolsEnabled — Home">
+        <span class="app-nav-mark" aria-hidden="true">
+          <svg viewBox="0 0 100 100" width="30" height="30" focusable="false">
+            <g fill="currentColor" transform="translate(10 26.2778) scale(.0895) translate(-69.4684 -30)">
+              <g transform="translate(65 0) skewX(-14)">
+                <rect x="35" y="30" width="425" height="110" rx="14" />
+                <rect x="180" y="120" width="140" height="440" rx="16" />
+                <rect x="480" y="30" width="140" height="530" rx="16" />
+                <rect x="480" y="30" width="430" height="110" rx="14" />
+                <rect x="540" y="225" width="330" height="100" rx="14" />
+                <rect x="540" y="450" width="330" height="110" rx="14" />
+              </g>
+            </g>
+          </svg>
+        </span>
+        <span class="app-nav-wordmark">ToolsEnabled</span>
+      </a>
+      <button class="app-nav-collapse" type="button" data-navigation-collapse aria-controls="tb-nav" aria-expanded="true" aria-label="Collapse navigation" title="Collapse navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m7-11-3 3 3 3"/></svg></button>
+    </div>
+    <div class="tb-side tb-left">
+      <button class="icon-btn" id="nav-back" title="Back" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <a class="phone-home-link" href="#/" tabindex="0" aria-label="ToolsEnabled — Home">ToolsEnabled</a>
+    <nav class="tb-nav" id="tb-nav" aria-label="Primary navigation">
+      <a href="#/" data-route="home">Home</a>
+      <a href="#/computers" data-route="computers">Computers</a>
+      <a href="#/metrics" data-route="metrics">Metrics</a>
+      <a href="#/research" data-route="research">Research</a>
+      <a href="#/comms" data-route="comms">Messages</a>
+      <a href="#/ledger" data-route="ledger">Ledger</a>
+      <a href="#/vault" data-route="vault">Vault</a>
+      <a href="#/settings" data-route="settings">Settings</a>
+    </nav>
+    <div class="tb-side tb-right">
+      <!-- THREE THINGS WORE THE WORD "SETTINGS" AT ONCE: this label, the
+           drawer it opens, and the whole page at #/settings. On home the left
+           arrow and this gear went to different places while looking like a
+           pair. A person cannot be told two destinations by one word, so the
+           quick panel is named for what it is -- the handful of controls for
+           the page you are on, plus theme and text -- and "Settings" is left
+           to mean the page.
+
+           THE WORDS LIVE INSIDE THE BUTTON, an exception to the strip's
+           text-free icon buttons and a measured one: as a sibling span the
+           label read as the control's name while taking no press (desktop
+           press-through, 2026-08-27 — clicked twice, nothing, nothing said).
+           A label that names a control is part of the control. It stays
+           aria-hidden so the accessible name remains the single aria-label;
+           textContent-first readers now read the same words the eye does.
+           Flush against the svg for the same no-whitespace-text-node reason
+           as its neighbours. -->
+      <button class="icon-btn" id="open-settings" title="Quick settings" aria-label="Quick settings" aria-expanded="false" aria-controls="drawer"><span class="tb-settings-label" aria-hidden="true">Quick settings</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.6a1.7 1.7 0 0 1 .34 1.87l-.55 1.28a1.7 1.7 0 0 1-1.63 1.03l-1.16-.05a6.6 6.6 0 0 1-1.11.65l-.38 1.1a1.7 1.7 0 0 1-1.6 1.14h-1.4a1.7 1.7 0 0 1-1.6-1.14l-.38-1.1a6.6 6.6 0 0 1-1.1-.65l-1.17.05a1.7 1.7 0 0 1-1.63-1.03l-.55-1.28a1.7 1.7 0 0 1 .34-1.87l.79-.85a6.7 6.7 0 0 1 0-1.5l-.79-.85a1.7 1.7 0 0 1-.34-1.87l.55-1.28A1.7 1.7 0 0 1 6.1 5.42l1.16.05a6.6 6.6 0 0 1 1.11-.65l.38-1.1A1.7 1.7 0 0 1 10.35 2.6h1.4a1.7 1.7 0 0 1 1.6 1.13l.38 1.1c.39.18.76.4 1.1.65l1.17-.05a1.7 1.7 0 0 1 1.63 1.03l.55 1.28a1.7 1.7 0 0 1-.34 1.87l-.79.85a6.7 6.7 0 0 1 0 1.5l.79.85Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
+      <button class="icon-btn" id="nav-next" title="Next" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </header>
+
+  <main id="stage" tabindex="-1" aria-label="Current screen"></main>
+
+  <!-- settings drawer (slides in, never a popup). It covers the page while
+       open, so it is a modal dialog to assistive tech as well as visually —
+       main.js parks the header and the stage behind it with `inert` and moves
+       focus in, otherwise reaching the drawer took 16 Tab presses through
+       controls the drawer itself was covering (WCAG 2.2 SC 2.4.11). -->
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Quick settings" aria-hidden="true">
+    <div class="drawer-head">
+      <span>Quick settings</span>
+      <!-- Flush like the topbar's buttons, and for the same reason: no
+           whitespace text node may shadow the aria-label. -->
+      <button class="icon-btn" id="close-settings" aria-label="Close quick settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+    <!-- The body is rendered per page by src/quick-settings.js at every open
+         (owner R1520: this control used to show the same simulation-flavoured
+         list on every page; it now shows the settings for the page you are on,
+         then the app-wide appearance controls). The markup that used to live
+         here — theme seg, text seg, glow, simulation pace, reduce motion — is
+         generated there; simulation pace itself moved to the settings page's
+         Data & Sim section, where it is stored and re-applied at launch.
+         The machine-roster note that once ended this drawer is long gone for
+         the reasons src/fleet-profile.js records. -->
+    <div class="drawer-body"></div>
+    <a class="drawer-all" href="#/settings">all settings →</a>
+  </aside>
+
+  <!-- Public owner decisions live in Ledger → Purchases -- a
+       screen the owner goes to, not a modal that arrives at him. There is no
+       always-mounted popup root here on purpose: mounting one is what made
+       every queued request interrupt whatever he was doing. Credential entry
+       never mounts here either; it stays in the isolated native credential
+       host. -->
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

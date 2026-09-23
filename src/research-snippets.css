@@ -1,0 +1,47 @@
+.snippet-workspace { --snippet-line: color-mix(in srgb, var(--ink) 26%, var(--sheet)); color: var(--ink); }
+.snippet-heading { display: flex; align-items: start; justify-content: space-between; gap: 24px; margin: 8px 0 22px; }
+.snippet-heading h3 { margin: 0 0 6px; font-size: 22px; }
+.snippet-heading p { margin: 0; max-width: 72ch; }
+.snippet-heading > button { flex-shrink: 0; }
+.snippet-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 28px; align-items: start; }
+.snippet-library { display: grid; gap: 14px; padding-right: 22px; border-right: 1px solid var(--snippet-line); min-width: 0; }
+.benchmark-builder .snippet-workspace label > :is(input:not([type=checkbox]), select) { width: 100%; min-width: 0; align-self: stretch; }
+.snippet-workspace input::placeholder, .snippet-workspace textarea::placeholder { color: var(--ink-2); opacity: 1; }
+.snippet-library > p { margin: 0; font-size: 13px; color: var(--ink-2); }
+.snippet-list { display: grid; grid-auto-rows: max-content; align-content: start; gap: 8px; max-height: 560px; overflow-y: auto; }
+.benchmark-builder .snippet-card { display: grid; gap: 7px; width: 100%; text-align: left; padding: 12px; border: 1px solid var(--snippet-line); color: var(--ink); }
+.snippet-card > strong { overflow-wrap: anywhere; font-size: 14px; }
+.snippet-card > span { font-size: 13px; line-height: 1.5; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.snippet-card[aria-pressed=true] { background: color-mix(in srgb, var(--ink) 9%, var(--sheet)); border-color: var(--ink); box-shadow: inset 3px 0 var(--ink); }
+.snippet-card small { font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+.snippet-labels { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
+.snippet-labels:empty { display: none; }
+.snippet-labels span { display: inline-block; padding: 4px 9px; border: 1px solid var(--snippet-line); border-radius: 5px; background: var(--sheet); color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
+.snippet-editor { display: grid; gap: 16px; min-width: 0; }
+.snippet-editor textarea[data-bench-wording] { font-family: var(--font-ui, system-ui); font-size: 16px; line-height: 1.65; min-height: 190px; }
+.snippet-editor > label { gap: 8px; }
+.snippet-editor .snippet-help { margin: -8px 0 0; font-size: 13px; line-height: 1.6; color: var(--ink-2); }
+.snippet-editor-actions, .snippet-library-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.snippet-library-actions { padding-top: 12px; border-top: 1px solid var(--snippet-line); }
+.snippet-library-actions .snippet-import { display: grid; font-size: 13px; width: 100%; }
+.snippet-workspace .bench-primary { background: var(--ink); color: var(--sheet); border-color: var(--ink); font-weight: 600; }
+.snippet-editor > details { margin: 0; border-top: 1px solid var(--snippet-line); padding-top: 6px; }
+.snippet-editor > details > summary { font-size: 14px; }
+.snippet-editor .bench-columns { grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+@media (max-width: 1000px) { .snippet-layout { grid-template-columns: 230px minmax(0, 1fr); gap: 18px; } }
+@media (max-width: 800px) {
+  .snippet-heading { flex-wrap: wrap; gap: 12px; }
+  .snippet-layout { grid-template-columns: minmax(0, 1fr); }
+  .snippet-library { border-right: 0; padding-right: 0; padding-bottom: 18px; border-bottom: 1px solid var(--snippet-line); }
+  .snippet-list { max-height: 230px; }
+  .snippet-editor { padding-top: 6px; }
+}
+
+.snippet-categories { display: flex; flex-wrap: wrap; gap: 6px; }
+.snippet-categories:empty { display: none; }
+.benchmark-builder .snippet-category { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--snippet-line); border-radius: 5px; background: var(--sheet); color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
+.benchmark-builder .snippet-category > span { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.benchmark-builder .snippet-category[aria-pressed=true] { background: color-mix(in srgb, var(--ink) 9%, var(--sheet)); border-color: var(--ink); font-weight: 600; }
+.benchmark-builder .snippet-category[aria-pressed=true] > span { color: var(--ink); }
+.snippet-card-labels { margin-top: 1px; }
+.snippet-card-labels span { font-size: 12px; padding: 2px 7px; }

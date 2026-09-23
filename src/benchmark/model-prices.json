@@ -1,0 +1,309 @@
+{
+  "schemaVersion": 1,
+  "frozenAsOf": "2026-09-11",
+  "currency": "USD",
+  "unit": 1000000,
+  "note": "List prices for estimation only. Compiled by Worker 5 from each provider's official pricing page on 2026-09-11; evidence/manager-45-20260910/R1220/PRICE-SOURCES.json holds the HTTP status, content digest and verbatim quotes. An estimate from this table is an estimate at list prices, not a bill.",
+  "excludes": [
+    "Time-billed cache storage (Google charges 4.50 per 1M tokens per hour). No usage field reports cache residency time, so it is never included in an estimate from this table.",
+    "Cache-write (cache-creation) tokens. No usage field reports them, so their cost component is unavailable rather than zero.",
+    "OpenAI Batch, Flex, Fast-mode and long-context tiers; only Standard short context is recorded.",
+    "Subscription allocations, grader fees, host infrastructure and provider discounts."
+  ],
+  "knownUnpriced": [],
+  "models": [
+    {
+      "billingModelId": "Claude Fable 5.1",
+      "provider": "Anthropic",
+      "serviceTier": "Standard",
+      "cachedInputConvention": "input-excludes-cached",
+      "rates": {
+        "inputTokens": "10",
+        "outputTokens": "50",
+        "cachedInputTokens": "0.25"
+      },
+      "unpricedComponents": {
+        "cacheWrite5m": "12.50",
+        "cacheWrite1h": "20"
+      },
+      "caveat": "Footnote 1 on the official page: cache hits and refreshes cost 0.025x base input for Fable 5.1 and 0.1x for every other model. This row's 0.25 is 0.025 x 10 and matches.",
+      "source": {
+        "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "retrievedAt": "2026-09-11",
+        "quote": "Claude Fable 5.1 $10 / MTok $12.50 / MTok $20 / MTok $0.25 / MTok 1 $50 / MTok"
+      },
+      "cacheHitMultiplierOfBaseInput": "0.025",
+      "inputIncludesCached": false,
+      "reasoningConvention": "inside-output",
+      "cacheWrites": "priced-but-unreported",
+      "usageConventionQuote": "usage.input_tokens EXCLUDES cache: 'Number of input tokens which were not read from or used to create a cache'."
+    },
+    {
+      "billingModelId": "Claude Opus 5",
+      "provider": "Anthropic",
+      "serviceTier": "Standard",
+      "cachedInputConvention": "input-excludes-cached",
+      "rates": {
+        "inputTokens": "5",
+        "outputTokens": "25",
+        "cachedInputTokens": "0.50"
+      },
+      "unpricedComponents": {
+        "cacheWrite5m": "6.25",
+        "cacheWrite1h": "10"
+      },
+      "source": {
+        "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "retrievedAt": "2026-09-11",
+        "quote": "Claude Opus 5 $5 / MTok $6.25 / MTok $10 / MTok $0.50 / MTok $25 / MTok"
+      },
+      "cacheHitMultiplierOfBaseInput": "0.1",
+      "inputIncludesCached": false,
+      "reasoningConvention": "inside-output",
+      "cacheWrites": "priced-but-unreported",
+      "usageConventionQuote": "usage.input_tokens EXCLUDES cache: 'Number of input tokens which were not read from or used to create a cache'."
+    },
+    {
+      "billingModelId": "Claude Sonnet 5",
+      "provider": "Anthropic",
+      "serviceTier": "Standard",
+      "cachedInputConvention": "input-excludes-cached",
+      "rates": {
+        "inputTokens": "2",
+        "outputTokens": "10",
+        "cachedInputTokens": "0.20"
+      },
+      "unpricedComponents": {
+        "cacheWrite5m": "2.50",
+        "cacheWrite1h": "4"
+      },
+      "source": {
+        "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "retrievedAt": "2026-09-11",
+        "quote": "Claude Sonnet 5 $2 / MTok $2.50 / MTok $4 / MTok $0.20 / MTok $10 / MTok"
+      },
+      "cacheHitMultiplierOfBaseInput": "0.1",
+      "inputIncludesCached": false,
+      "reasoningConvention": "inside-output",
+      "cacheWrites": "priced-but-unreported",
+      "usageConventionQuote": "usage.input_tokens EXCLUDES cache: 'Number of input tokens which were not read from or used to create a cache'."
+    },
+    {
+      "billingModelId": "Claude Haiku 4.5",
+      "provider": "Anthropic",
+      "serviceTier": "Standard",
+      "cachedInputConvention": "input-excludes-cached",
+      "rates": {
+        "inputTokens": "1",
+        "outputTokens": "5",
+        "cachedInputTokens": "0.10"
+      },
+      "unpricedComponents": {
+        "cacheWrite5m": "1.25",
+        "cacheWrite1h": "2"
+      },
+      "source": {
+        "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "retrievedAt": "2026-09-11",
+        "quote": "Claude Haiku 4.5 $1 / MTok $1.25 / MTok $2 / MTok $0.10 / MTok $5 / MTok"
+      },
+      "cacheHitMultiplierOfBaseInput": "0.1",
+      "inputIncludesCached": false,
+      "reasoningConvention": "inside-output",
+      "cacheWrites": "priced-but-unreported",
+      "usageConventionQuote": "usage.input_tokens EXCLUDES cache: 'Number of input tokens which were not read from or used to create a cache'."
+    },
+    {
+      "billingModelId": "gpt-6-astra",
+      "provider": "OpenAI",
+      "serviceTier": "Standard, short context",
+      "cachedInputConvention": "input-includes-cached",
+      "rates": {
+        "inputTokens": "10.00",
+        "outputTokens": "50.00",
+        "cachedInputTokens": "1.00"
+      },
+      "unpricedComponents": {
+        "cacheWrite": "12.50"
+      },
+      "source": {
+        "url": "https://developers.openai.com/api/docs/pricing",
+        "retrievedAt": "2026-09-11",
+        "quote": "gpt-6-astra $10.00 $1.00 $12.50 $50.00"
+      },
+      "inputIncludesCached": true,
+      "reasoningConvention": "inside-output",
+      "cacheWrites": "priced-but-unreported",
+      "usageConventionQuote": "usage.input_tokens includes input_tokens_details cached and cache-write tokens."
+    },
+    {
+      "billingModelId": "gpt-5.6-sol",
+      "provider": "OpenAI",
+      "serviceTier": "Standard, short context",
+      "cachedInputConvention": "input-includes-cached",
+      "rates": {
+        "inputTokens": "4.00",
+        "outputTokens": "20.00",
+        "cachedInputTokens": "0.40"
+      },
+      "unpricedComponents": {
+        "cacheWrite": "5.00"
+      },
+      "source": {
+        "url": "https://developers.openai.com/api/docs/pricing",
+        "retrievedAt": "2026-09-11",
+        "quote": "gpt-5.6-sol $4.00 $0.40 $5.00 $20.00"
+      },
+      "inputIncludesCached": true,
+      "reasoningConvention": "inside-output",
+      "cacheWrites": "priced-but-unreported",
+      "usageConventionQuote": "usage.input_tokens includes input_tokens_details cached and cache-write tokens."
+    },
+    {
+      "billingModelId": "gpt-5.6-terra",
+      "provider": "OpenAI",
+      "serviceTier": "Standard, short context",
+      "cachedInputConvention": "input-includes-cached",
+      "rates": {
+        "inputTokens": "2.00",
+        "outputTokens": "12.00",
+        "cachedInputTokens": "0.20"
+      },
+      "unpricedComponents": {
+        "cacheWrite": "2.50"
+      },
+      "source": {
+        "url": "https://developers.openai.com/api/docs/pricing",
+        "retrievedAt": "2026-09-11",
+        "quote": "gpt-5.6-terra $2.00 $0.20 $2.50 $12.00"
+      },
+      "inputIncludesCached": true,
+      "reasoningConvention": "inside-output",
+      "cacheWrites": "priced-but-unreported",
+      "usageConventionQuote": "usage.input_tokens includes input_tokens_details cached and cache-write tokens."
+    },
+    {
+      "billingModelId": "gpt-5.6-luna",
+      "provider": "OpenAI",
+      "serviceTier": "Standard, short context",
+      "cachedInputConvention": "input-includes-cached",
+      "rates": {
+        "inputTokens": "0.20",
+        "outputTokens": "1.20",
+        "cachedInputTokens": "0.02"
+      },
+      "unpricedComponents": {
+        "cacheWrite": "0.25"
+      },
+      "source": {
+        "url": "https://developers.openai.com/api/docs/pricing",
+        "retrievedAt": "2026-09-11",
+        "quote": "gpt-5.6-luna $0.20 $0.02 $0.25 $1.20"
+      },
+      "inputIncludesCached": true,
+      "reasoningConvention": "inside-output",
+      "cacheWrites": "priced-but-unreported",
+      "usageConventionQuote": "usage.input_tokens includes input_tokens_details cached and cache-write tokens."
+    },
+    {
+      "billingModelId": "gemini-3.1-pro-preview",
+      "provider": "Google",
+      "serviceTier": "Standard",
+      "cachedInputConvention": "input-includes-cached",
+      "contextTiers": [
+        {
+          "upToTotalTokens": 200000,
+          "rates": {
+            "inputTokens": "2.00",
+            "outputTokens": "12.00",
+            "cachedInputTokens": "0.20"
+          }
+        },
+        {
+          "upToTotalTokens": null,
+          "rates": {
+            "inputTokens": "4.00",
+            "outputTokens": "18.00",
+            "cachedInputTokens": "0.40"
+          }
+        }
+      ],
+      "unpricedComponents": {
+        "cacheStoragePerMTokPerHour": "4.50"
+      },
+      "caveat": "Output rates include thinking tokens. The pricing page does not state the cached-token convention; it is taken from the API usage documentation quoted in usageConventionQuote (promptTokenCount includes cachedContentTokenCount), so the full-rate input term subtracts cached tokens on that DECLARED basis. Cache storage is time-billed and never included in an estimate.",
+      "source": {
+        "url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "retrievedAt": "2026-09-11",
+        "quote": "gemini-3.1-pro-preview input 2.00 up to 200k / 4.00 above; output 12.00 / 18.00 including thinking tokens; cache 0.20 / 0.40; cache storage 4.50 per 1M tokens per hour"
+      },
+      "inputIncludesCached": true,
+      "reasoningConvention": "separate-billed-as-output",
+      "cacheWrites": "absent",
+      "usageConventionQuote": "usageMetadata.promptTokenCount includes cachedContentTokenCount; output is candidatesTokenCount; thoughtsTokenCount is reported separately and the pricing page states the output price includes thinking tokens.",
+      "reasoningNote": "DECLARED convention: output is charged on candidatesTokenCount PLUS thoughtsTokenCount, because the pricing page states the output price includes thinking tokens and thoughts are reported separately. Estimates using it are labelled."
+    },
+    {
+      "billingModelId": "grok-4.6",
+      "provider": "xAI",
+      "serviceTier": "Standard",
+      "cachedInputConvention": "input-includes-cached",
+      "contextTiers": [
+        {
+          "upToTotalTokens": 200000,
+          "rates": {
+            "inputTokens": "2.00",
+            "outputTokens": "6.00",
+            "cachedInputTokens": "0.50"
+          }
+        },
+        {
+          "upToTotalTokens": null,
+          "rates": {
+            "inputTokens": "4.00",
+            "outputTokens": "12.00",
+            "cachedInputTokens": "1.00"
+          }
+        }
+      ],
+      "caveat": "Cache write is not listed on the page, so no cache-write cost is estimated. The pricing page does not state the cached-token convention; it is taken from the API usage documentation quoted in usageConventionQuote (prompt_tokens includes prompt_tokens_details.cached_tokens), so the full-rate input term subtracts cached tokens on that DECLARED basis.",
+      "source": {
+        "url": "https://docs.x.ai/docs/models",
+        "retrievedAt": "2026-09-11",
+        "quote": "grok-4.6 short context 2.00 / 0.50 / 6.00; long context 4.00 / 1.00 / 12.00; cache write not listed"
+      },
+      "inputIncludesCached": true,
+      "reasoningConvention": "inside-output",
+      "cacheWrites": "absent",
+      "usageConventionQuote": "usage.prompt_tokens includes prompt_tokens_details.cached_tokens; output is completion_tokens; reasoning_tokens sit inside completion_tokens_details and are already counted in completion_tokens. No cache-write field or rate."
+    }
+  ],
+  "tierMap": [
+    {
+      "tier": "fable",
+      "billingModelId": "Claude Fable 5.1",
+      "asOf": "2026-09-11",
+      "justification": "The Claude adapter passes the bare alias 'fable' as --model (engine claude-cli-adapter.js cliModelFor); it matches no billing id, so this DECLARED dated map names the billed model."
+    },
+    {
+      "tier": "sonnet",
+      "billingModelId": "Claude Sonnet 5",
+      "asOf": "2026-09-11",
+      "justification": "The Claude adapter passes the bare alias 'sonnet' as --model; DECLARED dated map to the billed model."
+    },
+    {
+      "tier": "opus",
+      "billingModelId": "Claude Opus 5",
+      "asOf": "2026-09-11",
+      "justification": "The Claude adapter passes the bare alias 'opus' as --model; DECLARED dated map to the billed model."
+    }
+  ],
+  "modelStringInventory": {
+    "source": "app src/orchestration-controls.js:63-85 at 94757749; engine mission-bridge/actions.js:127-130 and claude-cli-adapter.js:118 (cliModelFor, called at :244)",
+    "codex": "Tiers already carry exact billing ids (gpt-6-astra, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna). No map entry exists or is needed.",
+    "claude": "Tiers pass the bare aliases fable, sonnet, opus. Mapped above, dated, labelled tier-mapped.",
+    "autoTiers": "gemini/auto, grok/auto and local/auto pin no model (cliModel null). They are priced ONLY from a provider-reported model id that matches a row; otherwise unpriced.",
+    "notModels": "gemini-1 and grok-1 are SEAT ids (orchestration-controls.js:78-79); bare gpt-5.6 is the example-fleet simulation default (src/sim.js:27). None is a model, so none appears in this table or its gaps."
+  },
+  "doNotUse": "engine/src/lib/intent-fidelity.js:158-161 CHECKER_RATE_CARD holds checker CREDIT WEIGHTS, not currency, by its own comment. It is never a price source and is never synchronised to provider rates."
+}

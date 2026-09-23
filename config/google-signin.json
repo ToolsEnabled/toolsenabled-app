@@ -1,0 +1,4 @@
+{
+  "clientId": "",
+  "note": "Set clientId and clientSecret per docs/GOOGLE-SIGN-IN-SETUP.md. An empty clientId means Google sign-in is honestly reported as not configured. Never use the vault project's client here; register the product's own Desktop client."
+}

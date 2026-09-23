@@ -1,0 +1,487 @@
+/* Public owner prompts use the same clinical register language as the ledger.
+   Every concrete colour arrives from the canonical runtime theme manifest;
+   the var() fallbacks are the app's existing design-system roles, not copies. */
+.owner-popup-root {
+  --op-bg: var(--bg);
+  --op-bg-2: var(--bg-2);
+  --op-surface: var(--surface);
+  --op-sheet: var(--sheet);
+  --op-ink: var(--ink);
+  --op-ink-2: var(--ink-2);
+  --op-ink-25: var(--ink-25);
+  --op-ink-3: var(--ink-3);
+  --op-line: var(--line);
+  --op-line-2: var(--line-2);
+  --op-good: var(--s-good);
+  --op-serious: var(--s-serious);
+  --op-focus: var(--focus-ring);
+  --op-accent: var(--c-coordinator);
+  --op-accent-floor: var(--accent-2);
+  /* The runtime manifest supplies the dedicated on-accent colour on live
+     prompts. Demonstration cards have no manifest by design, so their safe
+     fallback is the theme's readable ink, never --sheet (which turns dark on
+     the black theme). The shared theme has no CSS --on-accent token. */
+  --op-on-accent: var(--ink);
+  --op-font-ui: var(--font-ui);
+  --op-font-mono: var(--font-mono);
+  --op-radius-small: var(--r-sm);
+  --op-radius-medium: var(--r-md);
+  --op-radius-large: var(--r-lg);
+  --op-space1: var(--s1);
+  --op-space2: var(--s2);
+  --op-space3: var(--s3);
+  --op-space4: var(--s4);
+  --op-space5: var(--s5);
+  position: relative;
+  z-index: 200;
+  font-family: var(--op-font-ui);
+  color: var(--op-ink);
+}
+
+.owner-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: clamp(var(--op-space3), 4vw, calc(var(--op-space5) * 2));
+  background: color-mix(in oklab, var(--op-bg) 74%, transparent);
+  backdrop-filter: blur(18px) saturate(0.9);
+  -webkit-backdrop-filter: blur(18px) saturate(0.9);
+  animation: owner-popup-in var(--dur-2) var(--ease) both;
+}
+
+.owner-popup-dialog {
+  width: min(900px, 100%);
+  /* THE VIEWPORT SHARE IS DIVIDED BY --zoom (see the token at :root in
+     src/styles.css). `zoom` on <body> is what the Text size setting sets; it
+     does not scale a viewport unit but does scale the box painted from one,
+     so at Large this dialog was allowed to stand 12% taller than the window
+     it is centred in and its footer -- which is where its buttons are -- sat
+     under the bottom edge, with the body's overflow: hidden leaving nothing to
+     scroll. Division rather than the percentage the two rules below use,
+     because this overlay's padding is a clamp() and not the --op-space4 this
+     line subtracts: at Default the length has to stay exactly what it was. */
+  max-height: min(780px, calc(100vh / var(--zoom, 1) - 2 * var(--op-space4)));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--op-line-2);
+  border-radius: var(--op-radius-large);
+  background: var(--op-sheet);
+  box-shadow: var(--elev-3);
+}
+
+.owner-popup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--op-space4);
+  padding: var(--op-space4) var(--op-space5) var(--op-space3);
+  border-bottom: 1px solid var(--op-line-2);
+}
+
+.owner-popup-heading { min-width: 0; }
+.owner-popup-kicker,
+.owner-popup-list-head,
+.owner-popup-meta-label {
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--op-ink-25);
+}
+
+.owner-popup-heading h2 {
+  margin: var(--op-space2) 0 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 640;
+  letter-spacing: -0.015em;
+  color: var(--op-ink);
+}
+.owner-popup-heading-message {
+  max-width: 68ch;
+  margin: var(--op-space2) 0 0;
+  color: var(--op-ink-3);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.owner-popup-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--op-radius-small);
+  background: transparent;
+  color: var(--op-ink-3);
+  font: 300 24px/1 var(--op-font-ui);
+  cursor: pointer;
+}
+.owner-popup-close:hover { color: var(--op-ink); background: color-mix(in oklab, var(--op-ink) 5%, transparent); }
+
+.owner-popup-body {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--op-space4) var(--op-space5);
+}
+
+.owner-popup-message {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--op-ink-2);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.owner-popup-list-head,
+.owner-popup-item {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 130px 190px;
+  gap: var(--op-space3);
+  align-items: center;
+}
+
+.owner-popup-list-head {
+  min-height: 31px;
+  padding: 0 var(--op-space2);
+  border-bottom: 1px solid var(--op-line-2);
+}
+.owner-popup-list-head span:nth-child(2),
+.owner-popup-list-head span:nth-child(3) { text-align: right; }
+
+.owner-popup-item {
+  min-height: 86px;
+  padding: var(--op-space3) var(--op-space2);
+  border-bottom: 1px solid var(--op-line);
+  transition: background var(--dur-2) var(--ease);
+}
+.owner-popup-item:hover { background: color-mix(in oklab, var(--op-ink) 3%, transparent); }
+.owner-popup-item[data-decision="approved"] { background: color-mix(in oklab, var(--op-good) 5%, transparent); }
+.owner-popup-item[data-decision="denied"] { background: color-mix(in oklab, var(--op-serious) 4%, transparent); }
+
+.owner-popup-item-details { min-width: 0; }
+.owner-popup-item-name {
+  display: block;
+  margin-bottom: var(--op-space2);
+  color: var(--op-ink);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 620;
+}
+.owner-popup-item-meta {
+  display: flex;
+  gap: var(--op-space2);
+  align-items: baseline;
+  min-width: 0;
+  margin-top: var(--op-space1);
+  color: var(--op-ink-3);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.owner-popup-meta-label { flex: 0 0 68px; }
+
+.owner-popup-item-amount {
+  justify-self: end;
+  color: var(--op-ink);
+  font-family: var(--op-font-mono);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 640;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.owner-popup-item-actions,
+.owner-popup-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--op-space2);
+}
+
+.owner-popup-choice,
+.owner-popup-primary,
+.owner-popup-secondary {
+  min-height: 32px;
+  padding: var(--op-space2) var(--op-space3);
+  border: 1px solid var(--op-line-2);
+  border-radius: var(--op-radius-medium);
+  background: transparent;
+  color: var(--op-ink-2);
+  font: 620 12.5px/1 var(--op-font-ui);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-1) var(--ease),
+    background var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease),
+    transform var(--dur-1) var(--ease);
+}
+.owner-popup-choice:hover,
+.owner-popup-secondary:hover { border-color: var(--op-ink-3); color: var(--op-ink); }
+.owner-popup-choice:active,
+.owner-popup-primary:active,
+.owner-popup-secondary:active { transform: scale(0.97); }
+.owner-popup-choice[aria-pressed="true"].owner-popup-approve {
+  border-color: color-mix(in oklab, var(--op-good) 48%, var(--op-line-2));
+  background: color-mix(in oklab, var(--op-good) 10%, transparent);
+  color: var(--op-good);
+}
+.owner-popup-choice[aria-pressed="true"].owner-popup-deny {
+  border-color: color-mix(in oklab, var(--op-serious) 48%, var(--op-line-2));
+  background: color-mix(in oklab, var(--op-serious) 9%, transparent);
+  color: var(--op-serious);
+}
+.owner-popup-primary {
+  border-color: var(--op-accent-floor);
+  background: var(--op-accent-floor);
+  color: var(--op-on-accent);
+}
+.owner-popup-primary:hover { background: color-mix(in oklab, var(--op-accent-floor) 88%, var(--op-ink)); }
+.owner-popup-secondary.owner-popup-deny:hover { border-color: var(--op-serious); color: var(--op-serious); }
+
+.owner-popup-choice:disabled,
+.owner-popup-primary:disabled,
+.owner-popup-secondary:disabled,
+.owner-popup-close:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.owner-popup-choice:focus-visible,
+.owner-popup-primary:focus-visible,
+.owner-popup-secondary:focus-visible,
+.owner-popup-close:focus-visible {
+  outline: 2px solid var(--op-focus);
+  outline-offset: 2px;
+}
+
+.owner-popup-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--op-space4);
+  padding: var(--op-space3) var(--op-space2) 0;
+  color: var(--op-ink-25);
+  font-size: 11px;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.owner-popup-total strong {
+  min-width: 130px;
+  color: var(--op-ink);
+  font: 650 18px/1 var(--op-font-mono);
+  text-align: right;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.owner-popup-default-rule {
+  margin: var(--op-space4) 0 0;
+  padding: var(--op-space3);
+  border-left: 2px solid var(--op-serious);
+  background: color-mix(in oklab, var(--op-serious) 5%, transparent);
+  color: var(--op-ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.owner-popup-default-rule strong { color: var(--op-serious); font-weight: 650; }
+
+.owner-popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--op-space4);
+  min-height: 65px;
+  padding: var(--op-space3) var(--op-space5);
+  border-top: 1px solid var(--op-line-2);
+  background: color-mix(in oklab, var(--op-bg-2) 42%, var(--op-sheet));
+}
+.owner-popup-status {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--op-ink-3);
+  font-family: var(--op-font-mono);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.owner-popup-status[data-state="unavailable"] { color: var(--op-serious); }
+
+@keyframes owner-popup-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 760px) {
+  .owner-popup-overlay { padding: var(--op-space2); }
+  /* 100% is exact here where it is not on the base rule: this query sets the
+     overlay's padding to the very --op-space2 the old length subtracted, so
+     the overlay's content box IS "the window less 2 x --op-space2" -- and a
+     percentage, unlike a viewport unit, holds at every Text size. */
+  .owner-popup-dialog { max-height: 100%; }
+  .owner-popup-header,
+  .owner-popup-body,
+  .owner-popup-footer { padding-inline: var(--op-space3); }
+  .owner-popup-list-head { display: none; }
+  .owner-popup-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--op-space3);
+  }
+  .owner-popup-item-details { grid-column: 1 / -1; }
+  .owner-popup-item-amount { justify-self: start; }
+  .owner-popup-footer { align-items: stretch; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owner-popup-overlay { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   The same card, on the approvals SCREEN instead of in the modal.
+
+   Nothing here restyles a request. Every rule below only undoes geometry that
+   exists solely because .owner-popup-dialog was a modal floating over a dimmed
+   page: a fixed 900px width centred in the viewport, a 780px height cap, and
+   the clipping and drop shadow that go with floating. Left in place inside a
+   scrolling list those would cut a long purchase cart off at its cap and hide
+   the rest with no scrollbar of its own.
+
+   No colour, type scale, spacing value or row rule is introduced; the rows,
+   their columns, their decision buttons and their states are the popup's,
+   unchanged, and still read every value from the same --op-* variables.
+   --------------------------------------------------------------------------- */
+.approvals-list .owner-popup-dialog {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  box-shadow: none;
+}
+
+/* The card owns its own separation from the next one in the list, which the
+   modal never needed because it was only ever alone on screen. */
+.approvals-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--op-space4);
+}
+
+/* ---------------------------------------------------------------------------
+   THE DEADLINE, AND WHAT THE DEADLINE DOES.
+
+   Directly under the title, above everything a person would scroll past, and
+   not in the footer: the whole defect this repairs is that both of the owner's
+   live shopping lists have a date on which every line is refused, and no
+   surface in the product had ever drawn it. A fact that decides his money by
+   default does not belong below the fold.
+
+   It borrows the default-rule's serious accent rather than inventing a colour,
+   because it is the same class of statement: something the product will do if
+   he does not act. No new colour, type scale or spacing value is introduced.
+   --------------------------------------------------------------------------- */
+.owner-popup-deadline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--op-space1);
+  max-width: 68ch;
+  margin: var(--op-space3) 0 0;
+  padding: var(--op-space2) var(--op-space3);
+  border-left: 2px solid var(--op-serious);
+  background: color-mix(in oklab, var(--op-serious) 5%, transparent);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.owner-popup-deadline-when {
+  color: var(--op-serious);
+  font-weight: 650;
+}
+.owner-popup-deadline-consequence { color: var(--op-ink-2); }
+
+/* Already past. Stated calmly rather than in alarm colours: there is nothing
+   left to decide, so shouting about it would be noise. */
+.owner-popup-deadline[data-expired="true"] {
+  border-left-color: var(--op-line-2);
+  background: none;
+}
+.owner-popup-deadline[data-expired="true"] .owner-popup-deadline-when { color: var(--op-ink-25); }
+
+/* Why there is no twelve-month figure under the total. Quiet, because it is an
+   absence being named rather than a warning being given. */
+.owner-popup-year-note {
+  max-width: 68ch;
+  margin: var(--op-space2) 0 0;
+  padding: 0 var(--op-space2);
+  color: var(--op-ink-3);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* A line nobody asked for. The engine already knows which lines are traceable
+   to the owner's own words and which are not; until now that was buried in the
+   text at the front of the item name. One of the twenty lines on his real cart
+   is in this state. */
+.owner-popup-item[data-provenance="agent"] .owner-popup-item-origin,
+.owner-popup-item[data-provenance="unknown"] .owner-popup-item-origin {
+  color: var(--op-serious);
+}
+
+/* The queue page carries three figures, not the ledger's five, and the grid it
+   borrows is fixed at five columns -- so before this the tiles sat in the left
+   two-fifths with three empty columns beside them. Scoped to this page so the
+   ledger's own strip is untouched. */
+.ledger-prompt-queue .ledger-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ---------------------------------------------------------------------------
+   WHAT CHANGED WHILE HE WAS LOOKING.
+
+   Quiet by construction. It sits between the figures and the requests, it is
+   hidden entirely when there is nothing to say, and it never uses the serious
+   colour: a line being added to a list is news, not an alarm, and spending the
+   alarm colour on news is how an alarm stops working.
+   --------------------------------------------------------------------------- */
+.approvals-changes {
+  margin: 0 0 var(--op-space4);
+  padding: var(--op-space3) 0 0;
+}
+.approvals-changes[hidden] { display: none; }
+.approvals-changes-head {
+  margin: 0 0 var(--op-space2);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--op-ink-25);
+}
+.approvals-changes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--op-space1);
+}
+.approvals-change {
+  max-width: 78ch;
+  padding-left: var(--op-space3);
+  border-left: 2px solid var(--op-line-2);
+  color: var(--op-ink-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.approvals-change[data-tone="warn"] { border-left-color: var(--op-accent, var(--op-ink-25)); }
+.approvals-change[data-tone="good"] { border-left-color: var(--op-good); }
+.approvals-changes-note {
+  margin: var(--op-space2) 0 0;
+  color: var(--op-ink-3);
+  font-size: 12.5px;
+  line-height: 1.45;
+}

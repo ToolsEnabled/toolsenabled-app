@@ -1,0 +1,492 @@
+/* ============================================================
+   SUBSCRIBE — the page that takes someone's money.
+
+   It spends the sheet's existing scales (--s1..--s5, --dur-*, --elev-*,
+   --track-caps, the three type tiers) and adds no new ones. Every colour is a
+   token, so all three themes are one definition: nothing here reads
+   [data-theme] except the two places where a theme genuinely needs a different
+   RECIPE rather than a different value, and both are commented at the rule.
+
+   LAYOUT CARRIES THE MESSAGE (glance doctrine). Reading down the page in order:
+   what this is → what it costs → what it includes → what is free regardless.
+   The free column is stated at full size at the foot, not shrunk into a
+   footnote, because a pricing page that whispers the free option is arguing
+   rather than informing.
+
+   NO HORIZONTAL OVERFLOW, 1024→1920 AND BELOW. The plan grid is auto-fit with
+   a 264px floor, every long string (an email, a checkout URL, an alternative
+   path) carries overflow-wrap:anywhere, and the shell is min(--page-max, 100%)
+   inside .view-pad's own gutter. There is no fixed width anywhere in this file.
+   ============================================================ */
+
+.subscribe-page {
+  /* .view-pad already supplies the scroll box and the page gutter */
+  color: var(--ink);
+}
+
+.sub-shell {
+  /* NARROWER THAN THE APP'S 1240 COLUMN, ON PURPOSE. --page-max is sized for a
+     fleet dashboard: wide tables and a graph. This page is one decision and a
+     short form, and at 1240 the two plan cards stretched to ~610px each, which
+     puts a single inclusion line in the middle of a mostly empty slab. 1040 is
+     the width at which three cards still fit at a comfortable measure, so the
+     column does not have to change if the model ever prices a third plan. */
+  width: min(1040px, 100%);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;                     /* the sheet's own literal page rhythm */
+  padding-bottom: var(--s5);
+}
+.sub-shell-narrow { max-width: 720px; }
+
+.sub-loading {
+  width: min(var(--page-max), 100%);
+  margin-inline: auto;
+  padding: 40px 0;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+/* ---------- masthead ---------- */
+.sub-mast { display: flex; flex-direction: column; gap: var(--s3); padding-top: var(--s5); }
+.sub-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  color: var(--ink-25);
+  font-weight: 620;
+}
+.sub-mast h1 {
+  /* clamps rather than steps: this is the one display size in the product and
+     it has to hold its proportion from a 1024 laptop to a 1920 desktop */
+  font-size: clamp(30px, 3.1vw, 46px);
+  line-height: 1.08;
+  letter-spacing: -0.018em;
+  font-weight: 640;
+  color: var(--ink);
+  max-width: 20ch;
+}
+.sub-lede {
+  font-size: 13px;
+  line-height: 1.62;
+  color: var(--ink-2);
+  max-width: 74ch;
+}
+
+/* The one framing sentence. A left rule in the accent rather than a tinted
+   box: a coloured panel on a pricing page reads as a promotion, and this
+   sentence is the opposite of one. */
+.sub-frame {
+  border-left: 2px solid var(--c-coordinator);
+  padding: var(--s1) 0 var(--s1) var(--s4);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 74ch;
+}
+
+/* ---------- form shell ---------- */
+.sub-form { display: flex; flex-direction: column; gap: var(--s5); border: 0; }
+
+/* [hidden] IS AN AUTHOR-BEATABLE UA RULE, AND THIS SHEET BEAT IT.
+   `[hidden] { display: none }` comes from the user-agent stylesheet, so any
+   author rule that sets `display` on the same element wins -- and every panel
+   below is a flex container. Measured in a real browser before this rule
+   existed: the Seats field and the empty status region were BOTH on screen and
+   in the tab order while `element.hidden === true`, so a keyboard user tabbed
+   through a field that the code believed was not there. The classes are named
+   individually rather than as a blanket `[hidden]{display:none !important}`
+   because a sheet-wide !important is a rule the next author cannot opt out of. */
+.sub-field[hidden],
+.sub-status[hidden],
+.sub-field-error[hidden],
+.sub-plan-saving[hidden] { display: none; }
+
+.sub-period { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.sub-period-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  color: var(--ink-25);
+  font-weight: 620;
+}
+.sub-seg {
+  display: inline-flex;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.sub-seg-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 560;
+  color: var(--ink-3);
+  padding: var(--s2) var(--s4);
+  cursor: pointer;
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+.sub-seg-btn + .sub-seg-btn { border-left: 1px solid var(--line-2); }
+.sub-seg-btn:hover { color: var(--ink); background: color-mix(in oklab, var(--ink) 4%, transparent); }
+.sub-seg-btn.on {
+  color: var(--sheet);
+  background: var(--c-coordinator);
+}
+
+.sub-plans-set { border: 0; padding: 0; margin: 0; min-width: 0; }
+.sub-plans-legend {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  color: var(--ink-25);
+  font-weight: 620;
+  padding: 0 0 var(--s3);
+}
+
+.sub-plans {
+  display: grid;
+  /* A CARD HAS A BEST WIDTH AND A CEILING, NOT JUST A FLOOR.
+     264px is the narrowest a plan card stays readable at with its inclusion
+     lines intact; 352px is the widest it should ever be, because past that the
+     card is mostly air and the price stops being the focal point. auto-fit
+     between the two means the count adapts to the viewport with no breakpoint,
+     the cards align with the masthead's left edge rather than drifting to the
+     middle, and there is no width at which one can push the page sideways.
+     `min(100%, 264px)` keeps the floor from exceeding a very narrow viewport,
+     which is the one way an auto-fit track CAN overflow. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 264px), 352px));
+  justify-content: start;
+  gap: var(--s4);
+  align-items: stretch;
+}
+
+/* ---------- a plan card ---------- */
+.sub-plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s5);
+  min-width: 0;
+  cursor: pointer;
+  /* the .glass rule supplies the surface, rim and --elev-3; only the selected
+     state and the focus ring are added here */
+  transition: box-shadow var(--dur-3) var(--ease), border-color var(--dur-3) var(--ease),
+              transform var(--dur-2) var(--ease);
+}
+.sub-plan:hover { transform: translateY(-1px); }
+
+.sub-plan-radio {
+  /* visually hidden, NOT display:none — it stays in the tab order and the
+     radio group keeps its native arrow-key behaviour, which is the whole
+     accessibility story of this control */
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: 0; padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.sub-plan-tick {
+  position: absolute;
+  top: var(--s4); right: var(--s4);
+  width: 15px; height: 15px;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.sub-plan.is-chosen {
+  border-color: color-mix(in oklab, var(--c-coordinator) 55%, transparent);
+  box-shadow: var(--elev-3), inset 0 0 0 1px var(--c-coordinator);
+}
+.sub-plan.is-chosen .sub-plan-tick {
+  border-color: var(--c-coordinator);
+  box-shadow: inset 0 0 0 4px var(--c-coordinator);
+}
+/* The focus ring has to appear on the CARD while focus is really on the hidden
+   input — :focus-visible on the input, drawn on its label. */
+.sub-plan:has(.sub-plan-radio:focus-visible) {
+  outline: 2px solid var(--c-coordinator);
+  outline-offset: 2px;
+}
+.sub-plan.is-unavailable {
+  cursor: not-allowed;
+  opacity: 0.66;
+}
+.sub-plan.is-unavailable:hover { transform: none; }
+
+.sub-plan-head { display: flex; flex-direction: column; gap: 2px; padding-right: var(--s5); }
+.sub-plan-name { font-size: 17px; font-weight: 640; letter-spacing: -0.01em; color: var(--ink); }
+.sub-plan-of {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  color: var(--ink-25);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sub-plan-price { display: flex; align-items: baseline; gap: var(--s2); flex-wrap: wrap; }
+.sub-plan-figure {
+  /* the price is DATA, so it takes the data face — and it is the largest thing
+     on the card because it is the one number the visitor came for */
+  font-family: var(--font-mono);
+  font-size: clamp(28px, 2.2vw, 34px);
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.sub-plan-per { font-size: 12.5px; color: var(--ink-3); }
+.sub-plan-noprice { font-size: 12.5px; color: var(--ink-3); }
+.sub-plan-saving {
+  font-size: 12.5px;
+  color: var(--s-good);
+  font-weight: 560;
+}
+.sub-plan-seats { font-size: 12.5px; color: var(--ink-25); }
+
+.sub-plan-inc-head {
+  margin-top: var(--s1);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  color: var(--ink-25);
+  font-weight: 620;
+}
+.sub-inc-list { list-style: none; display: flex; flex-direction: column; gap: var(--s3); }
+.sub-inc { display: flex; gap: var(--s2); align-items: flex-start; }
+.sub-inc-mark { flex: 0 0 auto; width: 16px; height: 16px; color: var(--s-good); margin-top: 1px; }
+.sub-inc-mark svg { width: 100%; height: 100%; display: block; }
+.sub-inc-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sub-inc-name { font-size: 13px; font-weight: 620; color: var(--ink); }
+.sub-inc-why { font-size: 12.5px; line-height: 1.5; color: var(--ink-25); overflow-wrap: anywhere; }
+
+/* The free-alternative note. This is the product's own doctrine on the page:
+   a gate that cannot name a free way to do the job is a hostage situation. It
+   is quiet but it is NOT hidden — same reading size as everything else. */
+.sub-plan-alt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  margin-top: auto;
+  padding-top: var(--s3);
+  border-top: 1px dashed var(--line-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.sub-plan-alt b { color: var(--ink-25); font-weight: 620; }
+.sub-plan-alt-line { overflow-wrap: anywhere; }
+
+/* ---------- the details panel ---------- */
+.sub-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: var(--s5);
+  padding: var(--s5);
+  align-items: start;
+}
+.sub-field { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.sub-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  color: var(--ink-25);
+  font-weight: 620;
+}
+.sub-input {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: color-mix(in oklab, var(--sheet) 78%, transparent);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  padding: 10px var(--s3);
+  width: 100%;
+  /* an address is ~30 characters; a 500px-wide box for it reads as a mistake */
+  max-width: 40ch;
+  min-width: 0;
+  transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.sub-input:hover { border-color: color-mix(in oklab, var(--ink) 24%, transparent); }
+.sub-input:focus-visible {
+  outline: none;
+  border-color: var(--c-coordinator);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--c-coordinator) 40%, transparent);
+}
+.sub-input[aria-invalid="true"] { border-color: var(--s-serious); }
+.sub-input-num { max-width: 12ch; }
+.sub-note { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.sub-field-error { font-size: 12.5px; line-height: 1.5; color: var(--s-serious); font-weight: 560; }
+
+.sub-submit-row { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.sub-submit {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--c-coordinator);
+  color: var(--sheet);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 620;
+  padding: 11px var(--s5);
+  cursor: pointer;
+  /* the row is a flex column, so justify-self does nothing here; without this
+     the primary action stretched to the full width of its half of the panel
+     and read as a banner rather than a button */
+  align-self: flex-start;
+  transition: background var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease),
+              transform var(--dur-1) var(--ease);
+}
+.sub-submit:hover:not(:disabled) { background: var(--accent-2); box-shadow: var(--elev-1); }
+.sub-submit:active:not(:disabled) { transform: translateY(1px); }
+.sub-submit:disabled {
+  cursor: not-allowed;
+  background: color-mix(in oklab, var(--ink) 14%, transparent);
+  color: var(--ink-3);
+}
+.sub-submit-note { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+
+/* ---------- status ---------- */
+.sub-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s4) var(--s5);
+  border: 1px solid var(--line-2);
+  border-left-width: 3px;
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--sheet) 60%, transparent);
+  max-width: 74ch;
+}
+.sub-status:focus-visible { outline: 2px solid var(--c-coordinator); outline-offset: 2px; }
+.sub-status-title { font-size: 13px; font-weight: 620; color: var(--ink); }
+.sub-status-why { font-size: 13px; line-height: 1.55; color: var(--ink-2); overflow-wrap: anywhere; }
+.sub-status-safe { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.sub-status.is-working { border-left-color: var(--c-coordinator); }
+.sub-status.is-checkout { border-left-color: var(--s-good); }
+.sub-status.is-known { border-left-color: var(--c-coordinator); }
+.sub-status.is-lapsed,
+.sub-status.is-offline { border-left-color: var(--s-warn); }
+.sub-status.is-declined,
+.sub-status.is-refused { border-left-color: var(--s-serious); }
+
+.sub-testmode {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  font-weight: 620;
+  color: var(--s-warn);
+  border: 1px solid color-mix(in oklab, var(--s-warn) 45%, transparent);
+  border-radius: var(--r-sm);
+  padding: 3px var(--s2);
+}
+.sub-checkout-link {
+  align-self: flex-start;
+  display: inline-block;
+  margin-top: var(--s1);
+  background: var(--c-coordinator);
+  color: var(--sheet);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 620;
+  padding: 10px var(--s5);
+  border-radius: var(--r-md);
+  overflow-wrap: anywhere;
+  transition: background var(--dur-2) var(--ease);
+}
+.sub-checkout-link:hover { background: var(--accent-2); }
+
+/* ---------- refusal (catalog failed closed) ---------- */
+.sub-refusal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s5);
+  border-left: 3px solid var(--s-warn);
+}
+.sub-refusal-title { font-size: 13px; font-weight: 620; color: var(--ink); }
+.sub-refusal-why { font-size: 13px; line-height: 1.55; color: var(--ink-2); overflow-wrap: anywhere; }
+.sub-refusal-next { font-size: 12.5px; line-height: 1.55; color: var(--ink-3); }
+.sub-refusal-next a { color: var(--c-coordinator); }
+
+/* ---------- always free ---------- */
+.sub-free { display: flex; flex-direction: column; gap: var(--s3); }
+.sub-free h2 { font-size: 19px; font-weight: 640; letter-spacing: -0.012em; color: var(--ink); }
+.sub-free-lede { font-size: 13px; line-height: 1.6; color: var(--ink-2); max-width: 74ch; }
+.sub-free-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: var(--s2) var(--s5);
+  margin-top: var(--s1);
+}
+.sub-free-list li {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  padding-left: var(--s4);
+  position: relative;
+  overflow-wrap: anywhere;
+}
+.sub-free-list li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0.62em;
+  width: 6px; height: 1px;
+  background: var(--ink-4);
+}
+.sub-free-plan { font-size: 13px; line-height: 1.6; color: var(--ink-2); max-width: 74ch; }
+.sub-free-plan b { color: var(--ink); font-weight: 620; }
+
+.sub-foot { display: flex; gap: var(--s5); padding-top: var(--s3); border-top: 1px solid var(--line); }
+.sub-foot-link { font-size: 12.5px; color: var(--ink-3); text-decoration: none; }
+.sub-foot-link:hover { color: var(--c-coordinator); }
+
+/* THE TWO PLACES A THEME NEEDS A DIFFERENT RECIPE, NOT A DIFFERENT VALUE.
+
+   1. The accent-filled controls (segment, submit, checkout link) put --sheet on
+      --c-coordinator. On white and tan the sheet is near-white and that pairing
+      measures 3.66:1 / 3.10:1 — fine for the non-text 3:1 floor but under AA for
+      the 13px LABEL sitting on it. So on those two themes the fill steps down to
+      --accent-2, the darker sibling the sheet already defines, which carries
+      white text at 5.12:1. On black the sheet is dark and the original pairing is
+      already a dark glyph on a mid cyan, so it stays. */
+:root[data-theme="white"] .sub-seg-btn.on,
+:root[data-theme="tan"] .sub-seg-btn.on,
+:root[data-theme="white"] .sub-submit,
+:root[data-theme="tan"] .sub-submit,
+:root[data-theme="white"] .sub-checkout-link,
+:root[data-theme="tan"] .sub-checkout-link {
+  background: var(--accent-2);
+  color: #ffffff;
+}
+:root[data-theme="white"] .sub-submit:hover:not(:disabled),
+:root[data-theme="tan"] .sub-submit:hover:not(:disabled),
+:root[data-theme="white"] .sub-checkout-link:hover,
+:root[data-theme="tan"] .sub-checkout-link:hover {
+  background: color-mix(in oklab, var(--accent-2) 84%, #000000);
+}
+
+/* 2. The dashed rule under a plan card reads as noise on the black theme, where
+      --line-2 is white ink and a dash pattern shimmers against the frost. Solid
+      at a lower weight is the same separation without the texture. */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .sub-plan-alt { border-top-style: solid; border-top-color: var(--line); }
+
+/* Reduced motion: the card lift and every transition on this page are
+   decoration. The sheet clamps globally, and this page adds nothing that
+   outlives that clamp — the lift is removed outright rather than shortened,
+   because a 1px hop is either instant or absent, never fast. */
+@media (prefers-reduced-motion: reduce) {
+  .sub-plan:hover { transform: none; }
+  .sub-submit:active:not(:disabled) { transform: none; }
+}
+body.reduce-motion .sub-plan:hover { transform: none; }
+body.reduce-motion .sub-submit:active:not(:disabled) { transform: none; }

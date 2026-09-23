@@ -1,0 +1,182 @@
+{
+  "$comment": "R1260 T5.3 - retest exercise data for Machine B, aligned to MACHINE-B-REPLACEMENT-BUILD-ACCEPTANCE-MATRIX.md (amended twice on 2026-08-11). Authored on Machine A 2026-08-11. DATA AND DOCUMENT ONLY: this file is not a transfer authorization and names no candidate, because no candidate is declared. Delivery to B is owned by R1237 D3, not by this file.",
+  "schemaVersion": 1,
+  "authoredAt": "2026-08-11",
+  "authoredBy": "Machine A, R1260 lane t5a",
+  "candidate": {
+    "status": "NOT_DECLARED",
+    "why": "require-clean-tree and check-payload-current both refuse while multiple lanes hold both trees dirty. Every staged binary is either pre-rename or carries no declaration. See DO-NOT-DECLARE-THESE-README.md.",
+    "filename": null,
+    "version": null,
+    "bytes": null,
+    "sha256": null,
+    "buildRef": null,
+    "publisher": null,
+    "appId": null,
+    "immutableLocation": null,
+    "rule": "Every null above must be filled from the frozen copy before this pack is executed. If any field is still null, B must refuse intake rather than proceed - an absent field is not a pass."
+  },
+  "identity": {
+    "expectedProductName": "ToolsEnabled",
+    "expectedPublisher": "ToolsEnabled, Inc. in formation",
+    "expectedAppId": "com.toolsenabled.desktop",
+    "expectedInstallDir": "%LOCALAPPDATA%\\Programs\\toolsenabled",
+    "expectedUserData": "%APPDATA%\\ToolsEnabled",
+    "forbiddenInUserVisibleIdentity": ["Mission"],
+    "registryGuidCarveOut": {
+      "passGuidUnbraced": "21cb002d-a6ac-5e62-b88d-ba3c87d67396",
+      "failGuidUnbraced": "1de271ec-9b43-59e5-b4aa-0fd300d862cb",
+      "note": "The PASS guid is the UUIDv5 of the OLD appId and is pinned deliberately so the installer replaces a pre-rename install instead of forking beside it. Key names are UNBRACED.",
+      "probeLocations": [
+        "HKCU\\Software\\<guid>",
+        "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\<guid>"
+      ],
+      "outcomes": {
+        "passGuidOnly": "PASS",
+        "failGuidOnly": "FAIL - pin lost, install base forked again",
+        "both": "FAIL - the side-by-side defect this row exists for",
+        "neither": "INCONCLUSIVE, NOT A PASS - resolve whether nothing is installed or the wrong key was probed before recording any verdict"
+      }
+    }
+  },
+  "priorFindings": [
+    {
+      "id": "PF1",
+      "name": "silent relaunch",
+      "severity": "BLOCKER",
+      "foundBy": "Machine B",
+      "foundOn": "2026-08-09, Mission Control Setup 1.0.0.exe",
+      "symptom": "First run from installer completion opened a window. Every tested normal relaunch after a clean close produced no window and exited code 0 with zero-byte stdout/stderr, no Windows Error Reporting entry and no crash report. Executable, Start Menu shortcut, shortcut target plus working directory, and direct launch all failed.",
+      "machineAStatusClaim": "UNVERIFIED FOR ANY CURRENT BUILD. No A-side lane has demonstrated a clean close-and-relaunch cycle on a declared candidate. Related but NOT the same thing: a lane reports settings now survive a forced port change 4601->4602.",
+      "retestIsMandatory": true,
+      "gates": ["First run", "Persistence and relaunch", "Reboot persistence"]
+    },
+    {
+      "id": "PF2",
+      "name": "publisher identity absent/inconsistent",
+      "severity": "SERIOUS",
+      "foundBy": "Machine B",
+      "foundOn": "2026-08-09",
+      "symptom": "Windows Apps & features and the uninstall registry entry showed no publisher.",
+      "machineAStatusClaim": "PARTIALLY EVIDENCED. A lane measured the built executable's VersionInfo CompanyName as 'ToolsEnabled, Inc. in formation'. That is the FILE resource, which is a different field from the Installed Apps publisher, which comes from the uninstall registry Publisher value. B's finding was about the registry field. Do not let a correct CompanyName be quoted as clearing this row.",
+      "retestIsMandatory": true,
+      "gates": ["Product identity", "Trust UX", "Uninstall UX"]
+    },
+    {
+      "id": "PF3",
+      "name": "uninstall retention and non-obvious completion",
+      "severity": "SERIOUS",
+      "foundBy": "Machine B",
+      "foundOn": "2026-08-09",
+      "symptom": "Uninstall removed the registry entry, the 78-file install directory and the Start Menu shortcut, but presented no clear progress window and retained ALL 59 user-data files totalling 9368864 bytes, including shell-state.json with saved Tan-theme state.",
+      "machineAStatusClaim": "OPEN, AND THERE IS A DESIGN CONTRADICTION TO RESOLVE - see contradictions[0]. Separately a lane reports the uninstaller ignores silent mode: it opens a modal and blocks forever while returning success to the caller.",
+      "retestIsMandatory": true,
+      "gates": ["Uninstall UX", "Removal and leftovers"]
+    },
+    {
+      "id": "PF4",
+      "name": "simulated operational data labelled live",
+      "severity": "SERIOUS",
+      "foundBy": "Machine B",
+      "foundOn": "2026-08-09",
+      "symptom": "After an explicit 'View simulated' action, Metrics showed operational-looking totals (AGENTS LIVE 28 of 91 spawned, TASKS CLOSED 49, TOKEN FLOW 4.9M) on a page carrying a green 'live' label.",
+      "machineAStatusClaim": "MATERIALLY IMPROVED BUT NOT CLEARED. Measured by lane t5a on the current built renderer: the exact string 'View simulated' is still PRESENT in dist and app.asar (a prior claim of absence was refuted by the harvest verifier's re-measurement); the default metrics state shows em-dash and 'unavailable' on every tile with 'live projection unavailable'; and explicit labels now exist including 'Demonstration data. Nothing in it is running on this computer.' and 'sample board - demonstration traffic, not a live fleet'. NOT ESTABLISHED EITHER WAY: whether any remaining path can still put a green 'live' badge over fabricated numbers. That is B's row to settle.",
+      "retestIsMandatory": true,
+      "gates": ["Live versus simulated", "Privacy and stranger fit"]
+    },
+    {
+      "id": "PF5",
+      "name": "userdata adoption trap",
+      "severity": "BLOCKER",
+      "foundBy": "Machine A",
+      "foundOn": "2026-08-11",
+      "symptom": "If %APPDATA%\\Mission Control exists from any pre-rename install, the renamed build adopts it, cannot decrypt the adopted agent-spawn-key.enc, and Start is PERMANENTLY DISABLED with nothing on screen explaining why. Clean A/B: with the folder absent a fresh key is created and a session runs.",
+      "machineAStatusClaim": "OPEN. This is the single most likely cause of a false BLOCKER verdict on B, because B's own machine may carry pre-rename userData from the 2026-08-09 exercise.",
+      "retestIsMandatory": true,
+      "gates": ["Retained-profile regression", "First run", "Navigation/configuration"]
+    },
+    {
+      "id": "PF6",
+      "name": "seeded topology not configurable",
+      "severity": "SERIOUS",
+      "foundBy": "Machine B",
+      "foundOn": "2026-08-09",
+      "symptom": "A new user saw a fixed two-machine roster seeded with TEST-NET addresses (192.0.2.x) and Settings offered no configuration for host, endpoint, roster, account, owner identity or machine identity.",
+      "machineAStatusClaim": "IMPROVED IN THE RENDERER. Measured by lane t5a: the machine selector now reads 'All / Computer 1 / Computer 2' with no IP addresses present. Whether the roster is CONFIGURABLE is not established.",
+      "retestIsMandatory": true,
+      "gates": ["Navigation/configuration", "Privacy and stranger fit"]
+    }
+  ],
+  "contradictions": [
+    {
+      "id": "C1",
+      "between": ["acceptance matrix row 'Removal and leftovers'", "shipped userdata-adoption behaviour"],
+      "matrixSays": "After settling and final recheck, no relevant Local/Roaming AppData remains. Retained userData is a defect under the handoff.",
+      "productDoes": "shell/userdata-adoption.cjs deliberately PRESERVES and ADOPTS userData across a product rename, and writes a durable %APPDATA%\\ToolsEnabled\\.userdata-adoption.json record.",
+      "why_it_matters": "These two cannot both be satisfied by the same build. B will fail 'Removal and leftovers' on retained userData while A has deliberately built retention. This is an owner-level product decision (does uninstall delete a user's data?), not a defect for either machine to fix unilaterally.",
+      "action": "Escalate to the owner before B records a verdict on this row. Do not let either side silently pick a side."
+    }
+  ],
+  "falseVerdictTraps": [
+    {
+      "id": "T1",
+      "trap": "Pre-rename %APPDATA%\\Mission Control present on the test machine",
+      "produces": "FALSE BLOCKER - Start permanently disabled, looks like a fresh-install defect",
+      "avoid": "Before installing, rename %APPDATA%\\Mission Control aside and record that you did. Then run the retained-profile row DELIBERATELY as its own exercise rather than by accident."
+    },
+    {
+      "id": "T2",
+      "trap": "Probing braced GUID registry keys",
+      "produces": "FALSE 'neither present' - which the matrix classes INCONCLUSIVE, not a pass",
+      "avoid": "Key names are UNBRACED. Probe both HKCU locations listed in identity.registryGuidCarveOut.probeLocations."
+    },
+    {
+      "id": "T3",
+      "trap": "Quoting a hash taken from a path inside a build output directory",
+      "produces": "Certification of a build nobody can reproduce",
+      "avoid": "Only hash the frozen copy at candidate.immutableLocation. The build directory reuses one filename per build, so a hash quoted there expires on the next rebuild with no change to the filename."
+    },
+    {
+      "id": "T4",
+      "trap": "Accepting file VersionInfo CompanyName as evidence for the Installed Apps publisher row",
+      "produces": "FALSE PASS on PF2",
+      "avoid": "Read the uninstall registry Publisher value and the Installed Apps UI separately from the file resource. The matrix already says metadata alone is insufficient."
+    },
+    {
+      "id": "T5",
+      "trap": "Taking every 'Recommended' setup answer and concluding the product has no working controls",
+      "produces": "Possible FALSE BLOCKER, or a REAL finding - both are valuable but they must not be confused",
+      "avoid": "Run first-run TWICE on separate fresh profiles: once accepting every Recommended answer, once choosing the most permissive answer. Report the two click-paths separately. A-side has previously measured that the recommended path granted zero write flags and therefore exposed no control that starts an agent; whether that is still true of the new candidate is unverified."
+    },
+    {
+      "id": "T6",
+      "trap": "Reading a green suite as evidence",
+      "produces": "FALSE PASS",
+      "avoid": "Machine A's own record is that roughly fifteen defects this sprint all shipped past a green suite and not one was caught by a test. Treat A-side test results as claims to check, never as coverage."
+    }
+  ],
+  "mandatoryGates": [
+    { "n": 1, "gate": "Immutable declaration", "retestFocus": ["candidate.status must not be NOT_DECLARED"], "priorFindings": [] },
+    { "n": 2, "gate": "Intake identity", "retestFocus": ["independent byte count and SHA-256 before execution", "Phase 2 rehash inside the guest"], "priorFindings": [] },
+    { "n": 3, "gate": "Phase 1 baseline", "retestFocus": ["no prior product identity under EITHER name", "61-file retained profile preserved"], "priorFindings": ["PF5"] },
+    { "n": 4, "gate": "Trust UX", "retestFocus": ["SmartScreen behaviour on an unsigned installer", "Authenticode recorded separately from metadata publisher"], "priorFindings": ["PF2"] },
+    { "n": 5, "gate": "Install", "retestFocus": ["per-user install", "exactly one shortcut and one Apps entry", "usable first window with no developer intervention"], "priorFindings": [] },
+    { "n": 6, "gate": "Product identity", "retestFocus": ["no 'Mission' in any user-visible identity string", "publisher exactly 'ToolsEnabled, Inc. in formation'", "install dir and userData paths"], "priorFindings": ["PF2"] },
+    { "n": 7, "gate": "appId", "retestFocus": ["AUMID com.toolsenabled.desktop", "unbraced GUID carve-out, four outcomes"], "priorFindings": [] },
+    { "n": 8, "gate": "First run", "retestFocus": ["installer-completion launch AND a separate ordinary Start Menu launch"], "priorFindings": ["PF1", "PF5"] },
+    { "n": 9, "gate": "Privacy and stranger fit", "retestFocus": ["no owner names, accounts, real IPs, repos, private messages", "sample data unmistakably demo"], "priorFindings": ["PF4", "PF6"] },
+    { "n": 10, "gate": "Navigation/configuration", "retestFocus": ["every top-level route without error, hang, blank state or raw exception", "roster/host/account configurable or explicitly offline"], "priorFindings": ["PF5", "PF6"] },
+    { "n": 11, "gate": "Live versus simulated", "retestFocus": ["conspicuous SIMULATED/DEMO indicator everywhere", "fabricated metrics never shown as green live"], "priorFindings": ["PF4"] },
+    { "n": 12, "gate": "Persistence and relaunch", "retestFocus": ["preference survives at least two close/relaunch cycles", "no exit-0/no-window behaviour"], "priorFindings": ["PF1"] },
+    { "n": 13, "gate": "Retained-profile regression", "retestFocus": ["opens over the preserved rejected-build profile", "migrates or ignores incompatible state safely", "nothing deleted merely to pass"], "priorFindings": ["PF5"] },
+    { "n": 14, "gate": "Reboot persistence", "retestFocus": ["launches from Start after a real reboot", "no repair/install prompt", "no Node or dev tool needed"], "priorFindings": ["PF1"] },
+    { "n": 15, "gate": "Uninstall UX", "retestFocus": ["removal visibly reaches completion", "exit code 0 alone is not success"], "priorFindings": ["PF3"] },
+    { "n": 16, "gate": "Removal and leftovers", "retestFocus": ["no process, tree, shortcut, uninstall entry, scheduled component or relevant AppData remains"], "priorFindings": ["PF3"], "blockedBy": "C1" },
+    { "n": 17, "gate": "Resource compliance", "retestFocus": ["continuous samples below 85% CPU and memory", "stop before the hard ceiling"], "priorFindings": [] },
+    { "n": 18, "gate": "Phase 2 qualification", "retestFocus": ["native clean Windows, Gen2/UEFI, Secure Boot, TPM 2.0", "not Docker, WSL, Wine or a reused dev VM"], "priorFindings": [] },
+    { "n": 19, "gate": "Phase 2 cleanliness", "retestFocus": ["prior-product history checked under BOTH names"], "priorFindings": ["PF5"] },
+    { "n": 20, "gate": "Phase 2 protocol", "retestFocus": ["the identical hash passes the full sequence inside the clean guest"], "priorFindings": [] },
+    { "n": 21, "gate": "Certification", "retestFocus": ["every mandatory Phase 1 and Phase 2 row passes on the SAME immutable candidate"], "priorFindings": [] }
+  ],
+  "gateCount": 21
+}

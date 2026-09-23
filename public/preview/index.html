@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" data-theme="white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToolsEnabled — try the product in your browser</title>
+  <meta name="description" content="A simulated preview of ToolsEnabled running in your browser. No account, no download, no data leaves this page." />
+  <!-- No third-party anything. Five same-origin modules and one stylesheet; the
+       policy below is what makes that a promise rather than a habit. It also
+       closes the finding R1260 lane t5a raised against the product page, which
+       makes every visitor's browser probe a loopback port on their own computer:
+       connect-src here is same-origin only, so this page cannot knock on a
+       visitor's machine even by accident.
+       frame-ancestors is deliberately NOT here: Chrome ignores that directive
+       in a <meta> policy, so writing it would read as protection and enforce
+       nothing (reports/lanes/preview-frame-ancestors-inert.md). Whatever
+       serves this page sends it as a response header instead — the shell's
+       own server does (serveDist in shell/main.cjs), and the website's server
+       records the same requirement for its vendored copy. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'" />
+  <link rel="icon" href="/brand-icon.svg" />
+  <link rel="stylesheet" href="./preview.css" />
+</head>
+<body>
+  <header class="pv-head">
+    <div class="pv-head-row">
+      <span class="pv-brand">TOOLSENABLED</span>
+      <div class="pv-theme" id="preview-theme" role="group" aria-label="Theme">
+        <button type="button" data-theme="white" data-current="true">White</button>
+        <button type="button" data-theme="tan">Tan</button>
+        <button type="button" data-theme="black">Black</button>
+      </div>
+    </div>
+    <h1 class="pv-title">See the product before you install it</h1>
+    <p class="pv-sub">
+      Below is the application, running in this page from invented data. Click through it,
+      open an agent, answer a request. Nothing you do here reaches a computer, and nothing
+      you do here is stored.
+    </p>
+  </header>
+
+  <main class="pv-main">
+    <!-- The preview mounts here. If its own audit fails, a refusal is mounted
+         here instead — there is no state in which fabricated activity is shown
+         alongside a warning about itself. -->
+    <div id="preview-root" class="pv-root"></div>
+  </main>
+
+  <section class="pv-after">
+    <h2 class="pv-after-h">When you want the real one</h2>
+    <p class="pv-after-p">
+      The application is a desktop install and it is complete without paying: no account,
+      no subscription, no network, for as long as you want it. Paid subscriptions are not
+      open yet, and the application is free meanwhile.
+    </p>
+    <!-- Both controls are declared and then checked before they are offered.
+         An undeclared build, or a page that is not in this deployment, produces
+         a disabled control carrying its reason — never a dead link. -->
+    <div class="pv-exits" id="preview-exits">
+      <p class="pv-exits-pending">Checking what this build can offer you…</p>
+    </div>
+  </section>
+
+  <footer class="pv-foot">
+    <p>
+      Everything above the line was generated in your browser from a fixed seed. It is not a
+      recording of anyone's computer, it contains no one's data, and it does not become
+      accurate by being detailed.
+    </p>
+  </footer>
+
+  <script type="module" src="./main.js"></script>
+  <noscript>
+    <p class="pv-noscript">
+      This preview is a simulation that runs in your browser, so it needs JavaScript.
+      Without it there is nothing here to show you — and rather than show you a still
+      picture of a product and let you assume it was working, this page shows you nothing.
+    </p>
+  </noscript>
+</body>
+</html>

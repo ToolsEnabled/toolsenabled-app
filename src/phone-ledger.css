@@ -1,0 +1,51 @@
+/* THE PHONE LEDGER'S AT-RULES, AND ONLY THOSE.
+ *
+ * src/phone-canvas.css owns every mode-gated declaration the ledger wears,
+ * and its own test forbids it any at-rule — so the one thing a dress needs
+ * that only an at-rule can say lives here instead: the promise that a person
+ * who asked for reduced motion gets none. Nothing in this file may name the
+ * phone-canvas attribute (that string is licensed to src/phone-canvas.css
+ * alone); every selector here styles elements that exist only after
+ * src/phone-ledger.js or src/phone-canvas.js has built them, so a desktop
+ * page, which never builds them, cannot be moved by this sheet.
+ */
+
+/* Structural minimums for two ledger children the gated sheet does not need
+   to dress: the list is the rows' own column, and the add-row label may
+   shrink rather than widen the locked page. */
+.phone-ledger-list {
+  display: block;
+  min-width: 0;
+}
+.phone-ledger-add-label {
+  min-width: 0;
+}
+
+.phone-ledger-entry-error {
+  flex: none;
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--line);
+  font: 400 13px/1.5 var(--font-ui);
+  color: var(--ink);
+  background: var(--sheet);
+}
+
+/* THE SHEET'S RISE IS A TRANSITION NOW, NOT A KEYFRAME.
+   It was `@keyframes phone-sheet-rise` — a one-shot animation of a single
+   spacing step, played on the frame the card stopped being `hidden`. It could
+   not play on the way out (hidden removes the element in the same frame), and
+   24px is not a pull-up: measured 120ms after a real touch tap on the served
+   build, 2026-08-28, the card was already fully in place and fully opaque. The
+   travel now lives in src/phone-canvas.css as a transform on `.is-up`, which
+   plays in both directions. What has to stay here is the exemption: with
+   reduced motion the card takes its position immediately, and so does the
+   scrim — the sheet still opens and still closes, it simply does not travel. */
+@media (prefers-reduced-motion: reduce) {
+  .phone-sheet-card,
+  .phone-sheet-scrim,
+  .phone-ledger-fold-glyph {
+    animation: none !important;
+    transition: none !important;
+  }
+}

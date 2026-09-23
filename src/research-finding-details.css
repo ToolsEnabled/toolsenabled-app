@@ -1,0 +1,31 @@
+.research-finding-content,
+.research-finding-details,
+.research-finding-details dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.research-finding-record > span { overflow-wrap: anywhere; }
+
+.research-finding-details { margin-top: var(--s2); }
+.research-finding-details > summary { cursor: pointer; color: var(--ink-25); }
+.research-finding-details > summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.research-finding-details .research-finding-review-note { margin: var(--s2) 0; }
+.research-finding-details dl { margin: 0; }
+.research-finding-details dl > div { margin-top: var(--s2); }
+.research-finding-details dt { font-weight: 600; color: var(--ink-25); }
+.research-finding-details dd { margin: 2px 0 0; white-space: pre-wrap; }
+.research-finding-details pre {
+  margin: 0;
+  font: 12px/1.5 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .research-register-list .research-finding-record { grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
+}

@@ -1,0 +1,75 @@
+/* SWITCH AND CONTINUE -- the one dialog on the circle for account, model and
+   depth (src/switch-and-continue.js). Same tokens as the Accounts menu
+   (src/account-switcher.css) so it reads as the same product; smaller, because
+   it asks one question. */
+dialog.switch-continue {
+  box-sizing: border-box; position: fixed; inset: 0; margin: auto; padding: 0;
+  width: min(560px, calc(100vw / var(--zoom, 1) - 32px));
+  max-height: calc(100dvh / var(--zoom, 1) - 32px);
+  overflow: auto; overscroll-behavior: contain;
+  border: 1px solid var(--line-2); border-radius: 14px;
+  background: var(--bg); color: var(--ink); box-shadow: 0 24px 80px #0005;
+  text-align: left; font: 14px/1.5 var(--font-ui);
+}
+dialog.switch-continue::backdrop { background: #10172480; backdrop-filter: blur(4px); }
+.switch-continue:not([open]) { display: none; }
+.switch-continue *, .switch-continue *::before, .switch-continue *::after { box-sizing: border-box; }
+.switch-form { display: flex; flex-direction: column; gap: 12px; padding: 18px 22px 16px; }
+.switch-title { margin: 0; font: 600 20px/1.25 var(--font-ui); letter-spacing: -0.02em; }
+/* THE AGENT BESIDE THE MENU (owner T775: "show the chat next to the menu so
+   the user knows what agent is being restarted"). With a target the dialog
+   widens into two panes -- the circle's name and saved conversation on the
+   left, the account/model/depth menu on the right -- so the person reads WHO
+   before choosing HOW. Each pane scrolls on its own; the conversation never
+   pushes the Continue button out of reach. Narrow windows stack the panes,
+   agent first, with a shorter conversation window. */
+dialog.switch-continue.switch-continue-with-target { width: min(960px, calc(100vw / var(--zoom, 1) - 32px)); }
+.switch-panes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; min-width: 0; }
+.switch-continue-with-target .switch-panes { grid-template-columns: minmax(240px, 5fr) minmax(280px, 6fr); }
+.switch-menu { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.switch-target { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 12px 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--sheet); }
+.switch-target-lead { margin: 0; font: 600 11px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.switch-target-name { margin: 0; font: 600 16px/1.3 var(--font-ui); color: var(--ink); overflow-wrap: anywhere; }
+.switch-target-detail { margin: 0; color: var(--ink-2); font-size: 12px; overflow-wrap: anywhere; }
+.switch-target-hint { margin: 0; color: var(--ink-3); font-size: 12px; }
+.switch-target-chat { display: flex; flex-direction: column; min-height: 120px; max-height: min(440px, calc(60dvh / var(--zoom, 1))); overflow: auto; overscroll-behavior: contain; border-top: 1px solid var(--line-2); padding-top: 6px; }
+/* The renderer's own chat placement (board.css / chat-content.css) assumes a
+   tall chat column; inside this pane the PANE is the scrollport. */
+.switch-target-chat .node-transcript-history { max-height: none; overflow: visible; border-top: none; }
+.switch-target-chat .saved-conversation { margin-top: 0; padding-top: 0; border-top: none; }
+.switch-target-chat .saved-messages { max-height: none; overflow: visible; }
+.switch-target-chat .saved-message { padding: 10px 8px; }
+.switch-target-chat .saved-message-who { margin-bottom: 6px; }
+.switch-target-chat [role="status"] { margin: 0 0 4px; color: var(--ink-3); font-size: 12px; }
+.switch-target-chat .saved-conversation-nav { padding-top: 8px; }
+.switch-target-chat .saved-conversation-nav button { min-height: 28px; padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 4px; background: var(--control-bg, var(--sheet)); color: var(--ink-2); font: 550 12px/1.3 var(--font-ui); cursor: pointer; }
+.switch-target-chat .saved-conversation-nav button:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 720px) {
+  .switch-continue-with-target .switch-panes { grid-template-columns: minmax(0, 1fr); }
+  .switch-target-chat { max-height: 180px; }
+}
+.switch-why { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--sheet); color: var(--ink-2); font-size: 13px; }
+.switch-lead { margin: 0; color: var(--ink-2); font-size: 13px; }
+.switch-group { margin: 0; padding: 8px 10px 10px; border: 1px solid var(--line-2); border-radius: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 190px; overflow: auto; }
+.switch-group legend { padding: 0 4px; font: 600 11px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.switch-row { display: flex; align-items: baseline; gap: 8px; padding: 3px 2px; cursor: pointer; }
+.switch-row small { color: var(--ink-3); font-size: 12px; }
+/* A model this dialog shows but cannot take. It is dimmed rather than removed
+   so the person can see the product has it and read why it is not the choice
+   here (src/switch-and-continue.js MODEL_ROW_REASON). The reason itself keeps
+   full contrast: dimming the answer to "why not" would defeat showing it. */
+.switch-row-off { cursor: default; }
+.switch-row-off > span { color: var(--ink-3); }
+.switch-row-off small { color: var(--ink-2); }
+.switch-row input[type="radio"] { margin: 0; flex: none; }
+.switch-note { margin: 0; color: var(--ink-3); font-size: 12px; }
+.switch-cost { display: block; min-height: 1.5em; color: var(--ink-2); font-size: 13px; }
+.switch-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.switch-continue-btn, .switch-cancel-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 32px; padding: 6px 12px; border: 1px solid var(--line-2); border-radius: 4px;
+  background: var(--control-bg, var(--sheet)); color: var(--ink-2); font: 550 13px/1.35 var(--font-ui); cursor: pointer;
+}
+.switch-continue-btn { color: var(--ink); border-color: var(--accent); }
+.switch-continue-btn:hover, .switch-cancel-btn:hover { background: var(--control-hover, var(--sheet)); color: var(--ink); }
+.switch-continue :is(button, input):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }

@@ -1,0 +1,145 @@
+/* Activity is a sibling of the reply, using the same surfaces as app controls.
+   Attribute values come from observed turns/results; decorative marks add no
+   progress estimates or outcomes. */
+.chat[data-chat-panel] {
+  --chat-state-accent: var(--chat-accent);
+  --chat-state-ink: color-mix(in srgb, var(--chat-state-accent) 38%, var(--ink));
+}
+.chat[data-chat-panel] .chat-log > .chat-action-run {
+  border: 1px solid var(--line-2); border-left-width: 1px;
+  border-radius: 12px; background: color-mix(in srgb, var(--sheet) 95%, var(--ink));
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--ink) 2%, transparent);
+}
+.chat[data-chat-panel] .chat-log > .chat-action-run.is-solo { border: 0; background: transparent; box-shadow: none; }
+.chat[data-chat-panel] .chat-action-head { align-items: center; gap: 9px; min-height: 44px; padding: 9px 12px; }
+.chat[data-chat-panel] .chat-action-head:hover { background: var(--control-hover); }
+.chat[data-chat-panel] .chat-action-head:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -3px; border-radius: 8px; }
+.chat[data-chat-panel] .chat-action-mark { width: 9px; color: var(--ink-2); }
+.chat[data-chat-panel] .chat-action-run-body { padding: 0 8px 8px; }
+.chat[data-chat-panel] .chat-action-run-body > .chat-action {
+  border: 1px solid var(--line); border-left-width: 1px;
+  background: var(--sheet); border-radius: 8px;
+}
+.chat[data-chat-panel] .chat-action-tool { font: 600 12px/1.45 var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--ink); }
+.chat[data-chat-panel] .chat-action-detail { font-size: 11.5px; color: var(--ink-2); }
+.chat[data-chat-panel] .chat-action-run > .chat-action-head .chat-action-detail { color: var(--ink-2); font-weight: 550; }
+.chat[data-chat-panel] .chat-action-state {
+  padding: 3px 7px; border-radius: 5px; font: 500 10.5px/1.35 var(--font-ui);
+  color: var(--chat-state-ink); background: color-mix(in srgb, var(--chat-state-accent) 8%, var(--sheet));
+}
+.chat[data-chat-panel] .chat-action-state:empty { display: none; }
+.chat[data-chat-panel] .chat-action :is([data-chat-action-duration], [data-chat-action-run-total], [data-chat-action-run-disclosure]) { color: var(--ink-2); font-size: 10.5px; }
+.chat[data-chat-panel] .chat-action-body {
+  max-height: 320px; margin: 0; padding: 14px 16px; border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 3%, var(--sheet)); color: var(--ink-2);
+  font: 400 12px/1.7 var(--font-mono); tab-size: 4; white-space: pre-wrap;
+  overflow: auto; overflow-wrap: anywhere; scrollbar-width: thin; overscroll-behavior: contain;
+}
+.chat[data-chat-panel] .chat-action-body.chat-thinking-body {
+  max-height: none;
+  overflow: visible;
+  white-space: normal;
+  font: 400 13px/1.6 var(--font-ui);
+  color: var(--ink);
+}
+.chat[data-chat-panel] .chat-action[open] > :is(.chat-action-body, .chat-action-run-body) { animation: chat-work-reveal 160ms ease-out; }
+.chat[data-chat-panel] [data-action-state="done"] { --chat-state-accent: var(--s-good); }
+.chat[data-chat-panel] :is([data-action-state="waiting"], [data-action-state="refused"]) { --chat-state-accent: var(--s-warn); }
+.chat[data-chat-panel] [data-action-state="undone"] { --chat-state-accent: var(--s-serious); }
+.chat[data-chat-panel] [data-action-state="unknown"] { --chat-state-accent: var(--ink-2); }
+.chat[data-chat-panel] .chat-action { --chat-state-ink: color-mix(in srgb, var(--chat-state-accent) 38%, var(--ink)); }
+.chat[data-chat-panel] .chat-action-status-icon {
+  display: grid; place-items: center; flex: none; width: 25px; height: 25px;
+  border-radius: 7px; color: var(--chat-state-ink);
+  background: color-mix(in srgb, var(--chat-state-accent) 8%, var(--sheet));
+}
+.chat-action-status-icon svg { display: block; width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.chat-action-status-icon path { display: none; }
+.chat-action-status-icon .action-icon-track { opacity: .22; }
+[data-action-state="working"] > .chat-action-head .action-icon-spin { display: block; animation: chat-tool-spin 1s linear infinite; transform-origin: 10px 10px; }
+[data-action-state="done"] > .chat-action-head .action-icon-done { display: block; }
+[data-action-state="waiting"] > .chat-action-head .action-icon-pause { display: block; }
+:is([data-action-state="undone"], [data-action-state="refused"]) > .chat-action-head .action-icon-alert { display: block; }
+[data-action-state="unknown"] > .chat-action-head .action-icon-unknown { display: block; }
+.chat[data-chat-panel] .msg.thinking {
+  padding: 10px 14px; margin-left: 32px; font-style: normal; border: 1px solid var(--line-2);
+  border-radius: 10px; color: var(--ink-2); background: color-mix(in srgb, var(--chat-accent) 3%, var(--sheet));
+}
+.chat[data-chat-panel] .msg.thinking > summary { display: list-item; list-style: disclosure-closed inside; font-weight: 600; color: var(--ink-2); margin-bottom: 0; }
+.chat[data-chat-panel] .msg.thinking[open] > summary { list-style-type: disclosure-open; }
+.chat[data-chat-panel] .msg.thinking .chat-message-body { font-size: 13px; color: var(--ink-2); }
+.chat[data-chat-panel] .chat-context { border-style: solid; }
+.chat[data-chat-panel] .chat-context-body { color: var(--ink-2); font: 400 13px/1.7 var(--font-ui); }
+.chat[data-chat-panel] .chat-approval {
+  border: 1px solid color-mix(in srgb, var(--s-warn) 35%, var(--line-2));
+  background: color-mix(in srgb, var(--s-warn) 5%, var(--sheet)); color: var(--ink);
+}
+.chat[data-chat-panel] .chat-approval-label { color: var(--ink); font-weight: 650; }
+.chat[data-chat-panel] .chat-approval-summary { font-size: 13px; line-height: 1.6; }
+.chat[data-chat-panel] .working-step { gap: 10px; }
+.chat[data-chat-panel] .working-step [data-chat-working-step] { color: var(--ink); font-weight: 550; }
+.chat[data-chat-panel] .working-step [data-chat-working-counters] { color: var(--ink-2); }
+.chat[data-chat-panel] .chat-activity-orbit { color: color-mix(in srgb, var(--chat-accent) 70%, var(--ink)); }
+.chat-orbit-pause, .chat-orbit-writing { display: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
+[data-activity-phase="responding"] .chat-orbit-writing { display: block; }
+[data-activity-phase="responding"] :is(.chat-orbit-inner, .chat-orbit-core) { display: none; }
+[data-activity-phase="responding"] .chat-orbit-outer { animation-duration: 1.8s; }
+[data-activity-phase="responding"] .chat-orbit-writing path { animation: chat-writing-wave 1s ease-in-out infinite; transform-origin: 20px 20px; }
+[data-activity-phase="responding"] .chat-orbit-writing path:nth-child(2) { animation-delay: 120ms; }
+[data-activity-phase="responding"] .chat-orbit-writing path:nth-child(3) { animation-delay: 240ms; }
+[data-activity-phase="working"] .chat-orbit-outer { stroke-dasharray: 8 17; animation-duration: 2s; }
+[data-activity-phase="waiting"] .chat-orbit-pause { display: block; }
+.chat[data-chat-panel] [data-activity-phase="waiting"] .chat-activity-orbit { color: color-mix(in srgb, var(--s-warn) 40%, var(--ink)); filter: none; }
+[data-activity-phase="waiting"] :is(.chat-orbit-inner, .chat-orbit-core, .chat-orbit-outer) { display: none; }
+.chat[data-chat-panel][data-chat-activity="waiting"] .chat-compose-surface::before { animation: none; background: color-mix(in srgb, var(--s-warn) 45%, transparent); }
+
+/* The overview and Details rail expose their own truthful activity hooks. */
+.home-run[data-status="working"] .run-state-mark { animation: chat-tool-spin 2.4s linear infinite; }
+.home .home-run[data-working="true"] .run-live::before {
+  width: 10px; height: 10px; border: 1.5px solid var(--line-2);
+  border-top-color: var(--ink-2); border-radius: 50%; background: transparent;
+  box-shadow: none; animation: chat-tool-spin 1.2s linear infinite;
+}
+.home-run:is([data-status="working"], [data-status="attention"]) .run-current-work:not([hidden]),
+[data-tree-activity]:not([hidden]) {
+  padding: 8px 11px; border-radius: 8px; border: 1px solid var(--line-2);
+  color: var(--ink-2); background: color-mix(in srgb, var(--ui-accent) 4%, var(--sheet));
+}
+.session-write-state[data-state="pending"]::before {
+  content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 7px;
+  border: 1.5px solid var(--line-2); border-top-color: var(--ink-2); border-radius: 50%;
+  animation: chat-tool-spin 1s linear infinite;
+}
+@container (max-width: 480px) {
+  .chat[data-chat-panel] .chat-action-head { flex-wrap: wrap; gap: 6px; padding: 8px; }
+  .chat[data-chat-panel] .chat-action-detail { flex-basis: calc(100% - 58px); order: 5; margin-left: 40px; font-size: 11px; }
+  .chat[data-chat-panel] .chat-action-run > .chat-action-head .chat-action-detail { flex: 1; order: 0; margin-left: 0; }
+  .chat[data-chat-panel] .chat-action-state { margin-left: auto; }
+  .chat[data-chat-panel] .chat-action-status-icon { width: 22px; height: 22px; }
+  .chat[data-chat-panel] .chat-action-body { padding: 10px; font-size: 11.5px; }
+  .chat[data-chat-panel] .msg.thinking { margin-left: 24px; padding: 9px 10px; }
+}
+@keyframes chat-tool-spin { to { transform: rotate(360deg); } }
+/* Owner, 2026-09-18: "the writing animation is good but the bubbles jump just a
+   little too much." The pivot was already right -- transform-origin 20px 20px is
+   the exact vertical centre of all three bars (M14 17v6, M20 14v12, M26 17v6 in a
+   0 0 40 40 box), so this scales symmetrically and never translates. The travel
+   was the problem: scaleY .55 -> 1 moved the middle bar 5.4 of 40 viewBox units,
+   and the 120/240ms stagger turned three of those into a jumping wave.
+   Narrowed the geometric swing by ~42% (.45 -> .26 of scale) and moved the
+   signal it gave up into opacity (.45 -> .52), so the tell stays exactly as
+   legible while moving noticeably less. */
+@keyframes chat-writing-wave { 0%, 100% { transform: scaleY(.74); opacity: .48; } 50% { transform: scaleY(1); opacity: 1; } }
+@keyframes chat-work-reveal { from { opacity: 0; } to { opacity: 1; } }
+body.reduce-motion .chat[data-chat-panel] :is(.action-icon-spin, .chat-orbit-writing path),
+body.reduce-motion .home-run[data-status="working"] .run-state-mark,
+body.reduce-motion .home .home-run[data-working="true"] .run-live::before,
+body.reduce-motion .chat[data-chat-panel] .chat-action[open] > :is(.chat-action-body, .chat-action-run-body),
+body.reduce-motion .session-write-state[data-state="pending"]::before { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .chat[data-chat-panel] :is(.action-icon-spin, .chat-orbit-writing path),
+  .home-run[data-status="working"] .run-state-mark,
+  .home .home-run[data-working="true"] .run-live::before,
+  .chat[data-chat-panel] .chat-action[open] > :is(.chat-action-body, .chat-action-run-body),
+  .session-write-state[data-state="pending"]::before { animation: none; }
+}

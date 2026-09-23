@@ -1,0 +1,392 @@
+{
+  "version": 1,
+  "computerId": "this-computer",
+  "trees": [
+    {
+      "id": "tree-1-33d838e2-d430-443f-8a4d-141771615d17",
+      "name": null
+    },
+    {
+      "id": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "name": null
+    },
+    {
+      "id": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "name": null
+    },
+    {
+      "id": "tree-15-832bfdd2-600e-42ab-9d09-ead7ab552281",
+      "name": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "node-2-2492eb3d-f33f-45eb-b88c-ceefbb496072",
+      "treeId": "tree-1-33d838e2-d430-443f-8a4d-141771615d17",
+      "parentId": null,
+      "role": "manager",
+      "nameBase": "Manager",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": null,
+      "role": "manager",
+      "nameBase": "Manager",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-1-734e3441-9d58-401e-b5a9-aae536c124ab",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-1-ed70b99b-a1cd-40cb-bd3b-bfd4e5b9398d",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 2
+    },
+    {
+      "id": "node-2-760e06c4-c7f0-4960-bce4-aceaa2a153b2",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 3
+    },
+    {
+      "id": "node-3-ad80f531-bfce-488a-821f-41cb3411349d",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 4
+    },
+    {
+      "id": "node-4-9da43adc-8a83-4703-92b8-993d3981c414",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 5
+    },
+    {
+      "id": "node-5-77025f5e-f1e2-4481-a09d-11a7118419f9",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "planner",
+      "nameBase": "Planner",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-1-cb1ab5cf-f361-4d3e-b861-11ad77e7ad10",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "planner",
+      "nameBase": "Planner",
+      "nameOrdinal": 2
+    },
+    {
+      "id": "node-1-2a8342a3-a20a-4d40-8b6a-fe571359f546",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 6
+    },
+    {
+      "id": "node-2-8ce635e9-17a3-4545-8928-3d3c38b25ea9",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 7
+    },
+    {
+      "id": "node-3-01290369-90a7-434c-bfc9-16afecac5162",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 8
+    },
+    {
+      "id": "node-4-850c7379-fa27-428c-bf13-572e21c502bf",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "controller",
+      "nameBase": "Controller",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-5-734bca6f-5838-4cc0-ab86-449550bac032",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-850c7379-fa27-428c-bf13-572e21c502bf",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 9
+    },
+    {
+      "id": "node-7-da02fefa-a0d4-4339-8c89-d18d4cc6680d",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": null,
+      "role": "controller",
+      "nameBase": "Controller",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-8-5309c0d4-fda1-4969-b232-32aa787a93b2",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-850c7379-fa27-428c-bf13-572e21c502bf",
+      "role": "planner",
+      "nameBase": "Planner",
+      "nameOrdinal": 3
+    },
+    {
+      "id": "node-9-8cc853fa-6a83-44f1-83a0-bd9b2699b178",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 10
+    },
+    {
+      "id": "node-10-b335d43e-ba4a-4b30-849b-9cb2a02f64fa",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 11
+    },
+    {
+      "id": "node-11-97160362-902b-47cd-a61e-405f0152a0a7",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 12
+    },
+    {
+      "id": "node-12-4a1a39df-6312-479e-a52d-46d3e85420c6",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-7-da02fefa-a0d4-4339-8c89-d18d4cc6680d",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-14-15aea208-e364-4884-83fd-e314baa0672a",
+      "treeId": "tree-15-832bfdd2-600e-42ab-9d09-ead7ab552281",
+      "parentId": null,
+      "role": "manager",
+      "nameBase": "Manager",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-17-5323eb2d-e779-42bc-92e6-71e4b35b017a",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-7-da02fefa-a0d4-4339-8c89-d18d4cc6680d",
+      "role": "manager",
+      "nameBase": "Manager",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-18-04fc592f-9dde-4990-be69-558772da30aa",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-7-da02fefa-a0d4-4339-8c89-d18d4cc6680d",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 2
+    },
+    {
+      "id": "node-19-22aa7d03-c692-4093-812f-32624bf8b2df",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-12-4a1a39df-6312-479e-a52d-46d3e85420c6",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 3
+    },
+    {
+      "id": "node-20-8facc891-326a-4a8f-ac06-ac16fb570c07",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-17-5323eb2d-e779-42bc-92e6-71e4b35b017a",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 4
+    },
+    {
+      "id": "node-21-8cd95066-7409-42eb-b8cc-0d7e921f9173",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-17-5323eb2d-e779-42bc-92e6-71e4b35b017a",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 5
+    },
+    {
+      "id": "node-22-55e12a0b-5bdd-4670-9dc9-a4164994adb9",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-17-5323eb2d-e779-42bc-92e6-71e4b35b017a",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 6
+    },
+    {
+      "id": "node-23-77c3e2c9-913b-4d48-9d20-11698ba6d271",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-17-5323eb2d-e779-42bc-92e6-71e4b35b017a",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 7
+    },
+    {
+      "id": "node-24-c3a46073-33df-4497-bd06-8d757f1f9682",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-25-65cd38df-4960-4a00-b71f-8e32fb1ab5c3",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-7-da02fefa-a0d4-4339-8c89-d18d4cc6680d",
+      "role": "coordinator-assistant",
+      "nameBase": "Coordinator assistant",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-26-e208ce20-65eb-4e56-b70a-fcd9b99f8427",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 13
+    },
+    {
+      "id": "node-27-b0cd20ee-5bcf-4ad1-9c77-ddd241d5f2fd",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-18-04fc592f-9dde-4990-be69-558772da30aa",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 8
+    },
+    {
+      "id": "node-28-0a25164c-a9ee-4c9d-8cf5-98123439c4b7",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-18-04fc592f-9dde-4990-be69-558772da30aa",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 9
+    },
+    {
+      "id": "node-29-6eb7d122-9b96-4ea6-9794-9114b7a65cb1",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-18-04fc592f-9dde-4990-be69-558772da30aa",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 1
+    },
+    {
+      "id": "node-30-3c8d1649-2257-46b1-9e94-645301a9efdf",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-7-da02fefa-a0d4-4339-8c89-d18d4cc6680d",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 10
+    },
+    {
+      "id": "node-31-1e68b9ab-87c6-4acf-a23c-e98452b8c7f7",
+      "treeId": "tree-3-53276b9f-4c32-4c41-a18d-d42d93ec74c8",
+      "parentId": "node-4-f4d1e0af-4a34-4b59-8cbe-ad06a61cfd95",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 14
+    },
+    {
+      "id": "node-32-e0b89cdd-e36b-4d9a-aadd-0b27084f896e",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-17-5323eb2d-e779-42bc-92e6-71e4b35b017a",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 2
+    },
+    {
+      "id": "node-33-66f9511f-0bc3-4ff6-833a-1611a370053b",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-30-3c8d1649-2257-46b1-9e94-645301a9efdf",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 3
+    },
+    {
+      "id": "node-34-6b297772-57d6-4a7b-82ff-0c3ab3dfcd5e",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-17-5323eb2d-e779-42bc-92e6-71e4b35b017a",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 11
+    },
+    {
+      "id": "node-35-91b2e5e9-08a6-40db-bcfa-05846456f4e0",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-17-5323eb2d-e779-42bc-92e6-71e4b35b017a",
+      "role": "builder",
+      "nameBase": "Builder",
+      "nameOrdinal": 12
+    },
+    {
+      "id": "node-36-36d827fe-a093-4bb0-bd75-e82afe882e2b",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-7-da02fefa-a0d4-4339-8c89-d18d4cc6680d",
+      "role": "manager",
+      "nameBase": "Manager",
+      "nameOrdinal": 2
+    },
+    {
+      "id": "node-37-45acc829-5898-4be3-a1e0-7bdb2a2c1ae4",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-17-5323eb2d-e779-42bc-92e6-71e4b35b017a",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 4
+    },
+    {
+      "id": "node-38-c057a854-2987-46e1-a8bb-75e8eb26ffbb",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-36-36d827fe-a093-4bb0-bd75-e82afe882e2b",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 5
+    },
+    {
+      "id": "node-39-57d913fe-c973-4945-85b0-4b87cb1d1bf5",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-36-36d827fe-a093-4bb0-bd75-e82afe882e2b",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 6
+    },
+    {
+      "id": "node-40-68bd9be0-a1dc-4f2b-b651-965b5b3017ab",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-36-36d827fe-a093-4bb0-bd75-e82afe882e2b",
+      "role": "worker",
+      "nameBase": "Worker",
+      "nameOrdinal": 7
+    },
+    {
+      "id": "node-41-df2fc1d4-1029-43a0-afa8-e7bb6cb85c16",
+      "treeId": "tree-6-9d7e3d20-a74d-4390-944e-cf359f019910",
+      "parentId": "node-36-36d827fe-a093-4bb0-bd75-e82afe882e2b",
+      "role": "reviewer",
+      "nameBase": "Reviewer",
+      "nameOrdinal": 1
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "published": [
+    {
+      "version": "1.0.38",
+      "candidateTag": "build/1.0.38",
+      "buildRef": "6f1293d8e3c9a12a01b5060ffa260e6d30a7e6da",
+      "publishedFilename": "ToolsEnabled-Setup-1.0.38.exe",
+      "publishedSha256": "e86b37377f13d27255b334ee4b6e92d66e984cdf78690f6b97a1c6f68d660fbd"
+    }
+  ]
+}

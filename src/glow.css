@@ -1,0 +1,122 @@
+/* ============================================================
+   GENERATED — do not edit by hand.
+   Source: tools/gen-glow.mjs   Regenerate: node tools/gen-glow.mjs
+
+   Perceptual glow ramps (OKLCH, via culori). Each token is a stack of
+   layers with geometrically growing radii and super-linear alpha decay —
+   physical light falloff rather than one blurred copy of a colour — and
+   each layer's colour is placed in OKLCH so the hue holds at every
+   intensity instead of drifting toward grey through sRGB.
+
+   Three intensities per hue: -soft (a whisper, safe at rest on a small
+   accent), default (a deliberate highlight), -loud (a momentary event).
+   Every use is still gated by --glow so the Settings slider governs it.
+   ============================================================ */
+:root {
+  --glow-coordinator-soft:
+    0 0 5px rgba(145, 205, 225, 0.3),
+    0 0 12px rgba(91, 173, 198, 0.158),
+    0 0 29px rgba(0, 141, 171, 0.083);
+  --glow-coordinator:
+    0 0 6px rgba(145, 205, 225, 0.46),
+    0 0 16px rgba(91, 173, 198, 0.242),
+    0 0 41px rgba(0, 141, 171, 0.127);
+  --glow-coordinator-loud:
+    0 0 6px rgba(145, 205, 225, 0.62),
+    0 0 15px rgba(110, 184, 207, 0.326),
+    0 0 38px rgba(70, 162, 189, 0.172),
+    0 0 94px rgba(0, 141, 171, 0.09);
+  --glow-helper-soft:
+    0 0 5px rgba(248, 175, 137, 0.3),
+    0 0 12px rgba(225, 133, 83, 0.158),
+    0 0 29px rgba(200, 89, 0, 0.083);
+  --glow-helper:
+    0 0 6px rgba(248, 175, 137, 0.46),
+    0 0 16px rgba(225, 133, 83, 0.242),
+    0 0 41px rgba(200, 89, 0, 0.127);
+  --glow-helper-loud:
+    0 0 6px rgba(248, 175, 137, 0.62),
+    0 0 15px rgba(233, 147, 101, 0.326),
+    0 0 38px rgba(217, 118, 63, 0.172),
+    0 0 94px rgba(200, 89, 0, 0.09);
+  --glow-shadow-soft:
+    0 0 5px rgba(146, 210, 182, 0.3),
+    0 0 12px rgba(92, 180, 144, 0.158),
+    0 0 29px rgba(0, 149, 108, 0.083);
+  --glow-shadow:
+    0 0 6px rgba(146, 210, 182, 0.46),
+    0 0 16px rgba(92, 180, 144, 0.242),
+    0 0 41px rgba(0, 149, 108, 0.127);
+  --glow-shadow-loud:
+    0 0 6px rgba(146, 210, 182, 0.62),
+    0 0 15px rgba(111, 190, 157, 0.326),
+    0 0 38px rgba(71, 169, 132, 0.172),
+    0 0 94px rgba(0, 149, 108, 0.09);
+  --glow-manager-soft:
+    0 0 5px rgba(145, 179, 255, 0.3),
+    0 0 12px rgba(102, 141, 255, 0.158),
+    0 0 29px rgba(62, 99, 240, 0.083);
+  --glow-manager:
+    0 0 6px rgba(145, 179, 255, 0.46),
+    0 0 16px rgba(102, 141, 255, 0.242),
+    0 0 41px rgba(62, 99, 240, 0.127);
+  --glow-manager-loud:
+    0 0 6px rgba(145, 179, 255, 0.62),
+    0 0 15px rgba(116, 154, 255, 0.326),
+    0 0 38px rgba(88, 127, 250, 0.172),
+    0 0 94px rgba(62, 99, 240, 0.09);
+  --glow-default-soft:
+    0 0 5px rgba(215, 192, 138, 0.3),
+    0 0 12px rgba(186, 156, 84, 0.158),
+    0 0 29px rgba(157, 121, 0, 0.083);
+  --glow-default:
+    0 0 6px rgba(215, 192, 138, 0.46),
+    0 0 16px rgba(186, 156, 84, 0.242),
+    0 0 41px rgba(157, 121, 0, 0.127);
+  --glow-default-loud:
+    0 0 6px rgba(215, 192, 138, 0.62),
+    0 0 15px rgba(195, 168, 102, 0.326),
+    0 0 38px rgba(176, 144, 64, 0.172),
+    0 0 94px rgba(157, 121, 0, 0.09);
+  --glow-accent-soft:
+    0 0 5px rgba(145, 205, 225, 0.3),
+    0 0 12px rgba(91, 173, 198, 0.158),
+    0 0 29px rgba(0, 141, 171, 0.083);
+  --glow-accent:
+    0 0 6px rgba(145, 205, 225, 0.46),
+    0 0 16px rgba(91, 173, 198, 0.242),
+    0 0 41px rgba(0, 141, 171, 0.127);
+  --glow-accent-loud:
+    0 0 6px rgba(145, 205, 225, 0.62),
+    0 0 15px rgba(110, 184, 207, 0.326),
+    0 0 38px rgba(70, 162, 189, 0.172),
+    0 0 94px rgba(0, 141, 171, 0.09);
+}
+
+/* heatmap ramps — per theme, always low→high contrast
+   against that theme's own background */
+:root,
+:root[data-theme="white"] {
+  --heat-0: #dde2e4;
+  --heat-1: #b6d2db;
+  --heat-2: #93c1d0;
+  --heat-3: #6fb0c4;
+  --heat-4: #489fb8;
+  --heat-5: #008dab;
+}
+:root[data-theme="tan"] {
+  --heat-0: #c9cecf;
+  --heat-1: #a5bcc2;
+  --heat-2: #84aab3;
+  --heat-3: #6397a4;
+  --heat-4: #408494;
+  --heat-5: #0b7285;
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) {
+  --heat-0: #262b2d;
+  --heat-1: #2c4a54;
+  --heat-2: #336b7d;
+  --heat-3: #398da7;
+  --heat-4: #3fb1d2;
+  --heat-5: #45d6ff;
+}

@@ -1,0 +1,13 @@
+# Remote Metrics account and paging contract
+
+The Metrics collector requests a fixed date window and cursor from `mcAgent.history` and `mcAgent.usage`. The website bridge previously omitted that query, and the native facade accepted only `limit`. The collector therefore received an ordinary history tail without the account/window metadata it requires and refused to present it as a complete reading.
+
+The website sends the existing native `metrics` object as one bounded JSON query parameter. The facade uses the native Metrics validator supplied by its controller, preserving its dependency boundary and its existing Origin/bearer checks. Unknown account selectors, repeated parameters and invalid dates/cursors refuse before a journal read. Calls without a Metrics query retain their existing contract.
+
+`remote-metrics.cjs` permits only the two account-scoped journal reads. It verifies the current relay owner and connection, the locally selected hosted account/session, and server-confirmed device/pair ownership through the existing `authorizeDeviceSettings` client. It repeats account/session/connection checks after asynchronous work and verifies the result's account principal and time window. Drive OFF continues to allow reads. The controller cannot start work, change a permission or select another account. Local-data reset tracks and fences these reads alongside the existing asynchronous account operations.
+
+The 96 KiB response bound preserves complete start/outcome pairs and returns a cursor for the oldest start or turn actually carried. Later pages keep the original snapshot head and count. One record too large to carry is an explicit refusal; it is never converted into an empty successful month.
+
+Dependencies: the existing remote-settings app stage and server device-ownership route must be integrated before the website correction is accepted on a deployed device. The four account-setting keys are unchanged. This stage changes no engine source, journal format, Metrics calculation, provider account, renderer layout, voice bytes or publication selection.
+
+Validation includes actual hosted account partitions in temporary storage, account/session changes during asynchronous reads, connection revocation, strict route inputs and Origin/bearer refusals. A real temporary journal containing 425 mixed-account starts and turns is reopened and collected through the controller and listening HTTP facade: all 283 records for the selected account arrive without duplication or omission, including pages that hit the response bound. These are source-level fixtures; signed-in deployed Linux/Windows/iPhone acceptance remains a separate campaign step after owner integration.

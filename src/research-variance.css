@@ -1,0 +1,99 @@
+/* Variance step — variants of a set's compositions: scope rows, omissions,
+   the run. Hairlines, theme tokens only, controls size to their content.
+   .benchmark-builder styles label/button at (0,1,1) and `label > input` at
+   (0,2,2); compact rules here carry a class to win. */
+.variance-editor { color: var(--ink); }
+.var-head { margin: 4px 0 6px; }
+.var-head h3 { margin: 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.variance-editor .var-intro { margin: 0; max-width: 80ch; }
+.var-step { padding: 18px 0 6px; border-top: 1px solid var(--line-2); margin-top: 14px; }
+.var-step-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 10px; }
+.variance-editor h4 { margin: 0; font-size: 16px; font-weight: 650; }
+.variance-editor h5 { margin: 14px 0 6px; font-size: 14px; font-weight: 650; }
+.variance-editor h5 .var-meta { margin-left: 8px; font-weight: 400; }
+.variance-editor h6 { margin: 0 0 4px; font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.var-step-n { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 10px; border: 1px solid var(--ink-2); border-radius: 50%; font-family: var(--font-mono); font-size: 12px; font-weight: 500; vertical-align: 2px; }
+.var-hint, .var-meta { color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
+.variance-editor .var-hint { margin: 6px 0; max-width: 90ch; }
+.variance-editor .var-hint:empty { display: none; }
+.var-meta { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.var-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.variance-editor button.var-small { min-height: 0; padding: 3px 9px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+.variance-editor button.var-drop { padding: 1px 7px; font-size: 14px; color: var(--ink-3); border-color: transparent; }
+.variance-editor button.var-drop:hover:not(:disabled) { color: var(--ink); border-color: var(--line-2); }
+.variance-editor button[hidden] { display: none !important; }
+.variance-editor .bench-primary { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; }
+.variance-editor .bench-primary:disabled { background: transparent; color: var(--ink-3); border-color: var(--line-2); opacity: 1; }
+.variance-editor label.var-field { gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.variance-editor label.var-field > input, .variance-editor label.var-field > select { min-height: 0; width: auto; min-width: 0; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+.variance-editor label.var-field input[type="number"] { width: 110px; }
+.var-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
+.var-actions[hidden] { display: none !important; }
+
+/* 1. scope rows */
+.var-rows { list-style: none; margin: 4px 0 8px; padding: 0; border-top: 1px solid var(--line-2); }
+.var-rows > li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.var-rows > li.var-hint { margin: 0; }
+.var-row-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.var-index { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid var(--ink-2); border-radius: 50%; font-family: var(--font-mono); font-size: 12px; }
+.variance-editor .var-row-line > select { min-height: 0; width: auto; min-width: 0; max-width: 100%; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+.variance-editor .var-row-line > select[data-var-member] { min-width: 220px; }
+.var-tools { display: inline-flex; gap: 4px; margin-left: auto; }
+.var-picker { margin: 6px 0 4px 36px; padding: 8px 0 4px; border-top: 1px solid var(--line-2); }
+.var-picker-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.variance-editor .var-picker-tools label.var-field-search { flex-direction: row; }
+.variance-editor .var-picker-tools label.var-field-search > input { width: 240px; padding: 4px 8px; font-size: 13.5px; }
+.var-pick-tree { max-height: 520px; overflow: auto; }
+.var-pick-group { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; column-gap: 8px; border-bottom: 1px solid var(--line); }
+.var-pick-group[hidden] { display: none !important; }
+.var-pick-group > .var-pick-check { margin: 10px 0 0 2px; }
+.var-pick-group > details > summary { display: flex; align-items: baseline; gap: 12px; padding: 7px 0; cursor: pointer; list-style: none; }
+.var-pick-group > details > summary::-webkit-details-marker { display: none; }
+.var-pick-group > details > summary::before { content: '▸'; flex: 0 0 auto; width: 12px; color: var(--ink-3); font-size: 12px; }
+.var-pick-group > details[open] > summary::before { content: '▾'; }
+.var-pick-name { font-weight: 600; }
+.var-pick-items { list-style: none; margin: 0 0 6px; padding: 0 0 0 20px; }
+.var-pick-items li { border-top: 1px solid var(--line); }
+.variance-editor label.var-pick { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; padding: 5px 0; font-size: 14px; font-weight: 400; color: var(--ink); }
+.variance-editor label.var-pick > input { flex: 0 0 auto; margin-top: 3px; min-height: 0; }
+
+/* 2. omissions */
+.var-ticks { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 4px 0 8px; }
+.variance-editor label.var-tick { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--ink); }
+.variance-editor label.var-tick > input { min-height: 0; margin: 0; }
+.var-generate-ticks { align-items: flex-end; margin-top: 14px; }
+.var-marking { display: grid; gap: 8px; max-width: 900px; }
+.variance-editor .var-marking label.var-field > select { max-width: 100%; }
+.variance-editor .var-marking > textarea { min-height: 0; font-size: 14px; font-family: var(--font-ui); line-height: 1.55; }
+.var-mark-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.variance-editor .var-mark-tools label.var-field > input { width: 260px; }
+.var-marks { list-style: none; margin: 8px 0; padding: 0; border-top: 1px solid var(--line-2); }
+.var-marks > li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.variance-editor input.var-mark-label { min-height: 0; width: 240px; padding: 4px 8px; font-size: 14px; }
+.var-mark-text { color: var(--ink-2); font-size: 13.5px; overflow-wrap: anywhere; }
+.var-marks .var-drop { margin-left: auto; }
+
+.variance-editor details.var-advanced { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line-2); }
+.variance-editor details.var-advanced > summary { padding: 6px 0; font-size: 14px; font-weight: 500; cursor: pointer; }
+
+/* 3. the run */
+.variance-editor .var-possible { margin: 4px 0 8px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.variance-editor .var-possible b { font-size: 16px; font-weight: 650; color: var(--ink); }
+.var-run-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 22px; margin: 10px 0; }
+.variance-editor .var-run-controls label.var-field > input[data-var-name] { width: 220px; }
+.var-run { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line-2); }
+.var-run[hidden] { display: none !important; }
+.var-run-table { overflow-x: auto; margin: 10px 0; }
+.var-run-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.var-run-table th, .var-run-table td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.var-run-table thead th { border-bottom: 1px solid var(--line-2); font-weight: 600; color: var(--ink-2); font-size: 13px; }
+.variance-editor .var-run-table input[data-var-run-name] { min-height: 0; width: 200px; min-width: 0; padding: 4px 8px; font-size: 14px; }
+.var-keep { width: 40px; }
+.var-source { font-weight: 600; }
+.variance-editor h5.var-reading { margin: 8px 0 4px; }
+.variance-editor h5.var-reading:empty { display: none; }
+.var-compare { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin: 6px 0 0; padding-top: 10px; border-top: 1px solid var(--line-2); }
+.var-compare[hidden] { display: none !important; }
+.variance-editor .var-compare pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; max-height: 500px; overflow: auto; font-size: 13px; line-height: 1.55; }
+.variance-editor del { background: color-mix(in oklab, var(--ink) 12%, transparent); color: var(--ink); text-decoration-thickness: 1px; }
+@media (max-width: 900px) { .var-compare { grid-template-columns: minmax(0, 1fr); } }

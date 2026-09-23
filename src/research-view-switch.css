@@ -1,0 +1,26 @@
+/* Visualization | Data — the one switch the Composition and Nesting steps
+   share. Plain, small, hairline; the pressed choice is ink on sheet like the
+   step buttons above it, so it reads as part of the same system. */
+.research-view-switch { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.research-view-switch-label { margin-right: 6px; color: var(--ink-2); font-size: 13px; }
+.research-page .research-view-switch button {
+  min-height: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.research-page .research-view-switch button:hover:not(:disabled) { border-color: var(--ink-3); color: var(--ink); }
+.research-page .research-view-switch button[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--sheet);
+  font-weight: 600;
+}
+@media (forced-colors: active) {
+  .research-page .research-view-switch button[aria-pressed="true"] { border: 2px solid Highlight; text-decoration: underline; }
+}

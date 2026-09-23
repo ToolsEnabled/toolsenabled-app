@@ -1,0 +1,237 @@
+{
+  "name": "toolsenabled",
+  "description": "A workspace for AI agents, with conversations, working folders, and permissions.",
+  "desktopName": "toolsenabled.desktop",
+  "private": true,
+  "version": "1.0.45",
+  "engines": {
+    "node": "22.19.0"
+  },
+  "type": "module",
+  "main": "shell/main.cjs",
+  "author": "ToolsEnabled, Inc. in formation",
+  "homepage": "https://toolsenabled.ai",
+  "developmentSessionProtocol": {
+    "providerIsolationVersion": 1
+  },
+  "scripts": {
+    "preinstall": "node tools/refuse-install-while-electron-runs.mjs",
+    "doctor": "node tools/check-environment.mjs",
+    "data:generate": "node tools/gen-fleet.mjs && node tools/gen-agents.mjs && node tools/gen-metrics.mjs && node tools/gen-ops.mjs && node tools/gen-ledger.mjs && node tools/gen-coordinator.mjs",
+    "test": "node tools/check-node-version.mjs && node tools/check-test-inputs.mjs && node tools/check-settings-rows-declared.mjs && node tools/check-suites-discovered.mjs && node tools/check-benchmark-core-independent.mjs && node tools/check-drivers-discovered.mjs && node tools/check-browser-proofs-discovered.mjs && node tools/check-unbound-identifiers.mjs && node tools/check-composed-output.mjs && node tools/check-chat-control-coverage.mjs && node tools/check-no-profile-paths.mjs && node tools/check-shipped-source-owner-data.mjs && node tools/check-payload-boundary-reconciled.mjs && npm run test:data",
+    "check:composed-output": "node tools/check-composed-output.mjs",
+    "test:data": "node tools/check-node-version.mjs && node --test --import=./tools/test/lib/isolate-native-state-root.mjs --test-reporter=tap --test-concurrency=1 tools/test/*.test.mjs",
+    "test:chatbox": "node --test tools/test/chatbox-feed.test.mjs",
+    "test:surfaces": "node tools/surface-tests.mjs",
+    "test:surface-runner": "node --test tools/test/surface-tests-*.test.mjs",
+    "test:role-studio-component": "node tools/qa/page2-role-studio-interaction.cjs",
+    "qa:chatbox": "node tools/chatbox-settings-qa.mjs",
+    "qa:team-panel": "node tools/team-panel-packaged-qa.mjs",
+    "qa:loop": "node tools/loop-packaged-qa.mjs",
+    "qa:cloud-launch": "node tools/cloud-launch-packaged-qa.mjs",
+    "qa:steering": "node tools/run-steering-controls-e2e.cjs",
+    "qa:page2-native": "node tools/page2-native-audit.cjs",
+    "qa:example-fence": "node tools/example-page-write-fence-qa.mjs",
+    "qa:stranger-onboarding": "node tools/stranger-onboarding-qa.mjs",
+    "dev": "node tools/start-development.mjs --watch",
+    "dev:renderer": "vite --port 4600 --strictPort",
+    "dev:session": "node tools/dev-environment.mjs",
+    "build": "node tools/prepare-hand-controls.mjs --verify && vite build",
+    "preview": "vite preview --port 4600 --strictPort",
+    "app": "node tools/start-development.mjs",
+    "verify": "node tools/test-ratchet.mjs",
+    "verify:release": "node tools/test-ratchet.mjs --strict",
+    "verify:strict": "node tools/test-strict.mjs",
+    "smoke:agent-ui": "node tools/run-agent-from-ui-smoke.cjs",
+    "predist": "node tools/report-build-scope.mjs",
+    "release:qualify": "npm run release:cut --",
+    "pack:capability": "node tools/pack-capability-layer.mjs",
+    "pack:voice": "node tools/prepare-voice-runtime.mjs",
+    "check:boundary": "node tools/check-payload-boundary.mjs",
+    "check:renderer": "node tools/check-renderer-payload.mjs",
+    "purchase-list:install": "node tools/install-operator-purchase-list.mjs",
+    "check:licenses": "node tools/check-license-notices.mjs",
+    "check:naming": "node tools/check-product-naming.mjs",
+    "check:plain-language": "node tools/check-plain-language.mjs",
+    "check:release-notes": "node tools/check-release-notes.mjs",
+    "check:github-claims": "node tools/check-github-claims.mjs",
+    "qa:checkout-privacy": "node tools/checkout-privacy-packaged-qa.mjs",
+    "qa:packaged": "node tools/packaged-qa-suite.mjs",
+    "qa:nsis-upgrade": "node tools/nsis-upgrade-roundtrip-qa.mjs",
+    "qa:performance": "node tools/performance-budget-qa.mjs",
+    "qa:packaged:all": "node tools/packaged-qa-suite.mjs --include-costly",
+    "smoke:packaged": "node tools/smoke-packaged.mjs release/win-unpacked",
+    "check:install-dir": "node tools/check-install-dir-immutable.mjs release/win-unpacked",
+    "check:runtime-files": "node tools/check-electron-runtime-files.mjs release/win-unpacked",
+    "installer:identity": "node tools/installer-identity.mjs",
+    "preflight:installer": "node tools/installer-preflight.mjs",
+    "install:isolated": "node tools/install-isolated.mjs",
+    "check:touched-suites": "node tools/check-touched-file-suites.mjs",
+    "dist:test": "npm run build && node tools/check-dist-current.mjs dist --record && node tools/check-dist-current.mjs dist && npm run pack:capability && node tools/launch-readiness-sync-packed-payload.mjs && node tools/installer-identity.mjs --channel test --exec --win nsis && node tools/strip-build-diagnostics.mjs release && node tools/check-no-owner-data.mjs release",
+    "dist": "npm run build && npm run verify:release && node tools/check-plain-language.mjs && node tools/check-github-claims.mjs && node tools/check-composed-output.mjs && node tools/check-research-queue.mjs && node tools/check-data-schemas.mjs && node tools/check-license-notices.mjs && node tools/check-dist-current.mjs dist --record && node tools/check-renderer-payload.mjs && node tools/check-dist-current.mjs dist && npm run pack:capability && node tools/check-product-naming.mjs && node tools/check-payload-current.mjs capability && node tools/check-settings-rows-declared.mjs && node tools/check-payload-boundary.mjs capability && node tools/require-clean-tree.mjs dist && node tools/check-electron-runtime-files.mjs --prepare release/win-unpacked && node tools/launch-readiness-sync-packed-payload.mjs && electron-builder --win nsis && node tools/check-electron-runtime-files.mjs release/win-unpacked && node tools/strip-build-diagnostics.mjs release && node tools/check-asar-manifest.mjs release/win-unpacked && node tools/check-renderer-payload.mjs release/win-unpacked && node tools/check-no-owner-data.mjs release/win-unpacked && node tools/check-license-notices.mjs release/win-unpacked && node tools/check-payload-boundary.mjs release/win-unpacked/resources/capability && node tools/check-artifact-private.mjs release/win-unpacked && node tools/seal-artifact.mjs --record release/win-unpacked && node tools/smoke-packaged.mjs release/win-unpacked && node tools/check-install-dir-immutable.mjs release/win-unpacked && node tools/seal-artifact.mjs --verify release/win-unpacked && node tools/check-payload-boundary.mjs release/win-unpacked/resources/capability && node tools/check-no-owner-data.mjs release",
+    "release:cut": "node tools/check-node-version.mjs && npm run check:boundary:ship && npm run check:naming && npm run check:github-claims && node tools/check-drivers-discovered.mjs && node tools/check-browser-proofs-discovered.mjs --receipts private/browser-proof-receipts && node tools/check-no-profile-paths.mjs && node tools/release-packager/cut-release-candidate.mjs",
+    "release:serve": "node tools/release-packager/serve-candidate.mjs",
+    "predist:linux": "node tools/report-build-scope.mjs",
+    "dist:linux": "npm run build && npm run verify:release && node tools/check-plain-language.mjs && node tools/check-github-claims.mjs && node tools/check-composed-output.mjs && node tools/check-research-queue.mjs && node tools/check-data-schemas.mjs && node tools/check-license-notices.mjs && node tools/check-dist-current.mjs dist --record && node tools/check-renderer-payload.mjs && node tools/check-dist-current.mjs dist && npm run pack:capability && node tools/check-product-naming.mjs && node tools/check-payload-current.mjs capability && node tools/check-payload-boundary.mjs capability && node tools/require-clean-tree.mjs dist && node tools/check-electron-runtime-files.mjs --prepare release/linux-unpacked && node tools/launch-readiness-sync-packed-payload.mjs --packed release/linux-unpacked/resources/capability && electron-builder --linux deb --x64 && node tools/check-electron-runtime-files.mjs release/linux-unpacked && node tools/strip-build-diagnostics.mjs release && node tools/check-asar-manifest.mjs release/linux-unpacked && node tools/check-renderer-payload.mjs release/linux-unpacked && node tools/check-no-owner-data.mjs release/linux-unpacked && node tools/check-license-notices.mjs release/linux-unpacked && node tools/check-payload-boundary.mjs release/linux-unpacked/resources/capability && node tools/check-artifact-private.mjs release/linux-unpacked && node tools/seal-artifact.mjs --record release/linux-unpacked && node tools/smoke-linux-sealed.mjs --artifact \"$PWD/release/linux-unpacked\" --app-source . --engine-source \"$TOOLSENABLED_SOURCE\" --expected-app-ref \"$(git rev-parse HEAD)\" --expected-engine-ref \"$TOOLSENABLED_SOURCE_REF\" --proof-mode unpacked --evidence-dir release/sealed-unpacked && node tools/seal-artifact.mjs --verify release/linux-unpacked && node tools/check-payload-boundary.mjs release/linux-unpacked/resources/capability && node tools/check-no-owner-data.mjs release",
+    "release:cut:linux": "node tools/check-node-version.mjs && npm run check:github-claims && node tools/check-drivers-discovered.mjs && node tools/check-browser-proofs-discovered.mjs --receipts private/browser-proof-receipts && node tools/check-no-profile-paths.mjs && node tools/release-packager/cut-linux-release-candidate.mjs",
+    "check:boundary:ship": "node tools/check-payload-boundary.mjs --ship",
+    "test:boundary-ship": "node --test tools/test/payload-boundary-ship.test.mjs",
+    "dev:native": "node tools/dev-native.mjs",
+    "dev:tree-indicators": "node tools/dev-tree-indicators.mjs",
+    "prepare:native-tests": "node tools/prepare-native-test-dependencies.mjs",
+    "check:native-tests": "node tools/prepare-native-test-dependencies.mjs --verify"
+  },
+  "devDependencies": {
+    "@electron/fuses": "1.8.0",
+    "culori": "^4.0.2",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "0.25.12",
+    "playwright": "1.63.0",
+    "rollup": "^4.34.9",
+    "unzipper": "0.12.5",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@carbon/colors": "11.55.0",
+    "@fontsource-variable/ibm-plex-sans": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/manrope": "5.3.0",
+    "@fontsource-variable/source-sans-3": "5.3.0",
+    "@fontsource-variable/space-grotesk": "^5.3.0",
+    "d3-array": "^3.2.4",
+    "d3-force": "^3.0.0",
+    "echarts": "6.1.0",
+    "highlight.js": "11.12.0",
+    "markdown-it": "15.0.1"
+  },
+  "productName": "ToolsEnabled",
+  "build": {
+    "appId": "com.toolsenabled.desktop",
+    "copyright": "Copyright © 2026 Joshua Pinckard",
+    "asar": true,
+    "asarUnpack": [
+      "shell/screen-control-native.py",
+      "shell/screen-control-native.ps1"
+    ],
+    "electronDist": "node_modules/electron/dist",
+    "beforePack": "tools/before-pack-voice.cjs",
+    "afterPack": "tools/after-pack-strip-litter.cjs",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "shell/**",
+      "config/google-signin.json",
+      "!tools/**",
+      "!node_modules/**"
+    ],
+    "extraResources": [
+      {
+        "from": "voice-runtime",
+        "to": "voice-runtime",
+        "filter": [
+          "*.py",
+          "*.ps1",
+          "*.txt",
+          "*.md",
+          "source-manifest.json",
+          "model-assets.json",
+          "redistribution-assets.json",
+          "!smoke_test.py"
+        ]
+      },
+      {
+        "from": "capability",
+        "to": "capability"
+      },
+      {
+        "from": "LICENSE",
+        "to": "LICENSE"
+      },
+      {
+        "from": "NOTICE",
+        "to": "NOTICE"
+      },
+      {
+        "from": "THIRD-PARTY-LICENSES.md",
+        "to": "THIRD-PARTY-LICENSES.md"
+      }
+    ],
+    "linux": {
+      "executableName": "toolsenabled",
+      "icon": "shell/icon.png",
+      "category": "Development",
+      "syncDesktopName": true,
+      "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "deb": {
+      "packageName": "toolsenabled",
+      "maintainer": "ToolsEnabled <support@toolsenabled.ai>",
+      "depends": [
+        "libgtk-3-0",
+        "python3",
+        "python3-pil",
+        "python3-gi",
+        "python3-cryptography",
+        "gir1.2-secret-1",
+        "gnome-keyring",
+        "libx11-6",
+        "libxres1",
+        "libxrandr2",
+        "libxcomposite1",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libasound2",
+        "libgbm1",
+        "apparmor"
+      ],
+      "appArmorProfile": "build/linux/toolsenabled-customer.apparmor",
+      "afterInstall": "build/linux/deb-maintainer.sh",
+      "afterRemove": "build/linux/deb-maintainer.sh"
+    },
+    "win": {
+      "extraResources": [
+        {
+          "from": "voice-runtime/bundle",
+          "to": "voice-runtime/bundle",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "shell/icon.ico",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "guid": "21cb002d-a6ac-5e62-b88d-ba3c87d67396",
+      "uninstallDisplayName": "${productName}"
+    },
+    "electronVersion": "43.3.0"
+  },
+  "license": "MIT"
+}

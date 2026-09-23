@@ -1,0 +1,29 @@
+{
+  "name": "presentation-suite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Live coordinator and watch dashboard for drafting a PowerPoint with switchable Claude Code or Codex CLI agents and a hard global pause.",
+  "type": "commonjs",
+  "bin": { "ppt": "ppt.js" },
+  "scripts": {
+    "start": "node server.js",
+    "ppt": "node ppt.js",
+    "test": "npm run test:core && npm run test:robustness",
+    "test:core": "npm run test:core:server && npm run test:core:state && npm run test:core:agents && npm run test:core:frontend",
+    "test:core:server": "node ppt-guard.test.js && node applyop.test.js",
+    "test:core:state": "node pause-transition.test.js && node pause-persistence.test.js && node state-control-persistence.test.js && node spend-persistence.test.js && node model-persistence.test.js && node board-persistence.test.js && node protections.test.js && node element-history.test.js",
+    "test:core:agents": "node agents.test.js && node task-recovery.test.js && node reaper-safety.test.js && node task-update-cli.test.js && node agent-lock-release.test.js && node agent-reply-board.test.js && node agent-lifecycle.test.js && node codex-agent.test.js && node mcp-ppt.test.js && node mcp-ppt-media.test.js",
+    "test:core:frontend": "node thumbs-snapshot.test.js && node thumbs-deferred.test.js && node presence-beacon.test.js && node studio-composer.test.js && node dashboard-composer.test.js && node studio-keyboard.test.js && node studio-escape.test.js && node sse-lifecycle.test.js && node studio-provider.test.js && node fast-mode-ui.test.js && node animation-preview.test.js",
+    "test:robustness": "npm run test:robustness:server && npm run test:robustness:protocol && npm run test:robustness:frontend && npm run test:robustness:render",
+    "test:robustness:server": "node backend-robustness.test.js && node control-contract.test.js && node pdf-export-race.test.js && node render-pipeline.test.js && node diagnostics\\beast-restart-preservation-smoke.js",
+    "test:robustness:protocol": "node codex-agent-protocol.test.js",
+    "test:robustness:frontend": "node frontend-state.test.js && node frontend-history.test.js && node frontend-actions.test.js && node frontend-download.test.js && node cdp-lifecycle.test.js && node frontend-browser-smoke.test.js",
+    "test:robustness:render": "node com-host.test.js && npm run test:robustness:python && npm run test:robustness:powershell",
+    "test:robustness:python": "python render_tools.test.py && python current_content.test.py && python ..\\assets\\slide1-neon\\test_neon_overlay.py",
+    "test:robustness:powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File export_scripts.test.ps1",
+    "test:reaper": "node reaper.test.js",
+    "test:loops": "node looprunner.test.js",
+    "test:recovery": "node task-recovery.test.js",
+    "test:agents": "node reaper.test.js && node looprunner.test.js"
+  }
+}

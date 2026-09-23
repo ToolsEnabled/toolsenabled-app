@@ -1,0 +1,19 @@
+{
+  "_comment": [
+    "No corpus or database is enabled by default.",
+    "Add only paths owned by the current account, then set configured to true.",
+    "Never copy account-specific paths from another checkout or user profile."
+  ],
+  "configured": false,
+  "roots": [],
+  "databases": [],
+  "extensions": [".md", ".txt", ".docx", ".pdf", ".py", ".csv"],
+  "exclude": [
+    "node_modules", ".venv", "venv", "__pycache__", ".git", ".pytest_cache",
+    "site-packages", "dist-info", ".ipynb_checkpoints",
+    "/data/", "/backtests/", "/results/log", "/obj/", "/bin/Debug",
+    "/bin/Release", ".scribe-backup-", ".scribe-tmp-", ".scribe-out-"
+  ],
+  "maxFileBytes": 3000000,
+  "maxFiles": 4000
+}

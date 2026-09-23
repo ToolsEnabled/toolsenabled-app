@@ -1,0 +1,62 @@
+.first-use-launch {
+  min-width: 44px; min-height: 44px; padding: 0 8px;
+  border: 0; border-radius: 8px; background: transparent;
+  color: var(--ink-2); font: 600 12.5px/1.3 var(--font-ui); cursor: pointer;
+}
+.first-use-launch:hover { color: var(--ink); background: var(--line); }
+.app-nav-footer .first-use-launch { flex-shrink: 0; padding-inline: 4px; }
+.first-use-launch, .first-use-layer {
+  --guide-blue: #185dc7; --guide-wash: #eaf2ff; --guide-border: #83b1f5;
+}
+.first-use-layer { position: fixed; inset: 0; z-index: 65; pointer-events: none; }
+[data-theme="black"] .first-use-layer,
+[data-theme="ember"] .first-use-layer,
+[data-theme="cobalt"] .first-use-layer,
+[data-theme="black"] .first-use-launch,
+[data-theme="ember"] .first-use-launch,
+[data-theme="cobalt"] .first-use-launch {
+  --guide-blue: #a3c9ff; --guide-wash: #152a46; --guide-border: #689fea;
+}
+.first-use-layer[hidden], .first-use-layer [hidden], .first-use-launch[hidden] { display: none; }
+.first-use-highlight {
+  position: absolute; box-sizing: border-box; border: 2px solid var(--guide-blue);
+  border-radius: 9px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--guide-blue) 15%, transparent);
+  pointer-events: none;
+}
+.first-use-card {
+  position: absolute; box-sizing: border-box; width: 352px; overflow: auto;
+  overscroll-behavior: contain; padding: 16px 20px 18px; pointer-events: auto;
+  border: 1px solid var(--guide-border); border-radius: 16px;
+  background: var(--surface); color: var(--ink);
+  box-shadow: 0 10px 36px rgba(10, 27, 55, .16);
+  font: 400 14px/1.6 var(--font-ui); overflow-wrap: anywhere;
+}
+.first-use-top { display: flex; align-items: center; gap: 8px; margin: -8px -12px 2px 0; }
+.first-use-eyebrow { flex: 1; color: var(--guide-blue); font-size: 12.5px; font-weight: 650; }
+.first-use-card button { font-family: inherit; cursor: pointer; }
+.first-use-close { flex: 0 0 44px; width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 24px; }
+.first-use-close:hover { background: var(--line); }
+.first-use-card h2 { margin: 0 0 8px; color: var(--ink); font-size: 21px; font-weight: 650; line-height: 1.25; letter-spacing: -.025em; }
+.first-use-card h2:focus { outline: none; }
+.first-use-copy { margin: 0; color: var(--ink-2); }
+.first-use-availability { margin: 12px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--guide-wash); color: var(--guide-blue); font-size: 13px; }
+.first-use-progress { display: flex; gap: 5px; margin: 18px 0 12px; }
+.first-use-progress span { width: 18px; height: 3px; border-radius: 4px; background: var(--line-2); }
+.first-use-progress .is-current { width: 28px; background: var(--guide-blue); }
+.first-use-progress .is-read { background: var(--guide-border); }
+.first-use-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.first-use-actions button { min-height: 44px; padding: 9px 18px; font-size: 14px; font-weight: 600; border-radius: 9px; }
+.first-use-back { color: var(--ink-2); border: 1px solid var(--line-2); background: transparent; }
+.first-use-next { color: #fff; border: 1px solid #185dc7; background: #185dc7; }
+.first-use-next:hover { background: #124ca8; }
+.first-use-footer { display: flex; flex-direction: column; align-items: flex-start; margin-top: 12px; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
+.first-use-quiet { min-height: 44px; padding: 6px 0 0; border: 0; background: transparent; color: var(--ink-2); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.first-use-card button:focus-visible, .first-use-launch:focus-visible { outline: 2px solid var(--guide-blue, #185dc7); outline-offset: 3px; }
+@media (max-width: 720px) {
+  .topbar:has(.first-use-launch:not([hidden])) { grid-template-columns: auto minmax(0, 1fr) auto; }
+}
+@media (forced-colors: active) {
+  .first-use-highlight { border: 3px solid Highlight; box-shadow: none; }
+  .first-use-card { border: 2px solid CanvasText; }
+  .first-use-actions button { border: 1px solid ButtonText; }
+}
