@@ -1,0 +1,9 @@
+.editor-attachment-session { display: grid; gap: .6rem; padding: 1rem 0; border-top: 1px solid var(--line, #8884); }
+.editor-attachment-session > small { overflow-wrap: anywhere; }
+.editor-attachment-session .fleet-profile-actions { flex-wrap: wrap; }
+.editor-attachment-session label { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.editor-attachment-session select { max-width: 100%; }
+.editor-session-preview { display: grid; gap: .75rem; max-width: 100%; min-width: 0; }
+.editor-session-messages { max-height: 28rem; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--line, #8884); border-radius: .6rem; padding: .8rem; }
+.editor-session-messages article + article { border-top: 1px solid var(--line, #8884); padding-top: .8rem; margin-top: .8rem; }
+.editor-session-messages pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: .5rem 0 0; font: inherit; }

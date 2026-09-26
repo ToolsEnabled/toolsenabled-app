@@ -1,0 +1,24 @@
+/* A container's policy, drawn in the same idiom as the routing ladder: the
+   three clauses are on the glass, nothing opens a disclosure to reach them, and
+   a nested reason is shown by an indent and a rule down its left edge rather
+   than by brackets the language does not have. */
+.policy-editor .policy-clause { margin: 0.75rem 0; padding-top: 0.6rem; border-top: 1px solid var(--line, #ccd); }
+.policy-editor .policy-clause:first-of-type { border-top: 0; padding-top: 0; }
+.policy-editor h4 { margin: 0 0 0.25rem; }
+.policy-note { color: var(--muted, #667); margin: 0.25rem 0; }
+
+/* WHAT THE REASON SAYS, IN THE WORDS IT WAS WRITTEN IN. describeReason() is the
+   same sentence the refusals quote, so a person can check the controls against
+   one line of English instead of reading the controls back to themselves. */
+.policy-said { margin: 0.2rem 0 0.4rem; font-style: italic; color: var(--muted, #667); }
+/* A refusal is the language's own sentence, printed where the mistake is. */
+.policy-refusal:not(:empty) { color: var(--danger, #a11); margin: 0.25rem 0; }
+
+.policy-condition { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.25rem 0; }
+/* "All of which must hold" is the only join the language has, so it is a word
+   between the rows and not a control offering a choice that does not exist. */
+.policy-and { font-weight: 600; opacity: 0.7; margin: 0.1rem 0 0.1rem 0.25rem; }
+.policy-nested { flex-basis: 100%; margin: 0.35rem 0 0.1rem 1.25rem; padding-left: 0.75rem; border-left: 2px dashed var(--line, #ccd); }
+/* A term the language offers and this surface cannot draw yet says so and keeps
+   what was written, rather than showing an empty row that drops it. */
+.policy-unknown { color: var(--danger, #a11); }

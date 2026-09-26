@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.toolsenabled.local/data/schema/status.schema.json",
+  "title": "ToolsEnabled live status snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "ok": { "type": "boolean" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "generatedByHost": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "sourceRepo": { "type": "string", "minLength": 1, "maxLength": 1024 },
+    "health": { "$ref": "#/$defs/health" },
+    "peerLink": { "$ref": "#/$defs/peerLink" },
+    "recentLanes": { "$ref": "#/$defs/recentLanes" },
+    "hostUptime": { "$ref": "#/$defs/hostUptime" }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/unavailable" },
+    { "$ref": "#/$defs/populated" }
+  ],
+  "$defs": {
+    "unavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "ok", "reason"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": false },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 160 }
+      }
+    },
+    "populated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "generatedAt", "generatedByHost", "sourceRepo", "health", "peerLink", "recentLanes", "hostUptime"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "generatedByHost": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "sourceRepo": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "health": { "$ref": "#/$defs/health" },
+        "peerLink": { "$ref": "#/$defs/peerLink" },
+        "recentLanes": { "$ref": "#/$defs/recentLanes" },
+        "hostUptime": { "$ref": "#/$defs/hostUptime" }
+      }
+    },
+    "health": {
+      "oneOf": [
+        { "$ref": "#/$defs/availableHealth" },
+        { "$ref": "#/$defs/unavailableSource" }
+      ]
+    },
+    "availableHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "path", "observedAtMs", "observedAt", "subsystems", "counts", "total"],
+      "properties": {
+        "available": { "const": true },
+        "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "observedAtMs": { "type": ["number", "null"], "minimum": 0 },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "subsystems": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/subsystem" } },
+        "counts": { "$ref": "#/$defs/healthCounts" },
+        "total": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "subsystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "state", "reason"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "state": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "reason": {
+          "type": ["string", "null"],
+          "maxLength": 4096,
+          "$comment": "Subsystem diagnostics are human-written and have no upstream content limit; 4096 is a payload sanity bound with headroom above observed output."
+        }
+      }
+    },
+    "healthCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["OK", "DOWN", "STOPPED", "UNKNOWN", "OTHER"],
+      "properties": {
+        "OK": { "type": "integer", "minimum": 0 },
+        "DOWN": { "type": "integer", "minimum": 0 },
+        "STOPPED": { "type": "integer", "minimum": 0 },
+        "UNKNOWN": { "type": "integer", "minimum": 0 },
+        "OTHER": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "peerLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outbound", "inbound"],
+      "properties": {
+        "outbound": { "$ref": "#/$defs/link" },
+        "inbound": { "$ref": "#/$defs/link" }
+      }
+    },
+    "link": {
+      "oneOf": [
+        { "$ref": "#/$defs/availableLink" },
+        { "$ref": "#/$defs/unavailableSource" }
+      ]
+    },
+    "availableLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "path", "authenticatedAt", "authenticatedAtMs", "localHost", "peerHost"],
+      "properties": {
+        "available": { "const": true },
+        "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "authenticatedAt": { "type": ["string", "null"], "format": "date-time" },
+        "authenticatedAtMs": { "type": ["number", "null"], "minimum": 0 },
+        "localHost": { "type": ["string", "null"], "maxLength": 255 },
+        "peerHost": { "type": ["string", "null"], "maxLength": 255 }
+      }
+    },
+    "recentLanes": {
+      "oneOf": [
+        { "$ref": "#/$defs/availableRecentLanes" },
+        { "$ref": "#/$defs/unavailableRecentLanes" }
+      ]
+    },
+    "availableRecentLanes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "path", "items"],
+      "properties": {
+        "available": { "const": true },
+        "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "items": { "type": "array", "maxItems": 12, "items": { "$ref": "#/$defs/lane" } }
+      }
+    },
+    "unavailableRecentLanes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "error", "path", "items"],
+      "properties": {
+        "available": { "const": false },
+        "error": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "items": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "lane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "laneId", "model", "outcome", "exitCode", "durationMs", "at", "atMs"],
+      "properties": {
+        "event": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "laneId": { "type": ["string", "null"], "maxLength": 120 },
+        "model": { "type": ["string", "null"], "maxLength": 120 },
+        "outcome": { "type": ["string", "null"], "maxLength": 120 },
+        "exitCode": { "type": ["number", "null"] },
+        "durationMs": { "type": ["number", "null"], "minimum": 0 },
+        "at": { "type": ["string", "null"], "format": "date-time" },
+        "atMs": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "hostUptime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "seconds", "hostLabel"],
+      "properties": {
+        "available": { "const": true },
+        "seconds": { "type": "number", "minimum": 0 },
+        "hostLabel": { "type": "string", "minLength": 1, "maxLength": 255 }
+      }
+    },
+    "unavailableSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "error", "path"],
+      "properties": {
+        "available": { "const": false },
+        "error": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "path": { "type": "string", "minLength": 1, "maxLength": 240 }
+      }
+    }
+  }
+}

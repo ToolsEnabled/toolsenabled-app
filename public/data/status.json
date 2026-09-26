@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "reason": "No local agent fleet host detected on this machine."
+}

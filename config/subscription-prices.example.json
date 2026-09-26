@@ -1,0 +1,25 @@
+{
+  "_readme": [
+    "COPY THIS TO private/subscription-prices.json AND FILL IN YOUR OWN IDS.",
+    "",
+    "It maps '<planId>:<billingPeriod>' to the payment provider's price id. It is",
+    "per-deployment and lives under private/ (which .gitignore anchors) because a",
+    "price id belongs to a merchant account, not to a source tree.",
+    "",
+    "tools/subscribe-service.mjs REFUSES to start without it and refuses any map",
+    "whose mode is not exactly 'test'. That is not a formality: it is what stops a",
+    "live price id being reachable from a service whose whole contract is that it",
+    "cannot charge anyone. The absent file is a named refusal, never an empty map",
+    "-- 'no prices configured' and 'this plan has no price' are different failures.",
+    "",
+    "The plan ids are the entitlement model's tier ids (src/lib/entitlement.js).",
+    "The periods are the ones the model actually prices: a plan with no annualUsd",
+    "gets no ':annual' entry, because there is no number to charge."
+  ],
+  "mode": "test",
+  "prices": {
+    "operator:monthly": "price_REPLACE_WITH_YOUR_TEST_MODE_OPERATOR_MONTHLY",
+    "operator:annual": "price_REPLACE_WITH_YOUR_TEST_MODE_OPERATOR_ANNUAL",
+    "team:monthly": "price_REPLACE_WITH_YOUR_TEST_MODE_TEAM_MONTHLY"
+  }
+}

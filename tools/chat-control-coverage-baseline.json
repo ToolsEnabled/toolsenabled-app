@@ -1,0 +1,8 @@
+{
+  "$comment": "This file records reviewed uncovered controls by stable source identity and may only shrink.",
+  "note": "Accepted entries are reviewed uncovered controls. This list may only shrink; the stale tier chip was removed on 2026-09-17 when the gate first ran against the real src/components.js.",
+  "accepted": [
+    "src/components.js\tdata-control\t[data-chat-chip=\"model\"]"
+  ],
+  "updated": "2026-09-17T18:10:16.572Z"
+}

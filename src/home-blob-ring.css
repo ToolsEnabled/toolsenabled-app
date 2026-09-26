@@ -1,0 +1,74 @@
+/* Sculpted glass surround for Blob. The saved sculpted-orbit point restores
+   this whole pass. Geometry and light live on the decorative SVG only. */
+.home .home-circle[data-circle-style="standard"] .home-circle-finish {
+  /* Keep the approved low range; let the upper half of Glow build decisively. */
+  --blob-high-glow: max(0, calc(var(--glow, 1) - 1));
+  --blob-glow-gain: calc(var(--glow, 1) + 3 * var(--blob-high-glow) * var(--blob-high-glow));
+  --core-frame: color-mix(in srgb, var(--ink-3) 23%, var(--surface));
+  --core-bevel-lift: 28%;
+  --core-bevel-drop: 30%;
+  --core-shadow: rgb(0 0 0 / .20);
+  --core-rail: color-mix(in srgb, var(--ink-3) 38%, var(--surface));
+  --core-wet: #fff;
+  --core-contact: rgb(0 0 0 / .4);
+  --core-glass-dark: color-mix(in srgb, var(--ink-3) 40%, var(--surface));
+  --core-glass-mid: color-mix(in srgb, var(--jelly-structure) 12%, var(--surface));
+  --core-glass-light: color-mix(in srgb, #fff 85%, var(--jelly-structure));
+  --core-glint: #fff;
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle[data-circle-style="standard"] .home-circle-finish {
+  --core-frame: color-mix(in srgb, var(--ink-3) 20%, var(--surface));
+  --core-shadow: rgb(0 0 0 / .26);
+  --core-rail: color-mix(in srgb, var(--ink-3) 28%, var(--surface));
+  --core-glass-dark: color-mix(in srgb, var(--jelly-structure) 9%, var(--surface));
+  --core-glass-mid: color-mix(in srgb, var(--jelly-structure) 24%, var(--surface));
+  --core-glass-light: color-mix(in srgb, #dbe8f1 27%, var(--surface));
+  --core-glint: color-mix(in srgb, #dcebf2 72%, var(--surface));
+  --core-wet: color-mix(in srgb, #dcebf2 65%, var(--surface));
+}
+.home .home-circle[data-circle-style="standard"] .home-core-standard-design {
+  filter: drop-shadow(0 0 calc(var(--home-circle-size, 420px) * .004) var(--core-shadow));
+}
+.home .home-circle[data-circle-style="standard"] .home-core-foundation {
+  r: 243;
+  stroke-width: 14;
+  filter: blur(.9px);
+}
+.home .home-circle[data-circle-style="standard"] .home-core-bezel {
+  r: 243;
+  stroke-width: 14;
+}
+.home .home-circle[data-circle-style="standard"] :is(.home-core-tube, .home-core-highlight, .home-core-recess) { display: none; }
+.home .home-circle[data-circle-style="standard"] :is(.home-core-crystal, .home-core-engraving, .home-core-facets) { display: inline; }
+.home .home-circle[data-circle-style="standard"] .home-core-crystal { stroke-width: 14; opacity: .94; }
+.home .home-circle[data-circle-style="standard"] .home-core-engraving {
+  stroke: var(--core-glint); stroke-width: 4; stroke-dasharray: .65 23; opacity: .22;
+}
+.home .home-circle[data-circle-style="standard"] .home-core-facets {
+  stroke-width: 2; stroke-linecap: round; opacity: .85;
+}
+.home .home-circle[data-circle-style="standard"] .home-core-wet {
+  stroke-width: 1.5; opacity: .9; filter: none;
+}
+.home .home-circle[data-circle-style="standard"] .home-core-contact {
+  stroke-width: 2; opacity: .42; filter: none;
+}
+.home .home-circle[data-circle-style="standard"] .home-core-outline {
+  stroke: var(--core-rail); stroke-width: .8px; opacity: .6;
+}
+.home .home-circle[data-circle-style="standard"] .home-core-lip {
+  r: 235.5; stroke-width: 1.2px; vector-effect: non-scaling-stroke; filter: none;
+}
+.home .home-circle[data-circle-style="standard"] .home-core-halo {
+  r: 235.5; stroke-width: calc(3px + 3px * var(--blob-high-glow) * var(--blob-high-glow));
+  opacity: calc(var(--core-glow-lip) * var(--blob-glow-gain) * .8);
+  filter: drop-shadow(0 0 calc(1px + var(--glow, 1) * 1px + 3px * var(--blob-high-glow) * var(--blob-high-glow)) var(--jelly-structure));
+}
+
+/* The light-sheet finish is approved. Dark glass carries gentler reflections
+   and a quieter inlay, while retaining the same sculpted cross-section. */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle[data-circle-style="standard"] .home-core-facets { opacity: .58; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle[data-circle-style="standard"] .home-core-engraving { opacity: .12; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle[data-circle-style="standard"] .home-core-wet { opacity: .6; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle[data-circle-style="standard"] .home-core-lip { opacity: .82; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle[data-circle-style="standard"] .home-core-halo { opacity: calc(var(--core-glow-lip) * var(--blob-glow-gain) * .55); }

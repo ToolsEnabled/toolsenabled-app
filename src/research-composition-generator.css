@@ -1,0 +1,133 @@
+/* Composition step — one form: select snippets (family → category → snippet),
+   read the distribution as numbers, handcraft single compositions, generate
+   the run, review, save, and the saved list. Hairlines carry the hierarchy;
+   every colour is a theme token; controls size to their content.
+   .benchmark-builder styles label/input/button at (0,1,1) and `label > input`
+   at (0,2,2); compact rules here carry a class to win. */
+.composition-generator { margin: 20px 0; padding-bottom: 24px; border-bottom: 1px solid var(--line-2); }
+.cg-head { margin-bottom: 6px; }
+.cg-head h3 { margin: 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.composition-generator .cg-intro { margin: 0; max-width: 80ch; }
+.composition-generator .cg-note, .composition-generator .cg-count { margin: 6px 0; color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
+.composition-generator .cg-note:empty { display: none; }
+.composition-generator .cg-count { font-variant-numeric: tabular-nums; }
+.cg-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* The numbered steps. */
+.cg-step { padding: 18px 0 6px; border-top: 1px solid var(--line-2); margin-top: 14px; }
+.cg-step[hidden] { display: none !important; }
+.cg-step-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 10px; }
+.composition-generator h4 { margin: 0; font-size: 16px; font-weight: 650; }
+.cg-step-n { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 10px; border: 1px solid var(--ink-2); border-radius: 50%; font-family: var(--font-mono); font-size: 12px; font-weight: 500; vertical-align: 2px; }
+.cg-step-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.composition-generator label.cg-search { flex-direction: row; }
+.composition-generator label.cg-search > input { min-height: 0; width: 240px; min-width: 0; padding: 4px 8px; font-size: 13.5px; }
+
+/* Buttons. */
+.cg-toolbar, .cg-actions, .cg-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
+.cg-pager[hidden] { display: none !important; }
+.cg-actions p { margin: 0; }
+.composition-generator .bench-primary { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; }
+.composition-generator .bench-primary:disabled { background: transparent; color: var(--ink-3); border-color: var(--line-2); opacity: 1; }
+.composition-generator button.cg-small { min-height: 0; padding: 3px 9px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+
+/* 1. The selector tree: a checkbox beside a disclosure at every level. */
+.cg-tree { border-top: 1px solid var(--line-2); }
+.cg-node { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; column-gap: 8px; }
+.cg-node[hidden] { display: none !important; }
+.cg-node > .cg-node-check { margin: 11px 0 0 2px; }
+.cg-node > details { min-width: 0; }
+.cg-node > details > summary { display: flex; align-items: baseline; gap: 12px; padding: 8px 0; cursor: pointer; list-style: none; }
+.cg-node > details > summary::-webkit-details-marker { display: none; }
+.cg-node > details > summary::before { content: '▸'; flex: 0 0 auto; width: 12px; color: var(--ink-3); font-size: 12px; }
+.cg-node > details[open] > summary::before { content: '▾'; }
+.cg-node-name { font-weight: 600; color: var(--ink); }
+.cg-node-family > details > summary .cg-node-name { font-size: 16px; }
+.cg-node-count { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.cg-node-family { border-bottom: 1px solid var(--line-2); }
+.cg-node-family > details > .cg-node-category { margin-left: 4px; }
+.cg-node-category { border-top: 1px solid var(--line); }
+.cg-snippets { list-style: none; margin: 0 0 8px; padding: 0 0 0 20px; }
+.cg-snippets li { border-top: 1px solid var(--line); }
+.cg-snippets li[hidden] { display: none !important; }
+.composition-generator label.cg-snippet { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; padding: 5px 0; font-size: 14px; font-weight: 400; line-height: 1.45; color: var(--ink); }
+.composition-generator label.cg-snippet > input { flex: 0 0 auto; margin-top: 3px; min-height: 0; }
+
+/* 2. Distribution as numbers. */
+.cg-metrics-scroll { overflow-x: auto; }
+.cg-metrics { border-collapse: collapse; width: 100%; max-width: 760px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.cg-metrics th, .cg-metrics td { padding: 6px 12px 6px 0; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--line); }
+.cg-metrics thead th { border-bottom: 1px solid var(--line-2); color: var(--ink-2); font-size: 12.5px; font-weight: 600; }
+.cg-metrics tfoot td { border-bottom: 0; border-top: 1px solid var(--line-2); font-weight: 600; }
+.cg-metrics .cg-n { text-align: right; }
+.cg-metrics .cg-order { white-space: nowrap; }
+.cg-metrics .cg-order button { margin-right: 4px; }
+.cg-metrics tr.cg-missing td { color: var(--ink-3); }
+.cg-metrics tr.cg-missing .cg-order { font-size: 12px; letter-spacing: var(--track-caps); text-transform: uppercase; }
+.composition-generator .cg-missing-note { margin: 10px 0 0; color: var(--ink); font-size: 14px; }
+.cg-index { display: inline-block; min-width: 18px; margin-right: 8px; color: var(--ink-3); font-family: var(--font-mono); font-size: 12.5px; }
+.composition-generator .cg-combos { margin: 12px 0 2px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.composition-generator .cg-combos b { font-size: 18px; font-weight: 650; }
+.composition-generator .cg-families { margin: 2px 0; color: var(--ink-2); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.cg-metrics-small { max-width: none; font-size: 13.5px; }
+.cg-metrics-small caption { padding: 0 0 6px; text-align: left; color: var(--ink-3); font-size: 12.5px; font-weight: 600; letter-spacing: var(--track-caps); text-transform: uppercase; }
+
+/* 3. Handcraft: one select per part, a name, add. */
+.cg-hand-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 18px; margin: 8px 0 6px; }
+.composition-generator label.cg-hand-part { flex: 1 1 220px; max-width: 360px; }
+.composition-generator label.cg-hand-part > select { min-height: 0; width: 100%; min-width: 0; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+.composition-generator label.cg-hand-name > input { min-height: 0; width: 200px; min-width: 0; padding: 5px 8px; font-size: 14px; }
+.cg-hand-includes { display: flex; flex-wrap: wrap; gap: 4px 22px; margin: 0 0 6px; }
+.composition-generator .cg-hand-includes label.cg-snippet { padding: 2px 0; font-size: 13.5px; }
+.cg-tag { display: inline-block; margin-left: 8px; padding: 0 5px; border: 1px solid var(--line-2); border-radius: 2px; color: var(--ink-3); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .02em; vertical-align: 1px; }
+
+/* 4. Generate: compact fields. */
+.composition-generator label.cg-field { gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.composition-generator .cg-batch label.cg-field > input, .composition-generator .cg-batch label.cg-field > select, .composition-generator .cg-batch label.cg-field .cg-inline > input {
+  min-height: 0; width: auto; min-width: 0; padding: 5px 8px; font-size: 14px; color: var(--ink);
+}
+.cg-inline { display: inline-flex; align-items: center; gap: 10px; }
+.cg-of { color: var(--ink-2); font-size: 13.5px; font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cg-batch { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 22px; margin: 10px 0; }
+.composition-generator .cg-batch label.cg-field > input[data-cg-prefix] { width: 220px; }
+.composition-generator .cg-batch label.cg-field input[type="number"] { width: 110px; }
+.composition-generator label.cg-instructions { gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); margin: 8px 0; }
+.composition-generator label.cg-instructions > textarea { min-height: 0; font-size: 14px; }
+
+/* 5. Review. */
+.cg-frequency { margin: 8px 0 12px; }
+.composition-generator details.cg-frequency > summary { padding: 6px 0; font-size: 13.5px; font-weight: 500; }
+.cg-frequency-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px 28px; margin: 8px 0 4px; align-items: start; }
+.cg-review-table { overflow-x: auto; margin: 10px 0; }
+.cg-review-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cg-review-table th, .cg-review-table td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.cg-review-table thead th { border-bottom: 1px solid var(--line-2); font-weight: 600; color: var(--ink-2); font-size: 13px; }
+.composition-generator .cg-review-table input[data-cg-name] { min-height: 0; width: 200px; min-width: 0; padding: 4px 8px; font-size: 14px; }
+.cg-keep { width: 40px; }
+.cg-keep input { margin-top: 4px; }
+.cg-members div { line-height: 1.5; }
+.cg-part-tag { display: inline-block; margin-right: 8px; color: var(--ink-3); font-family: var(--font-mono); font-size: 12px; }
+.composition-generator .cg-problem { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; }
+.cg-pager span { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.composition-generator h4.cg-reading { margin: 8px 0 4px; }
+.composition-generator h4.cg-reading:empty { display: none; }
+.composition-generator [data-cg-prompt], .composition-generator [data-cg-saved-text] { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--line-2); }
+.composition-generator [data-cg-prompt][hidden], .composition-generator [data-cg-saved-text][hidden] { display: none !important; }
+
+/* Saved sets, folded under the run. */
+.cg-sets-host { margin-top: 18px; }
+.composition-generator details.cg-sets > summary { padding: 8px 0; font-size: 14px; font-weight: 500; border-top: 1px solid var(--line-2); }
+.composition-generator [data-cg-set-name] { font-weight: 600; color: var(--ink); }
+.composition-generator .cg-batch label.cg-field > input[data-cg-set] { width: 180px; }
+.cg-hand-row .cg-saved-name { white-space: normal; }
+
+/* 6. Saved compositions. */
+.cg-saved-name { font-weight: 600; white-space: nowrap; }
+.composition-generator details.cg-saved-members { margin: 0; }
+.composition-generator details.cg-saved-members > summary { padding: 0; font-size: 13.5px; font-weight: 400; color: var(--ink-2); cursor: pointer; }
+.composition-generator details.cg-saved-members[open] > summary { margin-bottom: 4px; }
+.cg-saved-origin { color: var(--ink-2); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 800px) {
+  .composition-generator label.cg-search > input { width: 180px; }
+}

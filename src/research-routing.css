@@ -1,0 +1,53 @@
+/* PROMPT B. Routing is the primary content of Compose tasks, so it reads as a
+   numbered walk down the page rather than as an advanced panel: your fields,
+   your compositions, your rules, your rows. Nothing here opens a disclosure to
+   reach the thing it names. */
+.routing-editor section { margin: 1rem 0; }
+.routing-editor h4 { margin: 0 0 0.25rem; }
+.routing-note { color: var(--muted, #667); margin: 0.25rem 0; }
+.routing-problem:not(:empty) { color: var(--danger, #a11); margin-top: 0.5rem; }
+.routing-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; margin: 0.25rem 0; }
+.routing-fields { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.routing-field { display: inline-flex; gap: 0.25rem; align-items: center; }
+
+.routing-step { border-top: 1px solid var(--line, #ccd); padding-top: 0.75rem; }
+.routing-step:first-child { border-top: 0; padding-top: 0; }
+
+.routing-node { min-width: 0; border: 1px solid var(--line, #ccd); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 0.4rem 0; }
+.routing-node > legend { padding: 0 0.3rem; font-weight: 600; }
+.routing-param { display: inline-flex; flex-direction: column; margin: 0.2rem 0.5rem 0.2rem 0; }
+.routing-composition { min-width: 0; border: 1px solid var(--line, #ccd); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 0.5rem 0; }
+
+/* The rule set as an if / else if / otherwise ladder. Order carries the
+   meaning, so the keywords and the indent say so without a legend. */
+.routing-ladder { list-style: none; padding-left: 0; margin: 0.5rem 0; }
+.routing-rule {
+  border-left: 3px solid var(--line, #ccd); padding: 0.5rem 0 0.5rem 0.75rem; margin: 0.4rem 0;
+}
+.routing-rule[data-winner="true"] { border-left-color: var(--ink); }
+.routing-rule-head { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.routing-rule-order { display: inline-flex; gap: 0.25rem; margin-left: auto; }
+/* No text-transform: the keywords are written the way they should read, and a
+   transform here only changed what the page said without changing the markup. */
+.routing-keyword { font-weight: 700; }
+.routing-winner { font-weight: 600; color: var(--ink); }
+.routing-rule-tests { margin: 0.35rem 0; }
+.routing-test { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.25rem 0 0.25rem 1rem; }
+.routing-join { font-weight: 600; opacity: 0.7; }
+.routing-rule-then { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-top: 0.35rem; }
+/* The fallback rung may itself send a row to another set, so it holds a block. */
+.routing-fallback { display: block; }
+
+/* PROMPT C. A set of rules drawn inside the rung that chooses it. The indent
+   and the rule down its left edge are the whole of the nesting cue; nothing
+   here opens or closes. */
+.routing-branch { margin: 0.5rem 0 0.25rem 1.25rem; padding-left: 0.75rem; border-left: 2px dashed var(--line, #ccd); }
+.routing-branch > .routing-row { margin-bottom: 0.35rem; }
+.routing-stray { margin-top: 1rem; padding-top: 0.5rem; border-top: 1px dashed var(--line, #ccd); }
+
+.routing-rows { border-collapse: collapse; width: 100%; }
+.routing-rows th, .routing-rows td { border: 1px solid var(--line, #ccd); padding: 0.2rem 0.4rem; text-align: left; vertical-align: middle; }
+.routing-rows input { width: 100%; box-sizing: border-box; }
+.routing-rows tr[data-selected="true"] { background: color-mix(in srgb, currentColor 5%, transparent); }
+.routing-uses { white-space: normal; }
+.routing-uses-refused { color: var(--danger, #a11); }

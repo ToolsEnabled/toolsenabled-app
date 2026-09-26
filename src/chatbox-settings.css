@@ -1,0 +1,49 @@
+/* The agent picker in Settings -> Home screen. It borrows the settings row and
+   the shared toggle wholesale; the only thing that needs its own rules is the
+   list itself, which is a column of names rather than a column of rows. */
+
+.chatbox-agents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.chatbox-agent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chatbox-agent > label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  min-width: 0;
+}
+.chatbox-agent-name {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+/* An agent that was picked and is no longer anywhere. It keeps its tick, so the
+   choice is not silently rewritten, and says why it is dimmed rather than
+   leaving a reader to guess whether it is broken. */
+.chatbox-agent.is-gone .chatbox-agent-name { color: var(--ink-3); }
+.chatbox-agent-note {
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+/* The runs list, when it is standing above a conversation in the same box. The
+   gap is what stops the newest run row and the oldest message reading as one
+   list; the hairline is the same one the run rows already carry between them. */
+.home .log-runs:not(:empty) + .log-turns:not(:empty) { margin-top: 18px; }
+.home .log-runs:not(:empty) + .log-turns:not(:empty)::before {
+  content: '';
+  display: block;
+  border-top: 1px solid var(--line);
+  margin-bottom: 16px;
+}

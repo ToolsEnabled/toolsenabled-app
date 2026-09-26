@@ -1,0 +1,144 @@
+/* Nesting step — build a nested set from saved sets, then inspect or edit a
+   composition; the rules and tasks blocks follow (styled at the end).
+   Hairlines, theme tokens only, controls size to their content.
+   .benchmark-builder styles label/button at (0,1,1) and `label > input` at
+   (0,2,2); compact rules here carry a class to win. */
+.nesting-editor { color: var(--ink); }
+.nesting-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin: 4px 0 18px; }
+.nesting-head h3 { margin: 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.nesting-editor .nesting-intro { margin: 0; max-width: 80ch; }
+.nesting-switch { padding-top: 4px; }
+.nesting-editor h4 { margin: 0; font-size: 16px; font-weight: 650; }
+.nesting-editor h5 { margin: 0 0 4px; font-size: 14px; font-weight: 650; }
+.nesting-heading, .nesting-member-head, .nesting-actions, .nesting-breadcrumbs, .nesting-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.nesting-heading { justify-content: space-between; margin-bottom: 10px; }
+.nesting-identity { align-items: flex-end; gap: 12px 18px; margin: 4px 0 8px; }
+.nesting-member-head strong { margin-right: auto; font-size: 14px; }
+.nesting-editor button.nest-small { min-height: 0; padding: 3px 9px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+.nesting-editor button.nest-drop { padding: 1px 7px; font-size: 14px; color: var(--ink-3); border-color: transparent; }
+.nesting-editor button.nest-drop:hover:not(:disabled) { color: var(--ink); border-color: var(--line-2); }
+.nesting-editor button[hidden] { display: none !important; }
+.nesting-editor .bench-primary { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; }
+.nesting-editor .bench-primary:disabled { background: transparent; color: var(--ink-3); border-color: var(--line-2); opacity: 1; }
+.nesting-editor label.nest-field { gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.nesting-editor label.nest-field > input, .nesting-editor label.nest-field > select, .nesting-editor label.nest-field .nest-inline > input { min-height: 0; width: auto; min-width: 0; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+.nesting-editor label.nest-field-name { flex: 1 1 260px; }
+.nesting-editor label.nest-field-name > input, .nesting-editor label.nest-field-name > select { width: 100%; max-width: 520px; }
+.nest-inline { display: inline-flex; align-items: center; gap: 10px; }
+.nesting-editor label.nest-field input[type="number"] { width: 110px; }
+.nesting-editor label.nest-instructions { gap: 4px; margin: 10px 0; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.nesting-editor label.nest-instructions > textarea { min-height: 0; font-size: 14px; font-family: var(--font-ui); line-height: 1.55; }
+.nesting-hint, .nesting-empty, [data-nest-preview-note], .nest-meta, .nesting-editor .nest-caption { color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
+.nesting-editor .nesting-hint { margin: 6px 0; max-width: 90ch; }
+.nesting-editor .nesting-hint:empty { display: none; }
+.nest-meta { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.nesting-editor .nest-caption { margin: 10px 0 0; font-size: 13px; }
+.nesting-editor .nest-caption b { color: var(--ink); font-weight: 600; margin-right: 6px; }
+.nest-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Build a nested set. */
+.nesting-author { min-width: 0; }
+.nesting-actions { margin-top: 16px; }
+.nesting-editor p[data-nest-status] { margin: 8px 0 0; }
+.nesting-members { list-style: none; padding: 0; margin: 12px 0; border-top: 1px solid var(--line-2); }
+.nesting-members > li { padding: 10px 0 12px; border-bottom: 1px solid var(--line); }
+.nesting-members > li.nesting-empty { padding: 12px 0; }
+.nest-node-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.nesting-editor .nest-node-row > select { min-height: 0; width: auto; min-width: 0; max-width: 100%; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+.nesting-editor .nest-node-row > select[data-nest-member] { min-width: 220px; }
+.nest-tools { display: inline-flex; gap: 4px; margin-left: auto; }
+.nest-when { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+.nest-keyword { flex: 0 0 auto; padding-top: 6px; font-weight: 700; font-size: 14px; }
+.nesting-editor .nest-when > textarea { flex: 1 1 200px; min-height: 0; font-size: 14px; font-family: var(--font-ui); line-height: 1.5; }
+.nesting-editor .nest-possible { margin: 12px 0 2px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.nesting-editor .nest-possible b { font-size: 18px; font-weight: 650; }
+.nest-ticks { display: flex; flex-wrap: wrap; gap: 6px 24px; margin: 10px 0 4px; }
+.nesting-editor label.nest-tick { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; color: var(--ink); }
+.nesting-editor label.nest-tick > input { min-height: 0; margin: 0; }
+.nest-run-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 22px; margin: 10px 0; }
+
+/* Visualization, Fig. 1: the chain. The spine follows the mode. */
+.nesting-editor .nest-spine-label { margin: 12px 0 0 46px; font-size: 11px; font-weight: 640; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-3); }
+.nest-chain { list-style: none; margin: 6px 0 0; padding: 0; position: relative; }
+.nest-node { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 0 10px; position: relative; padding: 8px 0; }
+.nest-node-index { display: flex; justify-content: center; align-items: flex-start; padding-top: 4px; position: relative; }
+.nest-index { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid var(--ink-2); border-radius: 50%; background: var(--sheet); font-family: var(--font-mono); font-size: 12px; color: var(--ink); position: relative; z-index: 1; }
+.nest-index-add { border-style: dashed; border-color: var(--ink-4); color: var(--ink-3); }
+.nest-node-body { min-width: 0; display: grid; gap: 6px; }
+.nest-node-add .nest-node-body { padding-top: 2px; justify-items: start; }
+.nest-chain[data-mode="sequence"] .nest-node::before, .nest-chain[data-mode="conditional-first"] .nest-node::before { content: ''; position: absolute; left: 17px; top: 0; bottom: 0; border-left: 1px solid var(--line-2); }
+.nest-chain[data-mode="sequence"] .nest-node:first-child::before, .nest-chain[data-mode="conditional-first"] .nest-node:first-child::before { top: 12px; }
+.nest-chain[data-mode="sequence"] .nest-node-add::before, .nest-chain[data-mode="conditional-first"] .nest-node-add::before { bottom: auto; height: 14px; }
+.nest-chain[data-mode="together"], .nest-chain[data-mode="conditional-all"], .nest-chain[data-mode="custom"] { border-left: 2px solid var(--ink); margin-left: 17px; padding-left: 0; }
+.nest-chain[data-mode="together"] .nest-node, .nest-chain[data-mode="conditional-all"] .nest-node, .nest-chain[data-mode="custom"] .nest-node { grid-template-columns: 26px minmax(0, 1fr); margin-left: -13px; }
+.nest-chain[data-mode="together"]::before, .nest-chain[data-mode="together"]::after, .nest-chain[data-mode="conditional-all"]::before, .nest-chain[data-mode="conditional-all"]::after { content: ''; display: block; width: 10px; border-top: 2px solid var(--ink); margin-left: -2px; }
+.nest-chain[data-mode="together"]::after, .nest-chain[data-mode="conditional-all"]::after { margin-top: 4px; }
+.nest-chain[data-mode="custom"] { border-left-style: dotted; border-left-color: var(--ink-3); }
+
+/* The nested set: review list. */
+.nest-run { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line-2); }
+.nest-run[hidden] { display: none !important; }
+.nest-run-table { overflow-x: auto; margin: 10px 0; }
+.nest-run-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.nest-run-table th, .nest-run-table td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.nest-run-table thead th { border-bottom: 1px solid var(--line-2); font-weight: 600; color: var(--ink-2); font-size: 13px; }
+.nesting-editor .nest-run-table input[data-nest-run-name] { min-height: 0; width: 200px; min-width: 0; padding: 4px 8px; font-size: 14px; }
+.nest-keep { width: 40px; }
+.nest-members-cell div { line-height: 1.5; }
+.nest-part-tag { display: inline-block; margin-right: 8px; color: var(--ink-3); font-family: var(--font-mono); font-size: 12px; }
+.nesting-editor h5.nest-reading { margin: 8px 0 4px; }
+.nesting-editor h5.nest-reading:empty { display: none; }
+.nesting-editor [data-nest-run-text] { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--line-2); max-height: 500px; overflow: auto; }
+.nesting-editor [data-nest-run-text][hidden], .nesting-editor [data-nest-pager][hidden] { display: none !important; }
+
+/* The picker: the member's items in a family tree, inline under the row. */
+.nest-picker { margin: 6px 0 4px; padding: 8px 0 4px 0; border-top: 1px solid var(--line-2); }
+.nesting-picker-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.nesting-picker-tools > .nest-meta { margin-right: 6px; }
+.nesting-picker-tools > button[data-nest-pick-done] { margin-left: auto; }
+.nesting-editor .nesting-picker-tools label.nest-field-search { flex-direction: row; }
+.nesting-editor .nesting-picker-tools label.nest-field-search > input { width: 240px; padding: 4px 8px; font-size: 13.5px; }
+.nest-pick-tree { max-height: 520px; overflow: auto; }
+.nest-pick-group { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; column-gap: 8px; border-bottom: 1px solid var(--line); }
+.nest-pick-group[hidden] { display: none !important; }
+.nest-pick-group > .nest-pick-check { margin: 10px 0 0 2px; }
+.nest-pick-group > details { min-width: 0; }
+.nest-pick-group > details > summary { display: flex; align-items: baseline; gap: 12px; padding: 7px 0; cursor: pointer; list-style: none; }
+.nest-pick-group > details > summary::-webkit-details-marker { display: none; }
+.nest-pick-group > details > summary::before { content: '▸'; flex: 0 0 auto; width: 12px; color: var(--ink-3); font-size: 12px; }
+.nest-pick-group > details[open] > summary::before { content: '▾'; }
+.nest-pick-name { font-weight: 600; color: var(--ink); }
+.nest-pick-items { list-style: none; margin: 0 0 6px; padding: 0 0 0 20px; }
+.nest-pick-items li { border-top: 1px solid var(--line); }
+.nest-pick-items li.nesting-hint { padding: 5px 0; }
+.nesting-editor label.nesting-pick { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; padding: 5px 0; font-size: 14px; font-weight: 400; color: var(--ink); }
+.nesting-editor label.nesting-pick > input { flex: 0 0 auto; margin-top: 3px; min-height: 0; }
+
+/* Inspect / edit a composition. */
+.nesting-inspector { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line-2); }
+.nesting-inspector .nesting-heading-actions { margin-top: 0; }
+.nesting-inspector > .nesting-hint { margin: 0 0 10px; max-width: 80ch; }
+.nesting-outline-tools { margin-top: 8px; }
+.nest-stats { margin-left: auto; }
+.nesting-inspection-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 14px; }
+.nesting-outline, .nesting-outline ul { list-style: none; padding-left: 18px; margin: 0; }
+.nesting-outline { padding-left: 0; }
+.nesting-outline li { position: relative; padding: 6px 0 6px 14px; border-left: 1px solid var(--line-2); overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; }
+.nesting-outline summary { cursor: pointer; padding: 0; font-weight: 500; }
+.nesting-outline details { margin: 0; }
+.nesting-node-kind { display: inline-block; margin-right: 8px; padding: 0 5px; border: 1px solid var(--line-2); border-radius: 2px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .02em; color: var(--ink-3); vertical-align: 1px; }
+.nesting-node-slot { margin-right: 6px; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-3); }
+.nesting-outline .nest-small { margin-left: 6px; }
+.nesting-editor[data-view="visual"] .nesting-outline li::before { content: ''; position: absolute; left: 0; top: 17px; width: 10px; border-top: 1px solid var(--line-2); }
+.nesting-editor[data-view="visual"] .nesting-outline > li { border-left-color: var(--ink); }
+.nesting-editor[data-view="visual"] .nesting-outline > li::before { display: none; }
+.nesting-editor[data-view="visual"] .nesting-node-kind[data-kind="composition"] { border-color: var(--ink); color: var(--ink); }
+.nesting-editor[data-view="data"] .nesting-node-kind { border: 0; padding: 0; }
+.nesting-inspection-grid pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 650px; overflow: auto; margin: 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--line-2); }
+.nesting-breadcrumbs { margin-top: 6px; }
+.nesting-breadcrumbs strong { font-size: 15px; }
+
+@media (max-width: 950px) {
+  .nesting-head { flex-direction: column; gap: 10px; }
+  .nesting-inspection-grid { grid-template-columns: minmax(0, 1fr); }
+}

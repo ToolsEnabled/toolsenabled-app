@@ -1,0 +1,698 @@
+/* ============================================================================
+   SETTINGS AND ACCOUNT: THE 2026-09-23 REFINEMENT LAYER.
+
+   The Settings pass was approved, and the refinements since are better use
+   of space, square boxes, and a plain native slider. So
+   this sheet refines; it does not restyle. It is the last settings sheet
+   (imported after settings-coherence.css by src/views/settings.js and
+   src/views/account.js) and it spends only the foundation tokens.
+
+   What it settles:
+   - ONE ROW ANATOMY. Name, one explanation, the control in one column that
+     starts at the same x on every row, and "Details" in a narrow third column
+     that every row reserves, so a row with Details and a row without one put
+     their controls in the same place.
+   - GROUPS SCAN AS GROUPS. A group heading inside a category is a caps label
+     over a hairline, so it can never be mistaken for a row name.
+   - ADVANCED IS SECONDARY. A row that only Advanced or Expert shows reads a
+     step quieter than the Basic rows around it.
+   - BUTTONS. One height per row, the foundation button everywhere, one primary
+     (Save settings) on the page, and no button in the system font.
+   - ACCOUNT. A readable column instead of a full-window card, rows parted by
+     hairlines, and a calm notice for the signed-out and error states.
+
+   Selectors start at `.view-pad.settings-page .settings-shell` because the side
+   navigation sheet (src/sidebar-pages.css) is loaded later and writes the same
+   elements at body[attr] plus two classes.
+   ========================================================================= */
+
+.view-pad.settings-page {
+  --set-ctl-min: 248px;          /* the control column never gets narrower */
+  --set-ctl: 34%;                /* ...and otherwise takes a third of the row */
+  --set-aux: 76px;               /* the Details column, reserved on every row */
+  --set-gap: var(--s5);
+  --set-h: var(--control-h-lg, 36px); /* one control height for the page: the large density */
+}
+
+/* ---- HEAD AND COMMAND ROW ------------------------------------------------ */
+/* One page-title treatment across the upgraded pages (design rule):
+   36px, 610, -.035em, as on Vault, Ledger, Metrics, Checkout
+   and Tools; 30px when the page is narrow. */
+.view-pad.settings-page .settings-shell .settings-header .mt {
+  font-size: 36px;
+  font-weight: 610;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+}
+@container sidebar-page (max-width: 700px) {
+  .view-pad.settings-page .settings-shell .settings-header .mt { font-size: 30px; }
+}
+.view-pad.settings-page .settings-shell .settings-search input {
+  min-height: var(--set-h);
+  padding: 0 var(--s3);
+  border: 1px solid var(--border-field);
+  border-radius: var(--radius-control);
+  background: var(--field-bg, var(--surface-raised));
+  box-shadow: none;
+  font-size: var(--text-base);
+}
+.view-pad.settings-page .settings-shell .settings-search input:hover { border-color: var(--field-border-hover, var(--ink-3)); }
+.view-pad.settings-page .settings-shell .settings-search input:focus { border-color: var(--border-field); box-shadow: none; outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+
+.view-pad.settings-page .settings-shell .settings-command-bar {
+  border-bottom-color: var(--border-default);
+  background: var(--surface-canvas);
+}
+/* The View switch and the two save buttons share the row, so they share a
+   height: a 36px trough and 36px buttons (--set-h), not a 48px trough beside 44px. */
+.view-pad.settings-page .settings-shell .settings-mode-seg {
+  --seg-h: var(--set-h);
+  box-sizing: border-box;
+  min-height: var(--set-h);
+  padding: 2px;
+  border-radius: var(--radius-control);
+}
+.view-pad.settings-page .settings-shell .settings-mode-seg > button {
+  min-height: calc(var(--set-h) - 6px);
+  padding: 0 var(--s3);
+  border-radius: calc(var(--radius-control) - 1px);
+  font-size: var(--text-sm);
+}
+.view-pad.settings-page .settings-shell .settings-mode-label,
+.view-pad.settings-page .settings-shell [data-settings-mode-description],
+.view-pad.settings-page .settings-shell .settings-save-bar [role="status"] { font-size: var(--text-sm); }
+.view-pad.settings-page .settings-shell [data-settings-mode-description] { color: var(--ink-25); }
+.view-pad.settings-page .settings-shell .settings-save-bar .ctl-btn {
+  height: var(--set-h);
+  min-height: var(--set-h);
+  padding: 0 var(--s4);
+  font-size: var(--text-sm);
+}
+/* THE PAGE'S ONE PRIMARY. Save settings fills with the theme's primary ink
+   once there is something to save; at rest it is the ordinary disabled button
+   beside Discard, so the row never shouts about nothing. */
+.view-pad.settings-page .settings-shell .settings-save-bar .ctl-btn.armed:not(:disabled) {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--action-primary-ink);
+}
+.view-pad.settings-page .settings-shell .settings-save-bar .ctl-btn.armed:not(:disabled):hover {
+  border-color: var(--action-primary-hover);
+  background: var(--action-primary-hover);
+  color: var(--action-primary-ink);
+}
+
+/* ---- THE RAIL: plain ink for the place marker, no accent wash ------------ */
+.view-pad.settings-page .settings-shell .settings-layout .settings-rail { border-right-color: var(--border-hairline); }
+.view-pad.settings-page .settings-shell .settings-rail .settings-rail-head {
+  min-height: 36px;
+  color: var(--ink-2);
+  font-weight: var(--weight-semibold);
+  border-radius: var(--radius-control);
+}
+.view-pad.settings-page .settings-shell .settings-rail .settings-rail-head:hover,
+.view-pad.settings-page .settings-shell .settings-rail .settings-rail-head.is-active { background: var(--state-hover); color: var(--ink); }
+.view-pad.settings-page .settings-shell .settings-rail-sections { border-left: 1px solid var(--border-hairline); }
+.view-pad.settings-page .settings-shell .settings-rail button[data-category] {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: var(--radius-control);
+  color: var(--ink-25);
+  font-weight: var(--weight-medium);
+}
+.view-pad.settings-page .settings-shell .settings-rail button[data-category]:hover { background: var(--state-hover); color: var(--ink); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-rail button[data-category].is-active {
+  background: var(--state-press);
+  box-shadow: inset 2px 0 0 var(--ink);
+  color: var(--ink);
+  font-weight: var(--weight-semibold);
+}
+
+/* ---- WHERE YOU ARE, AND THE CATEGORY TITLE ------------------------------- */
+.view-pad.settings-page .settings-shell .settings-breadcrumb { color: var(--ink-3); font-size: var(--text-xs); }
+.view-pad.settings-page .settings-shell .settings-breadcrumb [aria-current="page"] { color: var(--ink-2); }
+.view-pad.settings-page .settings-shell .settings-breadcrumb-separator { color: var(--ink-4); }
+.view-pad.settings-page .settings-shell .settings-main-context-copy { color: var(--ink-25); font-size: var(--text-md); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-section + .settings-section,
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-panel + .settings-section,
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-content > .settings-section:first-child { margin-top: var(--s6); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-section-title {
+  margin: 0;
+  padding: 0 0 var(--s3);
+  border-bottom: 1px solid var(--border-default);
+  color: var(--ink);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-title);
+  line-height: var(--leading-tight);
+}
+/* A section's note is a sentence under its title, not a tinted call-out. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-section-note {
+  max-width: 72ch;
+  margin: var(--s3) 0 var(--s1);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-25);
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-category-description { color: var(--ink-25); font-size: var(--text-md); }
+
+/* GROUPS INSIDE A CATEGORY. A caps label over a hairline, set clear of the
+   row above it, so "Tool access" can never be read as one more setting. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-subsection-title {
+  margin: 0;
+  padding: var(--s5) 0 var(--s2);
+  border-bottom: 1px solid var(--border-default);
+  color: var(--ink-3);
+  font-size: var(--text-caps);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--track-caps);
+  line-height: var(--leading-tight);
+  text-transform: uppercase;
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-subsection + .settings-subsection { margin-top: 0; }
+
+/* ---- ONE ROW ANATOMY ------------------------------------------------------
+   copy | control | Details. The third column is reserved on every row, with
+   or without Details in it, which is what puts every control on one x. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-row:is(*, :has(> .settings-disclosure .guided-summary)) {
+  grid-template-columns: minmax(0, 1fr) minmax(var(--set-ctl-min), var(--set-ctl)) var(--set-aux);
+  column-gap: var(--set-gap);
+  row-gap: var(--s2);
+  padding: var(--s4) 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-row > .settings-copy { grid-column: 1; grid-row: 1; max-width: 72ch; }
+.view-pad.settings-page .settings-shell .settings-layout .settings-row > .settings-control {
+  grid-column: 2;
+  grid-row: 1;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: var(--set-h);
+  padding-top: 0;
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-disclosure .guided-summary {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  min-height: var(--set-h);
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-disclosure .guided-summary:hover { color: var(--ink); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-disclosure .guided-body {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  box-sizing: border-box;
+  max-width: calc(76ch + var(--s3) + 1px);
+  padding-left: var(--s3);
+  border-left: 1px solid var(--border-default);
+}
+/* A row whose control is a whole panel (the font specimens, a mounted
+   controller): the name and Details on the first line, the control under
+   them across the full width. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-row:is(.settings-row-wide, [data-setting-id="ui_font"]):is(*, :has(> .settings-disclosure .guided-summary)) {
+  grid-template-columns: minmax(0, 1fr) var(--set-aux);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-row:is(.settings-row-wide, [data-setting-id="ui_font"]) > .settings-control { grid-column: 1 / -1; grid-row: 2; min-height: 0; }
+.view-pad.settings-page .settings-shell .settings-layout .settings-row:is(.settings-row-wide, [data-setting-id="ui_font"]) .guided-summary { grid-column: 2; }
+.view-pad.settings-page .settings-shell .settings-layout .settings-row:is(.settings-row-wide, [data-setting-id="ui_font"]) .guided-body { grid-row: 3; }
+/* The checkbox rows some panels draw keep their own two-column shape. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-row.settings-check-row { grid-template-columns: minmax(0, 1fr) auto; }
+
+.view-pad.settings-page .settings-shell .settings-layout .settings-name {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-state { margin-top: 2px; color: var(--ink-2); font-size: var(--text-sm); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-desc {
+  max-width: 72ch;
+  margin-top: var(--s1);
+  color: var(--ink-25);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-pending-mark {
+  border-radius: var(--radius-xs);
+  background: var(--selected-bg);
+  color: var(--selected-ink);
+  font-size: var(--text-xs);
+}
+
+/* ADVANCED AND EXPERT ROWS ARE SECONDARY. Shown beside the Basic rows (the
+   Advanced and Expert views), they read a step quieter: a lighter name and a
+   hairline at their left, so a Basic row is found first. The product rows and
+   this window's own rows carry the same attribute. */
+.view-pad.settings-page[data-settings-mode]:not([data-settings-mode="simple"]) .settings-shell .settings-layout .settings-row:is([data-settings-min-mode="advanced"], [data-settings-min-mode="expert"]) {
+  box-shadow: inset 2px 0 0 var(--border-default);
+}
+.view-pad.settings-page[data-settings-mode]:not([data-settings-mode="simple"]) .settings-shell .settings-layout .settings-row:is([data-settings-min-mode="advanced"], [data-settings-min-mode="expert"]) > .settings-copy { padding-left: var(--s3); }
+.view-pad.settings-page[data-settings-mode]:not([data-settings-mode="simple"]) .settings-shell .settings-layout .settings-row:is([data-settings-min-mode="advanced"], [data-settings-min-mode="expert"]) .settings-name {
+  color: var(--ink-2);
+  font-weight: var(--weight-medium);
+}
+.view-pad.settings-page[data-settings-mode]:not([data-settings-mode="simple"]) .settings-shell .settings-layout .settings-row:is([data-settings-min-mode="advanced"], [data-settings-min-mode="expert"]) .settings-desc { color: var(--ink-3); }
+/* A staged or invalid row keeps its own left mark over the hairline. The
+   inset belongs to the copy, never to the row, so the control column does
+   not move when a row is marked. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-row[data-setting-pending="true"] { box-shadow: inset 3px 0 0 var(--ui-accent); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-row[data-setting-invalid="true"] { box-shadow: inset 3px 0 0 var(--s-serious); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-row:is([data-setting-pending="true"], [data-setting-invalid="true"]) > .settings-copy { padding-left: var(--s3); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-row.is-landed { box-shadow: none; }
+
+/* ---- CONTROLS IN THE CONTROL COLUMN -------------------------------------- */
+.view-pad.settings-page .settings-shell .settings-layout .settings-control .ctl-btn,
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-gate .ctl-btn,
+.view-pad.settings-page .settings-shell .settings-layout .settings-simple-more .ctl-btn,
+.view-pad.settings-page .settings-shell .settings-layout .settings-field-control .ctl-btn,
+.view-pad.settings-page .settings-shell .settings-layout .settings-audit-actions .ctl-btn {
+  min-height: var(--set-h);
+  height: auto;
+  padding: 0 var(--s4);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+/* A DEAD BUTTON LOOKS DEAD, AND STILL LOOKS LIKE A BUTTON. One disabled
+   treatment for the page: faded, but with its edge, so a button that cannot
+   act now ("Use this default for every tree" with no tree overrides, Save
+   with nothing staged) never reads as loose grey words. */
+.view-pad.settings-page .settings-shell :is(.ctl-btn, .guide-account-btn):disabled {
+  opacity: .55;
+  border-color: var(--border-default);
+  background: var(--control-disabled-bg);
+  box-shadow: none;
+  color: var(--control-disabled-ink);
+}
+/* EVERY BUTTON IN A CATEGORY, WHEREVER ITS PANEL PUT IT. The base .ctl-btn
+   has no side padding, so the System panel's Load profile, Export profile,
+   Reset, Check connections, Choose folder and Clear sat with their words
+   against their edges. A link dressed as a button (Set up who is using this
+   copy, Connect this computer, Open the Accounts menu) was underlined like
+   running text. A button in a panel's grid stretched to the column (Add
+   machine, Check for editor sessions); it takes its own width. */
+.view-pad.settings-page .settings-shell .settings-layout :is(.ctl-btn) {
+  min-height: var(--set-h);
+  height: auto;
+  padding-inline: var(--s4);
+  font-size: var(--text-sm);
+}
+.view-pad.settings-page .settings-shell .settings-layout a.ctl-btn { display: inline-flex; align-items: center; text-decoration: none; }
+.view-pad.settings-page .settings-shell .settings-layout :is(.fleet-profile-fields, .fleet-source-control, .settings-field-control) > .ctl-btn { justify-self: start; }
+.view-pad.settings-page .settings-shell .settings-layout .fleet-profile-actions { gap: var(--s2); align-items: center; }
+.view-pad.settings-page .settings-shell .settings-layout .fleet-profile-empty { color: var(--ink-2); }
+/* The update row's disclosure carries the long label ("What this does, and
+   what it risks"), too long for the Details column, so it sits under the
+   row's words instead of wrapping into four lines at the far edge. */
+.view-pad.settings-page .settings-shell .settings-layout .update-policy-row .settings-disclosure .guided-summary { grid-column: 1; grid-row: 2; justify-self: start; }
+.view-pad.settings-page .settings-shell .settings-layout .update-policy-row .settings-disclosure .guided-body { grid-row: 3; }
+
+/* Segmented choices: the foundation trough, square inside, one height. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-control > :is(.seg, .settings-seg):not(.theme-seg) {
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-control);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-control > :is(.seg, .settings-seg):not(.theme-seg) > button {
+  min-height: calc(var(--set-h) - 4px);
+  padding: 4px var(--s3);
+  border-radius: calc(var(--radius-control) - 1px);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-control > :is(.seg, .settings-seg):not(.theme-seg) > button.on {
+  background: var(--selected-bg);
+  box-shadow: inset 0 0 0 1px var(--selected-border);
+  color: var(--selected-ink);
+}
+/* Theme swatches: the same selected tint and edge as every other choice. */
+.view-pad.settings-page .settings-shell .settings-layout [data-setting-id="theme"] .settings-seg { border-radius: var(--radius-control); }
+.view-pad.settings-page .settings-shell .settings-layout [data-setting-id="theme"] .settings-seg > button { min-height: calc(var(--set-h) - 4px); border-radius: calc(var(--radius-control) - 1px); }
+.view-pad.settings-page .settings-shell .settings-layout [data-setting-id="ui_font"] .settings-seg > button { border-radius: var(--radius-card); }
+/* Fields and dropdowns in a row sit at the control height, on the field edge. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-control select,
+.view-pad.settings-page .settings-shell .settings-layout .settings-control input:is([type="text"], [type="number"], [type="search"], [type="url"], :not([type])),
+.view-pad.settings-page .settings-shell .settings-layout .settings-exact-value input {
+  box-sizing: border-box;
+  min-height: var(--set-h);
+  border: 1px solid var(--border-field);
+  border-radius: var(--radius-control);
+  background: var(--field-bg, var(--surface-raised));
+  color: var(--ink);
+  font-size: var(--text-base);
+}
+/* The < value > stepper: one bordered control, not two loose glyphs. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-stepper {
+  min-height: var(--set-h);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  background: var(--control-bg);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-stepper button { min-width: 36px; border-radius: calc(var(--radius-control) - 1px); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-stepper button:hover { background: var(--control-hover); }
+
+/* TREE CONTEXT CARDS. Its reset button followed a status sentence on a line
+   of its own at the far left. The fieldset takes the row grid, so the select
+   and the button under it share the control column and the sentence sits in
+   the copy column beside the button. */
+.view-pad.settings-page .settings-shell .settings-layout [data-tree-context-fields] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(var(--set-ctl-min), var(--set-ctl)) var(--set-aux);
+  column-gap: var(--set-gap);
+  align-items: start;
+  margin: var(--s2) 0 0;
+  padding: 0 0 var(--s4);
+  border: 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.view-pad.settings-page .settings-shell .settings-layout [data-tree-context-fields] > label.settings-row { grid-column: 1 / -1; border-bottom: 0; padding-bottom: var(--s2); }
+.view-pad.settings-page .settings-shell .settings-layout [data-tree-context-fields] > label.settings-row > select { grid-column: 2; }
+.view-pad.settings-page .settings-shell .settings-layout [data-tree-context-fields] > [data-tree-context-overrides] { grid-column: 1; grid-row: 2; margin: 0; }
+.view-pad.settings-page .settings-shell .settings-layout [data-tree-context-fields] > [data-tree-context-reset] { grid-column: 2; grid-row: 2; justify-self: start; }
+.view-pad.settings-page .settings-shell .settings-layout [data-tree-context-settings] .settings-label { color: var(--ink); font-size: 15px; font-weight: var(--weight-semibold); }
+
+/* SAVED CONVERSATION MAINTENANCE. Its three review buttons were block
+   buttons stacked one per line under the sentence; they are one toolbar row. */
+.view-pad.settings-page .settings-shell .settings-layout [data-saved-maintenance] > .ctl-btn {
+  display: inline-flex;
+  margin: var(--s3) var(--s2) 0 0;
+  vertical-align: top;
+}
+.view-pad.settings-page .settings-shell .settings-layout [data-saved-maintenance] > [data-saved-maintenance-status]:not(:empty) { margin-top: var(--s3); }
+
+/* The link a row carries to the page it controls. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-jump { color: var(--ink-2); font-size: var(--text-sm); }
+
+/* ---- "SHOW ADVANCED SETTINGS" --------------------------------------------
+   The Basic view ends a section with a sentence and a button, and a gated
+   panel says the same with its own button. Both on one page were two identical
+   buttons a screen apart (Appearance: under the fonts, and again under Agent
+   role colors), so while a category shows a gated panel the section's own
+   sentence steps aside and the panel's button is the one. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-simple-more {
+  margin: 0;
+  padding: var(--s4) 0;
+  border-bottom: 1px solid var(--border-hairline);
+  color: var(--ink-25);
+  font-size: var(--text-md);
+}
+.view-pad.settings-page[data-settings-mode="simple"] .settings-shell .settings-sections:has(> [data-settings-panel-mode="advanced"]) .settings-simple-more { display: none; }
+/* A gated panel is one quiet row: its name, one sentence, and the button
+   under the sentence -- no card of its own around a single button. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-gate {
+  margin: 0;
+  padding: var(--s4) 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-hairline);
+  border-radius: 0;
+  background: none;
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-gate > .settings-section-title {
+  padding: 0;
+  border: 0;
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0;
+  line-height: var(--leading-snug);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-gate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(var(--set-ctl-min), var(--set-ctl)) var(--set-aux);
+  column-gap: var(--set-gap);
+  align-items: start;
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-gate-row > .settings-desc { grid-column: 1; margin-top: var(--s1); }
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-gate-row > .ctl-btn { grid-column: 2; justify-self: start; margin-top: var(--s1); }
+
+/* A RUN OF GATES, ONE BUTTON. Expert rows each draw their own gate, so a
+   group of two or three said "Show Expert settings" two or three times in a
+   row. Inside a run of gates for the same view only the last keeps its
+   button; the sentence stays on every row, so each still says what it needs. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-panel[data-settings-panel-mode="expert"]:has(+ .settings-mode-panel[data-settings-panel-mode="expert"]) > .settings-mode-gate [data-settings-show-mode],
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-panel[data-settings-panel-mode="advanced"]:has(+ .settings-mode-panel[data-settings-panel-mode="advanced"]) > .settings-mode-gate [data-settings-show-mode],
+.view-pad.settings-page .settings-shell .settings-layout .settings-mode-panel[data-settings-panel-mode="enterprise"]:has(+ .settings-mode-panel[data-settings-panel-mode="enterprise"]) > .settings-mode-gate [data-settings-show-mode] { display: none; }
+
+/* ---- THE QUICK STRIP ------------------------------------------------------
+   Owner, 09-09: no boxes, cells parted by the page's hairline. The strip keeps
+   that and its 300px cells (five cells of five or six stop names each need
+   them); it only tightens the gaps and quiets the repeated status lines. The
+   Working profile stays the plain native range with its stop names under it. */
+.view-pad.settings-page .settings-shell .settings-quick {
+  margin: 0 0 var(--s5);
+  padding: 0 0 var(--s4);
+  border-bottom-color: var(--border-default);
+}
+.view-pad.settings-page .settings-shell .settings-quick-title {
+  margin: 0 0 var(--s2);
+  color: var(--ink-3);
+  font-size: var(--text-caps);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.view-pad.settings-page .settings-shell .settings-quick-grid { gap: var(--s3) var(--s5); }
+.view-pad.settings-page .settings-shell .settings-working-profile {
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border-hairline);
+}
+.view-pad.settings-page .settings-shell .quick-slider-help { color: var(--ink-25); font-size: var(--text-md); }
+.view-pad.settings-page .settings-shell .quick-slider-message,
+.view-pad.settings-page .settings-shell .quick-slider-sets { color: var(--ink-3); font-size: var(--text-sm); }
+.view-pad.settings-page .settings-shell .working-profile-link { color: var(--ink-2); font-size: var(--text-sm); }
+
+/* ---- THIS COMPUTER: the program buttons ---------------------------------
+   Install and Sign in were 26px buttons in the browser's own Arial with a
+   bare border, the only buttons on the page that were not the page's button.
+   They take the foundation button, at the row height. */
+.view-pad.settings-page .settings-shell .guide-account-btn {
+  min-height: 36px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  background: var(--control-bg);
+  box-shadow: var(--shadow-control);
+  color: var(--control-ink);
+  font: var(--weight-semibold) var(--text-sm) / 1 var(--font-ui);
+}
+.view-pad.settings-page .settings-shell .guide-account-btn:hover:not(:disabled) { background: var(--control-hover); border-color: var(--control-border-hover); }
+.view-pad.settings-page .settings-shell .guide-account-btn:disabled,
+.view-pad.settings-page .settings-shell .guide-signin-btn[disabled] {
+  opacity: 1;
+  border-color: var(--border-hairline);
+  background: var(--control-disabled-bg);
+  box-shadow: none;
+  color: var(--control-disabled-ink);
+  cursor: not-allowed;
+}
+.view-pad.settings-page .settings-shell .guide-signin-row { gap: var(--s2); align-items: center; }
+
+/* ---- NOTICES: no gold ------------------------------------------------------ */
+.view-pad.settings-page .settings-shell .fleet-profile-empty {
+  border-color: var(--border-default);
+  border-left-color: var(--ink-3);
+  background: var(--surface-sunken);
+}
+
+/* ---- NARROW CONTENT: one column, Details beside the name ----------------- */
+@container settings-content (max-width: 680px) {
+  .view-pad.settings-page .settings-shell .settings-layout .settings-row:is(*, :has(> .settings-disclosure .guided-summary)),
+  .view-pad.settings-page .settings-shell .settings-layout .settings-row:is(.settings-row-wide, [data-setting-id="ui_font"]):is(*, :has(> .settings-disclosure .guided-summary)) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--s4);
+  }
+  .view-pad.settings-page .settings-shell .settings-layout .settings-row > .settings-control { grid-column: 1 / -1; grid-row: 2; min-height: 0; }
+  .view-pad.settings-page .settings-shell .settings-layout .settings-disclosure .guided-summary { grid-column: 2; }
+  .view-pad.settings-page .settings-shell .settings-layout .settings-disclosure .guided-body { grid-row: 3; }
+  .view-pad.settings-page .settings-shell .settings-layout .settings-mode-gate-row { grid-template-columns: minmax(0, 1fr); row-gap: var(--s2); }
+  .view-pad.settings-page .settings-shell .settings-layout .settings-mode-gate-row > .ctl-btn { grid-column: 1; margin-top: 0; }
+  .view-pad.settings-page .settings-shell .settings-layout [data-tree-context-fields] { grid-template-columns: minmax(0, 1fr); row-gap: var(--s2); }
+  .view-pad.settings-page .settings-shell .settings-layout [data-tree-context-fields] > :is([data-tree-context-overrides], [data-tree-context-reset], label.settings-row > select) { grid-column: 1; grid-row: auto; }
+}
+
+/* ============================================================================
+   ACCOUNT (#/account). The same row anatomy as Settings, in a column a person
+   can read: the card no longer spans a 1,850px window, rows are parted by
+   hairlines, and a notice is a sentence with a quiet edge rather than a red
+   headline. The notice keeps role="alert" and its serious/warn class; only
+   the paint is calmer.
+   ========================================================================= */
+.view-pad.setup-page:has([data-account-section]) { align-items: flex-start; }
+.view-pad.setup-page:has([data-account-section]) > .setup-shell {
+  width: 100%;
+  max-width: 920px;
+  margin: var(--s6) auto var(--s7);
+  padding-block: 0;
+}
+.setup-page [data-account-section].setup-section {
+  padding: var(--s6) clamp(var(--s4), 4vw, var(--s7));
+  border-color: var(--border-default);
+  border-radius: var(--radius-card);
+  background: var(--surface-base);
+  box-shadow: var(--shadow-card);
+}
+.setup-page [data-account-section] .setup-title {
+  margin: 0 0 var(--s2);
+  font-size: 36px;
+  font-weight: 610;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+}
+.setup-page [data-account-section] .setup-lede { color: var(--ink-25); font-size: var(--text-base); }
+.setup-page [data-account-section] .settings-section-title {
+  margin: var(--s6) 0 0;
+  padding: 0 0 var(--s2);
+  border-bottom: 1px solid var(--border-default);
+  color: var(--ink-3);
+  font-size: var(--text-caps);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--track-caps);
+}
+.setup-page [data-account-section] .settings-section-rows > .settings-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--s5);
+  margin: 0;
+  padding: var(--s4) 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.setup-page [data-account-section] .settings-name { color: var(--ink); font-size: var(--text-base); font-weight: var(--weight-semibold); line-height: var(--leading-snug); }
+.setup-page [data-account-section] .settings-desc { max-width: 68ch; color: var(--ink-25); font-size: var(--text-md); line-height: var(--leading-normal); }
+.setup-page [data-account-section] .settings-control { justify-content: flex-end; gap: var(--s2); }
+.setup-page [data-account-section] .fleet-inline-control { width: auto; max-width: 100%; }
+.setup-page [data-account-section] .settings-control:has(.fleet-profile-input) { width: min(100%, 320px); }
+/* Every account button at one height, with room between neighbours. A link
+   dressed as a button reads as a button, not as underlined text in a box. */
+.setup-page [data-account-section] .ctl-btn {
+  min-height: 36px;
+  padding: 0 var(--s4);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+.setup-page [data-account-section] a.ctl-btn { display: inline-flex; align-items: center; text-decoration: none; }
+.setup-page [data-account-section] .fleet-profile-input { min-height: 36px; border-color: var(--border-field); border-radius: var(--radius-control); background: var(--field-bg, var(--surface-raised)); }
+.setup-page [data-account-section] .setup-actions { margin-top: var(--s5); padding-top: var(--s4); border-top-color: var(--border-default); }
+.setup-page [data-account-section] .setup-actions .ctl-btn { height: var(--control-h-lg, 36px); min-height: var(--control-h-lg, 36px); }
+/* THE FORM'S ONE PRIMARY: the submit button of a sign-in, create or change
+   form. Back and the other ways in stay ordinary buttons. */
+.setup-page [data-account-section] [data-account-form] .setup-actions button[type="submit"]:not(:disabled) {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--action-primary-ink);
+}
+.setup-page [data-account-section] [data-account-form] .setup-actions button[type="submit"]:not(:disabled):hover {
+  border-color: var(--action-primary-hover);
+  background: var(--action-primary-hover);
+}
+.setup-page [data-account-section] .settings-section-rows > .settings-row:last-child { border-bottom: 0; }
+.setup-page [data-account-section] .ctl-btn:disabled,
+.setup-page [data-account-section] .ctl-btn:disabled:hover {
+  opacity: .55;
+  border-color: var(--border-default);
+  background: var(--control-disabled-bg);
+  color: var(--control-disabled-ink);
+}
+/* Buttons that answer a notice (Retry status, Set the damaged file aside)
+   sit together under it, at the left, not loose on their own lines. */
+.setup-page [data-account-section] .account-notice-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin: var(--s2) 0 var(--s4); }
+
+/* THE CALM NOTICE. A sunken well with a 2px edge in the notice's own tone and
+   the headline in ink: the words carry the news, the colour only marks it. */
+.setup-page [data-account-section] .fleet-profile-status {
+  margin: var(--s4) 0;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--border-hairline);
+  border-left: 2px solid var(--ink-3);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  background: var(--surface-sunken);
+  color: var(--ink-25);
+}
+.setup-page [data-account-section] .fleet-profile-status strong { color: var(--ink); font-size: var(--text-base); font-weight: var(--weight-semibold); }
+.setup-page [data-account-section] .fleet-profile-status span { font-size: var(--text-md); }
+.setup-page [data-account-section] .fleet-profile-status.is-serious { border-left-color: var(--s-serious); }
+.setup-page [data-account-section] .fleet-profile-status.is-good { border-left-color: var(--s-good); }
+.setup-page [data-account-section] .fleet-profile-status.is-warn { border-left-color: var(--ink-3); }
+
+/* WHO IS SIGNED IN: the name, with a square monogram, heads the page. */
+.setup-page [data-account-section] .account-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s4);
+  margin-bottom: var(--s2);
+}
+.setup-page [data-account-section] .account-identity .setup-title { margin: 0; }
+.setup-page [data-account-section] .account-monogram {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+}
+.setup-page [data-account-section] .account-identity-line { margin: 2px 0 0; color: var(--ink-3); font-size: var(--text-sm); }
+
+@container setup-content (max-width: 560px) {
+  .setup-page [data-account-section] .setup-title { font-size: 30px; }
+  .setup-page [data-account-section] .settings-section-rows > .settings-row { grid-template-columns: minmax(0, 1fr); row-gap: var(--s2); }
+  .setup-page [data-account-section] .settings-control { justify-content: flex-start; flex-wrap: wrap; }
+  .setup-page [data-account-section] .ctl-btn { white-space: normal; }
+}
+@media (max-width: 760px) {
+  .view-pad.setup-page:has([data-account-section]) > .setup-shell { margin-block: var(--s3) var(--s5); }
+  .setup-page [data-account-section].setup-section { padding: var(--s5) var(--s4); }
+}
+
+/* ===========================================================================
+   CRAFT (2026-09-23): a category is a card, its title a band. The title was
+   21px bold over a rule, and the rows ran on under it on the bare canvas:
+   a heading and lines. Now each section is the base layer on the
+   foundation's soft lift, and its title sits on a --craft-band across the
+   card's top. Rows, their columns and every control are unchanged inside.
+   The quick strip above stays the owner's unboxed layout.
+   =========================================================================== */
+.view-pad.settings-page .settings-shell .settings-layout .settings-sections > .settings-section {
+  padding: 0 var(--s5) var(--s5);
+  border-radius: var(--radius-card);
+  background: var(--surface-base);
+  box-shadow: var(--shadow-lift);
+}
+.view-pad.settings-page .settings-shell .settings-layout .settings-sections > .settings-section > .settings-section-title {
+  margin: 0 calc(-1 * var(--s5)) var(--s2);
+  padding: var(--s4) var(--s5) 13px;
+  border-bottom: 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--craft-band);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+@media (forced-colors: active) {
+  .view-pad.settings-page .settings-shell .settings-layout .settings-sections > .settings-section { border: 1px solid CanvasText; }
+}
+/* Inside the card, a box is a well, not a second outline: the accounts list
+   and the Claude caution are fills; the caution keeps its left bar, which
+   is what says "read this first". */
+.view-pad.settings-page .settings-shell .settings-layout :is(.guide-accounts-panel, .guide-risk) {
+  border-color: transparent;
+  border-radius: var(--radius-card);
+  background: var(--craft-well);
+}
+.view-pad.settings-page .settings-shell .settings-layout .guide-risk { border-left-color: var(--ink-2); border-radius: 0 var(--radius-card) var(--radius-card) 0; }
+@media (forced-colors: active) {
+  .view-pad.settings-page .settings-shell .settings-layout :is(.guide-accounts-panel, .guide-risk) { border-color: CanvasText; }
+}
+
+/* DETAILS PASS (2026-09-23): a section's closing sentence is its last row, so
+   it draws no rule under itself; the card's own edge ends the section. */
+.view-pad.settings-page .settings-shell .settings-layout .settings-simple-more:last-child { border-bottom: 0; }
+/* A dropdown in a plain labelled row stands at the page's control height too
+   (it was 38px beside 36px fields). */
+.view-pad.settings-page .settings-shell label.settings-row select { box-sizing: border-box; height: var(--set-h); min-height: var(--set-h); padding-block: 0; }

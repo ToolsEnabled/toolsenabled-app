@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "product": "toolsenabled",
+  "supportedBaselines": [
+    {
+      "id": "1.0.41",
+      "version": "1.0.41",
+      "subject": {
+        "artifact": {
+          "sha256": "80e83c994e811764223f0893be1544352d9a1e9a91d8aea3256b36355b28ba67",
+          "bytes": 103131510
+        },
+        "runtimeSha256": "29bd579eeaf173f49c93f04f735895bfa541358e71b30924c9d2e92421d189f1",
+        "shellSha256": "2050d38469ce94a90998630a2f8f330f258d520964ec3a97d9ef2c58da5efd86"
+      },
+      "contentLayout": "current"
+    }
+  ],
+  "dataPolicy": {
+    "id": "toolsenabled-uninstall-retention-v1",
+    "declaration": "build/installer.nsh",
+    "uninstallModes": ["ask-silent", "keep-my-data", "remove-everything"],
+    "contentKinds": ["local-account"],
+    "contentRoots": ["roaming-product", "local-service", "external-workspace"]
+  },
+  "interruptionPolicy": {
+    "points": ["fresh-install-files-written", "upgrade-files-written", "uninstall-files-removed"],
+    "recovery": "rerun-exact-candidate-and-reopen"
+  }
+}

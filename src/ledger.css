@@ -1,0 +1,1273 @@
+/* THE LEDGER PAGE (#/ledger). Layout and look only: what the page reads,
+   writes and refuses stays in src/views/ledger.js and the ledger-*.js modules.
+
+   THE 2026-09-23 REDO, in the Vault page's register: a title, the kind tabs,
+   one card of counts, then ONE card for the list -- its search and reach
+   filter, the add box, column heads, and a row per record whose person's
+   words are the widest column. Deciding by number, the task inactivity
+   setting and the whole-ledger resets sit in a side column on a wide window
+   and under the list on a narrow one. Hairlines between rows, no box around a
+   row, native-looking controls. Every colour is a theme token, so White, Tan,
+   Black, Ember and Cobalt need nothing of their own here.
+
+   SHARED WITH THE PURCHASE QUEUE. src/ledger-prompt-queue.js (the Purchases
+   tab and the owner popup) draws its own .ledger-shell, .ledger-summary,
+   .ledger-stat, .ledger-toolbar, .ledger-register-note and .ledger-register.
+   Their base rules below are the queue's and are left as they were; the page's
+   own versions are restyled through .ledger-page scoped classes. */
+
+.ledger-page { scrollbar-gutter: stable; }
+.ledger-shell { width: min(var(--page-max), 100%); margin-inline: auto; padding-top: var(--s3); }
+.ledger-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ---- the figure strip: the queue's base, and the page's six-tile default ---- */
+.ledger-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line-2);
+}
+/* The Purchases tab hides this strip (it draws the purchase queue's own), and
+   display:grid above beats the browser's [hidden] rule (T1360). */
+.ledger-summary[hidden] { display: none; }
+/* ON A PHONE FIVE ACROSS IS A COUNT THE ROW CANNOT PAY: the widest caps word
+   ("PURCHASES", ~73px) does not fit a fifth of a 288px column and hangs out of
+   it, and the page pans sideways. auto-fit drops the count instead; 92px holds
+   that word plus its padding. Scoped to a media query because auto-fit
+   collapses empty tracks, and the queue puts only three tiles in this grid. */
+@media (max-width: 560px) {
+  .ledger-summary { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+}
+.ledger-stat {
+  min-width: 0;
+  padding: var(--s3) clamp(10px, 2vw, 24px) var(--s4);
+  border-right: 1px solid var(--line);
+}
+.ledger-stat:first-child { padding-left: 0; }
+.ledger-stat:last-child { border-right: 0; padding-right: 0; }
+.ledger-stat-value {
+  display: block;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 640;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.ledger-stat-label,
+.ledger-stat-note {
+  display: block;
+  margin-top: var(--s2);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.ledger-stat-note { margin-top: var(--s1); font-weight: 500; color: var(--ink-3); }
+
+.ledger-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s4) 0 var(--s3);
+}
+.ledger-register-note {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.ledger-register { border-top: 1px solid var(--line-2); }
+
+/* ========================================================================
+   THE PAGE
+   ======================================================================== */
+
+.ledger-page {
+  --page-gutter: clamp(16px, 2.4vw, 40px);
+  --lg-edge: var(--border-default, var(--line-2));
+  --lg-rule: var(--border-hairline, var(--line));
+  --lg-card: var(--surface-base, var(--sheet));
+  --lg-well: var(--surface-sunken, var(--bg-2));
+  --lg-radius: var(--radius-card, 6px);
+  --lg-control-radius: var(--radius-control, 4px);
+  /* The list's columns. Fixed widths, so the sentences under a row (notes,
+     buttons, the editor) can start exactly at the words' x: --lg-lead. */
+  --lg-pad: var(--s5);
+  --lg-gap: var(--s4);
+  --lg-state: 150px;
+  --lg-id: 60px;
+  --lg-meta: 200px;
+  --lg-x: 44px;
+  --lg-lead: calc(var(--lg-pad) + var(--lg-state) + var(--lg-id) + 2 * var(--lg-gap));
+  color: var(--ink);
+}
+.ledger-page [hidden] { display: none !important; }
+.ledger-page > .ledger-shell {
+  container: ledger-shell / inline-size;
+  padding-top: 0;
+}
+
+/* ---- header ---- */
+.ledger-head { padding: var(--s3) 0 var(--s5); }
+.ledger-page .ledger-h1 {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 610;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  color: var(--ink);
+}
+.ledger-lede {
+  max-width: 72ch;
+  margin: var(--s2) 0 0;
+  font-size: var(--text-base, 14px);
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+/* ---- the kind tabs ---- */
+.ledger-page .ledger-kinds { justify-content: flex-start; padding: 0 0 var(--s4); }
+.ledger-page .ledger-mode > button { padding-inline: 16px; font-size: var(--text-md, 13.5px); }
+/* The unchosen segments carry no class, so the page-wide floor under bare
+   buttons (min-height 32px) reached them and not the chosen one: they stood
+   8px taller than the trough and their words sat lower than the chosen
+   segment's. A segment is as tall as its trough. */
+.ledger-page .seg > button { min-height: 0; }
+.ledger-page .seg > button:not(.on) { box-shadow: none; }
+
+/* ---- layout: the list, and the side column ---- */
+.ledger-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s5) var(--s6, 32px);
+  align-items: start;
+}
+.ledger-main { display: grid; gap: var(--s4); min-width: 0; }
+
+/* ---- the counts: one card, hairlines between, no repeated caption ---- */
+.ledger-page .ledger-strip {
+  margin: 0;
+  border: 1px solid var(--lg-edge);
+  border-radius: var(--lg-radius);
+  background: var(--lg-card);
+  box-shadow: var(--shadow-card, none);
+}
+.ledger-page .ledger-strip .ledger-stat {
+  padding: 14px var(--lg-pad) 16px;
+  border-right: 0;
+  border-left: 1px solid var(--lg-rule);
+}
+.ledger-page .ledger-strip .ledger-stat:first-child { padding-left: var(--lg-pad); border-left: 0; }
+.ledger-page .ledger-strip .ledger-stat:last-child { padding-right: var(--lg-pad); }
+.ledger-page .ledger-strip .ledger-stat-value { font-size: 26px; font-weight: 620; line-height: 1.1; letter-spacing: -.02em; }
+.ledger-page .ledger-strip .ledger-stat-label { margin-top: 6px; line-height: 1.35; overflow-wrap: anywhere; }
+/* "· example data" under every tile said once what the list's own counter
+   already says; it stays for a screen reader and leaves the picture. */
+.ledger-page .ledger-strip .ledger-stat-note {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ---- the list's card ---- */
+.ledger-panel {
+  container: ledger-panel / inline-size;
+  min-width: 0;
+  border: 1px solid var(--lg-edge);
+  border-radius: var(--lg-radius);
+  background: var(--lg-card);
+  box-shadow: var(--shadow-card, none);
+}
+.ledger-page .ledger-panel-bar {
+  flex-wrap: wrap;
+  gap: var(--s3) var(--s4);
+  padding: 14px var(--lg-pad);
+}
+.ledger-toolbar-groups { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); min-width: 0; }
+.ledger-page .ledger-panel-bar .ledger-toolbar-groups { flex: 1 1 auto; }
+.ledger-page .ledger-panel-bar .ledger-register-note { flex: 0 1 auto; margin-left: auto; }
+.ledger-find { display: inline-flex; align-items: center; }
+.ledger-find input { min-width: 12rem; max-width: 100%; padding: 4px 8px; font: inherit; font-size: 13px; }
+.ledger-page .ledger-find { flex: 1 1 12rem; max-width: 24rem; }
+.ledger-page .ledger-find input,
+.ledger-page .ledger-task-staleness input,
+.ledger-page .write-form :is(input, select, textarea),
+.ledger-page .ledger-reason-input,
+.ledger-page .ledger-editor {
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px solid var(--field-border, var(--line-2));
+  border-radius: var(--lg-control-radius);
+  background-color: var(--field-bg, var(--sheet));
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.4;
+}
+.ledger-page .ledger-find input { width: 100%; min-width: 0; height: var(--control-h); padding: 0 10px; }
+.ledger-page .write-form :is(input:not([type="checkbox"], [type="radio"]), select) { height: var(--control-h); padding-block: 0; }
+.ledger-page :is(.ledger-find input, .ledger-task-staleness input, .write-form :is(input, select, textarea), .ledger-reason-input, .ledger-editor):hover:not(:disabled):not(:focus) {
+  border-color: var(--field-border-hover, var(--ink-3));
+}
+.ledger-page ::placeholder { color: var(--ink-3); opacity: 1; }
+.ledger-scope-filter[hidden] { display: none; }
+.ledger-page .ledger-register-note {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-align: right;
+}
+
+/* Text buttons in the counter line and the notes (Show hidden, Show removed,
+   Undo, Show the changes): underlined words, not a third segmented control. */
+.ledger-hidden-toggle {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.ledger-hidden-toggle:hover { color: var(--ink); }
+.ledger-hidden-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ledger-hidden-toggle[hidden] { display: none; }
+
+/* The notes about the list: a hide and its Undo, Home's waiting filter, a
+   change that arrived while you typed, a history check that failed. */
+.ledger-hidden-note,
+.ledger-chain-note {
+  margin: 0;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.ledger-hidden-note[hidden],
+.ledger-chain-note[hidden] { display: none; }
+.ledger-chain-note[data-state="refused"] { color: var(--s-serious); }
+.ledger-notes > :not([hidden]) {
+  padding: 10px var(--lg-pad);
+  border-top: 1px solid var(--lg-rule);
+  background: var(--lg-well);
+}
+
+/* ---- the add box: a disclosure at the top of the list ---- */
+.ledger-add { border-top: 1px solid var(--lg-rule); }
+.ledger-add:has(> [data-ledger-file-slot][hidden]) { display: none; }
+.ledger-add-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px var(--lg-pad);
+  list-style: none;
+  font-size: var(--text-md, 13.5px);
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.ledger-add-summary::-webkit-details-marker { display: none; }
+.ledger-add-summary:hover { color: var(--ink); background: var(--state-hover, color-mix(in oklab, var(--ink) 4%, transparent)); }
+.ledger-add-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.ledger-add-plus {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--lg-edge);
+  border-radius: var(--lg-control-radius);
+  background: var(--control-bg, transparent);
+  font-size: 15px;
+  line-height: 1;
+}
+.ledger-add-plus::before { content: "+"; }
+.ledger-add[open] > .ledger-add-summary { color: var(--ink); }
+.ledger-add[open] .ledger-add-plus::before { content: "\2212"; }
+.ledger-file { margin: 0; padding: var(--s2) var(--lg-pad) var(--s5); border-top: 1px solid var(--lg-rule); background: var(--lg-well); }
+.ledger-file[hidden] { display: none; }
+/* The summary already names the box. */
+.ledger-add .ledger-file .write-form-title { display: none; }
+.ledger-file .write-form { max-width: 60rem; gap: var(--s3) var(--s4); }
+.ledger-file .write-form-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 62ch;
+  margin: calc(var(--s1) * -1) 0 0;
+}
+.ledger-file .write-form-hint[hidden] { display: none; }
+.ledger-file [data-file-key-row][hidden] { display: none; }
+.ledger-file textarea {
+  min-height: 72px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.ledger-file [data-action-output][data-state="refused"] { color: var(--s-serious); }
+.ledger-file [data-action-output][data-state="confirmed"] { color: var(--s-good); }
+
+/* On Purchases the queue sits inside the card, above every purchase on file. */
+.ledger-panel > .ledger-purchases-slot { padding: 0 var(--lg-pad) var(--s4); border-top: 1px solid var(--lg-rule); }
+.ledger-purchases-slot .ledger-shell { width: 100%; }
+.ledger-page .ledger-prompt-queue .ledger-stat-note {
+  margin-top: 6px;
+  font-size: var(--text-xs, 12px);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* ---- column heads ---- */
+.ledger-table-head {
+  display: grid;
+  grid-template-columns: var(--lg-state) var(--lg-id) minmax(0, 1fr) var(--lg-meta);
+  column-gap: var(--lg-gap);
+  align-items: center;
+  padding: 8px var(--lg-x) 8px var(--lg-pad);
+  border-block: 1px solid var(--lg-edge);
+  background: var(--lg-well);
+  font-size: var(--text-caps, 11px);
+  font-weight: var(--weight-semibold, 600);
+  line-height: 1.35;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+/* No records on screen: the notice is the card's content, not a table. */
+.ledger-panel:not(:has(.ledger-register .ledger-record)) > .ledger-table-head { display: none; }
+.ledger-page .ledger-panel > .ledger-register { border-top: 0; }
+
+/* ========================================================================
+   THE ROWS: state | id | the person's words | who it is for | ×
+   ======================================================================== */
+
+.ledger-record {
+  border-bottom: 1px solid var(--line);
+  transition: background var(--dur-2) var(--ease);
+}
+/* foundation.css sets a page-wide --depth (a shadow weight); a record that
+   does not carry its own outline depth is at the top level. */
+.ledger-page .ledger-record { --depth: 0; border-bottom-color: var(--lg-rule); }
+.ledger-page .ledger-register > .ledger-record:last-child,
+.ledger-page .ledger-register > :last-child > .ledger-record:last-child { border-bottom: 0; }
+.ledger-record:hover { background: var(--state-hover, color-mix(in oklab, var(--ink) 4%, transparent)); }
+.ledger-line { position: relative; }
+.ledger-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: var(--lg-state, 150px) var(--lg-id, 60px) minmax(0, 1fr) var(--lg-meta, 200px);
+  align-items: start;
+  gap: 0 var(--lg-gap, var(--s4));
+  padding: 12px var(--lg-x, 44px) 12px var(--lg-pad, var(--s5));
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+/* Specific enough to hold the grid wherever the page is drawn. */
+.ledger-page .ledger-panel .ledger-row {
+  grid-template-columns: [state] var(--lg-state) [id] var(--lg-id) [main] minmax(0, 1fr) [meta] var(--lg-meta);
+  grid-template-rows: auto;
+}
+/* The R, T and A rows are plain divs -- nothing to press but the controls. */
+div.ledger-row { cursor: default; }
+.ledger-row:focus-visible,
+.ledger-hide:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* The state cell: the glyph, and its words beside it. */
+.ledger-state {
+  grid-column: 1;
+  grid-row: 1;
+  width: 16px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  justify-self: start;
+}
+.ledger-title {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  padding-left: 24px;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 550;
+  color: var(--ink-2);
+  /* A reading measure: on a question row this is the question itself. */
+  max-width: 90ch;
+}
+.ledger-id-cell {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding-left: calc(22px + var(--depth, 0) * 20px);
+}
+/* A refinement (R1.1) steps in under its rule. */
+.ledger-page .ledger-id-cell { grid-column: 2; grid-row: 1; height: 20px; padding-left: calc(var(--depth, 0) * 10px); }
+.ledger-id {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ledger-guides { display: none; }
+
+/* THE PERSON'S OWN SENTENCE: the widest column, at a reading measure. Wraps;
+   at most six lines before it clips, because a register is a list and not a
+   document. overflow-wrap: break-word, NOT anywhere -- a clamped box that
+   breaks a word at its first opportunity loses the rest of it past the clamp
+   (measured on `.node-name .nn-t`, an earlier commit, and the tree card, an earlier commit). */
+.ledger-words {
+  grid-column: 3;
+  grid-row: 1;
+  margin: 0;
+  min-width: 0;
+  max-width: 90ch;
+  font-size: var(--text-base, 14px);
+  line-height: 20px;
+  color: var(--ink);
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  overflow: hidden;
+}
+.ledger-words:empty { display: none; }
+.ledger-page .ledger-panel .ledger-row .ledger-words { padding: 0; }
+/* Who filed it and when, one quiet line under the words. */
+.ledger-provenance {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs, 12px);
+  line-height: 18px;
+  color: var(--ink-3);
+}
+.ledger-filed-by {
+  display: inline;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs, 12px);
+  color: var(--ink-3);
+}
+.ledger-filed-by + .ledger-filed-by::before { content: "·"; margin: 0 6px; color: var(--ink-4); }
+
+/* Who it is for, and the rule's checks or the task's grade, stacked. */
+.ledger-meta {
+  grid-column: 4;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: var(--text-xs, 12px);
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+.ledger-branch-count { color: var(--ink-3); }
+.ledger-agent { color: var(--ink-3); }
+.ledger-age { color: var(--ink-3); }
+/* A rule's checks in words ("1 of 2 checks still open", T1355) wrap. */
+.ledger-agent[data-gates] { white-space: normal; text-align: left; line-height: 1.4; }
+/* A QUESTION'S STATUS IS A SENTENCE, NOT A TOKEN (T1340): its two facts are a
+   wrapping run, so they sit side by side or on two lines, never on top of
+   each other. */
+.ledger-record.is-question .ledger-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  max-width: 100%;
+  line-height: 1.4;
+  white-space: normal;
+}
+.ledger-record.is-question .ledger-agent,
+.ledger-record.is-question .ledger-age { min-width: 0; overflow-wrap: break-word; }
+.ledger-record.is-question .ledger-age { font-family: var(--font-mono); }
+/* A question row has no words line: the question is its title, in the words'
+   column and the words' voice. */
+.ledger-page .ledger-record.is-question .ledger-title {
+  grid-column: 3;
+  padding-left: 0;
+  font-size: var(--text-base, 14px);
+  font-weight: 400;
+  color: var(--ink);
+}
+.ledger-meta > .ledger-scope { order: -1; }
+
+/* WHO IT IS FOR: the one boxed thing on a row, quiet. A rule for everywhere
+   wears a dashed edge. The full name rides in its tooltip (T1516). */
+.ledger-scope {
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 1px 7px;
+  border: 1px solid var(--lg-edge, var(--line-2));
+  border-radius: 3px;
+  background: var(--lg-well, transparent);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs, 12px);
+  line-height: 18px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ledger-scope[data-scope="global"] { border-style: dashed; background: transparent; }
+
+/* The gate chip (a class of care, not a state): a whisper in the warn hue. */
+.ledger-gate {
+  padding: 1px 6px;
+  border: 1px solid color-mix(in oklab, var(--s-warn) 60%, var(--line-2));
+  border-radius: 3px;
+  background: var(--s-warn-wash);
+  color: var(--s-warn-text, var(--s-warn));
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 620;
+  letter-spacing: var(--track-caps);
+}
+
+/* THE × AT THE ROW'S RIGHT EDGE hides a row from this list only. Quiet at
+   rest (--ink-3 still clears 4.5:1 on all five sheets), ink on hover, and the
+   ARMED state -- the first of two presses -- is full ink on a visible edge. */
+.ledger-hide {
+  position: absolute;
+  z-index: 2;
+  right: 10px;
+  top: 11px;
+  width: 24px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+.ledger-record:hover .ledger-hide,
+.ledger-row:focus-visible ~ .ledger-hide { color: var(--ink-2); }
+.ledger-hide:hover,
+.ledger-hide:focus-visible { color: var(--ink); border-color: var(--line-2); }
+.ledger-hide[data-armed="true"] { color: var(--ink); border-color: var(--ink-3); }
+/* A hidden row shown on request: dimmed, with the put-back control. */
+.ledger-record[data-hidden] .ledger-row { opacity: .55; }
+
+/* ---- the state glyphs ----
+   Set OPTICALLY, not geometrically: at one shared size ◐ occupies 12px of
+   advance while ● and ■ occupy 7.2px, so the rail read loud/quiet at random.
+   Each glyph gets the size that lands its INK at the same weight as its
+   neighbours. No state is louder than another. */
+.ledger-glyph {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 750;
+  color: var(--ink-25);
+}
+.ledger-line[data-state="open"] .ledger-glyph { font-size: 16.5px; }      /* ● smallest ink */
+.ledger-line[data-state="gated"] .ledger-glyph { font-size: 13px; }       /* ■ the heaviest mark */
+.ledger-line[data-state="in-progress"] .ledger-glyph { font-size: 11px; } /* ◐ widest ink */
+.ledger-line[data-state="done"] .ledger-glyph { font-size: 14px; }        /* ✓ thin open strokes */
+.ledger-line[data-state="in-progress"] .ledger-glyph,
+.ledger-stat[data-state="in-progress"] .ledger-stat-value {
+  color: color-mix(in oklab, var(--c-coordinator) 72%, var(--ink));
+}
+/* ■ is a mark and takes the yellow; the figure is words and takes the warn
+   text colour (ink on White and Tan, with the yellow bar under it below). */
+.ledger-line[data-state="gated"] .ledger-glyph { color: var(--s-warn); }
+.ledger-stat[data-state="gated"] .ledger-stat-value { color: var(--s-warn-text, var(--s-warn)); }
+.ledger-line[data-state="done"] .ledger-glyph,
+.ledger-stat[data-state="done"] .ledger-stat-value { color: var(--s-good); }
+.ledger-line[data-state="blocked"] .ledger-glyph,
+.ledger-stat[data-state="blocked"] .ledger-stat-value { color: var(--s-serious); }
+/* "Open" is the absence of a status colour: a quiet grey dot on the rail, and
+   plain ink as a figure (ink-25 read as a disabled zero beside lit ones). */
+.ledger-line[data-state="open"] .ledger-glyph { color: var(--ink-25); }
+.ledger-stat[data-state="open"] .ledger-stat-value { color: var(--ink); }
+.ledger-line[data-state="proposed"] .ledger-glyph { font-size: 14px; }       /* ◇ open strokes, like ✓ */
+.ledger-line[data-state="removed"] .ledger-glyph { font-size: 15px; }        /* – a thin dash */
+.ledger-line[data-state="proposed"] .ledger-glyph,
+.ledger-stat[data-state="proposed"] .ledger-stat-value { color: color-mix(in oklab, var(--c-manager) 72%, var(--ink)); }
+.ledger-line[data-state="removed"] .ledger-glyph { color: var(--ink-4); }
+.ledger-line[data-state="removed"] .ledger-words { color: var(--ink-4); text-decoration: line-through; text-decoration-color: var(--line-2); }
+
+/* GATED IS NOT A GOLD STATE ON THIS PAGE (rule: no gold or
+   yellow anywhere). A rule with checks still open is held, not alarming: its
+   solid square carries it, in strong ink, and its figure is plain ink like
+   Open's. Scoped to the page, so the owner popup's own strip is untouched;
+   never on a row the owner is waiting on (those take the picked colours
+   below), and never on a zero (which recedes, next rule). */
+.ledger-page .ledger-line[data-state="gated"]:not([data-owner-status]) .ledger-glyph { color: var(--ink-2); }
+.ledger-page .ledger-stat[data-state="gated"]:not([data-empty]) .ledger-stat-value { color: var(--ink); }
+
+/* A cell reading zero has nothing to be that colour ABOUT: a scarlet 0 under
+   BLOCKED says "look here" while meaning "nothing here". A zero recedes,
+   figure and label together. (Must follow the [data-state] rules.) */
+.ledger-stat[data-empty] .ledger-stat-value { color: var(--ink-4); }
+.ledger-stat[data-empty] .ledger-stat-label { color: var(--ink-3); }
+
+/* ---- under a row: notes, the controls, the editor, the hint ----
+   Everything under a row starts at the words' x, so it reads as that row's
+   own sentence and not the register's. */
+.ledger-page .ledger-panel :is(.ledger-row-note, .ledger-row-actions, .ledger-row-editor, .ledger-resolve-slot, .ledger-row-hint, .ledger-detail) {
+  padding-right: var(--lg-x);
+  padding-left: var(--lg-lead);
+}
+.ledger-row-note {
+  margin: 0;
+  padding-bottom: 8px;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: calc(var(--lg-lead, 0px) + 90ch);
+  box-sizing: border-box;
+}
+.ledger-line + .ledger-row-note,
+.ledger-line + .ledger-row-actions { margin-top: -4px; }
+.ledger-row-hint {
+  margin: 0;
+  padding-bottom: 10px;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.ledger-row-hint[hidden] { display: none; }
+.ledger-row-hint[data-state="refused"] { color: var(--s-serious); }
+.ledger-row-hint[data-state="unavailable"] { color: var(--ink-2); }
+
+/* THE ROW CONTROLS: small real buttons, quiet until the row is in hand. The
+   armed state -- the first of two presses on Delete or Decline -- is full ink
+   on a visible edge, and a danger control arms in the failure colour. */
+.ledger-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 12px;
+}
+.ledger-ctl {
+  min-height: 28px;
+  padding: 4px 11px;
+  border: 1px solid var(--control-border, var(--line-2));
+  border-radius: var(--lg-control-radius, 4px);
+  background: var(--control-bg, transparent);
+  box-shadow: var(--shadow-control, none);
+  color: var(--control-ink, var(--ink-2));
+  font-family: var(--font-ui);
+  font-size: var(--text-sm, 12.5px);
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease);
+}
+.ledger-page .ledger-row-actions .ledger-ctl { background: transparent; box-shadow: none; color: var(--ink-2); }
+.ledger-page .ledger-record:is(:hover, :focus-within) .ledger-row-actions .ledger-ctl { background: var(--control-bg, transparent); box-shadow: var(--shadow-control, none); color: var(--control-ink, var(--ink)); }
+.ledger-ctl:hover,
+.ledger-ctl:focus-visible,
+.ledger-page .ledger-row-actions .ledger-ctl:is(:hover, :focus-visible) { background: var(--control-hover, transparent); border-color: var(--control-border-hover, var(--ink-3)); color: var(--ink); }
+.ledger-ctl:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ledger-ctl.is-danger:hover { color: var(--s-serious); }
+.ledger-ctl[data-armed="true"] { color: var(--ink); border-color: var(--ink); }
+.ledger-ctl.is-danger[data-armed="true"] { color: var(--s-serious); border-color: var(--s-serious); }
+.ledger-ctl:disabled { opacity: .5; cursor: default; }
+
+/* THE EDITOR SLOT under a row: the words box with Save and Cancel, or the
+   reason box before a Decline, in a sunken well that says "this row is open". */
+.ledger-row-editor[hidden] { display: none; }
+.ledger-row-editor:not([hidden]),
+.ledger-resolve-slot:not([hidden]) { padding-top: 4px; padding-bottom: 14px; }
+.ledger-editor {
+  display: block;
+  width: 100%;
+  max-width: 90ch;
+  min-height: 72px;
+  margin-bottom: var(--s2);
+  padding: 8px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.ledger-editor:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.ledger-row-editor .ledger-row-actions,
+.ledger-resolve-slot .ledger-row-actions { padding: 0; }
+.ledger-page .ledger-panel :is(.ledger-row-editor, .ledger-resolve-slot) .ledger-row-actions,
+.ledger-page .ledger-panel :is(.ledger-row-editor, .ledger-resolve-slot) .ledger-row-note { padding-left: 0; padding-right: 0; }
+.ledger-reason { display: grid; gap: var(--s1); max-width: 60ch; margin-bottom: var(--s2); font-size: var(--text-xs, 12px); font-weight: 600; color: var(--ink-2); }
+.ledger-reason-input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+/* THE RESOLVE PICKER'S OWN SLOT (R's Resolve action): its statuses as a row
+   of plain radio choices, the reason field, Save and Cancel. */
+.ledger-resolve-slot[hidden] { display: none; }
+.ledger-resolve-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--s3);
+}
+.ledger-resolve-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px;
+  border: 1px solid var(--lg-edge, var(--line-2));
+  border-radius: var(--lg-control-radius, 3px);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.4;
+  cursor: pointer;
+}
+.ledger-resolve-option:has(input:checked) {
+  color: var(--selected-ink, var(--ink));
+  border-color: var(--selected-border, var(--ink-3));
+  background: var(--selected-bg, transparent);
+}
+/* Visible keyboard focus on the radio itself, not just its label. */
+.ledger-resolve-option input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* A question's detail, opened from its row. */
+.ledger-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--s3);
+  padding-bottom: 12px;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.ledger-detail[hidden] { display: none; }
+.ledger-detail-label {
+  font-size: 11px;
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.ledger-detail code { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-2); min-width: 0; overflow-wrap: anywhere; }
+.ledger-detail-sep { color: var(--ink-4); }
+
+/* A list with nothing to show says so in the card's middle. */
+.ledger-empty {
+  margin: 0;
+  padding: var(--s5) 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.ledger-page .ledger-panel .ledger-empty {
+  padding: var(--s6, 32px) max(var(--lg-pad), calc(50% - 34ch));
+  border-top: 1px solid var(--lg-rule);
+  font-family: var(--font-ui);
+  font-size: var(--text-base, 14px);
+  line-height: 1.6;
+  color: var(--ink-2);
+  text-align: center;
+  text-wrap: balance;
+}
+.ledger-page .ledger-panel .ledger-empty + .ledger-empty { padding-top: 0; border-top: 0; }
+/* The asks and the questions are two halves of one list. */
+.ledger-page .ledger-asks-records { border-bottom: 1px solid var(--lg-rule); }
+.ledger-page .ledger-asks-records:has(> .ledger-empty) { border-bottom: 0; }
+
+/* ========================================================================
+   THE SIDE COLUMN: deciding by number, inactive tasks, the whole-ledger
+   resets. Beside the list on a wide window, under it on a narrow one.
+   ======================================================================== */
+
+.ledger-side {
+  display: grid;
+  align-content: start;
+  gap: 0;
+  min-width: 0;
+  border-top: 1px solid var(--lg-edge);
+}
+.ledger-side-block { min-width: 0; padding: var(--s4) 0; border-top: 1px solid var(--lg-rule); }
+.ledger-side > .ledger-side-block:first-child { border-top: 0; }
+.ledger-side-block:empty { display: none; }
+/* Deciding by number: a closed disclosure, drawn like the add box's. It
+   leaves with its slot when nothing was mounted into it. */
+.ledger-decide-disclosure:has(> [data-ledger-decide-slot]:empty) { display: none; }
+.ledger-decide-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  list-style: none;
+  font-size: var(--text-base, 14px);
+  font-weight: 620;
+  line-height: 1.35;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.ledger-decide-summary::-webkit-details-marker { display: none; }
+.ledger-decide-summary:hover,
+.ledger-decide-disclosure[open] > .ledger-decide-summary { color: var(--ink); }
+.ledger-decide-summary:hover .ledger-add-plus { border-color: var(--control-border-hover, var(--ink-3)); }
+.ledger-decide-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--lg-control-radius); }
+.ledger-decide-disclosure[open] .ledger-add-plus::before { content: "\2212"; }
+.ledger-decide-disclosure > .ledger-decide { margin-top: var(--s3); }
+/* The summary already names the decision form. */
+.ledger-decide-disclosure [data-decision-form] > .write-form-title { display: none; }
+.ledger-page .ledger-side-title,
+.ledger-page .ledger-side .write-surface > header strong {
+  margin: 0 0 var(--s2);
+  font-size: var(--text-base, 14px);
+  font-weight: var(--weight-semibold, 600);
+  line-height: 1.35;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink);
+}
+
+/* The audited actions (src/write-surfaces.js), in the column's own voice. */
+.ledger-page .ledger-side .write-surface {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--ink-2);
+}
+.ledger-page .ledger-side .write-surface > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2) var(--s3);
+  margin-bottom: var(--s3);
+}
+.ledger-page .ledger-side .write-surface > header strong { margin: 0; }
+.ledger-page .ledger-side .write-surface > header [data-write-status] {
+  flex: 1 1 100%;
+  order: 3;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs, 12px);
+  line-height: 1.5;
+}
+.ledger-page .ledger-side .write-surface-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+.ledger-page .ledger-side .write-form { grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
+.ledger-page .write-form-title {
+  font-size: var(--text-sm, 12.5px);
+  font-weight: 620;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink);
+}
+.ledger-page .write-form label { font-size: var(--text-xs, 12px); font-weight: 600; color: var(--ink-2); }
+.ledger-page .write-form :is(input, select) { height: 34px; padding: 0 10px; }
+.ledger-page .write-form textarea { padding: 8px 10px; }
+.ledger-page .write-form output { font-family: var(--font-ui); font-size: var(--text-xs, 12px); line-height: 1.5; }
+.ledger-page :is(.write-form button, .write-surface .write-status-retry) {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid var(--control-border, var(--line-2));
+  border-radius: var(--lg-control-radius);
+  background: var(--control-bg, transparent);
+  box-shadow: var(--shadow-control, none);
+  color: var(--control-ink, var(--ink));
+  font: 600 var(--text-sm, 12.5px)/1.2 var(--font-ui);
+  cursor: pointer;
+}
+.ledger-page :is(.write-form button, .write-surface .write-status-retry):hover:not(:disabled) {
+  background: var(--control-hover, transparent);
+  border-color: var(--control-border-hover, var(--ink-3));
+  color: var(--ink);
+}
+/* The file box's own button is the one thing it asks for: filled. */
+.ledger-page .ledger-file [data-ledger-file] {
+  border-color: var(--action-primary, var(--ink));
+  background: var(--action-primary, var(--ink));
+  color: var(--action-primary-ink, var(--sheet));
+}
+.ledger-page .ledger-file [data-ledger-file]:hover:not(:disabled) {
+  border-color: var(--action-primary-hover, var(--ink));
+  background: var(--action-primary-hover, var(--ink));
+  color: var(--action-primary-ink, var(--sheet));
+}
+.ledger-page .write-form-hint { font-size: var(--text-xs, 12px); line-height: 1.5; color: var(--ink-3); }
+
+/* THE SENTENCE UNDER A FIELD: a hint is a sentence about the field, under
+   it, and it stays there while somebody types. One step quieter than the
+   label; a hint that is the reason a control is off reads as a state. */
+.ledger-write-surface .write-form-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 62ch;
+  margin-top: calc(var(--s1) * -1);
+}
+.ledger-write-surface .write-form-hint[data-state='unavailable'] { color: var(--ink-2); }
+/* [hidden] LOSES TO display:grid: `.write-form` sets display:grid, and an
+   author rule beats the user-agent rule that hides [hidden]. */
+.ledger-write-surface .write-form[hidden] { display: none; }
+
+/* Inactive tasks: one sentence with a number in it. */
+.ledger-task-staleness label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: var(--text-sm, 12.5px);
+  color: var(--ink-2);
+}
+.ledger-page .ledger-task-staleness input { width: 5.5rem; height: 32px; padding: 0 8px; font-variant-numeric: tabular-nums; }
+.ledger-task-staleness .ledger-hidden-note { margin-top: var(--s2); }
+.ledger-task-staleness .ledger-hidden-note[data-state="refused"] { color: var(--s-serious); }
+
+/* The whole-ledger resets and the history review: owner-only, only drawn
+   where this copy can do them, so the block leaves when neither is there. */
+.ledger-manage:not(:has(> .ledger-reset-controls:not([hidden]))) { display: none; }
+.ledger-reset-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.ledger-reset-controls[hidden] { display: none; }
+.ledger-reset-status { margin: 0; font-size: var(--text-xs, 12px); line-height: 1.5; color: var(--ink-2); }
+.ledger-reset-status:empty { display: none; }
+.ledger-reset-dialog {
+  max-width: min(520px, calc(100vw / var(--zoom, 1) - 40px));
+  margin: auto;
+  padding: 24px;
+  border: 1px solid var(--lg-edge, var(--ink-3));
+  border-radius: var(--radius-card, 8px);
+  background: var(--surface-raised, var(--sheet));
+  color: var(--ink);
+  box-shadow: var(--shadow-overlay, 0 18px 48px -12px rgba(0, 0, 0, .35));
+}
+.ledger-reset-dialog::backdrop { background: #0009; }
+.ledger-reset-dialog h2 { margin: 0 0 16px; font-size: var(--text-xl, 17px); font-weight: 620; }
+.ledger-reset-dialog p { line-height: 1.5; }
+.ledger-reset-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.ledger-reset-actions .is-danger { border-color: var(--s-serious); color: var(--s-serious); }
+.ledger-reset-actions .ledger-ctl { min-height: 36px; padding: 8px 12px; }
+
+/* ---- focus, motion ---- */
+.ledger-page :is(input, select, textarea):focus-visible {
+  outline: var(--focus-outline, 2px solid var(--focus-ring));
+  outline-offset: var(--focus-offset, 2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ledger-record,
+  .ledger-add-plus { transition: none !important; }
+}
+body.reduce-motion .ledger-record,
+body.reduce-motion .ledger-add-plus { transition: none !important; }
+
+/* ========================================================================
+   WIDTHS. Container queries on the page's own boxes, so a collapsed
+   navigation rail and the Text size setting reflow it the way a narrower
+   window does.
+   ======================================================================== */
+
+/* A wide workspace puts the side column beside the list. */
+@container ledger-shell (min-width: 1180px) {
+  .ledger-layout { grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem); }
+}
+/* Under the list, the side blocks sit side by side where they fit. */
+@container ledger-shell (max-width: 1179.98px) {
+  .ledger-side {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+    column-gap: var(--s6, 32px);
+  }
+  .ledger-side > .ledger-side-block { border-top: 0; }
+}
+/* A middling card gives the words the room the side columns give up. */
+/* (A container cannot restyle itself, so the column widths are re-set on the
+   card's children, and the lead is recomputed with them.) */
+@container ledger-panel (max-width: 999.98px) {
+  .ledger-panel > * {
+    --lg-state: 128px;
+    --lg-meta: 168px;
+    --lg-lead: calc(var(--lg-pad) + var(--lg-state) + var(--lg-id) + 2 * var(--lg-gap));
+  }
+}
+/* A narrow card: the id and state on one line, the words under them, then
+   who it is for; the column heads go, because there are no columns. */
+@container ledger-panel (max-width: 679.98px) {
+  .ledger-panel > * { --lg-pad: var(--s4); --lg-lead: var(--s4); --lg-x: 40px; }
+  .ledger-panel > .ledger-table-head { display: none; }
+  .ledger-page .ledger-panel .ledger-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "id state" "words words" "meta meta";
+    row-gap: 6px;
+    column-gap: var(--s3);
+  }
+  .ledger-page .ledger-panel .ledger-id-cell { grid-area: id; }
+  .ledger-page .ledger-panel .ledger-state,
+  .ledger-page .ledger-panel .ledger-title { grid-area: state; }
+  .ledger-page .ledger-panel .ledger-words,
+  .ledger-page .ledger-panel .ledger-record.is-question .ledger-title { grid-area: words; }
+  .ledger-page .ledger-panel .ledger-meta { grid-area: meta; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px var(--s3); }
+  .ledger-page .ledger-panel .ledger-record.is-question .ledger-state { grid-area: state; }
+  .ledger-page .ledger-register-note { text-align: left; }
+  .ledger-page .ledger-find { max-width: none; }
+}
+/* A narrow page: the tabs and the reach filter wrap onto a second line
+   rather than running off the edge; the sliding marker steps aside and the
+   chosen segment keeps its own fill (the same answer phone-canvas.css gives). */
+@container ledger-shell (max-width: 599.98px) {
+  .ledger-page .seg:has(> button) { height: auto; flex-wrap: wrap; gap: 2px; }
+  .ledger-page .seg > button { flex: 1 1 auto; justify-content: center; padding-block: 8px; }
+  .ledger-page .seg > .seg-ind { opacity: 0; }
+  .ledger-page .seg > button.on { background: var(--sheet); }
+}
+@media (max-width: 680px) {
+  .ledger-head { padding-bottom: var(--s4); }
+  .ledger-page .ledger-h1 { font-size: 28px; }
+  .ledger-page .ledger-strip .ledger-stat { padding: 10px var(--s3) 12px; }
+  .ledger-page .ledger-strip .ledger-stat:first-child { padding-left: var(--s3); }
+  .ledger-page .ledger-strip .ledger-stat-value { font-size: 22px; }
+}
+
+/* Six figures on the page's own strip ("Waiting for you" joined it). The
+   narrow rule (auto-fit at 560px) still folds it. */
+.ledger-page .ledger-summary { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 560px) {
+  .ledger-page .ledger-summary { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+}
+
+/* ---------------------------------------------------------------------------
+   THE OWNER'S TWO WAITING COLOURS.
+
+   The rule: red for real owner-waiting blockers, three colours
+   a person picks in quick settings, with per-theme sets. src/views/ledger.js
+   writes `data-owner-status` from ownerWaitingStatus(), the same function
+   Home's circle is coloured by; nothing here re-derives it from a status word.
+
+   THE VALUE IS THE PERSON'S, AND ITS FALLBACK IS THE THEME'S.
+   mountHomeStatusColors puts the picked colour on this page as
+   --home-ledger-blocked and --home-ledger-attention, per theme; the fallback
+   after the comma is what renders before that runs, and --s-serious/--s-warn
+   are already redefined by every theme (src/theme-refinements.css).
+
+   AFTER the [data-state] rules on purpose -- same specificity (0,3,0), so
+   source order is what makes the owner's answer win over the state's.
+
+   There is no third rule: `clear` and `unknown` are verdicts about the whole
+   read, and no single record is either. The third picked colour is spent on
+   Home's circle. */
+.ledger-line[data-owner-status="blocked"] .ledger-glyph {
+  color: var(--home-ledger-blocked, var(--s-serious));
+}
+.ledger-line[data-owner-status="attention"] .ledger-glyph {
+  color: var(--home-ledger-attention, var(--s-warn));
+}
+/* THE STRIP AGREES WITH THE RAIL: the two tiles that count owner-waiting rows
+   take the same two picked colours. :not([data-empty]) keeps a zero receding. */
+.ledger-stat[data-state="blocked"]:not([data-empty]) .ledger-stat-value {
+  color: var(--home-ledger-blocked, var(--s-serious));
+}
+.ledger-stat[data-state="proposed"]:not([data-empty]) .ledger-stat-value {
+  color: var(--home-ledger-attention, var(--s-warn));
+}
+/* ON WHITE AND TAN THE ASK IS INK ON YELLOW, NEVER YELLOW TEXT. A yellow the
+   eye reads as yellow cannot carry a 14px glyph on a light ground, and the
+   ochre that could is the rejected brown. So the ◇
+   turns ink and sits on a small chip of the picked colour, and the two
+   figures that count owner-waiting and held rows turn ink over a bar of it.
+   The dark sheets keep the rules above: the yellow there reads as text. */
+:root:is([data-theme="white"], [data-theme="tan"]) .ledger-line[data-owner-status="attention"] .ledger-glyph {
+  display: inline-grid; place-items: center; width: 18px; height: 18px;
+  border-radius: 3px;
+  background: var(--home-ledger-attention, var(--s-warn));
+  color: var(--ink);
+}
+:root:is([data-theme="white"], [data-theme="tan"]) .ledger-stat[data-state="proposed"]:not([data-empty]) .ledger-stat-value,
+:root:is([data-theme="white"], [data-theme="tan"]) .ledger-stat[data-state="gated"]:not([data-empty]) .ledger-stat-value {
+  color: var(--ink);
+  text-decoration: underline 3px var(--home-ledger-attention, var(--s-warn));
+  text-underline-offset: 6px;
+  text-decoration-skip-ink: none;
+}
+:root:is([data-theme="white"], [data-theme="tan"]) .ledger-stat[data-state="gated"]:not([data-empty]) .ledger-stat-value { text-decoration-color: var(--s-warn); }
+
+/* ===========================================================================
+   THE TRIAGE STRIP (rule: blocked and
+   waiting work should be quick to scan). The counts card became a row of filled
+   tiles, one per state, in triage order; each is also the list's filter
+   (views/ledger.js, [data-ledger-status-filter]). A tile is filled in its
+   state's colour, so the eye finds Blocked and Waiting for you by colour
+   before it reads a word; a zero rests as a quiet well. The chosen tile
+   carries a ring of its own colour. "All states" is the resting choice.
+   =========================================================================== */
+.ledger-page .ledger-strip {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--s2);
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.ledger-page .ledger-strip .ledger-stat {
+  --tile-tone: var(--ink-3);
+  --tile-mix: 7%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 74px;
+  margin: 0;
+  padding: 12px 14px 11px;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: color-mix(in oklab, var(--tile-tone) var(--tile-mix), var(--surface-base));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tile-tone) calc(var(--tile-mix) * 1.6), transparent);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+}
+.ledger-page .ledger-strip .ledger-stat:first-child,
+.ledger-page .ledger-strip .ledger-stat:last-child { padding-inline: 14px; border-left: 0; }
+.ledger-page .ledger-strip .ledger-stat[data-state="blocked"] { --tile-tone: var(--home-ledger-blocked, var(--s-serious)); --tile-mix: 13%; }
+.ledger-page .ledger-strip .ledger-stat[data-state="proposed"] { --tile-tone: var(--home-ledger-attention, var(--s-warn)); --tile-mix: 30%; }
+.ledger-page .ledger-strip .ledger-stat[data-state="in-progress"] { --tile-tone: var(--c-coordinator); --tile-mix: 10%; }
+.ledger-page .ledger-strip .ledger-stat[data-state="done"] { --tile-tone: var(--s-good); --tile-mix: 10%; }
+/* ON THE DARK SHEETS A DIM YELLOW IS OLIVE, the rejected mustard. So the
+   waiting tile and chip there are the clean yellow
+   itself, nearly solid, with dark ink on it -- the same ink-on-yellow White
+   and Tan use. Blocked steps up to match its weight. */
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-strip .ledger-stat[data-state="proposed"]:not(:disabled) { --tile-mix: 100%; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-strip .ledger-stat[data-state="proposed"]:not(:disabled) :is(.ledger-stat-value, .ledger-stat-label) { color: var(--action-primary-ink); }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-strip .ledger-stat[data-state="proposed"]:not(:disabled) .ledger-stat-label::before { background: var(--action-primary-ink); }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-strip .ledger-stat[data-state="proposed"][aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--action-primary-ink), 0 0 0 2px var(--tile-tone); }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-strip .ledger-stat[data-state="blocked"] { --tile-mix: 32%; }
+/* "All states" is the page's own card: the base layer, lifted. */
+.ledger-page .ledger-strip .ledger-stat-all {
+  background: var(--surface-base);
+  box-shadow: inset 0 0 0 1px var(--border-hairline), var(--shadow-card);
+}
+.ledger-page .ledger-strip .ledger-stat-value { font-size: 26px; font-weight: 640; line-height: 1.05; letter-spacing: -.02em; }
+.ledger-page .ledger-strip .ledger-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--ink-2);
+  line-height: 1.25;
+}
+/* The dot: the state's colour, full strength, beside its name. */
+.ledger-page .ledger-strip .ledger-stat[data-state] .ledger-stat-label::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--tile-tone);
+}
+.ledger-page .ledger-strip .ledger-stat[data-state="open"] .ledger-stat-label::before,
+.ledger-page .ledger-strip .ledger-stat[data-state="gated"] .ledger-stat-label::before { background: var(--ink-3); }
+/* On White and Tan the waiting figure sits on its own yellow: no second bar. */
+:root:is([data-theme="white"], [data-theme="tan"]) .ledger-page .ledger-strip .ledger-stat .ledger-stat-value { text-decoration: none; }
+.ledger-page .ledger-strip .ledger-stat:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--tile-tone) calc(var(--tile-mix) + 6%), var(--surface-base));
+}
+.ledger-page .ledger-strip .ledger-stat-all:hover { background: var(--control-hover); }
+/* THE CHOSEN TILE: a ring of its own colour, and a deeper fill. */
+.ledger-page .ledger-strip .ledger-stat[data-state][aria-pressed="true"] {
+  background: color-mix(in oklab, var(--tile-tone) calc(var(--tile-mix) + 8%), var(--surface-base));
+  box-shadow: inset 0 0 0 2px var(--tile-tone), var(--shadow-1);
+}
+.ledger-page .ledger-strip .ledger-stat[data-state="open"][aria-pressed="true"],
+.ledger-page .ledger-strip .ledger-stat[data-state="gated"][aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink-2), var(--shadow-1); }
+.ledger-page .ledger-strip .ledger-stat-all[aria-pressed="false"] { background: transparent; box-shadow: inset 0 0 0 1px var(--border-default); }
+.ledger-page .ledger-strip .ledger-stat-all[aria-pressed="false"] .ledger-stat-value { color: var(--ink-2); }
+/* A zero rests: a quiet well, no dot colour, not pressable. */
+.ledger-page .ledger-strip .ledger-stat:disabled {
+  cursor: default;
+  background: var(--seg-bg);
+  box-shadow: none;
+}
+.ledger-page .ledger-strip .ledger-stat:disabled .ledger-stat-label::before { background: var(--ink-4); opacity: .55; }
+.ledger-page .ledger-strip .ledger-stat:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+@container ledger-shell (max-width: 899.98px) {
+  .ledger-page .ledger-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@container ledger-shell (max-width: 519.98px) {
+  .ledger-page .ledger-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ledger-page .ledger-strip .ledger-stat { min-height: 64px; padding: 10px 12px; }
+  .ledger-page .ledger-strip .ledger-stat-value { font-size: 22px; }
+}
+
+/* THE ROW'S STATE IS A FILLED CHIP: the glyph (the rail's own mark and
+   colour) inside a small square-cornered chip tinted by the state, and the
+   state's name in ink. Blocked and waiting rows are found by colour. The
+   question rows' title is the question itself and keeps its own look. */
+.ledger-page .ledger-panel .ledger-record:not(.is-question) .ledger-state {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 24px;
+  margin-left: 4px;
+}
+.ledger-page .ledger-panel .ledger-record:not(.is-question) .ledger-title {
+  justify-self: start;
+  align-self: start;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 2px 9px 2px 26px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--chip-tone, var(--ink-3)) var(--chip-mix, 9%), var(--surface-base));
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 20px;
+}
+.ledger-page .ledger-line:is([data-state="blocked"], [data-state="blocked-external"], [data-state="not-possible-as-asked"], [data-owner-status="blocked"]) {
+  --chip-tone: var(--home-ledger-blocked, var(--s-serious)); --chip-mix: 14%;
+}
+.ledger-page .ledger-line:is([data-state="proposed"], [data-owner-status="attention"]) {
+  --chip-tone: var(--home-ledger-attention, var(--s-warn)); --chip-mix: 32%;
+}
+.ledger-page .ledger-line:is([data-state="in-progress"], [data-state="partial"]) { --chip-tone: var(--c-coordinator); --chip-mix: 11%; }
+.ledger-page .ledger-line:is([data-state="done"], [data-state="answered"], [data-state="approved"]) { --chip-tone: var(--s-good); --chip-mix: 11%; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-line:is([data-state="proposed"], [data-owner-status="attention"]) { --chip-mix: 100%; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-panel .ledger-line:is([data-state="proposed"], [data-owner-status="attention"]) :is(.ledger-title, .ledger-glyph) { color: var(--action-primary-ink); }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-line:is([data-state="blocked"], [data-state="blocked-external"], [data-state="not-possible-as-asked"], [data-owner-status="blocked"]) { --chip-mix: 32%; }
+.ledger-page .ledger-panel .ledger-line:is([data-state="removed"], [data-state="superseded"]) .ledger-title { background: transparent; color: var(--ink-3); }
+/* Inside the chip the ◇ needs no chip of its own on White and Tan: the chip is
+   already the yellow. */
+:root:is([data-theme="white"], [data-theme="tan"]) .ledger-page .ledger-panel .ledger-line[data-owner-status="attention"] .ledger-glyph { background: transparent; }
+.ledger-page [data-ledger-status-empty] .ledger-hidden-toggle { margin-left: 4px; }

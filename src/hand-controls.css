@@ -1,0 +1,30 @@
+.hand-control-pointer {
+  position: fixed; z-index: 2147483647; width: 22px; height: 22px; border: 3px solid #087faa;
+  border-radius: 50%; background: #fff9; transform: translate(-50%, -50%); pointer-events: none;
+  box-shadow: 0 0 0 2px white;
+}
+.hand-control-pointer[data-pinching="true"] { background: #087faa; }
+.hand-control-target { outline: 3px solid #087faa !important; outline-offset: 3px !important; }
+.hand-control-video { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.hand-control-hud {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 2147483646;
+  display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 10px;
+  background: #fff; color: #17242c; box-shadow: 0 2px 12px #0003; font: 14px system-ui;
+  box-sizing: border-box; max-width: calc(100vw / var(--zoom, 1) - 32px);
+}
+.hand-control-hud button { padding: 8px 12px; cursor: pointer; }
+.hand-control-choices {
+  position: fixed; z-index: 2147483646; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; gap: 8px; padding: 16px;
+  box-sizing: border-box; max-height: calc(90vh / var(--zoom, 1)); overflow: auto;
+  width: min(440px, calc(90vw / var(--zoom, 1)));
+  background: white; color: #17242c; border: 2px solid #087faa; border-radius: 12px;
+  box-shadow: 0 4px 24px #0005; font: 16px system-ui;
+}
+.hand-control-choices button { padding: 10px; text-align: left; color: inherit; background: #f1f5f7; }
+.hand-control-choices button:disabled { opacity: .45; }
+.hand-settings { padding: 18px; border: 1px solid var(--line, #ccd0d3); border-radius: 12px; margin-block: 16px; }
+.hand-settings p { margin-block: 10px; line-height: 1.5; }
+.hand-settings label { display: flex; align-items: center; gap: 12px; }
+.hand-settings input { width: 22px; height: 22px; }
+.hand-settings output { display: block; font-size: 13px; margin-block: 10px; }

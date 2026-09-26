@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-theme="white">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/src/styles.css"><link rel="stylesheet" href="/src/theme-refinements.css">
+  <link rel="stylesheet" href="/src/phone-canvas.css"><link rel="stylesheet" href="/src/first-use-guidance.css">
+  <link rel="stylesheet" href="/src/app-navigation.css">
+  <style>
+    main { padding: 100px 24px 40px; min-height: 100vh; }
+    .test-field { margin: 28px auto; max-width: 720px; padding: 20px; border: 1px solid var(--line-2); border-radius: 10px; }
+    .test-field input { width: 100%; min-height: 44px; background: var(--surface); color: var(--ink); }
+    .test-field button { min-height: 44px; }
+    .fixture-computers { display: flex; align-items: center; gap: 16px; margin: 20px 0; }
+    .fixture-computers[hidden] { display: none; }
+    .fixture-computers .tabs { display: flex; gap: 8px; }
+    dialog { max-width: 80%; }
+  </style>
+  <title>Feature guide interaction fixture</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="app-nav-brand"><a class="app-nav-home" href="#/" aria-label="ToolsEnabled — Home"><span class="app-nav-mark">TE</span><span class="app-nav-wordmark">ToolsEnabled</span></a><button class="app-nav-collapse" type="button" data-navigation-collapse aria-controls="tb-nav" aria-label="Collapse navigation">↔</button></div>
+    <div class="tb-side tb-left"><button class="icon-btn" id="nav-back" aria-label="Back">‹</button></div>
+    <a class="phone-home-link" href="#home">toolsenabled.ai</a>
+    <nav class="tb-nav" id="tb-nav" aria-label="Primary navigation">
+      <a href="#/" data-route="home">Home</a><a href="#/computers" data-route="computers">Computers</a><a href="#/metrics" data-route="metrics">Metrics</a><a href="#/research" data-route="research">Research</a><a href="#/comms" data-route="comms">Messages</a><a href="#/ledger" data-route="ledger">Ledger</a><a href="#/vault" data-route="vault">Vault</a><a href="#/settings" data-route="settings">Settings</a>
+    </nav>
+    <div class="tb-side tb-right"><button class="icon-btn" id="open-settings" aria-label="Quick settings"><span class="tb-settings-label">Quick settings</span></button><button class="icon-btn" id="nav-next" aria-label="Next page">›</button></div></header>
+  <main id="stage"><section id="feature-root">
+    <h1>A disposable feature page</h1>
+    <div class="fixture-computers comp-topbar" hidden><div class="tabs"><button>Agents</button><button>Computers</button></div><button class="tree-chat-add" aria-label="Create a tree">+</button><button class="tree-chat-chooser">Choose a tree</button></div>
+    <div class="test-field chat-input"><label>Your request<input id="draft" value="A draft to keep"></label><button id="send">Send</button></div>
+    <div class="test-field" data-activity-overview><h2>Activity overview</h2><p>Two tasks need your attention.</p></div>
+    <div class="test-field"><button data-chat-expand>Full view</button><label>Talk to <select data-voice-target><option>A running assistant</option></select></label></div>
+    <div class="test-field"><button data-chat-view="coordinator">Coordinator</button><button data-chat-view="everything">Everything</button></div>
+  </section></main>
+  <dialog id="consent"><h2>Permission request</h2><button id="consent-close">Keep current permissions</button></dialog>
+  <script type="module">
+    import { mountFirstUseGuidance } from '/src/first-use-guidance.js'
+    import { mountAppNavigation } from '/src/app-navigation.js'
+    const query = new URLSearchParams(location.search)
+    const storage = query.has('refuse-storage') ? { getItem() { throw Error('unavailable') }, setItem() { throw Error('unavailable') } } : localStorage
+    window.sent = 0
+    document.querySelector('#send').addEventListener('click', () => window.sent++)
+    document.querySelector('#draft').focus()
+    window.guidance = mountFirstUseGuidance({ storage })
+    window.fixtureNavigation = mountAppNavigation({ layout: query.get('layout') || 'side' })
+    window.visit = (name = 'home') => {
+      // This fixture exercises guidance and navigation only. It never mounts
+      // a product page, provider, or live bridge.
+      document.body.dataset.currentRoute = name
+      document.querySelector('.fixture-computers').hidden = name !== 'computers'
+      window.guidance.visit(name, document.querySelector('#feature-root'))
+    }
+    document.querySelector('#tb-nav').addEventListener('click', event => {
+      const link = event.target.closest('[data-route]')
+      if (!link) return
+      event.preventDefault()
+      window.visit(link.dataset.route)
+    })
+    document.querySelector('#consent-close').onclick = () => document.querySelector('#consent').close()
+    window.visit(query.get('route') || 'home')
+  </script>
+</body>
+</html>

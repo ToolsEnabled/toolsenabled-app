@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ledger reset — isolated browser fixture</title>
+<body><main class="view-pad ledger-page">
+<h1>Ledger reset fixture</h1><p>Fictional records. No native profile is connected.</p>
+<div data-ledger-resets class="ledger-reset-controls">
+<button class="ledger-ctl" data-reset-kind="T">Reset tasks…</button>
+<button class="ledger-ctl" data-reset-kind="R">Reset rules…</button>
+<button class="ledger-ctl" data-reset-kind="A">Reset asks…</button>
+<button class="ledger-ctl" data-reset-kind="P">Reset purchases…</button>
+</div><p data-ledger-reset-status role="status"></p>
+</main><script type="module">
+import '../../../src/styles.css'
+import '../../../src/ledger.css'
+import { mountLedgerResetControls } from '../../../src/ledger-reset-controls.js'
+window.fixture = { calls: [], refreshed: [], fail: false, delay: 0, pending: false }
+const bridge = {
+ async ledgerResetPreview({kind}) { fixture.calls.push({operation:'preview',kind}); return {kind,count:42,promptCount:7,revision:19,token:'a'.repeat(64),pending:fixture.pending} },
+ async ledgerResetConfirm(request) { fixture.calls.push({operation:'confirm',...request}); await new Promise(r=>setTimeout(r,fixture.delay)); return fixture.fail ? {ok:false,reason:'The Ledger changed. Close this warning and review the current count.'} : {ok:true,kind:request.kind,count:42} },
+}
+fixture.controls = mountLedgerResetControls(document.querySelector('main'),{bridge,onReset:reply=>fixture.refreshed.push(reply)})
+fixture.controls.update({enabled:true})
+</script></body></html>

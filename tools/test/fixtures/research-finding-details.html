@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" data-theme="white">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Research finding details fixture</title></head>
+<body><main id="fixture"></main><script type="module">
+import '/src/styles.css'
+import '/src/theme-refinements.css'
+import { researchView } from '/src/views/research.js'
+import { setExampleMode, DATA_SOURCE_EVENT } from '/src/data-source.js'
+
+const projectId = 'rp-' + 'a'.repeat(36)
+const injected = '<img src=x onerror="window.findingExecuted=true"><a href="javascript:alert(1)">stored text</a>'
+const record = {
+  findingId: 'F-2026-0908-001', projectId, claim: 'Synthetic comparison: further replication is needed.', status: 'confirmed',
+  evidence: { runId: 'synthetic-run', observations: [0, false], description: injected, artifact: 'synthetic/' + 'a'.repeat(1024) },
+  method: 'Compare the recorded runs.\n' + injected, confidence: 'Tentative; one synthetic sample.',
+  falsifier: 'An independent replication with the opposite result.',
+  dissents: [{ claim: 'The comparison lacks a control.', note: injected }],
+  supersedes: 'F-2026-0907-001', createdAtMs: 1788825600000, updatedAtMs: 1788825660000,
+}
+const sparse = { findingId: 'F-2026-0908-002', projectId, claim: 'Synthetic finding with no details recorded.', status: 'open', dissents: [] }
+const state = { calls: [], writes: [], mode: 'available', record, injected }
+const account = new Map()
+const nativeFetch = window.fetch.bind(window)
+window.fetch = (input, options) => {
+  const url = new URL(typeof input === 'string' ? input : input.url, location.href)
+  if (url.origin !== location.origin || url.pathname.startsWith('/v1/')) throw Error('Fixture blocked a non-fixture request')
+  return nativeFetch(input, options)
+}
+window.mcShell = {
+  getBridgeProof: async () => { throw Error('Fixture does not use native bootstrap') },
+  getBridgeTransport: async () => async (pathname, options = {}) => {
+    state.calls.push({ pathname, body: options.body })
+    if (pathname.endsWith('/research-snapshot')) return { ok: true, receipt: {
+      projects: [{ projectId, name: 'Synthetic evidence project', enabled: true, status: 'active' }],
+      experiments: {}, assignments: [], settings: { pipelineEnabled: false }, lifecycle: { running: false },
+    } }
+    if (pathname.endsWith('/research-findings')) return state.mode === 'unavailable'
+      ? { ok: false, reason: 'Synthetic findings storage unavailable' }
+      : { ok: true, receipt: { findings: state.mode === 'empty' ? [] : [record, sparse] } }
+    return { ok: false, reason: 'Synthetic service unavailable' }
+  },
+}
+window.mcAccount = {
+  getSetting: async key => ({ ok: true, key, value: account.get(key) ?? null }),
+  putSetting: async (key, value) => { state.writes.push({ key, value }); return { ok: false, reason: 'Fixture does not permit writes' } },
+}
+localStorage.clear()
+localStorage.setItem('mc.research.project', projectId)
+setExampleMode(false)
+const view = researchView()
+document.querySelector('#fixture').append(view.el)
+window.findingFixture = {
+  state,
+  refresh(mode) { state.mode = mode; window.dispatchEvent(new CustomEvent(DATA_SOURCE_EVENT)) },
+  destroy() { view.destroy(); view.el.remove() },
+}
+</script></body>
+</html>

@@ -1,0 +1,77 @@
+/* Build task set — sets in, how many, distribution, generate; the rest under
+   Advanced. Hairlines, theme tokens only, controls size to their content.
+   .benchmark-builder styles label/button at (0,1,1) and `label > input` at
+   (0,2,2); compact rules here carry a class to win. */
+.prompt-set-editor { max-width: 1120px; color: var(--ink); }
+.ps-head { margin: 4px 0 6px; }
+.ps-head h3 { margin: 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.prompt-set-editor .ps-intro { margin: 0; max-width: 80ch; }
+.ps-step { padding: 18px 0 6px; border-top: 1px solid var(--line-2); margin-top: 14px; }
+.ps-step-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 10px; }
+.prompt-set-editor h4 { margin: 0; font-size: 16px; font-weight: 650; }
+.prompt-set-editor h5 { margin: 10px 0 4px; font-size: 14px; font-weight: 650; }
+.ps-step-n { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 10px; border: 1px solid var(--ink-2); border-radius: 50%; font-family: var(--font-mono); font-size: 12px; font-weight: 500; vertical-align: 2px; }
+.ps-step-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ps-hint, .ps-meta { color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
+.prompt-set-editor .ps-hint { margin: 6px 0; max-width: 90ch; }
+.prompt-set-editor .ps-hint:empty, .prompt-set-editor .ps-hint[hidden] { display: none; }
+.ps-meta { color: var(--ink-3); font-size: 12.5px; font-weight: 400; }
+.prompt-set-editor .ps-counts { margin: 10px 0 0; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.prompt-set-editor .ps-counts:empty { display: none; }
+.prompt-set-editor .ps-counts b { color: var(--ink); font-weight: 650; }
+.ps-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.prompt-set-editor button.ps-small { min-height: 0; padding: 3px 9px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+.prompt-set-editor button.ps-link { min-height: 0; padding: 0; border: 0; background: transparent; text-align: left; font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.prompt-set-editor .bench-primary { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; }
+.prompt-set-editor .bench-primary:disabled { background: transparent; color: var(--ink-3); border-color: var(--line-2); opacity: 1; }
+.prompt-set-editor label.ps-field { gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+/* (0,3,2): above .benchmark-builder's label > input rule, which also sizes radios. */
+.prompt-set-editor .ps-step label.ps-field > input, .prompt-set-editor .ps-advanced label.ps-field > input, .prompt-set-editor .ps-step label.ps-field > select, .prompt-set-editor .ps-advanced label.ps-field > select { min-height: 0; width: auto; min-width: 0; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+.prompt-set-editor .ps-step label.ps-field input[type="number"] { width: 100px; }
+.prompt-set-editor .ps-step label.ps-tick > input, .prompt-set-editor .ps-advanced label.ps-tick > input { width: auto; min-width: 0; flex: 0 0 auto; }
+.prompt-set-editor label.ps-inline { flex-direction: row; align-items: center; gap: 8px; }
+.prompt-set-editor label.ps-tick { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--ink); }
+.prompt-set-editor label.ps-tick > input { min-height: 0; margin: 0; }
+.ps-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
+.ps-actions p { margin: 0; }
+
+/* 1. sets */
+.prompt-set-sets { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0; padding: 10px 0; border-block: 1px solid var(--line-2); }
+.prompt-set-sets[hidden] { display: none !important; }
+.prompt-set-editor label.prompt-set-set { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+.prompt-set-editor label.prompt-set-set > input { min-height: 0; margin: 0; }
+.prompt-set-set small { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.prompt-set-sets > p { margin: 0; }
+
+/* 2. how many */
+.ps-choices { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+
+/* 3. distribution */
+.prompt-set-table { overflow-x: auto; margin: 6px 0; }
+.prompt-set-table table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.prompt-set-table th, .prompt-set-table td { padding: 6px 12px 6px 0; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--line); }
+.prompt-set-table thead th { border-bottom: 1px solid var(--line-2); color: var(--ink-2); font-size: 12.5px; font-weight: 600; }
+.prompt-set-table .ps-n { text-align: right; white-space: nowrap; }
+.prompt-set-table thead .ps-n { text-align: right; }
+.prompt-set-table input { width: 90px; min-width: 0; min-height: 0; padding: 4px 6px; font-size: 13.5px; }
+.ps-track { display: inline-block; vertical-align: middle; width: 120px; height: 9px; margin-right: 8px; }
+.prompt-set-bar { display: block; height: 100%; min-height: 0; border-radius: 0; }
+.prompt-set-bar.prompt-set-pool { background: var(--ink-4); }
+.prompt-set-bar.prompt-set-sample { background: var(--ink); }
+.prompt-set-editor [data-ps-inspector] { margin: 12px 0; padding-top: 10px; border-top: 1px solid var(--line-2); }
+.prompt-set-editor [data-ps-inspector][hidden] { display: none !important; }
+.prompt-set-editor pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 400px; overflow-y: auto; margin: 6px 0 0; }
+
+/* 4. generate */
+.prompt-set-editor label.ps-rationale { max-width: 900px; }
+.prompt-set-editor .ps-step label.ps-rationale > textarea { min-height: 0; font-size: 14px; font-family: var(--font-ui); line-height: 1.5; }
+
+/* advanced */
+.prompt-set-editor details.ps-advanced { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line-2); }
+.prompt-set-editor details.ps-advanced > summary { padding: 6px 0; font-size: 14px; font-weight: 500; cursor: pointer; }
+.ps-advanced-grid { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 22px; margin: 8px 0; }
+.ps-then { display: flex; flex-wrap: wrap; gap: 12px 22px; }
+.prompt-set-studies { display: grid; gap: 6px; margin: 8px 0; }
+.prompt-set-editor .ps-advanced details { margin: 8px 0; }
+.prompt-set-editor .ps-advanced details > summary { font-size: 13.5px; }
+@media (max-width: 700px) { .ps-choices { align-items: flex-start; } }

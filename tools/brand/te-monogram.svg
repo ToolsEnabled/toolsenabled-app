@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 590" role="img" aria-labelledby="title desc">
+  <title id="title">ToolsEnabled TE monogram</title>
+  <desc id="desc">A simple bold italic black T and E monogram on a transparent background.</desc>
+  <g fill="#000000" transform="translate(65 0) skewX(-14)">
+    <rect x="35" y="30" width="425" height="110" rx="20"/>
+    <rect x="180" y="120" width="140" height="440" rx="22"/>
+    <rect x="480" y="30" width="140" height="530" rx="22"/>
+    <rect x="480" y="30" width="430" height="110" rx="20"/>
+    <rect x="540" y="225" width="330" height="100" rx="18"/>
+    <rect x="540" y="450" width="330" height="110" rx="20"/>
+  </g>
+</svg>

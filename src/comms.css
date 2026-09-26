@@ -1,0 +1,249 @@
+/* THE MESSAGES PAGE (#/comms). Layout and look only: what the feed reads, how
+   often and what a row says stay in src/views/comms.js and the comms-*.js
+   modules.
+
+   THE 2026-09-23 PASS, in the Vault and Ledger register: a titled page, then
+   ONE card holding the conversation list on the left and the open
+   conversation on the right. The list is a quiet well; the conversation has a
+   title, one toolbar (search, Filters, Clear filters) at one control height,
+   and a log of rows parted by hairlines, each with the sender, the recipient,
+   the message and, at the row's right edge, the time. Row buttons (Details,
+   Copy) stay quiet until the row is hovered or focused. No gold: a delivery
+   that is not confirmed is marked by a ring in ink. Every colour is a theme
+   token, so White, Tan, Black, Ember and Cobalt need nothing of their own. */
+.comms {
+  width: calc(100% - 2 * clamp(16px, 3vw / var(--zoom, 1), 40px)); height: 100%; min-height: 0; margin: 0 auto;
+  padding: var(--s2) 0 16px; display: flex; flex-direction: column; container-type: inline-size;
+  --comms-muted: var(--ink-3);
+  --comms-card: var(--surface-base, var(--sheet));
+  --comms-well: var(--surface-canvas, var(--surface));
+  --comms-edge: var(--border-default, var(--line-2));
+  --comms-rule: var(--border-hairline, var(--line));
+  --comms-control-h: var(--control-h, 32px);
+  --comms-radius: var(--radius-card, var(--r-lg));
+  --comms-control-radius: var(--radius-control, var(--r-md));
+  --comms-selected: var(--selected-bg, color-mix(in srgb, var(--accent-2) 9%, var(--sheet)));
+  --comms-inset: max(24px, calc((100% - 820px) / 2));
+  color: var(--ink);
+}
+.comms [hidden] { display: none !important; }
+
+/* ---- the page head ---- */
+/* One page-title treatment across the upgraded pages (design rule):
+   36px, 610, -.035em, the lede under it, as on Vault, Ledger,
+   Metrics and Checkout. */
+.comms-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: var(--s3) 0 var(--s5); flex: none; }
+.comms-heading { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); min-width: 0; }
+.comms .head-title { margin: 0; color: var(--ink); font-size: 36px; font-weight: 610; line-height: 1.15; letter-spacing: -.035em; white-space: nowrap; }
+.comms .head-sub { margin: 0; color: var(--ink-2); font-size: var(--text-base, 14px); line-height: 1.5; }
+.comms .spacer { flex: 1; }
+.comms .head-live { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); font-size: var(--text-xs, 12px); white-space: nowrap; }
+.comms .head-live i { width: 7px; height: 7px; border-radius: var(--radius-pill, 50%); background: var(--s-good); }
+.comms:not([data-projection-state="ready"]) .head-live i { background: var(--ink-3); }
+/* The example is said in the app's one example chip (Home panel, Computers). */
+.comms-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0 7px 0 6px; border: 1px solid transparent; border-radius: var(--radius-xs, 3px); background: color-mix(in srgb, var(--border-ink) 6%, var(--surface-canvas)); color: var(--ink-2); font-size: var(--text-xs, 12px); font-weight: var(--weight-medium, 500); line-height: 18px; white-space: nowrap; }
+/* The one example chip (details pass): the Home panel's quiet filled chip with a dot, not an outlined tag. */
+.comms-badge::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: var(--radius-pill, 50%); background: var(--ink-3); }
+.comms-refresh {
+  display: grid; place-items: center; width: 32px; height: 32px; padding: 0;
+  border: 1px solid var(--control-border, var(--line-2)); border-radius: var(--comms-control-radius);
+  background: var(--control-bg); box-shadow: var(--shadow-control, none); color: var(--ink-2); cursor: pointer;
+}
+.comms-refresh svg { width: 16px; height: 16px; }
+.comms-refresh:hover:not(:disabled) { background: var(--control-hover); border-color: var(--control-border-hover, var(--ink-3)); color: var(--ink); }
+.comms-refresh:disabled { cursor: not-allowed; color: var(--ink-3); background: var(--control-disabled-bg, transparent); box-shadow: none; }
+
+/* ---- a notice above the card: the reader is missing, or a stale read ---- */
+.comms-notice { flex: none; margin-bottom: 12px; padding: 12px 16px; border: 1px solid var(--comms-edge); border-radius: var(--comms-radius); background: var(--comms-card); box-shadow: var(--shadow-card, none); color: var(--ink-2); font-size: 13px; line-height: 1.55; }
+.comms .host-absent { margin: 24px auto; max-width: 560px; font-size: 13px; }
+.comms-notice .host-absent { margin: 0; max-width: none; }
+.comms .host-absent-title { margin: 0 0 4px; color: var(--ink); font-size: var(--text-base, 14px); font-weight: var(--weight-semibold, 600); }
+.comms .host-absent :is(.host-absent-reason, .host-absent-body) { margin: 0 0 6px; max-width: 86ch; color: var(--ink-2); font-family: var(--font-ui); font-size: 13px; line-height: 1.55; }
+.comms .host-absent .host-absent-reason { color: var(--ink); }
+.comms .host-absent-action { display: inline-block; margin-top: 4px; color: var(--ink); font-size: 13px; font-weight: var(--weight-semibold, 600); text-decoration: underline; text-decoration-color: var(--border-strong, var(--line-2)); text-underline-offset: 3px; }
+.comms .host-absent-action:hover { text-decoration-color: currentColor; }
+
+/* ---- the card: list | conversation ---- */
+.comms-card { flex: 1; min-height: 0; display: flex; overflow: hidden; border: 1px solid var(--comms-edge); border-radius: var(--comms-radius); background: var(--comms-card); box-shadow: var(--shadow-card, none); }
+.comms-sheet { display: flex; width: 100%; min-width: 0; min-height: 0; }
+
+/* The conversation list: a well, rows parted by space, the chosen one tinted. */
+.ch-rail { width: clamp(250px, 25%, 330px); min-height: 0; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--comms-rule); background: var(--comms-well); }
+.ch-rail-head { display: flex; align-items: baseline; justify-content: space-between; padding: 18px 20px 12px; color: var(--ink); font-size: var(--text-base, 14px); }
+.ch-rail-head strong { font-weight: var(--weight-semibold, 600); }
+.ch-total { color: var(--comms-muted); font-size: var(--text-xs, 12px); font-variant-numeric: tabular-nums; }
+.comms input[type="search"], .comms select {
+  box-sizing: border-box; min-width: 0; height: var(--comms-control-h); padding: 0 10px;
+  border: 1px solid var(--field-border, var(--line-2)); border-radius: var(--comms-control-radius);
+  background-color: var(--field-bg, var(--control-bg)); color: var(--ink); font: inherit; font-size: 13px;
+}
+.comms :is(input[type="search"], select):hover:not(:disabled):not(:focus) { border-color: var(--field-border-hover, var(--ink-3)); }
+.comms input::placeholder { color: var(--comms-muted); opacity: 1; }
+.ch-filter { margin: 0 12px 12px; width: calc(100% - 24px); }
+.ch-list { display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; scrollbar-width: thin; }
+.comms .ch { display: flex; flex-direction: column; gap: 4px; flex: none; width: 100%; padding: 10px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: var(--comms-control-radius); box-shadow: none; color: var(--ink); cursor: pointer; font-family: var(--font-ui); font-weight: 400; }
+.comms .ch:hover { background: var(--state-hover, color-mix(in srgb, var(--ink) 4%, transparent)); }
+.comms .ch.active { background: var(--comms-selected); border-color: var(--selected-border, var(--line-2)); box-shadow: inset 2px 0 var(--accent-2); }
+/* "All messages" is the list's own first row; a hairline parts it from the
+   conversations under it. */
+.comms .ch[data-id="all"] { position: relative; }
+.comms .ch[data-id="all"]:not(:last-child) { margin-bottom: 9px; }
+.comms .ch[data-id="all"]:not(:last-child)::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: -6px; height: 1px; background: var(--comms-rule); pointer-events: none; }
+.ch-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; }
+.ch-name { font-size: 13.5px; font-weight: var(--weight-semibold, 600); line-height: 1.45; overflow-wrap: anywhere; }
+.ch-time { flex: none; color: var(--comms-muted); font-size: var(--text-xs, 12px); font-variant-numeric: tabular-nums; }
+.ch-preview { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; color: var(--comms-muted); font-size: 13px; line-height: 1.5; }
+/* A delivery that is not confirmed: a ring in ink, never the warn gold. */
+.ch-issue, .cmsg-foot .cmsg-delivery { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: var(--text-xs, 12px); font-weight: var(--weight-medium, 500); }
+.ch-issue::before, .cmsg-foot .cmsg-delivery::before { content: ''; flex: none; width: 7px; height: 7px; box-sizing: border-box; border: 1.5px solid currentColor; border-radius: var(--radius-pill, 50%); background: transparent; }
+.ch-no-results { margin: 0; padding: 12px 20px; color: var(--ink-2); font-size: 13px; }
+
+/* ---- the open conversation ---- */
+.ch-main { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.ch-topic { flex: none; padding: 18px var(--comms-inset) 12px; }
+.ch-topic-heading { min-width: 0; }
+.ch-title { margin: 0; color: var(--ink); font-size: var(--text-xl, 17px); font-weight: var(--weight-semibold, 600); line-height: 1.4; letter-spacing: var(--tracking-title, -0.01em); overflow-wrap: anywhere; }
+.ch-description { margin: 2px 0 0; color: var(--comms-muted); font-size: 13px; line-height: 1.5; }
+
+/* One toolbar: search widest, then Filters and Clear filters, one height. */
+.comms-tools { display: flex; flex: none; align-items: center; flex-wrap: wrap; gap: 8px; padding: 0 var(--comms-inset) 14px; border-bottom: 1px solid var(--comms-rule); }
+.comms-search { flex: 1; width: 160px; }
+.comms-filter-toggle, .comms-issues, .comms-earlier {
+  box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: var(--comms-control-h); min-height: var(--comms-control-h); padding: 0 12px;
+  border: 1px solid var(--control-border, var(--line-2)); border-radius: var(--comms-control-radius);
+  background: var(--control-bg); box-shadow: var(--shadow-control, none); color: var(--ink);
+  font: inherit; font-size: 13px; font-weight: var(--weight-semibold, 600); white-space: nowrap; cursor: pointer;
+}
+.comms-filter-toggle[aria-expanded="true"],
+.comms-issues[aria-pressed="true"] { background: var(--comms-selected); border-color: var(--selected-border, var(--line-2)); color: var(--selected-ink, var(--ink)); box-shadow: var(--shadow-1, none); }
+.comms-filter-count, .comms-issue-count {
+  min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; display: inline-grid; place-items: center;
+  border-radius: var(--radius-pill, 999px); background: var(--seg-bg, var(--line)); color: var(--ink-2);
+  font-size: 11px; font-weight: var(--weight-semibold, 600); font-variant-numeric: tabular-nums;
+}
+/* Clear filters is a quiet text button at the same height, not a third box. */
+.comms-clear { height: var(--comms-control-h); padding: 0 6px; border: 0; background: transparent; box-shadow: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: var(--weight-semibold, 600); text-decoration: underline; text-decoration-color: var(--border-strong, var(--line-2)); text-underline-offset: 3px; cursor: pointer; }
+.comms-clear:hover { color: var(--ink); text-decoration-color: currentColor; }
+.comms :is(.comms-issues, .comms-earlier):disabled { cursor: not-allowed; color: var(--control-disabled-ink, var(--comms-muted)); background: var(--control-disabled-bg, transparent); border-color: var(--comms-rule); box-shadow: none; opacity: 1; }
+.comms :is(.comms-filter-toggle, .comms-issues, .comms-earlier):not(:disabled):not([aria-pressed="true"]):not([aria-expanded="true"]):hover { background: var(--control-hover); border-color: var(--control-border-hover, var(--ink-3)); color: var(--ink); }
+.comms-filter-panel { display: flex; flex: none; align-items: flex-end; flex-wrap: wrap; gap: 12px; padding: 12px var(--comms-inset); border-bottom: 1px solid var(--comms-rule); background: var(--comms-well); }
+.comms-filter-panel[hidden] { display: none; }
+/* Direct guards for the display rules above, beside the scoped `.comms [hidden]` one, which already hides them on screen;
+   the direct form is what tools/test/hidden-display-honesty.test.mjs can prove statically. */
+.comms-badge[hidden], .ch-issue[hidden], .comms-earlier[hidden], .comms-filter-count[hidden] { display: none; }
+.comms-agent-label { display: grid; gap: 4px; color: var(--comms-muted); font-size: var(--text-xs, 12px); }
+.comms-agent { width: 200px; cursor: pointer; }
+.comms-earlier { flex: none; margin: 12px 16px 0; align-self: center; }
+
+/* ---- the log ---- */
+.ch-log { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 var(--comms-inset) 24px; scrollbar-width: thin; overflow-anchor: none; }
+.day-div { display: flex; align-items: center; gap: 12px; margin: 20px 0 2px; color: var(--comms-muted); font-size: var(--text-xs, 12px); font-weight: var(--weight-semibold, 600); }
+.day-div::before, .day-div::after { content: ''; height: 1px; flex: 1; background: var(--comms-rule); }
+.comms[data-mode="channels"] .cmsg { display: flex; align-items: flex-start; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--comms-rule); }
+.cmsg-avatar { display: grid; place-items: center; flex: none; width: 28px; height: 28px; margin-top: 1px; border-radius: var(--comms-control-radius); color: color-mix(in srgb, var(--rc, var(--ink-3)) 30%, var(--ink)); background: color-mix(in srgb, var(--rc, var(--ink-3)) 12%, var(--comms-card)); font-size: 12px; font-weight: var(--weight-semibold, 600); }
+.cmsg-main { min-width: 0; flex: 1; }
+/* Sender, recipient, then the row's quiet buttons, then the time at the right
+   edge: the buttons sit before the time so the time never moves when they
+   appear. */
+.comms[data-mode="channels"] .cmsg-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-height: 26px; margin-bottom: 4px; font-size: 13px; }
+.comms[data-mode="channels"] .cmsg-au { color: var(--ink); font-size: var(--text-base, 14px); font-weight: var(--weight-semibold, 600); overflow-wrap: anywhere; }
+.cmsg-to { color: var(--comms-muted); font-size: 13px; overflow-wrap: anywhere; }
+.cmsg-actions { order: 1; display: inline-flex; align-items: center; gap: 2px; margin-left: auto; opacity: 0; transition: opacity var(--dur-2, 160ms) var(--ease-out, ease); }
+.cmsg-time { order: 2; color: var(--comms-muted); font-size: var(--text-xs, 12px); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cmsg:hover .cmsg-actions, .cmsg:focus-within .cmsg-actions { opacity: 1; }
+.comms .cmsg-details-toggle, .comms .cmsg-top .chat-message-copy { min-height: 26px; padding: 2px 8px; border: 0; border-radius: var(--comms-control-radius); background: transparent; box-shadow: none; color: var(--ink-2); font: inherit; font-size: var(--text-xs, 12px); font-weight: var(--weight-medium, 500); cursor: pointer; }
+.comms :is(.cmsg-details-toggle, .chat-message-copy):hover { color: var(--ink); background: var(--state-hover, var(--control-hover)); }
+.comms .cmsg-details-toggle[aria-expanded="true"] { color: var(--ink); background: var(--state-press, var(--control-hover)); }
+.comms .cmsg-text.chat-message-body { margin-top: 0; color: var(--ink); font-size: var(--text-lg, 15px); line-height: 1.65; overflow-wrap: anywhere; }
+.comms .chat-message-body :is(.md-p, .md-list) { max-width: 78ch; }
+.cmsg-reply { display: flex; flex-direction: column; gap: 2px; width: 100%; margin: 2px 0 10px; padding: 7px 12px; text-align: left; background: var(--seg-bg, color-mix(in srgb, var(--ink) 3%, var(--sheet))); border: 0; border-left: 2px solid var(--border-strong, var(--line-2)); border-radius: 0 var(--comms-control-radius) var(--comms-control-radius) 0; box-shadow: none; color: var(--comms-muted); font: inherit; font-size: 13px; font-weight: 400; line-height: 1.5; cursor: pointer; }
+.cmsg-reply:hover { border-left-color: var(--accent-2); color: var(--ink-2); }
+.cmsg-reply-label { color: var(--ink-2); font-size: var(--text-xs, 12px); font-weight: var(--weight-semibold, 600); }
+.cmsg-reply-label::first-letter { text-transform: uppercase; }
+.cmsg-reply-preview { width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cmsg-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; font-size: var(--text-xs, 12px); }
+.cmsg-channel { padding: 2px 0; border: 0; background: transparent; box-shadow: none; color: var(--ink-2); font: inherit; font-size: var(--text-xs, 12px); font-weight: var(--weight-semibold, 600); cursor: pointer; }
+.cmsg-channel:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.cmsg-details { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--comms-rule); border-radius: var(--comms-control-radius); background: var(--comms-well); color: var(--ink-2); font-size: 13px; line-height: 1.6; }
+.cmsg-details > div { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 12px; }
+.cmsg-details > div + div { margin-top: 6px; }
+.cmsg-details dt { color: var(--comms-muted); }
+.cmsg-details dd { margin: 0; overflow-wrap: anywhere; }
+.comms .cmsg.reply-target { background: var(--comms-selected); outline: 1px solid var(--accent-2); outline-offset: 6px; }
+.comms .comms-message-fold { margin: 0; max-width: none; border: 0; background: transparent; }
+.comms .comms-message-fold > .chat-context-head { display: block; padding: 0; color: var(--ink); font-size: var(--text-lg, 15px); line-height: 1.65; list-style: none; cursor: pointer; }
+.comms-message-fold > summary::-webkit-details-marker { display: none; }
+.comms .comms-message-fold .chat-context-say { display: block; white-space: normal; overflow-wrap: anywhere; }
+.comms-fold-label { display: block; width: fit-content; padding: 4px 0; color: var(--ink-2); font-size: 13px; font-weight: var(--weight-semibold, 600); }
+.comms .comms-message-fold > summary:hover .comms-fold-label { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.comms .comms-message-fold .chat-context-body { padding: 6px 0 0; margin: 0; border: 0; }
+.comms-message-fold:not([open]) .comms-fold-less, .comms-message-fold[open] .comms-fold-more, .comms .comms-message-fold[open] .chat-context-say { display: none; }
+.comms-foot { display: flex; flex: none; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; padding: 10px 24px; border-top: 1px solid var(--comms-rule); color: var(--comms-muted); font-size: var(--text-xs, 12px); font-variant-numeric: tabular-nums; }
+/* The log's own one-line states (reading, nothing matches, disconnected). */
+.comms .projection-state { display: block; padding: 40px 0; color: var(--ink-2); font-family: var(--font-ui); font-size: var(--text-base, 14px); line-height: 1.6; text-align: center; }
+.comms .jump-chip { position: absolute; bottom: 56px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px; border: 1px solid transparent; border-radius: var(--comms-control-radius); background: var(--ink); box-shadow: var(--shadow-popover, var(--elev-1)); color: var(--comms-card); font: inherit; font-size: 13px; font-weight: var(--weight-semibold, 600); white-space: nowrap; cursor: pointer; }
+.comms .jump-chip.hidden { opacity: 0; pointer-events: none; }
+.comms :is(button, input, select, summary, .ch-log):focus-visible { outline: var(--focus-outline, 2px solid var(--focus-ring)); outline-offset: var(--focus-offset, 2px); }
+.comms .ch:focus-visible { outline-offset: -2px; }
+.comms-mobile-picker { display: none; }
+.cmsg.fresh { animation: comms-arrive .5s ease-out; }
+@keyframes comms-arrive { from { background: var(--comms-selected); } to { background: transparent; } }
+@container (max-width: 950px) {
+  .comms-heading { display: block; }
+  .comms .head-sub { margin-top: 2px; }
+  .ch-rail { width: 240px; }
+  .ch-main { --comms-inset: 20px; }
+}
+@container (max-width: 700px) {
+  .comms .ch-rail { display: none; }
+  .comms-mobile-picker { display: grid; gap: 4px; flex: none; padding: 12px 20px; border-bottom: 1px solid var(--comms-rule); background: var(--comms-well); color: var(--comms-muted); font-size: var(--text-xs, 12px); }
+  .comms-conversation-select { width: 100%; }
+}
+@container (max-width: 560px) {
+  .comms-head { gap: 6px 10px; padding-bottom: 12px; }
+  .comms-heading { flex: 1 1 100%; }
+  .comms .head-title { font-size: 30px; }
+  .comms .head-sub { font-size: 13px; }
+  .comms-head .spacer { display: none; }
+  .ch-main { --comms-inset: 16px; }
+  .ch-topic { padding-top: 14px; padding-bottom: 10px; }
+  .ch-title { font-size: var(--text-lg, 15px); }
+  .ch-description { display: none; }
+  .comms-tools { padding-bottom: 12px; }
+  .comms-agent { width: 160px; max-width: 100%; }
+  .comms-mobile-picker { padding: 12px 16px; }
+  .comms[data-mode="channels"] .cmsg { gap: 10px; padding-block: 14px; }
+  .cmsg-avatar { width: 24px; height: 24px; font-size: 11px; }
+  .comms-foot { padding: 10px 16px; }
+  .cmsg-details > div { grid-template-columns: 1fr; gap: 0; }
+}
+/* On a touch screen the row buttons are always shown; on a narrow one they
+   take their own line under the sender, so the time keeps the right edge. */
+@media (hover: none) {
+  .cmsg-actions { opacity: 1; }
+  @container (max-width: 950px) {
+    .comms[data-mode="channels"] .cmsg-top { position: relative; padding-bottom: 28px; }
+    .cmsg-time { margin-left: auto; }
+    .cmsg-actions { position: absolute; bottom: 0; left: 0; margin-left: 0; }
+  }
+}
+/* CRAFT (2026-09-23): fills, not outlines. The card is the base layer on
+   the foundation's soft lift with no drawn edge; the conversation list is a
+   well whose fill, not a rule, divides it from the log; the chosen
+   conversation is its tint and accent bar without a second outline; the
+   conversation's head is a band; the example tag is a filled chip. */
+.comms .comms-card, .comms .comms-notice { border-color: transparent; box-shadow: var(--shadow-lift); }
+.comms .ch-rail { border-right-color: transparent; }
+.comms .ch.active { border-color: transparent; }
+.comms .ch-topic, .comms .ch-main > .comms-tools { background: var(--craft-band); }
+.comms .ch-main > .comms-tools { border-bottom-color: transparent; }
+.comms .comms-badge { border-color: transparent; background: color-mix(in srgb, var(--border-ink) 7%, transparent); }
+
+@media (forced-colors: active) {
+  .comms-card, .comms-notice { border: 1px solid CanvasText; }
+  .comms :is(.comms-refresh, .comms-filter-toggle, .comms-issues, .comms-earlier) { border: 1px solid ButtonText; }
+  .comms .ch.active { border: 2px solid Highlight; }
+}
+@media (prefers-reduced-motion: reduce) { .cmsg.fresh { animation: none; } .cmsg-actions { transition: none; } }
+.reduce-motion .comms .cmsg.fresh { animation: none; }

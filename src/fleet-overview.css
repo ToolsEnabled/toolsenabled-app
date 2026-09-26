@@ -1,0 +1,111 @@
+/* THE FLEET OVERVIEW RAIL PAGE, on the foundation tokens (2026-09-23 UI
+   pass). One counts card with hairlines between its figures, one card per
+   tree that holds its own Start tree control, and the disclosures as quiet
+   hairline rows. Figures are plain ink: Working keeps the good hue, Needs
+   review is strong ink rather than gold. */
+.computers .fleet-overview { display: flex; flex-direction: column; gap: var(--s4); container: fleet-overview / inline-size; }
+.computers .fleet-overview > * { flex-shrink: 0; min-width: 0; }
+.computers .fleet-overview .rail-prose { margin: 0; }
+.computers .rail-page .fleet-overview .rail-sec { margin: 0 0 var(--s2); padding-top: 0; border-top: 0; }
+.computers .fleet-overview-context { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s1) var(--s2); margin-bottom: var(--s3); }
+.computers .fleet-overview-context strong { font: var(--weight-semibold) var(--text-md)/1.45 var(--font-ui); color: var(--ink); overflow-wrap: anywhere; }
+.computers .fleet-overview-context span { font: var(--weight-regular) var(--text-sm)/1.45 var(--font-ui); color: var(--ink-3); }
+
+/* the counts: one card, hairlines between, figures over their words */
+.computers .fleet-overview-metrics {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 var(--s3);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--surface-raised); box-shadow: var(--shadow-1);
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .computers .fleet-overview-metrics { background: var(--control-bg); }
+.computers .fleet-overview-metric { min-width: 0; padding: 12px 12px 13px; display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 4px; }
+.computers .fleet-overview-metric + .fleet-overview-metric { border-left: 1px solid var(--border-hairline); }
+.computers .fleet-overview-metric dt { font: var(--weight-medium) var(--text-xs)/1.3 var(--font-ui); color: var(--ink-3); }
+.computers .fleet-overview-metric dd { margin: 0; font: 620 26px/1.1 var(--font-ui); letter-spacing: var(--tracking-display); font-variant-numeric: tabular-nums; color: var(--ink); }
+.computers .fleet-overview-metric[data-active="true"] dd { color: var(--s-good); }
+.computers .fleet-overview-metric[data-review="true"] dd { color: var(--ink); }
+.computers .fleet-overview-metric[data-review="true"] dt { color: var(--ink); font-weight: var(--weight-semibold); }
+
+/* a rail narrower than four figures holds them two by two, never a word
+   broken across lines */
+@container fleet-overview (max-width: 360px) {
+  .computers .fleet-overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .computers .fleet-overview-metric:nth-child(odd) { border-left: 0; }
+  .computers .fleet-overview-metric:nth-child(n + 3) { border-top: 1px solid var(--border-hairline); }
+}
+.computers .fleet-overview-section { padding-top: var(--s4); border-top: 1px solid var(--border-hairline); }
+.computers .fleet-overview-section .board-box { margin-bottom: 0; }
+.computers .fleet-overview-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s2); }
+.computers .fleet-overview-heading .rail-sec { margin: 0; }
+/* Choose trees / Every tree: a compact raised button beside its heading,
+   not a 40px slab hanging off the column's edge. */
+.computers .stats-page .fleet-overview-heading > .ctl-btn {
+  flex: none; min-height: 28px; height: 28px; padding: 0 10px; margin: 0;
+  font: var(--weight-semibold) var(--text-sm)/1 var(--font-ui);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-control);
+}
+
+/* ONE CARD PER TREE. The tree's Start tree control used to float between
+   two cards on a line of its own; the list item is now the card, so the
+   control sits inside the tree it starts, under its counts. */
+.computers .fleet-overview-trees { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--s2); }
+.computers .fleet-overview-trees > li {
+  min-width: 0; overflow: hidden;
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--surface-base); box-shadow: var(--shadow-1);
+  transition: border-color var(--dur-2) var(--ease-out);
+}
+.computers .fleet-overview-trees > li:hover { border-color: var(--border-strong); }
+.computers .fleet-overview-trees > li.rail-prose { padding: var(--s3); border-style: dashed; box-shadow: none; background: transparent; }
+.computers .fleet-overview-trees > li:has(> .fleet-overview-tree[aria-current="true"]) { border-color: var(--selected-border); box-shadow: inset 3px 0 0 var(--ui-accent, var(--c-coordinator)), var(--shadow-1); }
+.computers .fleet-overview-tree {
+  width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s1) var(--s3);
+  text-align: left; padding: 11px 12px; margin: 0;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--ink);
+  font: inherit; cursor: pointer; transition: background-color var(--dur-2) var(--ease-out);
+}
+.computers .fleet-overview-tree:hover { background: var(--state-hover); border-color: transparent; }
+.computers .fleet-overview-tree:focus-visible,
+.computers .fleet-overview-details > summary:focus-visible { outline: var(--focus-outline); outline-offset: calc(-1 * var(--focus-width)); }
+.computers .fleet-overview-tree[aria-current="true"] { border-left: 0; padding-left: 12px; background: var(--selected-bg); }
+.computers .fleet-overview-tree:disabled { cursor: default; }
+.computers .fleet-overview-tree:disabled:hover { background: transparent; }
+.computers .fleet-overview-tree-name { font: var(--weight-semibold) var(--text-md)/1.4 var(--font-ui); overflow-wrap: anywhere; }
+.computers .fleet-overview-tree-size { font: var(--weight-regular) var(--text-sm)/1.4 var(--font-ui); color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.computers .fleet-overview-tree-states { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); font: var(--weight-regular) var(--text-sm)/1.5 var(--font-ui); color: var(--ink-2); }
+.computers .fleet-overview-state { display: inline-flex; align-items: center; gap: 6px; }
+.computers .fleet-overview-state::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-4); flex: none; }
+.computers .fleet-overview-state[data-state="working"]::before { background: var(--s-good); }
+.computers .fleet-overview-state[data-state="review"] { color: var(--ink); font-weight: var(--weight-medium); }
+.computers .fleet-overview-state[data-state="review"]::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink); }
+/* the tree's own Start tree row, inside its card, on the words' x */
+.computers .fleet-overview-trees [data-tree-start-controls]:not(:empty) { padding: 0 12px 11px; }
+.computers .fleet-overview-trees [data-tree-start-controls] .graph-tree-starts { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0; }
+.computers .fleet-overview-trees [data-tree-start-controls] .graph-tree-start { min-height: 28px; height: 28px; padding: 0 10px; }
+
+.computers .fleet-overview-details { border-top: 1px solid var(--border-hairline); }
+.computers .fleet-overview-details:last-child { border-bottom: 1px solid var(--border-hairline); }
+.computers .fleet-overview-details > summary { display: flex; align-items: center; gap: var(--s2); min-height: 44px; padding: var(--s2) 0; list-style: none; cursor: pointer; color: var(--ink); font: var(--weight-semibold) var(--text-md)/1.4 var(--font-ui); }
+.computers .fleet-overview-details > summary:hover::after { border-color: var(--ink); }
+.computers .fleet-overview-details > summary::-webkit-details-marker { display: none; }
+.computers .fleet-overview-details > summary::after {
+  content: ''; margin-left: auto; margin-right: 4px; flex: none; width: 7px; height: 7px;
+  border-right: 1.5px solid var(--ink-3); border-bottom: 1.5px solid var(--ink-3);
+  transform: translateY(-2px) rotate(45deg);
+}
+.computers .fleet-overview-details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+.computers .fleet-overview-detail-body { display: grid; gap: var(--s3); padding-bottom: var(--s3); }
+.computers .fleet-overview-detail-body .rail-sec { margin-bottom: 0; }
+.computers .fleet-overview-detail-body .stat-hero { margin: 0; }
+.computers .fleet-overview-detail-body .stat-hero .v { font-size: 26px; font-weight: 620; }
+.computers .fleet-overview-detail-body .rail-facts { margin: 0; }
+.computers .fleet-overview-services { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--s3); }
+.computers .fleet-overview-services li { display: grid; gap: var(--s1); font: var(--weight-regular) var(--text-md)/1.45 var(--font-ui); }
+.computers .fleet-overview-services b { color: var(--ink); font-weight: var(--weight-semibold); }
+.computers .fleet-overview-services span { color: var(--ink-2); overflow-wrap: anywhere; }
+.computers .fleet-overview-detail-body .rail-note { margin: 0; }
+.computers .fleet-overview-details:has(.org-notice[data-notice="drift"]) > summary { color: var(--ink); }
+.computers .fleet-overview-details:has(.org-notice[data-notice="drift"]) > summary::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .computers :is(.fleet-overview-trees > li, .fleet-overview-tree) { transition: none; }
+}

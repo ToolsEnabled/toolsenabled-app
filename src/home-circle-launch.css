@@ -1,0 +1,67 @@
+/* LAUNCH: the 09-11..09-15 Home circle -- a light band with a
+   hairline edge, the status lip and its halo, and one tapered crest that spins
+   round the band every 16 s with a soft trail, over the site's Navier-Stokes
+   fluid (home-circle-fluid-launch.js), whose light sources ride the crest.
+   From home-circle.css at an earlier commit, scoped to the Launch style and renamed
+   launch-*. Status colours are the owner's current ones (--core-status-color). */
+.home .home-circle .launch-circle-finish { display: none; }
+.home .home-circle[data-circle-style="launch"] {
+  --core-orbit-period: 16s;
+  --core-glow-lip: .18; --core-glow-trail: .5;
+  --launch-glow-fill: color-mix(in srgb, var(--core-status-color) 62%, #fff);
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle[data-circle-style="launch"] {
+  --core-glow-lip: .3; --core-glow-trail: .75;
+  --launch-glow-fill: var(--core-status-color);
+}
+.home .home-circle[data-circle-style="launch"][data-load="unknown"] { --core-glow-lip: .08; --core-glow-trail: .08; }
+.home .home-circle[data-circle-style="launch"] .home-circle-finish { display: none; }
+.home .home-circle[data-circle-style="launch"] .launch-circle-finish {
+  --core-frame: color-mix(in srgb, var(--ink-3) 11%, var(--surface));
+  --core-frame-edge: color-mix(in srgb, var(--ink-3) 24%, var(--surface));
+  display: block; position: absolute; inset: 0; z-index: 1;
+  pointer-events: none; user-select: none;
+}
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .home .home-circle[data-circle-style="launch"] .launch-circle-finish {
+  --core-frame-edge: color-mix(in srgb, var(--ink-3) 16%, var(--surface));
+}
+.home .launch-circle-finish > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.home :is(.launch-core-face, .launch-core-lip, .launch-core-halo, .launch-core-sweep) { fill: none; }
+.home .launch-core-foundation {
+  fill: var(--core-frame); stroke: var(--core-frame-edge); stroke-width: .6;
+  vector-effect: non-scaling-stroke;
+}
+.home .launch-core-lip {
+  stroke: var(--core-status-color); stroke-width: 3;
+  vector-effect: non-scaling-stroke; transition: stroke .5s var(--ease);
+}
+/* The halo is the lip's own light, blurred in the SVG filter. */
+.home .launch-core-halo {
+  stroke: var(--core-status-color); stroke-width: 7;
+  opacity: calc(var(--core-glow-lip) * var(--glow, 1));
+  transition: stroke .5s var(--ease), opacity .5s var(--ease);
+}
+.home .launch-core-sweep {
+  transform-box: view-box; transform-origin: center;
+  animation: launch-core-light-flow var(--core-orbit-period) linear infinite;
+}
+.home .launch-core-light { fill: var(--core-status-color); stroke: none; transition: fill .5s var(--ease); }
+/* A larger, blurred crest in the same rotating group, so the light travels
+   with the crest and fades along its tail. */
+.home .launch-core-light-glow {
+  fill: var(--launch-glow-fill); stroke: none;
+  opacity: calc(var(--core-glow-trail) * var(--glow, 1));
+  transition: fill .5s var(--ease), opacity .5s var(--ease);
+}
+@keyframes launch-core-light-flow { from { transform: rotate(-18deg); } to { transform: rotate(342deg); } }
+body.reduce-motion .home .launch-core-sweep,
+.home .home-circle[data-circle-motion="still"] .launch-core-sweep { animation: none !important; }
+body.reduce-motion .home :is(.launch-core-lip, .launch-core-halo, .launch-core-light, .launch-core-light-glow) { transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .home .home-circle:not([data-circle-motion="animate"]) .launch-core-sweep { animation: none !important; }
+  .home .home-circle:not([data-circle-motion="animate"]) :is(.launch-core-lip, .launch-core-halo, .launch-core-light, .launch-core-light-glow) { transition: none !important; }
+  .home .home-circle[data-circle-motion="animate"] .launch-core-sweep {
+    animation-duration: var(--core-orbit-period) !important;
+    animation-iteration-count: infinite !important;
+  }
+}

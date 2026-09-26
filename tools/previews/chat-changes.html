@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en" data-theme="black">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Chat changes & navigation preview — ToolsEnabled</title></head>
+<body>
+  <div id="preview-nav"></div>
+  <main id="stage" class="changes-preview-stage">
+    <div class="changes-preview-bar"><span class="preview-label"><i></i>Design preview <span>· sample session</span></span><div class="preview-switch" role="group" aria-label="Navigation layout"><button data-layout="top" aria-pressed="false">Top bar</button><button data-layout="side" aria-pressed="true">Side bar</button></div><button class="preview-theme" aria-label="Switch between light and dark theme">◐</button></div>
+    <div class="changes-preview-heading"><div><p>WORKSPACE / CHAT</p><h1>A little more room to work.</h1><span>Navigation on the left. Your conversation and changes together.</span></div></div>
+    <div class="changes-preview-content"><div id="preview-chat"></div><aside class="changes-preview-note"><span class="preview-note-index">01 / NAVIGATION</span><h2>Everything within reach</h2><p>The same pages, moved into a slim side bar. Quick settings stays at the bottom.</p><div class="preview-note-rule"></div><span class="preview-note-index">02 / SESSION CHANGES</span><h2>Pull up. Pick a file. Edit.</h2><p>Press the up arrow at the bottom of the chat to see every reported file and its line changes.</p><p>Select a file to open the existing compare editor, with both versions already loaded.</p><span class="preview-note-limit">100 files per list<br>1 MB per editable file</span><button data-preview-open>Try session changes <span>↗</span></button><small>These are sample files. Saving edits only the preview workspace.</small></aside></div>
+  </main>
+  <script type="module" src="./chat-changes-preview.js"></script>
+</body></html>

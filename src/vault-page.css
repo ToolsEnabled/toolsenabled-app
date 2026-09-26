@@ -1,0 +1,632 @@
+/* THE VAULT PAGE (#/vault). Layout and look only: what the page reads, writes
+   and refuses stays in src/views/vault.js and src/vault-credentials-settings.js.
+
+   Built on the foundation's layers (src/foundation.css): the page is the
+   canvas; the counts, the credentials table and "Add or remove credentials" are
+   base cards with a default edge; table heads, the open editor and the add
+   form are sunken wells; controls are the raised step. Every colour is a theme
+   token, so White, Tan, Black, Ember and Cobalt need nothing of their own here.
+   Widths come from container queries on the page's own boxes, so a collapsed
+   navigation rail and the Text size setting reflow it the same way a narrower
+   window does. The embedded add/remove panel keeps its own sheet for Settings;
+   the overrides for it below are scoped to this page. */
+
+.vault-page {
+  --page-gutter: clamp(20px, 2.4vw, 40px);
+  --vault-card-edge: var(--border-default, var(--line-2));
+  --vault-rule: var(--border-hairline, var(--line));
+  --vault-card: var(--surface-base, var(--sheet));
+  --vault-well: var(--surface-sunken, var(--bg-2));
+  --vault-radius: var(--radius-card, 6px);
+  --vault-control-radius: var(--radius-control, 4px);
+  --vault-pad: var(--s5);
+  scrollbar-gutter: stable;
+  color: var(--ink);
+}
+.vault-page [hidden] { display: none !important; }
+.vault-table-head[hidden] { display: none; } /* direct form of the guard above, provable by hidden-display-honesty.test.mjs */
+.vault-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ---- the column ---- */
+.vault-shell {
+  container: vault-shell / inline-size;
+  width: 100%;
+  max-width: 1600px;
+  margin-inline: auto;
+}
+.vault-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s5) var(--s6, 32px);
+  align-items: start;
+}
+.vault-main { display: grid; gap: var(--s4); min-width: 0; }
+
+/* ---- header ---- */
+.vault-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4) var(--s6, 32px);
+  padding: var(--s3) 0 var(--s5);
+}
+.vault-title { flex: 1 1 28rem; min-width: 0; }
+.vault-page .vault-eyebrow {
+  margin: 0 0 var(--s2);
+  font-size: var(--text-caps, 11px);
+  font-weight: var(--weight-semibold, 600);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.vault-page .vault-h1 {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 610;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  color: var(--ink);
+}
+.vault-lede {
+  max-width: 72ch;
+  margin: var(--s2) 0 0;
+  font-size: var(--text-base, 14px);
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.vault-header-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+/* ---- controls on this page: the foundation's raised control, sized here ---- */
+.vault-page .ctl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  height: auto;
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+}
+.vault-page .ctl-btn:disabled { cursor: progress; }
+.vault-page .vault-primary {
+  min-height: var(--control-h-lg, 36px);
+  padding-inline: 18px;
+  border-color: var(--action-primary, var(--ink));
+  background: var(--action-primary, var(--ink));
+  color: var(--action-primary-ink, var(--sheet));
+  font-size: var(--text-base, 14px);
+}
+.vault-page .vault-primary:hover:not(:disabled) {
+  border-color: var(--action-primary-hover, var(--ink));
+  background: var(--action-primary-hover, var(--ink));
+  color: var(--action-primary-ink, var(--sheet));
+}
+.vault-page :is(.vault-toolbar input, .vault-toolbar select, .vault-credentials-input) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  height: 36px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--field-border, var(--line-2));
+  border-radius: var(--vault-control-radius);
+  background-color: var(--field-bg, var(--sheet));
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-md, 13.5px);
+}
+.vault-page :is(.vault-toolbar input, .vault-toolbar select, .vault-credentials-input):hover:not(:disabled):not(:focus) {
+  border-color: var(--field-border-hover, var(--ink-3));
+}
+.vault-page :is([data-vault-agent-id], [data-vault-new-name]) { font-family: var(--font-mono); font-size: var(--text-sm, 12.5px); }
+.vault-page ::placeholder { color: var(--ink-3); opacity: 1; }
+.vault-page input[type="checkbox"] { width: 16px; height: 16px; margin: 0; flex: 0 0 auto; cursor: pointer; }
+.vault-page input[type="checkbox"]:disabled { cursor: progress; }
+.vault-field-label,
+.vault-page .vault-credentials-label {
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.vault-page :is(button, input, select, summary, a):focus-visible {
+  outline: var(--focus-outline, 2px solid var(--focus-ring));
+  outline-offset: var(--focus-offset, 2px);
+}
+.vault-page :is(.vault-row-line, .vault-manage-summary):focus-visible { outline-offset: -2px; }
+
+/* ---- counts ---- */
+.vault-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--vault-card-edge);
+  border-radius: var(--vault-radius);
+  background: var(--vault-card);
+  box-shadow: var(--shadow-card, none);
+}
+.vault-fact {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px var(--vault-pad) 16px;
+}
+.vault-fact + .vault-fact { border-left: 1px solid var(--vault-rule); }
+.vault-fact dt {
+  font-size: var(--text-caps, 11px);
+  font-weight: var(--weight-semibold, 600);
+  line-height: 1.35;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+  overflow-wrap: anywhere;
+}
+.vault-fact dd {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 620;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.vault-fact dd.is-unread { color: var(--ink-3); font-weight: 500; }
+
+/* ---- the credentials table ---- */
+.vault-panel {
+  container: vault-panel / inline-size;
+  min-width: 0;
+  border: 1px solid var(--vault-card-edge);
+  border-radius: var(--vault-radius);
+  background: var(--vault-card);
+  box-shadow: var(--shadow-card, none);
+}
+.vault-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s1) var(--s4);
+  padding: var(--s4) var(--vault-pad) var(--s3);
+}
+.vault-page .vault-panel-title {
+  margin: 0;
+  font-size: var(--text-xl, 17px);
+  font-weight: var(--weight-semibold, 600);
+  line-height: 1.25;
+  letter-spacing: var(--tracking-title, -.01em);
+  color: var(--ink);
+}
+.vault-result-count {
+  margin: 0;
+  font-size: var(--text-sm, 12.5px);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.vault-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s3);
+  padding: 0 var(--vault-pad) var(--s4);
+}
+.vault-search, .vault-filter { display: grid; gap: 6px; min-width: 0; }
+.vault-search { flex: 1 1 16rem; }
+.vault-filter { flex: 0 1 14rem; }
+.vault-notice {
+  margin: 0;
+  padding: var(--s3) var(--vault-pad);
+  border-top: 1px solid var(--vault-rule);
+  background: var(--vault-well);
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.55;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+/* With no rows under it, the notice IS the table's content: give it the room
+   and a reading measure instead of a thin band. */
+.vault-panel.is-empty .vault-notice {
+  padding: var(--s7, 40px) max(var(--vault-pad), calc(50% - 32ch));
+  background: transparent;
+  font-size: var(--text-base, 14px);
+  line-height: 1.6;
+  text-align: center;
+  text-wrap: balance;
+}
+.vault-empty {
+  margin: 0;
+  padding: var(--s6, 32px) var(--vault-pad);
+  border-top: 1px solid var(--vault-rule);
+  font-size: var(--text-base, 14px);
+  text-align: center;
+  color: var(--ink-2);
+}
+
+/* One grid for the head and every row line, so the columns line up. */
+.vault-table-head,
+.vault-row-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(8.5rem, .8fr) minmax(0, 1.5fr) minmax(7rem, .65fr) 4.5rem;
+  align-items: center;
+  column-gap: var(--s4);
+  padding-inline: var(--vault-pad);
+}
+.vault-table-head {
+  padding-block: 8px;
+  border-block: 1px solid var(--vault-card-edge);
+  background: var(--vault-well);
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  line-height: 1.35;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.vault-page-row { min-width: 0; border-bottom: 1px solid var(--vault-rule); }
+.vault-page-row:last-child { border-bottom: 0; }
+.vault-row-line {
+  min-height: 52px;
+  padding-block: 10px;
+  list-style: none;
+  cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease-out, ease);
+}
+.vault-row-line::-webkit-details-marker { display: none; }
+.vault-row-line:hover { background: var(--state-hover, color-mix(in oklab, var(--ink) 4%, transparent)); }
+.vault-page-row:last-child .vault-card-details:not([open]) > .vault-row-line { border-radius: 0 0 calc(var(--vault-radius) - 1px) calc(var(--vault-radius) - 1px); }
+.vault-card-details[open] > .vault-row-line {
+  background: var(--selected-bg, var(--theme-selected-bg));
+  box-shadow: inset 3px 0 0 var(--ui-accent);
+}
+.vault-page .vault-row-name {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-base, 14px);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+/* A real record name is a key, and a key is exact: monospaced. A nickname is
+   the owner's own words and reads in the interface face. */
+.vault-page-row:not(.is-nicknamed) .vault-row-name { font-family: var(--font-mono); font-size: 13px; font-weight: 550; }
+.vault-cell { min-width: 0; }
+.vault-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 1px 8px;
+  border: 1px solid var(--vault-card-edge);
+  border-radius: var(--radius-xs, 3px);
+  background: var(--vault-well);
+  font-size: var(--text-xs, 12px);
+  font-weight: 560;
+  line-height: 1.3;
+  color: var(--ink-2);
+}
+.is-nicknamed .vault-kind {
+  border-color: var(--selected-border, var(--theme-selected-border));
+  background: var(--selected-bg, var(--theme-selected-bg));
+  color: var(--selected-ink, var(--ink));
+}
+.vault-cell-access { font-size: var(--text-sm, 12.5px); line-height: 1.45; color: var(--ink-3); overflow-wrap: anywhere; }
+.is-restricted .vault-cell-access { font-weight: 600; color: var(--ink); }
+.vault-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs, 12px);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.vault-lock { width: 13px; height: 13px; flex: 0 0 auto; }
+.vault-page-row[aria-busy="true"] .vault-badge { font-weight: 600; color: var(--ink); }
+.vault-cell-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: var(--text-sm, 12.5px);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.vault-row-line:hover .vault-cell-open { color: var(--ink); }
+.vault-chevron { width: 14px; height: 14px; flex: 0 0 auto; transition: transform var(--dur-2) var(--ease-out, ease); }
+.vault-open-open { display: none; }
+.vault-card-details[open] > summary .vault-open-open { display: inline; }
+.vault-card-details[open] > summary .vault-open-closed { display: none; }
+.vault-card-details[open] > summary .vault-chevron,
+.vault-manage[open] > summary .vault-chevron { transform: rotate(180deg); }
+
+/* ---- the editor under an open row ---- */
+.vault-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s5);
+  padding: var(--s5) var(--vault-pad);
+  border-top: 1px solid var(--vault-rule);
+  background: var(--vault-well);
+  box-shadow: inset 3px 0 0 var(--ui-accent);
+}
+.vault-page-row:last-child .vault-card-body { border-radius: 0 0 calc(var(--vault-radius) - 1px) calc(var(--vault-radius) - 1px); }
+.vault-nickname-editor,
+.vault-page-matrix,
+.vault-page-agents {
+  display: grid;
+  align-content: start;
+  gap: var(--s2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.vault-page .vault-editor-title {
+  float: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-base, 14px);
+  font-weight: 620;
+  line-height: 1.35;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.vault-page-matrix > legend,
+.vault-page-agents > legend { margin-bottom: var(--s2); }
+.vault-editor-note { margin: 0; font-size: var(--text-xs, 12px); line-height: 1.5; color: var(--ink-3); }
+.vault-field-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.vault-page .vault-field-row .vault-credentials-input { flex: 1 1 11rem; width: auto; }
+.vault-page [data-vault-nickname] { font-family: var(--font-ui); }
+.vault-page-real {
+  border: 1px solid var(--vault-card-edge);
+  border-radius: var(--vault-control-radius);
+  background: var(--vault-card);
+}
+.vault-page-real > summary { padding: 7px 10px; font-size: var(--text-sm, 12.5px); color: var(--ink-2); cursor: pointer; }
+.vault-page-real[open] > summary { border-bottom: 1px solid var(--vault-rule); }
+.vault-page-real code {
+  display: block;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 12.5px);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.vault-role-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr));
+  column-gap: var(--s5);
+  margin-top: var(--s1);
+  border-top: 1px solid var(--vault-rule);
+}
+.vault-agent-rules { display: grid; border-top: 1px solid var(--vault-rule); }
+.vault-agent-rules:empty { display: none; }
+.vault-page-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 6px;
+  border-bottom: 1px solid var(--vault-rule);
+  font-size: var(--text-sm, 12.5px);
+  cursor: pointer;
+}
+.vault-page-cell:hover { background: var(--state-hover, color-mix(in oklab, var(--ink) 4%, transparent)); }
+.vault-cell-text { flex: 1 1 auto; min-width: 0; color: var(--ink); overflow-wrap: anywhere; }
+.vault-access-state { flex: 0 0 auto; font-size: var(--text-xs, 12px); color: var(--ink-3); }
+.vault-page-cell.is-refused .vault-access-state { font-weight: 600; color: var(--s-serious); }
+.vault-agent-field { display: grid; gap: 6px; }
+.vault-agent-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); }
+.vault-agent-choice { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--text-sm, 12.5px); color: var(--ink); cursor: pointer; }
+.vault-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--vault-rule);
+}
+
+/* ---- "Add or remove credentials" ---- */
+.vault-manage {
+  min-width: 0;
+  border: 1px solid var(--vault-card-edge);
+  border-radius: var(--vault-radius);
+  background: var(--vault-card);
+  box-shadow: var(--shadow-card, none);
+}
+.vault-manage-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--s3);
+  padding: 14px var(--vault-pad);
+  border-radius: calc(var(--vault-radius) - 1px);
+  list-style: none;
+  cursor: pointer;
+}
+.vault-manage-summary::-webkit-details-marker { display: none; }
+.vault-manage-summary:hover { background: var(--state-hover, color-mix(in oklab, var(--ink) 4%, transparent)); }
+.vault-manage[open] > .vault-manage-summary { border-bottom: 1px solid var(--vault-rule); border-radius: calc(var(--vault-radius) - 1px) calc(var(--vault-radius) - 1px) 0 0; }
+.vault-manage-title { font-size: var(--text-base, 14px); font-weight: 620; color: var(--ink); }
+.vault-manage-hint { flex: 1 1 16rem; font-size: var(--text-sm, 12.5px); color: var(--ink-3); }
+.vault-manage-summary .vault-chevron { margin-left: auto; color: var(--ink-2); }
+.vault-manage-body { container: vault-manage / inline-size; padding: var(--s4) var(--vault-pad) var(--s5); }
+.vault-page .vault-credentials { gap: 0; }
+.vault-page .vault-credentials-heading { font-size: var(--text-base, 14px); font-weight: var(--weight-semibold, 600); color: var(--ink); }
+.vault-page .vault-credentials-body { font-size: var(--text-sm, 12.5px); line-height: 1.55; color: var(--ink-2); }
+.vault-page .vault-credentials > .vault-credentials-body { margin-top: var(--s1); }
+.vault-page .vault-credentials-list { gap: 0; margin-top: var(--s3); border-top: 1px solid var(--vault-rule); }
+.vault-page .vault-credentials-item {
+  gap: var(--s2) var(--s3);
+  min-height: 46px;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid var(--vault-rule);
+  border-radius: 0;
+  background: transparent;
+}
+.vault-page .vault-credentials-name { font-size: var(--text-sm, 12.5px); }
+.vault-page .vault-credentials-item .ctl-btn { min-height: 30px; padding: 4px 12px; }
+.vault-page .vault-credentials-await { flex-basis: 100%; align-items: center; }
+.vault-page [data-vault-remove]:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--s-serious) 45%, transparent);
+  color: var(--s-serious);
+}
+.vault-page .vault-credentials-add {
+  gap: var(--s2);
+  justify-items: stretch;
+  margin-top: var(--s4);
+  padding: var(--s4);
+  border: 1px solid var(--vault-card-edge);
+  border-radius: var(--vault-radius);
+  background: var(--vault-well);
+}
+.vault-page .vault-credentials-add > .vault-credentials-body { margin: 0; }
+.vault-page .vault-credentials-add > .ctl-btn { justify-self: start; }
+.vault-page .vault-credentials > [data-vault-status] { margin-top: var(--s3); }
+
+/* ---- how this vault works ---- */
+.vault-aside { min-width: 0; padding-top: var(--s4); border-top: 1px solid var(--vault-card-edge); }
+.vault-page .vault-aside-title { margin: 0 0 var(--s2); font-size: var(--text-base, 14px); font-weight: var(--weight-semibold, 600); color: var(--ink); }
+.vault-rules { margin: 0; }
+.vault-rules > div { padding: var(--s3) 0; border-top: 1px solid var(--vault-rule); }
+.vault-rules > div:first-child { border-top: 0; }
+.vault-rules dt { margin: 0 0 4px; font-size: var(--text-sm, 12.5px); font-weight: 640; color: var(--ink); }
+.vault-rules dd { margin: 0; font-size: var(--text-sm, 12.5px); line-height: 1.6; color: var(--ink-2); }
+.vault-link {
+  display: inline-block;
+  margin-top: var(--s2);
+  font-size: var(--text-sm, 12.5px);
+  font-weight: 600;
+  color: var(--accent-2, var(--ink));
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.vault-link:hover { color: var(--ink); }
+
+/* ---- widths ---- */
+/* A wide workspace puts the rules beside the table instead of under it. */
+@container vault-shell (min-width: 1180px) {
+  .vault-layout { grid-template-columns: minmax(0, 1fr) minmax(17rem, 21rem); }
+  .vault-aside { position: sticky; top: var(--s4); }
+}
+@container vault-shell (max-width: 560px) {
+  .vault-facts { grid-template-columns: minmax(0, 1fr); }
+  .vault-fact { flex-direction: row-reverse; align-items: baseline; justify-content: space-between; padding: 10px var(--s4); }
+  .vault-fact + .vault-fact { border-left: 0; border-top: 1px solid var(--vault-rule); }
+  .vault-fact dd { font-size: 20px; }
+  .vault-header-actions, .vault-page .vault-primary { width: 100%; }
+}
+/* The editor: name and roles side by side, agents under them; on a wide table
+   all three side by side. */
+@container vault-panel (min-width: 760px) {
+  .vault-card-body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    grid-template-areas: "name roles" "agents agents" "foot foot";
+    column-gap: var(--s6, 32px);
+  }
+  .vault-nickname-editor { grid-area: name; }
+  .vault-page-matrix { grid-area: roles; }
+  .vault-page-agents { grid-area: agents; }
+  .vault-editor-footer { grid-area: foot; }
+}
+@container vault-panel (min-width: 760px) and (max-width: 1079.98px) {
+  .vault-page-agents { grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s4); align-items: end; }
+  .vault-page-agents > :not(.vault-agent-field, .vault-agent-actions) { grid-column: 1 / -1; }
+}
+@container vault-panel (min-width: 1080px) {
+  .vault-card-body {
+    grid-template-columns: minmax(0, .95fr) minmax(0, 1.75fr) minmax(0, 1fr);
+    grid-template-areas: "name roles agents" "foot foot foot";
+  }
+}
+/* A narrow table: the row line wraps under its name, and the column heads go. */
+@container vault-panel (max-width: 639.98px) {
+  .vault-page .vault-table-head { display: none; }
+  .vault-row-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--s3); }
+  .vault-row-line > .vault-row-name { flex: 1 1 calc(100% - 7rem); order: 1; }
+  .vault-cell-open { order: 2; margin-left: auto; }
+  .vault-cell-kind { order: 3; }
+  .vault-cell-access { order: 4; flex: 1 1 10rem; }
+  .vault-cell-state { order: 5; }
+  .vault-toolbar > .ctl-btn { flex: 1 1 100%; }
+}
+@container vault-manage (min-width: 760px) {
+  .vault-page .vault-credentials {
+    grid-template-columns: minmax(0, 1.3fr) minmax(16rem, 1fr);
+    grid-template-rows: auto auto auto auto auto 1fr;
+    grid-template-areas: "heading add" "intro add" "list add" "note add" "status add" ". add";
+    column-gap: var(--s6, 32px);
+    align-items: start;
+  }
+  .vault-page .vault-credentials > .vault-credentials-heading { grid-area: heading; }
+  .vault-page .vault-credentials > .vault-credentials-body:not([data-vault-listing-note], [data-vault-status]) { grid-area: intro; }
+  .vault-page .vault-credentials > .vault-credentials-list { grid-area: list; }
+  .vault-page .vault-credentials > [data-vault-listing-note] { grid-area: note; }
+  .vault-page .vault-credentials > [data-vault-status] { grid-area: status; }
+  .vault-page .vault-credentials > .vault-credentials-add { grid-area: add; margin-top: 0; }
+}
+
+/* ===========================================================================
+   CRAFT (2026-09-23): the same page, set in layers and fills. The three
+   counts are tiles on --craft-tint with space between (a count that cannot
+   be read is a quiet well), not an outlined card cut by hairlines. The
+   credentials card and the add/remove disclosure are the base layer on the
+   foundation's soft lift, no drawn edge. The card's head -- its title and
+   its search -- sits on a band. The empty notice is a composed well: a quiet
+   lock glyph over the sentence. Nothing moved; no hook touched.
+   =========================================================================== */
+.vault-page .vault-facts {
+  gap: var(--s2);
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.vault-page .vault-fact {
+  padding: 14px var(--s4) 15px;
+  border-radius: var(--radius-card);
+  background: var(--craft-tint);
+}
+.vault-page .vault-fact + .vault-fact { border-left: 0; }
+.vault-page .vault-fact:has(dd.is-unread) { background: var(--craft-well); }
+.vault-page :is(.vault-panel, .vault-manage) {
+  border-color: transparent;
+  box-shadow: var(--shadow-lift);
+}
+.vault-page .vault-panel-head,
+.vault-page .vault-toolbar { background: var(--craft-band); }
+.vault-page .vault-panel-head { border-radius: var(--vault-radius) var(--vault-radius) 0 0; }
+.vault-page .vault-notice { border-top: 0; }
+.vault-page .vault-panel.is-empty .vault-notice {
+  position: relative;
+  margin: var(--s4) var(--vault-pad) var(--vault-pad);
+  padding: calc(var(--s6) + 36px) max(var(--s5), calc(50% - 32ch)) var(--s6);
+  border-radius: var(--vault-radius);
+  background: var(--craft-well);
+  color: var(--ink-2);
+}
+.vault-page .vault-panel.is-empty .vault-notice::before {
+  content: '';
+  position: absolute;
+  top: var(--s6);
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translateX(-50%);
+  background: var(--ink-4);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4.5' y='10.5' width='15' height='10' rx='2'/%3E%3Cpath d='M8 10.5V7.5a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4.5' y='10.5' width='15' height='10' rx='2'/%3E%3Cpath d='M8 10.5V7.5a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.vault-page .vault-empty { border-top: 0; }
+@media (forced-colors: active) {
+  .vault-page :is(.vault-panel, .vault-manage, .vault-fact) { border: 1px solid CanvasText; }
+}

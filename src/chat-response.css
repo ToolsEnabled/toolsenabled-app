@@ -1,0 +1,260 @@
+/* One reading system for every assistant response. The shared message body is
+   used by live chat, saved threads, Home, Controls, Watch, and Messages. Theme
+   ink carries the words; the app's existing accents organize the supporting
+   material. A response keeps the structure its author actually supplied. */
+.chat-message-body {
+  --response-ink: var(--ink);
+  --response-secondary: var(--ink-2);
+  --response-accent: var(--accent-2);
+  --response-panel: color-mix(in srgb, var(--bg) 55%, var(--sheet));
+  --response-rule: color-mix(in srgb, var(--ink) 16%, var(--sheet));
+  --syntax-comment: var(--ink-2);
+
+}
+/* This specificity also overrides the older per-theme syntax palette. */
+/* CALM HIGHLIGHTING, AND NO GOLD. Code reads in the theme's ink with two
+   accents doing the work (keywords, strings); names, numbers and attributes
+   are shades between those and the ink rather than four more colours. The
+   amber that attributes used to spend is gone on every theme. */
+:root .chat-message-body[data-chat-format] {
+  --syntax-keyword: color-mix(in srgb, var(--accent-2) 80%, var(--ink));
+  --syntax-string: color-mix(in srgb, var(--s-good) 72%, var(--ink));
+  --syntax-title: color-mix(in srgb, var(--accent-2) 42%, var(--ink));
+  --syntax-number: color-mix(in srgb, var(--accent-2) 55%, var(--ink-2));
+  --syntax-attribute: color-mix(in srgb, var(--accent-2) 30%, var(--ink-2));
+  --syntax-comment: var(--ink-3);
+}
+:root .chat-message-body[data-chat-format] :is(.hljs-comment, .hljs-quote) { font-style: italic; }
+
+:is(.chat[data-chat-panel], .home, .comms, .saved-message, .rail-page, .watch-pane) .chat-message-body[data-chat-format="markdown"],
+.rail-said.chat-message-body[data-chat-format="markdown"] {
+  color: var(--response-ink);
+  font-size: var(--chat-text-size, 15px);
+  font-weight: 400;
+  line-height: 1.8;
+  letter-spacing: 0;
+  opacity: 1;
+  text-wrap: pretty;
+}
+/* THE MEASURE IS WIDER THAN IT WAS (rule: more room for text).
+   Prose holds at 96ch -- past that a line is hard to track back -- while code
+   blocks and tables keep the full width of the message. */
+:root .chat-message-body[data-chat-format="markdown"] :is(.md-p, .md-list, .md-quote, .md-callout) { max-width: 96ch; }
+:root .chat-message-body[data-chat-format="markdown"] .md-p { margin: 0 0 .85em; }
+:root .chat-message-body[data-chat-format="markdown"] .md-h {
+  max-width: 96ch;
+  margin: 1.45em 0 .5em;
+  color: var(--response-ink);
+  font-weight: 680;
+  line-height: 1.32;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+/* A heading inside a reply is a section of the reply, not a new page: size and
+   weight separate it, and no full-width rule is drawn above it. */
+:root .chat-message-body[data-chat-format="markdown"] .md-h1 { font-size: 1.36em; }
+:root .chat-message-body[data-chat-format="markdown"] .md-h2 { font-size: 1.2em; }
+:root .chat-message-body[data-chat-format="markdown"] .md-h3 { font-size: 1.07em; }
+:root .chat-message-body[data-chat-format="markdown"] :is(.md-h4, .md-h5, .md-h6) { font-size: 1em; letter-spacing: 0; }
+:root .chat-message-body[data-chat-format="markdown"] :is(.md-h1, .md-h2):not(:first-child) { padding-top: 0; border-top: 0; }
+:root .chat-message-body[data-chat-format="markdown"] strong { color: var(--response-ink); font-weight: 660; }
+:root .chat-message-body[data-chat-format="markdown"] .md-list { margin: .15em 0 .95em; padding-left: 1.55em; }
+:root .chat-message-body[data-chat-format="markdown"] .md-list > li { margin: .3em 0; padding-left: .3em; }
+:root .chat-message-body[data-chat-format="markdown"] .md-list > li::marker {
+  color: var(--response-secondary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-list .md-list { margin: .2em 0 .15em; padding-left: 1.35em; }
+:root .chat-message-body[data-chat-format="markdown"] .md-list .md-list > li { margin-block: .15em; }
+:root .chat-message-body[data-chat-format="markdown"] .md-list .md-list > li::marker { color: var(--ink-3); font-weight: 400; }
+:root .chat-message-body[data-chat-format="markdown"] .md-list .md-p { margin-bottom: .35em; }
+:root .chat-message-body[data-chat-format="markdown"] .md-task { padding-left: .4em; }
+:root .chat-message-body[data-chat-format="markdown"] .md-task-status {
+  width: 1.08em;
+  height: 1.08em;
+  top: .4em;
+  border-color: var(--response-secondary);
+  border-radius: 4px;
+  color: var(--response-ink);
+  background: var(--sheet);
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-task.is-complete .md-task-status {
+  color: var(--s-good);
+  background: color-mix(in srgb, var(--s-good) 10%, var(--sheet));
+  border-color: var(--s-good);
+}
+
+:root .chat-message-body[data-chat-format="markdown"] .md-quote {
+  margin: 1em 0;
+  padding: .1em 0 .1em 1em;
+  border: 0;
+  border-left: 2px solid var(--border-strong);
+  border-radius: 0;
+  color: var(--response-secondary);
+  background: transparent;
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-quote .md-quote { margin-block: .8em; background: transparent; }
+:root .chat-message-body[data-chat-format="markdown"] .md-callout {
+  --callout-accent: var(--response-accent);
+  padding: .75em 1em;
+  border: 1px solid var(--border-default);
+  border-left: 2px solid var(--callout-accent);
+  border-radius: var(--radius-md);
+  color: var(--response-ink);
+  background: var(--surface-sunken);
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-callout[data-tone="tip"] { --callout-accent: var(--s-good); }
+:root .chat-message-body[data-chat-format="markdown"] .md-callout[data-tone="warning"] { --callout-accent: var(--s-serious); }
+:root .chat-message-body[data-chat-format="markdown"] .md-callout[data-tone="caution"] { --callout-accent: var(--s-serious); }
+:root .chat-message-body[data-chat-format="markdown"] .md-callout-title {
+  display: flex;
+  align-items: center;
+  gap: .65em;
+  margin: 0 0 .45em;
+  color: var(--response-ink);
+  font-size: .9em;
+  font-weight: 650;
+  line-height: 1.5;
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-callout-title::before {
+  content: '';
+  width: .55em;
+  height: .55em;
+  flex: none;
+  border: 1px solid var(--callout-accent);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--callout-accent) 14%, transparent);
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-rule { margin: 1.8em 0; border-color: var(--response-rule); }
+
+:root .chat-message-body[data-chat-format="markdown"] .md-code {
+  padding: .1em .34em;
+  border-color: var(--border-hairline);
+  border-radius: var(--radius-xs);
+  background: var(--surface-sunken);
+  color: var(--response-ink);
+  font-size: .87em;
+  font-weight: 450;
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-code-block {
+  margin: 1em 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  box-shadow: none;
+}
+/* One compact bar: the language (and the length of a long block) on the left,
+   Wrap and Copy as quiet controls of one height on the right. */
+:root .chat-message-body[data-chat-format="markdown"] .md-code-head {
+  min-height: 32px;
+  gap: 4px 10px;
+  padding: 3px 5px 3px 12px;
+  border-color: var(--border-hairline);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-code-language {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0;
+  color: var(--ink-3);
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-code-lines { margin-left: 8px; color: var(--ink-3); font: 400 11.5px/1.4 var(--font-ui); }
+:root .chat-message-body[data-chat-format="markdown"] .md-code-head .md-tool {
+  min-width: 0;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font: 550 11.5px/1.4 var(--font-ui);
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-code-head .md-tool:hover,
+:root .chat-message-body[data-chat-format="markdown"] .md-code-head .md-tool[aria-pressed="true"] {
+  background: var(--state-hover);
+  border-color: var(--border-hairline);
+  color: var(--response-ink);
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-pre {
+  padding: 10px 14px 12px;
+  color: var(--response-ink);
+  font-size: .86em;
+  line-height: 1.6;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+/* A LONG BLOCK IS SHORTENED WITH A WAY BACK. Past 24 lines the block shows its
+   first 24 and a Show all bar under them (chat-markdown.js); every line stays
+   in the element, so Copy copies the whole block. It still scrolls sideways
+   rather than wrapping. */
+:root .chat-message-body[data-chat-format="markdown"] .md-code-block.is-long:not(.is-expanded) .md-pre {
+  max-height: calc(24 * 1.6em + 22px);
+  overflow-y: hidden;
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-code-foot { border-top: 1px solid var(--border-hairline); }
+:root .chat-message-body[data-chat-format="markdown"] .md-code-expand {
+  display: block; width: 100%; min-height: 28px; margin: 0; padding: 3px 12px;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none;
+  color: var(--ink-2); font: 600 12px/1.4 var(--font-ui); text-align: left; cursor: pointer;
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-code-expand:hover { color: var(--ink); background: var(--state-hover); }
+
+/* A table is as wide as its columns need, up to the message's full width,
+   where it scrolls sideways; a three-column table is not stretched across a
+   wide window. */
+:root .chat-message-body[data-chat-format="markdown"] .md-table-wrap {
+  width: fit-content;
+  margin: 1em 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-table { min-width: 0; font-size: .9em; line-height: 1.6; }
+:root .chat-message-body[data-chat-format="markdown"] .md-table :is(th, td) { padding: .5em .9em; border-color: var(--border-hairline); }
+:root .chat-message-body[data-chat-format="markdown"] .md-table th {
+  padding-block: .5em;
+  color: var(--response-ink);
+  background: var(--surface-sunken);
+  font-size: .95em;
+  font-weight: 600;
+  border-bottom-color: var(--border-default);
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-table td { color: var(--response-ink); }
+:root .chat-message-body[data-chat-format="markdown"] .md-table tbody tr:nth-child(even) { background: transparent; }
+:root .chat-message-body[data-chat-format="markdown"] .md-table tbody tr:hover { background: var(--state-hover); }
+:root .chat-message-body[data-chat-format="markdown"] .md-link {
+  color: var(--response-ink);
+  text-decoration-color: var(--response-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: .22em;
+}
+:root .chat-message-body[data-chat-format="markdown"] .md-link:hover { color: var(--response-accent); text-decoration-thickness: 2px; }
+:root .chat-message-body[data-chat-format="markdown"] :is(.md-quote, .md-callout) > :last-child { margin-bottom: 0; }
+:root .chat-message-body[data-chat-format="markdown"] > :first-child { margin-top: 0; }
+:root .chat-message-body[data-chat-format="markdown"] > :last-child { margin-bottom: 0; }
+
+/* The same document adapts to an inline agent, narrow rail, or phone. Keep
+   columns and code scrollable inside their frame, never across the chat. */
+.chat .msg.them, .saved-message, .comms .cmsg-body, .home .turn-text { min-width: 0; }
+.watch-pane .chip:not(.as-chat) .chat-message-body[data-chat-format="markdown"] { --chat-text-size: 13px; }
+@container (max-width: 480px) {
+  :root .chat-message-body[data-chat-format="markdown"] { --chat-text-size: 14px; }
+  :root .chat-message-body[data-chat-format="markdown"] .md-h1 { font-size: 1.28em; }
+  :root .chat-message-body[data-chat-format="markdown"] .md-h2 { font-size: 1.15em; }
+  :root .chat-message-body[data-chat-format="markdown"] .md-code-head { padding: 2px 4px 2px 10px; }
+  :root .chat-message-body[data-chat-format="markdown"] .md-pre { padding: 9px 10px 10px; font-size: .86em; }
+  :root .chat-message-body[data-chat-format="markdown"] .md-table :is(th, td) { padding: .45em .7em; }
+  :root .chat-message-body[data-chat-format="markdown"] .md-list { padding-left: 1.45em; }
+  :root .chat-message-body[data-chat-format="markdown"] .md-list > li { padding-left: .2em; }
+}
+@media (max-width: 640px) {
+  :root .chat-message-body[data-chat-format="markdown"] { --chat-text-size: 14px; }
+  :root .chat-message-body[data-chat-format="markdown"] .md-tool { min-height: 30px; }
+}
+@media (forced-colors: active) {
+  :root .chat-message-body[data-chat-format="markdown"] :is(.md-code-block, .md-table-wrap, .md-callout, .md-task-status) { border-color: CanvasText; }
+  :root .chat-message-body[data-chat-format="markdown"] .md-link { color: LinkText; text-decoration-color: LinkText; }
+}

@@ -1,0 +1,1091 @@
+/* CHECKOUT — an order form, in this product's own voice.
+ *
+ * The surface is meant to feel like checking out at a store, and
+ * for it to follow the site's theme. What is borrowed from a store is the
+ * STRUCTURE -- browse, a running total that follows you, a review step, a
+ * confirmation -- and what is borrowed from the app is every pixel of the
+ * paint. Boxes here are square.
+ *
+ * THE 2026-09-23 PASS puts it on the foundation's layers (src/foundation.css):
+ * the page is the canvas; the totals, each shelf, the order on the review step
+ * and the running total are base cards with a default edge; column heads,
+ * notes and read-only callouts are sunken wells; buttons, the tick boxes and
+ * the quantity stepper are the raised step. Radii come from the small scale
+ * (3px marks, 4px controls, 6px cards). Nothing here declares a colour: every
+ * value is a theme token, so White, Tan, Black, Ember and Cobalt need nothing
+ * of their own. There is no gold or yellow on this page: a caution is set in
+ * strong ink, and only "cannot buy yet" and "not saved" carry a hue (the
+ * serious red), so the one colour on the form means the one thing that stops
+ * a purchase.
+ *
+ * MONEY IS SET IN MONO WITH TABULAR FIGURES, EVERYWHERE, WITHOUT EXCEPTION.
+ * Two amounts in a column that do not align on the decimal are two amounts you
+ * have to read rather than compare, and the entire point of this screen is
+ * comparison.
+ */
+
+.checkout-page {
+  --co-edge: var(--border-default, var(--line-2));
+  --co-rule: var(--border-hairline, var(--line));
+  --co-card: var(--surface-base, var(--sheet));
+  --co-well: var(--surface-sunken, var(--bg-2));
+  --co-radius: var(--radius-card, 6px);
+  --co-control-radius: var(--radius-control, 4px);
+  --co-mark-radius: var(--radius-xs, 3px);
+  --co-pad: var(--s5);
+  --co-control-h: 36px;
+  --co-caution: var(--ink);
+  --co-serious: var(--s-serious);
+  --co-price-col: minmax(10.5rem, 14rem);
+  scrollbar-gutter: stable;
+  color: var(--ink);
+}
+.checkout-page [hidden] { display: none !important; }
+
+.checkout-shell {
+  container: checkout-shell / inline-size;
+  width: 100%;
+  max-width: 1600px;
+  margin-inline: auto;
+  padding-top: var(--s3);
+  padding-bottom: var(--s6, 32px);
+}
+
+/* ---------- page head ---------- */
+
+.checkout-head { padding-bottom: var(--s5); }
+.checkout-page .checkout-eyebrow {
+  margin: 0 0 var(--s2);
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.checkout-page .checkout-title {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 610;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  color: var(--ink);
+}
+.checkout-lede {
+  max-width: 72ch;
+  margin-top: var(--s3);
+  font-size: var(--text-base, 14px);
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+/* The one sentence on this page that must never be softened, so it is the one
+   sentence that gets weight rather than a colour. */
+.checkout-lede strong { font-weight: 640; color: var(--ink); }
+
+.checkout-provenance {
+  margin-top: var(--s3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs, 12px);
+  line-height: 1.5;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.checkout-provenance:empty { display: none; }
+.checkout-provenance.is-quiet {
+  margin-top: 2px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the two columns ---------- */
+
+.checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s4) var(--s6, 32px);
+  align-items: start;
+}
+.checkout-main { display: grid; gap: var(--s4); min-width: 0; }
+
+/* ---------- the totals ----------
+   Three facts in one card, divided by hairlines: the label over the figure,
+   the figure's meaning under it. Zero is not a figure to shout. */
+
+.checkout-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--co-edge);
+  border-radius: var(--co-radius);
+  background: var(--co-card);
+  box-shadow: var(--shadow-card, none);
+}
+.checkout-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px var(--co-pad) 16px;
+}
+.checkout-stat + .checkout-stat { border-left: 1px solid var(--co-rule); }
+.checkout-stat-label {
+  order: -1;
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  line-height: 1.35;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.checkout-stat-value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 620;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.checkout-stat-note {
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.checkout-stat-note:empty { display: none; }
+.checkout-stat[data-empty] .checkout-stat-value { color: var(--ink-3); font-weight: 500; }
+
+/* ---------- notice bands ----------
+   One shape for every notice: a card-coloured box (a sunken well when it sits
+   inside a shelf) with a 2px rule down its left edge, the label in caps, the sentences beside it. The rule and the label
+   carry the kind: strong ink for a caution, the serious red for something
+   that stops a purchase, the good green for an all-clear, and a hairline for
+   a plain note. */
+
+.checkout-band {
+  --band-rule: var(--co-edge);
+  --band-label: var(--ink-25);
+  display: grid;
+  grid-template-columns: minmax(8.5rem, max-content) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--s2) var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--co-rule);
+  border-left: 2px solid var(--band-rule);
+  border-radius: var(--co-control-radius);
+  background: var(--band-ground);
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.checkout-band { --band-ground: var(--co-card); }
+.checkout-item .checkout-band { --band-ground: var(--co-well); }
+.checkout-band[data-kind="warn"] { --band-rule: var(--co-caution); --band-label: var(--co-caution); }
+.checkout-band[data-kind="blocked"] {
+  --band-rule: var(--co-serious);
+  --band-label: var(--co-serious);
+  background: color-mix(in srgb, var(--co-serious) 6%, var(--band-ground));
+}
+.checkout-band[data-kind="good"] { --band-rule: var(--s-good); --band-label: var(--s-good); }
+.checkout-band-label {
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  line-height: 1.6;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--band-label);
+}
+.checkout-band-body { min-width: 0; }
+.checkout-band-body p { margin: 0; overflow-wrap: anywhere; }
+.checkout-band-body p + p { margin-top: var(--s2); }
+.checkout-band-body strong { font-weight: 640; color: var(--ink); }
+.checkout-band-body code { font-family: var(--font-mono); font-size: var(--text-sm, 12.5px); color: var(--ink-2); }
+
+.checkout-notices { display: grid; gap: var(--s2); }
+.checkout-notices:empty { display: none; }
+/* A button that acts on a notice ("Got it", "Review in Ledger") sits inside
+   it, under the sentences, at the body's left edge. */
+.checkout-band > .checkout-step-actions { grid-column: 2; margin-top: var(--s1); }
+
+/* ---------- buttons ----------
+   One control height on the whole page. Secondary is the foundation's raised
+   control; the primary is the theme's action fill; quiet has no edge until
+   hovered. A disabled button of any kind reads as disabled, never as a pale
+   version of itself. */
+
+.checkout-btn,
+.checkout-page .checkout-step-actions .ctl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  box-sizing: border-box;
+  min-height: var(--co-control-h);
+  height: auto;
+  padding: 6px 14px;
+  border: 1px solid var(--control-border, var(--line-2));
+  border-radius: var(--co-control-radius);
+  background: var(--control-bg, var(--sheet));
+  box-shadow: var(--shadow-control, none);
+  color: var(--control-ink, var(--ink));
+  font-family: var(--font-ui);
+  font-size: var(--text-sm, 12.5px);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--dur-2, 160ms) var(--ease-out, ease), border-color var(--dur-2, 160ms) var(--ease-out, ease), color var(--dur-2, 160ms) var(--ease-out, ease);
+}
+.checkout-btn:hover:not(:disabled),
+.checkout-page .checkout-step-actions .ctl-btn:hover {
+  border-color: var(--control-border-hover, var(--ink-4));
+  background: var(--control-hover, var(--sheet));
+  color: var(--ink);
+}
+.checkout-btn:active:not(:disabled) { background: var(--control-press, var(--sheet)); transform: none; }
+.checkout-btn[data-primary] {
+  padding-inline: 18px;
+  border-color: var(--action-primary, var(--ink));
+  background: var(--action-primary, var(--ink));
+  color: var(--action-primary-ink, var(--sheet));
+  font-size: var(--text-base, 14px);
+}
+.checkout-btn[data-primary]:hover:not(:disabled) {
+  border-color: var(--action-primary-hover, var(--ink));
+  background: var(--action-primary-hover, var(--ink));
+  color: var(--action-primary-ink, var(--sheet));
+}
+.checkout-btn[data-quiet] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-2);
+}
+.checkout-btn[data-quiet]:hover:not(:disabled) { border-color: transparent; background: var(--state-hover); color: var(--ink); }
+.checkout-btn:disabled,
+.checkout-btn[data-primary]:disabled {
+  border-color: var(--co-rule);
+  background: var(--control-disabled-bg, transparent);
+  box-shadow: none;
+  color: var(--control-disabled-ink, var(--ink-3));
+  cursor: not-allowed;
+}
+.checkout-btn[data-quiet]:disabled { border-color: transparent; background: transparent; }
+.checkout-page :is(button, a, summary):focus-visible {
+  outline: var(--focus-outline, 2px solid var(--focus-ring));
+  outline-offset: var(--focus-offset, 2px);
+}
+
+/* ---------- a shelf ----------
+   Each category is a card: its title and blurb, how much of it can be chosen
+   and what is chosen from it, one action, then column heads and the rows. */
+
+.checkout-group {
+  container: checkout-group / inline-size;
+  min-width: 0;
+  border: 1px solid var(--co-edge);
+  border-radius: var(--co-radius);
+  background: var(--co-card);
+  box-shadow: var(--shadow-card, none);
+}
+.checkout-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3) var(--s5);
+  padding: var(--s4) var(--co-pad);
+}
+.checkout-group-head > div:first-child { flex: 1 1 22rem; min-width: 0; }
+.checkout-page .checkout-group-title {
+  margin: 0;
+  font-size: var(--text-xl, 17px);
+  font-weight: 620;
+  line-height: 1.25;
+  letter-spacing: var(--tracking-title, -.01em);
+  color: var(--ink);
+}
+.checkout-group-blurb {
+  max-width: 74ch;
+  margin-top: 4px;
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.checkout-group-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2) var(--s4);
+}
+.checkout-group-count,
+.checkout-group-tally {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.checkout-group-count { color: var(--ink-3); }
+/* Every shelf's head carries at most one button, and it looks the same on every
+   shelf: the do-not-buy shelf's Show / Hide toggle is a secondary control like
+   Select recommended, not a bare word floating at the end of the line. */
+.checkout-group-side .checkout-btn[data-quiet] {
+  border-color: var(--control-border, var(--line-2));
+  background: var(--control-bg, var(--sheet));
+  box-shadow: var(--shadow-control, none);
+  color: var(--control-ink, var(--ink));
+}
+.checkout-group-side .checkout-btn[data-quiet]:hover:not(:disabled) {
+  border-color: var(--control-border-hover, var(--ink-4));
+  background: var(--control-hover, var(--sheet));
+}
+.checkout-group-tally { color: var(--ink); font-weight: 600; }
+
+/* The do-not-buy shelf is advice, not stock. It recedes as a whole. */
+.checkout-group[data-category="do-not-buy"] { background: transparent; box-shadow: none; }
+.checkout-group[data-category="do-not-buy"] .checkout-group-title { color: var(--ink-2); }
+.checkout-group[data-collapsed="true"] .checkout-cols { display: none; }
+
+/* One grid for the column heads and every row, so the tick, the item and the
+   price each hold a column down the whole shelf. */
+.checkout-cols,
+.checkout-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) var(--co-price-col);
+  column-gap: var(--s4);
+  padding-inline: var(--co-pad);
+}
+.checkout-cols {
+  padding-block: var(--s2);
+  border-top: 1px solid var(--co-rule);
+  border-bottom: 1px solid var(--co-edge);
+  background: var(--co-well);
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  line-height: 1.35;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.checkout-cols > span:last-child { text-align: right; }
+
+.checkout-items { list-style: none; margin: 0; padding: 0; }
+
+/* ---------- one item ---------- */
+
+.checkout-item {
+  position: relative;
+  padding-block: 14px;
+  border-top: 1px solid var(--co-rule);
+  transition: background-color var(--dur-2, 160ms) var(--ease-out, ease);
+}
+.checkout-items > .checkout-item:first-child { border-top: 0; }
+.checkout-items > .checkout-item:last-child { border-radius: 0 0 var(--co-radius) var(--co-radius); }
+.checkout-item:hover { background: var(--state-hover); }
+/* Chosen is carried by a rule down the left edge and a tint, not by the tick
+   alone: the list is long enough that the edge is what makes the selection
+   legible while scrolling past at speed. */
+.checkout-item[data-selected="true"] {
+  background: var(--selected-bg, var(--state-hover));
+  box-shadow: inset 2px 0 0 var(--action-primary, var(--ink));
+}
+.checkout-item[data-choosable="false"]:hover { background: transparent; }
+/* A CHOSEN line that cannot safely be bought yet is marked in the serious hue
+   instead: choosing it is allowed -- nothing here buys anything -- so the edge
+   is what stops it looking like an ordinary line while they scroll. */
+.checkout-item[data-selected="true"][data-blocked="true"] {
+  background: color-mix(in srgb, var(--co-serious) 6%, var(--co-card));
+  box-shadow: inset 2px 0 0 var(--co-serious);
+}
+
+/* the tick box: a raised square, filled with the action colour when chosen */
+.checkout-pick {
+  align-self: start;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  padding: 0;
+  border: 1px solid var(--field-border, var(--ink-4));
+  border-radius: var(--co-mark-radius);
+  background: var(--field-bg, var(--sheet));
+  box-shadow: none;
+  color: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--dur-2, 160ms) var(--ease-out, ease), border-color var(--dur-2, 160ms) var(--ease-out, ease);
+}
+.checkout-pick:hover:not(:disabled) { border-color: var(--ink-2); background: var(--field-bg, var(--sheet)); }
+.checkout-pick[aria-checked="true"],
+.checkout-pick[aria-checked="true"]:hover:not(:disabled) {
+  border-color: var(--action-primary, var(--ink));
+  background: var(--action-primary, var(--ink));
+  color: var(--action-primary-ink, var(--sheet));
+}
+.checkout-item[data-blocked="true"] .checkout-pick[aria-checked="true"] {
+  border-color: var(--co-serious);
+  background: var(--co-serious);
+  color: var(--surface-raised, #fff);
+}
+.checkout-pick:disabled {
+  border-color: var(--co-edge);
+  background: var(--co-well);
+  cursor: not-allowed;
+}
+.checkout-pick:active { transform: none; }
+
+.checkout-item-main { min-width: 0; }
+.checkout-item-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--s3);
+}
+.checkout-item-name {
+  font-size: var(--text-lg, 15px);
+  font-weight: 620;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.checkout-item[data-choosable="false"] .checkout-item-name { color: var(--ink-2); font-weight: 560; }
+.checkout-item-vendor {
+  font-size: var(--text-sm, 12.5px);
+  color: var(--ink-3);
+}
+
+/* tags and chips: small square marks, caps, never a pill */
+.checkout-tag,
+.checkout-chip {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px solid var(--co-edge);
+  border-radius: var(--co-mark-radius);
+  background: transparent;
+  font-size: 10.5px;
+  font-weight: 640;
+  line-height: 1.35;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.checkout-chips { display: inline-flex; flex-wrap: wrap; gap: 4px var(--s2); }
+.checkout-chip[data-tone="warn"] { border-color: var(--border-strong, var(--line-2)); background: var(--co-well); color: var(--co-caution); }
+.checkout-chip[data-tone="blocked"] {
+  border-color: color-mix(in srgb, var(--co-serious) 45%, transparent);
+  background: color-mix(in srgb, var(--co-serious) 7%, transparent);
+  color: var(--co-serious);
+}
+.checkout-chip[data-tone="quiet"] { color: var(--ink-3); }
+
+/* The one-line pitch, cut by the renderer rather than by JavaScript, so the
+   full sentence is still the accessible text and still a text search away. */
+.checkout-item-summary {
+  margin-top: 4px;
+  max-width: 92ch;
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.5;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
+.checkout-item[data-expanded="true"] .checkout-item-summary { display: none; }
+
+/* The disclosure: a quiet text button with its own hover, sized like a
+   control so it is a target and not a stray underline. */
+.checkout-disclose {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  margin: 4px 0 0 -8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--co-control-radius);
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-size: var(--text-sm, 12.5px);
+  font-weight: 560;
+  line-height: 1.3;
+  color: var(--ink-2);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-2, 160ms) var(--ease-out, ease), color var(--dur-2, 160ms) var(--ease-out, ease);
+}
+.checkout-disclose::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+:is(.checkout-item[data-expanded="true"], .checkout-cart[data-verbose="true"]) .checkout-disclose::after { transform: translateY(1px) rotate(-135deg); }
+.checkout-disclose:hover { background: var(--state-hover); color: var(--ink); }
+
+.checkout-item-details { margin-top: var(--s2); }
+.checkout-item-what,
+.checkout-item-details .checkout-item-what {
+  margin-top: 0;
+  max-width: 78ch;
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+/* the reasoning, as a definition list because that is what it is */
+.checkout-reasons { display: grid; gap: var(--s2); margin: var(--s3) 0 0; }
+.checkout-reason {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: var(--s3);
+  align-items: baseline;
+}
+.checkout-reason dt {
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.checkout-reason dd {
+  margin: 0;
+  max-width: 74ch;
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+/* Their own words are the point of the screen, so they read as prose. */
+.checkout-reason[data-kind="wanted"] dd { color: var(--ink); font-style: italic; }
+
+.checkout-item-bands { display: grid; gap: var(--s2); margin-top: var(--s3); }
+
+.checkout-item-note {
+  margin-top: var(--s3);
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.checkout-item-source {
+  margin-top: var(--s2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs, 12px);
+  line-height: 1.5;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the money column ---------- */
+
+.checkout-price { min-width: 0; text-align: right; }
+.checkout-price-figure {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 620;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.checkout-price-figure[data-unpriced] {
+  font-family: var(--font-ui);
+  font-size: var(--text-md, 13.5px);
+  font-weight: 560;
+  color: var(--ink-3);
+}
+.checkout-price-cadence {
+  margin-top: 2px;
+  font-size: var(--text-caps, 11px);
+  font-weight: 620;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+/* THE FIRST-YEAR-VERSUS-RENEWAL CALLOUT. It is the only boxed thing in this
+   column, because a renewal that differs from the advertised first year is
+   the specific way this goes wrong and must not read as one more grey line. */
+.checkout-price-renewal {
+  margin-top: var(--s2);
+  padding: 6px var(--s2);
+  border: 1px solid var(--co-edge);
+  border-radius: var(--co-mark-radius);
+  background: var(--co-well);
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-align: left;
+}
+.checkout-price-renewal b {
+  font-family: var(--font-mono);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.checkout-price-verify {
+  margin-top: 4px;
+  font-size: var(--text-xs, 12px);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.checkout-price-verify[data-verified="false"] { color: var(--co-caution); font-weight: 560; text-wrap: balance; }
+.checkout-item-details .checkout-price-verify { text-align: left; }
+.checkout-price-estimate {
+  margin-top: 4px;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-align: left;
+}
+
+/* quantity stepper, only where quantityMax > 1: one raised control in three
+   parts, the same height as a button */
+.checkout-qty {
+  display: inline-grid;
+  grid-template-columns: 30px minmax(2.25rem, auto) 30px;
+  align-items: stretch;
+  box-sizing: border-box;
+  height: 32px;
+  margin-top: var(--s2);
+  border: 1px solid var(--control-border, var(--line-2));
+  border-radius: var(--co-control-radius);
+  background: var(--control-bg, var(--sheet));
+  box-shadow: var(--shadow-control, none);
+}
+.checkout-qty button {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--co-control-radius) - 1px);
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-2);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+.checkout-qty button:hover:not(:disabled) { background: var(--state-hover); color: var(--ink); }
+.checkout-qty button:disabled { color: var(--ink-4); cursor: not-allowed; }
+.checkout-qty button:focus-visible { outline-offset: -2px; }
+.checkout-qty output {
+  display: grid;
+  place-items: center;
+  border-inline: 1px solid var(--co-rule);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 12.5px);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* ---------- the running total ----------
+   The one piece of chrome borrowed wholesale from a shop: the total follows
+   you down a long list, because a total you have to scroll to find is a total
+   you stop checking. On a narrow page it rides the bottom edge; on a wide one
+   it is a card at the top of its own column (see the widths at the foot). */
+
+.checkout-bar {
+  position: sticky;
+  bottom: var(--s2);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: var(--s2) var(--s4);
+  min-width: 0;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--co-edge);
+  border-radius: var(--co-radius);
+  background: var(--surface-overlay, var(--sheet));
+  box-shadow: var(--shadow-popover, var(--elev-2));
+}
+.checkout-bar-title {
+  display: none;
+  margin: 0;
+  font-size: var(--text-xl, 17px);
+  font-weight: 620;
+  line-height: 1.25;
+  letter-spacing: var(--tracking-title, -.01em);
+  color: var(--ink);
+}
+.checkout-bar-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s5);
+  min-width: 0;
+}
+.checkout-bar-figure { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.checkout-bar-figure b {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.checkout-bar-figure span {
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.checkout-bar-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--s2); }
+/* The bar states what the button does NOT do, right where the button is. */
+.checkout-bar-truth {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+/* The bar itself changes when the basket holds something that cannot be
+   bought yet, so the warning is attached to the total they are looking at. */
+.checkout-bar[data-blocked="true"] { border-color: color-mix(in srgb, var(--co-serious) 45%, var(--co-edge)); box-shadow: var(--shadow-popover, var(--elev-2)), inset 2px 0 0 var(--co-serious); }
+.checkout-bar[data-blocked="true"] .checkout-bar-truth { color: var(--co-serious); font-weight: 560; }
+
+/* ---------- what is already waiting on their decision ----------
+   The audited queue's own carts, rendered whole. This panel decides nothing. */
+
+.checkout-queue { display: grid; gap: var(--s3); }
+.checkout-queue:empty { display: none; }
+
+.checkout-cart {
+  padding: var(--s4) var(--co-pad);
+  border: 1px solid var(--co-edge);
+  border-left: 2px solid var(--co-caution);
+  border-radius: var(--co-radius);
+  background: var(--co-card);
+  box-shadow: var(--shadow-card, none);
+}
+.checkout-cart-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: baseline;
+  gap: var(--s3);
+}
+.checkout-cart-title { font-size: var(--text-lg, 15px); line-height: 1.3; font-weight: 620; color: var(--ink); }
+.checkout-cart-total {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.checkout-cart-message {
+  margin-top: var(--s2);
+  max-width: 84ch;
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+/* Clamped by the renderer, never trimmed in JavaScript. */
+.checkout-cart[data-verbose="false"] .checkout-cart-message,
+.checkout-cart[data-verbose="false"] .checkout-line-sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.checkout-cart[data-verbose="false"] .checkout-cart-message { -webkit-line-clamp: 3; }
+.checkout-cart[data-verbose="false"] .checkout-line-sub { -webkit-line-clamp: 2; }
+.checkout-cart .checkout-lines-head { margin-top: var(--s3); }
+.checkout-cart-foot {
+  margin-top: var(--s3);
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.45;
+  font-weight: 560;
+  color: var(--co-caution);
+}
+
+/* ---------- lines: the review step, the saved record and the carts ---------- */
+
+.checkout-lines-head,
+.checkout-line,
+.checkout-totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(6.5rem, max-content) minmax(6.5rem, max-content);
+  align-items: baseline;
+  column-gap: var(--s5);
+}
+.checkout-lines-head {
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--co-edge);
+}
+.checkout-lines-head span {
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+  text-align: right;
+}
+.checkout-lines-head span:first-child { text-align: left; }
+.checkout-lines { list-style: none; margin: 0; padding: 0; }
+.checkout-line { padding: var(--s3) 0; border-bottom: 1px solid var(--co-rule); }
+.checkout-line-name { font-size: var(--text-base, 14px); font-weight: 560; line-height: 1.4; color: var(--ink); }
+.checkout-line-sub {
+  margin-top: 2px;
+  font-size: var(--text-xs, 12px);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.checkout-line[data-blocked="true"] .checkout-line-sub { color: var(--co-serious); }
+.checkout-line-amount,
+.checkout-line-annual {
+  font-family: var(--font-mono);
+  font-size: var(--text-md, 13.5px);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-align: right;
+  white-space: nowrap;
+}
+.checkout-line-annual { color: var(--ink-3); }
+.checkout-totals { padding: var(--s3) 0 2px; border-top: 1px solid var(--co-edge); margin-top: -1px; }
+.checkout-totals-label { font-size: var(--text-base, 14px); font-weight: 640; color: var(--ink); }
+.checkout-totals .checkout-line-amount,
+.checkout-totals .checkout-line-annual { font-size: var(--text-lg, 15px); font-weight: 650; color: var(--ink); }
+
+/* ---------- review and confirmation steps ---------- */
+
+.checkout-step { display: grid; gap: var(--s4); padding-top: 0; }
+.checkout-step > * { min-width: 0; }
+.checkout-step > div:empty { display: none; }
+.checkout-page .checkout-step-title {
+  margin: 0;
+  font-size: var(--text-2xl, 21px);
+  font-weight: 620;
+  line-height: 1.25;
+  letter-spacing: var(--tracking-title, -.01em);
+  color: var(--ink);
+}
+.checkout-step-lede {
+  max-width: 72ch;
+  margin-top: calc(-1 * var(--s2));
+  font-size: var(--text-base, 14px);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+/* the order on the review step, and the saved record: one card each */
+.checkout-order,
+.checkout-record {
+  padding: var(--s2) var(--co-pad) var(--s3);
+  border: 1px solid var(--co-edge);
+  border-radius: var(--co-radius);
+  background: var(--co-card);
+  box-shadow: var(--shadow-card, none);
+}
+.checkout-record { padding-top: var(--s4); }
+.checkout-record-stamp {
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--co-edge);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 12.5px);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* WHAT CONFIRMING ACTUALLY DOES. Two lists, and the second one is not smaller
+   or quieter than the first: the things this does not do are the things they
+   would otherwise assume it did. */
+.checkout-truth {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: var(--s4);
+}
+.checkout-truth-panel {
+  padding: var(--s4) var(--co-pad);
+  border: 1px solid var(--co-edge);
+  border-radius: var(--co-radius);
+  background: var(--co-card);
+}
+.checkout-truth-title {
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.checkout-truth-list { display: grid; gap: var(--s2); margin-top: var(--s3); padding: 0; list-style: none; }
+.checkout-truth-list li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--s2);
+  align-items: baseline;
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.checkout-truth-mark { font-family: var(--font-mono); font-weight: 700; }
+.checkout-truth-panel[data-tone="does"] .checkout-truth-mark { color: var(--s-good); }
+.checkout-truth-panel[data-tone="does-not"] .checkout-truth-mark,
+.checkout-truth-panel[data-tone="does-not"] .checkout-truth-title { color: var(--co-serious); }
+
+/* A row of actions: buttons first, the sentence about them after, on one line
+   when there is room. */
+.checkout-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+}
+.checkout-step-actions p {
+  flex: 1 1 260px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.checkout-step > .checkout-step-actions {
+  padding-top: var(--s4);
+  border-top: 1px solid var(--co-edge);
+}
+
+/* ---------- unavailable ----------
+   The whole page's content when the list cannot be read or holds nothing:
+   a card with the reason at a reading measure, and no controls. */
+
+.checkout-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  padding: var(--s7, 40px) max(var(--co-pad), calc(50% - 32ch));
+  border: 1px solid var(--co-edge);
+  border-radius: var(--co-radius);
+  background: var(--co-card);
+  box-shadow: var(--shadow-card, none);
+  text-align: center;
+  text-wrap: balance;
+}
+.checkout-state strong { font-size: var(--text-lg, 15px); font-weight: 620; color: var(--ink); }
+.checkout-state span { max-width: 64ch; font-size: var(--text-base, 14px); line-height: 1.6; color: var(--ink-2); }
+
+.checkout-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ---------- widths ----------
+   From the shell's own width, not the window's, so a collapsed navigation
+   rail and the Text size setting reflow it the same way a narrower window
+   does. Wide: the running total becomes a card at the top of a side column.
+   Narrow: the money column drops under the item rather than being squeezed,
+   because an amount that wraps mid-figure is worse than an amount on its own
+   line. */
+
+@container checkout-shell (min-width: 1180px) {
+  .checkout-layout { grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem); }
+  .checkout-bar {
+    grid-column: 2;
+    grid-row: 1;
+    top: var(--s4);
+    bottom: auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
+    padding: var(--s4) var(--s5) var(--s5);
+    background: var(--co-card);
+    box-shadow: var(--shadow-card, none);
+  }
+  .checkout-bar[data-blocked="true"] { box-shadow: var(--shadow-card, none), inset 2px 0 0 var(--co-serious); }
+  .checkout-bar-title { display: block; }
+  .checkout-bar-figures { display: grid; gap: 0; border-top: 1px solid var(--co-edge); }
+  .checkout-bar-figure {
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    gap: var(--s3);
+    padding: var(--s3) 0;
+    border-bottom: 1px solid var(--co-rule);
+  }
+  .checkout-bar-figure span { display: block; font-size: var(--text-sm, 12.5px); font-weight: 560; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+  .checkout-bar-figure span::first-letter { text-transform: uppercase; }
+  .checkout-bar-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
+  .checkout-bar-actions .checkout-btn[data-primary] { order: -1; width: 100%; }
+  .checkout-bar-actions .checkout-btn[data-quiet] { justify-self: center; }
+}
+
+@container checkout-shell (max-width: 900px) {
+  .checkout-page { --co-pad: var(--s4); }
+  .checkout-cols,
+  .checkout-item { grid-template-columns: 22px minmax(0, 1fr); row-gap: var(--s2); }
+  .checkout-cols > span:last-child { display: none; }
+  .checkout-price { grid-column: 2; text-align: left; }
+  .checkout-price-renewal { max-width: 46ch; }
+  .checkout-reason { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .checkout-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .checkout-stat:nth-child(3) { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--co-rule); }
+}
+
+@container checkout-shell (max-width: 640px) {
+  .checkout-page .checkout-title { font-size: 30px; }
+  .checkout-summary { grid-template-columns: minmax(0, 1fr); }
+  .checkout-stat + .checkout-stat { border-left: 0; border-top: 1px solid var(--co-rule); }
+  .checkout-stat-value { font-size: 22px; }
+  .checkout-band { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .checkout-band > .checkout-step-actions { grid-column: 1; }
+  .checkout-group-side { justify-content: flex-start; }
+  .checkout-cart-head { grid-template-columns: minmax(0, 1fr); }
+  .checkout-bar { grid-template-columns: minmax(0, 1fr); padding: var(--s3); }
+  .checkout-bar-actions { justify-content: stretch; }
+  .checkout-bar-actions .checkout-btn[data-primary] { flex: 1 1 auto; }
+  .checkout-lines-head,
+  .checkout-line,
+  .checkout-totals { grid-template-columns: minmax(0, 1fr) max-content; }
+  .checkout-lines-head span:nth-child(3),
+  .checkout-line-annual { display: none; }
+  .checkout-totals .checkout-line-annual { display: block; grid-column: 2; }
+  .checkout-btn { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkout-item, .checkout-pick, .checkout-btn, .checkout-disclose { transition: none !important; }
+}
+body.reduce-motion .checkout-item,
+body.reduce-motion .checkout-pick,
+body.reduce-motion .checkout-btn,
+body.reduce-motion .checkout-disclose { transition: none !important; }
+
+@media (forced-colors: active) {
+  .checkout-item[data-selected="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .checkout-pick[aria-checked="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+  .checkout-band { border-left-color: CanvasText; }
+}
+
+/* ===========================================================================
+   CRAFT (2026-09-23): layers and fills. The totals, each shelf, the order
+   and the record are the base layer on the foundation's soft lift with no
+   drawn edge; a shelf's title row sits on a band over its column heads.
+   The approvals line and the first-year price note are wells, and the item
+   tags are filled chips. Every state colour (cannot buy yet, not saved, the
+   chosen row) keeps its own rule; only the neutral outlines went.
+   =========================================================================== */
+.checkout-page :is(.checkout-summary, .checkout-group, .checkout-cart, .checkout-record, .checkout-truth-panel) {
+  border-color: transparent;
+  box-shadow: var(--shadow-lift);
+}
+.checkout-page .checkout-group-head {
+  background: var(--craft-band);
+  border-radius: var(--co-radius) var(--co-radius) 0 0;
+}
+.checkout-page :is(.checkout-band, .checkout-price-renewal) {
+  border-color: transparent;
+  background: var(--craft-well);
+}
+.checkout-page :is(.checkout-chip, .checkout-tag) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--border-ink) 7%, transparent);
+}
+@media (forced-colors: active) {
+  .checkout-page :is(.checkout-summary, .checkout-group, .checkout-cart, .checkout-record, .checkout-truth-panel, .checkout-band, .checkout-price-renewal, .checkout-chip, .checkout-tag) { border-color: CanvasText; }
+}

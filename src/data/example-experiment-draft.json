@@ -1,0 +1,940 @@
+{
+  "version": 1,
+  "origin": "Bundled example: synthetic stock and options snippets and compositions",
+  "spec": {
+    "schemaVersion": 3,
+    "id": "example-snippets-and-compositions",
+    "version": "1.0.0",
+    "name": "Example / Stock and options snippets and compositions",
+    "domain": "generic",
+    "requireReview": true,
+    "executionPlan": {
+      "version": 1,
+      "purpose": "apparatus-development"
+    },
+    "catalog": [
+      {
+        "id": "ex-reason-to-buy-01",
+        "version": "1",
+        "kind": "atom",
+        "role": "reason_to_buy",
+        "title": "Reason to buy — SPY's close crosses above its 50-day simple moving average.",
+        "labels": [
+          "Reason to buy"
+        ],
+        "text": "SPY's close crosses above its 50-day simple moving average.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-buy-details-01",
+        "version": "1",
+        "kind": "atom",
+        "role": "buy_details",
+        "title": "Buy details — invest 25% of total portfolio value in SPY.",
+        "labels": [
+          "Buy details"
+        ],
+        "text": "invest 25% of total portfolio value in SPY.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-reason-to-sell-01",
+        "version": "1",
+        "kind": "atom",
+        "role": "reason_to_sell",
+        "title": "Reason to sell — SPY's close crosses below its 50-day simple moving average.",
+        "labels": [
+          "Reason to sell"
+        ],
+        "text": "SPY's close crosses below its 50-day simple moving average.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-sell-details-01",
+        "version": "1",
+        "kind": "atom",
+        "role": "sell_details",
+        "title": "Sell details — liquidate Strategy A's entire lot.",
+        "labels": [
+          "Sell details"
+        ],
+        "text": "liquidate Strategy A's entire lot.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-reason-to-buy-02",
+        "version": "1",
+        "kind": "atom",
+        "role": "reason_to_buy",
+        "title": "Reason to buy — QQQ has closed lower for 2 consecutive days.",
+        "labels": [
+          "Reason to buy"
+        ],
+        "text": "QQQ has closed lower for 2 consecutive days.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-buy-details-02",
+        "version": "1",
+        "kind": "atom",
+        "role": "buy_details",
+        "title": "Buy details — buy $10,000 of QQQ if at least $10,000 cash is available, otherwise do nothing.",
+        "labels": [
+          "Buy details"
+        ],
+        "text": "buy $10,000 of QQQ if at least $10,000 cash is available, otherwise do nothing.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-reason-to-sell-02",
+        "version": "1",
+        "kind": "atom",
+        "role": "reason_to_sell",
+        "title": "Reason to sell — QQQ's 14-day RSI closes above 70.",
+        "labels": [
+          "Reason to sell"
+        ],
+        "text": "QQQ's 14-day RSI closes above 70.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-sell-details-02",
+        "version": "1",
+        "kind": "atom",
+        "role": "sell_details",
+        "title": "Sell details — liquidate Strategy B's entire lot.",
+        "labels": [
+          "Sell details"
+        ],
+        "text": "liquidate Strategy B's entire lot.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-reason-to-sell-03",
+        "version": "1",
+        "kind": "atom",
+        "role": "reason_to_sell",
+        "title": "Reason to sell — QQQ's 14-day RSI closes above 65.",
+        "labels": [
+          "Reason to sell"
+        ],
+        "text": "QQQ's 14-day RSI closes above 65.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-options-reason-to-buy-01",
+        "version": "1",
+        "kind": "atom",
+        "role": "reason_to_buy",
+        "title": "Reason to buy — SPY's 10-bar average crosses above its 30-bar average on a completed 15-minute bar.",
+        "labels": [
+          "Reason to buy"
+        ],
+        "text": "SPY's 10-bar average crosses above its 30-bar average on a completed 15-minute bar.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-options-buy-details-01",
+        "version": "1",
+        "kind": "atom",
+        "role": "buy_details",
+        "title": "Buy details — Buy 1 SPY call at the lowest strike at or above the current price, in the nearest expiration at least 14 days away.",
+        "labels": [
+          "Buy details"
+        ],
+        "text": "Buy 1 SPY call at the lowest strike at or above the current price, in the nearest expiration at least 14 days away.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-options-reason-to-sell-01",
+        "version": "1",
+        "kind": "atom",
+        "role": "reason_to_sell",
+        "title": "Reason to sell — The option's midpoint reaches 1.4 times the filled entry price.",
+        "labels": [
+          "Reason to sell"
+        ],
+        "text": "The option's midpoint reaches 1.4 times the filled entry price.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-options-sell-details-01",
+        "version": "1",
+        "kind": "atom",
+        "role": "sell_details",
+        "title": "Sell details — Submit one market order to close the entire option position.",
+        "labels": [
+          "Sell details"
+        ],
+        "text": "Submit one market order to close the entire option position.",
+        "parameters": {},
+        "semantics": {
+          "kind": "prompt"
+        },
+        "source": "synthetic.txt"
+      },
+      {
+        "id": "ex-composition-strategy",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "title": "Composition / strategy / four instruction categories",
+        "labels": [],
+        "text": "  - Reason to buy: {{slot:reason_to_buy_1}}\n  - Buy details: {{slot:buy_details_1}}\n  - Reason to sell: {{slot:reason_to_sell_1}}\n  - Sell details: {{slot:sell_details_1}}",
+        "parameters": {},
+        "slots": {
+          "reason_to_buy_1": "reason_to_buy",
+          "buy_details_1": "buy_details",
+          "reason_to_sell_1": "reason_to_sell",
+          "sell_details_1": "sell_details"
+        },
+        "slotOrder": [
+          "reason_to_buy_1",
+          "buy_details_1",
+          "reason_to_sell_1",
+          "sell_details_1"
+        ],
+        "semantics": {
+          "kind": "prompt"
+        },
+        "purpose": "composition-structure"
+      },
+      {
+        "id": "ex-composition-stock-context",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "title": "Composition / stock prompt context",
+        "labels": [],
+        "text": "Write a trading algorithm that implements exactly the strategies below. Evaluate every rule once per daily bar, after the close, and do not add, remove or reinterpret any rule.\n\n- Strategy A (trades SPY):\n{{slot:strategy_a}}\n- Strategy B (trades QQQ):\n{{slot:strategy_b}}\n\nReturn only the complete program.",
+        "parameters": {},
+        "slots": {
+          "strategy_a": "node",
+          "strategy_b": "node"
+        },
+        "slotOrder": [
+          "strategy_a",
+          "strategy_b"
+        ],
+        "semantics": {
+          "kind": "prompt"
+        },
+        "purpose": "composition-structure"
+      },
+      {
+        "id": "ex-composition-options-context",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "title": "Composition / options prompt context",
+        "labels": [],
+        "text": "Write a trading algorithm for SPY options that implements exactly the strategy below. Evaluate the rules on completed 15-minute bars, and do not add, remove or reinterpret any rule.\n\n{{slot:strategy}}\n\nReturn only the complete program.",
+        "parameters": {},
+        "slots": {
+          "strategy": "node"
+        },
+        "slotOrder": [
+          "strategy"
+        ],
+        "semantics": {
+          "kind": "prompt"
+        },
+        "purpose": "composition-structure"
+      },
+      {
+        "id": "ex-template-parallel",
+        "title": "Example / Parallel template",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "labels": [],
+        "slots": {
+          "first": [
+            "node",
+            "strategy"
+          ],
+          "second": [
+            "node",
+            "strategy"
+          ]
+        },
+        "slotOrder": [
+          "first",
+          "second"
+        ],
+        "semantics": {
+          "kind": "prompt"
+        },
+        "text": "PARALLEL template: both slots run independently at the same time.\n\nSlot 1:\n{{slot:first}}\n\nSlot 2:\n{{slot:second}}"
+      },
+      {
+        "id": "ex-template-race",
+        "title": "Example / Race template",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "labels": [],
+        "slots": {
+          "first": [
+            "node",
+            "strategy"
+          ],
+          "second": [
+            "node",
+            "strategy"
+          ]
+        },
+        "slotOrder": [
+          "first",
+          "second"
+        ],
+        "semantics": {
+          "kind": "prompt"
+        },
+        "text": "RACE template: on every bar, check each slot's reason to buy in slot order. The first slot whose reason holds takes sole ownership and carries out its buy details; the other slots may not act while it owns the template. Ownership ends when that slot's position is closed, and the race re-opens on the next bar.\n\nSlot 1:\n{{slot:first}}\n\nSlot 2:\n{{slot:second}}"
+      },
+      {
+        "id": "ex-template-sequence",
+        "title": "Example / Sequence template",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "labels": [],
+        "slots": {
+          "first": [
+            "node",
+            "strategy"
+          ],
+          "second": [
+            "node",
+            "strategy"
+          ]
+        },
+        "slotOrder": [
+          "first",
+          "second"
+        ],
+        "semantics": {
+          "kind": "prompt"
+        },
+        "text": "SEQUENCE template: one slot is eligible at a time, starting with slot 1. A slot passes eligibility to the next slot after it opens and then closes a position. After the last slot, eligibility returns to slot 1.\n\nSlot 1:\n{{slot:first}}\n\nSlot 2:\n{{slot:second}}"
+      },
+      {
+        "id": "ex-template-state-gated",
+        "title": "Example / State gate template",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "labels": [],
+        "slots": {
+          "first": [
+            "node",
+            "strategy"
+          ],
+          "second": [
+            "node",
+            "strategy"
+          ]
+        },
+        "slotOrder": [
+          "first",
+          "second"
+        ],
+        "semantics": {
+          "kind": "prompt"
+        },
+        "parameters": {
+          "condition": "SPY's close crosses above its 50-day simple moving average."
+        },
+        "parameterSchema": {
+          "condition": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "text": "STATE-GATED template: its slots may act only while the gate condition holds. On the bar the condition stops holding, close every position inside the template and reset its state.\n\nGate condition for this composition: {{condition}}\n\nSlot 1:\n{{slot:first}}\n\nSlot 2:\n{{slot:second}}"
+      },
+      {
+        "id": "ex-template-event-gated",
+        "title": "Example / Event gate template",
+        "version": "1",
+        "kind": "template",
+        "role": "node",
+        "labels": [],
+        "slots": {
+          "first": [
+            "node",
+            "strategy"
+          ],
+          "second": [
+            "node",
+            "strategy"
+          ]
+        },
+        "slotOrder": [
+          "first",
+          "second"
+        ],
+        "semantics": {
+          "kind": "prompt"
+        },
+        "parameters": {
+          "condition": "SPY's close crosses above its 50-day simple moving average.",
+          "m": 3
+        },
+        "parameterSchema": {
+          "condition": {
+            "type": "string",
+            "required": true
+          },
+          "m": {
+            "type": "integer",
+            "minimum": 1,
+            "required": true
+          }
+        },
+        "text": "EVENT-GATED template: when its event condition becomes true (true today, false yesterday), the template is armed for the next m trading days, starting tomorrow. While armed, its slots may act. When the window ends, close every position inside the template and reset its state. A new event while armed restarts the window.\n\nEvent condition for this composition: {{condition}}\nArming window m = {{m}} trading days.\n\nSlot 1:\n{{slot:first}}\n\nSlot 2:\n{{slot:second}}"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "ex-stock",
+        "familyId": "ex-stock",
+        "root": {
+          "use": "ex-composition-stock-context",
+          "slots": {
+            "strategy_a": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-01"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-01"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-01"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-01"
+                }
+              }
+            },
+            "strategy_b": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-02"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-02"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-02"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-02"
+                }
+              }
+            }
+          }
+        },
+        "input": null,
+        "expected": "",
+        "split": "development",
+        "variables": {
+          "family": "Stock",
+          "variant": "Stock"
+        }
+      },
+      {
+        "id": "ex-options",
+        "familyId": "ex-options",
+        "root": {
+          "use": "ex-composition-options-context",
+          "slots": {
+            "strategy": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-options-reason-to-buy-01"
+                },
+                "buy_details_1": {
+                  "use": "ex-options-buy-details-01"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-options-reason-to-sell-01"
+                },
+                "sell_details_1": {
+                  "use": "ex-options-sell-details-01"
+                }
+              }
+            }
+          }
+        },
+        "input": null,
+        "expected": "",
+        "split": "development",
+        "variables": {
+          "family": "Options",
+          "variant": "Options"
+        }
+      },
+      {
+        "id": "ex-variant",
+        "familyId": "ex-stock",
+        "root": {
+          "use": "ex-composition-stock-context",
+          "slots": {
+            "strategy_a": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-01"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-01"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-01"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-01"
+                }
+              }
+            },
+            "strategy_b": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-02"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-02"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-03"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-02"
+                }
+              }
+            }
+          }
+        },
+        "input": null,
+        "expected": "",
+        "split": "development",
+        "variables": {
+          "family": "Stock",
+          "variant": "Variant"
+        }
+      },
+      {
+        "id": "ex-nested-parallel",
+        "familyId": "ex-nested",
+        "root": {
+          "use": "ex-template-parallel",
+          "slots": {
+            "first": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-01"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-01"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-01"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-01"
+                }
+              }
+            },
+            "second": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-02"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-02"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-02"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-02"
+                }
+              }
+            }
+          }
+        },
+        "input": null,
+        "expected": "",
+        "split": "development",
+        "variables": {
+          "family": "Nested",
+          "variant": "Stock / Parallel A + B"
+        }
+      },
+      {
+        "id": "ex-nested-race",
+        "familyId": "ex-nested",
+        "root": {
+          "use": "ex-template-race",
+          "slots": {
+            "first": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-01"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-01"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-01"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-01"
+                }
+              }
+            },
+            "second": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-02"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-02"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-02"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-02"
+                }
+              }
+            }
+          }
+        },
+        "input": null,
+        "expected": "",
+        "split": "development",
+        "variables": {
+          "family": "Nested",
+          "variant": "Example / Race A + B"
+        }
+      },
+      {
+        "id": "ex-nested-sequence",
+        "familyId": "ex-nested",
+        "root": {
+          "use": "ex-template-sequence",
+          "slots": {
+            "first": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-01"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-01"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-01"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-01"
+                }
+              }
+            },
+            "second": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-02"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-02"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-02"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-02"
+                }
+              }
+            }
+          }
+        },
+        "input": null,
+        "expected": "",
+        "split": "development",
+        "variables": {
+          "family": "Nested",
+          "variant": "Example / Sequence A then B"
+        }
+      },
+      {
+        "id": "ex-nested-state-gate",
+        "familyId": "ex-nested",
+        "root": {
+          "use": "ex-template-state-gated",
+          "params": {
+            "condition": "SPY's close crosses above its 50-day simple moving average."
+          },
+          "slots": {
+            "first": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-01"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-01"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-01"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-01"
+                }
+              }
+            },
+            "second": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-02"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-02"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-02"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-02"
+                }
+              }
+            }
+          }
+        },
+        "input": null,
+        "expected": "",
+        "split": "development",
+        "variables": {
+          "family": "Nested",
+          "variant": "Example / State gate A + B"
+        }
+      },
+      {
+        "id": "ex-nested-event-gate",
+        "familyId": "ex-nested",
+        "root": {
+          "use": "ex-template-event-gated",
+          "params": {
+            "condition": "SPY's close crosses above its 50-day simple moving average.",
+            "m": 3
+          },
+          "slots": {
+            "first": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-01"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-01"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-01"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-01"
+                }
+              }
+            },
+            "second": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-reason-to-buy-02"
+                },
+                "buy_details_1": {
+                  "use": "ex-buy-details-02"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-reason-to-sell-02"
+                },
+                "sell_details_1": {
+                  "use": "ex-sell-details-02"
+                }
+              }
+            }
+          }
+        },
+        "input": null,
+        "expected": "",
+        "split": "development",
+        "variables": {
+          "family": "Nested",
+          "variant": "Example / Event gate A + B (m=3)"
+        }
+      },
+      {
+        "id": "ex-nested-stock-pair-options",
+        "familyId": "ex-nested",
+        "root": {
+          "use": "ex-template-parallel",
+          "slots": {
+            "first": {
+              "use": "ex-template-parallel",
+              "slots": {
+                "first": {
+                  "use": "ex-composition-strategy",
+                  "slots": {
+                    "reason_to_buy_1": {
+                      "use": "ex-reason-to-buy-01"
+                    },
+                    "buy_details_1": {
+                      "use": "ex-buy-details-01"
+                    },
+                    "reason_to_sell_1": {
+                      "use": "ex-reason-to-sell-01"
+                    },
+                    "sell_details_1": {
+                      "use": "ex-sell-details-01"
+                    }
+                  }
+                },
+                "second": {
+                  "use": "ex-composition-strategy",
+                  "slots": {
+                    "reason_to_buy_1": {
+                      "use": "ex-reason-to-buy-02"
+                    },
+                    "buy_details_1": {
+                      "use": "ex-buy-details-02"
+                    },
+                    "reason_to_sell_1": {
+                      "use": "ex-reason-to-sell-02"
+                    },
+                    "sell_details_1": {
+                      "use": "ex-sell-details-02"
+                    }
+                  }
+                }
+              }
+            },
+            "second": {
+              "use": "ex-composition-strategy",
+              "slots": {
+                "reason_to_buy_1": {
+                  "use": "ex-options-reason-to-buy-01"
+                },
+                "buy_details_1": {
+                  "use": "ex-options-buy-details-01"
+                },
+                "reason_to_sell_1": {
+                  "use": "ex-options-reason-to-sell-01"
+                },
+                "sell_details_1": {
+                  "use": "ex-options-sell-details-01"
+                }
+              }
+            }
+          }
+        },
+        "input": null,
+        "expected": "",
+        "split": "development",
+        "variables": {
+          "family": "Nested",
+          "variant": "Example / Nested stock pair + options"
+        }
+      }
+    ],
+    "conditions": [],
+    "protocol": {
+      "seed": 42,
+      "replicates": 1,
+      "maxAttemptsPerTrial": 1,
+      "maxTotalAttempts": 9,
+      "timeoutMs": 120000,
+      "maxDurationMs": 3600000,
+      "grading": {
+        "kind": "json"
+      }
+    },
+    "inputs": [],
+    "environment": {
+      "node": ">=22",
+      "dependencies": [],
+      "instructions": "Prompt authoring example only. It is not configured as an executable benchmark or an answer key."
+    },
+    "decisions": "Synthetic example: four reusable roles per strategy (reason to buy, buy details, reason to sell, sell details), composed into strategies, tasks and nested templates. The wording was written for this example and is not a qualified benchmark.",
+    "reviews": [],
+    "taskReviews": []
+  },
+  "attachments": {},
+  "pending": [],
+  "taskIndex": 0,
+  "bundleIndex": 1,
+  "editors": {
+    "data-bench-routing": "{\n  \"version\": 1,\n  \"fields\": [\n    \"family\",\n    \"variant\"\n  ],\n  \"compositions\": [\n    {\n      \"name\": \"Stock / Strategy A\",\n      \"node\": {\n        \"use\": \"ex-composition-strategy\",\n        \"slots\": {\n          \"reason_to_buy_1\": {\n            \"use\": \"ex-reason-to-buy-01\"\n          },\n          \"buy_details_1\": {\n            \"use\": \"ex-buy-details-01\"\n          },\n          \"reason_to_sell_1\": {\n            \"use\": \"ex-reason-to-sell-01\"\n          },\n          \"sell_details_1\": {\n            \"use\": \"ex-sell-details-01\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Stock / Strategy B\",\n      \"node\": {\n        \"use\": \"ex-composition-strategy\",\n        \"slots\": {\n          \"reason_to_buy_1\": {\n            \"use\": \"ex-reason-to-buy-02\"\n          },\n          \"buy_details_1\": {\n            \"use\": \"ex-buy-details-02\"\n          },\n          \"reason_to_sell_1\": {\n            \"use\": \"ex-reason-to-sell-02\"\n          },\n          \"sell_details_1\": {\n            \"use\": \"ex-sell-details-02\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Stock\",\n      \"node\": {\n        \"use\": \"ex-composition-stock-context\",\n        \"slots\": {\n          \"strategy_a\": {\n            \"composition\": \"Stock / Strategy A\"\n          },\n          \"strategy_b\": {\n            \"composition\": \"Stock / Strategy B\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Options / Strategy\",\n      \"node\": {\n        \"use\": \"ex-composition-strategy\",\n        \"slots\": {\n          \"reason_to_buy_1\": {\n            \"use\": \"ex-options-reason-to-buy-01\"\n          },\n          \"buy_details_1\": {\n            \"use\": \"ex-options-buy-details-01\"\n          },\n          \"reason_to_sell_1\": {\n            \"use\": \"ex-options-reason-to-sell-01\"\n          },\n          \"sell_details_1\": {\n            \"use\": \"ex-options-sell-details-01\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Options\",\n      \"node\": {\n        \"use\": \"ex-composition-options-context\",\n        \"slots\": {\n          \"strategy\": {\n            \"composition\": \"Options / Strategy\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Variant / Strategy B\",\n      \"node\": {\n        \"use\": \"ex-composition-strategy\",\n        \"slots\": {\n          \"reason_to_buy_1\": {\n            \"use\": \"ex-reason-to-buy-02\"\n          },\n          \"buy_details_1\": {\n            \"use\": \"ex-buy-details-02\"\n          },\n          \"reason_to_sell_1\": {\n            \"use\": \"ex-reason-to-sell-03\"\n          },\n          \"sell_details_1\": {\n            \"use\": \"ex-sell-details-02\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Variant\",\n      \"node\": {\n        \"use\": \"ex-composition-stock-context\",\n        \"slots\": {\n          \"strategy_a\": {\n            \"composition\": \"Stock / Strategy A\"\n          },\n          \"strategy_b\": {\n            \"composition\": \"Variant / Strategy B\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Stock / Parallel A + B\",\n      \"node\": {\n        \"use\": \"ex-template-parallel\",\n        \"slots\": {\n          \"first\": {\n            \"composition\": \"Stock / Strategy A\"\n          },\n          \"second\": {\n            \"composition\": \"Stock / Strategy B\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Example / Race A + B\",\n      \"node\": {\n        \"use\": \"ex-template-race\",\n        \"slots\": {\n          \"first\": {\n            \"composition\": \"Stock / Strategy A\"\n          },\n          \"second\": {\n            \"composition\": \"Stock / Strategy B\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Example / Sequence A then B\",\n      \"node\": {\n        \"use\": \"ex-template-sequence\",\n        \"slots\": {\n          \"first\": {\n            \"composition\": \"Stock / Strategy A\"\n          },\n          \"second\": {\n            \"composition\": \"Stock / Strategy B\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Example / State gate A + B\",\n      \"node\": {\n        \"use\": \"ex-template-state-gated\",\n        \"params\": {\n          \"condition\": \"SPY's close crosses above its 50-day simple moving average.\"\n        },\n        \"slots\": {\n          \"first\": {\n            \"composition\": \"Stock / Strategy A\"\n          },\n          \"second\": {\n            \"composition\": \"Stock / Strategy B\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Example / Event gate A + B (m=3)\",\n      \"node\": {\n        \"use\": \"ex-template-event-gated\",\n        \"params\": {\n          \"condition\": \"SPY's close crosses above its 50-day simple moving average.\",\n          \"m\": 3\n        },\n        \"slots\": {\n          \"first\": {\n            \"composition\": \"Stock / Strategy A\"\n          },\n          \"second\": {\n            \"composition\": \"Stock / Strategy B\"\n          }\n        }\n      }\n    },\n    {\n      \"name\": \"Example / Nested stock pair + options\",\n      \"node\": {\n        \"use\": \"ex-template-parallel\",\n        \"slots\": {\n          \"first\": {\n            \"composition\": \"Stock / Parallel A + B\"\n          },\n          \"second\": {\n            \"composition\": \"Options / Strategy\"\n          }\n        }\n      }\n    }\n  ],\n  \"decisions\": [\n    {\n      \"name\": \"Stock prompts\",\n      \"rules\": [\n        {\n          \"tests\": [\n            {\n              \"field\": \"variant\",\n              \"test\": \"is\",\n              \"value\": \"Stock\"\n            }\n          ],\n          \"then\": {\n            \"composition\": \"Stock\"\n          }\n        },\n        {\n          \"tests\": [\n            {\n              \"field\": \"variant\",\n              \"test\": \"is\",\n              \"value\": \"Variant\"\n            }\n          ],\n          \"then\": {\n            \"composition\": \"Variant\"\n          }\n        }\n      ],\n      \"otherwise\": null\n    },\n    {\n      \"name\": \"Options prompts\",\n      \"rules\": [\n        {\n          \"tests\": [\n            {\n              \"field\": \"variant\",\n              \"test\": \"is\",\n              \"value\": \"Options\"\n            }\n          ],\n          \"then\": {\n            \"composition\": \"Options\"\n          }\n        }\n      ],\n      \"otherwise\": null\n    },\n    {\n      \"name\": \"Nested prompts\",\n      \"rules\": [\n        {\n          \"tests\": [\n            {\n              \"field\": \"variant\",\n              \"test\": \"is\",\n              \"value\": \"Stock / Parallel A + B\"\n            }\n          ],\n          \"then\": {\n            \"composition\": \"Stock / Parallel A + B\"\n          }\n        },\n        {\n          \"tests\": [\n            {\n              \"field\": \"variant\",\n              \"test\": \"is\",\n              \"value\": \"Example / Race A + B\"\n            }\n          ],\n          \"then\": {\n            \"composition\": \"Example / Race A + B\"\n          }\n        },\n        {\n          \"tests\": [\n            {\n              \"field\": \"variant\",\n              \"test\": \"is\",\n              \"value\": \"Example / Sequence A then B\"\n            }\n          ],\n          \"then\": {\n            \"composition\": \"Example / Sequence A then B\"\n          }\n        },\n        {\n          \"tests\": [\n            {\n              \"field\": \"variant\",\n              \"test\": \"is\",\n              \"value\": \"Example / State gate A + B\"\n            }\n          ],\n          \"then\": {\n            \"composition\": \"Example / State gate A + B\"\n          }\n        },\n        {\n          \"tests\": [\n            {\n              \"field\": \"variant\",\n              \"test\": \"is\",\n              \"value\": \"Example / Event gate A + B (m=3)\"\n            }\n          ],\n          \"then\": {\n            \"composition\": \"Example / Event gate A + B (m=3)\"\n          }\n        },\n        {\n          \"tests\": [\n            {\n              \"field\": \"variant\",\n              \"test\": \"is\",\n              \"value\": \"Example / Nested stock pair + options\"\n            }\n          ],\n          \"then\": {\n            \"composition\": \"Example / Nested stock pair + options\"\n          }\n        }\n      ],\n      \"otherwise\": null\n    }\n  ],\n  \"rules\": [\n    {\n      \"tests\": [\n        {\n          \"field\": \"family\",\n          \"test\": \"is\",\n          \"value\": \"Stock\"\n        }\n      ],\n      \"then\": {\n        \"decision\": \"Stock prompts\"\n      }\n    },\n    {\n      \"tests\": [\n        {\n          \"field\": \"family\",\n          \"test\": \"is\",\n          \"value\": \"Options\"\n        }\n      ],\n      \"then\": {\n        \"decision\": \"Options prompts\"\n      }\n    },\n    {\n      \"tests\": [\n        {\n          \"field\": \"family\",\n          \"test\": \"is\",\n          \"value\": \"Nested\"\n        }\n      ],\n      \"then\": {\n        \"decision\": \"Nested prompts\"\n      }\n    }\n  ],\n  \"otherwise\": null,\n  \"rows\": [\n    {\n      \"id\": \"ex-stock\",\n      \"values\": {\n        \"family\": \"Stock\",\n        \"variant\": \"Stock\"\n      }\n    },\n    {\n      \"id\": \"ex-options\",\n      \"values\": {\n        \"family\": \"Options\",\n        \"variant\": \"Options\"\n      }\n    },\n    {\n      \"id\": \"ex-variant\",\n      \"values\": {\n        \"family\": \"Stock\",\n        \"variant\": \"Variant\"\n      }\n    },\n    {\n      \"id\": \"ex-nested-parallel\",\n      \"values\": {\n        \"family\": \"Nested\",\n        \"variant\": \"Stock / Parallel A + B\"\n      }\n    },\n    {\n      \"id\": \"ex-nested-race\",\n      \"values\": {\n        \"family\": \"Nested\",\n        \"variant\": \"Example / Race A + B\"\n      }\n    },\n    {\n      \"id\": \"ex-nested-sequence\",\n      \"values\": {\n        \"family\": \"Nested\",\n        \"variant\": \"Example / Sequence A then B\"\n      }\n    },\n    {\n      \"id\": \"ex-nested-state-gate\",\n      \"values\": {\n        \"family\": \"Nested\",\n        \"variant\": \"Example / State gate A + B\"\n      }\n    },\n    {\n      \"id\": \"ex-nested-event-gate\",\n      \"values\": {\n        \"family\": \"Nested\",\n        \"variant\": \"Example / Event gate A + B (m=3)\"\n      }\n    },\n    {\n      \"id\": \"ex-nested-stock-pair-options\",\n      \"values\": {\n        \"family\": \"Nested\",\n        \"variant\": \"Example / Nested stock pair + options\"\n      }\n    }\n  ]\n}"
+  }
+}

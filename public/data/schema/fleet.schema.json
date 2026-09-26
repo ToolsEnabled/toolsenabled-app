@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.toolsenabled.local/data/schema/fleet.schema.json",
+  "title": "ToolsEnabled fleet projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "domain", "generatedAt", "ok", "reason", "sources", "data"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "domain": { "const": "fleet" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "ok": { "type": "boolean" },
+    "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 },
+    "sources": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/source" } },
+    "data": { "anyOf": [{ "$ref": "#/$defs/data" }, { "type": "null" }] }
+  },
+  "allOf": [{
+    "if": { "properties": { "ok": { "const": true } } },
+    "then": { "properties": { "reason": { "type": "null" }, "data": { "$ref": "#/$defs/data" } } },
+    "else": { "properties": { "reason": { "type": "string", "minLength": 1 }, "data": { "type": "null" } } }
+  }],
+  "$defs": {
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "path", "ok", "observedAt", "reason"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{0,79}$" },
+        "kind": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{0,79}$" },
+        "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "ok": { "type": "boolean" },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 }
+      },
+      "allOf": [{
+        "if": { "properties": { "ok": { "const": true } } },
+        "then": { "properties": { "reason": { "type": "null" } } },
+        "else": { "properties": { "reason": { "type": "string", "minLength": 1 } } }
+      }]
+    },
+    "service": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "state", "observedAt", "detail"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{0,79}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "state": { "enum": ["healthy", "stale", "conflict", "unknown"] },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "detail": { "type": ["string", "null"], "maxLength": 240 }
+      }
+    },
+    "computer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "label", "sourceKind", "observedAt", "activeSessions", "services"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "sourceKind": { "enum": ["observed", "declared"] },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "activeSessions": { "type": "integer", "minimum": 0 },
+        "services": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/service" } }
+      }
+    },
+    "graphNode": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "label", "role", "provider", "enabled"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "provider": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "enabled": { "type": "boolean" },
+        "bornAt": { "type": "integer", "minimum": 0 },
+        "stoppedAt": { "type": "integer", "minimum": 0 },
+        "origin": { "enum": ["user", "self"] },
+        "tasksDone": { "type": "integer", "minimum": 0 },
+        "failRate": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "graphEdge": {
+      "type": "object", "additionalProperties": false,
+      "required": ["from", "to", "type", "sourceKind"],
+      "properties": {
+        "from": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "to": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "type": { "enum": ["manages", "reviews", "delegates_to", "escalates_to"] },
+        "sourceKind": { "enum": ["declared", "observed"] }
+      }
+    },
+    "data": {
+      "type": "object", "additionalProperties": false,
+      "required": ["computers", "graph"],
+      "properties": {
+        "computers": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/computer" } },
+        "graph": {
+          "type": "object", "additionalProperties": false,
+          "required": ["revision", "contentHash", "nodes", "edges"],
+          "properties": {
+            "revision": { "type": "integer", "minimum": 1 },
+            "contentHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "nodes": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/graphNode" } },
+            "edges": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/graphEdge" } }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,470 @@
+/* THE TOOLS PAGE (#/tools). Layout and look only: what the page reads, writes
+   and refuses stays in src/views/tools.js, src/agent-tools-markup.js and
+   src/agent-tool-states.js. This sheet is imported by the Tools view alone.
+
+   Built on the foundation's layers (src/foundation.css): the page is the
+   canvas; the list and the withheld list are base cards with a default edge;
+   the column heads, the family headings and the status line are sunken wells;
+   buttons and the three-answer control are the raised step. Every colour is a
+   theme token, so White, Tan, Black, Ember and Cobalt need nothing of their
+   own here.
+
+   THE PAGE NO LONGER BORROWS SETTINGS' LAYOUT (2026-09-23). The rows still
+   carry `.settings-row` and its parts, and the search keeps `.settings-search`,
+   because the page guide points at them; every rule below is scoped to
+   `.tools-page` so the Settings sheets cannot reshape a tool row.
+
+   ONE GRID FOR THE HEAD AND EVERY ROW: tool name, what happens now, and the
+   answer. The list is one grid and the head, the families and the rows are
+   subgrids of it, so the columns are shared: every "Enabled" sits on one line
+   down the page and a scan down one column reads the whole computer. */
+
+.tools-page {
+  --page-gutter: clamp(20px, 2.4vw, 40px);
+  --tools-edge: var(--border-default, var(--line-2));
+  --tools-rule: var(--border-hairline, var(--line));
+  --tools-card: var(--surface-base, var(--sheet));
+  --tools-well: var(--surface-sunken, var(--bg-2));
+  --tools-radius: var(--radius-card, 6px);
+  --tools-control-radius: var(--radius-control, 4px);
+  --tools-pad: var(--s5);
+  --tools-cols: minmax(9rem, 0.9fr) minmax(0, 1.5fr) max-content;
+  scrollbar-gutter: stable;
+  color: var(--ink);
+}
+.tools-page [hidden] { display: none !important; }
+
+/* ---- the column ---- */
+.tools-shell {
+  container: tools-shell / inline-size;
+  width: 100%;
+  max-width: 1600px;
+  margin-inline: auto;
+}
+.tools-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s5) var(--s6, 32px);
+  align-items: start;
+}
+.tools-main { display: grid; gap: var(--s4); min-width: 0; }
+
+/* ---- header ---- */
+.tools-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4) var(--s6, 32px);
+  padding: var(--s3) 0 var(--s5);
+}
+.tools-title { flex: 1 1 28rem; min-width: 0; }
+.tools-page .tools-eyebrow {
+  margin: 0 0 var(--s2);
+  font-size: var(--text-caps, 11px);
+  font-weight: var(--weight-semibold, 600);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tools-page .tools-h1 {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 610;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  color: var(--ink);
+}
+.tools-lede {
+  max-width: 72ch;
+  margin: var(--s2) 0 0;
+  font-size: var(--text-base, 14px);
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+/* ---- the cards ---- */
+.tools-panel {
+  container: tools-panel / inline-size;
+  min-width: 0;
+  border: 1px solid var(--tools-edge);
+  border-radius: var(--tools-radius);
+  background: var(--tools-card);
+  box-shadow: var(--shadow-card, none);
+}
+.tools-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s1) var(--s4);
+  padding: var(--s4) var(--tools-pad) var(--s3);
+}
+.tools-page .tools-panel-title {
+  margin: 0;
+  font-size: var(--text-xl, 17px);
+  font-weight: var(--weight-semibold, 600);
+  line-height: 1.25;
+  letter-spacing: var(--tracking-title, -.01em);
+  color: var(--ink);
+}
+.tools-count {
+  margin: 0;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.5;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.tools-count:empty { display: none; }
+.tools-panel-note {
+  max-width: 78ch;
+  margin: 0;
+  padding: 0 var(--tools-pad) var(--s4);
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+/* The status line is the card's notice band: the saved / refused sentence sits
+   where the eye already is, above the rows it is about. */
+.tools-page .tools-status {
+  max-width: none;
+  margin: 0;
+  padding: var(--s3) var(--tools-pad);
+  border-top: 1px solid var(--tools-rule);
+  background: var(--tools-well);
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.55;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+/* With no list under it (reading, or a computer that cannot list its tools)
+   the sentence IS the card's content: give it room and a reading measure. */
+.tools-panel:has(> .tools-body[hidden]) .tools-status {
+  padding: var(--s7, 40px) max(var(--tools-pad), calc(50% - 32ch));
+  background: transparent;
+  font-size: var(--text-base, 14px);
+  line-height: 1.6;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* ---- toolbar: search on the left, the three set-every-tool buttons on the
+   right, one control height for all four ---- */
+.tools-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3) var(--s5);
+  padding: var(--s4) var(--tools-pad);
+  border-top: 1px solid var(--tools-rule);
+}
+.tools-field-label {
+  display: block;
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink-2);
+}
+.tools-page .tools-search {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 16rem;
+  width: auto;
+  max-width: 26rem;
+  min-width: 0;
+}
+.tools-page .tools-search input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 34px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--field-border, var(--line-2));
+  border-radius: var(--tools-control-radius);
+  background: var(--field-bg, var(--sheet));
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-md, 13.5px);
+  line-height: 1.2;
+}
+.tools-page .tools-search input:hover:not(:focus) { border-color: var(--field-border-hover, var(--ink-3)); }
+.tools-page .tools-search input:focus { border-color: var(--field-border, var(--line-2)); }
+.tools-page .tools-search input::placeholder { color: var(--ink-3); opacity: 1; }
+
+.tools-bulk { display: grid; gap: 6px; min-width: 0; }
+.tools-bulk-buttons { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.tools-page .tools-bulk .ctl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 14px;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.tools-page .tools-bulk .ctl-btn:disabled { cursor: not-allowed; }
+
+/* ---- the table ---- */
+.tools-body,
+.tools-panel-withheld .tools-rows {
+  display: grid;
+  grid-template-columns: var(--tools-cols);
+  column-gap: var(--s5);
+}
+.tools-body > * { grid-column: 1 / -1; min-width: 0; }
+.tools-body > :is(.tools-table-head, .tools-rows),
+.tools-page .tools-group,
+.tools-page .tools-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+.tools-table-head {
+  padding: var(--s2) var(--tools-pad);
+  border-top: 1px solid var(--tools-rule);
+  border-bottom: 1px solid var(--tools-edge);
+  background: var(--tools-well);
+  font-size: var(--text-caps, 11px);
+  font-weight: 640;
+  line-height: 1.35;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+
+/* A family heading: the part of the name before the first dot, and how many
+   tools it holds. A quiet band, never a control. */
+.tools-group + .tools-group { border-top: 1px solid var(--tools-edge); }
+.tools-page .tools-group-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  margin: 0;
+  padding: 10px var(--tools-pad) 6px;
+  font-size: var(--text-sm, 12.5px);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.tools-group-name { font-family: var(--font-mono); color: var(--ink); }
+.tools-group-count { font-weight: 500; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* One tool. The copy block is laid flat into the row's grid so the name and
+   the sentence each get a column; the withheld disclosure spans the row. */
+.tools-page .tools-row {
+  align-items: center;
+  row-gap: var(--s1);
+  min-height: 0;
+  margin: 0;
+  padding: 9px var(--tools-pad);
+  border-top: 1px solid var(--tools-rule);
+  transition: background-color var(--dur-2, 160ms) var(--ease-out, ease);
+}
+.tools-page .tools-group-head + .tools-row { border-top-color: transparent; }
+.tools-page .tools-row:hover,
+.tools-page .tools-row:focus-within { background: var(--state-hover); }
+.tools-page .tools-row + .tools-row { margin-top: 0; }
+.tools-page .tools-row > .settings-copy { display: contents; }
+.tools-page .tools-row .settings-name {
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 12.5px);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.tools-page .tools-row .settings-state {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.tools-page .tools-row > .settings-control {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+  width: auto;
+}
+.tools-page .tools-row > .settings-disclosure { grid-column: 1 / -1; min-width: 0; }
+
+/* An answer of Disabled dims the tool's name, so the off tools are visible down
+   the name column without reading the control. The words still say "Off.". */
+.tools-page .tools-row:has(button[data-tool-state="disabled"].on) .settings-name { color: var(--ink-3); font-weight: 500; }
+
+/* ---- the three-answer control: the foundation's segmented trough, sized so
+   every row's control is the same width ---- */
+.tools-page .tools-seg {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: 2px;
+  padding: 2px;
+  flex-wrap: nowrap;
+  border-radius: var(--tools-control-radius);
+}
+.tools-page .tools-seg button {
+  flex: none;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: calc(var(--tools-control-radius) - 1px);
+  font-size: var(--text-sm, 12.5px);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+.tools-page .tools-seg button:active { transform: none; }
+.tools-page .tools-seg button:disabled { cursor: not-allowed; color: var(--ink-3); }
+.tools-page .tools-seg button:disabled:not(.on) { opacity: .75; }
+.tools-page .tools-seg button:focus-visible {
+  outline: var(--focus-outline, 2px solid var(--focus-ring));
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+/* ---- the withheld rows ---- */
+.tools-page .tools-row.is-withheld .settings-name { color: var(--ink-2); font-weight: 500; }
+.tools-page .tools-row.is-withheld .settings-state { color: var(--ink-3); }
+/* A plain note, not a box: the dashed outline it used to have read as a
+   disabled button, and there is nothing here to press. */
+.tools-withheld-tag {
+  display: inline-block;
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.tools-page .tools-row.is-withheld .guided-note { margin: 0; }
+.tools-page .tools-row.is-withheld .guided-summary { font-size: var(--text-xs, 12px); }
+.tools-panel-withheld .tools-rows { border-top: 1px solid var(--tools-edge); }
+.tools-panel-withheld .tools-rows > .tools-row:first-child { border-top: 0; }
+/* A search that hides every withheld row hides the card with them. */
+.tools-panel-withheld:not(:has([data-tool-withheld-row]:not([hidden]))) { display: none; }
+
+.tools-no-match {
+  margin: 0;
+  padding: var(--s6, 32px) var(--tools-pad);
+  border-top: 1px solid var(--tools-rule);
+  font-size: var(--text-base, 14px);
+  text-align: center;
+  color: var(--ink-2);
+}
+.tools-rows:empty { display: none; }
+
+/* ---- what each answer does ---- */
+.tools-aside {
+  min-width: 0;
+  padding: var(--s1) 0 0;
+}
+.tools-page .tools-aside-title {
+  margin: 0 0 var(--s3);
+  font-size: var(--text-caps, 11px);
+  font-weight: var(--weight-semibold, 600);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+}
+.tools-answers { display: grid; gap: 0; margin: 0; border-top: 1px solid var(--tools-edge); }
+.tools-answers > div { padding: var(--s3) 0; border-bottom: 1px solid var(--tools-rule); }
+.tools-answers dt {
+  font-size: var(--text-md, 13.5px);
+  font-weight: 620;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.tools-answers dd {
+  margin: 4px 0 0;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.tools-aside-note {
+  margin: var(--s3) 0 0;
+  font-size: var(--text-sm, 12.5px);
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.tools-page :is(button, input, summary, a):focus-visible {
+  outline: var(--focus-outline, 2px solid var(--focus-ring));
+  outline-offset: var(--focus-offset, 2px);
+}
+
+/* ---- widths. The side column needs a wide page; below that it moves under
+   the lists. Narrower still, the sentence drops under the tool's name; on a
+   phone the answer drops under both and the control fills the row. ---- */
+@container tools-shell (min-width: 1180px) {
+  .tools-layout { grid-template-columns: minmax(0, 1fr) minmax(15rem, 19rem); }
+  .tools-aside { position: sticky; top: var(--s4); }
+}
+@container tools-shell (max-width: 1179.98px) {
+  .tools-aside {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    column-gap: var(--s5);
+  }
+  .tools-aside-title,
+  .tools-aside-note { grid-column: 1 / -1; }
+  .tools-answers { display: contents; }
+  .tools-answers > div { border-top: 1px solid var(--tools-edge); border-bottom: 0; }
+}
+@container tools-panel (max-width: 760px) {
+  .tools-body, .tools-panel-withheld .tools-rows { --tools-cols: minmax(0, 1fr) max-content; }
+  .tools-page .tools-row .settings-state { grid-column: 1; grid-row: 2; }
+  .tools-page .tools-row > .settings-control { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .tools-body > .tools-table-head > span:nth-child(2) { display: none; }
+}
+@container tools-panel (max-width: 520px) {
+  .tools-panel > * { --tools-pad: var(--s4); }
+  .tools-body, .tools-panel-withheld .tools-rows { --tools-cols: minmax(0, 1fr); }
+  .tools-page .tools-row > .settings-control { grid-column: 1; grid-row: 3; justify-content: stretch; }
+  /* On a phone the three answers share the row's width and a long label wraps
+     inside its own segment rather than running off the card. */
+  .tools-page .tools-seg {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr) minmax(0, 1fr);
+    width: 100%;
+  }
+  .tools-page .tools-seg button {
+    height: auto;
+    min-height: 32px;
+    padding: 5px 4px;
+    line-height: 1.2;
+    white-space: normal;
+    text-align: center;
+  }
+  .tools-body > .tools-table-head { display: none; }
+  .tools-bulk, .tools-page .tools-search { flex-basis: 100%; max-width: none; }
+  .tools-bulk-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tools-page .tools-bulk .ctl-btn { height: auto; min-height: 34px; padding: 6px 6px; white-space: normal; text-align: center; }
+}
+@container tools-shell (max-width: 520px) {
+  .tools-page .tools-h1 { font-size: 30px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tools-page .tools-row { transition: none; }
+}
+body.reduce-motion .tools-page .tools-row { transition: none; }
+
+@media (forced-colors: active) {
+  .tools-panel { border-color: CanvasText; }
+  .tools-page .tools-seg button.on { outline: 2px solid Highlight; outline-offset: -2px; }
+}
+
+/* CRAFT (2026-09-23): the Tools cards are the base layer on the
+   foundation's soft lift with no drawn edge, and each card's title row sits
+   on a band. Rows, the answer segments and every hook are unchanged. */
+.tools-page .tools-panel { border-color: transparent; box-shadow: var(--shadow-lift); }
+.tools-page .tools-panel-head { background: var(--craft-band); border-radius: var(--tools-radius) var(--tools-radius) 0 0; }
+@media (forced-colors: active) {
+  .tools-page .tools-panel { border-color: CanvasText; }
+}

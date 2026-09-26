@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "published": [
+    {
+      "version": "1.0.38",
+      "candidateTag": "build/1.0.38",
+      "buildRef": "0000000000000000000000000000000000000000",
+      "publishedFilename": "ToolsEnabled-Setup-1.0.38.exe",
+      "publishedSha256": "e86b37377f13d27255b334ee4b6e92d66e984cdf78690f6b97a1c6f68d660fbd"
+    },
+    {
+      "version": "1.0.45",
+      "candidateTag": "v1.0.45-preview.20260923",
+      "buildRef": "0000000000000000000000000000000000000001",
+      "publishedFilename": "ToolsEnabled-Setup-1.0.45.exe",
+      "publishedSha256": "bd69626193ea51ba4711ecb147866b4179115ba69816daab69c59d58f7d6b29d",
+      "channel": "beta",
+      "lifecycleQualified": false
+    }
+  ]
+}

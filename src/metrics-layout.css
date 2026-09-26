@@ -1,0 +1,258 @@
+/* Chrome for the layout engine (src/metrics-layout.js): tray, stash, drag
+   ghost, insert line, join halves, grips, edit button. Extracted from
+   metrics.css when the research page adopted the engine — the engine imports
+   this file itself, so every page that mounts it gets its chrome without
+   importing another page's stylesheet.
+
+   SCOPING RULE: edit-state selectors key on `.m-editing` — the class the
+   engine toggles on WHATEVER container it was mounted with — never on a page
+   class like `.metrics`. Page-specific behavior during drags (e.g. metrics
+   making echarts inert) stays in that page's own stylesheet. */
+
+/* slot rows: 1–3 bare instruments sharing one row, whitespace-separated.
+   (Generalized from the fixed .m-row3 — the layout engine writes each
+   row's column recipe into --srow-cols from the members' declared weights,
+   so a weighted row keeps its exact fr recipe.) */
+.m-srow {
+  display: grid;
+  /* The fallback carries the same minmax(0, ...) floor the layout engine writes
+     into --srow-cols; a fallback without it is the one path that can still
+     widen the page. */
+  grid-template-columns: var(--srow-cols, minmax(0, 1fr));
+  min-width: 0;
+  gap: var(--s4) 44px;
+  align-items: start;
+}
+.m-srow > * { min-width: 0; }
+@media (max-width: 1000px) { .m-srow { grid-template-columns: 1fr; } }
+
+/* the arming control: the lane-clear chip register (hairline, quiet),
+   armed state borrows the graph Edit button's exact fill recipe */
+.m-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 640;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .22s var(--ease), border-color .22s var(--ease), background .25s var(--ease);
+}
+/* The inline-flex rule beats the UA's `[hidden] { display: none }`; the
+   research page ships its "New project" button hidden until projects load.
+   Gate: tools/test/hidden-display-honesty.test.mjs. */
+.m-edit-btn[hidden] { display: none; }
+.m-edit-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+.m-edit-btn:active { transform: scale(0.96); }
+.m-edit-btn:focus-visible { outline: 3px solid var(--focus-ring, #0079a8); outline-offset: 1px; }
+.m-edit-btn.on {
+  /* the graph-edit-btn armed recipe: composites to 5.5:1 under #fff text */
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(160deg, #0b7ea8, #05607f);
+}
+
+/* the movable-structure signal: one dashed hairline per component */
+.m-editing [data-mc] {
+  outline: 1px dashed color-mix(in oklab, var(--ink) 34%, transparent);
+  outline-offset: 10px;
+  border-radius: 3px;
+}
+.m-editing [data-mc].m-dragsrc { opacity: 0.45; }
+.m-editing [data-mc].m-carry {
+  outline: 1.5px dashed var(--focus-ring, #0079a8);
+}
+
+/* grip + remove, riding each component's title row */
+.m-editctl { display: inline-flex; align-items: center; gap: 4px; align-self: center; margin-left: 8px; }
+.m-grip, .m-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  padding: 0;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  cursor: grab;
+  transition: color .22s var(--ease), border-color .22s var(--ease);
+}
+.m-grip svg { width: 10px; height: 14px; fill: currentColor; display: block; }
+.m-x { cursor: pointer; font-size: 14px; line-height: 1; font-family: var(--font-ui); }
+.m-grip:hover, .m-x:hover { color: var(--ink); border-color: var(--ink-3); }
+.m-grip:focus-visible, .m-x:focus-visible {
+  outline: 3px solid var(--focus-ring, #0079a8);
+  outline-offset: 1px;
+}
+/* components with no title row of their own: the injected edit-only head
+   spans their grid so it reads exactly like the other section heads */
+.m-edit-head { grid-column: 1 / -1; margin-bottom: 0; }
+
+/* A CAPTION-LESS EDIT ROW CLAIMS NO LINE OF ITS OWN.
+   injectChrome marks the row `m-edit-head-bare` when the component already names
+   itself (the research page's nine `aria-labelledby` sections), so no caption is
+   written into it. What is left is the spacer and the grip/x pair, and in normal
+   flow that prints a band of blank space above a section that already shows its
+   own heading -- nine times over, in edit mode only.
+
+   The row cannot be collapsed to nothing, because the controls live in it and must
+   stay reachable; so it is lifted out of flow and pinned to the component's own
+   top-right instead. `:empty` cannot select it -- it still holds the spacer and the
+   control group, so it is empty of CAPTION, not of DOM, and a `:empty` rule would
+   never match while appearing to be applied.
+
+   Keyed on `.m-editing` per the scoping rule at the top of this file, so nothing
+   moves when the layout is not being edited. The `:has()` guard confines the
+   positioning context to components that actually carry a bare row, so a component
+   with a normal caption row is untouched. */
+.m-editing [data-mc]:has(> .m-edit-head-bare) { position: relative; }
+.m-editing .m-edit-head-bare {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
+
+/* ---------- the component tray: a slim bar of the page ---------- */
+.m-tray { display: none; }
+.m-editing .m-tray {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: -20px;               /* tucks under the filter row's hairline */
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line-2);
+  animation: mTrayIn .24s var(--ease);
+}
+@keyframes mTrayIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.m-tray-label {
+  font-size: 11px;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--ink-25);
+  font-weight: 650;
+}
+.m-tray .spacer { flex: 1; }
+.m-tray-chips { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.m-tray-empty { font-size: 12.5px; color: var(--ink-3); }
+.m-tray-standard {
+  padding-right: 8px;
+  border-right: 1px solid var(--line-2);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.m-tray-live { font-size: 12.5px; color: var(--ink-3); }
+.m-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  cursor: grab;
+  transition: color .22s var(--ease), border-color .22s var(--ease);
+}
+.m-chip:hover { color: var(--ink); border-color: var(--ink-3); }
+.m-chip:focus-visible { outline: 3px solid var(--focus-ring, #0079a8); outline-offset: 1px; }
+.m-chip.m-dragsrc { opacity: 0.45; }
+.m-tray.m-tray-drop {
+  background: color-mix(in oklab, var(--c-coordinator, #00a9d8) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c-coordinator, #00a9d8) 42%, transparent);
+  border-radius: 3px;
+}
+.m-reset {
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color .22s var(--ease);
+}
+.m-reset:hover { color: var(--ink); text-decoration: underline; }
+.m-reset:focus-visible { outline: 3px solid var(--focus-ring, #0079a8); outline-offset: 2px; border-radius: 3px; }
+
+/* ---------- drag chrome: ghost, insert line, join halves ----------
+   All three are body-level and position:fixed — no component ever gains
+   position:relative for them (a positioned band would become a tooltip's
+   containing block and shift its clamp math). */
+body.m-dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+body.m-dragging .m-grip { cursor: grabbing; }
+
+.m-ghost {
+  position: fixed; left: 0; top: 0; z-index: 220;
+  pointer-events: none;
+  padding: 5px 12px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 640;
+  color: var(--ink);
+  background: var(--sheet);
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(0.9 * var(--wa))),
+    0 26px 60px -20px rgba(14, 23, 38, 0.45);
+  opacity: 0.92;
+  transform: translate(-500px, -500px);
+  white-space: nowrap;
+}
+
+/* between-row drop: one crisp line in the gap — the full-component (and
+   default) indicator; a full component over a slot row sees THIS, never
+   a half-highlight */
+.m-insline {
+  position: fixed; z-index: 210;
+  height: 0;
+  border-top: 2px solid color-mix(in oklab, var(--c-coordinator, #00a9d8) 70%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.m-insline::before, .m-insline::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--c-coordinator, #00a9d8);
+}
+.m-insline::before { left: -2px; }
+.m-insline::after { right: -2px; }
+
+/* join a slot row: the wb-drop halves, drawn over the target component */
+.m-joinbox { position: fixed; z-index: 210; pointer-events: none; }
+.m-joinbox i {
+  position: absolute; inset: 4px;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--c-coordinator, #00a9d8) 13%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--c-coordinator, #00a9d8) 45%, white);
+}
+.m-joinbox[data-side="left"] i { right: 50%; }
+.m-joinbox[data-side="right"] i { left: 50%; }
+
+/* removed components park here ALIVE: laid out at a real width (their
+   engine instances keep true dimensions for the re-add resize), invisible,
+   out of flow, off screen */
+.m-stash {
+  position: absolute;
+  left: -100000px;
+  top: 0;
+  width: 1100px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+body.reduce-motion .m-tray { animation: none; }
+body.reduce-motion .m-chip { transition: none; }
