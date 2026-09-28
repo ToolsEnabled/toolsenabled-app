@@ -424,8 +424,8 @@ test('P13 a pinned agent blocked at a limit is told what to do, even after a lon
    and its retry time both survive. A message too long even on its own loses
    its middle too. */
 const CODEX_LIMIT = 'You\'ve hit your usage limit. Upgrade to Pro (https://openai.com/chatgpt/pricing), visit '
-  + 'https://chatgpt.com/codex/settings/usage to purchase more credits or try again at Sep 27th, 2026 5:04 PM.'
-const RETRY_AT = 'try again at Sep 27th, 2026 5:04 PM.'
+  + 'https://chatgpt.com/codex/settings/usage to purchase more credits or try again at Jun 8th, 2026 3:00 AM.'
+const RETRY_AT = 'try again at Jun 8th, 2026 3:00 AM.'
 
 async function blockNoteFor(t, options, text) {
   const f = fixture(t, options)
@@ -449,12 +449,12 @@ test('V3 a blocked note keeps the provider\'s message whole where it fits, and i
   assert.match(pinned, /keeps the model you chose/)
   assert.match(pinned, /Choose another model or account with Switch and continue\.$/)
 
-  const long = `You have hit your usage limit. ${'More detail from the provider. '.repeat(12)}Try again at Sep 27th, 2026 5:04 PM.`
+  const long = `You have hit your usage limit. ${'More detail from the provider. '.repeat(12)}Try again at Jun 8th, 2026 3:00 AM.`
   for (const [name, options] of [['tried', {}], ['pinned', { workerTier: 'claude-opus-5', tiers: PINNED_TIERS }]]) {
     const note = await blockNoteFor(t, options, long)
     assert.ok(note.length <= 240, note)
     assert.match(note, /^Blocked outside this app: You have hit your usage limit\./, `${name}: the long message lost its start: ${note}`)
-    assert.ok(note.includes('Try again at Sep 27th, 2026 5:04 PM.'), `${name}: the long message lost its retry time: ${note}`)
+    assert.ok(note.includes('Try again at Jun 8th, 2026 3:00 AM.'), `${name}: the long message lost its retry time: ${note}`)
   }
 })
 

@@ -357,7 +357,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
 
   /* THE PROVIDER'S WORDS KEEP THEIR START AND THEIR END (follow-up V3). A
      provider's limit message ends with what a person most needs from it --
-     "try again at Sep 27th, 2026 5:04 PM." -- so a message too long for its
+     "try again at Jun 8th, 2026 3:00 AM." -- so a message too long for its
      room loses its middle, at word boundaries where it has them, never its
      end. */
   function middleCut(text, room) {
