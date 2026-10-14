@@ -2,11 +2,11 @@
 
 // THE MAIN THREAD MUST NOT STALL ON A SETTINGS WRITE OR A SCREEN-CONTROL POLL.
 //
-// WHY THIS EXISTS (T369). A development install froze for over ten seconds
+// WHY THIS EXISTS (T369). The owner's app froze for 12,767 ms on 2026-09-18
 // (main-lag.log, mainThread "waited", blocker mc-prefs:write): renderer-prefs.json
-// had grown to megabytes of fleet documents and every settings change serialised,
+// had grown to 5.2 MB of fleet documents and every settings change serialised,
 // wrote, fsync'd and renamed the WHOLE record synchronously on the main thread
-// while the renderer waited on sendSync. The same log showed many rows topped by
+// while the renderer waited on sendSync. The same log showed 77 rows topped by
 // mc-screen-control:status at 240-306 ms while computer control was OFF, because
 // the status poll read the org record from disk once per window session every
 // 10 s. Neither had a cut gate, so a synchronous 5 MB fsync on every click

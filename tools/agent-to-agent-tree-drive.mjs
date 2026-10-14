@@ -4,7 +4,8 @@
  *
  * THE OWNER'S SCENARIO, VERBATIM, AND NOTHING ELSE: a node called Manager, a
  * node called Default hanging under it, and the child told to contact its
- * manager. Reaching the coordinator through agent comms did not work.
+ * manager. "This is just the issue with trying to have it reach coordinator
+ * through agent comms it didnt work."
  *
  * WHAT COUNTS AS SUCCESS HERE, and nothing weaker does. Not a tool call that
  * returned accepted:true -- tools/agent-to-agent-mcp-proof.mjs already proves
@@ -17,13 +18,8 @@
  * IT SPENDS REAL MONEY on the person's own Codex subscription, so it is a tool
  * and never a default test target.
  *
- * THE SIGN-IN IS POINTED AT, NEVER COPIED. The scratch profile's .codex is a
- * junction to the one this computer already has, which is the technique
- * tools/a11y-keyboard-qa.mjs documents for the same reason: the product then
- * performs its OWN credential link, exactly as it does for the person, and no
- * credential is read, copied or moved by this file. Nothing else in the profile
- * is shared: state, app data and the tree all live in a directory this run
- * deletes.
+ * Use --codex-home for the existing provider home in place, or an API key
+ * from the environment. Product state and workspaces remain in scratch.
  *
  *   node tools/agent-to-agent-tree-drive.mjs
  *   node tools/agent-to-agent-tree-drive.mjs --visible
@@ -174,22 +170,10 @@ async function main() {
     note('info', `staged a packaged build carrying this tree at ${staged.appRoot}`)
 
     /* POINTED AT, NOT COPIED. See the module header. */
-    const realCodex = path.join(process.env.USERPROFILE || '', '.codex')
-    if (!existsSync(path.join(realCodex, 'auth.json'))) {
-      note('FAIL', 'HARNESS STATE: this computer has no Codex sign-in to point the scratch profile at, so nothing below would measure a real agent.')
-      return
-    }
-    mkdirSync(path.join(scratch, 'home'), { recursive: true })
-    try { symlinkSync(realCodex, path.join(scratch, 'home', '.codex'), 'junction') } catch { /* already pointed */ }
-    const realNpm = path.join(process.env.APPDATA || '', 'npm')
-    if (existsSync(realNpm)) {
-      mkdirSync(path.join(scratch, 'roaming'), { recursive: true })
-      try { symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* already pointed */ }
-    }
-    note('info', 'the scratch profile POINTS at this computer\'s Codex sign-in and npm layout; no credential is read or copied by this file.')
+    // Provider sign-in is selected by --codex-home or the API environment.
 
     seedMachineRecord(scratch, staged.appRoot, 'standard')
-    window = await openWindow(staged.executable, scratch)
+    window = await openWindow(staged.executable, scratch, { provider: 'codex' })
     await window.evaluate(`localStorage.setItem('mc.write.agent-session', 'enabled')`)
     await window.evaluate(`location.hash = '#/computers'`)
     await delay(1000)

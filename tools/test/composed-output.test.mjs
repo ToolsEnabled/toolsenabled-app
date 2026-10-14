@@ -1,7 +1,7 @@
 // A CHECK THAT CANNOT FAIL IS WORTHLESS, SO THIS IS WHERE IT IS MADE TO FAIL.
 //
 // tools/check-composed-output.mjs measures a whole panel in one state, because
-// the two screens reported unreadable were defective in their
+// the two screens the owner called unreadable were defective in their
 // COMPOSITION and every sentence in them was individually fine. The risk with a
 // check like that is the opposite of the risk with a per-string one: it is easy
 // to write rules that never fire, ship them, and have a green gate that is

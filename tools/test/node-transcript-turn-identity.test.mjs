@@ -15,8 +15,8 @@ const { installDomStandIn } = await import(process.env.DOM_STAND_IN_MODULE
 const { restore } = installDomStandIn(globalThis)
 after(restore)
 const { buildChat } = await import('../../src/components.js')
-const sessionId = '00000000-0000-4000-8000-0000000000c1'
-const turnId = '00000000-0000-4000-8000-0000000000c2'
+const sessionId = 'd63849e4-c442-4dc6-9eb4-d6bb0c6937bc'
+const turnId = '7884fa80-446d-478a-bdb2-ac31a9bb4a2d'
 const node = { computerId: 'computer', nodeId: 'local-observer' }
 async function fixture(t) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'transcript-turn-identity-'))
@@ -155,8 +155,8 @@ test('a tool boundary separates a delta-only message from a later whole message'
  * followed by the provider's whole aggregate, and the aggregate begins with
  * those deltas. Only the case where the two halves are equal was repaired, so
  * every reply whose aggregate landed mid-run still opens by repeating itself
- * every time the conversation is reopened. MEASURED on a local transcript
- * store: a minority of legacy spills were repaired, most were not.
+ * every time the conversation is reopened. MEASURED on the owner's LIVE
+ * transcripts, 2026-09-19: 576 of 4124 legacy spills repaired, 2808 not.
  *
  * These call the real store with values and read back what the chat is handed.
  * They do not name the repair or how it is spelled.

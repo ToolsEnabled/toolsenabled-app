@@ -13,7 +13,7 @@ import { bindLeanReview } from '../../src/benchmark/lean-codegen.mjs'
 // The Research page must show every important step of a lean-bench run explicitly: after Freeze, the
 // schedule, the conditions as frozen, the protocol and native grading contract and the runtime pins;
 // after a run or an evidence import, when it ran, on what runtime, and why each trial ended as it did.
-// At an earlier commit the page showed a count line after Freeze and per-condition rates after a run, nothing else.
+// At 709876dd the page showed a count line after Freeze and per-condition rates after a run, nothing else.
 
 register('./css-loader.mjs', import.meta.url)
 const { createBenchmarkBuilder } = await import('../../src/research-benchmark.js')
@@ -105,7 +105,7 @@ test('after a recorded-response run the page shows the run header, the journal t
   assert.ok(results.querySelector('[data-bench-journal-dispositions]'), 'the disposition table is rendered inside the results')
   const text = results.textContent
   assert.ok(text.includes('First attempt started'), 'the header names when the first attempt started')
-  assert.match(text, /20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d\d\dZ/)
+  assert.match(text, /20\d\d-\d\d-\d\dT\d\\x64:\d\\x64:\d\d\.\d\d\dZ/)
   assert.ok(text.includes('recorded-diagnostic'), 'the execution purpose is shown')
   // An in-page recorded-response run records the renderer it ran on (its user agent), never a guessed Node version.
   assert.ok(text.includes('Runtime') && text.includes('research-page: ' + globalThis.navigator.userAgent), 'the page run declares the renderer runtime')

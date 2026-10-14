@@ -6,7 +6,7 @@
  * say what the page CONTAINS and is structurally incapable of noticing that it
  * draws unstyled, off-screen, or behind something. The defect that started this
  * work was precisely a visibility one: the owner could not SEE the vault
- * anywhere. A rendered frame is the only evidence that answers their complaint.
+ * anywhere. A rendered frame is the only evidence that answers his complaint.
  *
  * PRIVATE, AND THAT MATTERS. `--user-data-dir` sends Electron's userData -- and
  * therefore this app's whole state root, its vault path and its policy file --
@@ -52,7 +52,7 @@ const PORT = Number(argOf('--port', '9333'))
  * than always a fresh temporary one. */
 const ATTACH = process.argv.includes('--attach')
 const SEED_ONLY = process.argv.includes('--seed-only')
-const userData = path.resolve(argOf('--user-data', mkdtempSync(path.join(os.tmpdir(), 'vault-page-candidate-'))))
+const userData = path.resolve(argOf('--user-data', mkdtempSync(path.join(os.tmpdir(), 'laneD-candidate-'))))
 mkdirSync(userData, { recursive: true })
 /* NO renderer-prefs.json IS SEEDED, and that is a correction rather than an
    omission. A first attempt wrote a guessed shape to pre-dismiss the update

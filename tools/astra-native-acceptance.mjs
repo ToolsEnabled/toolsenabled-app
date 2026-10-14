@@ -35,8 +35,8 @@ import { savedSessionEffort, saveStoppedSessionEffort } from '../src/manual-acco
 import { canonicalRootForTests } from './canonical-root.mjs'
 
 export const ASTRA_NATIVE_ACCEPTANCE_REFS = Object.freeze({
-  appBase: 'a'.repeat(40),
-  engineBase: 'b'.repeat(40),
+  appBase: '07091006f633d8e452ea9b6a27d0281c88f6249b',
+  engineBase: 'f3d8bb3d81fb6a1868a13b2c4f1dbb1dafd0544c',
 })
 
 const SELF = fileURLToPath(import.meta.url)
@@ -106,7 +106,7 @@ function fixturePersistence() {
   assert.ok(astra, 'the app tier table does not offer Astra')
   assert.equal(astra.provider, 'codex', 'Astra is no longer a Codex provider tier')
   assert.equal(astra.model, ASTRA_MODEL, 'the app tier table changed Astra model identity')
-  assert.equal(astra.effort, ASTRA_DEFAULT_EFFORT, 'the app tier table changed the requested Astra default')
+  assert.equal(astra.effort, ASTRA_DEFAULT_EFFORT, 'the app tier table changed the owner-requested Astra default')
   assert.ok(LAUNCH_TIERS.includes(astra), 'Astra tier is not held in the declared launch tier inventory')
   const cases = []
   let serial = 0
@@ -229,7 +229,7 @@ function fixturePersistence() {
   const defaultReopened = createFleetTreeStore({ computerId: 'astra-native-acceptance-default-control', storage: defaultStorage }).getNode(defaultNode.id)
   assert.equal(defaultReopened.effort, '', 'new Astra node unexpectedly persisted a selected effort')
   assert.equal(draftStartEffort(defaultReopened, { tierDefault: ASTRA_DEFAULT_EFFORT }), ASTRA_DEFAULT_EFFORT,
-    'new Astra circle did not resolve the requested MEDIUM default')
+    'new Astra circle did not resolve the owner-requested MEDIUM default')
   cases.push(Object.freeze({ effort: 'absent', tree: '', resolved: ASTRA_DEFAULT_EFFORT }))
   return Object.freeze({ status: 'passed', cases })
 }
@@ -365,7 +365,7 @@ export function nativeEvidence() {
     kind: 'native-provider-evidence-not-run',
     platform: process.platform,
     reason: 'Controller-owned native/provider circle was not run by this Linux fixture driver; no paid-provider, live-circle, or Windows claim is made.',
-    nextOwner: 'A manager circle routes the concrete native run through Controller.',
+    nextOwner: 'Manager 2 routes the concrete native run through Controller.',
   })
 }
 

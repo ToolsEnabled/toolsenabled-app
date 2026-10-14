@@ -1,6 +1,6 @@
 /* A PICTURE THIS APP ACCEPTS IS A PICTURE THE SEND CAN CARRY.
  *
- * T18, cycle 2. Reported: sending images did not work. The
+ * T18, cycle 2. The owner, 2026-09-16: "sending images doesnt work". The
  * delivery fix of 2026-09-15 is in the cut and the Claude seam really does
  * carry a picture -- measured -- but the two ends of the path disagreed about
  * HOW BIG a picture may be, and nobody was told:
@@ -91,7 +91,7 @@ test('the engine names the ceiling, and the real Claude adapter carries a pictur
   const drive = async (imagePath) => {
     const written = []
     const adapter = new ClaudeCliAdapter({ transport: { send: message => written.push(message), onData () {}, close () {}, kill () {} } })
-    const threadId = '11111111-2222-4333-8444-555555555555'
+    const threadId = '7cf7c88e-6912-4388-a181-78aef262c494'
     adapter.threadId = threadId
     try {
       const turn = adapter.sendTurn({ threadId, text: 'what is in this picture?', images: [{ path: imagePath }] })

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { withResearchTreeBinding } from '../../src/research-tree-session.js'
+import { customModelAction, customModelTier, modelChoiceEffort, MODEL_NAME_HELP, MODEL_NEXT_START } from '../../src/model-picker.js'
 
 class Classes {
   constructor(node) { this.node = node }
@@ -132,6 +133,9 @@ function productionFunction(start, end, bindings, expression) {
   const begin = computersSource.indexOf(start)
   const finish = computersSource.indexOf(end, begin)
   assert.ok(begin >= 0 && finish > begin, 'production function boundaries available')
+  bindings = { customModelAction, customModelTier, modelChoiceEffort, MODEL_NAME_HELP, MODEL_NEXT_START,
+    startableTierChoices: LAUNCH_TIERS, sessionModelOverride: new Map(),
+    startingNodeIds: new Set(), startDraftFlight: { busy: () => false }, ...bindings }
   return Function(...Object.keys(bindings), computersSource.slice(begin, finish) + '\nreturn ' + expression)(...Object.values(bindings))
 }
 function stoppedConfig(node, overrides = new Map(), extra = {}) {
@@ -223,7 +227,7 @@ function savedNextModelMenu(node, extra = {}) {
     ...extra,
   }
   return productionFunction('const modelRows = () => {', '\n    const rewindRows', bindings,
-    '({ stage: modelRows, rows: () => expandProviderStage(modelRows()), setCapabilities(answered, tiers) { startableTierAnswered = answered; startableTierIdList = tiers } })')
+    '({ stage: modelRows, rows: () => expandProviderStage(modelRows()).filter(row => row.id.startsWith("next-model-")), setCapabilities(answered, tiers) { startableTierAnswered = answered; startableTierIdList = tiers } })')
 }
 
 test('the saved-next model menu asks for the provider first, then lists only that provider\'s models', () => {
@@ -238,9 +242,9 @@ test('the saved-next model menu asks for the provider first, then lists only tha
   for (const provider of PROVIDER_CHOICES) {
     const opened = modelStageOf(stage.find(row => row.id === 'model-provider-' + provider.id))
     const expected = LAUNCH_TIERS.filter(tier => tier.provider === provider.id)
-    assert.deepEqual(opened.rows.map(row => row.id), expected.map(tier => 'next-model-' + tier.id),
+    assert.deepEqual(opened.rows.map(row => row.id), [...expected.map(tier => 'next-model-' + tier.id), 'model-other-' + provider.id],
       `${provider.id}: that provider's models, in table order, and no other provider's`)
-    for (const row of opened.rows) assert.ok(row.label.endsWith(' · ' + tierProviderWord(row.id.slice('next-model-'.length))),
+    for (const row of opened.rows.filter(row => row.id.startsWith('next-model-'))) assert.ok(row.label.endsWith(' · ' + tierProviderWord(row.id.slice('next-model-'.length))),
       `${row.id}: a row still names its provider, because a stage title is not announced: ${row.label}`)
     assert.ok(opened.title.includes(provider.label), `${provider.id}: the stage is titled with the provider`)
   }
@@ -341,7 +345,7 @@ test('saved-next model receipts identify the selected provider and persist only 
   gemini.run({ say: value => said.push(value) })
   /* The saved depth is re-scoped with the model (D5): Gemini's CLI rows take
      none, so '' -- "Model default" -- is what is saved beside it. */
-  assert.deepEqual(saves, [['node', { tier: 'gemini', effort: '' }]])
+  assert.deepEqual(saves, [['node', { tier: 'gemini', effort: '', model: null, nextModelChoice: null }]])
   assert.ok(said.at(-1).includes(gemini.label))
   assert.equal(node.sessionId, null)
 })
@@ -364,26 +368,26 @@ test('a next model on another provider clears the saved account and re-scopes th
   /* Review P2: a saved depth travels only within a provider, the rule both
      continuation paths follow. The node cannot say whether its Codex depth
      was chosen or was Codex's default, so Claude starts at its own. */
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-opus-5', effort: '', accountChoice: null }],
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-opus-5', effort: '', model: null, nextModelChoice: null, accountChoice: null }],
     'a Codex account must not follow the agent to Claude, and neither does a Codex depth')
   /* Review P15: the cleared account is said, not dropped in silence. */
   assert.equal(said.at(-1), `The next session will use Opus 5 · Claude. ${MODEL_PANEL.accountCleared('claude')}`)
   assert.match(said.at(-1), /signed-in Claude account/)
   savedNextModelMenu(codexNode, { startableTierAnswered: true, startableTierIdList: everything, treeStore: store(codexNode) })
     .rows().find(row => row.id === 'next-model-claude-haiku-4-5').run({ say: value => said.push(value) })
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-haiku-4-5', effort: '', accountChoice: null }],
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-haiku-4-5', effort: '', model: null, nextModelChoice: null, accountChoice: null }],
     'a model with no depth setting is saved at "Model default"')
 
   savedNextModelMenu(codexNode, { startableTierAnswered: true, startableTierIdList: everything, treeStore: store(codexNode) })
     .rows().find(row => row.id === 'next-model-gpt-6-luna').run({ say: value => said.push(value) })
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'gpt-6-luna', effort: 'medium' }],
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'gpt-6-luna', effort: 'medium', model: null, nextModelChoice: null }],
     'the same provider keeps its account; a depth that model lacks falls to its own default')
   assert.equal(said.at(-1), 'The next session will use GPT-6-Luna · Codex.', 'a kept account needs no extra sentence')
 
   const claudeNode = { id: 'node', tier: 'claude-opus', effort: 'xhigh', sessionId: null, accountChoice: { provider: 'claude', name: 'approved' } }
   savedNextModelMenu(claudeNode, { startableTierAnswered: true, startableTierIdList: everything, treeStore: store(claudeNode) })
     .rows().find(row => row.id === 'next-model-claude-sonnet-5').run({ say: value => said.push(value) })
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-sonnet-5', effort: 'xhigh' }],
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-sonnet-5', effort: 'xhigh', model: null, nextModelChoice: null }],
     'Claude to Claude keeps the approved account and a depth Sonnet 5 offers')
   assert.equal(saves.length, 4)
 })
@@ -429,18 +433,18 @@ test('a next model on another provider starts at its own default depth, not the 
     .rows().find(row => row.id === 'next-model-' + id).run({ say() {} })
 
   pick({ id: 'node', tier: 'astra', effort: 'medium', sessionId: null }, 'claude-opus-5')
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-opus-5', effort: '' }], 'Codex\'s default medium was carried onto Opus 5')
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-opus-5', effort: '', model: null, nextModelChoice: null }], 'Codex\'s default medium was carried onto Opus 5')
   pick({ id: 'node', tier: 'astra', effort: 'medium', sessionId: null }, 'claude-sonnet-5')
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-sonnet-5', effort: '' }])
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-sonnet-5', effort: '', model: null, nextModelChoice: null }])
   pick({ id: 'node', tier: 'claude-sonnet-5', effort: 'high', sessionId: null }, 'sol')
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'sol', effort: 'xhigh' }], 'a Claude depth was carried onto GPT-5.6-Sol instead of its own xhigh')
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'sol', effort: 'xhigh', model: null, nextModelChoice: null }], 'a Claude depth was carried onto GPT-5.6-Sol instead of its own xhigh')
   pick({ id: 'node', tier: 'claude-opus', effort: 'max', sessionId: null }, 'gemini')
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'gemini', effort: '' }])
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'gemini', effort: '', model: null, nextModelChoice: null }])
   // Within a provider a depth the new model offers is still kept.
   pick({ id: 'node', tier: 'claude-sonnet-5', effort: 'high', sessionId: null }, 'claude-opus-5')
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-opus-5', effort: 'high' }])
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'claude-opus-5', effort: 'high', model: null, nextModelChoice: null }])
   pick({ id: 'node', tier: 'astra', effort: 'low', sessionId: null }, 'terra')
-  assert.deepEqual(saves.at(-1), ['node', { tier: 'terra', effort: 'low' }])
+  assert.deepEqual(saves.at(-1), ['node', { tier: 'terra', effort: 'low', model: null, nextModelChoice: null }])
 })
 
 /* REVIEW P14. A Codex conversation switched in place was told "Messages run on
@@ -449,10 +453,10 @@ test('a next model on another provider starts at its own default depth, not the 
 test('an in-place Codex model switch is confirmed in the row\'s own words, never the model id', () => {
   const node = { id: 'node', tier: 'astra', sessionId: 'live-session' }
   const overrides = new Map()
-  const said = []
+  const said = [], saves = []
   const bindings = {
     fresh: () => node, node, LAUNCH_TIERS, scopedEffort, tierProviderWord, sessionNodeIds: new Map([['live-session', 'node']]),
-    destroyed: false, treeStore: { getNode: () => node }, PROVIDER_CHOICES, MODEL_PANEL, sessionModelChoices,
+    destroyed: false, treeStore: { getNode: () => node, setNodeLaunchPreferences: (...args) => { saves.push(args); return { ok: true } } }, PROVIDER_CHOICES, MODEL_PANEL, sessionModelChoices,
     sessionModelOverride: overrides, currentDataSource: () => 'local', MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY: 'local only',
     nodeCleanupPending: () => false, startCleanupSentence: () => 'Cleanup pending', START_NEEDS_APP_TEXT: () => 'needs app',
     isWriteEnabled: () => true, START_CONTROL_FLAG: 'agent-session', startControlOffReason: () => 'off',
@@ -469,6 +473,7 @@ test('an in-place Codex model switch is confirmed in the row\'s own words, never
   assert.equal(luna.enabled, true)
   luna.run({ say: value => said.push(value), close() {} })
   assert.equal(overrides.get('live-session'), 'gpt-6-luna', 'the switch still sends the model id on the wire')
+  assert.deepEqual(saves, [['node', { nextModelChoice: { tier: 'gpt-6-luna', model: 'gpt-6-luna', effort: 'medium' } }]], 'the exact next model is persisted before applying the in-place choice')
   assert.equal(said.at(-1), MODEL_PANEL.next(luna.label))
   assert.match(said.at(-1), /GPT-6-Luna/)
   assert.doesNotMatch(said.at(-1), /gpt-6-luna/, 'the raw model id reached the person')
@@ -581,11 +586,11 @@ test('actual refused send callback retains Next preference and exact draft with 
   window.mcAgent = { send: async request => { calls.push(request); throw new Error('AGENT_MODE_UNAVAILABLE') } }
   const send = productionFunction('function treeCardSend(node, text,', '\n  /* TAKE BACK THE LINE', {
     notePersonSpokeTo() {}, parseSlashCommand: () => null, nodeBusy: () => false, withResearchTreeBinding,
-    pendingModelChoice: () => null,
+    pendingModelChoice: () => null, nodeReplacementFlight: { busy: () => false },
     treeStore: { setNodeStatus() { statusWrites++ } }, awaitTurnReply() {}, transcriptAppend() {},
     sessionModelOverride: overrides, sessionPendingImages: new Map(), dropTurnReply() {},
     refusalCode: error => error.message, queuedSendRefusalSentence: code => code,
-    sendFailureIsUnconfirmed: () => false, destroyed: false,
+    sendFailureIsUnconfirmed: () => false, sendFailureWasAccepted: () => false, destroyed: false,
     // c4 P3: a refusal that proves nothing was sent takes back its "you" line.
     stripPhantomYouLine: (...args) => { stripped.push(args) },
   }, 'treeCardSend')
@@ -623,4 +628,29 @@ test('closing actual provider popup disposes event subscription and fences late 
   resolveRead(result); await settle()
   listener({ sessionId: 'popup', event: { type: 'session_mode_changed' } })
   assert.equal(reads, 1); assert.equal(chat.querySelector('.chat-actions-pop'), null)
+})
+
+test('typed next-model choices preserve the exact name and catalog choices clear the prior typed preference', () => {
+  for (const provider of PROVIDER_CHOICES) {
+    const node = { id: 'typed-node', tier: customModelTier(provider.id), sessionId: null,
+      model: 'previous-model', nextModelChoice: { tier: customModelTier(provider.id), model: 'previous-next' } }
+    const saves = [], said = []
+    const menu = savedNextModelMenu(node, { startableTierAnswered: true, startableTierIdList: LAUNCH_TIERS.map(row => row.id),
+      treeStore: { getNode: () => node, setNodeLaunchPreferences: (...args) => { saves.push(args); return { ok: true } } } })
+    const rows = modelStageOf(menu.stage().find(row => row.id === 'model-provider-' + provider.id)).rows
+    const typed = rows.find(row => row.id === 'model-other-' + provider.id)
+    assert.ok(typed, provider.label + ' offers a typed model')
+    assert.equal(typed.enabled, true)
+    let field
+    typed.run({ modelInput: options => { field = options } })
+    const exact = '  provider/custom-model-v2  '
+    field.submit(exact, { say: value => said.push(value) })
+    assert.deepEqual(saves.at(-1), ['typed-node', { tier: customModelTier(provider.id), model: exact,
+      effort: modelChoiceEffort(customModelTier(provider.id), exact, null) || '', nextModelChoice: null }])
+    assert.equal(node.sessionId, null, 'choosing a typed model starts nothing')
+    assert.ok(said.at(-1).includes(MODEL_NEXT_START))
+    rows.find(row => row.id.startsWith('next-model-')).run({ say: value => said.push(value) })
+    assert.equal(saves.at(-1)[1].model, null, 'a catalog choice clears the old exact model')
+    assert.equal(saves.at(-1)[1].nextModelChoice, null, 'a catalog choice clears the old pending preference')
+  }
 })

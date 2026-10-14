@@ -2,8 +2,8 @@
 // Everything here is done the way a person does it: press what is on the page,
 // type into what is on the page, and read back what the page says.
 //
-// PROMPT B: the library it walks is the bundled example material, so the
-// category it presses and the wording it reads back are the examples'.
+// PROMPT B: the library it walks is now the owner's own LeanBench material, so
+// the category it presses and the wording it reads back are theirs.
 import assert from 'node:assert/strict'
 import { mkdtemp, writeFile, realpath } from 'node:fs/promises'
 import path from 'node:path'
@@ -68,7 +68,7 @@ try {
   assert.deepEqual(JSON.parse(await page.locator('[data-bench-slots]').inputValue()), { preamble: 'node' })
   record('the child place the person named is the one the template gets')
 
-  /* 3. PROMPT B. The acceptance test: arrive on Compose tasks cold and
+  /* 3. PROMPT B. The test the owner will apply: arrive on Compose tasks cold and
         build a rule that routes between two compositions, without opening a
         disclosure, pressing a prepare step, or touching JSON. Every press below
         is on something already visible when the panel opens. */
@@ -90,15 +90,15 @@ try {
     await page.locator(`[data-routing-composition-name="${at}"]`).press('Tab')
     await page.locator(`[data-routing-use="${at}:"]`).selectOption('snippet:' + snippet)
   }
-  await addComposition('1', 'plain-ask', 'ex-review-prompt-v2')
-  await addComposition('2', 'gated-ask', 'ex-race-template')
+  await addComposition('1', 'plain-ask', 'lb-ref-impl-prompt-v2')
+  await addComposition('2', 'gated-ask', 'lb-race-template')
   await page.locator('[data-routing-use="2:inside"]').selectOption('composition:plain-ask')
-  await addComposition('3', 'twice-gated', 'ex-state-gated-template')
+  await addComposition('3', 'twice-gated', 'lb-state-gated-template')
   await page.locator('[data-routing-use="3:inside"]').selectOption('composition:gated-ask')
   record('three compositions, each placed inside the next, chosen from the same list as a snippet')
 
   /* PROMPT C. A rule whose branch contains another rule, three levels deep,
-     built from what is already on the page. The test is that nothing
+     built from what is already on the page. The owner's test is that nothing
      here needs a disclosure, a prepare step or JSON. */
   for (const field of ['situation', 'size']) {
     await page.locator('[data-routing-add-field]').click()

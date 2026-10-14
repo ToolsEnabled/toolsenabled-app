@@ -9,28 +9,28 @@ import { ROUTING_TESTS, compositionDepth, createRoutingDraft, decisionDepth, des
 const catalog = historicalSnippetLibrary().catalog
 
 /* PROMPT B. Three levels of composition-inside-composition, built out of the
-   retained example library: its strategy slot inside its STATE-GATED template
-   inside its example task. Every name here is typed by the person; the parts
-   underneath are library snippets. Nothing is a slot name, a category or a
+   owner's own LeanBench material: their strategy slot inside their STATE-GATED
+   template inside their donor task. Every name here is typed by the person; the parts
+   underneath are their snippets. Nothing is a slot name, a category or a
    condition the software chose. */
 const strategyA = {
-  use: 'ex-strategy-slot',
+  use: 'lb-strategy-slot',
   params: { slot_number: 1, strategy_name: 'A', ticker: 'SPY' },
   slots: {
-    reason_to_buy: { use: 'ex-a-reason-to-buy' }, buy_details: { use: 'ex-a-buy-details' },
-    reason_to_sell: { use: 'ex-a-reason-to-sell' }, sell_details: { use: 'ex-a-sell-details' },
+    reason_to_buy: { use: 'lb-a-reason-to-buy' }, buy_details: { use: 'lb-a-buy-details' },
+    reason_to_sell: { use: 'lb-a-reason-to-sell' }, sell_details: { use: 'lb-a-sell-details' },
   },
 }
 const nested = () => ({
   version: 1,
   fields: ['subject', 'reviewers'],
   compositions: [
-    { name: 'whole-task', node: { use: 'ex-task', slots: {
-      fixed_setup: { use: 'ex-fixed-setup' }, semantics_contract: { use: 'ex-semantics-contract' },
+    { name: 'whole-task', node: { use: 'lb-t1v0-task', slots: {
+      fixed_setup: { use: 'lb-fixed-setup' }, semantics_contract: { use: 'lb-semantics-contract' },
       strategy_system: { composition: 'gated-strategy' } } } },
-    { name: 'gated-strategy', node: { use: 'ex-state-gated-template', slots: { inside: { composition: 'strategy-a' } } } },
+    { name: 'gated-strategy', node: { use: 'lb-state-gated-template', slots: { inside: { composition: 'strategy-a' } } } },
     { name: 'strategy-a', node: structuredClone(strategyA) },
-    { name: 'ref-impl', node: { use: 'ex-review-prompt-v2' } },
+    { name: 'ref-impl', node: { use: 'lb-ref-impl-prompt-v2' } },
   ],
   rules: [],
   otherwise: { composition: 'ref-impl' },
@@ -43,20 +43,20 @@ test('a composition holds another composition, which holds another, to any depth
   assert.equal(compositionDepth('strategy-a', draft), 2)
   assert.equal(compositionDepth('ref-impl', draft), 1)
   const expanded = expandComposition('whole-task', draft)
-  assert.equal(expanded.use, 'ex-task')
-  assert.equal(expanded.slots.strategy_system.use, 'ex-state-gated-template', 'a composition reference resolves to the tree it names')
-  assert.equal(expanded.slots.strategy_system.slots.inside.use, 'ex-strategy-slot')
-  assert.equal(expanded.slots.strategy_system.slots.inside.slots.sell_details.use, 'ex-a-sell-details')
+  assert.equal(expanded.use, 'lb-t1v0-task')
+  assert.equal(expanded.slots.strategy_system.use, 'lb-state-gated-template', 'a composition reference resolves to the tree it names')
+  assert.equal(expanded.slots.strategy_system.slots.inside.use, 'lb-strategy-slot')
+  assert.equal(expanded.slots.strategy_system.slots.inside.slots.sell_details.use, 'lb-a-sell-details')
   assert.deepEqual(expanded.slots.strategy_system.slots.inside.params, { slot_number: 1, strategy_name: 'A', ticker: 'SPY' },
     'local values survive expansion')
 })
 
 test('a composition nested three deep compiles into one real prompt', async () => {
   const compiled = await compilePrompt(catalog, expandComposition('whole-task', nested()))
-  assert.ok(compiled.text.includes('Write a complete trading algorithm'), 'the outer composition contributed its own wording')
+  assert.ok(compiled.text.includes('Write a complete QuantConnect LEAN algorithm'), 'the outer composition contributed its own wording')
   assert.ok(compiled.text.includes('STATE-GATED template'), 'the composition one level down contributed its wording')
-  assert.ok(compiled.text.includes('SPY’s close crosses above its 50-day simple moving average.')
-    || compiled.text.includes("SPY's close crosses above its 50-day simple moving average."), 'and the atoms at the bottom are there')
+  assert.ok(compiled.text.includes('SPY’s close crosses above its 100-day simple moving average.')
+    || compiled.text.includes("SPY's close crosses above its 100-day simple moving average."), 'and the atoms at the bottom are there')
   // compilePrompt counts edges from the root, so three nestings below the root
   // report as depth 3 over four levels of nodes.
   assert.equal(compiled.depth, 3, 'three compositions nested inside one another compile as three levels below the root')
@@ -65,13 +65,13 @@ test('a composition nested three deep compiles into one real prompt', async () =
 
 test('the same composition may be used twice without being called a loop', () => {
   const draft = nested()
-  draft.compositions.push({ name: 'twice', node: { use: 'ex-parallel-template', slots: { slot_1: { composition: 'ref-impl' }, slot_2: { composition: 'ref-impl' } } } })
+  draft.compositions.push({ name: 'twice', node: { use: 'lb-parallel-template', slots: { slot_1: { composition: 'ref-impl' }, slot_2: { composition: 'ref-impl' } } } })
   assert.equal(compositionDepth('twice', draft), 2)
 })
 
 test('a composition that contains itself is refused by the names that form the loop', () => {
   const draft = nested()
-  draft.compositions.push({ name: 'ouroboros', node: { use: 'ex-race-template', slots: { inside: { composition: 'ouroboros' } } } })
+  draft.compositions.push({ name: 'ouroboros', node: { use: 'lb-race-template', slots: { inside: { composition: 'ouroboros' } } } })
   assert.throws(() => validateRouting(draft, { catalog }), error => {
     assert.match(error.message, /ouroboros/)
     assert.match(error.message, /contain each other/)
@@ -120,8 +120,8 @@ test('generated tasks are ordinary tasks carrying the person’s own fields as v
   const tasks = routedTasks(draft, { catalog })
   assert.deepEqual(tasks.map(task => task.id), ['chem-1', 'other-1'])
   assert.deepEqual(tasks[0].variables, { subject: 'chemistry', reviewers: '2' }, 'the words routed on are the words the prompt can quote')
-  assert.equal(tasks[0].root.slots.strategy_system.slots.inside.use, 'ex-strategy-slot')
-  assert.equal(tasks[1].root.use, 'ex-review-prompt-v2', 'the fallback composition answered the second row')
+  assert.equal(tasks[0].root.slots.strategy_system.slots.inside.use, 'lb-strategy-slot')
+  assert.equal(tasks[1].root.use, 'lb-ref-impl-prompt-v2', 'the fallback composition answered the second row')
   assert.equal(tasks[0].split, 'development')
   // The generated root is a plain reference tree the ordinary compiler accepts.
   assert.ok((await compilePrompt(catalog, tasks[0].root, { variables: tasks[0].variables })).text.length > 0)
@@ -146,7 +146,7 @@ test('routing names an unusable field, composition, identifier or snippet instea
 // The software supplies comparisons. It supplies no field, no value, no
 // category and no composition name: a new draft starts with none of them.
 test('a new routing draft supplies no field, rule or category of its own', () => {
-  const draft = createRoutingDraft({ id: 'my-first-task', root: { use: 'ex-review-prompt-v2' } })
+  const draft = createRoutingDraft({ id: 'my-first-task', root: { use: 'lb-ref-impl-prompt-v2' } })
   assert.deepEqual(draft.fields, [], 'the person names their own fields')
   assert.deepEqual(draft.rules, [], 'the person writes their own rules')
   assert.deepEqual(draft.compositions.map(item => item.name), ['my-first-task'], 'the only name present is the one the person already gave their task')
@@ -173,7 +173,7 @@ test('the preview reports each row’s decision, and reports a refusal as a refu
 
 /* PROMPT B. THE COMPILER CARRIES NO ROLE NAMES, and a place may name a set of
    roles rather than choosing between one role and anything at all. Both of
-   these exist because the example material says "details" where the four
+   these exist because the owner's own material says "details" where the four
    names this product shipped said "process": a compiler that knows any role
    name knows one domain, and a slot that can only say "exactly this" or
    "anything" cannot express a template that holds a strategy or another
@@ -222,20 +222,21 @@ test('a place can name a set of roles, so nesting does not have to mean anything
 
 test('historically imported templates name what they accept rather than accepting anything', () => {
   const byId = new Map(catalog.map(bundle => [bundle.id, bundle]))
-  for (const id of ['ex-state-gated-template', 'ex-event-gated-template', 'ex-race-template', 'ex-sequence-template']) {
+  for (const id of ['lb-state-gated-template', 'lb-event-gated-template', 'lb-race-template', 'lb-sequence-template']) {
     assert.deepEqual(byId.get(id).slots.inside, ['strategy', 'node'], `${id} takes a strategy or another template`)
   }
-  assert.deepEqual(byId.get('ex-task').slots.strategy_system, ['strategy', 'node'])
+  assert.deepEqual(byId.get('lb-t1v0-task').slots.strategy_system, ['strategy', 'node'])
   const wildcards = catalog.flatMap(bundle => Object.values(bundle.slots || {})).flatMap(role => (Array.isArray(role) ? role : [role]))
-  assert.equal(wildcards.includes('*'), false, 'nothing in the library has to fall back on accepting anything')
+  assert.equal(wildcards.includes('*'), false, 'nothing in their material has to fall back on accepting anything')
 })
 
-/* PROMPT C. THE DECISION LAYER NESTS, exactly as the content layer does, as
-   intended. */
+/* PROMPT C. THE DECISION LAYER NESTS, exactly as the content layer does. The
+   owner asked for it in as many words: "i think they were supposed to nest
+   right? i mean why not." */
 const decisionDraft = () => ({
   version: 1,
   fields: ['situation', 'size'],
-  compositions: [{ name: 'small', node: { use: 'ex-review-prompt-v1' } }, { name: 'big', node: { use: 'ex-review-prompt-v2' } }],
+  compositions: [{ name: 'small', node: { use: 'lb-ref-impl-prompt-v1' } }, { name: 'big', node: { use: 'lb-ref-impl-prompt-v2' } }],
   decisions: [
     { name: 'how-big', rules: [{ tests: [{ field: 'size', test: 'is', value: 'large' }], then: { decision: 'how-urgent' } }], otherwise: { composition: 'small' } },
     { name: 'how-urgent', rules: [{ tests: [{ field: 'situation', test: 'is', value: 'urgent' }], then: { composition: 'big' } }], otherwise: { composition: 'small' } },
@@ -279,7 +280,7 @@ test('depth is reported at every level and never limited', () => {
   assert.equal(decisionDepth('', draft), 3, 'the outermost set plus the two below it')
   assert.equal(decisionDepth('how-big', draft), 2)
   assert.equal(decisionDepth('how-urgent', draft), 1)
-  // Arbitrarily large is the model, so a long chain is a number, not a refusal.
+  // Arbitrarily large is the owner's model, so a long chain is a number, not a refusal.
   let previous = 'how-urgent'
   for (let level = 0; level < 200; level += 1) {
     const name = `level-${level}`
@@ -313,7 +314,7 @@ test('a draft written before rule sets existed still means what it said', () => 
   // The older shape named a composition directly on the rule and on otherwise.
   const draft = {
     version: 1, fields: ['situation'],
-    compositions: [{ name: 'small', node: { use: 'ex-review-prompt-v1' } }, { name: 'big', node: { use: 'ex-review-prompt-v2' } }],
+    compositions: [{ name: 'small', node: { use: 'lb-ref-impl-prompt-v1' } }, { name: 'big', node: { use: 'lb-ref-impl-prompt-v2' } }],
     rules: [{ tests: [{ field: 'situation', test: 'is', value: 'urgent' }], composition: 'big' }],
     otherwise: 'small',
     rows: [{ id: 'row-1', values: { situation: 'urgent' } }],

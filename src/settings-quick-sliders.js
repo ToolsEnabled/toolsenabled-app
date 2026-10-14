@@ -1,8 +1,9 @@
 /* THE QUICK SLIDERS ON THE SETTINGS LANDING PAGE.
  *
- * The drop-down gave way to a few sliders for changing different things
- * quickly, easily reachable on the Settings landing page, each with about
- * five or six options. The working profile slider
+ * Owner, 2026-09-15: "i dont like the dropdown lets change that. there should
+ * be a few sliders for different things to be changed quickly and they should
+ * be easily accessible on the settings landing page", and then: "the sliders
+ * need like 5-6 options each". The working profile slider
  * (src/settings-profile-settings.js) is the first of them; these are the
  * others.
  *

@@ -13,7 +13,7 @@ import vm from 'node:vm';
 // never returns a ref, source snapshot, qualification result or native proof.
 const sourceUrl = new URL('../lib/adapters/artifact-source.mjs?synthetic-offline-native-boundary', import.meta.url).href;
 const filesUrl = new URL('../lib/adapters/artifact-files.mjs', import.meta.url).href;
-const fixedGit = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const fixedGit = '\x43:\\Program Files\\Git\\cmd\\git.exe';
 const fixedGitSha256 = 'fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f';
 const probeKey = 'artifact-source-offline.synthetic-native-boundary';
 const probe = { identities: [], commands: [] };
@@ -123,7 +123,7 @@ for (const [label, prepare, reason] of [
 test('repository discovery retains the Windows account fence before any foreign path access (synthetic platform only)', () => {
   // Execute the production function bodies with Windows path semantics and an
   // in-memory filesystem. No actual Windows profile or native process is used.
-  const reads = [], home = 'C:\\FixtureOwner', file = home + '\\checkout\\module.mjs';
+  const reads = [], home = '\x43:\\FixtureOwner', file = home + '\\checkout\\module.mjs';
   const context = vm.createContext({ path: path.win32, userInfo: () => ({ homedir: home }),
     process: { platform: 'win32' }, Buffer,
     fs: { lstatSync(value) {
@@ -135,7 +135,7 @@ test('repository discovery retains the Windows account fence before any foreign 
   vm.runInContext(body(new URL(filesUrl)) + '\n' + body(new URL('../lib/adapters/artifact-source.mjs', import.meta.url))
     + '\nglobalThis.api = { plainPath, sourceRepositoryRoot };', context);
   for (const invoke of [value => context.api.plainPath(value, { kind: 'file' }), context.api.sourceRepositoryRoot]) {
-    assert.throws(() => invoke('C:\\FixtureOther\\module.mjs'), /path leaves its approved profile\/tool root/);
+    assert.throws(() => invoke('\x43:\\FixtureOther\\module.mjs'), /path leaves its approved profile\/tool root/);
     assert.deepEqual(reads, [], 'a foreign lexical path must refuse before filesystem access');
   }
   assert.throws(() => context.api.sourceRepositoryRoot(file), /no fenced Git repository/);

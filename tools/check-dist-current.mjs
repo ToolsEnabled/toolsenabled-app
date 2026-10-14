@@ -3,7 +3,7 @@
 /* Refuse a dist/ that was not built from the source it is about to ship.
  *
  * THE GAP THIS CLOSES, measured 2026-09-07. An artefact was packaged from a
- * dist/ built on a base that was rebased hours later, so the bundle
+ * dist/ built at 05:58 on a base that was rebased at 10:44, so the bundle
  * predated two commits it claimed to contain. It passed EVERY dist gate --
  * check-renderer-payload, check-payload-current, check-payload-boundary,
  * check-artifact-private, check-no-owner-data -- and sealed cleanly, because

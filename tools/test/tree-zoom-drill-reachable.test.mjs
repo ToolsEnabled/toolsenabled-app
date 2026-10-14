@@ -1,8 +1,8 @@
 /* ZOOMING OUT MUST BE ABLE TO UN-ROOT YOU.
  *
- * THE REPORT: zooming out sometimes did not unroot. Rooting on zoom-IN is
- * deliberate and stays -- that was confirmed at the same time. What was broken
- * is only the way back.
+ * THE OWNER'S REPORT: "sometimes when zooming out it doesnt unroot". Rooting on
+ * zoom-IN is deliberate and stays — he confirmed it in the same breath: "thats
+ * purposeful. We wanted that." What was broken is only the way back.
  *
  * WHAT WENT WRONG, AND IT IS PURE ARITHMETIC. Three numbers have to agree:
  *
@@ -107,7 +107,7 @@ test('the crossing is reachable by real wheel steps, not just in principle', () 
 })
 
 test('rooting on zoom-in still happens, and the two rules cannot oscillate', () => {
-  /* The drill-in is wanted. Fixing the way out must not
+  /* The owner confirmed the drill-in is wanted. Fixing the way out must not
      remove the way in, and the gap between the two must stay wide enough that
      one wheel notch cannot straddle both. */
   assert.ok(DRILL_AT > REST,

@@ -165,3 +165,28 @@ test('T1601 roster initials use theme ink over the shipped role tint', () => {
 
   assert.match(foregroundDeclaration, /^var\(--ink\)$/, 'role text can fail on its own tint')
 })
+
+/* FIX-C 6 (DESIGN.md section 3 and section 6): section labels are sentence
+   case, 12.5px/600, never tracked upper case. The text stays; only the CSS
+   changed, so a label still reads the same to a test or a screen reader. */
+function sentenceCaseRule(css, selector) {
+  const at = css.indexOf(selector + ' {')
+  assert.notEqual(at, -1, `${selector} has no rule`)
+  const body = css.slice(at, css.indexOf('}', at))
+  assert.doesNotMatch(body, /text-transform:\s*uppercase/, `${selector} is still an upper-case micro-label`)
+  assert.match(body, /(?:font:[^;]*\b|font-size:\s*)12\.5px/, `${selector} is not the 12.5px section-label size`)
+  assert.match(body, /(?:font:\s*600\b|font-weight:\s*600\b)/, `${selector} is not weight 600`)
+  return body
+}
+
+test('FIX-C 6: Home Activity heads, group labels, roster headers and detail labels are sentence case', () => {
+  const prefix = '.home :is(.home-feed-wrap, .home-chat-pane-body) '
+  for (const selector of ['.home-agents-title', '.home-agent-group', '.home-roster thead th', '.home-roster-detail-rows dt']) {
+    sentenceCaseRule(homeContext, prefix + selector)
+  }
+  /* A later, more specific rule restated the caps size (var(--text-caps),
+     11px) on the roster heads; nothing may put a caps size or tracking back. */
+  for (const match of homeContext.matchAll(/[^{}]*\.home-roster thead th\s*\{([^}]*)\}/g)) {
+    assert.doesNotMatch(match[1], /var\(--text-caps\)|var\(--track-caps\)|text-transform:\s*uppercase/, 'a roster header rule restates the caps label')
+  }
+})

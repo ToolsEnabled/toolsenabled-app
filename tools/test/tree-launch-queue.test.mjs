@@ -104,8 +104,8 @@ test('node-scoped queue state distinguishes active, waiting, unrelated and compl
   assert.equal(queue.nodeState('node-1').phase, 'cancelled')
 })
 
-/* T395. MEASURED in a development signed spawn record: one node refused
-   AGENT_RESOURCE_PRESSURE hundreds of times in one hour, seconds apart. A
+/* T395. MEASURED 2026-09-14T09Z in the owner's signed spawn record: one node
+   refused AGENT_RESOURCE_PRESSURE 558 times in one hour, 1.46 s apart. A
    persistent hold must reach a cap, wait longer each time on the way there,
    and leave the queue with a result that names what it waited for. Driven
    with values through the real queue; no sentence is pinned. */

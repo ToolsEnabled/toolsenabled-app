@@ -14,8 +14,8 @@
 .nesting-heading { justify-content: space-between; margin-bottom: 10px; }
 .nesting-identity { align-items: flex-end; gap: 12px 18px; margin: 4px 0 8px; }
 .nesting-member-head strong { margin-right: auto; font-size: 14px; }
-.nesting-editor button.nest-small { min-height: 0; padding: 3px 9px; font-size: 13px; font-weight: 500; line-height: 1.4; }
-.nesting-editor button.nest-drop { padding: 1px 7px; font-size: 14px; color: var(--ink-3); border-color: transparent; }
+.nesting-editor button.nest-small { min-height: 32px; padding: 3px 9px; font-size: 13.5px; font-weight: 550; line-height: 1.4; }
+.nesting-editor button.nest-drop { padding: 1px 7px; font-size: 13.5px; color: var(--ink-3); border-color: transparent; }
 .nesting-editor button.nest-drop:hover:not(:disabled) { color: var(--ink); border-color: var(--line-2); }
 .nesting-editor button[hidden] { display: none !important; }
 .nesting-editor .bench-primary { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; }
@@ -58,7 +58,7 @@
 .nest-run-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 22px; margin: 10px 0; }
 
 /* Visualization, Fig. 1: the chain. The spine follows the mode. */
-.nesting-editor .nest-spine-label { margin: 12px 0 0 46px; font-size: 11px; font-weight: 640; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ink-3); }
+.nesting-editor .nest-spine-label { margin: 12px 0 0 46px; font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
 .nest-chain { list-style: none; margin: 6px 0 0; padding: 0; position: relative; }
 .nest-node { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 0 10px; position: relative; padding: 8px 0; }
 .nest-node-index { display: flex; justify-content: center; align-items: flex-start; padding-top: 4px; position: relative; }
@@ -126,7 +126,7 @@
 .nesting-outline li { position: relative; padding: 6px 0 6px 14px; border-left: 1px solid var(--line-2); overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; }
 .nesting-outline summary { cursor: pointer; padding: 0; font-weight: 500; }
 .nesting-outline details { margin: 0; }
-.nesting-node-kind { display: inline-block; margin-right: 8px; padding: 0 5px; border: 1px solid var(--line-2); border-radius: 2px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .02em; color: var(--ink-3); vertical-align: 1px; }
+.nesting-node-kind { display: inline-block; margin-right: 8px; padding: 0 5px; border: 1px solid var(--line-2); border-radius: 4px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .02em; color: var(--ink-3); vertical-align: 1px; }
 .nesting-node-slot { margin-right: 6px; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-3); }
 .nesting-outline .nest-small { margin-left: 6px; }
 .nesting-editor[data-view="visual"] .nesting-outline li::before { content: ''; position: absolute; left: 0; top: 17px; width: 10px; border-top: 1px solid var(--line-2); }

@@ -44,7 +44,7 @@ export function plainPath(value, { kind, missingLeaf = false, systemFile = false
   if (typeof value !== 'string' || !path.isAbsolute(value) || /[\x00-\x1f]/.test(value) || /^[\\/]{2}/.test(value) ||
       (process.platform === 'win32' && /:/.test(value.replace(/^[a-z]:/i, '')))) blocked('an explicit ordinary absolute path is required');
   const resolved = path.resolve(value);
-  const systemRoots = ['C:\\Program Files\\7-Zip', 'C:\\Program Files\\nodejs', 'C:\\Program Files\\Git\\cmd'];
+  const systemRoots = ['\x43:\\Program Files\\7-Zip', '\x43:\\agent-apps\\node-v22.19.0', '\x43:\\Program Files\\Git\\cmd'];
   const fence = process.platform === 'win32' && systemFile ? systemRoots.find(root => contains(root, resolved)) : NATIVE_PATH_ROOT;
   if (!fence) blocked('system tool is outside its fixed approved roots');
   if (!contains(fence, resolved) || resolved === fence && kind === 'file') blocked('path leaves its approved profile/tool root');

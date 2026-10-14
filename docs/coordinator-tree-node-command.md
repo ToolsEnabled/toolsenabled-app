@@ -133,7 +133,7 @@ running app appends them at start, and so does the helper). The grammar
 therefore pins the executable first and fills the remaining slots in any order,
 each at most once; Chromium's own switches and the ones the application itself
 appends are dropped by name from closed lists, and any other token still
-refuses. A restart spooled by a Controller circle was
+refuses. A restart spooled by the Controller circle at 2026-09-04T08:16Z was
 refused `MC_TREE_COMMAND_ARGUMENT_INVALID` by the earlier order-bound grammar,
 with no reason in the result; refusals now carry one (see below).
 

@@ -1,7 +1,7 @@
 /* THE NEW AGENT TABS THAT ARE OPEN, WRITTEN DOWN (B4, 1.0.48).
  *
- * The rule is that a New agent tab comes back after ToolsEnabled is
- * closed and reopened. Until now the only record of an open tab
+ * The owner, on whether a New agent tab comes back after ToolsEnabled is closed
+ * and reopened: "Yes, reopen them." Until now the only record of an open tab
  * was a WeakMap keyed by the page's document (src/tree-workspace.js), which a
  * restart or a reload empties, and nothing on disk could tell an open tab from
  * one the person closed after sending: both keep a seat and a saved
@@ -26,6 +26,7 @@
  * the seat of a tab that is about to come back is the loss this list exists to
  * prevent. */
 import { STANDALONE_SEAT_ID } from './orphaned-node-seat-sweep.js'
+import { modelIdProblem } from './model-picker.js'
 
 export const STANDALONE_TABS_PREFIX = 'mc.fleet.standalone-tabs.v1:'
 export const STANDALONE_TABS_LIMIT = 64
@@ -43,10 +44,11 @@ function cleanTab(row) {
   if (typeof row.name !== 'string' || row.name.length < 1 || row.name.length > NAME_LIMIT) return null
   const tier = optionalText(row.tier), effort = optionalText(row.effort), sessionId = optionalText(row.sessionId)
   if (tier === undefined || effort === undefined || sessionId === undefined) return null
+  if (row.model != null && modelIdProblem(row.model)) return null
   const openedAt = row.openedAt === undefined || row.openedAt === null ? null
     : Number.isFinite(row.openedAt) ? row.openedAt : undefined
   if (openedAt === undefined) return null
-  return { id: row.id, name: row.name, tier, effort, openedAt, sessionId }
+  return { id: row.id, name: row.name, tier, effort, ...(row.model == null ? {} : { model: row.model }), openedAt, sessionId }
 }
 
 function cleanTabs(rows) {
@@ -116,9 +118,9 @@ export function createStandaloneTabLedger({ storage = null, computerId = null } 
       if (!list.ok || !patch || typeof patch !== 'object') return false
       const index = list.tabs.findIndex(row => row.id === id)
       if (index < 0) return false
-      const changes = Object.fromEntries(['name', 'tier', 'effort', 'sessionId']
+      const changes = Object.fromEntries(['name', 'tier', 'effort', 'model', 'sessionId']
         .filter(field => Object.hasOwn(patch, field)).map(field => [field, patch[field]]))
-      const tab = cleanTab({ ...list.tabs[index], ...changes })
+      const tab = cleanTab({ ...list.tabs[index], ...(Object.hasOwn(patch, 'tier') && !Object.hasOwn(patch, 'model') ? { model: null } : {}), ...changes })
       if (!tab) return false
       list.tabs[index] = tab
       return write(list.tabs)
@@ -164,7 +166,7 @@ export function standaloneTabIdsEverywhere(storage, current = null) {
  * Home's voice card is handed running sessions as { sessionId, agentId } and
  * names them through the tree's saved session roles. A New agent tab is not
  * on the tree, so that lookup misses and the card showed the seat id
- * ("standalone-<uuid>"). This list already holds the tab's name, keyed
+ * ("standalone-2a539765-..."). This list already holds the tab's name, keyed
  * by its seat, with the last session it confirmed. Every computer's list is
  * read; a damaged list costs only its own names, and storage that cannot be
  * read answers no names at all (the caller then says a plain word). */

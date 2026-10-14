@@ -1,5 +1,5 @@
-/* READ ONLY over a local node-transcript store. Counts and lengths only;
- * no stored text is printed.
+/* READ ONLY over the owner's LIVE node-transcripts. Counts and lengths only;
+ * no owner text is printed.
  *
  * T404. src/chat-readable-stream.js holds unfinished markup at the streaming
  * tail so it is painted once rather than flickering (T384). The held text is

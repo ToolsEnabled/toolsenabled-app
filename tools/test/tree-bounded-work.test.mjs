@@ -56,7 +56,7 @@ for (const [name, change] of [
 })
 
 test('owner bounded starts cannot borrow agent delegation or reset a resumed cap', () => {
-  for (const field of ['delegationPermit', 'resumeThreadId', 'replacesSessionId', 'accountRecovery']) {
+  for (const field of ['delegationPermit', 'resumeThreadId', 'replacesSessionId']) {
     const f = fixture(); f.request[field] = 'unrelated'
     assert.throws(() => f.authority.begin(f.request, 'window-1'), { code: 'MC_TREE_BOUNDED_WORK_REFUSED' })
   }

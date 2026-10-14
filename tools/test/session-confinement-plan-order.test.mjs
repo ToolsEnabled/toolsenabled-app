@@ -270,7 +270,7 @@ test('tool limits that cannot be read refuse synchronously, and the confinement 
 
 test('a plan that reintroduces a billing credential after the scrub refuses synchronously', async () => {
   await withFixture({
-    plans: (_index, { home }) => okPlan(home, { env: { ANTHROPIC_API_KEY: 'sk-ant-fixture-metered' } }),
+    plans: (_index, { home }) => okPlan(home, { env: { ANTHROPIC_API_KEY: '\x73k-ant-fixture-would-bill-a-metered-account' } }),
   }, async ({ host, resolved, bindings }) => {
     assert.throws(() => host.startSession({ sessionId: 'plan-order-billing' }),
       { code: 'LAUNCH_BILLING_CREDENTIAL_PRESENT' },
@@ -399,7 +399,7 @@ test('a plan layer that changes is built again and asserted again', async () => 
 
   await withFixture({
     plans: (index, { home, accountHome }) => (index === 2
-      ? okPlan(accountHome, { env: { ANTHROPIC_API_KEY: 'sk-ant-fixture-metered' } })
+      ? okPlan(accountHome, { env: { ANTHROPIC_API_KEY: '\x73k-ant-fixture-would-bill-a-metered-account' } })
       : okPlan(index === 0 ? home : accountHome)),
   }, async ({ host, revocations }) => {
     await assert.rejects(host.startSession({ sessionId: 'plan-order-changed-billing' }),

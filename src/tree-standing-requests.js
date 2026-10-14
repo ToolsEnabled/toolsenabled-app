@@ -15,8 +15,9 @@
  * here, in a module with no DOM and no stylesheet, both callers use it, and
  * tools/test/tree-standing-requests.test.mjs runs it.
  *
- * THE PANEL'S OWN BODY LIVES HERE TOO (O7 improvements: a hand-edit tool, for
- * the user to edit or delete entries on the ToolsEnabled ledger by hand). The rules panel draws each entry with Edit and
+ * THE PANEL'S OWN BODY LIVES HERE TOO (O7 improvements, owner 2026-08-22:
+ * "its a hand edit tool. for the user to go in on the toolsenabled ledger and
+ * hand edit or delete them"). The rules panel draws each entry with Edit and
  * a two-press Delete; the markup builder and the press handler below are pure
  * over the element they are handed, so tools/test/rules-panel-edit.test.mjs
  * can press them against a stand-in body and a recording bridge. The view

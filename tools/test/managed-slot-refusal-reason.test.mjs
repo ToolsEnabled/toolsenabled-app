@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import vm from 'node:vm'
+import { PERSON_ONLY_SLOT_REASON, personOnlySlotChange } from '../../src/managed-slot-choice.js'
 // Exercise the current renderer declarations. The surrounding view, transport,
 // provider continuation and storage are inert; no real account/session starts.
 const source = fs.readFileSync(new URL('../../src/views/computers.js', import.meta.url), 'utf8')
@@ -30,7 +31,7 @@ function fixture({ route = 'handoff', reason = 'The selected account has no avai
     currentDataSource: () => 'local', isWriteEnabled: () => true, START_CONTROL_FLAG: 'synthetic',
     nodeCleanupPending: () => false, nodeReplacementFlight: { busy: () => false },
     recoveryCoordinator: () => ({ isRecovering: () => false }),
-    MANAGED_SLOT_ACTIONS: { 'set-node-account': 'account' },
+    MANAGED_SLOT_ACTIONS: { 'set-node-account': 'account' }, PERSON_ONLY_SLOT_REASON, personOnlySlotChange,
     loadAccounts: async () => ({ available: true, accounts: [{ name: 'second', provider: 'codex' }] }),
     transcriptStore: { get: () => ({ account: 'first', provider: 'codex' }) },
     TREE_DEFAULT_STARTABLE_TIERS: ['test-tier'], LAUNCH_TIERS: [{ id: 'test-tier', provider: 'codex' }],
@@ -82,6 +83,23 @@ test('an accepted account choice keeps its applied outcome and saves preferences
   assert.equal(f.calls.attempts, 1)
   assert.equal(f.calls.saved, 1)
 })
+/* 1.0.50 REVIEW, ACCOUNTS A. A choice that names a managing session came from
+   an agent; only the person moves an agent to another account. It is refused
+   before any continuation is tried or any preference is saved, even when the
+   account would have been available. The owner's spool (no managing session)
+   is the run() above and still applies. */
+test('an account choice an agent asks for is refused before anything is attempted', async () => {
+  const f = fixture({ succeeds: true })
+  const result = await f.run({ parentSessionId: 'manager-session' })
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'refused')
+  assert.equal(result.code, 'TREE_CONFIGURATION_REFUSED')
+  assert.equal(result.reason, PERSON_ONLY_SLOT_REASON)
+  assert.equal(f.calls.attempts, 0)
+  assert.equal(f.calls.saved, 0)
+  assert.equal(f.calls.queued, 0)
+  assert.equal(f.node.sessionId, 'old-session')
+})
 test('a stale expected session refuses before continuation or preference changes', async () => {
   const f = fixture()
   const result = await f.run({ expectedSessionId: 'different-session' })
@@ -120,6 +138,7 @@ function stoppedSlot({ tier, effort = '' }) {
     nodeCleanupPending: () => false, nodeReplacementFlight: { busy: () => false },
     recoveryCoordinator: () => ({ isRecovering: () => false }),
     MANAGED_SLOT_ACTIONS, planManagedSlotChoice, LAUNCH_TIERS, EFFORT_CHOICES, effortChoicesFor, savedSessionEffort,
+    PERSON_ONLY_SLOT_REASON, personOnlySlotChange,
     readStartableTiers: async () => ({ answered: true, tiers: LAUNCH_TIERS.map(row => row.id) }),
     loadAccounts: async () => ({ available: true, accounts: [] }),
     engineModelCatalog: { read: async () => null }, engineEffortsFor: () => [],

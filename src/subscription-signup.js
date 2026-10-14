@@ -1,6 +1,6 @@
 // THE SIGNUP FLOW, AS A STATE MACHINE WITH NO DOM IN IT.
 //
-// Every path a person can take through paying for a subscription is a named state
+// Every path a person can take through "I want to pay you" is a named state
 // here, so that each one can be driven in a test instead of only being
 // discovered by a customer: already subscribed, lapsed, declined, refused,
 // offline, the back button, and the double press.

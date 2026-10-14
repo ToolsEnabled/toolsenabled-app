@@ -255,7 +255,7 @@ test('a retired per-scope id in a result is not a filing', async () => {
   })
 })
 
-/* MEASURED 2026-09-03 on an installed copy: 228 of 231 settled records read
+/* MEASURED 2026-09-03 on the owner's install: 228 of 231 settled records read
    ledgerOutcome 'discarded', reason "agent read it and filed nothing", decided
    by an agent -- the ledger held one request. This host was writing the
    PERSON'S verdict for them and taking the record out of pending/, the only

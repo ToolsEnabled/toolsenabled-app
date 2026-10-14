@@ -130,7 +130,7 @@ test('checked-in generated payloads validate against their public schemas', () =
 // projections` and asserted result.ok === true for every shipped file. That
 // premise was deliberately reversed by T4c ("ship honest empty data instead of
 // the owner's snapshot"): the seven shipped projections are now minimal
-// unavailable envelopes, because the populated ones carried the builder's fleet
+// unavailable envelopes, because the populated ones carried the owner's fleet
 // state, machine addresses, and private report paths into the installer. So the
 // old test demanded the exact thing a privacy fix had just removed.
 //

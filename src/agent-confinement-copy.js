@@ -10,7 +10,7 @@
  * Two of those three clauses are now FALSE, and they were measured false rather
  * than argued false. capability/src/lib/agent-session-confinement.js resolves a
  * recorded level into `threadOptions: {sandbox, approvalPolicy}`, and
- * example-worktree/shell/agent-host.cjs startSession() passes exactly that object to
+ * wt-capability/shell/agent-host.cjs startSession() passes exactly that object to
  * the engine's thread/start. Measured on this tree, 2026-08-11:
  *
  *   guided       -> sandbox read-only          (isolated assistant home)
@@ -73,7 +73,7 @@ export const SANDBOX_EFFECT = Object.freeze({
 /* WHAT EACH LEVEL SAYS ABOUT CREDENTIALS, keyed by the tier name.
  *
  * THE FIRST OUTSIDE USER'S CASE, and the reason this table exists. Their
- * agents could not use the credential manager or vault -- on the
+ * agents "weren't able to use credential manager or vault" -- on the
  * recommended (Guided) level, where the credential requester is withheld BY
  * DESIGN: the read-only tool surface carries system.doctor and the presence
  * checks, and system.credential_request starts at Standard. That is the
@@ -251,7 +251,7 @@ export function confinementLine(reading) {
  * session may do. The agent page has a whole column to spend and renders every
  * sentence above. The fleet tree's compose panel is a narrow rail whose own
  * design notes record Start being pushed below the fold TWICE as an
- * reported defect -- so a block the height of confinementLine() is not
+ * owner-reported defect -- so a block the height of confinementLine() is not
  * something that surface can carry, and "carry all of it or none of it" is how
  * it ended up carrying none.
  *

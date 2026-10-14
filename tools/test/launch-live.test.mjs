@@ -21,46 +21,43 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const HOLDER = path.resolve(HERE, '..', 'live-launch', 'launch-live-job.ps1')
-const POWERSHELL = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+const POWERSHELL = path.join(process.env.SystemRoot || '\x43:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
 const WINDOWS = process.platform === 'win32'
 
 /* ----------------------------------------------------------------- names */
 
 test('log stamp is yyyymmdd-hhmmss in local time', () => {
-  assert.equal(logStamp(new Date(2026, 0, 2, 3, 4, 5)), '20260102-030405')
+  assert.equal(logStamp(new Date(2026, 8, 3, 21, 5, 9)), '20260903-210509')
 })
 
 test('log file names carry the stamp and the pid, and refuse bad input', () => {
-  assert.equal(appLogName('20260102-030405', 4242), 'app-20260102-030405-pid4242.log')
-  assert.equal(appLogName('20260102-030405', null), 'app-20260102-030405-pending.log')
-  assert.equal(chromiumLogName('20260102-030405'), 'chromium-20260102-030405.log')
-  assert.equal(watchCsvName('20260102-030405'), 'watch-20260102-030405.csv')
-  assert.equal(minidumpName('20260102-030405', 4242, 'hang-memory'), 'hang-20260102-030405-pid4242-hang-memory.dmp')
-  assert.equal(jobName('20260102-030405'), 'Local\\ToolsEnabledLive-20260102-030405')
+  assert.equal(appLogName('20260903-210509', 19904), 'app-20260903-210509-pid19904.log')
+  assert.equal(appLogName('20260903-210509', null), 'app-20260903-210509-pending.log')
+  assert.equal(chromiumLogName('20260903-210509'), 'chromium-20260903-210509.log')
+  assert.equal(watchCsvName('20260903-210509'), 'watch-20260903-210509.csv')
+  assert.equal(minidumpName('20260903-210509', 19904, 'hang-memory'), 'hang-20260903-210509-pid19904-hang-memory.dmp')
+  assert.equal(jobName('20260903-210509'), 'Local\\ToolsEnabledLive-20260903-210509')
   assert.throws(() => appLogName('2026-09-03', 1), /yyyymmdd-hhmmss/)
-  assert.throws(() => appLogName('20260102-030405', 0), /positive integer/)
+  assert.throws(() => appLogName('20260903-210509', 0), /positive integer/)
 })
 
 /* ---------------------------------------------------------- command line */
 
-// Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-const LIVE_USER_DATA = ['C:', 'Users', 'Me', 'AppData', 'Roaming', 'ToolsEnabled-Live'].join('\\')
-
 test('the command line is the one the .cmd built: app dir first, quoted user-data-dir value', () => {
-  const line = buildCommandLine({ electron: 'C:\\Dev\\deps\\electron.exe', appDir: 'C:\\Dev\\live', userDataDir: LIVE_USER_DATA })
-  assert.equal(line, `"C:\\Dev\\deps\\electron.exe" "C:\\Dev\\live" --user-data-dir="${LIVE_USER_DATA}"`)
+  const line = buildCommandLine({ electron: '\x43:\\WF\\deps\\electron.exe', appDir: '\x43:\\WF\\live', userDataDir: '\x43:\\Users\\Me\\AppData\\Roaming\\ToolsEnabled-Live' })
+  assert.equal(line, '"\x43:\\WF\\deps\\electron.exe" "\x43:\\WF\\live" --user-data-dir="\x43:\\Users\\Me\\AppData\\Roaming\\ToolsEnabled-Live"')
 })
 
 test('extra switches keep the switch bare and quote only a value with spaces', () => {
   // The wrapper quotes Windows command lines, while log paths are constructed
   // for the actual host. Keep the host path and argv-quoting checks separate.
-  const dir = WINDOWS ? 'C:\\PrecutFixture\\app-logs' : '/precut-fixture/app-logs'
-  const switches = chromiumLogSwitches(dir, '20260102-030405')
-  assert.deepEqual([...switches], ['--enable-logging=file', `--log-file=${dir}${WINDOWS ? '\\' : '/'}chromium-20260102-030405.log`, '--log-level=0'])
-  assert.equal(quoteArg('--log-file=C:\\a b\\c.log'), '--log-file="C:\\a b\\c.log"')
+  const dir = WINDOWS ? '\x43:\\PrecutFixture\\app-logs' : '/precut-fixture/app-logs'
+  const switches = chromiumLogSwitches(dir, '20260903-210509')
+  assert.deepEqual([...switches], ['--enable-logging=file', `--log-file=${dir}${WINDOWS ? '\\' : '/'}chromium-20260903-210509.log`, '--log-level=0'])
+  assert.equal(quoteArg('--log-file=\x43:\\a b\\c.log'), '--log-file="\x43:\\a b\\c.log"')
   assert.equal(quoteArg('--remote-debugging-port=9223'), '--remote-debugging-port=9223')
-  const line = buildCommandLine({ electron: 'e.exe', appDir: 'd', userDataDir: 'u', extraArgs: ['--log-file=C:\\a b\\c.log'] })
-  assert.equal(line, '"e.exe" "d" --user-data-dir="u" --log-file="C:\\a b\\c.log"')
+  const line = buildCommandLine({ electron: 'e.exe', appDir: 'd', userDataDir: 'u', extraArgs: ['--log-file=\x43:\\a b\\c.log'] })
+  assert.equal(line, '"e.exe" "d" --user-data-dir="u" --log-file="\x43:\\a b\\c.log"')
   assert.throws(() => buildCommandLine({ electron: 'e"x', appDir: 'd', userDataDir: 'u' }), /double quote/)
 })
 
@@ -84,13 +81,13 @@ test('exit codes are explained, including the negative and NTSTATUS forms', () =
 /* --------------------------------------------------------------- records */
 
 test('lifecycle records have the shape the holder and the front agree on', () => {
-  const start = lifecycleRecord('start', { launchId: 'L1', pid: 42, startedAt: '2026-01-02T03:00:00Z', commandLine: 'x', appLog: 'a.log', job: { name: 'j', assigned: true } })
+  const start = lifecycleRecord('start', { launchId: 'L1', pid: 42, startedAt: '2026-09-04T04:00:00Z', commandLine: 'x', appLog: 'a.log', job: { name: 'j', assigned: true } })
   assert.deepEqual(Object.keys(start).slice(0, 3), ['event', 'at', 'launchId'])
   assert.equal(start.pid, 42)
-  const exit = lifecycleRecord('exit', { launchId: 'L1', pid: 42, exitCode: -1, exitedAt: '2026-01-02T03:10:00Z', at: '2026-01-02T03:10:00Z' })
+  const exit = lifecycleRecord('exit', { launchId: 'L1', pid: 42, exitCode: -1, exitedAt: '2026-09-04T04:10:00Z', at: '2026-09-04T04:10:00Z' })
   assert.equal(exit.exitCodeHex, '0xFFFFFFFF')
   assert.match(exit.exitMeaning, /Stop-Process/)
-  assert.equal(exit.at, '2026-01-02T03:10:00Z')
+  assert.equal(exit.at, '2026-09-04T04:10:00Z')
   assert.throws(() => lifecycleRecord('exit', { launchId: 'L1', pid: 42 }), /needs exitCode/)
   assert.throws(() => lifecycleRecord('bogus', { launchId: 'L1' }), /unknown lifecycle event/)
   assert.throws(() => lifecycleRecord('start', { pid: 1 }), /launchId/)
@@ -103,24 +100,24 @@ test('lifecycle records have the shape the holder and the front agree on', () =>
 
 test('knownInstances pairs starts with exits by launch id', () => {
   const records = parseLifecycle([
-    serializeRecord(lifecycleRecord('start', { launchId: 'A', pid: 10, startedAt: '2026-01-02T03:00:00Z', commandLine: 'x', appLog: 'a', job: {}, userDataDir: 'C:\\ud' })),
-    serializeRecord(lifecycleRecord('exit', { launchId: 'A', pid: 10, exitCode: 1, exitedAt: '2026-01-02T03:20:00Z' })),
-    serializeRecord(lifecycleRecord('start', { launchId: 'B', pid: 11, startedAt: '2026-01-02T03:21:00Z', commandLine: 'x', appLog: 'a', job: {} })),
+    serializeRecord(lifecycleRecord('start', { launchId: 'A', pid: 10, startedAt: '2026-09-04T04:00:00Z', commandLine: 'x', appLog: 'a', job: {}, userDataDir: '\x43:\\ud' })),
+    serializeRecord(lifecycleRecord('exit', { launchId: 'A', pid: 10, exitCode: 1, exitedAt: '2026-09-04T04:20:00Z' })),
+    serializeRecord(lifecycleRecord('start', { launchId: 'B', pid: 11, startedAt: '2026-09-04T04:21:00Z', commandLine: 'x', appLog: 'a', job: {} })),
   ].join(''))
   const known = knownInstances(records)
-  assert.deepEqual(known.map(k => [k.pid, k.exitCode, k.exitedAt]), [[10, 1, '2026-01-02T03:20:00Z'], [11, null, null]])
+  assert.deepEqual(known.map(k => [k.pid, k.exitCode, k.exitedAt]), [[10, 1, '2026-09-04T04:20:00Z'], [11, null, null]])
 })
 
 /* ----------------------------------------------------------- port holder */
 
-const expected = { electron: 'C:\\Dev\\deps\\electron.exe', appDir: 'C:\\Dev\\live', userDataDir: LIVE_USER_DATA }
+const expected = { electron: '\x43:\\WF\\deps\\electron.exe', appDir: '\x43:\\WF\\live', userDataDir: '\x43:\\Users\\Me\\AppData\\Roaming\\ToolsEnabled-Live' }
 
 test('a free port is free', () => {
   assert.equal(classifyPortHolder({ port: 9223, listeners: [], expected }).state, 'free')
 })
 
 test('a live holder that is this app is held-live; another program is held-other', () => {
-  const processes = new Map([[500, { alive: true, name: 'electron.exe', commandLine: `"C:\\Dev\\deps\\electron.exe" "C:\\Dev\\live" --user-data-dir="${LIVE_USER_DATA}"`, parentPid: 1, createdAt: '2026-01-02T03:00:00Z' }]])
+  const processes = new Map([[500, { alive: true, name: 'electron.exe', commandLine: '"\x43:\\WF\\deps\\electron.exe" "\x43:\\WF\\live" --user-data-dir="\x43:\\Users\\Me\\AppData\\Roaming\\ToolsEnabled-Live"', parentPid: 1, createdAt: '2026-09-04T04:00:00Z' }]])
   const live = classifyPortHolder({ port: 9223, listeners: [{ pid: 500 }], processes, expected })
   assert.equal(live.state, 'held-live')
   assert.equal(live.holder.name, 'electron.exe')
@@ -129,68 +126,69 @@ test('a live holder that is this app is held-live; another program is held-other
 })
 
 test('a dead holder pid is held-dead-pid and every live child is reported with its proof', () => {
-  const instances = [{ launchId: 'A', pid: 4242, startedAt: '2026-01-02T03:14:00Z', exitedAt: null }]
+  const instances = [{ launchId: 'A', pid: 19904, startedAt: '2026-09-04T04:14:00Z', exitedAt: null }]
   const processes = new Map([
-    [4242, { alive: false }],
-    [5101, { alive: true, name: 'claude.exe', commandLine: `claude.exe --print --input-format stream-json --mcp-config ${LIVE_USER_DATA}\\workspace\\.mcp.json`, parentPid: 4242, createdAt: '2026-01-02T03:23:48Z', parentAlive: false }],
-    [5102, { alive: true, name: 'notepad.exe', commandLine: 'notepad.exe', parentPid: 4242, createdAt: '2026-01-02T03:23:48Z', parentAlive: false }],
-    [5103, { alive: true, name: 'electron.exe', commandLine: `electron.exe C:\\Dev\\live\\capability\\tools\\mission-bridge.js --user-data-dir="${LIVE_USER_DATA}"`, parentPid: 4242, createdAt: '2026-01-02T03:10:00Z', parentAlive: false }],
+    [19904, { alive: false }],
+    [4840, { alive: true, name: 'claude.exe', commandLine: 'claude.exe --print --input-format stream-json --mcp-config \x43:\\Users\\Me\\AppData\\Roaming\\ToolsEnabled-Live\\workspace\\.mcp.json', parentPid: 19904, createdAt: '2026-09-04T04:23:48Z', parentAlive: false }],
+    [4900, { alive: true, name: 'notepad.exe', commandLine: 'notepad.exe', parentPid: 19904, createdAt: '2026-09-04T04:23:48Z', parentAlive: false }],
+    [4950, { alive: true, name: 'electron.exe', commandLine: 'electron.exe \x43:\\WF\\live\\capability\\tools\\mission-bridge.js --user-data-dir="\x43:\\Users\\Me\\AppData\\Roaming\\ToolsEnabled-Live"', parentPid: 19904, createdAt: '2026-09-04T04:10:00Z', parentAlive: false }],
   ])
-  const verdict = classifyPortHolder({ port: 9223, listeners: [{ pid: 4242 }], processes, expected, instances })
+  const verdict = classifyPortHolder({ port: 9223, listeners: [{ pid: 19904 }], processes, expected, instances })
   assert.equal(verdict.state, 'held-dead-pid')
   assert.equal(verdict.holderAlive, false)
   const byPid = new Map(verdict.orphans.map(o => [o.pid, o]))
   assert.equal(byPid.size, 3)
-  assert.equal(byPid.get(5101).proof.proven, true, 'circle: pid + time + cmdline all proven')
-  assert.equal(byPid.get(5102).proof.proven, false, 'notepad: command line does not name the app')
-  assert.equal(byPid.get(5102).proof.cmdline_ok, false)
-  assert.equal(byPid.get(5103).proof.proven, false, 'bridge created BEFORE the recorded instance start: pid reuse, not proven')
-  assert.equal(byPid.get(5103).proof.time_ok, false)
-  assert.equal(byPid.get(5103).proof.cmdline_ok, true)
-  assert.ok(byPid.get(5101).proof.reasons.length === 3)
+  assert.equal(byPid.get(4840).proof.proven, true, 'circle: pid + time + cmdline all proven')
+  assert.equal(byPid.get(4900).proof.proven, false, 'notepad: command line does not name the app')
+  assert.equal(byPid.get(4900).proof.cmdline_ok, false)
+  assert.equal(byPid.get(4950).proof.proven, false, 'bridge created BEFORE the recorded instance start: pid reuse, not proven')
+  assert.equal(byPid.get(4950).proof.time_ok, false)
+  assert.equal(byPid.get(4950).proof.cmdline_ok, true)
+  assert.ok(byPid.get(4840).proof.reasons.length === 3)
 })
 
 test('without a lifecycle record for the dead parent nothing is proven, however good the command line', () => {
-  const proof = orphanProof({ pid: 5101, deadPid: 4242, expected, instances: [], proc: { commandLine: 'claude.exe --print --mcp-config x\\.mcp.json', createdAt: '2026-01-02T03:23:48Z', parentAlive: false } })
+  const proof = orphanProof({ pid: 4840, deadPid: 19904, expected, instances: [], proc: { commandLine: 'claude.exe --print --mcp-config x\\.mcp.json', createdAt: '2026-09-04T04:23:48Z', parentAlive: false } })
   assert.equal(proof.proven, false)
   assert.equal(proof.pid_ok, false)
   assert.equal(proof.cmdline_ok, true)
   assert.match(proof.reasons[0], /no lifecycle record/)
 })
 
-/* Real `netstat -ano` output shape, with a dead pid: 9223 LISTENING under
-   4242 after 4242 had died. */
+/* Real `netstat -ano` output shape (captured on this machine), with the dead
+   pid the controller measured on 2026-09-03: 9223 LISTENING under 19904 after
+   19904 had died. */
 const NETSTAT = [
   '',
   'Active Connections',
   '',
   '  Proto  Local Address          Foreign Address        State           PID',
   '  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       1180',
-  '  TCP    127.0.0.1:4602         0.0.0.0:0              LISTENING       4242',
-  '  TCP    127.0.0.1:9223         0.0.0.0:0              LISTENING       4242',
-  '  TCP    127.0.0.1:9223         127.0.0.1:50001        ESTABLISHED     4242',
-  '  TCP    127.0.0.1:50001        127.0.0.1:9223         ESTABLISHED     5101',
-  '  TCP    [::1]:9223             [::]:0                 LISTENING       4242',
+  '  TCP    127.0.0.1:4602         0.0.0.0:0              LISTENING       19904',
+  '  TCP    127.0.0.1:9223         0.0.0.0:0              LISTENING       19904',
+  '  TCP    127.0.0.1:9223         127.0.0.1:52011        ESTABLISHED     19904',
+  '  TCP    127.0.0.1:52011        127.0.0.1:9223         ESTABLISHED     4840',
+  '  TCP    [::1]:9223             [::]:0                 LISTENING       19904',
   '  UDP    0.0.0.0:5353           *:*                                    2216',
   '',
 ].join('\r\n')
 
 test('netstat -ano LISTEN rows for the port parse to pids; a dead owner classifies as held-dead-pid', () => {
   const rows = parseNetstatListeners(NETSTAT, 9223)
-  assert.deepEqual(rows.map(r => [r.pid, r.local, r.proto]), [[4242, '127.0.0.1:9223', 'TCP'], [4242, '[::1]:9223', 'TCP']])
-  assert.deepEqual(parseNetstatListeners(NETSTAT, 4602).map(r => r.pid), [4242])
-  assert.deepEqual(parseNetstatListeners(NETSTAT, 50001), [], 'ESTABLISHED rows are not listeners')
+  assert.deepEqual(rows.map(r => [r.pid, r.local, r.proto]), [[19904, '127.0.0.1:9223', 'TCP'], [19904, '[::1]:9223', 'TCP']])
+  assert.deepEqual(parseNetstatListeners(NETSTAT, 4602).map(r => r.pid), [19904])
+  assert.deepEqual(parseNetstatListeners(NETSTAT, 52011), [], 'ESTABLISHED rows are not listeners')
   assert.deepEqual(parseNetstatListeners('', 9223), [])
-  const processes = new Map([[4242, { alive: false }]])
+  const processes = new Map([[19904, { alive: false }]])
   const verdict = classifyPortHolder({ port: 9223, listeners: rows, processes, expected })
   assert.equal(verdict.state, 'held-dead-pid')
-  assert.equal(verdict.holderPid, 4242)
+  assert.equal(verdict.holderPid, 19904)
   assert.equal(verdict.holderAlive, false)
   assert.deepEqual(verdict.orphans, [], 'no live child of the dead pid was handed in, so nothing is a kill candidate')
 })
 
 test('a candidate whose parent is alive is never an orphan', () => {
-  const proof = orphanProof({ pid: 5101, deadPid: 4242, expected, instances: [{ pid: 4242, launchId: 'A', startedAt: '2026-01-02T03:00:00Z' }], proc: { commandLine: 'claude.exe --print --mcp-config x\\.mcp.json', createdAt: '2026-01-02T03:23:48Z', parentAlive: true } })
+  const proof = orphanProof({ pid: 4840, deadPid: 19904, expected, instances: [{ pid: 19904, launchId: 'A', startedAt: '2026-09-04T04:00:00Z' }], proc: { commandLine: 'claude.exe --print --mcp-config x\\.mcp.json', createdAt: '2026-09-04T04:23:48Z', parentAlive: true } })
   assert.equal(proof.proven, false)
   assert.equal(proof.pid_ok, false)
 })
@@ -217,8 +215,8 @@ test('the sampler dumps once after 9 s not responding or over 3 GB, then not aga
 /* ------------------------------------------------- the job object, live */
 
 function identityFixture() {
-  const executable = 'C:\\fixture\\node.exe'
-  const treePath = 'C:\\fixture\\unique-run\\tree.js'
+  const executable = '\x43:\\fixture\\node.exe'
+  const treePath = '\x43:\\fixture\\unique-run\\tree.js'
   const ready = [
     { depth: 2, pid: 100, ppid: 50 },
     { depth: 1, pid: 200, ppid: 100 },
@@ -237,8 +235,8 @@ test('job fixture identity ignores stale Windows parent PIDs and accepts only th
   // The real failure: a dead earlier process used PID 100; its surviving
   // Chrome descendants still name that PID after our new root inherits it.
   const stale = [
-    { pid: 400, ppid: 100, name: 'chrome.exe', executable: 'C:\\fixture\\chrome.exe', createdAt: new Date(0).toISOString() },
-    { pid: 500, ppid: 400, name: 'chrome.exe', executable: 'C:\\fixture\\chrome.exe', createdAt: new Date(1).toISOString() },
+    { pid: 400, ppid: 100, name: 'chrome.exe', executable: '\x43:\\fixture\\chrome.exe', createdAt: new Date(0).toISOString() },
+    { pid: 500, ppid: 400, name: 'chrome.exe', executable: '\x43:\\fixture\\chrome.exe', createdAt: new Date(1).toISOString() },
   ]
   assert.deepEqual(identifyJobFixtureTree(100, ready, [...stale, ...processes], options), processes)
   assert.equal(identifyJobFixtureTree(100, ready, stale, options), null, 'stale ancestors cannot stand in for missing readiness')
@@ -248,8 +246,8 @@ test('job fixture identity refuses missing readiness, wrong script/executable, a
   const { ready, processes, options } = identityFixture()
   assert.equal(identifyJobFixtureTree(100, ready.slice(0, 2), processes, options), null)
   for (const replacement of [
-    { executable: 'C:\\fixture\\chrome.exe' },
-    { commandLine: 'node.exe C:\\fixture\\another-run\\tree.js 0' },
+    { executable: '\x43:\\fixture\\chrome.exe' },
+    { commandLine: 'node.exe \x43:\\fixture\\another-run\\tree.js 0' },
     { createdAt: new Date(500).toISOString() },
     { createdAt: new Date(5000).toISOString() },
     { ppid: 999 },
@@ -260,7 +258,7 @@ test('job fixture identity refuses missing readiness, wrong script/executable, a
   assert.equal(sameJobFixtureGeneration(processes[2], { ...processes[2] }), true)
   assert.equal(sameJobFixtureGeneration(processes[2], { ...processes[2], createdAt: new Date(5000).toISOString() }), false,
     'cleanup must refuse a newer process even when PID and executable were reused')
-  assert.equal(sameJobFixtureGeneration(processes[2], { ...processes[2], executable: 'C:\\fixture\\chrome.exe' }), false)
+  assert.equal(sameJobFixtureGeneration(processes[2], { ...processes[2], executable: '\x43:\\fixture\\chrome.exe' }), false)
   assert.equal(sameJobFixtureGeneration({ ...processes[2], createdAt: undefined }, { ...processes[2], createdAt: undefined }), false)
 })
 
@@ -307,7 +305,7 @@ const TREE_JS = [
 ].join('\n')
 
 test('control: without the wrapper, a detached grandchild OUTLIVES its killed root (so the tests below measure the job, not libuv)', { skip: !WINDOWS && 'Windows only' }, async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'launch-live-control-'))
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'laneA-control-'))
   const treeJs = path.join(dir, 'tree.js')
   fs.writeFileSync(treeJs, TREE_JS)
   const startedAtMs = Date.now()
@@ -333,7 +331,7 @@ function startTree(dir, launchId) {
   const startedAtMs = Date.now()
   const holder = spawn(POWERSHELL, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', HOLDER,
     '-CommandLine', commandLine, '-WorkingDirectory', dir, '-LogDir', dir, '-Stamp', '20260903-000000', '-LaunchId', launchId,
-    '-Lifecycle', lifecycle, '-JobName', `Local\\LaunchLiveTest-${launchId}`], { stdio: 'ignore', windowsHide: true })
+    '-Lifecycle', lifecycle, '-JobName', `Local\\LaneATest-${launchId}`], { stdio: 'ignore', windowsHide: true })
   return { holder, lifecycle, startedAtMs }
 }
 
@@ -409,7 +407,7 @@ test('real fixture cleanup leaves a mismatched creation generation alive and sto
 })
 
 test('job object: killing the ROOT by pid ends the grandchild within 5 s and records the exit', { skip: !WINDOWS && 'Windows only' }, async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'launch-live-job-'))
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'laneA-job-'))
   const launchId = `root-${Date.now()}`
   const { holder, lifecycle, startedAtMs } = startTree(dir, launchId)
   let tree = []
@@ -440,7 +438,7 @@ test('job object: killing the ROOT by pid ends the grandchild within 5 s and rec
 })
 
 test('job object: killing the HOLDER first leaves the root running; the root dying still ends the grandchild', { skip: !WINDOWS && 'Windows only' }, async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'launch-live-job-'))
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'laneA-job-'))
   const launchId = `holder-${Date.now()}`
   const { holder, lifecycle, startedAtMs } = startTree(dir, launchId)
   let tree = []

@@ -1,8 +1,9 @@
 const COLLAPSED_KEY = 'mc.navigation.collapsed'
-/* ONE ICON SET, drawn on one 24-unit grid at a 1.75 stroke with round caps
-   and joins, optically centred in a 20px box: the pages, then Guide, Quick
+/* ONE ICON SET, drawn on one 24-unit grid at a 1.5 stroke with round caps
+   and joins, optically centred in a 16px box: the pages, then Guide, Quick
    settings and the two history arrows, so every row of the rail carries the
-   same weight of line (the left sidebar upgrade). */
+   same weight of line (owner, 2026-09-19 late: "the left sidebar needs a real
+   upgrade"). */
 const ICONS = {
   home: '<path d="M3.5 10.6 12 3.6l8.5 7"/><path d="M5.6 9.4V20h12.8V9.4"/><path d="M10 20v-5.4h4V20"/>',
   computers: '<rect x="3" y="4.5" width="18" height="12" rx="2.5"/><path d="M8.5 20h7M12 16.5V20"/>',
@@ -17,7 +18,7 @@ const ICONS = {
   back: '<path d="m14.5 6-6 6 6 6"/>',
   next: '<path d="m9.5 6 6 6-6 6"/>',
 }
-const svgOf = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.home}</svg>`
+const svgOf = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.home}</svg>`
 
 // Move the existing controls so routing, keyboard shortcuts and their current
 // accessible names remain owned by the shell. Phone canvas keeps its own bar.

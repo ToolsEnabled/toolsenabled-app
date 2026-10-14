@@ -37,7 +37,7 @@ const SPEC = Object.freeze({
   axes: [{ id: 'tier', values: ['luna', 'terra'] }],
   runner: { kind: 'agent', briefTemplate: 'Read {dataset} and report the drift.' },
   runsPerCell: 2,
-  datasetPath: 'C:/data/drift.jsonl',
+  datasetPath: '\x43:/data/drift.jsonl',
 })
 
 function memoryStorage() {
@@ -230,8 +230,8 @@ test('decideDispatch: tree-sized agent grids run local, everything else queues u
 })
 
 test('6-, 7- and 8-cell local grids start every cell: the experiment tree is exempt from the agent-tree width', async () => {
-   /* Loops and grids do not need to be tied together or to any of this. A local
-     grid is one tree -- the first cell is its root,
+  /* The owner, 2026-09-11: "loops and grids dont even need to be tied together
+     or to any of this". A local grid is one tree -- the first cell is its root,
      every other cell a child -- so when the agent-tree width fell to four, the
      base dispatcher lost every cell past the fifth to "This agent already has
      four agents under it". The grid marks the tree it builds as an experiment
@@ -288,7 +288,7 @@ test('6-, 7- and 8-cell local grids start every cell: the experiment tree is exe
 test('the brief substitutes the dataset as TEXT and names the cell', () => {
   const built = buildExperiment(SPEC, EMPTY)
   const brief = workerBrief(built.experiment, built.experiment.cells[0])
-  assert.match(brief, /C:\/data\/drift\.jsonl/)
+  assert.match(brief, /\x43:\/data\/drift\.jsonl/)
   assert.match(brief, /luna · #1/)
   assert.ok(!brief.includes('{dataset}'))
 })
@@ -298,13 +298,13 @@ test('a v1-upgraded row with a stray token falls back to plain dataset substitut
     v: 1,
     experiments: [{
       id: 'exp-legacy', name: 'Legacy', promptTemplate: 'Read {dataset} and keep {this} literal.',
-      datasetPath: 'C:/data/x.jsonl', createdAtMs: 5, treeId: null,
+      datasetPath: '\x43:/data/x.jsonl', createdAtMs: 5, treeId: null,
       cells: [{ tier: 'luna', run: 1, status: 'designed', sessionId: null, nodeId: null, startedAtMs: null, endedAtMs: null, replyExcerpt: '' }],
     }],
   })
   const upgraded = parseExperimentsRow(v1Raw).experiments[0]
   const brief = workerBrief(upgraded, upgraded.cells[0])
-  assert.match(brief, /C:\/data\/x\.jsonl/)
+  assert.match(brief, /\x43:\/data\/x\.jsonl/)
   assert.match(brief, /\{this\}/, 'a stray token in v1 prose stays literal, exactly as v1 ran it')
 })
 
@@ -348,7 +348,7 @@ test('a v1 row upgrades on read: order, status and excerpts preserved, and the u
     v: 1,
     experiments: [{
       id: 'exp-old', name: 'Old sweep', promptTemplate: 'Read {dataset}.',
-      datasetPath: 'C:/data/old.jsonl', createdAtMs: 7, treeId: 'tree-1',
+      datasetPath: '\x43:/data/old.jsonl', createdAtMs: 7, treeId: 'tree-1',
       cells: [
         { tier: 'luna', run: 1, status: 'finished', sessionId: 's1', nodeId: 'n1', startedAtMs: 1, endedAtMs: 2, replyExcerpt: 'kept' },
         { tier: 'luna', run: 2, status: 'failed', sessionId: null, nodeId: 'n2', startedAtMs: 1, endedAtMs: 3, replyExcerpt: 'also kept' },
@@ -719,7 +719,7 @@ test('cells with no service answer say so instead of asserting queued', async ()
  * machine, and those documents are deliberately never shipped (T4c — a previous
  * release carried their titles and absolute paths into the installer). So a
  * customer's copy has no catalog by design, no setting creates one, and the
- * banner told the owner their product was broken. It was not.
+ * banner told the owner his product was broken. It was not.
  *
  * What this test is FOR survives unchanged: the copy must not claim the whole
  * page failed while a live bench is on screen, the mast must name what is
@@ -924,7 +924,7 @@ test('clean-room dispatch carries research marker, exact tree identity, and pers
       persist: () => {},
       startAgent: async request => {
         requests.push(request)
-        return { ok: true, sessionId: 'clean-room-session', researchRestriction: { version: 1, mode: 'clean-room', access: 'read-only', root: 'C:/fixture-clean-room' } }
+        return { ok: true, sessionId: 'clean-room-session', researchRestriction: { version: 1, mode: 'clean-room', access: 'read-only', root: '\x43:/fixture-clean-room' } }
       },
     })
     assert.equal(outcome.ok, true)

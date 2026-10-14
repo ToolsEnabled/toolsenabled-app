@@ -2,9 +2,9 @@
 
 /* THE PAGE-2 RIGHT RAIL, INVENTORIED AS A PERSON MEETS IT.
  *
- * The right panel on page 2 was still complicated enough that the
- * folder a tree's agents start in could not be found -- which this product
- * does have and buries.
+ * The owner, 2026-08-19: "ther right panel on page 2 is still so complicated i
+ * think its in there maybe somewhere" -- the "it" being the folder a tree's
+ * agents start in, which this product does have and buries.
  *
  * This driver does not judge. It MEASURES, on the packaged build, with real
  * input: every panel of both rail states, in DOM order, with its title, its

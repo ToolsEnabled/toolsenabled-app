@@ -71,18 +71,23 @@ test('native loop controls are visible and focused from both the rail and full c
 
 // Mount the actual Page 2 view and its actual tree/shelf/chat components.
 // Only the DOM and engine bridge are substitutes; this starts no provider.
-async function mount(t) {
-  const world = await installWorld(fleetFetch())
+async function mount(t, { live = false } = {}) {
   const nodeId = `palette-draft-${++sequence}`
+  const computerId = `palette-computer-${sequence}`
+  const world = await installWorld(fleetFetch({ computerId }))
   const sent = []
+  if (live) {
+    world.bridge.models = async () => ({ provider: 'codex', catalogSupported: true, models: [] })
+    world.bridge.sessionActivity = async () => ({ ok: true, busy: false, closing: false, lastTurnStatus: 'completed', turnsCompleted: 1 })
+  }
   let attachment = 0
   let mention = { ok: true, path: '/fixture/selected-file.txt' }
   world.bridge.pickMention = async () => mention
   world.bridge.pickAttachment = async () => ({ ok: true, path: `/fixture/image-${++attachment}.png` })
   world.bridge.setEffort = async () => ({ effort: 'high' })
   world.bridge.send = async request => { sent.push(request); return { turnId: 'fixture-turn' } }
-  seedTreeNode(world.storage, { nodeId, sessionId: `session-${sequence}`, status: 'finished' })
-  const view = await mountView(world)
+  seedTreeNode(world.storage, { computerId, nodeId, sessionId: `session-${sequence}`, status: 'finished' })
+  const view = await mountView(world, { computerId })
   t.after(() => { view.destroy(); world.restore() })
   const circle = view.el.querySelectorAll('.static-tree-node').find(node => node.dataset.agentId === nodeId)
   assert.ok(circle)
@@ -125,7 +130,7 @@ test('actual Page 2 goal shortcut inserts into the mounted conversation draft wi
 })
 
 test('actual Page 2 loop shortcut opens its visible setup from the conversation', async t => {
-  const f = await mount(t)
+  const f = await mount(t, { live: true })
   f.chat.querySelector('[data-common-command="loop"]').dispatch('click')
   await settle(8)
   assert.equal(f.currentChat(), f.chat)

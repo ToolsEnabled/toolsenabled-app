@@ -1,15 +1,16 @@
-/* T52(3). The metrics page still had wide side gaps, and its formatting
- * needed rework.
+/* T52(3). "THE METRICS PAGE STILL DOESNT SEEM TO HAVE ITS FORMATTING LANDED OR
+ * NEEDS ITS FORMATTING REWORKED BECAUSE THERES HUGE SIDE GAPS AT TIMES."
+ * — the owner, 2026-09-15.
  *
  * WHAT IT WAS. Under the side navigation, Home and Settings were given
- * `max-width: none` for the earlier request to use the side
- * white space now that navigation is a sidebar. Metrics was left out, so
+ * `max-width: none` on 2026-09-10 for the owner's earlier sentence, "use up the
+ * side white space since we changed to a sidebar". Metrics was left out, so
  * styles.css's `.metrics { max-width: var(--page-max) }` kept meeting this
  * route's `--page-max: 1440px`. Measured before the fix, rendered, at a 1920px
  * window: Ledger 1920 and Settings 1920, both flush; Computers 1888 with its
  * own 16px gutter; **Metrics 1440, a 480px gap split 240 a side**. The gap
  * exists only above 1440 and grows with the window, which is exactly the
- * "at times".
+ * owner's "at times".
  *
  * THE COMPARISON IS THE OTHER PAGES, NOT A NUMBER I PICKED. A gate that pinned
  * Metrics to some chosen width would pass while Metrics still looked wrong
@@ -90,7 +91,7 @@ test('the fixture really resized, so comparing widths means something', () => {
     `the reference page must report a different width at each window size, or the window never resized: ${JSON.stringify(ledger)}`)
 })
 
-/* THE REQUIREMENT. */
+/* THE OWNER'S SENTENCE. */
 test('Metrics leaves no more side gap than the other sidebar pages, at any width', () => {
   for (const width of WIDTHS) {
     const metrics = row(width, 'metrics')

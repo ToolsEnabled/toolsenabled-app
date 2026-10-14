@@ -1,8 +1,8 @@
 // WHO IS CONFIRMING, and the two separate questions behind that.
 //
-// The constraint: a person who is not signed in as a real user, with their
-// vault and the rest attached correctly, does not finish the form; it must be
-// correct, secure and safe.
+// The owner's constraint, verbatim: "if i am not logged in as a real user with
+// my vault and such attached correctly i refuse to finish the form. it must be
+// correct and secure and safe."
 //
 // That sentence contains TWO conditions and they are kept apart all the way
 // down this file, because they have different owners, different failure modes
@@ -25,11 +25,11 @@
 //
 // AND THE LIMIT THIS MODULE CANNOT FIX, stated because it would otherwise be
 // implied away: the decision record this gate protects is composed and stored
-// IN THE RENDERER. That makes it a durable note of what they chose, for them. It
+// IN THE RENDERER. That makes it a durable note of what he chose, for him. It
 // is not an audit record and this lane does not call it one -- an identity a
 // page can choose is not an identity, and anything with devtools could write a
 // different name into localStorage. The gate below is a real guard against the
-// ordinary case (nobody is signed in, so nothing gets recorded in their name by
+// ordinary case (nobody is signed in, so nothing gets recorded in his name by
 // whoever is sitting at the machine). It is not evidence, and the screen says
 // so where the record is shown.
 //
@@ -77,8 +77,8 @@ function vaultUnknownCode(payment) {
 
 /* CONDITION 2, ANSWERED. What "vault attached correctly" can and cannot mean.
  *
- * The refusal condition: a person who is not signed in as a real user, with
- * their vault and the rest attached correctly, does not finish the form.
+ * The owner's refusal condition was: "if i am not logged in as a real user with
+ * my vault and such attached correctly i refuse to finish the form."
  *
  * WHAT IS NOW CHECKABLE, and it is a real check and not a boolean somebody
  * typed: this account has a payment method ATTACHED -- a binding this product

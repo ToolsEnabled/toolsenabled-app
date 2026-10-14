@@ -50,7 +50,7 @@ test('real caller scope and key reach the payload reader, while only usable publ
   assert.equal(JSON.stringify(answer).includes('/private/ledger.md'), false, 'a ledger path must not cross the main-process boundary')
 })
 
-/* THE ONE LEDGER'S PROPOSALS. With the approval setting
+/* THE ONE LEDGER'S PROPOSALS (owner, 2026-09-02). With the approval setting
    on, an agent's filing lands as a record with status 'proposed' that counts
    only once the person approves it on the Ledger page. The adapter's read
    includes those rows so the rail can show them; this reader marks each one

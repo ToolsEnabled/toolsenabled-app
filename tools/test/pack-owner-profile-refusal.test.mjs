@@ -74,6 +74,7 @@ function fixture({ silentGuard = false } = {}) {
     'tools/lib/capability-index-check.mjs',
     'tools/lib/provider-runtime-payload.mjs',
     'tools/lib/sterile-launch.cjs',
+    'tools/lib/provider-launch-environment.cjs',
     'shell/install-profile-guard.cjs',
     'shell/capability-path-environment.cjs',
     'capability-defaults/config/agent-org.json',

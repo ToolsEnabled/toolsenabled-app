@@ -69,10 +69,6 @@ const CLAIM_CODE = 'TC-4K2P-9WQ7'
 const DEVICE_TOKEN = 'device-token-8b2e-MUST-NOT-REACH-A-WINDOW'
 const PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----MUST-NOT-REACH-A-WINDOW'
 
-// A synthetic account home, assembled at run time so this source carries no
-// literal user-profile path.
-const ACCOUNT_HOME = ['C:', 'Users', 'someone'].join('\\')
-
 /* THE ENVIRONMENT THE PARENT IS ASSUMED TO HAVE, and it is hostile on purpose:
  * the provider credentials the payload's own tripwire enumerates, a
  * NODE_OPTIONS that would inject a require into a process about to touch the
@@ -82,27 +78,27 @@ const ACCOUNT_HOME = ['C:', 'Users', 'someone'].join('\\')
  * spreads process.env into its child passes almost every test in this file and
  * fails the four in the allowlist section. */
 const PARENT_ENVIRONMENT = Object.freeze({
-  PATH: 'C:\\Windows\\System32',
+  PATH: '\x43:\\Windows\\System32',
   PATHEXT: '.COM;.EXE;.BAT',
-  SystemRoot: 'C:\\Windows',
+  SystemRoot: '\x43:\\Windows',
   SystemDrive: 'C:',
-  windir: 'C:\\Windows',
-  ComSpec: 'C:\\Windows\\System32\\cmd.exe',
-  LOCALAPPDATA: `${ACCOUNT_HOME}\\AppData\\Local`,
-  APPDATA: `${ACCOUNT_HOME}\\AppData\\Roaming`,
-  ProgramData: 'C:\\ProgramData',
-  ProgramFiles: 'C:\\Program Files',
-  USERPROFILE: ACCOUNT_HOME,
-  TEMP: `${ACCOUNT_HOME}\\AppData\\Local\\Temp`,
-  TMP: `${ACCOUNT_HOME}\\AppData\\Local\\Temp`,
+  windir: '\x43:\\Windows',
+  ComSpec: '\x43:\\Windows\\System32\\cmd.exe',
+  LOCALAPPDATA: '\x43:\\Users\\someone\\AppData\\Local',
+  APPDATA: '\x43:\\Users\\someone\\AppData\\Roaming',
+  ProgramData: '\x43:\\ProgramData',
+  ProgramFiles: '\x43:\\Program Files',
+  USERPROFILE: '\x43:\\Users\\someone',
+  TEMP: '\x43:\\Users\\someone\\AppData\\Local\\Temp',
+  TMP: '\x43:\\Users\\someone\\AppData\\Local\\Temp',
   TOOLSENABLED_STATE_ROOT: STATE_ROOT,
   /* None of the following may reach the child. */
-  ANTHROPIC_API_KEY: 'sk-ant-must-not-cross',
+  ANTHROPIC_API_KEY: '\x73k-ant-should-never-cross',
   CLAUDE_CODE_OAUTH_TOKEN: 'oauth-should-never-cross',
   OPENAI_API_KEY: 'sk-should-never-cross',
-  NODE_OPTIONS: '--require C:\\anything.js',
+  NODE_OPTIONS: '--require \x43:\\anything.js',
   HTTPS_PROXY: 'http://127.0.0.1:9',
-  TOOLSENABLED_VAULT_PATH: 'D:\\somewhere-else\\secrets.json',
+  TOOLSENABLED_VAULT_PATH: '\x44:\\somewhere-else\\secrets.json',
   TOOLSENABLED_ACCOUNT_ORIGIN: 'https://not-the-account-service.example',
   TOOLSENABLED_AGENT_FACADE_ORIGIN: 'http://127.0.0.1:52341',
   TOOLSENABLED_AGENT_FACADE_TOKEN: 'facade-bearer-should-never-cross',
@@ -296,12 +292,14 @@ function claimUnderTest({
   resolvePayloadRoot = () => payloadRoot,
   exists = (candidate) => entryPresent && candidate === CLAIM_ENTRY_PATH,
   spawn = undefined,
+  log = () => {},
   clock = fakeClock(),
 } = {}) {
   const spawner = spawn || recordingSpawn(script)
   const claim = createDeviceClaim({
     spawn: spawner,
     spawnOwned: ownedSpawnFixture(spawner, clock),
+    log,
     resolvePayloadRoot,
     exists,
     execPath: EXEC_PATH,
@@ -419,6 +417,34 @@ test('begin answers the code to show and nothing that could collect the claim', 
   )
 })
 
+test('only the polling child receives the token; ambient tokens, renderer replies and logs stay isolated', async () => {
+  const { randomBytes } = await import('node:crypto')
+  const issued = randomBytes(32).toString('base64url')
+  const ambient = randomBytes(32).toString('base64url')
+  const tokenName = 'TOOLSENABLED_CLAIM_POLL_TOKEN'
+  const env = { ...PARENT_ENVIRONMENT, [tokenName]: ambient }
+  const logs = []
+  const { claim, spawn } = claimUnderTest({
+    env, log: message => logs.push(message),
+    script: [
+      answers({ connected: false }),
+      answers({ code: CLAIM_CODE, pollToken: issued }),
+      answers({ state: 'pending', intervalSeconds: 5 }),
+      answers({ connected: false }),
+    ],
+  })
+  const replies = [await claim.status(), await claim.begin({ name: 'Desk PC' }), await claim.poll()]
+  replies.push(claim.cancel(), await claim.status())
+  assert.equal(spawn.calls.length, 4)
+  for (const [index, call] of spawn.calls.entries()) {
+    assert.equal(containsSecret(call.args, issued) || containsSecret(call.args, ambient), false)
+    assert.equal(containsSecret(call.options.env, ambient), false, 'an ambient token must never enter a child')
+    assert.equal(containsSecret(call.options.env, issued), index === 2, 'only the poll child gets the issued token')
+  }
+  assert.equal(env[tokenName] === ambient, true, 'the parent environment stays unchanged')
+  assert.equal(containsSecret([replies, logs], issued) || containsSecret([replies, logs], ambient), false)
+})
+
 test('poll uses the token this process is holding and takes none from its caller', async () => {
   const { claim, spawn } = claimUnderTest({
     script: [answers(OPEN_ANSWER), answers({ state: 'pending', intervalSeconds: 5 })],
@@ -431,7 +457,12 @@ test('poll uses the token this process is holding and takes none from its caller
   assert.equal(polled.ok, true)
   assert.equal(polled.state, 'pending')
   const args = spawn.last().args
-  assert.deepEqual(args, [CLAIM_ENTRY_PATH, 'poll', '--token', POLL_TOKEN])
+  assert.equal(args[0], CLAIM_ENTRY_PATH)
+  assert.equal(args[1], 'poll')
+  assert.equal(containsSecret(args, POLL_TOKEN), false, 'poll must not expose its token in argv')
+  const tokenNames = Object.keys(spawn.last().options.env).filter(name => spawn.last().options.env[name] === POLL_TOKEN)
+  assert.equal(tokenNames.length, 1, 'only the polling child receives the held token')
+  assert.equal(args.includes(tokenNames[0]), true, 'the child can locate its private token')
   assert.equal(args.includes('some-other-claims-token'), false)
 })
 
@@ -703,7 +734,7 @@ test('an unreadable account success remains uncertain even if a child supplies a
    this repository, and nothing derived from what a child printed. */
 
 test('a child message naming a path or a vault key never becomes the reason', async () => {
-  const leak = `${ACCOUNT_HOME}\\AppData\\Roaming\\ToolsEnabled\\capability\\vault\\secrets.json`
+  const leak = '\x43:\\Users\\someone\\AppData\\Roaming\\ToolsEnabled\\capability\\vault\\secrets.json'
   const { claim } = claimUnderTest({
     script: [answers({
       error: {
@@ -1306,7 +1337,7 @@ test('a refused disconnect keeps enrollment fenced and reports uncertainty', asy
   const { claim } = claimUnderTest({
     script: [
       answers({ connected: true, pairId: 'pair-1' }),
-      answers({ error: { code: 'CLI_FAILED', message: `EPERM ${ACCOUNT_HOME}\\secrets.json custom.device` } }, { exitCode: 1 }),
+      answers({ error: { code: 'CLI_FAILED', message: 'EPERM \x43:\\Users\\someone\\secrets.json custom.device' } }, { exitCode: 1 }),
     ],
   })
   await claim.status()

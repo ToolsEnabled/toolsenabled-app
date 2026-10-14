@@ -1,5 +1,5 @@
-/* AUDITING OFF IS A NORMAL STATE, NOT A READ FAILURE (product rule T782,
- * BUG08). With the signed
+/* AUDITING OFF IS A NORMAL STATE, NOT A READ FAILURE (owner direction
+ * 2026-09-20, T782; BUG-08-BASIC-HISTORY-SHOWN-BROKEN.md). With the signed
  * audit off -- the Basic default -- the host answers history and usage reads
  * with { ok: false, code: 'AUDIT_NOT_ENABLED', reason: 'Activity auditing is
  * off; saved history is preserved.' } (shell/main.cjs). Before this, every
@@ -88,7 +88,7 @@ test('the Metrics projection says auditing is off, not that the record could not
 
 test('the Metrics page footer delegates to the actual footer expression, and that expression says auditing is off for intentional off (mixed or both), not a read failure', () => {
   // The footer is its own module now, so this drives the ACTUAL expression by
-  // value rather than pinning a source pattern: the
+  // value rather than pinning a source pattern (root review 2026-09-21): the
   // page wires metricsFooterStatus, and the mixed intentional-off case that
   // used to read "Some records could not be read" is the off status.
   const source = fs.readFileSync(path.join(SRC, 'views/metrics.js'), 'utf8')

@@ -128,13 +128,12 @@ test('Antigravity named model routes to its own client/account and refuses a leg
     const tier='agy-gemini-3-8-flash-high'
     assert(host.startableTiers().tiers.includes(tier))
     const session=await host.startSession({sessionId:'native-agy',tier,
-      requestKeys:{threadId:'agy-node',treeAnchors:['agy-node']},treeIdentity:{selfName:'Gemini clerk',managerName:null},
-      accountRetry:{excludeAccounts:[],recheckAttempt:2}})
+      requestKeys:{threadId:'agy-node',treeAnchors:['agy-node']},treeIdentity:{selfName:'Gemini clerk',managerName:null}})
     assert.equal(session.threadId,'agy-native-id')
     assert(plans.every(plan=>plan.provider==='gemini'&&plan.client==='antigravity'))
     assert.equal(selections[0].client,'antigravity')
-    assert.equal(selections[0].keepTryingAccounts,true)
-    assert.equal(selections[0].recheckAttempt,2)
+
+
     assert.deepEqual(commands,[{provider:'gemini',client:'antigravity'}])
     assert.equal(require(modulePath).calls[0].threadOptions.model,'gemini/antigravity/gemini-3.8-flash-high')
     assert.equal(require(modulePath).calls[0].threadOptions.effort,'high')

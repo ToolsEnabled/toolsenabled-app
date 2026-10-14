@@ -10,7 +10,7 @@ import * as policy from '../../shell/tree-slot-policy.mjs'
 const require = createRequire(import.meta.url)
 const { createRendererPrefs } = require('../../shell/renderer-prefs.cjs')
 const { createTreeSlotAdmission } = require('../../shell/tree-slot-admission.cjs')
-const { CONFIGURATION_ACTIONS, createTreeSlotConfigurationAuthority } = require('../../shell/tree-slot-configuration.cjs')
+const { CONFIGURATION_ACTIONS, PERSON_ONLY_ACTIONS, PERSON_ONLY_REASON, createTreeSlotConfigurationAuthority } = require('../../shell/tree-slot-configuration.cjs')
 const main = fs.readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf8')
 const renderer = fs.readFileSync(new URL('../../src/main.js', import.meta.url), 'utf8')
 const durable = fs.readFileSync(new URL('../../public/durable-storage.js', import.meta.url), 'utf8')
@@ -138,7 +138,17 @@ test('actual delivery timeout releases only an unfilled reservation for retry', 
 test('actual configuration dispatch binds the managed slot without allocating a sibling', async t => {
   const f = dispatchFixture(t)
   const child = parseFleetTrees(f.prefs.snapshot().values[key]).nodes.find(node => node.parentId === f.root.id)
-  for (const action of CONFIGURATION_ACTIONS) {
+  /* 1.0.50 review, accounts A: only the person moves an agent to another
+     account or provider, so an agent's request for either is refused before
+     any command is queued. Every other configuration action still binds. */
+  assert.deepEqual([...PERSON_ONLY_ACTIONS].sort(), ['set-node-account', 'set-node-provider'])
+  for (const action of PERSON_ONLY_ACTIONS) {
+    const queued = f.commands.size
+    await assert.rejects(f.dispatch({ action, parentSessionId: 'parent-session', nodeId: child.id, choice: 'synthetic-choice' }),
+      error => error.code === 'TREE_CONFIGURATION_REFUSED' && error.message === PERSON_ONLY_REASON)
+    assert.equal(f.commands.size, queued, `${action} must not queue a command`)
+  }
+  for (const action of CONFIGURATION_ACTIONS.filter(action => !PERSON_ONLY_ACTIONS.includes(action))) {
     const promise = f.dispatch({ action, parentSessionId: 'parent-session', nodeId: child.id, choice: 'synthetic-choice' })
     const entry = [...f.commands.values()][0], clean = f.clean(entry.envelope.request)
     assert.equal(clean.nodeId, child.id)

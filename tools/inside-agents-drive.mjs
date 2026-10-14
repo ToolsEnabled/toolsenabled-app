@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /* START A REAL AGENT FROM INSIDE THE PRODUCT AND GIVE IT REAL WORK.
  *
- * Launch agents from inside the software, have them use different
- * tools and look for things that do not work, and prompt them to do real work
- * and fix real problems in the program.
+ * The owner, 2026-08-19: "i would like you also launch claude opus5 ultracode
+ * agents from inside the software and ask them to begin utilizing differnt
+ * tools and looking for things that dont work and you should be able to prompt
+ * them and get them to do real work and fix real stuff with the program".
  *
  * SUCCESS IS A CHANGE ON DISK, NOT A SENTENCE ON SCREEN. The agent is asked to
  * WRITE A FILE whose contents it has to compute, and this driver then reads
@@ -13,38 +14,10 @@
  * this driver created empty, containing a number that appears nowhere in the
  * prompt, cannot be produced by prose.
  *
- * HOW IT SIGNS IN, AND WHY IT IS A JUNCTION AND NEVER A COPY.
- * openWindow() redirects USERPROFILE/APPDATA/LOCALAPPDATA/CODEX_HOME into the
- * scratch profile -- non-negotiable, because a driver run against the real home
- * once desynced the owner's audit ledger. A child started under that redirect
- * finds no sign-in. The committed pattern (tools/claude-tree-start-proof.mjs)
- * solves it by COPYING ~/.claude/.credentials.json into the scratch home. This
- * file does not, and the distinction is the whole safety argument:
- *
- *   A COPY GIVES ONE CREDENTIAL TWO IDENTITIES. When the CLI refreshes, it
- *   renames a new token over the copy, and the owner's own home is left holding
- *   a superseded one. Their sign-in dies with no visible cause.
- *
- *   A JUNCTION GIVES ONE DIRECTORY AND ONE FILE. A refresh is a rename inside
- *   the real directory -- byte for byte what happens when they run the CLI
- *   themselves. There is no second copy to rotate out from under them. The risk is
- *   the risk of them having two terminals open.
- *
- * Nothing here opens, reads, copies, moves or prints a credential.
- *
- * WHAT A JUNCTION DOES NOT BUY, stated so no one quotes this run for it: there
- * is NO memory isolation. A junctioned session reads the owner's own
- * ~/.claude/CLAUDE.md. This run is evidence that a session STARTS and REACHES
- * TOOLS. It is not evidence about confinement.
- *
- * NEVER RECURSIVELY COPY A PROFILE THAT CONTAINS A JUNCTION. cpSync follows it
- * and materialises the real auth store into the copy, silently converting the
- * safe mechanism into the forbidden one. Profiles here are built fresh.
- *
- *   node tools/inside-agents-drive.mjs --tier=claude-sonnet
- *   node tools/inside-agents-drive.mjs --tier=luna --visible
+ * Provider CLIs use --codex-home or --claude-config-dir in place, or an API key
+ * from the environment. Product state and workspaces remain in scratch.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
   closeWindow, delay, openWindow, scratchDirectory, seedMachineRecord, stage,
@@ -73,8 +46,8 @@ const JOBS = {
       '3. Read the file back and reply with the absolute path you wrote and the exact contents.',
     ].join(' '),
   },
-  /* WHAT TOOLS CAN THIS SESSION ACTUALLY REACH? Agents should use different
-     tools and look for things that do not work. A model
+  /* WHAT TOOLS CAN THIS SESSION ACTUALLY REACH? The owner: agents should "begin
+     utilizing differnt tools and looking for things that dont work". A model
      listing tool names proves nothing -- a permission-denied session will still
      write a confident list. So the job demands a RESULT that only a real call
      can produce, and it demands the failure in writing too, which is the more
@@ -90,8 +63,9 @@ const JOBS = {
       'If a call fails, paste the exact error text instead. Do not summarise and do not guess: if you cannot reach a tool, say so and write the error.',
     ].join(' '),
   },
-  /* THE HUNT THAT WAS ASKED FOR: anything an agent gets stuck on, and any tool
-     that does not work, is built, fixed or wired correctly.
+  /* THE HUNT THE OWNER ASKED FOR: "anything that it gets stuck on or tools that
+     dont work or get stuck etc need to either be built or fixed or wired
+     correctlly."
 
      A SIBLING LANE ALREADY SWEPT ALL 272 TOOLS ON THE CODEX/luna LEG, so
      repeating that would spend the owner's money to learn nothing. What has
@@ -233,19 +207,6 @@ const PANEL_STATE = `(() => {
   }
 })()`
 
-function junction(from, to, label) {
-  try {
-    if (!existsSync(from)) return `${label}: source missing (${from})`
-    if (existsSync(to)) return `${label}: already present at ${to}`
-    mkdirSync(path.dirname(to), { recursive: true })
-    symlinkSync(from, to, 'junction')
-    const s = statSync(to)
-    return `${label}: junction ${to} -> ${from} (reachable=${s.isDirectory()})`
-  } catch (error) {
-    return `${label}: FAILED ${String(error && error.message || error)}`
-  }
-}
-
 /* Everything that appeared under the workspace since the run began. This is
    the evidence: the driver made these directories and they were empty. */
 function walkFor(root, name, depth = 4) {
@@ -278,15 +239,10 @@ async function main() {
 
   seedMachineRecord(scratch, staged.appRoot, 'standard')
 
-  /* SIGN-IN BY JUNCTION. See the header: one directory, one file, no copy. */
-  const home = process.env.USERPROFILE || ''
-  note('info', junction(path.join(home, '.codex'), path.join(scratch, 'home', '.codex'), 'codex home'))
-  note('info', junction(path.join(home, '.claude'), path.join(scratch, 'home', '.claude'), 'claude home'))
-  note('info', junction(path.join(process.env.APPDATA || '', 'npm'), path.join(scratch, 'roaming', 'npm'), 'npm layout'))
-  note('info', 'NO credential was opened, read, copied or printed; the child CLI opens the real store itself')
+  // Provider selection passes the caller's existing home directly to the official CLI.
 
   /* SEARCHED FROM THE PROFILE ROOT, NOT FROM THE WORKSPACE I SEEDED. The first
-     run of this file looked only under <profile>/home/ToolsEnabled -- the path
+     run of this file looked only under <profile><profile-root> -- the path
      in the machine record -- and reported "the agent did not perform the job"
      about a run where the agent HAD written the file, in
      <profile>/userdata/workspace, which is where a session with no configured
@@ -299,7 +255,7 @@ async function main() {
   const before = walkFor(searchRoot, PROOF_FILE)
   note('info', `searching all of ${searchRoot}; ${PROOF_FILE} present before the run: ${before.length}`)
 
-  const window = await openWindow(staged.executable, scratch)
+  const window = await openWindow(staged.executable, scratch, { provider: tier.startsWith('claude') ? 'claude' : 'codex' })
   note('info', `window pid=${window.timeline.pid} cdp=${window.port}`)
 
   try {

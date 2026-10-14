@@ -43,7 +43,7 @@
  * in a refusal message -- only the fact of its presence is reportable.
  *
  * THE ABSENCE CASE IS THE IMPORTANT ONE, and it is the state this machine is in
- * until the client is registered. NO CLIENT ID MUST NOT MEAN "sign in
+ * until the owner registers the client. NO CLIENT ID MUST NOT MEAN "sign in
  * anyway", must not mean a hidden button, and must not mean a button that fails
  * with a shrug. It means: the Google option is SHOWN, DISABLED, and says in a
  * sentence what is missing and where it goes -- and the local account, which
@@ -51,8 +51,8 @@
  * nothing that works.
  *
  * THE ABSENCE SENTENCE HAD TO SAY WHERE, AND FOR A LONG TIME IT DID NOT. The
- * OAuth client was already in the vault, and this file was looking in the
- * wrong place. The
+ * owner, on 2026-08-23: "we have the oauth in vault ive done this like 10
+ * times". He was right and this file was looking in the wrong place. The
  * product's own credential catalogue (the engine's
  * src/lib/credential-metadata.js) says OAuth client credentials live in the
  * vault; this resolver read two files and an environment variable and never
@@ -65,7 +65,7 @@
  * WHICH VAULT RECORDS, AND WHY NOT THE OBVIOUS ONES. `google_client_id` and
  * `google_client_secret` are in the vault and are NOT these. They are the
  * capability layer's client -- the engine's src/lib/google-oauth.js -- and they
- * hold that installation's Drive, Gmail and Calendar grants;
+ * hold the owner's Drive, Gmail and Calendar grants;
  * docs/GOOGLE-SIGN-IN-SETUP.md says in as many words never to reuse that client
  * here ("Never reuse the `google_client_id` in the vault"), and
  * tools/check-asar-manifest.mjs refuses a build whose shipped config carries it.
@@ -74,8 +74,8 @@
  * below are not invented here: that same document, in its opening note, already
  * calls the sign-in client's secret `product_google_signin_client_secret` in the
  * vault -- written when the 2026-08-11 live run borrowed that client -- and the
- * id is that name's other half. Measured on a development install: both
- * records are on file under exactly those two names, and nothing in either
+ * id is that name's other half. Measured on the owner's machine 2026-08-23:
+ * both records are on file under exactly those two names, and nothing in either
  * tree read either of them.
  *
  * Reading the vault is not shipping it. The rule that client must never break
@@ -128,7 +128,7 @@ const MAX_CONFIG_BYTES = 16 * 1024
 
 /* The two vault records this product signs people in with. See the header for
    why they are not `google_client_id` -- that one is the capability layer's
-   client and carries that installation's Drive and Gmail grants. */
+   client and carries the owner's Drive and Gmail grants. */
 const VAULT_CLIENT_ID_KEY = 'product_google_signin_client_id'
 const VAULT_CLIENT_SECRET_KEY = 'product_google_signin_client_secret'
 

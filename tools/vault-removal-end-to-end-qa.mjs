@@ -53,10 +53,10 @@ import { qaCapabilityPayload } from './lib/qa-capability-payload.mjs'
 
 const require_ = createRequire(import.meta.url)
 const ROOT = path.resolve(import.meta.dirname, '..')
-const OWNED_KEY = 'vqa_e2e_owned'
-const OTHER_KEY = 'vqa_e2e_other'
+const OWNED_KEY = 'w87_e2e_owned'
+const OTHER_KEY = 'w87_e2e_other'
 const REASON = 'no_longer_needed'
-const OWNER_PROMPT = 'vqa-e2e-owner-prompt'
+const OWNER_PROMPT = 'w87-e2e-owner-prompt'
 /* ------------------------------------------------------------------------
  * The driver.
  * ------------------------------------------------------------------------ */
@@ -113,7 +113,7 @@ if (!process.env[FENCE_ENV]) {
     path.join(profileRoot, 'AppData', 'Local', 'Temp'),
     { field: 'vault-removal-end-to-end-qa fixture temp', profileRoot, requireOwnedProfile: true },
   )
-  const scratch = mkdtempSync(path.join(fixtureTemp, 'vqa-e2e-'))
+  const scratch = mkdtempSync(path.join(fixtureTemp, 'w87-e2e-'))
   const { environment, directories } = fencedEnvironment(scratch)
   for (const directory of directories) mkdirSync(directory, { recursive: true })
   process.stdout.write(`vault-removal-end-to-end-qa: scratch root ${scratch}\n`)

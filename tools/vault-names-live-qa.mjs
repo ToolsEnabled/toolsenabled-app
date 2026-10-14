@@ -43,8 +43,8 @@ const ROOT = path.resolve(import.meta.dirname, '..')
 
 /* Synthetic, and they say so. Written into a vault this run creates. */
 const FIXTURE = Object.freeze({
-  vqa_probe_alpha: 'SYNTHETIC-PLACEHOLDER-NOT-A-CREDENTIAL-ALPHA',
-  vqa_probe_beta: 'SYNTHETIC-PLACEHOLDER-NOT-A-CREDENTIAL-BETA-2',
+  w87_probe_alpha: 'SYNTHETIC-PLACEHOLDER-NOT-A-CREDENTIAL-ALPHA',
+  w87_probe_beta: 'SYNTHETIC-PLACEHOLDER-NOT-A-CREDENTIAL-BETA-2',
 })
 
 function refuse(reason) {
@@ -89,7 +89,7 @@ const fixtureTemp = planner.assertAccountProfilePath(
   path.join(profileRoot, 'AppData', 'Local', 'Temp'),
   { field: 'vault-names-live-qa fixture temp', profileRoot, requireOwnedProfile: true },
 )
-const stateRoot = mkdtempSync(path.join(fixtureTemp, 'vqa-vault-live-'))
+const stateRoot = mkdtempSync(path.join(fixtureTemp, 'w87-vault-live-'))
 mkdirSync(path.join(stateRoot, 'vault'), { recursive: true })
 /* The environment the seam itself builds: the throwaway state root named, and
    any inherited TOOLSENABLED_VAULT_PATH cleared so this cannot reach the

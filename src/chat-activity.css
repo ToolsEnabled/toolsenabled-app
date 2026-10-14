@@ -189,8 +189,8 @@
   .chat[data-chat-panel] .chat-live-tail { flex-basis: calc(100% + 16px); margin: 0 -8px -6px; padding-left: 41px; }
 }
 @keyframes chat-tool-spin { to { transform: rotate(360deg); } }
-/* The writing animation stays, with less jump in the bubbles. The pivot was
-   already right -- transform-origin 20px 20px is
+/* Owner, 2026-09-18: "the writing animation is good but the bubbles jump just a
+   little too much." The pivot was already right -- transform-origin 20px 20px is
    the exact vertical centre of all three bars (M14 17v6, M20 14v12, M26 17v6 in a
    0 0 40 40 box), so this scales symmetrically and never translates. The travel
    was the problem: scaleY .55 -> 1 moved the middle bar 5.4 of 40 viewBox units,

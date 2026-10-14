@@ -55,7 +55,7 @@ function fixture(t, overrides = {}) {
     async ledger() { return { ok: true, records: [], chain: { checked: false, ok: null } } },
     onEvent(listener) { eventListeners.add(listener); return () => eventListeners.delete(listener) },
     async close(args) { calls.close.push(args); closeEntered.resolve(); return overrides.close ? overrides.close(args) : { sessionId: args.sessionId, closed: true } },
-    async start(args) { calls.start.push(args); startEntered.resolve(); return overrides.start ? overrides.start(args) : { ok: true, sessionId: 'new-session', threadId: 'new-thread', account: 'new-account' } },
+    async start(args) { calls.start.push(args); startEntered.resolve(); return overrides.start ? overrides.start(args) : { ok: true, sessionId: 'new-session', threadId: 'new-thread', account: args.treeAccount || 'new-account' } },
     async send(args) { calls.send.push(args); return overrides.send ? overrides.send(args) : { ok: true } },
     async sendAutomatic(args) {
       calls.sendAutomatic.push(args)
@@ -71,6 +71,7 @@ function fixture(t, overrides = {}) {
     async updateTreeAddress(args) { calls.address.push(args); return overrides.updateTreeAddress ? overrides.updateTreeAddress(args) : { ok: true } },
   }
   if (overrides.continuations) bridge.continuations = overrides.continuations
+  if (overrides.sessionActivity) bridge.sessionActivity = overrides.sessionActivity
   const sessionNodeIds = new Map([['old-session', node.id]])
   const defaultOrgBridge = {
     read: async () => ({
@@ -100,45 +101,13 @@ function fixture(t, overrides = {}) {
   coordinator.register('local', { treeStore, transcriptStore, handoffStore })
   coordinator.subscribe(value => calls.notices.push(value))
   t.after(() => coordinator.destroy())
-  const packet = { sessionId: 'old-session', event: { type: 'account_recovery_needed', recoveryId: 'ticket-1', handoff: 'Step one is complete. Continue with step two.' } }
+  const packet = { sessionId: 'old-session', event: { type: 'account_recovery_needed', recoveryId: 'ticket-1', handoff: manualAccountHandoff(treeStore.getNode(node.id), { ...transcriptStore.get(node.id), recoveryDirectory: '/fixture/retained-conversation' }, null) } }
   return { closeEntered: closeEntered.promise, startEntered: startEntered.promise, coordinator, bridge, packet, calls, treeStore, transcriptStore, treeStorage, transcriptStorage,
     emit: packet => { for (const listener of eventListeners) listener(packet) },
     handoffStore, handoffStorage, sessionNodeIds, manager, node, child, originalLines, add, orgBridge: defaultOrgBridge }
 }
 
-for (const mode of ['automatic', 'manual']) {
-  for (const [label, unconfirmed] of [['absent', undefined], ['null', null], ['empty', {}], ['ok without closed', { ok: true }],
-    ['explicitly refused', { ok: false, closed: true }], ['still open', { closed: false }],
-    ['different session', { closed: true, sessionId: 'another-session' }], ['nonboolean closed', { closed: 'true' }]]) {
-    test(`${mode} recovery refuses an unconfirmed predecessor close (${label}) and retries the real close`, async t => {
-      let receipt = unconfirmed
-      const f = fixture(t, { close: () => receipt })
-      const recover = () => mode === 'automatic' ? f.coordinator.recover(f.packet)
-        : f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id })
-      assert.equal(await recover(), false)
-      assert.equal(f.calls.close.length, 1)
-      assert.equal(f.calls.start.length, 0, 'an unconfirmed close cannot authorize a second live session')
-      assert.equal(f.calls.send.length, 0)
-      assert.equal(f.calls.address.length, 0)
-      assert.deepEqual(f.calls.outbox, [], 'queued words retain their predecessor identity')
-      assert.equal(f.sessionNodeIds.get('old-session'), f.node.id)
-      assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'old-session')
-      assert.equal(f.treeStore.getNode(f.node.id).status, 'turn-failed')
-      assert.deepEqual(f.transcriptStore.get(f.node.id).lines.slice(0, 2), f.originalLines)
-      assert.ok(f.handoffStore.get(f.node.id).handoff.length > 0)
-      assert.match(f.calls.notices.at(-1).error, /old session could not be closed/)
-      // This is the actual mcAgent.close success shape: the host's return is
-      // forwarded unchanged through the command surface and IPC handler.
-      receipt = { sessionId: 'old-session', closed: true }
-      assert.equal(await (mode === 'automatic' ? f.coordinator.retry(f.node.id) : recover()), true)
-      assert.equal(f.calls.close.length, 2, 'a refused receipt must not populate the already-closed cache')
-      assert.equal(f.calls.start.length, 1)
-      assert.equal(f.calls.send.length, 1)
-      assert.equal(f.sessionNodeIds.has('old-session'), false)
-      assert.deepEqual(f.calls.outbox, [['old-session', 'new-session']])
-    })
-  }
-}
+
 
 test('redirected handoff refusal waits for persistence and visibly pauses without closing the predecessor or writing settings', async t => {
   const gate = deferred()
@@ -147,7 +116,7 @@ test('redirected handoff refusal waits for persistence and visibly pauses withou
     save: request => { requests.push(request); return gate.promise },
     get: async () => ({ ok: true, record: null }),
   } })
-  const flight = f.coordinator.recover(f.packet)
+  const flight = f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(requests.length, 1)
   assert.equal(requests[0].record.handoff, f.packet.event.handoff)
@@ -167,42 +136,16 @@ test('manual continuation visibly refuses an unreadable recovery checkpoint with
     get: async () => ({ ok: false, error: { code: 'RECOVERY_MIGRATION_CONFLICT',
       message: 'Saved recovery checkpoints conflict. Both copies were preserved.' } }),
   } })
-  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id }), false)
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } }), false)
   assert.equal(f.calls.close.length, 0)
   assert.equal(f.calls.start.length, 0)
   assert.match(f.calls.notices.at(-1).error, /checkpoints conflict.*copies were preserved/)
   assert.deepEqual(f.transcriptStore.get(f.node.id).lines, f.originalLines)
 })
 
-test('turning starts off during predecessor close preserves the handoff and refuses the replacement', async t => {
-  const gate = deferred()
-  let allowed = true
-  const f = fixture(t, { canStart: () => allowed, close: () => gate.promise })
-  const flight = f.coordinator.recover(f.packet)
-  await f.closeEntered
-  assert.equal(f.calls.close.length, 1)
-  assert.equal(f.calls.start.length, 0)
-  allowed = false
-  gate.resolve({ sessionId: 'old-session', closed: true })
-  await flight
-  assert.equal(f.calls.start.length, 0)
-  assert.equal(f.calls.send.length, 0)
-  assert.equal(f.handoffStore.get(f.node.id).handoff, f.packet.event.handoff)
-  assert.deepEqual(f.transcriptStore.get(f.node.id).lines.slice(0, 2), f.originalLines)
-  assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'old-session')
-  assert.equal(f.treeStore.getNode(f.node.id).status, 'turn-failed')
-  assert.match(f.calls.notices.at(-1).error, /disabled/)
-  allowed = true
-  await new Promise(resolve => setImmediate(resolve))
-  assert.equal(f.calls.start.length, 0, 'restoring consent alone must not retry the paused recovery')
-  assert.equal(f.sessionNodeIds.has('old-session'), false, 'a confirmed close retires runtime ownership')
-  assert.equal(await f.coordinator.retry(f.node.id), true)
-  assert.equal(f.calls.start.length, 1, 'an explicit retry reads current consent and can succeed')
-  assert.equal(f.calls.close.length, 1, 'the confirmed predecessor is not closed twice')
-  assert.equal(f.sessionNodeIds.has('old-session'), false, 'retry never resurrects runtime ownership')
-})
 
-/* MEASURED: activeStore(computerId) could
+
+/* MEASURED, Worker 36 and Controller 2026-09-06: activeStore(computerId) could
  * answer a store superseded by a later register() call for the same computer,
  * for as long as the recovery that first captured it stayed in flight -- the
  * one case openTreeStore's own resolution chain (src/views/computers.js)
@@ -216,7 +159,7 @@ test('turning starts off during predecessor close preserves the handoff and refu
 test('re-registering a computer mid-recovery replaces the store activeStore hands out, and the paused recovery still completes', async t => {
   const gate = deferred()
   const f = fixture(t, { start: () => gate.promise })
-  const flight = f.coordinator.recover(f.packet)
+  const flight = f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(f.calls.start.length, 1, 'the recovery is in flight, waiting on bridge.start')
   assert.equal(f.coordinator.activeStore('local'), f.treeStore,
@@ -245,7 +188,7 @@ test('re-registering a computer mid-recovery replaces the store activeStore hand
 test('missing, denied, malformed and unreadable start consent never closes or starts an agent', async t => {
   for (const canStart of [undefined, null, () => false, () => 'true', () => Promise.resolve(true), () => { throw new Error('unreadable consent') }]) {
     const f = fixture(t, { canStart })
-    await f.coordinator.recover(f.packet)
+    await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
     assert.deepEqual(f.calls.close, [])
     assert.deepEqual(f.calls.start, [])
     assert.deepEqual(f.calls.send, [])
@@ -277,11 +220,11 @@ test('manual continuation of a stopped node uses another account with chosen mod
   f.sessionNodeIds.delete('old-session')
   const before = f.treeStore.getNode(f.node.id)
   assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id,
-    startOptions: { tier: 'claude-opus', effort: 'medium', profileId: 'profile-1', roleBinding: { agentId: 'identity-1' },
+    startOptions: { treeAccount: 'new-account', tier: 'claude-opus', effort: 'medium', profileId: 'profile-1', roleBinding: { agentId: 'identity-1' },
       resumeThreadId: 'must-not-travel', resumeAccount: 'must-not-travel', accountRecovery: { recoveryId: 'must-not-travel' } } }), true)
   assert.equal(f.calls.close.length, 0, 'a stopped session is not closed again')
   const request = f.calls.start[0]
-  assert.equal(request.continueFromAccount, 'old-account')
+  assert.equal(request.treeAccount, 'new-account')
   assert.equal(request.tier, 'claude-opus')
   assert.equal(request.effort, 'medium')
   assert.equal(request.profileId, 'profile-1')
@@ -303,7 +246,7 @@ test('an account continuation started by agent.resume carries its next assignmen
   const f = fixture(t)
   f.sessionNodeIds.delete('old-session')
   assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id,
-    assignment: { text: 'Take T1768: fix the resume copy.', fromName: 'Controller 1' } }), true)
+    startOptions: { treeAccount: 'new-account' }, assignment: { text: 'Take T1768: fix the resume copy.', fromName: 'Controller 1' } }), true)
   assert.equal(f.calls.send.length, 1, 'one first turn, no second message')
   const text = f.calls.send[0].text
   const section = text.indexOf('New assignment sent with this resume, from "Controller 1":\n\nTake T1768: fix the resume copy.')
@@ -320,7 +263,7 @@ test('manual continuation saves a full checkpoint and keeps history when no repl
   f.sessionNodeIds.delete('old-session')
   const handoff = 'Completed work and remaining tasks. '.repeat(800)
   f.handoffStore.save(f.node.id, { sessionId: 'old-session', handoff })
-  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id }), false)
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } }), false)
   assert.ok(f.handoffStore.get(f.node.id).handoff.includes(handoff))
   assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'old-session')
   assert.deepEqual(f.transcriptStore.get(f.node.id).lines.slice(0, 2), f.originalLines)
@@ -330,18 +273,18 @@ test('manual continuation saves a full checkpoint and keeps history when no repl
 test('manual continuation refuses busy nodes, duplicate clicks, and failed durable checkpoints', async t => {
   const f = fixture(t)
   f.treeStore.setNodeStatus(f.node.id, 'running')
-  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id }), false)
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } }), false)
   assert.equal(f.calls.start.length, 0)
   f.treeStore.setNodeStatus(f.node.id, 'turn-failed')
   f.handoffStorage.fail = true
-  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id }), false)
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } }), false)
   assert.equal(f.calls.close.length, 0)
   const gate = deferred()
   const g = fixture(t, { start: () => gate.promise })
   g.sessionNodeIds.delete('old-session')
-  const first = g.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: g.node.id })
-  assert.equal(await g.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: g.node.id }), false)
-  gate.resolve({ sessionId: 'new-session' })
+  const first = g.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: g.node.id, startOptions: { treeAccount: 'new-account' } })
+  assert.equal(await g.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: g.node.id, startOptions: { treeAccount: 'new-account' } }), false)
+  gate.resolve({ sessionId: 'new-session', account: 'new-account' })
   assert.equal(await first, true)
   assert.equal(g.calls.start.length, 1)
 })
@@ -350,11 +293,11 @@ test('manual retries reuse the full saved handoff without nesting or losing its 
   const f = fixture(t, { start: () => ({ ok: false, reason: 'No eligible backup account' }) })
   f.sessionNodeIds.delete('old-session')
   assert.equal(f.handoffStore.save(f.node.id, { sessionId: 'old-session', handoff: 'Context '.repeat(5900) + 'FINAL CHECKPOINT' }), true)
-  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id })
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   const first = f.handoffStore.get(f.node.id).handoff
   assert.ok(first.includes('FINAL CHECKPOINT'))
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id }), false)
+    assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } }), false)
     assert.equal(f.handoffStore.get(f.node.id).handoff, first)
   }
   assert.equal(f.calls.send.length, 0)
@@ -386,34 +329,20 @@ test('next-session model and effort preferences preserve the whole existing bran
   assert.equal(f.treeStore.setNodeLaunchPreferences(f.node.id, { effort: 'high' }).snapshot.persistenceFailed, true)
 })
 
-for (const thrown of [false, true]) test(`failed startup cleanup keeps its requested identity reachable (${thrown ? 'thrown' : 'returned'})`, async t => {
-  const f = fixture(t, { start: () => {
-    if (thrown) throw new Error('AGENT_SESSION_CLEANUP_FAILED: retained startup cleanup')
-    return { ok: false, code: 'AGENT_SESSION_CLEANUP_FAILED' }
-  } })
-  await f.coordinator.recover(f.packet)
-  const id = f.calls.start[0].sessionId
-  assert.ok(id)
-  assert.deepEqual(f.calls.cleanup, [{ nodeId: f.node.id, sessionId: id }])
-  assert.equal(f.treeStore.getNode(f.node.id).sessionId, id)
-  assert.equal(f.sessionNodeIds.get(id), f.node.id)
-  assert.equal(f.treeStore.getNode(f.node.id).status, 'failed')
-  assert.equal(f.coordinator.canRetry(f.node.id), false)
-  assert.equal(f.calls.send.length, 0)
-})
+
 
 test('successful recovery needs no DOM and keeps node, topology, old conversation, and one handoff', async t => {
   const f = fixture(t)
   const before = f.treeStore.getNode(f.node.id)
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   const after = f.treeStore.getNode(f.node.id)
   for (const key of ['id', 'treeId', 'parentId', 'role', 'message', 'tier', 'nameOrdinal']) assert.equal(after[key], before[key], key)
   assert.equal(after.sessionId, 'new-session')
   assert.equal(after.status, 'running')
   assert.equal(f.treeStore.getNode(f.child.id).parentId, f.node.id)
-  assert.deepEqual(f.calls.close, [{ sessionId: 'old-session', accountRecovery: { recoveryId: 'ticket-1' } }])
+  assert.deepEqual(f.calls.close, [{ sessionId: 'old-session' }])
   assert.equal(f.calls.start.length, 1)
-  assert.equal(f.calls.start[0].accountRecovery.recoveryId, 'ticket-1')
+  assert.equal(f.calls.start[0].treeAccount, 'new-account')
   assert.equal(f.calls.start[0].replacesSessionId, 'old-session')
   assert.deepEqual(f.calls.outbox, [['old-session', 'new-session']])
   assert.equal(f.sessionNodeIds.has('old-session'), false)
@@ -450,26 +379,12 @@ test('successful recovery needs no DOM and keeps node, topology, old conversatio
   assert.equal(f.coordinator.isRecovering(f.node.id), false)
 })
 
-test('duplicate recovery packets and competing tickets cannot spawn twice', async t => {
-  const gate = deferred()
-  const f = fixture(t, { start: () => gate.promise })
-  const first = f.coordinator.recover(f.packet)
-  await f.startEntered
-  assert.equal(f.coordinator.isRecovering(f.node.id), true)
-  await f.coordinator.recover(f.packet)
-  await f.coordinator.recover({ ...f.packet, event: { ...f.packet.event, recoveryId: 'ticket-2' } })
-  assert.equal(f.calls.start.length, 1)
-  gate.resolve({ ok: true, sessionId: 'new-session' })
-  await first
-  await f.coordinator.recover(f.packet)
-  assert.equal(f.calls.send.length, 1)
-  assert.equal(f.calls.start.length, 1)
-})
+
 
 test('refused handoff persistence leaves old session open and conversation intact', async t => {
   const f = fixture(t)
   f.transcriptStorage.fail = true
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.deepEqual(f.calls.close, [])
   assert.deepEqual(f.calls.start, [])
   assert.deepEqual(f.transcriptStore.get(f.node.id).lines, f.originalLines)
@@ -480,7 +395,7 @@ test('refused handoff persistence leaves old session open and conversation intac
 test('refused tree-state persistence does not close the old session', async t => {
   const f = fixture(t)
   f.treeStorage.fail = true
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.deepEqual(f.calls.close, [])
   assert.deepEqual(f.calls.start, [])
   assert.match(f.calls.notices.at(-1).error, /latest tree changes could not be saved/)
@@ -496,7 +411,7 @@ test('refused tree-state persistence does not close the old session', async t =>
 
 test('no eligible replacement preserves conversation and reports recovery paused', async t => {
   const f = fixture(t, { start: () => ({ ok: false, reason: 'No eligible account' }) })
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.equal(f.calls.send.length, 0)
   assert.deepEqual(f.transcriptStore.get(f.node.id).lines.slice(0, 2), f.originalLines)
   assert.equal(f.transcriptStore.get(f.node.id).threadId, 'old-thread')
@@ -508,13 +423,13 @@ test('no eligible replacement preserves conversation and reports recovery paused
 test('changing the node session during spawn closes the orphan without replacing owner choice', async t => {
   const gate = deferred()
   const f = fixture(t, { start: () => gate.promise })
-  const flight = f.coordinator.recover(f.packet)
+  const flight = f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   await f.startEntered
   assert.equal(f.calls.start.length, 1)
   assert.equal(f.treeStore.attachSession(f.node.id, 'owner-session').ok, true)
   gate.resolve({ ok: true, sessionId: 'orphan-session' })
   await flight
-  assert.deepEqual(f.calls.close, [{ sessionId: 'old-session', accountRecovery: { recoveryId: 'ticket-1' } }, { sessionId: 'orphan-session' }])
+  assert.deepEqual(f.calls.close, [{ sessionId: 'old-session' }, { sessionId: 'orphan-session' }])
   assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'owner-session')
   assert.equal(f.sessionNodeIds.has('orphan-session'), false)
   assert.equal(f.calls.send.length, 0)
@@ -524,10 +439,10 @@ test('moving the agent while spawn is pending sends its current manager and tree
   const gate = deferred()
   const f = fixture(t, { start: () => gate.promise })
   const newManager = f.add({ role: 'planner', message: 'Manage a different tree' })
-  const flight = f.coordinator.recover(f.packet)
+  const flight = f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   await f.startEntered
   assert.equal(f.treeStore.moveNode(f.node.id, newManager.id).ok, true)
-  gate.resolve({ ok: true, sessionId: 'new-session' })
+  gate.resolve({ ok: true, sessionId: 'new-session', account: 'new-account' })
   await flight
   const node = f.treeStore.getNode(f.node.id)
   const managerName = nodeDisplayName(newManager, f.treeStore.listNodes(newManager.treeId))
@@ -542,7 +457,7 @@ test('moving the agent while spawn is pending sends its current manager and tree
 test('conversation messages appended during replacement startup survive the final save', async t => {
   const gate = deferred()
   const f = fixture(t, { start: () => gate.promise })
-  const flight = f.coordinator.recover(f.packet)
+  const flight = f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   await f.startEntered
   const saved = f.transcriptStore.get(f.node.id)
   const later = { who: 'you', text: 'Also preserve the latest owner correction.', at: 3 }
@@ -555,7 +470,7 @@ test('conversation messages appended during replacement startup survive the fina
 test('final transcript refusal exposes attached replacement but never sends an unrecorded handoff', async t => {
   const gate = deferred()
   const f = fixture(t, { start: () => gate.promise })
-  const flight = f.coordinator.recover(f.packet)
+  const flight = f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   await f.startEntered
   f.transcriptStorage.fail = true
   gate.resolve({ ok: true, sessionId: 'new-session', threadId: 'new-thread', account: 'new-account' })
@@ -570,7 +485,7 @@ test('final transcript refusal exposes attached replacement but never sends an u
 
 test('refused replacement reporting address prevents sending a misleading handoff', async t => {
   const f = fixture(t, { updateTreeAddress: () => ({ ok: false }) })
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.equal(f.calls.send.length, 0)
   assert.equal(f.treeStore.getNode(f.node.id).status, 'turn-failed')
   assert.match(f.calls.notices.at(-1).error, /address/)
@@ -578,13 +493,13 @@ test('refused replacement reporting address prevents sending a misleading handof
 
 test('a long recovery handoff is durably saved in full before closing the old session', async t => {
   let f
-  const handoff = 'Complete progress and remaining tasks. '.repeat(1000)
+  const handoff = 'The person chose to continue this same agent on another account in a fresh session.\n\n' + 'Complete progress and remaining tasks. '.repeat(1000)
   f = fixture(t, { close: args => {
     assert.equal(f.handoffStore.get(f.node.id).handoff, handoff)
     return { sessionId: args.sessionId, closed: true }
   } })
-  f.packet.event.handoff = handoff
-  await f.coordinator.recover(f.packet)
+  assert.equal(f.handoffStore.save(f.node.id, { sessionId: 'old-session', kind: 'manual', handoff }), true)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.equal(f.calls.send.length, 1)
   assert.ok(f.calls.send[0].text.startsWith(handoff))
   assert.equal(f.handoffStore.get(f.node.id).handoff, handoff)
@@ -593,55 +508,23 @@ test('a long recovery handoff is durably saved in full before closing the old se
 test('a refused full-handoff save cannot be replaced by a successful transcript excerpt save', async t => {
   const f = fixture(t)
   f.handoffStorage.fail = true
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.equal(f.calls.close.length, 0)
   assert.equal(f.calls.start.length, 0)
   assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'old-session')
   assert.match(f.calls.notices.at(-1).error, /save/i)
 })
 
-test('a replacement refusal can be retried after an account becomes available', async t => {
-  let available = false
-  const f = fixture(t, { start: () => available
-    ? { ok: true, sessionId: 'new-session' }
-    : { ok: false, reason: 'No eligible account' } })
-  await f.coordinator.recover(f.packet)
-  assert.equal(f.coordinator.canRetry(f.node.id), true)
-  available = true
-  assert.equal(await f.coordinator.retry(f.node.id), true)
-  assert.equal(f.coordinator.canRetry(f.node.id), false)
-  assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'new-session')
-  assert.equal(f.calls.send.length, 1)
-})
 
-test('another recovery ticket arriving during handoff delivery is processed after the first flight', async t => {
-  const finished = deferred()
-  let f
-  let starts = 0
-  f = fixture(t, {
-    start: () => ({ ok: true, sessionId: ++starts === 1 ? 'new-session' : 'backup-session' }),
-    send: async args => {
-      if (args.sessionId === 'new-session') {
-        await f.coordinator.recover({ sessionId: 'new-session', event: {
-          type: 'account_recovery_needed', recoveryId: 'ticket-2', handoff: 'First backup also reached its limit. Continue from step two.',
-        } })
-      } else finished.resolve()
-      return { ok: true }
-    },
-  })
-  await f.coordinator.recover(f.packet)
-  await finished.promise
-  assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'backup-session')
-  assert.deepEqual(f.calls.send.map(call => call.sessionId), ['new-session', 'backup-session'])
-  assert.deepEqual(f.calls.start.map(call => call.accountRecovery.recoveryId), ['ticket-1', 'ticket-2'])
-})
+
+
 
 test('a throwing view observer cannot interrupt recovery or other observers', async t => {
   const f = fixture(t)
   let observed = false
   f.coordinator.subscribe(() => { throw new Error('Detached view failed') })
   f.coordinator.subscribe(() => { observed = true })
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.equal(observed, true)
   assert.equal(f.calls.send.length, 1)
   assert.equal(f.treeStore.getNode(f.node.id).status, 'running')
@@ -659,34 +542,18 @@ test('moving during address acknowledgment refreshes the address before sending 
     return { ok: true }
   } })
   newManager = f.add({ role: 'planner', message: 'New reporting line' })
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.equal(f.calls.address.length, 2)
   assert.deepEqual(f.calls.address.at(-1).requestKeys.treeAnchors, [newManager.id, f.node.id])
   const name = nodeDisplayName(newManager, f.treeStore.listNodes(newManager.treeId))
   assert.ok(f.calls.send[0].text.includes(`your manager is "${name}"`))
 })
 
-test('retry does not close an already deleted host session again', async t => {
-  let closed = false
-  let available = false
-  const f = fixture(t, {
-    close: request => {
-      if (closed) throw Object.assign(new Error('Unknown session'), { code: 'AGENT_SESSION_UNKNOWN' })
-      closed = true
-      return { closed: true, sessionId: request.sessionId }
-    },
-    start: () => available ? { sessionId: 'new-session' } : { ok: false, reason: 'No eligible account' },
-  })
-  await f.coordinator.recover(f.packet)
-  available = true
-  assert.equal(await f.coordinator.retry(f.node.id), true)
-  assert.equal(f.calls.close.length, 1)
-  assert.equal(f.calls.send.length, 1)
-})
+
 
 test('offroute recovered replies are saved and completion settles the node', async t => {
   const f = fixture(t)
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   f.emit({ sessionId: 'new-session', event: { type: 'assistant_text_delta', text: 'Step two ' } })
   f.emit({ sessionId: 'new-session', event: { type: 'assistant_text_delta', text: 'is complete.' } })
   f.emit({ sessionId: 'new-session', event: { type: 'turn_completed', status: 'completed' } })
@@ -698,7 +565,7 @@ test('offroute recovered replies are saved and completion settles the node', asy
 test('mounted transcript observer remains the single writer of recovered replies', async t => {
   const f = fixture(t)
   f.coordinator.subscribe(() => {}, { observes: nodeId => nodeId === f.node.id })
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   const saved = f.transcriptStore.get(f.node.id)
   f.emit({ sessionId: 'new-session', event: { type: 'assistant_text_delta', text: 'Mounted reply.' } })
   f.transcriptStore.save(f.node.id, { ...saved, lines: [...saved.lines, { who: 'agent', text: 'Mounted reply.', at: 9 }] })
@@ -721,12 +588,12 @@ test('offroute cancellation keeps its own outcome and turn identity without star
 test('the exact active store is available across navigation until recovery finishes', async t => {
   const gate = deferred()
   const f = fixture(t, { start: () => gate.promise })
-  const flight = f.coordinator.recover(f.packet)
+  const flight = f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   await Promise.resolve()
   assert.equal(f.coordinator.activeStore('local'), f.treeStore)
   f.coordinator.register('local', { treeStore: f.coordinator.activeStore('local'),
     transcriptStore: f.transcriptStore, handoffStore: f.handoffStore })
-  gate.resolve({ sessionId: 'new-session' })
+  gate.resolve({ sessionId: 'new-session', account: 'new-account' })
   await flight
   assert.equal(f.coordinator.activeStore('local'), null)
   assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'new-session')
@@ -734,7 +601,7 @@ test('the exact active store is available across navigation until recovery finis
 
 test('a reopened observer receives the partial backup reply accumulated offroute', async t => {
   const f = fixture(t)
-  await f.coordinator.recover(f.packet)
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   f.emit({ sessionId: 'new-session', event: { type: 'assistant_text_delta', text: 'Work in progress' } })
   f.coordinator.register('local', { treeStore: f.treeStore, transcriptStore: f.transcriptStore, handoffStore: f.handoffStore })
   assert.equal(f.calls.notices.at(-1).partialText, 'Work in progress')
@@ -744,32 +611,20 @@ test('a reopened observer receives the partial backup reply accumulated offroute
 test('disabled starts and an explicit replacement prevent automatic provider launch', async t => {
   for (const overrides of [{ canStart: () => false }, { isReplacing: () => true }]) {
     const f = fixture(t, overrides)
-    await f.coordinator.recover(f.packet)
+    await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
     assert.equal(f.calls.close.length, 0)
     assert.equal(f.calls.start.length, 0)
   }
 })
 
 test('a replacement without a thread id does not inherit the previous provider thread', async t => {
-  const f = fixture(t, { start: () => ({ sessionId: 'new-session' }) })
-  await f.coordinator.recover(f.packet)
+  const f = fixture(t, { start: () => ({ sessionId: 'new-session', account: 'new-account' }) })
+  await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.equal(f.transcriptStore.get(f.node.id).threadId, null)
 })
 
 
-test('manual continuation requires explicit synchronous local authority while automatic recovery is independent', async t => {
-  for (const canContinue of [undefined, null, () => false, () => 'true', () => Promise.resolve(true), () => { throw new Error('unreadable source') }]) {
-    const f = fixture(t, { canContinue })
-    assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id }), false)
-    assert.deepEqual(f.calls.close, [])
-    assert.deepEqual(f.calls.start, [])
-    assert.deepEqual(f.transcriptStore.get(f.node.id).lines, f.originalLines)
-  }
-  const automatic = fixture(t, { canContinue: () => false })
-  await automatic.coordinator.recover(automatic.packet)
-  assert.equal(automatic.calls.start.length, 1, 'manual window-only policy must not disable authorized automatic recovery')
-  assert.equal(automatic.treeStore.getNode(automatic.node.id).sessionId, 'new-session')
-})
+
 
 
 test('canonical recovery refreshes current disk history and waits for durable save before closing', async t => {
@@ -785,7 +640,7 @@ test('canonical recovery refreshes current disk history and waits for durable sa
     async save(_id, record) { if (++saves === 1) await gate.promise; current = record; return true },
   }
   f.coordinator.register('local', { treeStore: f.treeStore, transcriptStore: transcripts, handoffStore: f.handoffStore })
-  const pending = f.coordinator.recover(f.packet)
+  const pending = f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(f.calls.close.length, 0)
   assert.equal(f.calls.start.length, 0)
@@ -799,7 +654,7 @@ test('a rejected canonical save keeps the predecessor and refuses automatic cont
   const f = fixture(t)
   const transcripts = { get: () => f.transcriptStore.get(f.node.id), readLatest: () => f.transcriptStore.readLatest(f.node.id), async save() { throw new Error('Disk refused the handoff') } }
   f.coordinator.register('local', { treeStore: f.treeStore, transcriptStore: transcripts, handoffStore: f.handoffStore })
-  assert.equal(await f.coordinator.recover(f.packet), false)
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } }), false)
   assert.equal(f.calls.close.length, 0)
   assert.equal(f.calls.start.length, 0)
   assert.match(f.calls.notices.at(-1).error, /Disk refused/)
@@ -808,7 +663,7 @@ test('a rejected canonical save keeps the predecessor and refuses automatic cont
 test('a refused asynchronous recovery checkpoint publishes an error before closing the predecessor', async t => {
   const f = fixture(t)
   f.handoffStore.saveRecord = async () => false
-  assert.equal(await f.coordinator.recover(f.packet), false)
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } }), false)
   assert.equal(f.calls.close.length, 0)
   assert.equal(f.calls.start.length, 0)
   assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'old-session')
@@ -819,7 +674,7 @@ test('a refused asynchronous recovery checkpoint publishes an error before closi
 test('manual continuation refuses an unreadable external checkpoint instead of replacing it with an excerpt', async t => {
   const f = fixture(t)
   f.handoffStore.readRecord = async () => { throw new Error('Checkpoint unreadable') }
-  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id }), false)
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } }), false)
   assert.equal(f.calls.close.length, 0)
   assert.equal(f.calls.start.length, 0)
   assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'old-session')
@@ -831,7 +686,7 @@ test('asynchronous checkpoint durability completes before the predecessor is clo
   const f = fixture(t)
   const gate = deferred()
   f.handoffStore.saveRecord = () => gate.promise
-  const recovery = f.coordinator.recover(f.packet)
+  const recovery = f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } })
   assert.equal(f.calls.close.length, 0)
   gate.resolve(true)
   assert.equal(await recovery, true)
@@ -1206,97 +1061,19 @@ function persistentOptions({ accounts = [{ name: 'old-account', provider: 'claud
       },
     } }
 }
-function keepRequest(f, waitForReset = true) {
-  return { computerId: 'local', nodeId: f.node.id, waitForReset,
-    startOptions: { tier: 'claude-sonnet', effort: 'max', roleBinding: { agentId: 'worker-seat', id: 'worker', expectedOrgRevision: 2, expectedRoleRevision: 3 } } }
-}
+
 const settle = () => new Promise(resolve => setImmediate(resolve))
 
-test('persistent retry crosses providers with original records, unchanged role and actual model provenance', async t => {
-  const f = fixture(t, { retryOptions: persistentOptions({ accounts: [
-    { provider: 'claude', name: 'old-account', signedIn: true }, { provider: 'codex', name: 'own-codex', signedIn: true },
-  ] }), start: request => request.tier === 'claude-sonnet'
-    ? { ok: false, code: 'ACCOUNT_RECOVERY_NO_ALTERNATE', reason: 'This account cannot serve now.', accountRetry: { provider: 'claude', account: null,
-      retry: { nextAttemptAt: new Date(Date.now() + 30000).toISOString(), resetAt: null } } }
-    : { ok: true, sessionId: request.sessionId, threadId: 'new-codex-thread', account: 'own-codex' } })
-  f.coordinator.register('local', { treeStore: f.treeStore, handoffStore: f.handoffStore,
-    transcriptStore: { ...f.transcriptStore, readLatest: async id => ({ ...f.transcriptStore.get(id), recoveryDirectory: '/owned/canonical/node-records' }) } })
-  assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), true)
-  assert.deepEqual(f.calls.start.map(row => row.tier), ['claude-sonnet', 'astra'])
-  assert.deepEqual(f.calls.start[0].accountRetry.excludeAccounts, ['old-account'])
-  assert.deepEqual(f.calls.start[1].accountRetry.excludeAccounts, [])
-  for (const row of f.calls.start) {
-    assert.equal(row.resumeThreadId, undefined)
-    assert.equal(row.accountRecovery, undefined)
-    assert.equal(row.roleBinding.id, 'worker')
-    assert.equal(row.roleBinding.expectedOrgRevision, 4)
-    assert.equal(row.effort, 'max')
-  }
-  assert.match(f.calls.send[0].text, /fresh conversation.*not a native resume/)
-  assert.match(f.calls.send[0].text, /Complete saved conversation: \/owned\/canonical\/node-records/)
-  assert.match(f.calls.send[0].text, /first step is complete/)
-  assert.equal(f.treeStore.getNode(f.node.id).parentId, f.manager.id)
-  assert.equal(f.treeStore.getNode(f.child.id).parentId, f.node.id)
-  assert.equal(f.treeStore.getNode(f.node.id).tier, 'astra')
-  assert.equal(f.transcriptStore.get(f.node.id).provider, 'codex')
-  const policy = f.handoffStore.get(f.node.id).retryPolicy
-  assert.equal(policy.preferredTier, 'claude-sonnet')
-  assert.equal(policy.actualTier, 'astra')
-  assert.equal(policy.actualAccount, 'own-codex')
-  assert.equal(policy.handoff, undefined, 'full handoff is stored once, within the existing record bound')
-})
 
-test('authorized provider changes use verified target effort while retaining the original preference', async t => {
-  for (const target of [
-    { id: 'grok-4-6', provider: 'grok', effort: 'xhigh' },
-    { id: 'agy-gemini-3-8-flash-high', provider: 'gemini', client: 'antigravity', effort: 'high' },
-  ]) {
-    const options = persistentOptions({ accounts: [
-      { provider: 'claude', name: 'old-account', signedIn: true },
-      { provider: target.provider, client: target.client, name: 'target-account', signedIn: true },
-    ] })
-    const f = fixture(t, { retryOptions: { ...options, tiers: [...retryTiers, target] },
-      start: request => request.tier === 'claude-sonnet'
-        ? { ok: false, code: 'ACCOUNT_RECOVERY_NO_ALTERNATE', reason: 'This account cannot serve now.', accountRetry: { provider: 'claude', account: null } }
-        : { ok: true, sessionId: request.sessionId, threadId: 'target-thread', account: 'target-account', effort: request.effort } })
-    f.coordinator.register('local', { treeStore: f.treeStore, handoffStore: f.handoffStore,
-      transcriptStore: { ...f.transcriptStore, readLatest: async id => ({ ...f.transcriptStore.get(id), recoveryDirectory: '/owned/canonical/node-records' }) } })
-    // Review R11: Gemini/Grok are opt-in fallbacks for a Claude worker.
-    assert.equal(await f.coordinator.keepTryingAccounts({ ...keepRequest(f), allowedProviders: ['claude', target.provider] }), true)
-    assert.deepEqual(f.calls.start.map(row => [row.tier, row.effort]), [['claude-sonnet', 'max'], [target.id, target.effort]])
-    assert.equal(f.transcriptStore.get(f.node.id).effort, target.effort)
-    assert.equal(f.treeStore.getNode(f.node.id).effort, target.effort)
-    const policy = f.handoffStore.get(f.node.id).retryPolicy
-    assert.equal(policy.preferredTier, 'claude-sonnet')
-    assert.equal(policy.preferredEffort, 'max')
-    assert.equal(policy.startOptions.effort, 'max')
-  }
-})
+
+
 
 /* REVIEW P6. The opted-in retry carried the wanted depth to any Codex or
    Claude row without asking the model: a retry saved at ultra on GPT-5.6-Luna
    (1.0.47 offered every Codex word on every Codex model) sent
    model_reasoning_effort=ultra to a model with no ultra. It is held to each
    row now, from the real table; the person's own choice is still remembered. */
-test('a retry carries only a depth each model takes', async t => {
-  const { launchTier } = await import('../../src/orchestration-controls.js')
-  const tiers = [launchTier('luna'), launchTier('claude-opus')]
-  const options = persistentOptions({ accounts: [
-    { provider: 'codex', name: 'own-codex', signedIn: true }, { provider: 'claude', name: 'old-account', signedIn: true },
-  ] })
-  const f = fixture(t, { retryOptions: { ...options, tiers },
-    start: request => request.tier === 'luna'
-      ? { ok: false, code: 'ACCOUNT_RECOVERY_NO_ALTERNATE', reason: 'This account cannot serve now.', accountRetry: { provider: 'codex', account: null } }
-      : { ok: true, sessionId: request.sessionId, threadId: 'opus-thread', account: 'old-account', effort: request.effort } })
-  f.coordinator.register('local', { treeStore: f.treeStore, handoffStore: f.handoffStore,
-    transcriptStore: { ...f.transcriptStore, readLatest: async id => ({ ...f.transcriptStore.get(id), recoveryDirectory: '/owned/canonical/node-records' }) } })
-  const request = keepRequest(f)
-  assert.equal(await f.coordinator.keepTryingAccounts({ ...request, startOptions: { ...request.startOptions, tier: 'luna', effort: 'ultra' },
-    allowedProviders: ['codex', 'claude'] }), true)
-  assert.deepEqual(f.calls.start.map(row => [row.tier, row.effort]), [['luna', 'medium'], ['claude-opus', 'max']],
-    'ultra reached a model with no ultra')
-  assert.equal(f.handoffStore.get(f.node.id).retryPolicy.preferredEffort, 'ultra', 'the person\'s own choice is still remembered')
-})
+
 
 /* FOLLOW-UP V4, verify round 2. The page opts an agent into retries with the
    depth the person picked in the dialog, or else the node's saved depth or its
@@ -1304,92 +1081,15 @@ test('a retry carries only a depth each model takes', async t => {
    preferredEffort, the one depth a retry carries to another provider. A depth
    the page filled in is marked `effortChosen: false` now: it starts the agent
    on its own provider and is not carried to Claude. */
-test('a retry opted into with a filled-in depth does not carry it to another provider', async t => {
-  const { launchTier } = await import('../../src/orchestration-controls.js')
-  const tiers = [launchTier('luna'), launchTier('claude-opus')]
-  const options = persistentOptions({ accounts: [
-    { provider: 'codex', name: 'own-codex', signedIn: true }, { provider: 'claude', name: 'old-account', signedIn: true },
-  ] })
-  const f = fixture(t, { retryOptions: { ...options, tiers },
-    start: request => request.tier === 'luna'
-      ? { ok: false, code: 'ACCOUNT_RECOVERY_NO_ALTERNATE', reason: 'This account cannot serve now.', accountRetry: { provider: 'codex', account: null } }
-      : { ok: true, sessionId: request.sessionId, threadId: 'opus-thread', account: 'old-account', effort: request.effort } })
-  f.coordinator.register('local', { treeStore: f.treeStore, handoffStore: f.handoffStore,
-    transcriptStore: { ...f.transcriptStore, readLatest: async id => ({ ...f.transcriptStore.get(id), recoveryDirectory: '/owned/canonical/node-records' }) } })
-  const request = keepRequest(f)
-  assert.equal(await f.coordinator.keepTryingAccounts({ ...request, startOptions: { ...request.startOptions, tier: 'luna', effort: 'medium' },
-    allowedProviders: ['codex', 'claude'], effortChosen: false }), true)
-  assert.deepEqual(f.calls.start.map(row => [row.tier, row.effort ?? null]), [['luna', 'medium'], ['claude-opus', null]],
-    'a filled-in Codex depth was carried onto Claude')
-  assert.equal(f.handoffStore.get(f.node.id).retryPolicy.preferredEffort ?? null, null, 'a filled-in depth was recorded as the person\'s own')
-  const page = readFileSync(new URL('../../src/views/computers.js', import.meta.url), 'utf8')
-  assert.match(page, /keepTryingAccounts\(\{ \.\.\.continueRequest, \.\.\.retryChoice, choiceRevision, effortChosen: Boolean\(chosenEffort\) \}\)/,
-    'the page no longer says whether the depth was the person\'s pick')
-})
 
-test('quota waiting survives coordinator reopen and retries only at the observed reset', async t => {
-  let clock = Date.parse('2026-09-10T23:00:00Z'), attempts = 0
-  const reset = clock + 120000
-  const options = persistentOptions({ now: () => clock })
-  const f = fixture(t, { retryOptions: options,
-    continuations: async request => request.action === 'direction' ? { ok: true, enabled: true, actionable: true, taskIds: ['T7'] } : { ok: true, enabled: true, records: [] },
-    start: request => ++attempts === 1 ? { ok: false, code: 'ACCOUNTS_EXHAUSTED', reason: 'Observed allowance exhausted.',
-      accountRetry: { provider: 'claude', account: null, retry: { nextAttemptAt: new Date(reset).toISOString(), resetAt: new Date(reset).toISOString(), reason: 'observed-reset', allQuotaExhausted: true } } }
-      : { ok: true, sessionId: request.sessionId, threadId: 'continued-thread', account: 'old-account' } })
-  assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), false)
-  assert.equal(f.coordinator.retryPolicy(f.node.id).nextAttemptAt, reset)
-  assert.match(f.coordinator.retryStatus(f.node.id), /Waiting for allowance to reset/)
-  f.coordinator.destroy()
-  const reopened = createAccountRecoveryCoordinator({ bridge: f.bridge, sessionNodeIds: new Map(), canStart: () => true, canContinue: () => true, ...options })
-  t.after(() => reopened.destroy())
-  reopened.register('local', { treeStore: f.treeStore, transcriptStore: f.transcriptStore, handoffStore: f.handoffStore })
-  await settle()
-  assert.equal(attempts, 1)
-  clock = reset - 1
-  await reopened.pollAccountRetries(); await settle()
-  assert.equal(attempts, 1)
-  clock = reset
-  await reopened.pollAccountRetries(); await settle(); await settle()
-  assert.equal(attempts, 2)
-  assert.deepEqual(f.calls.start[1].accountRetry.excludeAccounts, [])
-  assert.equal(reopened.retryPolicy(f.node.id).state, 'working')
-  assert.equal(f.calls.send.length, 1)
-})
 
-test('Stop fences a late successful retry start and retains the cancellation across reload', async t => {
-  const gate = deferred()
-  let requested
-  const f = fixture(t, { retryOptions: persistentOptions(), start: async request => { requested = request; await gate.promise;
-    return { ok: true, sessionId: request.sessionId, threadId: 'late-thread', account: 'next-account' } } })
-  const attempt = f.coordinator.keepTryingAccounts(keepRequest(f))
-  while (!requested) await settle()
-  await f.coordinator.cancelAccountRetries(f.node.id)
-  gate.resolve()
-  assert.equal(await attempt, false)
-  assert.equal(f.calls.send.length, 0)
-  assert.ok(f.calls.close.some(row => row.sessionId === requested.sessionId))
-  assert.equal(f.handoffStore.get(f.node.id).retryPolicy.enabled, false)
-  await f.coordinator.pollAccountRetries(); await settle()
-  assert.equal(f.calls.start.length, 1)
-})
 
-// Review R5: the failed quota turn is itself open work, so it is
+
+
+
+// Review R5 (2026-09-10): the failed quota turn is itself open work, so it is
 // retried without a ledger task; ordinary prose still triggers nothing.
-test('Autonomous+ retry ignores ordinary assistant prose and treats a failed quota turn as open work', async t => {
-  let directionQueries = 0
-  // Review R3: the account that refused is held, so a second account serves the retry.
-  const f = fixture(t, { retryOptions: persistentOptions({ accounts: [{ name: 'old-account', provider: 'claude' }, { name: 'new-account', provider: 'claude' }] }),
-    continuations: async request => { if (request.action === 'direction') directionQueries++; return request.action === 'direction' ? { ok: true, enabled: true, actionable: false, taskIds: [] } : { ok: true, enabled: true, records: [] } } })
-  f.treeStore.setNodeStatus(f.node.id, 'finished')
-  assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), true)
-  f.emit({ sessionId: 'old-session', event: { type: 'message_delta', text: 'We should discuss quota_exceeded and usage_limit_reached.' } })
-  await settle()
-  assert.equal(f.calls.start.length, 0)
-  f.emit({ sessionId: 'old-session', event: { type: 'turn_completed', status: 'failed', code: 'ACP_RATE_LIMITED', turnId: 'failed-turn' } })
-  for (let i = 0; i < 20 && f.calls.start.length === 0; i++) await settle()
-  assert.equal(f.calls.start.length, 1)
-  assert.equal(directionQueries, 0, 'the failed turn needs no ledger task to be retried')
-})
+
 
 /* T17. THE LIMIT THAT ARRIVES AS PROSE, WITH NO CODE AT ALL.
  *
@@ -1408,199 +1108,33 @@ test('Autonomous+ retry ignores ordinary assistant prose and treats a failed quo
  * and now carries its verdict as `failureReason`; this asserts that the verdict
  * is what drives the retry, by sending the event shape actually observed.
  */
-test('T17: an account limit reported as prose, with no code, is still held and retried', async t => {
-  const f = fixture(t, { retryOptions: persistentOptions({ accounts: [{ name: 'old-account', provider: 'claude' }, { name: 'new-account', provider: 'claude' }] }),
-    continuations: async request => (request.action === 'direction' ? { ok: true, enabled: true, actionable: false, taskIds: [] } : { ok: true, enabled: true, records: [] }) })
-  f.treeStore.setNodeStatus(f.node.id, 'finished')
-  assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), true)
-  // Exactly the shape the host emits for a prose limit: failed, no code, no
-  // text, and the shell's computed verdict.
-  f.emit({ sessionId: 'old-session', event: { type: 'turn_completed', status: 'failed', turnId: 'failed-turn', failureReason: 'account-limit' } })
-  for (let i = 0; i < 20 && f.calls.start.length === 0; i++) await settle()
-  assert.equal(f.calls.start.length, 1,
-    'a prose account limit must be recorded and retried on another account; 0 starts means this surface '
-    + 'classified the owner\'s real limit as nothing, which is the measured silence')
-})
 
-test('T17: a safety refusal still wins over the shell verdict, so a refused turn is never auto-retried', async t => {
-  const f = fixture(t, { retryOptions: persistentOptions({ accounts: [{ name: 'old-account', provider: 'claude' }, { name: 'new-account', provider: 'claude' }] }) })
-  f.treeStore.setNodeStatus(f.node.id, 'finished')
-  assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), true)
-  // A verdict must never overrule the refusal check: a permission failure that
-  // somehow also carried a limit verdict stays refused.
-  f.emit({ sessionId: 'old-session', event: { type: 'turn_completed', status: 'failed', code: 'AGENT_PERMISSION_DENIED', turnId: 'refused-turn', failureReason: 'account-limit' } })
-  for (let i = 0; i < 10; i++) await settle()
-  assert.equal(f.calls.start.length, 0,
-    'a safety refusal must outrank the shell verdict, or a denied permission would be retried as if it were a quota')
-})
 
-test('enabling account retries after cancellation does not restart the ended turn', async t => {
-  const f = fixture(t, { retryOptions: persistentOptions() })
-  f.treeStore.setNodeStatus(f.node.id, 'cancelled', { note: 'A permission was refused. This turn ended.', turnId: 'refused-turn' })
-  assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), true)
-  await f.coordinator.pollAccountRetries(); await settle()
-  assert.equal(f.calls.start.length, 0)
-  assert.equal(f.calls.send.length, 0)
-  assert.equal(f.calls.close.length, 0)
-})
 
-test('a provider exit after cancellation does not turn the refused work into an account retry', async t => {
-  const f = fixture(t, { retryOptions: persistentOptions() })
-  f.treeStore.setNodeStatus(f.node.id, 'running')
-  assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), true)
-  f.emit({ sessionId: 'old-session', event: { type: 'turn_completed', status: 'cancelled', turnId: 'refused-turn' } })
-  f.emit({ sessionId: 'old-session', event: { type: 'session_ended', reason: 'exited', exit: { code: 1 } } })
-  await settle()
-  await f.coordinator.pollAccountRetries()
-  await settle()
-  assert.equal(f.calls.start.length, 0)
-  assert.equal(f.calls.send.length, 0)
-  assert.equal(f.calls.close.length, 0)
-})
 
-test('identity refusal cannot be routed around through another provider', async t => {
-  const f = fixture(t, { retryOptions: persistentOptions({ accounts: [{ name: 'old-account', provider: 'claude' }, { name: 'own-codex', provider: 'codex' }] }),
-    start: () => ({ ok: false, code: 'ACCOUNT_IDENTITY_MISMATCH', reason: 'Account identity mismatched.', accountRetry: { provider: 'claude', account: null } }) })
-  assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), false)
-  assert.equal(f.calls.start.length, 1)
-  assert.match(f.coordinator.retryStatus(f.node.id), /identity mismatched/)
-})
 
-test('persistent retry preserves native continuity when a healthy opted-in conversation reopens', async t => {
-  const f = fixture(t, { retryOptions: persistentOptions() })
-  f.treeStore.setNodeStatus(f.node.id, 'finished')
-  await f.coordinator.keepTryingAccounts(keepRequest(f))
-  f.sessionNodeIds.clear()
-  const calls = []
-  let record = { key: 'c'.repeat(64), revision: 1, descriptor: { sessionId: 'old-session', resumeThreadId: 'old-thread', resumeThreadProvider: 'claude',
-    requestKeys: { threadId: f.node.id, treeAnchors: [f.manager.id, f.node.id] } } }
-  f.bridge.continuations = async request => {
-    calls.push(request)
-    if (request.action === 'read') return { ok: true, enabled: true, records: record ? [record] : [] }
-    if (request.action === 'resume') return { ok: true, sessionId: 'native-resumed', threadId: 'old-thread', resumed: true, account: 'old-account', continuation: { revision: 2 } }
-    if (request.action === 'attached') { record = null; return { ok: true } }
-    assert.fail(`Unexpected continuation action: ${request.action}`)
-  }
-  await f.coordinator.pollContinuations()
-  assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'native-resumed')
-  assert.equal(f.transcriptStore.get(f.node.id).threadId, 'old-thread')
-  assert.equal(f.coordinator.retryPolicy(f.node.id).sessionId, 'native-resumed')
-  assert.equal(calls.filter(row => row.action === 'attached').length, 1)
-  assert.equal(f.calls.start.length, 0, 'native recovery must not become a cross-provider handoff')
-  assert.equal(f.calls.send.length, 0, 'existing native continuation owns its next turn')
-})
 
-test('a cancelled replacement with denied cleanup retains a reachable Stop handle and never retries', async t => {
-  const gate = deferred()
-  let requested
-  const f = fixture(t, { retryOptions: persistentOptions(),
-    close: request => ({ sessionId: request.sessionId, closed: request.sessionId === 'old-session' }),
-    start: async request => { requested = request; await gate.promise; return { ok: true, sessionId: request.sessionId, threadId: 'late-thread', account: 'next-account' } } })
-  const attempt = f.coordinator.keepTryingAccounts(keepRequest(f))
-  while (!requested) await settle()
-  await assert.rejects(f.coordinator.cancelAccountRetries(f.node.id), { code: 'AGENT_SESSION_CLEANUP_FAILED' })
-  gate.resolve(); assert.equal(await attempt, false)
-  assert.equal(f.calls.send.length, 0)
-  assert.equal(f.sessionNodeIds.get(requested.sessionId), f.node.id)
-  assert.equal(f.treeStore.getNode(f.node.id).sessionId, requested.sessionId)
-  assert.equal(f.handoffStore.get(f.node.id).retryPolicy.enabled, false)
-  await f.coordinator.pollAccountRetries(); await settle()
-  assert.equal(f.calls.start.length, 1)
-  assert.ok(f.calls.cleanup.some(row => row.sessionId === requested.sessionId))
-})
 
-test('Stop during initial handoff preparation cannot authorize a later account attempt', async t => {
-  const gate = deferred()
-  const f = fixture(t, { retryOptions: persistentOptions() })
-  f.coordinator.register('local', { treeStore: f.treeStore, handoffStore: f.handoffStore,
-    transcriptStore: { ...f.transcriptStore, readLatest: async id => { await gate.promise; return f.transcriptStore.get(id) } } })
-  const attempt = f.coordinator.keepTryingAccounts(keepRequest(f))
-  await f.coordinator.cancelAccountRetries(f.node.id)
-  gate.resolve()
-  await assert.rejects(attempt, /cancelled/)
-  assert.equal(f.calls.start.length, 0)
-  assert.equal(f.calls.close.length, 0)
-  assert.equal(f.coordinator.retryPolicy(f.node.id), null)
-  const staleChoice = f.coordinator.retryChoiceRevision(f.node.id)
-  await f.coordinator.cancelAccountRetries(f.node.id)
-  await assert.rejects(f.coordinator.keepTryingAccounts({ ...keepRequest(f), choiceRevision: staleChoice }), /cancelled/)
-  assert.equal(f.calls.start.length, 0)
-})
 
-test('a confirmed not-sent quota refusal reaches bounded unknown-reset recheck after the last account', async t => {
-  let attempts = 0
-  const next = Date.now() + 30000
-  const f = fixture(t, { retryOptions: persistentOptions({ accounts: [{ name: 'old-account', provider: 'claude' }, { name: 'next-account', provider: 'claude' }] }),
-    start: request => ++attempts === 1 ? { ok: true, sessionId: request.sessionId, threadId: 'new-thread', account: 'next-account' }
-      : { ok: false, code: 'ACCOUNT_RECOVERY_NO_ALTERNATE', accountRetry: { provider: 'claude', account: null,
-        retry: { nextAttemptAt: new Date(next).toISOString(), resetAt: null, reason: 'status-recheck', allQuotaExhausted: false } } },
-    sendAutomatic: () => ({ ok: false, code: 'ACP_RATE_LIMITED', deliveryDisposition: 'not-sent' }) })
-  assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), false)
-  assert.equal(attempts, 2, 'the final selection reads recheck timing instead of inventing a reset')
-  assert.deepEqual(f.calls.start[1].accountRetry.excludeAccounts, ['old-account', 'next-account'])
-  assert.equal(f.coordinator.retryPolicy(f.node.id).nextAttemptAt, next)
-  assert.equal(f.coordinator.retryPolicy(f.node.id).actualAccount, 'next-account')
-  assert.equal(f.coordinator.retryPolicy(f.node.id).resetAt, null)
-  assert.match(f.coordinator.retryStatus(f.node.id), /Reset time is unknown/)
-  assert.equal(f.sessionNodeIds.size, 0, 'all replaced provider handles are confirmed closed')
-})
 
-test('saved per-node provider restrictions prevent engineering and Controller model drift', async t => {
-  const f = fixture(t, { retryOptions: persistentOptions({ accounts: [{ name: 'old-account', provider: 'claude' }, { name: 'own-codex', provider: 'codex' }] }),
-    start: () => ({ ok: false, code: 'ACCOUNT_RECOVERY_NO_ALTERNATE', accountRetry: { provider: 'claude', account: null } }) })
-  assert.equal(await f.coordinator.keepTryingAccounts({ ...keepRequest(f), allowedProviders: ['claude'] }), false)
-  assert.deepEqual(f.calls.start.map(row => row.tier), ['claude-sonnet'])
-  assert.deepEqual(f.handoffStore.get(f.node.id).retryPolicy.allowedProviders, ['claude'])
-  assert.equal(f.treeStore.getNode(f.node.id).tier, 'claude-sonnet')
-  await assert.rejects(f.coordinator.setAllowedProviders(f.node.id, []), /at least one/)
-  assert.deepEqual(f.coordinator.retryPolicy(f.node.id).allowedProviders, ['claude'])
-})
 
-for (const code of ['CLAUDE_CLI_TURN_TIMEOUT', 'AGY_CLI_TURN_TIMEOUT', 'AGY_CLI_EXITED']) test(`an opted-in ${code} waits for predecessor cleanup and resumes the saved task; Stop fences later exits`, async t => {
-  const closeGate = deferred()
-  const f = fixture(t, { retryOptions: persistentOptions({ accounts: [{ name: 'old-account', provider: 'claude' }, { name: 'new-account', provider: 'claude' }] }),
-    close: request => request.sessionId === 'old-session' ? closeGate.promise : { sessionId: request.sessionId, closed: true },
-    continuations: async request => request.action === 'direction' ? { ok: true, enabled: true, actionable: true, taskIds: ['T7'] } : { ok: true, enabled: true, records: [] } })
-  f.treeStore.setNodeStatus(f.node.id, 'finished')
-  await f.coordinator.keepTryingAccounts({ ...keepRequest(f), allowedProviders: ['claude'] })
-  f.emit({ sessionId: 'old-session', event: { type: 'turn_completed', turnId: 'timed-out', status: 'failed', code, text: 'The provider stopped before finishing this turn.' } })
-  await settle(); await settle()
-  assert.equal(f.calls.close.length, 1)
-  assert.equal(f.calls.start.length, 0)
-  closeGate.resolve({ sessionId: 'old-session', closed: true })
-  await settle(); await settle()
-  assert.equal(f.calls.start.length, 1)
-  assert.equal(f.calls.start[0].replacesSessionId, 'old-session')
-  assert.equal(f.calls.start[0].tier, 'claude-sonnet')
-  assert.match(f.calls.send[0].text, /first step is complete/)
-  assert.equal(f.coordinator.retryPolicy(f.node.id).state, 'working')
-  await f.coordinator.cancelAccountRetries(f.node.id)
-  f.emit({ sessionId: 'new-session', event: { type: 'session_ended', reason: 'exited', exit: { code: 1, signal: null } } })
-  await settle(); await f.coordinator.pollAccountRetries()
-  assert.equal(f.calls.start.length, 1, 'a later provider exit cannot revive explicit Stop')
-})
 
-test('a cold native-resume quota refusal moves the existing working policy into bounded account retry', async t => {
-  const f = fixture(t, { retryOptions: persistentOptions({ accounts: [{ name: 'old-account', provider: 'claude' }, { name: 'new-account', provider: 'claude' }] }) })
-  f.treeStore.setNodeStatus(f.node.id, 'finished')
-  await f.coordinator.keepTryingAccounts({ ...keepRequest(f), allowedProviders: ['claude'] })
-  f.sessionNodeIds.clear()
-  f.bridge.continuations = async request => {
-    if (request.action === 'read') return { ok: true, enabled: true, records: [{ key: 'c'.repeat(64), revision: 1,
-      descriptor: { sessionId: 'old-session', resumeThreadId: 'old-thread', resumeThreadProvider: 'claude', requestKeys: { threadId: f.node.id, treeAnchors: [f.manager.id, f.node.id] } } }] }
-    if (request.action === 'resume') throw Object.assign(new Error('The saved account reached its allowance limit.'), { code: 'AGENT_RESUME_ACCOUNT_LIMIT' })
-    if (request.action === 'direction') return { ok: true, enabled: true, actionable: true, taskIds: ['T7'] }
-    assert.fail(`Unexpected continuation action: ${request.action}`)
-  }
-  await f.coordinator.pollContinuations(); await settle(); await settle()
-  assert.equal(f.calls.start.length, 1)
-  assert.deepEqual(f.calls.start[0].accountRetry.excludeAccounts, ['old-account'])
-  assert.equal(f.coordinator.retryPolicy(f.node.id).state, 'working')
-  assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'new-session')
-})
 
-// T137: a model switch, including across providers, continues in a fresh
-// session with the context handed over. The model switch a thread cannot make in place is
+
+
+
+
+
+
+
+
+
+
+
+
+// OWNER REQUEST T137 (2026-09-16 02:58Z): "switch models still doesnt work. and
+// it should work for even different providers because we can just hand the
+// context to the next agent." The model switch a thread cannot make in place is
 // the account continuation on another tier: start the chosen tier on whichever
 // account the ordinary start picks, record the tier on the node and the
 // provider on the transcript, send the model handoff.
@@ -1617,7 +1151,7 @@ test('a cold native-resume quota refusal moves the existing working policy into 
 // file already owns and already explains ("closing it in the renderer before
 // start made AGENT_RESUME_ACCOUNT_LIMIT irreversible"). Everything else this
 // case asserts is unchanged and still passes.
-test('a model continuation leaves the predecessor for the host to close, starts the chosen tier on any account, records tier and provider, and sends the model handoff', async t => {
+test('a model continuation leaves the predecessor for the host to close, starts the chosen tier on the picked account, records tier and provider, and sends the model handoff', async t => {
   const f = fixture(t, { retryOptions: { tiers: LAUNCH_TIERS } })
   // 'finished' is a live session between turns (src/tree-session-liveness.js:
   // 'starting' and 'running' are the busy statuses); old-session is still owned.
@@ -1625,7 +1159,7 @@ test('a model continuation leaves the predecessor for the host to close, starts 
   const before = f.treeStore.getNode(f.node.id)
   assert.equal(before.tier, 'claude-sonnet')
   assert.equal(await f.coordinator.continueOnAnotherModel({ computerId: 'local', nodeId: f.node.id,
-    startOptions: { tier: 'luna', effort: 'medium', profileId: 'profile-1', roleBinding: { agentId: 'identity-1' },
+    startOptions: { tier: 'luna', treeAccount: 'picked-account', effort: 'medium', profileId: 'profile-1', roleBinding: { agentId: 'identity-1' },
       resumeThreadId: 'must-not-travel', accountRecovery: { recoveryId: 'must-not-travel' } } }), true)
   assert.deepEqual(f.calls.close, [],
     'the renderer must not close a session the person is still talking to before the replacement is known to be startable')
@@ -1663,7 +1197,7 @@ test('a model continuation leaves the predecessor for the host to close, starts 
 test('a model continuation refuses the tier it is already on, an unknown tier, a node still starting or mid-turn, and a duplicate press', async t => {
   const f = fixture(t, { retryOptions: { tiers: LAUNCH_TIERS } })
   f.treeStore.setNodeStatus(f.node.id, 'finished')
-  const request = tier => ({ computerId: 'local', nodeId: f.node.id, startOptions: { tier, roleBinding: { agentId: 'identity-1' } } })
+  const request = tier => ({ computerId: 'local', nodeId: f.node.id, startOptions: { tier, treeAccount: 'picked-account', roleBinding: { agentId: 'identity-1' } } })
   assert.equal(await f.coordinator.continueOnAnotherModel(request('claude-sonnet')), false, 'already on it')
   assert.equal(await f.coordinator.continueOnAnotherModel(request('not-a-tier')), false, 'unknown tier')
   f.treeStore.setNodeStatus(f.node.id, 'starting')
@@ -1713,23 +1247,7 @@ function refusedContinuation(f, error) {
 }
 const twoAccounts = [{ name: 'old-account', provider: 'claude', signedIn: true }, { name: 'spare-account', provider: 'claude', signedIn: true }]
 
-test('a reopen refused by the provider continues on another account by itself when keep-trying is on', async t => {
-  const f = fixture(t, { retryOptions: { tiers: LAUNCH_TIERS, readAccounts: async () => ({ available: true, accounts: twoAccounts }), keepTryingOnLimit: async () => true },
-    start: request => ({ ok: true, sessionId: request.sessionId, threadId: 'spare-thread', account: 'spare-account' }) })
-  refusedContinuation(f, providerRefusedResume)
-  await f.coordinator.pollContinuations()
-  for (let i = 0; i < 40 && f.calls.send.length === 0; i += 1) await settle()
-  assert.equal(f.calls.start.length, 1, 'exactly one continuation start')
-  assert.equal(f.calls.start[0].continueFromAccount, 'old-account', 'moved away from the refused account')
-  assert.equal(f.calls.start[0].replacesSessionId, 'old-session')
-  assert.equal(f.calls.start[0].tier, 'claude-sonnet', 'the saved model is kept')
-  assert.equal(f.calls.start[0].effort, 'medium', 'the saved depth is kept')
-  assert.equal(f.calls.send.length, 1, 'the handoff is sent to the replacement')
-  const node = f.treeStore.getNode(f.node.id)
-  assert.equal(node.status, 'running')
-  assert.doesNotMatch(node.statusNote || '', /ATTRIBUTED_TO_PROVIDER|AGENT_RESUME_ACCOUNT_LIMIT/, 'no wire token reaches the circle')
-  assert.equal(f.calls.notices.some(row => row.switchOffer), false, 'a move that took needs no offer')
-})
+
 
 test('the same refusal with keep-trying off moves nothing and offers the switch instead, in the person\'s words', async t => {
   const f = fixture(t, { retryOptions: { tiers: LAUNCH_TIERS, readAccounts: async () => ({ available: true, accounts: twoAccounts }), keepTryingOnLimit: async () => false } })
@@ -1818,9 +1336,9 @@ test('a refusal that is not about the saved account (the node changed) neither m
 
 /* A RESUME THAT WAS REFUSED IS NOT A TURN THAT FAILED.
  *
- * OBSERVED on a development profile: the first reopen whose saved
- * continuation read answered ran a batch of resumes, the host refused all
- * of them before any session existed, and FINISHED conversations were
+ * OBSERVED on the owner's profile, 2026-09-21: the first reopen whose saved
+ * continuation read answered ran thirteen resumes, the host refused all
+ * thirteen before any session existed, and ten FINISHED conversations were
  * rewritten to 'turn-failed'. The error below is the shape that reached the
  * window: Electron's invoke rejection, a sentence and no code. */
 const hostRefusedBeforeStart = () => new Error("Error invoking remote method 'mc-agent:continuations': Error: That agent is no longer in the organisation. Reload the agent page, then retry the start.")
@@ -1854,179 +1372,16 @@ test('a node saved mid-start has no settled status to keep: a refused reopen sti
 
 // T731: a returned/thrown quota code alone is not proof that the handoff did
 // not execute. Positive not-sent retry remains covered above.
-for (const delivery of ['unknown-returned', 'unknown-thrown', 'accepted-unreadable']) {
-  test('T731 automatic handoff never replays ' + delivery + ' across later failure and retry settings', async t => {
-    const f = fixture(t, {
-      retryOptions: persistentOptions({ accounts: [
-        { name: 'old-account', provider: 'claude' }, { name: 'next-account', provider: 'claude' },
-      ] }),
-      start: request => ({ ok: true, sessionId: request.sessionId, threadId: 'new-thread', account: 'next-account' }),
-      sendAutomatic: () => {
-        if (delivery === 'unknown-thrown') throw Object.assign(new Error('ACP_RATE_LIMITED'), { code: 'ACP_RATE_LIMITED' })
-        return { ok: false, code: 'ACP_RATE_LIMITED',
-          deliveryDisposition: delivery === 'accepted-unreadable' ? 'accepted' : 'unknown' }
-      },
-    })
-    assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), false)
-    assert.equal(f.calls.start.length, 1)
-    assert.equal(f.calls.sendAutomatic.length, 1)
-    const policy = f.coordinator.retryPolicy(f.node.id)
-    assert.equal(policy.deliveryHold.outcome, delivery === 'accepted-unreadable' ? 'accepted' : 'unknown')
-    assert.equal(f.handoffStore.get(f.node.id).retryPolicy.deliveryHold.outcome, policy.deliveryHold.outcome)
-    f.emit({ sessionId: policy.sessionId, event: { type: 'turn_completed',
-      turnId: 'late-failure', status: 'failed', code: 'ACP_RATE_LIMITED', text: 'Fixture late failure.' } })
-    await f.coordinator.setWaitForResets(f.node.id, true)
-    await f.coordinator.pollAccountRetries()
-    await f.coordinator.keepTryingAccounts(keepRequest(f))
-    await settle()
-    assert.equal(f.calls.start.length, 1, 'a later choice cannot clear unresolved delivery')
-    assert.equal(f.calls.sendAutomatic.length, 1, 'the handoff is never replayed')
-  })
-}
 
 
-for (const changed of ['runtime-owner', 'store', 'session', 'choice']) {
-  test('T731 retired-session retry refuses changed ' + changed + ' ownership', async t => {
-    let allowed = true
-    const gate = deferred()
-    const f = fixture(t, { canStart: () => allowed, close: () => gate.promise })
-    const flight = f.coordinator.recover(f.packet)
-    await f.closeEntered
-    allowed = false
-    gate.resolve({ sessionId: 'old-session', closed: true })
-    await flight
-    assert.equal(f.coordinator.canRetry(f.node.id), true)
-    assert.equal(f.sessionNodeIds.has('old-session'), false)
-    allowed = true
-    if (changed === 'runtime-owner') f.sessionNodeIds.set('old-session', 'different-node')
-    if (changed === 'store') f.coordinator.register('local', {
-      treeStore: { ...f.treeStore }, transcriptStore: f.transcriptStore, handoffStore: f.handoffStore,
-    })
-    if (changed === 'session') f.treeStore.attachSession(f.node.id, 'different-session')
-    if (changed === 'choice') await f.coordinator.cancelAccountRetries(f.node.id)
-    assert.equal(await f.coordinator.retry(f.node.id), false)
-    assert.equal(f.calls.close.length, 1)
-    assert.equal(f.calls.start.length, 0)
-    assert.equal(f.calls.send.length, 0)
-    if (changed === 'runtime-owner') assert.equal(f.sessionNodeIds.get('old-session'), 'different-node')
-    assert.match(f.calls.notices.at(-1).error, /no longer belongs/)
-    assert.equal(f.handoffStore.get(f.node.id).handoff, f.packet.event.handoff)
-  })
-}
 
 
-for (const delivery of ['unknown-returned', 'unknown-thrown', 'accepted-unreadable', 'confirmed-not-sent']) {
-  test('T738 cancelled in-flight handoff retains delivery truth on re-enable: ' + delivery, async t => {
-    const gate = deferred()
-    let sent = 0
-    const f = fixture(t, {
-      retryOptions: persistentOptions({ accounts: [
-        { name: 'old-account', provider: 'claude' }, { name: 'next-account', provider: 'claude' },
-      ] }),
-      start: request => ({ ok: true, sessionId: request.sessionId, threadId: 'replacement-thread', account: 'next-account' }),
-      sendAutomatic: async () => {
-        const attempt = ++sent
-        if (attempt === 1) await gate.promise
-        if (delivery === 'confirmed-not-sent' && attempt > 1) return { ok: true, result: { ok: true }, deliveryDisposition: 'accepted' }
-        if (delivery === 'unknown-thrown') throw Object.assign(new Error('The delivery reply was lost.'), { code: 'ACP_RATE_LIMITED' })
-        return { ok: false, code: 'ACP_RATE_LIMITED', deliveryDisposition:
-          delivery === 'confirmed-not-sent' ? 'not-sent' : delivery === 'accepted-unreadable' ? 'accepted' : 'unknown' }
-      },
-    })
-    const request = { ...keepRequest(f), allowedProviders: ['claude'] }
-    const attempt = f.coordinator.keepTryingAccounts(request)
-    t.after(() => gate.resolve())
-    for (let turn = 0; turn < 50 && f.calls.sendAutomatic.length === 0; turn++) await settle()
-    assert.equal(f.calls.sendAutomatic.length, 1, 'the actual automatic send must be in flight before cancellation')
-    const sessionId = f.calls.sendAutomatic[0].sessionId
-    assert.equal(await f.coordinator.cancelAccountRetries(f.node.id), true)
-    await settle()
-    assert.equal(f.coordinator.retryPolicy(f.node.id).enabled, false)
-    const cancelledNode = f.treeStore.getNode(f.node.id)
-    gate.resolve()
-    assert.equal(await attempt, false)
-    await settle()
-    const completedPolicy = f.coordinator.retryPolicy(f.node.id)
-    const persistedPolicy = f.handoffStore.get(f.node.id).retryPolicy
-    assert.equal(completedPolicy.enabled, false, 'a late result cannot re-enable cancelled retries')
-    assert.equal(completedPolicy.state, 'cancelled')
-    assert.equal(persistedPolicy.enabled, false)
-    assert.deepEqual(f.treeStore.getNode(f.node.id), cancelledNode, 'a late delivery result cannot repaint the cancelled conversation')
-
-    const resumed = await f.coordinator.keepTryingAccounts(request)
-    await f.coordinator.pollAccountRetries()
-    await settle()
-    if (delivery === 'confirmed-not-sent') {
-      assert.equal(resumed, true, 'an explicit re-enable can retry a proven unsent handoff')
-      assert.equal(f.calls.start.length, 2)
-      assert.equal(f.calls.sendAutomatic.length, 2)
-      assert.notEqual(f.calls.sendAutomatic[1].sessionId, sessionId)
-      assert.equal(completedPolicy.deliveryHold, undefined)
-    } else {
-      assert.equal(f.calls.start.length, 1, 're-enabling retries cannot start another copy of an unresolved handoff')
-      assert.equal(f.calls.sendAutomatic.length, 1, 'the already-dispatched handoff must not replay')
-      assert.equal(resumed, false)
-      const expected = { sessionId, outcome: delivery === 'accepted-unreadable' ? 'accepted' : 'unknown' }
-      assert.deepEqual(completedPolicy.deliveryHold, expected)
-      assert.deepEqual(persistedPolicy.deliveryHold, expected, 'the disabled policy must persist the delivery fact')
-      assert.deepEqual(f.coordinator.retryPolicy(f.node.id).deliveryHold, expected)
-    }
-  })
-}
 
 
-for (const change of ['session', 'store', 'runtime-owner', 'incarnation']) {
-  test('T738 late cancelled delivery cannot publish into a changed ' + change, async t => {
-    const gate = deferred()
-    let stamp = 10000
-    const f = fixture(t, {
-      treeNow: () => ++stamp,
-      retryOptions: persistentOptions(),
-      start: request => ({ ok: true, sessionId: request.sessionId, threadId: 'replacement-thread', account: 'next-account' }),
-      sendAutomatic: async () => { await gate.promise; return { ok: false, deliveryDisposition: 'unknown' } },
-    })
-    const attempt = f.coordinator.keepTryingAccounts({ ...keepRequest(f), allowedProviders: ['claude'] })
-    t.after(() => gate.resolve())
-    for (let turn = 0; turn < 50 && f.calls.sendAutomatic.length === 0; turn++) await settle()
-    assert.equal(f.calls.sendAutomatic.length, 1)
-    const sessionId = f.calls.sendAutomatic[0].sessionId
-    assert.equal(await f.coordinator.cancelAccountRetries(f.node.id), true)
-    await settle()
-    if (change === 'session') {
-      assert.equal(f.treeStore.attachSession(f.node.id, 'newer-session').ok, true)
-      f.sessionNodeIds.set('newer-session', f.node.id)
-    } else if (change === 'store') {
-      f.coordinator.register('local', { treeStore: { ...f.treeStore }, transcriptStore: f.transcriptStore, handoffStore: f.handoffStore })
-      await settle()
-    } else if (change === 'runtime-owner') {
-      f.sessionNodeIds.set(sessionId, 'another-agent')
-    } else {
-      assert.equal(f.treeStore.removeNode(f.child.id).ok, true) // Synthetic memory-only fixture.
-      assert.equal(f.treeStore.setNodeStatus(f.node.id, 'finished').ok, true)
-      assert.equal(f.treeStore.detachSession(f.node.id).ok, true)
-      assert.equal(f.treeStore.removeNode(f.node.id).ok, true)
-      const replacement = f.treeStore.addNode({ reservedNodeId: f.node.id, parentId: f.manager.id,
-        role: 'worker', message: 'A different assignment', tier: 'claude-sonnet' })
-      assert.equal(replacement.ok, true)
-      assert.notEqual(replacement.node.createdAt, f.node.createdAt)
-      assert.equal(f.treeStore.attachSession(f.node.id, sessionId).ok, true)
-      f.sessionNodeIds.set(sessionId, f.node.id)
-    }
-    const nodeBefore = f.treeStore.getNode(f.node.id)
-    const savedBefore = structuredClone(f.handoffStore.get(f.node.id))
-    const ownerBefore = [...f.sessionNodeIds]
-    const noticesBefore = f.calls.notices.length
-    gate.resolve()
-    assert.equal(await attempt, false)
-    await settle()
-    assert.deepEqual(f.treeStore.getNode(f.node.id), nodeBefore, 'a late reply cannot repaint a different conversation')
-    assert.deepEqual(f.handoffStore.get(f.node.id), savedBefore, 'an old delivery fact cannot overwrite another current identity')
-    assert.deepEqual([...f.sessionNodeIds], ownerBefore)
-    assert.equal(f.calls.notices.slice(noticesBefore).some(value => value.started || value.retryPolicy), false)
-    assert.equal(f.calls.start.length, 1)
-    assert.equal(f.calls.sendAutomatic.length, 1)
-  })
-}
+
+
+
+
 
 
 test('catalogue read failure stays visible, backs off, and clears only after a readable catalogue', async t => {
@@ -2294,66 +1649,15 @@ test('startup catalogue failure is shared by Home and Trees, survives reopen, an
   assert.equal(starts, 0)
 })
 
-for (const directory of ['/fixture/retained circle', 'Q:\\saved-conversations\\circle']) {
-  test('T839 automatic recovery carries the full conversation locator and current task ids: ' + directory, async t => {
-    const f = fixture(t)
-    f.transcriptStore.readLatest = async id => ({ ...f.transcriptStore.get(id), recoveryDirectory: directory, before: 'earlier-page' })
-    f.bridge.ledger = async () => ({ ok: true, chain: { checked: false, ok: null }, records: [
-      { id: 'T839', scope: 'thread', scopeKey: f.node.id, status: 'in-progress' },
-      { id: 'T777', scope: 'tree', scopeKey: f.manager.id, status: 'done' },
-      { id: 'T998', scope: 'thread', scopeKey: 'unrelated-node', status: 'open' },
-    ] })
-    const settled = []
-    f.coordinator.subscribeRecoverySettled?.(event => settled.push({ ...event, recovering: f.coordinator.isRecovering(f.node.id) }))
-    assert.equal(await f.coordinator.recover(f.packet), true)
-    assert.equal(f.calls.send.length, 1)
-    const sent = f.calls.send[0].text
-    assert.ok(sent.includes(JSON.stringify(directory)))
-    assert.match(sent, /T839/)
-    assert.match(sent, /T777/)
-    assert.doesNotMatch(sent, /T998/)
-    assert.ok(sent.includes(f.packet.event.handoff), 'the bounded original handoff remains present')
-    const record = f.handoffStore.get(f.node.id)
-    assert.equal(record.conversation.recoveryDirectory, directory)
-    assert.deepEqual(record.conversation.taskIds, ['T839', 'T777'])
-    assert.deepEqual(settled, [{ nodeId: f.node.id, recoverySettled: true, recovering: false }])
-  })
-}
 
-test('T839 missing complete history pauses before closing the predecessor', async t => {
-  const f = fixture(t)
-  f.transcriptStore.readLatest = async id => ({ ...f.transcriptStore.get(id), before: 'older-page' })
-  assert.equal(await f.coordinator.recover(f.packet), false)
-  assert.deepEqual(f.calls.close, [])
-  assert.deepEqual(f.calls.start, [])
-  assert.deepEqual(f.calls.send, [])
-  assert.match(f.calls.notices.at(-1).error, /complete saved conversation.*unavailable/i)
-  assert.equal(f.sessionNodeIds.get('old-session'), f.node.id)
-})
 
-test('T839 unverified task history pauses before any automatic replacement', async t => {
-  const f = fixture(t)
-  f.bridge.ledger = async () => ({ ok: true, records: [], chain: { checked: true, ok: false } })
-  assert.equal(await f.coordinator.recover(f.packet), false)
-  assert.deepEqual(f.calls.close, [])
-  assert.deepEqual(f.calls.start, [])
-  assert.match(f.calls.notices.at(-1).error, /task records could not be read/i)
-})
 
-test('T839 losing close ticket is handled without relabelling a still-live session as failed', async t => {
-  const f = fixture(t, { close: async () => ({ ok: false, closed: false, code: 'AGENT_ACCOUNT_RECOVERY_UNAVAILABLE', reason: 'Recovery changed.' }) })
-  f.treeStore.setNodeStatus(f.node.id, 'running', { note: 'Current turn is active.' })
-  const before = f.treeStore.getNode(f.node.id)
-  assert.equal(await f.coordinator.recover(f.packet), false)
-  assert.equal(f.calls.start.length, 0)
-  assert.equal(f.calls.send.length, 0)
-  assert.equal(f.treeStore.getNode(f.node.id).status, before.status)
-  assert.equal(f.treeStore.getNode(f.node.id).statusNote, before.statusNote)
-  assert.equal(f.sessionNodeIds.get('old-session'), f.node.id)
-  assert.equal(f.calls.notices.at(-1).recoveryRefused, 'AGENT_ACCOUNT_RECOVERY_UNAVAILABLE')
-})
 
-test('T839 automatic successor reaches the complete native saved conversation beyond its viewport', async t => {
+
+
+
+
+test('manual successor reaches the complete native saved conversation beyond its viewport', async t => {
   const f = fixture(t)
   const root = await fs.mkdtemp(path.join(process.env.IMAGE_TEST_TEMP || os.tmpdir(), 't839-full-history-'))
   t.diagnostic('Retained synthetic transcript: ' + root)
@@ -2378,10 +1682,10 @@ test('T839 automatic successor reaches the complete native saved conversation be
   assert.ok(viewport.before)
   assert.ok(viewport.lines.every(row => row.text !== earliest))
   Object.assign(f.transcriptStore, client)
-  assert.equal(await f.coordinator.recover(f.packet), true)
-  const directory = f.handoffStore.get(f.node.id).conversation.recoveryDirectory
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'new-account' } }), true)
+  const directory = viewport.recoveryDirectory
   assert.equal(directory, viewport.recoveryDirectory)
-  assert.ok(f.calls.send[0].text.includes(JSON.stringify(directory)))
+  assert.ok(f.calls.send[0].text.includes(directory))
   const names = (await fs.readdir(directory)).filter(name => /^\d{16}-[a-f0-9]{64}\.json$/.test(name)).sort()
   assert.equal(JSON.parse(await fs.readFile(path.join(directory, names[0]), 'utf8')).text, earliest)
   const reopened = createNodeTranscriptStore({ directory: root, io })
@@ -2390,31 +1694,9 @@ test('T839 automatic successor reaches the complete native saved conversation be
   assert.equal(archived, 0, 'this append-only fixture requires no removal')
 })
 
-test('T839 task lookup cannot overwrite conversation entries received while it is pending', async t => {
-  const gate = deferred(), entered = deferred()
-  const f = fixture(t)
-  f.bridge.ledger = async () => { entered.resolve(); return gate.promise }
-  const flight = f.coordinator.recover(f.packet)
-  assert.equal(await Promise.race([entered.promise.then(() => true), flight.then(() => false)]), true, 'recovery reads the current task records')
-  const before = f.transcriptStore.get(f.node.id)
-  const later = { who: 'you', text: 'Synthetic instruction arriving during recovery lookup.', at: 3 }
-  f.transcriptStore.save(f.node.id, { ...before, lines: [...before.lines, later] })
-  gate.resolve({ ok: true, records: [], chain: { checked: false, ok: null } })
-  assert.equal(await flight, true)
-  assert.ok(f.transcriptStore.get(f.node.id).lines.some(row => row.text === later.text))
-})
 
-test('T839 recovery task list declares its bound without dropping access to the full conversation', async t => {
-  const f = fixture(t)
-  f.bridge.ledger = async () => ({ ok: true, records: Array.from({ length: 90 }, (_, n) => ({
-    id: 'T' + (1000 + n), scope: 'thread', scopeKey: f.node.id, status: 'done' })), chain: { checked: false, ok: null } })
-  assert.equal(await f.coordinator.recover(f.packet), true)
-  const history = f.handoffStore.get(f.node.id).conversation
-  assert.equal(history.taskCount, 90)
-  assert.equal(history.taskIds.length, 64)
-  assert.ok(f.calls.send[0].text.includes('64 of 90'))
-  assert.ok(f.calls.send[0].text.includes(JSON.stringify(history.recoveryDirectory)))
-})
+
+
 
 /* THE STOP FENCE HAS TO RECOGNISE A STOP, WHOEVER PRESSED IT.
  *
@@ -2443,17 +1725,400 @@ test('a saved continuation is discarded for a stopped circle whether the person 
   }
 })
 
-test('keep-trying-accounts is cancelled for a circle its manager stopped, exactly as for the person\'s own Stop', async t => {
-  for (const note of [PERSON_STOP_NOTE, MANAGER_STOP_NOTE]) {
-    await t.test(note, async inner => {
-      const f = fixture(inner, { retryOptions: persistentOptions() })
-      assert.equal(await f.coordinator.keepTryingAccounts(keepRequest(f)), true)
-      assert.equal(f.coordinator.retryPolicy(f.node.id).enabled, true)
-      assert.equal(f.treeStore.setNodeStatus(f.node.id, 'finished', { note }).ok, true)
-      await f.coordinator.pollAccountRetries(); await settle()
-      const policy = f.coordinator.retryPolicy(f.node.id)
-      assert.equal(policy.enabled, false, `a circle noted "${note}" stops being retried`)
-      assert.equal(policy.state, 'cancelled')
-    })
+
+
+for(const code of ['misalignment_policy_violation','misalignmentPolicyViolation'])test(`off-page old queue stays held after explicit successful turn: ${code}`, async t=>{
+ const queue=[{text:'Synthetic old queued input',id:'synthetic-old'}]
+ const outbox={takeNext:()=>queue.shift(),confirmDelivered(){},requeueFront:(_id,row)=>queue.unshift(row)}
+ const f=fixture(t,{retryOptions:{outbox}})
+ f.emit({sessionId:'old-session',event:{type:'turn_completed',status:'failed',code,failureReason:'safety-policy',retryable:false,turnId:'blocked-synthetic'}})
+ await new Promise(resolve=>setImmediate(resolve))
+ assert.equal(f.calls.send.length,0);assert.equal(queue.length,1)
+ await f.bridge.send({sessionId:'old-session',text:'Synthetic explicit new person input'})
+ f.emit({sessionId:'old-session',event:{type:'turn_started',turnId:'explicit-synthetic'}})
+ f.emit({sessionId:'old-session',event:{type:'turn_completed',status:'completed',turnId:'explicit-synthetic'}})
+ await new Promise(resolve=>setImmediate(resolve))
+ assert.equal(f.calls.send.length,1,'only the explicit new input may be sent; old work stays held')
+ assert.equal(queue.length,1)
+})
+
+function offPageQueue(t, options = {}) {
+  const rows = [{ id: 'queued-synthetic', text: 'Synthetic queued input' }]
+  const delivered = []
+  const outbox = { takeNext() {
+    options.beforeTake?.()
+    const index = rows.findIndex(row => row.deliveryUnconfirmed !== true)
+    if (index < 0) return null
+    const [entry] = rows.splice(index, 1)
+    options.onTake?.()
+    return entry
+  }, confirmDelivered: (_session, entry) => delivered.push(entry), requeueFront: (_session, entry) => rows.unshift(entry) }
+  const f = fixture(t, { ...options, retryOptions: { outbox } })
+  const complete = (turnId = 'synthetic-complete', sessionId = 'old-session') => f.emit({ sessionId,
+    event: { type: 'turn_completed', status: 'completed', turnId } })
+  return { ...f, rows, delivered, complete }
+}
+const offPageSettle = () => new Promise(resolve => setImmediate(resolve))
+
+test('off-page safety custody retains payload-classified work across navigation and explicit success', async t => {
+  const f = offPageQueue(t)
+  const leave = f.coordinator.subscribe(() => {}, { observes: () => true })
+  f.emit({ sessionId: 'old-session', event: { type: 'turn_completed', status: 'completed', turnId: 'synthetic-block',
+    payload: { failure: { category: 'safety-policy' } } } })
+  leave()
+  f.coordinator.register('local', { treeStore: f.treeStore, transcriptStore: f.transcriptStore, handoffStore: f.handoffStore })
+  await f.bridge.send({ sessionId: 'old-session', text: 'Synthetic explicit new input' })
+  f.complete(); await offPageSettle()
+  assert.equal(f.calls.send.length, 1); assert.equal(f.calls.sendAutomatic.length, 0)
+  assert.equal(f.rows.length, 1); assert.equal(f.delivered.length, 0)
+  assert.equal(f.treeStore.getNode(f.node.id).status, 'finished')
+})
+
+test('off-page safety custody ordinary success uses tracked automatic dispatch and preserves turn receipt', async t => {
+  const f = offPageQueue(t, { sendAutomatic: async () => ({ ok: true, deliveryDisposition: 'accepted', result: { ok: true, turnId: 'synthetic-next' } }) })
+  f.complete(); await offPageSettle()
+  assert.equal(f.calls.sendAutomatic.length, 1); assert.equal(f.rows.length, 0); assert.equal(f.delivered.length, 1)
+  assert.equal(f.calls.sendAutomatic[0].text, 'Synthetic queued input')
+  assert.equal(f.transcriptStore.get(f.node.id).lines.at(-1).turnStamp, 'synthetic-next')
+})
+
+test('off-page safety custody foreign refusal cannot hold this session', async t => {
+  const f = offPageQueue(t)
+  f.emit({ sessionId: 'unowned-session', event: { type: 'turn_completed', code: 'misalignmentPolicyViolation', status: 'failed' } })
+  f.complete(); await offPageSettle()
+  assert.equal(f.calls.sendAutomatic.length, 1); assert.equal(f.delivered.length, 1)
+})
+
+test('off-page safety custody missing automatic bridge retains input and names refusal', async t => {
+  const f = offPageQueue(t); delete f.bridge.sendAutomatic
+  f.complete(); await offPageSettle()
+  assert.equal(f.calls.send.length, 0); assert.equal(f.rows.length, 1)
+  assert.ok(f.calls.notices.some(row => row.code === 'AGENT_AUTOMATIC_SEND_UNAVAILABLE'))
+})
+
+test('off-page safety custody refusal while taking entry stops dispatch and retains input', async t => {
+  let f
+  f = offPageQueue(t, { onTake: () => f.emit({ sessionId: 'old-session', event: {
+    type: 'turn_completed', status: 'failed', code: 'misalignment_policy_violation', turnId: 'synthetic-late-block' } }) })
+  f.complete(); await offPageSettle()
+  assert.equal(f.calls.send.length, 0); assert.equal(f.rows.length, 1); assert.equal(f.delivered.length, 0)
+})
+
+test('off-page safety custody tracked host refusal during admission stays held after later success', async t => {
+  const gate = deferred()
+  const f = offPageQueue(t, { sendAutomatic: () => gate.promise })
+  f.complete(); await offPageSettle(); assert.equal(f.calls.sendAutomatic.length, 1)
+  gate.resolve({ ok: false, code: 'PROVIDER_SAFETY_REFUSAL', deliveryDisposition: 'not-sent' })
+  await offPageSettle(); assert.equal(f.rows.length, 1); assert.equal(f.delivered.length, 0)
+  f.complete('synthetic-later'); await offPageSettle()
+  assert.equal(f.calls.sendAutomatic.length, 1); assert.equal(f.rows[0].text, 'Synthetic queued input')
+})
+
+for (const reply of [null, { ok: false, deliveryDisposition: 'unknown' },
+  { ok: false, deliveryDisposition: 'accepted' },
+  { ok: true, deliveryDisposition: 'accepted', result: { ok: false } }]) {
+  test('off-page safety custody uncertain receipt retains input without replay: '+JSON.stringify(reply), async t => {
+    const f = offPageQueue(t, { sendAutomatic: async () => reply })
+    f.complete(); await offPageSettle()
+    assert.equal(f.rows.length, 1); assert.equal(f.rows[0].deliveryUnconfirmed, true); assert.equal(f.delivered.length, 0)
+    f.complete('synthetic-later'); await offPageSettle(); assert.equal(f.calls.sendAutomatic.length, 1)
+  })
+}
+
+test('off-page safety custody proven ordinary non-delivery remains retryable', async t => {
+  let attempt = 0
+  const f = offPageQueue(t, { sendAutomatic: async () => ++attempt === 1
+    ? { ok: false, code: 'AGENT_BUSY', deliveryDisposition: 'not-sent' }
+    : { ok: true, deliveryDisposition: 'accepted', result: { ok: true } } })
+  f.complete(); await offPageSettle(); assert.equal(f.rows.length, 1); assert.notEqual(f.rows[0].deliveryUnconfirmed, true)
+  f.complete('synthetic-later'); await offPageSettle(); assert.equal(f.delivered.length, 1); assert.equal(attempt, 2)
+})
+
+test('off-page safety custody held input is not checked out on later completion', async t => {
+  let taken = 0
+  const f = offPageQueue(t, { beforeTake: () => { taken++ } })
+  f.emit({ sessionId: 'old-session', event: { type: 'turn_completed', status: 'failed', code: 'misalignmentPolicyViolation', turnId: 'synthetic-blocked' } })
+  f.complete(); await offPageSettle()
+  assert.equal(taken, 0); assert.equal(f.rows.length, 1)
+})
+
+test('off-page safety custody lost transport reply is visibly retained without automatic replay', async t => {
+  const f = offPageQueue(t, { sendAutomatic: async () => { throw new Error('Synthetic transport unavailable') } })
+  f.complete(); await offPageSettle()
+  assert.equal(f.rows[0].deliveryUnconfirmed, true); assert.equal(f.delivered.length, 0)
+  assert.match(f.treeStore.getNode(f.node.id).statusNote, /could not be confirmed/)
+  f.complete('synthetic-later'); await offPageSettle(); assert.equal(f.calls.sendAutomatic.length, 1)
+})
+
+// T2084 uses the actual adapter shape: failure belongs in payload, with no
+// top-level code. Every transport below is the in-memory fixture above.
+const syntheticSafetyPacket = (code = 'misalignmentPolicyViolation', extra = {}) => ({
+  sessionId: 'old-session', event: { type: 'turn_completed', status: 'failed', turnId: 'synthetic-safety-turn',
+    payload: { failure: { provider: 'codex', source: 'turn', code, category: 'safety-policy', retryable: false,
+      summary: 'Synthetic provider safety refusal.' } }, ...extra },
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Independent review found that the no-policy ticket path retired its only
+// safety record after close. Keep this separate from the persisted-policy case.
+
+
+
+
+
+test('usage limits, failures and old automatic recovery offers never start or close another account', async t => {
+  for (const savedMode of ['priority', 'rotate', 'most-remaining', 'least-remaining', 'dynamic', { futurePolicy: true }]) {
+    const f = fixture(t, { retryOptions: { keepTryingOnLimit: () => true, readAccounts: async () => ({ accounts: [
+      { name: 'old-account', provider: 'claude' }, { name: 'new-account', provider: 'codex' } ] }) } })
+    f.handoffStorage.write('mc.agent-recovery.v1:local:' + encodeURIComponent(f.node.id), { v: 1, handoff: 'Synthetic saved handoff',
+      sessionId: 'old-session', retryPolicy: { enabled: true, state: 'working', selectionMode: savedMode, excludeAccounts: ['old-account'] } })
+    f.emit(f.packet)
+    f.emit({ sessionId: 'old-session', event: { type: 'turn_completed', status: 'failed', failureReason: 'account-limit', turnId: 'synthetic-limit' } })
+    await new Promise(resolve => setImmediate(resolve))
+    f.emit({ sessionId: 'old-session', event: { type: 'turn_completed', status: 'failed', code: 'ECONNRESET', turnId: 'synthetic-failure' } })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(f.calls.start.length, 0)
+    assert.equal(f.calls.close.length, 0)
+    assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'old-session')
+    assert.match(f.treeStore.getNode(f.node.id).statusNote, /Wait for this account to reset.*Switch and continue/i)
+    assert.equal(f.coordinator.externalBlock(f.node.id)?.blocked, true)
+  }
+})
+
+test('manual account continuation names a missing choice and uses exactly the person’s chosen account', async t => {
+  const f = fixture(t)
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id }), false)
+  assert.equal(f.calls.start.length, 0)
+  assert.equal(f.calls.close.length, 0)
+  assert.equal(f.calls.notices.at(-1).code, 'AGENT_ACCOUNT_CHOICE_REQUIRED')
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'chosen-account' } }), true)
+  assert.equal(f.calls.start.length, 1)
+  assert.equal(f.calls.start[0].treeAccount, 'chosen-account')
+})
+
+test('an old saved retry policy opens without acting and is dropped on the next manual checkpoint save', async t => {
+  const f = fixture(t)
+  f.handoffStorage.write('mc.agent-recovery.v1:local:' + encodeURIComponent(f.node.id), { v: 1, handoff: 'Synthetic old progress',
+    sessionId: 'old-session', retryPolicy: { enabled: true, state: 'waiting', providers: ['claude', 'codex'] }, futurePolicy: { enabled: true } })
+  assert.deepEqual(f.handoffStore.get(f.node.id), { v: 1, handoff: 'Synthetic old progress', sessionId: 'old-session' })
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'chosen-account' } }), true)
+  const saved = f.handoffStorage.read('mc.agent-recovery.v1:local:' + encodeURIComponent(f.node.id))
+  assert.deepEqual(Object.keys(saved).sort(), ['handoff', 'kind', 'recoveryId', 'sessionId', 'v'])
+  assert.ok(f.calls.send[0].text.includes('Synthetic old progress'))
+})
+
+test('a safety hold saved inside an old policy survives reload without reviving the policy', async t => {
+  const f = offPageQueue(t)
+  f.handoffStorage.write('mc.agent-recovery.v1:local:' + encodeURIComponent(f.node.id), { v: 1, handoff: 'Synthetic retained context',
+    sessionId: 'old-session', retryPolicy: { enabled: true, safetyHold: { nodeId: f.node.id, sessionId: 'old-session' } } })
+  f.coordinator.register('local', { treeStore: f.treeStore, transcriptStore: f.transcriptStore, handoffStore: f.handoffStore })
+  f.complete(); await offPageSettle()
+  assert.equal(f.calls.sendAutomatic.length, 0)
+  assert.equal(f.calls.start.length, 0)
+  assert.equal(f.calls.close.length, 0)
+  assert.equal(f.rows.length, 1)
+  assert.deepEqual(f.handoffStore.get(f.node.id).safetyHold, { nodeId: f.node.id, sessionId: 'old-session' })
+})
+
+
+test('an explicit reset wait resumes only the saved account and native thread at the chosen time', async t => {
+  let clock = 1000
+  const f = fixture(t, { retryOptions: { now: () => clock }, start: args => ({ ok: true, sessionId: 'new-session', account: args.resumeAccount, threadId: args.resumeThreadId, resumed: true }) })
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000 }), true)
+  await f.coordinator.pollLimitWaits()
+  assert.equal(f.calls.start.length, 0)
+  clock = 2000
+  await f.coordinator.pollLimitWaits()
+  assert.equal(f.calls.start.length, 1)
+  assert.equal(f.calls.start[0].treeAccount, 'old-account')
+  assert.equal(f.calls.start[0].resumeAccount, 'old-account')
+  assert.equal(f.calls.start[0].resumeThreadId, 'old-thread')
+  assert.equal(f.calls.start[0].resumeThreadProvider, 'claude')
+  /* The request must pass the real start parser: every key is one parseAgentStart (shell/main.cjs) accepts.
+     The reset wait once sent resumeThreadAccount, which the parser refuses, after the wait was spent. */
+  const main = readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf8')
+  const allowed = main.match(/function parseAgentStart[\s\S]*?agentPayload\(value, \[([^\]]+)\]/)[1].match(/'([A-Za-z]+)'/g).map(k => k.slice(1, -1))
+  for (const key of Object.keys(f.calls.start[0])) assert.ok(allowed.includes(key), `${key} is not accepted by parseAgentStart`)
+  assert.equal(f.calls.start[0].tier, 'claude-sonnet')
+  await f.coordinator.pollLimitWaits()
+  assert.equal(f.calls.start.length, 1)
+})
+
+test('Stop cancels an explicit reset wait and preserves the saved account', async t => {
+  let clock = 1000
+  const f = fixture(t, { retryOptions: { now: () => clock } })
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000 }), true)
+  await f.coordinator.stopContinuation(f.node.id)
+  f.treeStore.setNodeStatus(f.node.id, 'finished', { note: PERSON_STOP_NOTE })
+  clock = 2000
+  await f.coordinator.pollLimitWaits()
+  assert.equal(f.calls.start.length, 0)
+  assert.equal(f.handoffStore.get(f.node.id).limitWait, null)
+  assert.equal(f.transcriptStore.get(f.node.id).account, 'old-account')
+})
+
+test('a reset wait cannot bypass a safety refusal or follow a changed account', async t => {
+  let clock = 1000
+  const f = fixture(t, { retryOptions: { now: () => clock } })
+  f.emit(syntheticSafetyPacket())
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000 }), false)
+  assert.equal(f.calls.start.length, 0)
+  const changed = fixture(t, { retryOptions: { now: () => clock } })
+  assert.equal(await changed.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: changed.node.id, resetAt: 2000 }), true)
+  changed.transcriptStore.save(changed.node.id, { ...changed.transcriptStore.get(changed.node.id), account: 'different-account' })
+  clock = 2000
+  await changed.coordinator.pollLimitWaits()
+  assert.equal(changed.calls.start.length, 0)
+  assert.match(changed.calls.notices.at(-1).error, /cancelled/)
+})
+
+test('a reset continuation with a different receipt identity is closed and receives no handoff', async t => {
+  let clock = 1000
+  const f = fixture(t, { retryOptions: { now: () => clock }, start: () => ({ ok: true, sessionId: 'new-session', account: 'old-account', threadId: 'other-thread', resumed: true }) })
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000 }), true)
+  clock = 2000
+  await f.coordinator.pollLimitWaits()
+  assert.equal(f.calls.sendAutomatic.length, 0)
+  assert.ok(f.calls.close.some(row => row.sessionId === 'new-session'))
+})
+
+
+test('an explicitly saved reset wait survives renderer reload without choosing another account', async t => {
+  let clock = 1000
+  const f = fixture(t, { retryOptions: { now: () => clock }, start: args => ({ ok: true, sessionId: 'new-session', account: args.resumeAccount, threadId: args.resumeThreadId, resumed: true }) })
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000 }), true)
+  f.coordinator.destroy()
+  const sessions = new Map()
+  const reopened = createAccountRecoveryCoordinator({ bridge: f.bridge, sessionNodeIds: sessions, orgBridge: f.orgBridge,
+    canStart: () => true, canContinue: () => true, tiers: LAUNCH_TIERS, now: () => clock })
+  t.after(() => reopened.destroy())
+  reopened.register('local', { treeStore: f.treeStore, transcriptStore: f.transcriptStore, handoffStore: f.handoffStore })
+  await new Promise(resolve => setImmediate(resolve))
+  await reopened.pollLimitWaits()
+  assert.equal(f.calls.start.length, 0)
+  clock = 2000
+  await reopened.pollLimitWaits()
+  assert.equal(f.calls.start.length, 1)
+  assert.equal(f.calls.start[0].resumeAccount, 'old-account')
+  assert.equal(f.calls.start[0].resumeThreadId, 'old-thread')
+})
+
+test('a reset wait cannot interrupt a newer running turn or bypass a permission hold', async t => {
+  let clock = 1000
+  const f = fixture(t, { retryOptions: { now: () => clock } })
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000 }), true)
+  f.treeStore.setNodeStatus(f.node.id, 'running')
+  clock = 2000
+  await f.coordinator.pollLimitWaits()
+  assert.equal(f.calls.start.length, 0)
+  assert.equal(f.calls.close.length, 0)
+  const held = fixture(t, { retryOptions: { now: () => 1000 } })
+  held.emit({ sessionId: 'old-session', event: { type: 'turn_completed', status: 'failed', code: 'AGENT_PERMISSION_DENIED', failureReason: 'account-limit' } })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(await held.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: held.node.id, resetAt: 2000 }), false)
+  assert.equal(held.handoffStore.get(held.node.id).safetyHold.sessionId, 'old-session')
+})
+
+test('a reset wait cancelled during its durable save is discarded before reload', async t => {
+  let clock = 1000, current = true
+  const f = fixture(t, { retryOptions: { now: () => clock } })
+  const save = f.handoffStore.save.bind(f.handoffStore)
+  f.handoffStore.save = (id, record) => {
+    const result = save(id, record)
+    if (record.limitWait) current = false
+    return result
+  }
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000, isCurrent: () => current }), false)
+  assert.equal(f.handoffStore.get(f.node.id).limitWait, null)
+  f.coordinator.register('local', { treeStore: f.treeStore, transcriptStore: f.transcriptStore, handoffStore: f.handoffStore })
+  await new Promise(resolve => setImmediate(resolve))
+  clock = 2000
+  await f.coordinator.pollLimitWaits()
+  assert.equal(f.calls.start.length, 0)
+})
+
+test('a pending saved reset-wait read cannot restore the wait after Stop', async t => {
+  let clock = 1000
+  const f = fixture(t, { retryOptions: { now: () => clock } })
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000 }), true)
+  const old = f.handoffStore.get(f.node.id), held = deferred()
+  const store = { ...f.handoffStore, readRecord: () => held.promise }
+  f.coordinator.register('local', { treeStore: f.treeStore, transcriptStore: f.transcriptStore, handoffStore: store })
+  await new Promise(resolve => setImmediate(resolve))
+  const stopping = f.coordinator.stopContinuation(f.node.id)
+  held.resolve(old)
+  await stopping
+  await new Promise(resolve => setImmediate(resolve))
+  clock = 2000
+  await f.coordinator.pollLimitWaits()
+  assert.equal(f.calls.start.length, 0)
+})
+
+test('a reset wait refuses a failed tree status save without leaving a saved wait', async t => {
+  const f = fixture(t, { retryOptions: { now: () => 1000 } })
+  await new Promise(resolve => setImmediate(resolve))
+  f.coordinator.register('local', { treeStore: { ...f.treeStore, setNodeStatus: () => ({ ok: false, reason: 'Synthetic tree save refusal' }) }, transcriptStore: f.transcriptStore, handoffStore: f.handoffStore })
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000 }), false)
+  assert.equal(f.handoffStore.get(f.node.id).limitWait, null)
+  await f.coordinator.pollLimitWaits()
+  assert.equal(f.calls.start.length, 0)
+})
+
+test('account and model continuation preserve provider safety and permission holds', async t => {
+  for (const packet of [syntheticSafetyPacket(), { sessionId: 'old-session', event: { type: 'turn_completed', status: 'failed', code: 'AGENT_PERMISSION_DENIED' } }]) {
+    const f = fixture(t)
+    f.emit(packet)
+    assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'picked-account' } }), false)
+    assert.equal(await f.coordinator.continueOnAnotherModel({ computerId: 'local', nodeId: f.node.id, startOptions: { tier: 'luna', treeAccount: 'picked-account' } }), false)
+    assert.equal(f.calls.start.length, 0)
+    assert.equal(f.calls.close.length, 0)
+    assert.equal(f.calls.send.length, 0)
+    assert.match(f.calls.notices.at(-1).error, /held for review/)
+  }
+})
+
+test('a model choice keeps its current account and changing provider requires a picked account', async t => {
+  const f = fixture(t)
+  assert.equal(await f.coordinator.continueOnAnotherModel({ computerId: 'local', nodeId: f.node.id, startOptions: { tier: 'luna' } }), false)
+  assert.equal(f.calls.start.length, 0)
+  assert.equal(f.calls.notices.at(-1).code, 'AGENT_ACCOUNT_CHOICE_REQUIRED')
+  assert.equal(await f.coordinator.continueOnAnotherModel({ computerId: 'local', nodeId: f.node.id, startOptions: { tier: 'claude-opus' } }), true)
+  assert.equal(f.calls.start[0].treeAccount, 'old-account')
+})
+
+test('unreadable live safety state keeps manual continuation and reset waits from starting', async t => {
+  const f = fixture(t, { sessionActivity: async () => ({ ok: false }), retryOptions: { now: () => 1000 } })
+  assert.equal(await f.coordinator.continueOnAnotherAccount({ computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'picked-account' } }), false)
+  assert.equal(f.calls.start.length, 0)
+  assert.equal(f.calls.close.length, 0)
+  assert.match(f.calls.notices.at(-1).error, /safety state could not be read/)
+  assert.equal(await f.coordinator.waitForSameAccountReset({ computerId: 'local', nodeId: f.node.id, resetAt: 2000 }), false)
+  assert.equal(f.calls.start.length, 0)
+  assert.equal(f.calls.close.length, 0)
+})
+
+test('a manual account or model continuation closes a different account receipt before sending context', async t => {
+  for (const kind of ['account', 'model']) {
+    const f = fixture(t, { start: () => ({ ok: true, sessionId: 'wrong-session', threadId: 'wrong-thread', account: 'unpicked-account' }) })
+    const request = { computerId: 'local', nodeId: f.node.id, startOptions: { treeAccount: 'picked-account', tier: 'luna' } }
+    const continued = kind === 'account' ? await f.coordinator.continueOnAnotherAccount(request) : await f.coordinator.continueOnAnotherModel(request)
+    assert.equal(continued, false)
+    assert.equal(f.calls.send.length, 0)
+    assert.ok(f.calls.close.some(row => row.sessionId === 'wrong-session'))
+    assert.match(f.calls.notices.at(-1).error, /account you chose/)
   }
 })

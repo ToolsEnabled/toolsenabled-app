@@ -16,12 +16,12 @@
 
    It used to load the page and wait for `.owner-popup-item` to appear on its
    own. That could never happen and had nothing to do with the product being
-   broken: the modal was REPLACED with a screen -- instead of a pop-up, the
-   purchase list is a screen the user visits in their own time to approve
-   whatever is queued -- so
+   broken: the owner REPLACED the modal with a screen -- "instead of a popup
+   maybe the purchase list is just a screen and the user navigates to that
+   screen on their own time and approves whatevers in que" -- so
    src/owner-popup.js deliberately no longer self-mounts, index.html carries no
    popup root, and tools/test/approvals-screen.test.mjs FAILS if either is
-   restored. The harness was waiting for an interruption that had been removed
+   restored. The harness was waiting for an interruption the owner had removed
    on purpose, timing out after 8.9s, and reporting the product red.
 
    So it now drives #/ledger, which is where the owner actually approves
@@ -36,7 +36,7 @@
 
    The absence case is asserted FIRST and explicitly: before navigating, there
    must be NO dialog anywhere on the page. A queue that mounts itself over
-   whatever the person is doing is the exact design that was rejected, and "no popup
+   whatever the owner is doing is the exact design he rejected, and "no popup
    appeared" has to be a measured pass here rather than the silence it was.
 
    WHY --theme IS NOW OPTIONAL, AND WHAT REPLACED IT.

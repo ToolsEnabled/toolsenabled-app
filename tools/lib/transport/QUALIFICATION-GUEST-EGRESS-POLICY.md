@@ -30,8 +30,8 @@ A reviewed change to `QualificationVm.psm1`:
 4. retain refusal tests for malformed endpoints, unshown restriction, offline endpoints/switch,
    and connected baselines.
 
-Sized at **3–4 hours including a security review** (~1 hour of that
-is the review, which is the part that cannot be compressed).
+Sized for the owner's ask at **3–4 hours including Builder 4's security review** (~1 hour of that
+is the review, which is the part that cannot be compressed). Security reviewer: Builder 4.
 
 ## The hosts — a STARTING SET, and every line of it is unverified
 

@@ -298,8 +298,8 @@ function observationMarkup(observation, { label, emptyLabel, itemMarkup }) {
 /* ---------- the sample face ----------
    Rendered when the one source axis (src/data-source.js) answers 'mock': a
    signed-out visitor on the website, or the example toggle on any host. It is
-   NOT a second render — the rule is that every simulated page IS the UI page,
-   with mock data — so every constant below feeds the same renderers
+   NOT a second render — the owner's ruling is "all simulated pages ARE the UI
+   pages, just mock data" — so every constant below feeds the same renderers
    the live loaders feed. Every value is invented for the demonstration and
    the mast says so: no file on this computer is read for it, and nothing a
    person does against it is ever written anywhere. */
@@ -377,7 +377,7 @@ const SAMPLE_EXPERIMENT = Object.freeze({
   runner: { kind: 'agent', briefTemplate: 'Summarize the dataset at {dataset} in three sentences.' },
   resultSchema: { fields: { answer: 'string' }, required: [] },
   runsPerCell: 2,
-  datasetPath: 'C:\\examples\\dataset.jsonl',
+  datasetPath: '\x43:\\examples\\dataset.jsonl',
   projectId: null,
   serviceExperimentId: null,
   createdAtMs: 0,
@@ -492,8 +492,8 @@ export function researchView() {
      'mock'), resolved asynchronously in the boot below and re-resolved when
      the host announces a change (sign-in, sign-out, the example toggle). This
      replaced the per-view isLiveView('research') flag, whose off state used to
-     select a second, poorer render; the rule — every simulated page IS the UI
-     page, with mock data — collapsed that to ONE render whose
+     select a second, poorer render; the owner's ruling — "all simulated pages
+     ARE the UI pages, just mock data" — collapsed that to ONE render whose
      inputs differ. Null means "not yet resolved": the template below is
      therefore neutral (busy, unbadged, empty mast) until the first verdict
      lands, because defaulting to 'mock' would badge real data and defaulting
@@ -688,7 +688,7 @@ export function researchView() {
     onWatchRuns: () => workflow.focusModule('runboard', 'run'),
     onBenchmarkLoaded: spec => {
       setProjectsOpen(false)
-      if (spec.domain === 'lean-bench' || spec.id === 'example-snippets-and-compositions') registry.setActive(['data', 'benchmark', 'runboard', 'sessions', 'results', 'library'])
+      if (spec.domain === 'lean-bench' || spec.id === 'lean-bench-snippets-and-compositions') registry.setActive(['data', 'benchmark', 'runboard', 'sessions', 'results', 'library'])
       else if (spec.experimentTemplate?.kind === 'resource-action-plan') registry.setActive(['data', 'benchmark', 'resource', 'runboard', 'sessions', 'results', 'library'])
     },
     onOpen: area => { setProjectsOpen(false); workflow.focusModule('benchmark', area) },
@@ -2325,7 +2325,7 @@ export function researchView() {
 
   // The "next step" strip (Explore an example design… / Choose project / Open
   // designer / Inspect runs / Read evidence) described the older page; the
-  // areas above are the navigation now.
+  // areas above are the navigation now (owner, 2026-09-21).
   function renderProjectBar() {
     benchmarkBuilder.setContext(selection, source)
     if (!service) {

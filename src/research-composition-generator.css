@@ -29,7 +29,7 @@
 .cg-actions p { margin: 0; }
 .composition-generator .bench-primary { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; }
 .composition-generator .bench-primary:disabled { background: transparent; color: var(--ink-3); border-color: var(--line-2); opacity: 1; }
-.composition-generator button.cg-small { min-height: 0; padding: 3px 9px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+.composition-generator button.cg-small { min-height: 32px; padding: 3px 9px; font-size: 13.5px; font-weight: 550; line-height: 1.4; }
 
 /* 1. The selector tree: a checkbox beside a disclosure at every level. */
 .cg-tree { border-top: 1px solid var(--line-2); }
@@ -63,14 +63,14 @@
 .cg-metrics .cg-order { white-space: nowrap; }
 .cg-metrics .cg-order button { margin-right: 4px; }
 .cg-metrics tr.cg-missing td { color: var(--ink-3); }
-.cg-metrics tr.cg-missing .cg-order { font-size: 12px; letter-spacing: var(--track-caps); text-transform: uppercase; }
+.cg-metrics tr.cg-missing .cg-order { font-size: 12.5px; letter-spacing: 0; text-transform: none; }
 .composition-generator .cg-missing-note { margin: 10px 0 0; color: var(--ink); font-size: 14px; }
 .cg-index { display: inline-block; min-width: 18px; margin-right: 8px; color: var(--ink-3); font-family: var(--font-mono); font-size: 12.5px; }
 .composition-generator .cg-combos { margin: 12px 0 2px; font-size: 15px; font-variant-numeric: tabular-nums; }
 .composition-generator .cg-combos b { font-size: 18px; font-weight: 650; }
 .composition-generator .cg-families { margin: 2px 0; color: var(--ink-2); font-size: 13.5px; font-variant-numeric: tabular-nums; }
 .cg-metrics-small { max-width: none; font-size: 13.5px; }
-.cg-metrics-small caption { padding: 0 0 6px; text-align: left; color: var(--ink-3); font-size: 12.5px; font-weight: 600; letter-spacing: var(--track-caps); text-transform: uppercase; }
+.cg-metrics-small caption { padding: 0 0 6px; text-align: left; color: var(--ink-2); font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; }
 
 /* 3. Handcraft: one select per part, a name, add. */
 .cg-hand-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 18px; margin: 8px 0 6px; }
@@ -79,7 +79,7 @@
 .composition-generator label.cg-hand-name > input { min-height: 0; width: 200px; min-width: 0; padding: 5px 8px; font-size: 14px; }
 .cg-hand-includes { display: flex; flex-wrap: wrap; gap: 4px 22px; margin: 0 0 6px; }
 .composition-generator .cg-hand-includes label.cg-snippet { padding: 2px 0; font-size: 13.5px; }
-.cg-tag { display: inline-block; margin-left: 8px; padding: 0 5px; border: 1px solid var(--line-2); border-radius: 2px; color: var(--ink-3); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .02em; vertical-align: 1px; }
+.cg-tag { display: inline-block; margin-left: 8px; padding: 0 5px; border: 1px solid var(--line-2); border-radius: 4px; color: var(--ink-3); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .02em; vertical-align: 1px; }
 
 /* 4. Generate: compact fields. */
 .composition-generator label.cg-field { gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }

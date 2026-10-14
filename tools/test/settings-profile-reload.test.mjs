@@ -27,23 +27,40 @@ const bridge = { bootstrap: { ok: true, state: 'configured', configured: true, p
 }
 globalThis.mcFleetProfile = bridge
 
-const classList = () => ({
-  add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false,
-})
+const classList = () => {
+  const classes = new Set()
+  return {
+    add: (...names) => names.forEach(name => classes.add(name)),
+    remove: (...names) => names.forEach(name => classes.delete(name)),
+    toggle(name, force = !classes.has(name)) { if (force) classes.add(name); else classes.delete(name); return force },
+    contains: name => classes.has(name),
+  }
+}
 
 function node() {
+  const attributes = new Map(), styles = new Map()
   return {
-    dataset: {}, value: '', checked: false, textContent: '', hidden: false,
-    children: [], appendChild(child) { this.children.push(child); return child },
+    dataset: {}, value: '', checked: false, hidden: false, parentNode: null,
+    children: [],
+    set textContent(value) { this.replaceChildren(); this.text = String(value) },
+    get textContent() { return this.children.length ? this.children.map(child => child.textContent).join('') : this.text || '' },
+    replaceChildren(...children) {
+      for (const child of this.children) child.parentNode = null
+      this.children = []; this.text = ''
+      for (const child of children) this.appendChild(child)
+    },
+    appendChild(child) { child.remove?.(); child.parentNode = this; this.children.push(child); return child },
+    remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(child => child !== this); this.parentNode = null },
     classList: classList(),
-    style: { setProperty: () => {}, getPropertyValue: () => '' },
+    style: { setProperty: (name, value) => styles.set(name, String(value)), getPropertyValue: name => styles.get(name) || '', removeProperty: name => styles.delete(name) },
     handlers: new Map(),
     addEventListener(type, handler) {
       const group = this.handlers.get(type) || new Set(); group.add(handler); this.handlers.set(type, group)
     },
     removeEventListener(type, handler) { this.handlers.get(type)?.delete(handler) },
-    setAttribute: () => {}, removeAttribute: () => {}, toggleAttribute: () => {},
-    getAttribute: () => null, querySelector: () => node(), querySelectorAll: () => [],
+    setAttribute: (name, value) => attributes.set(name, String(value)), removeAttribute: name => attributes.delete(name),
+    toggleAttribute(name, force = !attributes.has(name)) { if (force) attributes.set(name, ''); else attributes.delete(name); return force },
+    getAttribute: name => attributes.get(name) ?? null, querySelector: () => node(), querySelectorAll: () => [],
     closest: () => null, contains: () => true,
     getBoundingClientRect: () => ({ top: 0 }), getClientRects: () => [{ top: 0 }], scrollIntoView: () => {}, focus: () => {},
   }
@@ -98,12 +115,18 @@ globalThis.document = {
       }
       return expertDialog
     }
-    return {
+    if (tag === 'template') return {
       set innerHTML(value) { this.markup = String(value) },
       content: { firstElementChild: root },
     }
+    const element = node()
+    element.tagName = tag.toUpperCase()
+    return element
   },
-  documentElement: node(), body: { ...node(), appendChild: () => {} }, getElementById: () => null, querySelector: () => node(), querySelectorAll: () => [],
+  documentElement: node(), body: node(), getElementById: () => null,
+  querySelector: selector => selector === '[data-fleet-profile-notice]'
+    ? document.body.children.find(child => child.dataset.fleetProfileNotice) || null : node(),
+  querySelectorAll: () => [],
 }
 globalThis.localStorage = {
   getItem: key => stored.get(key) ?? null,
@@ -137,6 +160,7 @@ globalThis.cancelAnimationFrame = () => {}
 const { setBridgeTransport } = await import('../../src/mission-bridge.js')
 setBridgeTransport(async () => ({ ok: false, reason: 'No host in this fixture' }))
 const { settingsView } = await import('../../src/views/settings.js')
+const initialRuntimeNotice = document.querySelector('[data-fleet-profile-notice]')
 const fire = async (element, type, event = {}) => {
   for (const handler of element.handlers.get(type) || []) await handler(event)
 }
@@ -551,3 +575,72 @@ async function maintenanceSaveScenario({ phase = 'research', settled = false } =
 test('audit maintenance owns status and reload admission after an earlier Save enters readback', () => maintenanceSaveScenario())
 test('complete-profile readback respects a pending audit maintenance operation', () => maintenanceSaveScenario({ phase: 'working-profile' }))
 test('refused inert maintenance still retires an earlier Save readback', () => maintenanceSaveScenario({ settled: true }))
+
+test('the configured Settings page retains an actionable ordinary profile notice', async () => {
+  const { FLEET_PROFILE_RESOLUTION } = await import('../../src/fleet-profile.js')
+  const notice = initialRuntimeNotice
+  assert.equal(notice, document.querySelector('[data-fleet-profile-notice]'))
+  assert.equal(notice.getAttribute('role'), 'status')
+  const link = notice.children.find(child => child.tagName === 'A')
+  assert.equal(link.href, '#/settings')
+  assert.equal(link.textContent, `Fleet connections are configured; ${FLEET_PROFILE_RESOLUTION.inheritedSampleSections.length} content sections still use the labelled sample demonstration. Open Settings →`)
+  const close = notice.children.find(child => child.tagName === 'BUTTON')
+  assert.equal(close.getAttribute('aria-label'), 'Close example notice')
+  const saved = structuredClone(durable), preferences = new Map(stored)
+  await fire(close, 'click')
+  assert.equal(document.querySelector('[data-fleet-profile-notice]'), null)
+  assert.deepEqual(durable, saved)
+  assert.deepEqual(stored, preferences, 'closing disclosure does not write a preference or profile')
+})
+
+async function noticeContext(bootstrap, example, name, check) {
+  const originalBootstrap = bridge.bootstrap, preferences = new Map(stored)
+  try {
+    bridge.bootstrap = bootstrap
+    stored.clear()
+    if (example) stored.set('mc.example', 'on')
+    document.documentElement.setAttribute('data-phone-canvas', 'on')
+    const module = await import(`../../src/fleet-profile.js?profile-reload-notice=${name}`)
+    await check(module)
+  } finally {
+    document.querySelector('[data-fleet-profile-notice]')?.remove()
+    document.documentElement.removeAttribute('data-phone-canvas')
+    bridge.bootstrap = originalBootstrap
+    stored.clear(); for (const [key, value] of preferences) stored.set(key, value)
+  }
+}
+
+test('the page DOM models example close, remount and preference synchronization without duplicate notices', () =>
+  noticeContext({ ok: true, configured: false, state: 'absent' }, true, 'example', async module => {
+    assert.equal(module.FLEET_PROFILE_RESOLUTION.kind, 'unconfigured')
+    const notice = document.querySelector('[data-fleet-profile-notice]')
+    assert.equal(notice.getAttribute('role'), 'status')
+    assert.equal(notice.children.find(child => child.tagName === 'A').href, '#/settings')
+    assert.equal(notice.children.find(child => child.tagName === 'A').textContent,
+      'Every screen is showing the built-in example rather than your own records. Open Settings →')
+    module.syncPhoneExampleNotice()
+    assert.equal(document.querySelector('[data-fleet-profile-notice]'), notice)
+    assert.equal(document.body.children.filter(child => child.dataset.fleetProfileNotice).length, 1)
+    await fire(notice.children.find(child => child.tagName === 'BUTTON'), 'click')
+    assert.equal(document.querySelector('[data-fleet-profile-notice]'), null)
+    assert.equal(stored.get('mc.example'), 'on')
+    module.syncPhoneExampleNotice()
+    assert.ok(document.querySelector('[data-fleet-profile-notice]'), 'a later example visit can disclose again')
+    stored.delete('mc.example'); module.syncPhoneExampleNotice()
+    assert.equal(document.querySelector('[data-fleet-profile-notice]'), null)
+  }))
+
+test('a refused bootstrap remains an actionable nondismissible alert in the actual page DOM', () =>
+  noticeContext({ ok: false, error: { message: 'Owned inert bootstrap refusal' } }, false, 'refused', async module => {
+    assert.equal(module.FLEET_PROFILE_RESOLUTION.kind, 'invalid')
+    assert.ok(module.FLEET_PROFILE_RESOLUTION.errors.some(error => /Owned inert bootstrap refusal/.test(error.message)))
+    const notice = document.querySelector('[data-fleet-profile-notice]')
+    assert.equal(notice.getAttribute('role'), 'alert')
+    assert.equal(notice.classList.contains('is-serious'), true)
+    assert.equal(notice.children.find(child => child.tagName === 'A').href, '#/settings')
+    assert.match(notice.textContent, /Fleet profile was not loaded:.*Owned inert bootstrap refusal.*sample demonstration is active/)
+    assert.equal(notice.children.some(child => child.tagName === 'BUTTON'), false, 'profile faults cannot be dismissed')
+    stored.set('mc.example', 'on'); module.syncPhoneExampleNotice()
+    stored.delete('mc.example'); module.syncPhoneExampleNotice()
+    assert.equal(document.querySelector('[data-fleet-profile-notice]'), notice, 'example changes cannot hide a profile refusal')
+  }))

@@ -1,7 +1,7 @@
-/* T303: Halt/Send now do nothing.
- * A ground-truth measurement narrowed it: the TREE chat works
+/* T303 (Controller, owner-confirmed, 2026-09-17): Halt/Send now do nothing.
+ * Worker 82's ground-truth measurement narrowed it: the TREE chat works
  * (Halt stopped a turn in ~2s); the failure is the STANDALONE (+) chat,
- * which had NO stop control at all on a stale build. This file
+ * which had NO stop control at all on the owner's stale build. This file
  * checks the CURRENT tip through the REAL entry point a person actually
  * opens -- src/tree-standalone-agent.js's `mountStandaloneAgent`, not
  * `mountAgentSessionSurface` called bare (which never receives the

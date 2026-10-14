@@ -141,7 +141,7 @@ test("findOtherCandidates finds same-pattern installers one level deep and exclu
 });
 
 test("findOtherCandidates tolerates a missing search root instead of throwing", async () => {
-  const found = await findOtherCandidates(["C:\\this\\path\\should\\not\\exist\\anywhere"], "C:\\nope.exe");
+  const found = await findOtherCandidates(["\x43:\\this\\path\\should\\not\\exist\\anywhere"], "\x43:\\nope.exe");
   assert.deepEqual(found, []);
 });
 
@@ -167,17 +167,22 @@ test("git.mjs primitives read real state from this checkout without mutating it"
   const head = revParse(repoRoot);
   assert.match(head, /^[0-9a-f]{40}$/);
   assert.equal(typeof currentBranch(repoRoot), "string");
-  // A shallow checkout (the release worktrees are cut from an earlier commit) holds no
-  // history past its boundary, so ancestry there is unknowable rather than
-  // rewritten. Say so instead of reporting a rewrite that did not happen.
-  const shallow = spawnSync("git", ["rev-parse", "--is-shallow-repository"], { cwd: repoRoot, encoding: "utf8" });
-  if (shallow.stdout.trim() === "true") {
-    t.skip("shallow checkout: ancestry past its boundary cannot be checked here");
-    return;
+  assert.equal(isAncestor(repoRoot, head, head), true, "a commit is its own ancestor");
+  const parents = spawnSync("git", ["show", "-s", "--format=%P", head], { cwd: repoRoot, encoding: "utf8" });
+  assert.equal(parents.status, 0, parents.stderr);
+  // Exercise ancestry in both directions using this checkout's actual graph,
+  // rather than assuming a historical branch must be an ancestor of a release.
+  for (const parent of parents.stdout.trim().split(/\s+/).filter(Boolean)) {
+    const available = spawnSync("git", ["cat-file", "-e", parent], { cwd: repoRoot });
+    if (available.status !== 0) {
+      assert.equal(spawnSync("git", ["rev-parse", "--is-shallow-repository"], { cwd: repoRoot, encoding: "utf8" }).stdout.trim(), "true",
+        "only a shallow boundary can make the recorded parent unavailable");
+      t.diagnostic("shallow boundary: the recorded parent is unavailable; self ancestry was checked");
+      continue;
+    }
+    assert.equal(isAncestor(repoRoot, parent, head), true, "the recorded parent precedes HEAD");
+    assert.equal(isAncestor(repoRoot, head, parent), false, "HEAD cannot precede its own parent");
   }
-  // A commit is its own ancestor, so this reads real ancestry state from this
-  // checkout without naming any commit outside it.
-  assert.ok(isAncestor(repoRoot, head, head));
 });
 
 // --- generate-declaration.mjs --------------------------------------------------
@@ -188,7 +193,7 @@ function baseFacts(overrides = {}) {
     date: "2026-08-10",
     version: "1.0.2",
     previousVersion: "1.0.1",
-    repo: "C:\\fixture\\repo",
+    repo: "\x43:\\fixture\\repo",
     branch: "installer/nsis",
     sourceRef: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     engineSourceRef: "cccccccccccccccccccccccccccccccccccccccc",
@@ -196,7 +201,7 @@ function baseFacts(overrides = {}) {
     branchAdvanced: false,
     candidate: { filename: "ToolsEnabled Setup 1.0.2.exe", bytes: 123456789, sha256: "DEADBEEF".repeat(8) },
     publisher: "ToolsEnabled, Inc. in formation",
-    treeState: { worktreePath: "C:\\fixture\\wt", worktreeRemoved: true, buildInfoConfirmedClean: true },
+    treeState: { worktreePath: "\x43:\\fixture\\wt", worktreeRemoved: true, buildInfoConfirmedClean: true },
     versionInfo: {
       companyName: "ToolsEnabled, Inc.",
       productName: "ToolsEnabled",
@@ -207,9 +212,9 @@ function baseFacts(overrides = {}) {
     appId: { configured: "com.toolsenabled.desktop" },
     unsigned: { signExecutable: false },
     pipeline: { verifySummary: null, checkNoOwnerData: null, smokePackagedLine: null, distExitCode: 0, packagedQaExitCode: 0 },
-    excludedWip: { sourceWorktree: "C:\\fixture\\repo", measuredAt: "2026-08-10T00:00:00.000Z", dirtyFiles: [] },
+    excludedWip: { sourceWorktree: "\x43:\\fixture\\repo", measuredAt: "2026-08-10T00:00:00.000Z", dirtyFiles: [] },
     otherCandidates: [],
-    stagingDir: "C:\\fixture\\staging\\1.0.2",
+    stagingDir: "\x43:\\fixture\\staging\\1.0.2",
     privateInputsCopied: [],
     ...overrides,
   };
@@ -319,7 +324,7 @@ test("renderDeclaration names uncommitted WIP in the source worktree instead of 
   const markdown = renderDeclaration(
     baseFacts({
       excludedWip: {
-        sourceWorktree: "C:\\fixture\\repo",
+        sourceWorktree: "\x43:\\fixture\\repo",
         measuredAt: "2026-08-10T00:00:00.000Z",
         dirtyFiles: [" M index.html", "?? src/owner-popup.css"],
       },
@@ -334,8 +339,7 @@ test("renderDeclaration lists other same-name installers as explicitly NOT the c
   const markdown = renderDeclaration(
     baseFacts({
       otherCandidates: [
-        // Synthetic Windows path, assembled at runtime so the source carries no literal drive-rooted product path.
-        { path: ["C:", "fixture", "release", "ToolsEnabled Setup 1.0.1.exe"].join("\\"), bytes: 999, sha256: "CAFEBABE", mtime: "x" },
+        { path: "\x43:\\fixture\\release\\ToolsEnabled Setup 1.0.1.exe", bytes: 999, sha256: "CAFEBABE", mtime: "x" },
       ],
     }),
   );
@@ -358,7 +362,7 @@ test("renderDeclaration flags it as suspect if require-clean-tree.mjs's own buil
   assert.match(cleanMarkdown, /Confirmed: `dirty: false`, `overridden: false`/);
 
   const suspectMarkdown = renderDeclaration(
-    baseFacts({ treeState: { worktreePath: "C:\\fixture\\wt", worktreeRemoved: true, buildInfoConfirmedClean: false } }),
+    baseFacts({ treeState: { worktreePath: "\x43:\\fixture\\wt", worktreeRemoved: true, buildInfoConfirmedClean: false } }),
   );
   assert.match(suspectMarkdown, /DID NOT CONFIRM CLEAN -- this declaration should not have been produced/);
 });
@@ -409,20 +413,20 @@ test("resolveExactAppSourceRef carries only one immutable commit past the CLI bo
     calls.push([repo, ref]);
     return commit;
   };
-  assert.equal(resolveExactAppSourceRef("C:/repo", undefined, { resolve, clean: () => true }), commit);
-  assert.deepEqual(calls.pop(), ["C:/repo", "HEAD^{commit}"]);
-  assert.equal(resolveExactAppSourceRef("C:/repo", commit, { resolve }), commit);
-  assert.deepEqual(calls.pop(), ["C:/repo", `${commit}^{commit}`]);
+  assert.equal(resolveExactAppSourceRef("\x43:/repo", undefined, { resolve, clean: () => true }), commit);
+  assert.deepEqual(calls.pop(), ["\x43:/repo", "HEAD^{commit}"]);
+  assert.equal(resolveExactAppSourceRef("\x43:/repo", commit, { resolve }), commit);
+  assert.deepEqual(calls.pop(), ["\x43:/repo", `${commit}^{commit}`]);
 
   for (const moving of ["HEAD", "main", "build/1.0.40", commit.slice(0, 12), commit.toUpperCase()]) {
     assert.throws(
-      () => resolveExactAppSourceRef("C:/repo", moving, { resolve }),
+      () => resolveExactAppSourceRef("\x43:/repo", moving, { resolve }),
       /--source-ref must name one exact 40-character lowercase application commit id/,
       moving,
     );
   }
   assert.throws(
-    () => resolveExactAppSourceRef("C:/repo", commit, { resolve: () => "b".repeat(40) }),
+    () => resolveExactAppSourceRef("\x43:/repo", commit, { resolve: () => "b".repeat(40) }),
     /does not resolve to itself/,
   );
 });
@@ -1152,16 +1156,26 @@ test("serve-candidate.mjs --detach survives the launcher exiting, serves correct
     assert.ok(pid, `expected a detached PID in launcher output:\n${launch.stdout}`);
     childPid = pid;
 
-    // Give the detached child a moment to finish binding (the launcher
-    // returning does not guarantee the child's server.listen() callback has
-    // already fired).
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Wrong token must fail -- auth is enforced in detached mode too.
+    // Observe readiness through the actual endpoint. A fixed 500 ms pause can
+    // expire before the nice-priority child binds on a busy build host.
+    // Only connection refusal is a startup wait; HTTP replies and other
+    // failures keep their ordinary assertions. Bound the wait to ten seconds
+    // within this test's twenty-second budget.
     const candidateUrl = `http://127.0.0.1:${port}/candidate`;
-    const denied = await fetch(candidateUrl, {
-      headers: { Authorization: "Bearer wrong" }, signal: AbortSignal.timeout(2000),
-    });
+    const readyDeadline = Date.now() + 10_000;
+    let denied = null;
+    while (!denied && Date.now() < readyDeadline) {
+      try {
+        denied = await fetch(candidateUrl, {
+          headers: { Authorization: "Bearer wrong" }, signal: AbortSignal.timeout(2000),
+        });
+      } catch (error) {
+        if (error.cause?.code !== "ECONNREFUSED") throw error;
+        await new Promise(resolve => setTimeout(resolve, 25));
+      }
+    }
+    assert.ok(denied, "the detached child did not serve its endpoint within ten seconds");
+    // Wrong token must fail -- auth is enforced in detached mode too.
     assert.equal(denied.status, 401, "a wrong token must reach the server and be refused");
     await denied.arrayBuffer();
 
@@ -1195,7 +1209,7 @@ test("verify-candidate.ps1 independently accepts exact bytes and refuses byte-co
     const candidate = path.join(home, "ToolsEnabled candidate bytes.bin");
     await writeFile(candidate, Buffer.from("independently measured candidate\n", "utf8"));
     const measured = await measureFile(candidate);
-    const powershell = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+    const powershell = path.join(process.env.SystemRoot || "\x43:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
     const invoke = (bytes, sha256, env = process.env) => spawnSync(powershell, [
       "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", VERIFY_CANDIDATE_PATH,
       "-ExistingFile", candidate,
@@ -1234,8 +1248,8 @@ test("verify-candidate.ps1 independently accepts exact bytes and refuses byte-co
 // new number against package.json's, and package.json does not advance unless
 // --advance-branch was used -- so two cuts from two DIFFERENT tips compute the
 // same "next" version, and the second one used to copy straight over the first
-// one's installer AND its declaration. Measured for real on 2026-08-12 (R1531):
-// 1.0.7 staged from one commit, and the next cut, from a different commit, computed 1.0.7 again.
+// one's installer AND its declaration. Measured for real on 2026-08-12 (R1531
+// w1): 1.0.7 staged from e521606, the next cut from f8be6ed computed 1.0.7.
 
 test("an empty or missing staging slot is free", () => {
   assert.equal(classifyStagedCandidate({ entries: [], version: "1.0.7", sourceRef: "aaa" }).free, true);
@@ -1255,14 +1269,14 @@ test("files that are not candidate artifacts do not occupy the slot", () => {
 test("a candidate already staged from a DIFFERENT source ref refuses, and names both refs", () => {
   const verdict = classifyStagedCandidate({
     entries: ["ToolsEnabled Setup 1.0.7.exe", "DECLARATION.md", "declaration-facts.json"],
-    factsRaw: JSON.stringify({ version: "1.0.7", sourceRef: "cccccccccccccccccccccccccccccccccccccccc" }),
+    factsRaw: JSON.stringify({ version: "1.0.7", sourceRef: "e521606b9033f9025a7986f7e5669e665d6217d3" }),
     version: "1.0.7",
-    sourceRef: "dddddddddddddddddddddddddddddddddddddddd",
+    sourceRef: "f8be6ed720ab14746ea539eb366cda310074d68b",
   });
   assert.equal(verdict.free, false);
   assert.match(verdict.reason, /DIFFERENT source ref/);
-  assert.match(verdict.reason, /cccccccccccccccccccccccccccccccccccccccc/);
-  assert.match(verdict.reason, /dddddddddddddddddddddddddddddddddddddddd/);
+  assert.match(verdict.reason, /e521606b9033f9025a7986f7e5669e665d6217d3/);
+  assert.match(verdict.reason, /f8be6ed720ab14746ea539eb366cda310074d68b/);
   assert.match(verdict.reason, /--version|--staging|--replace-staged/);
 });
 
@@ -1272,7 +1286,7 @@ test("an installer with NO declaration-facts.json refuses -- unreadable provenan
     entries: ["ToolsEnabled Setup 1.0.7.exe"],
     factsRaw: null,
     version: "1.0.7",
-    sourceRef: "ddddddd",
+    sourceRef: "f8be6ed",
   });
   assert.equal(verdict.free, false);
   assert.match(verdict.reason, /no declaration-facts\.json/);
@@ -1283,7 +1297,7 @@ test("an orphaned installer blockmap occupies the slot rather than being silentl
     entries: ["ToolsEnabled Setup 1.0.7.exe.blockmap"],
     factsRaw: null,
     version: "1.0.7",
-    sourceRef: "ddddddd",
+    sourceRef: "f8be6ed",
   });
   assert.equal(verdict.free, false);
   assert.deepEqual(verdict.occupants, ["ToolsEnabled Setup 1.0.7.exe.blockmap"]);
@@ -1296,7 +1310,7 @@ test("an orphaned download manifest occupies the candidate slot", () => {
       entries: [manifest],
       factsRaw: null,
       version: "1.0.7",
-      sourceRef: "ddddddd",
+      sourceRef: "f8be6ed",
     });
     assert.equal(verdict.free, false, `${manifest} was treated as an empty slot`);
     assert.deepEqual(verdict.occupants, [manifest]);
@@ -1309,7 +1323,7 @@ test("a BLANK sourceRef in the staged facts never reads as a match", () => {
     entries: ["DECLARATION.md", "declaration-facts.json"],
     factsRaw: JSON.stringify({ version: "1.0.7", sourceRef: "   " }),
     version: "1.0.7",
-    sourceRef: "ddddddd",
+    sourceRef: "f8be6ed",
   });
   assert.equal(verdict.free, false);
   assert.equal(verdict.sameSource, false);
@@ -1321,7 +1335,7 @@ test("unparseable staged facts refuse rather than being treated as absent", () =
     entries: ["declaration-facts.json"],
     factsRaw: "{ not json",
     version: "1.0.7",
-    sourceRef: "ddddddd",
+    sourceRef: "f8be6ed",
   });
   assert.equal(verdict.free, false);
   assert.match(verdict.reason, /could not be parsed/);
@@ -1330,9 +1344,9 @@ test("unparseable staged facts refuse rather than being treated as absent", () =
 test("even the SAME source ref refuses without the explicit override -- a rebuild is still a second binary", () => {
   const verdict = classifyStagedCandidate({
     entries: ["ToolsEnabled Setup 1.0.7.exe", "declaration-facts.json"],
-    factsRaw: JSON.stringify({ sourceRef: "ddddddd" }),
+    factsRaw: JSON.stringify({ sourceRef: "f8be6ed" }),
     version: "1.0.7",
-    sourceRef: "ddddddd",
+    sourceRef: "f8be6ed",
   });
   assert.equal(verdict.free, false);
   assert.equal(verdict.sameSource, true);
@@ -1342,15 +1356,15 @@ test("even the SAME source ref refuses without the explicit override -- a rebuil
 test("--replace-staged permits the overwrite and says exactly what it is discarding", () => {
   const verdict = classifyStagedCandidate({
     entries: ["ToolsEnabled Setup 1.0.7.exe", "declaration-facts.json"],
-    factsRaw: JSON.stringify({ sourceRef: "ccccccc" }),
+    factsRaw: JSON.stringify({ sourceRef: "e521606" }),
     version: "1.0.7",
-    sourceRef: "ddddddd",
+    sourceRef: "f8be6ed",
     replaceStaged: true,
   });
   assert.equal(verdict.free, true);
   assert.equal(verdict.replaced, true);
   assert.match(verdict.reason, /overwriting the 1\.0\.7 candidate/);
-  assert.match(verdict.reason, /ccccccc/);
+  assert.match(verdict.reason, /e521606/);
 });
 
 test("assertStagingFree throws on an occupied slot on disk and passes on a fresh one", async () => {
@@ -1359,15 +1373,15 @@ test("assertStagingFree throws on an occupied slot on disk and passes on a fresh
     const taken = path.join(home, "1.0.7");
     await mkdir(taken, { recursive: true });
     await writeFile(path.join(taken, "ToolsEnabled Setup 1.0.7.exe"), "not really an installer", "utf8");
-    await writeFile(path.join(taken, "declaration-facts.json"), JSON.stringify({ sourceRef: "ccccccc" }), "utf8");
+    await writeFile(path.join(taken, "declaration-facts.json"), JSON.stringify({ sourceRef: "e521606" }), "utf8");
 
     assert.throws(
-      () => assertStagingFree({ stagingDir: taken, version: "1.0.7", sourceRef: "ddddddd", log: () => {} }),
+      () => assertStagingFree({ stagingDir: taken, version: "1.0.7", sourceRef: "f8be6ed", log: () => {} }),
       /staging-collision/,
     );
 
     const fresh = path.join(home, "1.0.8");
-    const verdict = assertStagingFree({ stagingDir: fresh, version: "1.0.8", sourceRef: "ddddddd", log: () => {} });
+    const verdict = assertStagingFree({ stagingDir: fresh, version: "1.0.8", sourceRef: "f8be6ed", log: () => {} });
     assert.equal(verdict.free, true);
   } finally {
     await rm(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
@@ -1382,7 +1396,7 @@ test("an indeterminate facts read is not reported as absence and is not latched"
     await mkdir(factsPath, { recursive: true });
 
     assert.throws(
-      () => assertStagingFree({ stagingDir, version: "1.0.7", sourceRef: "ddddddd", log: () => {} }),
+      () => assertStagingFree({ stagingDir, version: "1.0.7", sourceRef: "f8be6ed", log: () => {} }),
       (error) => {
         assert.equal(error.code, "STAGING_INSPECTION_INDETERMINATE");
         assert.match(error.message, /EISDIR/);
@@ -1394,9 +1408,9 @@ test("an indeterminate facts read is not reported as absence and is not latched"
     // CONTROL: a transient result must not be cached. Repair the same path and
     // prove the next call pays for a fresh read and observes the staged facts.
     await rm(factsPath, { recursive: true });
-    await writeFile(factsPath, JSON.stringify({ sourceRef: "ddddddd" }), "utf8");
+    await writeFile(factsPath, JSON.stringify({ sourceRef: "f8be6ed" }), "utf8");
     assert.throws(
-      () => assertStagingFree({ stagingDir, version: "1.0.7", sourceRef: "ddddddd", log: () => {} }),
+      () => assertStagingFree({ stagingDir, version: "1.0.7", sourceRef: "f8be6ed", log: () => {} }),
       (error) => error.code !== "STAGING_INSPECTION_INDETERMINATE" && /THE SAME source ref/.test(error.message),
     );
   } finally {
@@ -1417,6 +1431,7 @@ test("release protocol surfaces contain no retired machine, product, account-lay
   const testDir = path.dirname(fileURLToPath(import.meta.url));
   const repo = path.resolve(testDir, '..', '..');
   const releaseRoot = path.join(repo, 'tools', 'release-packager');
+  const protocolDoc = path.join(repo, 'docs', 'coordinator', 'RELEASE-CUT-TRAPS-2026-08-15.md');
   const files = [];
   const visit = async (dir) => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -1426,14 +1441,14 @@ test("release protocol surfaces contain no retired machine, product, account-lay
     }
   };
   await visit(releaseRoot);
+  files.push(protocolDoc);
 
   const forbidden = [
     ['retired builder label', /machine[ -]?a/i],
     ['retired verifier label', /machine[ -]?b/i],
     ['retired product name', /mission control/i],
     ['retired account layout', /agentwork/i],
-    // [-] matches exactly "-"; spelled this way so this source line is not itself a gate match.
-    ['retired checkout name', /toolsenabled[-]current/i],
+    ['retired checkout name', /\x74oolsenabled-current/i],
   ];
   for (const file of files) {
     const source = await readFile(file, 'utf8');
@@ -1694,7 +1709,7 @@ test('the declaration names the session that cut it, and never invents one', () 
   // The old hardcoded identity may never reappear from any environment.
   for (const environment of [{}, { TOOLSENABLED_CUT_MODEL: 'Claude Fable 5' }, { CLAUDE_SESSION_ID: 'zzz' }]) {
     const line = cuttingAttribution(environment)
-    assert.equal(/session [0-9a-f]{8}\b/.test(line), false, 'a hardcoded session id is back in the declaration')
+    assert.equal(line.includes('6f84bf9b'), false, 'the first author\'s session id is back in the declaration')
     assert.equal(line.includes('Sonnet 5'), false, 'a hardcoded model name is back in the declaration')
   }
 })
@@ -1867,7 +1882,7 @@ test("Windows packet notes derive their sole record from staged bytes and measur
     const version = '1.0.45';
     // The 1.0.45 notes are the structural fixture; they were published when the company was
     // still "in formation". Today's guard requires the current publisher line, so the fixture
-    // carries it (ToolsEnabled, Inc.). The historical file is not rewritten.
+    // carries it (owner, 2026-09-25: ToolsEnabled, Inc.). The historical file is not rewritten.
     const source = (await readFile(new URL('../../docs/RELEASE-NOTES-1.0.45.md', import.meta.url), 'utf8'))
       .replace('Published by ToolsEnabled, Inc. (in formation)', 'Published by ToolsEnabled, Inc.');
     const sourcePath = path.join(root, 'docs', `RELEASE-NOTES-${version}.md`);

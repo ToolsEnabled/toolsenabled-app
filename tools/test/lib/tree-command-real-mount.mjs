@@ -1,7 +1,7 @@
 /* SHARED REAL-SOURCE MOUNT for computersView + runTreeNodeCommand.
  *
  * Extracted and generalized from tools/test/tree-node-command-projection-
- * bound.test.mjs, which itself extracted its own harness from an earlier app commit's
+ * bound.test.mjs, which itself extracted its own harness from app 4d3cfab9's
  * suite. Every suite that used to slice src/views/computers.js's source text
  * to assert a structural invariant about runTreeNodeCommand can import this
  * instead and drive the SAME guarantee through a real mount: a DOM stand-in,

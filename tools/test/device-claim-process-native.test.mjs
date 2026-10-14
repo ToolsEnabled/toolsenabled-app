@@ -65,6 +65,32 @@ test('native claim waits for an escaped helper family to be reaped', { skip: !su
     { quiescent: true, started: true, exitedNormally: true, exitCode: 0 })
 })
 
+test('native polling carries the token through the lifetime owner without argv disclosure', {
+  skip: supported ? false : 'native claim containment requires Linux or Windows', timeout: 45000,
+}, async t => {
+  const { claim } = fixture(t, `
+    const crypto = require('node:crypto');
+    const args = process.argv.slice(2);
+    const digest = token => crypto.createHash('sha256').update(token).digest('hex');
+    if (args[0] === 'open') {
+      const token = crypto.randomBytes(32).toString('base64url');
+      console.log(JSON.stringify({code:digest(token), pollToken:token}));
+    } else if (args[0] === 'poll') {
+      const name = args[args.indexOf('--token-env') + 1];
+      const token = process.env[name];
+      if (!token || args.some(arg => arg.includes(token))) process.exitCode = 2;
+      else console.log(JSON.stringify({state:'connected', deviceId:digest(token)}));
+    }
+  `)
+  const opened = await claim.begin({ name: 'Disposable' })
+  assert.equal(opened.ok, true)
+  const polled = await claim.poll()
+  assert.equal(polled.ok, true, 'the containment owner must preserve the private environment handoff')
+  assert.equal(polled.state, 'connected')
+  assert.equal(polled.device.deviceId, opened.code, 'the polling child received the token minted by open')
+  assert.equal(polled.childQuiescent, true)
+})
+
 test('native nonzero exit cannot report a successful account connection', { skip: !supported, timeout: 45000 }, async t => {
   const { claim, owners } = fixture(t, 'console.log(JSON.stringify({connected:true})); process.exitCode=17;')
   assert.equal((await claim.status()).code, claimModule.CODES.UNREADABLE)

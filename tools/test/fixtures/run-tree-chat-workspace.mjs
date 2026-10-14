@@ -9,10 +9,6 @@ import { createServer } from 'vite'
 const root = fileURLToPath(new URL('../../../', import.meta.url))
 const out = process.env.TREE_CHAT_EVIDENCE || mkdtempSync(path.join(tmpdir(), 'tree-chat-workspace-'))
 const baseline = process.argv.includes('--baseline')
-// The baseline is a commit from the history that preceded this change; name it
-// with TREE_CHAT_BASELINE_REF in a checkout that has it.
-const baselineRef = process.env.TREE_CHAT_BASELINE_REF || '0000000'
-if (baseline) execFileSync('git', ['cat-file', '-e', `${baselineRef}^{commit}`], { cwd: root })
 const sourceState = () => ['rev-parse HEAD', 'status --porcelain=v1', 'diff --binary HEAD'].map(command =>
   execFileSync('git', command.split(' '), { cwd: root, encoding: 'utf8' }))
 const sourceBefore = sourceState()
@@ -22,7 +18,7 @@ const server = await createServer({
   root, configFile: false, cacheDir: path.join(out, 'vite-cache'), logLevel: 'error',
   plugins: baseline ? [{ name: 'baseline-tree', enforce: 'pre', load(id) {
     for (const name of ['src/tree-graph.js', 'src/tree-layout.js', 'src/tree-graph.css']) {
-      if (id === path.join(root, name)) return execFileSync('git', ['show', `${baselineRef}:${name}`], { cwd: root, encoding: 'utf8' })
+      if (id === path.join(root, name)) return execFileSync('git', ['show', `142e0bc9:${name}`], { cwd: root, encoding: 'utf8' })
     }
   } }] : [],
   server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, fs: { allow: [root, realpathSync(path.join(root, 'node_modules'))] } },

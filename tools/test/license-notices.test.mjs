@@ -185,7 +185,7 @@ test('gate fails when the packaged root has no resources directory at all', () =
 });
 
 test('LICENSE is the standard MIT License', () => {
-  // Relicensed from AGPL-3.0-or-later to MIT on 2026-08-12.
+  // Relicensed from AGPL-3.0-or-later to MIT on 2026-08-12 by owner directive.
   //
   // The body is hashed WITHOUT the copyright line, because MIT embeds that line
   // -- and therefore the year -- inside the grant. Pinning the whole file would

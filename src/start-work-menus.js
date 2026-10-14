@@ -1,7 +1,7 @@
 /* PROVIDER, THEN MODEL, IN THE RAIL'S START-WORK BOXES (1.0.48).
  *
- * Owner decision: every model a provider offers is selectable, chosen as
- * provider first, then model.
+ * Owner: "users need to be able to select all the models from the providers.
+ * it should be provider, then model choice".
  *
  * The Launch, Team and Loop boxes -- the tree agent's own
  * (views/computers.js nativeBoundedWorkBox) and the dispatch boxes a lane

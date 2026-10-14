@@ -1,13 +1,13 @@
 /* THE PHONE LEDGER — THE TREE AS ROWS A THUMB CAN READ, ON TOP OF THE
    PHONE CANVAS'S OWN LOCK.
  *
- * Chosen across three design rounds (2026-08-27): on mobile, drop-down rows
- * instead of a tree — the graph's circles
+ * The owner chose this across three design rounds (2026-08-27): "I like the
+ * dropdown functions instead of a tree for mobile" — the graph's circles
  * become an indented ledger, kinship carried by indentation, a fold control
  * and a repeated lineage label, and pressing a row raises the same details
- * sheet the phone canvas already owns, chat tab first. The standing rule from
- * the canvas applies unchanged: mobile development must not change the main
- * app or the normal site, and the isomorphism rule with it — the ledger
+ * sheet the phone canvas already owns, chat tab first. His standing rule from
+ * the canvas applies unchanged: "we cannot let mobile development change the
+ * main app or the normal site", and his isomorphism rule with it — the ledger
  * may not know a fact the graph does not know, so it reads the SAME agent
  * records the graph reads and never builds a phone-only shape.
  *
@@ -17,9 +17,9 @@
  * only when its own stored choice says 'on'. Nothing in the shipped product
  * writes that choice except the one entry door: /app/?ledger=1, the link the
  * mobile page carries. 'auto' is therefore OFF — a phone that arrives at the
- * canonical page keeps the canonical locked graph, which is the scope rule:
- * canonical ToolsEnabled stays up, and choosing mobile follows the link to
- * the mobile app.
+ * canonical page keeps the canonical locked graph, which is the owner's
+ * scope ruling verbatim: "leave canonical toolsenabled up ... and then when
+ * they click mobile ... the link to the mobile app".
  *
  * WHAT IS REUSED RATHER THAN REBUILT. The rows are the view's own
  * treeAgentRecord shapes; the runtime digits come from the same
@@ -141,8 +141,8 @@ export function adoptLedgerEntryFlag(win = globalThis.window) {
 export const PHONE_LEDGER_EVENT = 'mc:phone-ledger-changed'
 
 /**
- * THE DOOR THAT WAS ONLY EVER OPEN ONE WAY (the pop-out settings
- * panel provides useful settings).
+ * THE DOOR THAT WAS ONLY EVER OPEN ONE WAY (owner, 2026-08-27: the pop-out
+ * settings panel "needs to provide useful settings").
  *
  * Until this existed the ONLY writer of the stored choice was
  * adoptLedgerEntryFlag — /app/?ledger=1, the mobile page's link. A phone that
@@ -340,8 +340,8 @@ export function ledgerEntries({ rows = [], points = [] } = {}) {
   return entries
 }
 
-/* THE SIGN-IN DOOR ITSELF (the house mark, one sentence, sign in, nothing
- * else). Built from the app's own idioms, not the reference mocks — see the
+/* THE SIGN-IN DOOR ITSELF (owner: "house mark, one sentence, sign in, nothing
+ * else"). Built from the app's own idioms, not the reference mocks — see the
  * fleet correction on this lane: the restyle-toward-the-mock pass is dead,
  * functionality only, and this door's dress is the shipped Dense tokens like
  * every other surface in this file.

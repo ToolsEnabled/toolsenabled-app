@@ -331,7 +331,7 @@ test('a reconstructed environment cannot remove the real process shared-session 
 
 test('actual shell quit registration joins both screen and research cleanup in either completion order', async () => {
   const source = readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf8')
-  // MEASURED 2026-09-17 at an earlier app commit: the anchor used to be the literal
+  // MEASURED 2026-09-17 at app 5c7798a3: the anchor used to be the literal
   // "app.on('before-quit', require('./screen-control-quit.cjs')". T180 hoisted
   // the guard to `const screenControlQuitGuard` and registered a handler that
   // writes a durable exit record before delegating, so indexOf returned -1 and

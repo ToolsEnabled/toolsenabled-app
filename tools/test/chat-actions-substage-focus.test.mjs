@@ -4,7 +4,7 @@ import { installDomStandIn } from './lib/dom-stand-in.mjs'
 
 // OPENING A SUB-STAGE MUST NOT CLOSE THE ACTIONS POPUP.
 //
-// Measured 2026-09-16 on the cut-2 tip (an earlier app commit) through the real window
+// Measured 2026-09-16 on the cut-2 tip (app 85dc71a8) through the real window
 // over CDP, mouse and keyboard alike: pressing "Switch model" or "How hard it
 // thinks" closed the Actions popup instead of opening its choices. The cause is
 // in renderPopStage: a sub-stage hides the filter and clears the rows, so the

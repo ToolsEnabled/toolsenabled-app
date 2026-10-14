@@ -1,7 +1,7 @@
 /* THE MAP FROM A NAME ON A CIRCLE TO AN AGENT THAT CAN BE DELIVERED TO.
  *
- * THE DEFECT: reaching the coordinator through agent comms did not work.
- * A child started
+ * THE DEFECT, in the owner's words: "This is just the issue with trying to have
+ * it reach coordinator through agent comms it didnt work." A child started
  * under a manager on the tree was told its manager's name, handed a messaging
  * tool, and refused every time.
  *
@@ -274,7 +274,7 @@ test('the local channel survives the permission level a normal install runs at',
      ALSO refused at every confined level until it was classified in
      confined-tool-surface.js -- unclassified is a refusal, which is that table
      working. Both facts are pinned because either one silently reverting puts
-     the owner back where they started. */
+     the owner back where he started. */
   const registry = payload('src/lib/tool-registry.js')
   const policy = payload('src/lib/permission-tier-policy.js')
   const entry = registry.registeredTools().find(tool => tool.name === LOCAL_MESSAGE_TOOL)

@@ -1,9 +1,10 @@
 /* THE SETUP PROFILE: few questions, many settings, nothing set where it cannot
  * be found again.
  *
- * The walkthrough works like twenty questions: even for a basic user, a few
- * steps give a very good sense of exactly what they want, and they end up on
- * the right settings profile or near it. Twenty questions works because each question eliminates a
+ * The owner asked for a walkthrough that works like twenty questions -- "even a
+ * basic user in relatively few steps we should have a very good sense of exactly
+ * what they want ... and we end up on exactly the right user settings profile or
+ * near it at least". Twenty questions works because each question eliminates a
  * large part of the space. The failure mode it rules out is a wall of forms that
  * enumerates every setting, so this module does the opposite: it defines a small
  * number of answers, and the DERIVATION from those answers to every individual
@@ -33,15 +34,9 @@
  *      labelled built-in example. It replaced seven per-view flags; the
  *      screens question maps to it directly.
  *
- * And four settings that other lanes are building the ENFORCEMENT for right now,
- * which this profile sets coherently so that their work lands on a value the user
- * actually chose rather than on a hardcoded constant: the approvals policy, what
- * attaching to an existing editor session means, whether editor sessions are
- * imported, and whether a second account is used automatically when the first is
- * exhausted. Those four are marked `enforced: false` in PROFILE_INTENT and the
- * surfaces that show them say so, in the same idiom src/setup-state.js uses for
- * the tier's own enforcement gap. Their DEFAULTS are the safe end of each axis,
- * so an intent nothing reads yet cannot do harm while it waits.
+ * PROFILE_INTENT records the approvals, editor attachment and editor import
+ * choices. Provider account selection stays explicit. Each row names the
+ * component that enforces it, or says when it is only a recorded preference.
  *
  * THE TIER IS A CEILING AND IS NEVER RAISED BY AN ANSWER. `deriveProfile` clamps
  * every output to what the recorded level permits and RECORDS THE CLAMP, so the
@@ -80,7 +75,7 @@ export const PROFILE_READ_UNAVAILABLE = 'PROFILE_READ_UNAVAILABLE'
  * recommendation moved to `assisted`, which acts only when a person presses a
  * control, while skip still applied `observe`.
  *
- * THEN PRODUCT RULE T782 made Basic the real default:
+ * THEN THE OWNER DIRECTED (2026-09-20, T782) that Basic is the real default:
  * a fresh copy is permissive and autonomous within its permission level and
  * account limits, and the things that hold it back -- detailed auditing,
  * history verification, resource limits, and a profile that acts only when
@@ -201,7 +196,7 @@ export const INTENT_RECORDED_ONLY = 'Recorded, not yet acted on.'
 export const INTENT_BANNER_TITLE = 'What these rows do today.'
 export const INTENT_BANNER_BODY = [
   'This program records all of them and keeps them.',
-  'Permission questions, editor imports, and account switching are applied when you save.',
+  'Permission questions and editor imports are applied when you save.',
   'The saved attachment choice is used when you open an included editor session below. Watch reads saved messages; supported copies are prepared on the tree. Takeover requires a verified editor handoff, which is unavailable today.',
   'Each is set to its cautious end unless you moved it.',
 ].join(' ')
@@ -249,67 +244,14 @@ export const PROFILE_INTENT = Object.freeze([
     }),
     desc: 'Whether newly discovered editor sessions are offered here or included automatically. Existing explicit import and removal choices are kept. This does not start, stop, or take over an editor session.',
   }),
-  Object.freeze({
-    id: 'failover',
-    name: 'If an account runs out',
-    lane: 'multi-account-build',
-    /* ENFORCED SINCE 2026-08-18, AND WHAT THAT WORD HAS TO MEAN HERE.
- *
- * This row shipped as `enforced: false` and was honest about it: the screen
- * said "recorded, not yet acted on" and nothing anywhere read the answer.
- * The owner's standing rule is that a setting is a row, a real enforcement
- * site, and a control a person can reach -- anything less is a lie told in
- * a settings list. Two of the three were already here. This is the third.
- *
- * WHERE IT IS ACTED ON, precisely, so this claim can be checked rather than
- * believed: the main process reads this answer and passes it to the payload
- * rotation module as its `mode`, and that module is what decides whether a
- * spent account may hand the session to the next one. `manual` refuses the
- * switch and reports which account is spent and which is ready; `auto`
- * performs it. Both directions are asserted in the payload's own
- * tests/multi-account-rotation.test.js.
- *
- * ONE ANSWER, ONE READER. The value is not copied into a second store on
- * its way there. A settings screen that shows one thing while a different
- * copy of the answer drives the behaviour is worse than an unenforced row,
- * because it looks true. */
-    enforced: true,
-    enforcedBy: 'the account switching in the assistant program',
-    order: Object.freeze(['manual', 'auto']),
-    labels: Object.freeze({
-      manual: 'Stop and let me switch',
-      auto: 'Switch to another account automatically',
-    }),
-    /* CORRECTED WHEN THE SIGN-IN STEP LANDED. This said "signing in never
-       happens on this screen and no account details are ever collected here",
-       which became ambiguous the moment setup grew an account step: if "here"
-       means this row it is arguably true, and if a reader takes it to mean the
-       walkthrough it is false. On a disclosure the ambiguity IS the defect,
-       because the reader resolves it and we do not get to say which way. The
-       half that is still true is the half that matters, and it is the one
-       SHIPMENT-PLAN B14 turns on. */
-    /* NARROWED A THIRD TIME, and the narrowing is the point. This said
-       "anywhere in this product", which is a promise about code no test of mine
-       can see: another lane adding a provider key field on some other screen
-       would falsify it silently, and I would never know. A claim is only worth
-       making if something can keep it true, so it is scoped to setup, which is
-       what the copy rules actually walk. The sentence lost nothing a reader
-       needed and gained a keeper. */
-    /* WHAT THE TWO ANSWERS DO (T1583). The sentence above was a disclosure
-       about the Account step, so the one row that decides whether agents move
-       between provider accounts explained nothing about that. The credential
-       sentence stays, reworded about the accounts this row is about: provider
-       sign-ins, which setup never collects. */
-    desc: 'What happens when a provider account reaches its limit. Stop and let me switch: the agent stops, and you pick the next account in the Accounts menu on Computers. Switch to another account automatically: the agent carries on with another signed-in account. Provider accounts are signed in inside their own programs; no Claude, ChatGPT or Google subscription, key, or password is asked for anywhere in setup.',
-  }),
 ])
 
 const INTENT_BY_ID = new Map(PROFILE_INTENT.map(field => [field.id, field]))
 
 const AUTONOMY_INTENT = Object.freeze({
-  observe: Object.freeze({ approvals: 'stop', attach: 'mirror', ideImport: 'none', failover: 'manual' }),
-  assisted: Object.freeze({ approvals: 'other-work', attach: 'fork', ideImport: 'ask', failover: 'manual' }),
-  autonomous: Object.freeze({ approvals: 'judgement', attach: 'fork', ideImport: 'all-detected', failover: 'auto' }),
+  observe: Object.freeze({ approvals: 'stop', attach: 'mirror', ideImport: 'none' }),
+  assisted: Object.freeze({ approvals: 'other-work', attach: 'fork', ideImport: 'ask' }),
+  autonomous: Object.freeze({ approvals: 'judgement', attach: 'fork', ideImport: 'all-detected' }),
 })
 
 /* ---------- the ceiling ---------- */
@@ -339,15 +281,15 @@ const AUTONOMY_INTENT = Object.freeze({
 export const TIER_CEILINGS = Object.freeze({
   guided: Object.freeze({
     writeFlags: Object.freeze(['report-read', 'agent-session']),
-    intent: Object.freeze({ approvals: 'stop', attach: 'mirror', ideImport: 'none', failover: 'manual' }),
+    intent: Object.freeze({ approvals: 'stop', attach: 'mirror', ideImport: 'none' }),
   }),
   standard: Object.freeze({
     writeFlags: Object.freeze(['report-read', 'agent-session', 'dispatch', 'cloud-launch', 'decision', 'queue', 'thread-reply']),
-    intent: Object.freeze({ approvals: 'judgement', attach: 'adopt', ideImport: 'ask', failover: 'auto' }),
+    intent: Object.freeze({ approvals: 'judgement', attach: 'adopt', ideImport: 'ask' }),
   }),
   unrestricted: Object.freeze({
     writeFlags: Object.freeze(['report-read', 'agent-session', 'dispatch', 'cloud-launch', 'decision', 'queue', 'thread-reply']),
-    intent: Object.freeze({ approvals: 'judgement', attach: 'adopt', ideImport: 'all-detected', failover: 'auto' }),
+    intent: Object.freeze({ approvals: 'judgement', attach: 'adopt', ideImport: 'all-detected' }),
   }),
 })
 
@@ -473,13 +415,13 @@ export function deriveProfile(answers, { tier, writeFlagIds = [] } = {}) {
   }
 }
 
-export function matchingAutonomy({ tier, writeFlags = {}, intent = {}, accountApplicable = true, preferred } = {}) {
+export function matchingAutonomy({ tier, writeFlags = {}, intent = {}, preferred } = {}) {
   // A recorded answer only breaks ties when the permission ceiling makes two
   // presets equivalent. It cannot make a changed policy retain a preset name.
   const matches = AUTONOMY_CHOICES.filter(choice => {
     const plan = deriveProfile(answersForAutonomy(choice.value), { tier, writeFlagIds: Object.keys(writeFlags) })
     return Object.entries(plan.writeFlags).every(([id, value]) => writeFlags[id] === value)
-      && PROFILE_INTENT.every(field => field.id === 'failover' && !accountApplicable || intent[field.id] === plan.intent[field.id])
+      && PROFILE_INTENT.every(field => intent[field.id] === plan.intent[field.id])
   }).map(choice => choice.value)
   return matches.includes(preferred) ? preferred : matches[0] || 'custom'
 }
@@ -568,15 +510,7 @@ export const PROFILE_STATUSES = Object.freeze(['in-progress', 'skipped', 'comple
  * passing the field through would have been silently dropped -- the same shape as
  * src/account-state.js readActionResult, which dropped `revoked` and let the
  * account screen claim every copied sign-in had been refused. */
-/* Same shape, same rule: only a stated UNAVAILABILITY is carried, so nothing
-   downstream has to tell "undo works" apart from "nobody said".
 
-   THE NAME IS GENERAL BECAUSE THERE ARE NOW THREE OF THESE, and the third was
-   the one that cost the most. `accountPolicyDeferred` below carries the
-   account-switching deferral, which has exactly this shape -- a stated reason or
-   nothing. Calling the helper `normalizeUndo` and reaching for it from the
-   account policy is how a reader ends up believing the two facts are the same
-   fact. */
 function normalizeStatedReason(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const reason = typeof value.reason === 'string' && value.reason.trim() ? value.reason.trim() : null;
@@ -632,24 +566,7 @@ export function readStoredProfile(scope = globalThis) {
        A person then finds out at the moment they reach for the undo, which is the
        worst moment there is. */
     undoUnavailable: normalizeStatedReason(parsed.undoUnavailable),
-    /* THE THIRD FACT, AND THE ONE THAT STOPPED FIRST RUN DEAD.
-       mcProviders.accountPolicy cannot record an account-switching choice before
-       the account list exists -- shell/account-registry.cjs setPolicy refuses
-       ACCOUNT_REGISTRY_ABSENT -- which is EVERY fresh installation.
-       src/setup-intent-commit.js correctly calls that a deferral rather than a
-       failure, because nothing the person asked for was lost. But the deferral
-       lived only in a local variable on the review, so Finish had two choices:
-       hold the person on the setup screen to show it, or navigate and throw it
-       away. It held them, on every first run (measured 2026-09-11 on the
-       packaged Linux candidate: Finish left hash=#/setup with an alert-styled
-       notice about a preference the wizard never asks). It matters that it is
-       not thrown away, because shell/account-registry.cjs DEFAULT_SELECTION_MODE
-       is 'priority' while the walkthrough's answer is 'manual' -- so the machine
-       that comes back from adding an account defaults to the OPPOSITE of the
-       recorded profile. Carried here, the fact outlives the screen: Finish
-       enters the application and the review states it again whenever the person
-       reopens the walkthrough. */
-    accountPolicyDeferred: normalizeStatedReason(parsed.accountPolicyDeferred),
+
   }
 }
 
@@ -662,7 +579,6 @@ export function writeStoredProfile(record, scope = globalThis) {
     updatedAtMs: Number.isFinite(record?.updatedAtMs) ? record.updatedAtMs : Date.now(),
     assistantConfig: normalizeAssistantConfig(record?.assistantConfig),
     undoUnavailable: normalizeStatedReason(record?.undoUnavailable),
-    accountPolicyDeferred: normalizeStatedReason(record?.accountPolicyDeferred),
   }
   try { scope?.localStorage?.setItem(PROFILE_STORAGE_KEY, JSON.stringify(payload)) } catch { return null }
   return payload

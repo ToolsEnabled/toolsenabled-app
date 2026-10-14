@@ -1,0 +1,16 @@
+.node-menu {
+  position: fixed; margin: 0; padding: 6px; border: 1px solid var(--line-2);
+  border-radius: 3px; background: var(--sheet); color: var(--ink);
+  width: min(340px, calc(100vw / var(--zoom, 1) - 8px)); max-height: calc(100vh / var(--zoom, 1) - 8px);
+  overflow-y: auto; font: 13px/1.45 var(--font-ui); z-index: 10000;
+  box-shadow: 0 8px 24px #0004;
+}
+.node-menu button { display: block; width: 100%; padding: 7px 9px; border: 0; border-radius: 4px; background: transparent; color: inherit; text-align: left; font: inherit; }
+.node-menu button:focus { outline: 2px solid var(--ink); outline-offset: -2px; }
+.node-menu button[aria-disabled="true"] { color: var(--ink-3); }
+.node-menu small { display: block; font-size: 11px; line-height: 1.4; }
+.node-menu-title, .node-menu-group { padding: 5px 9px; font-weight: 600; }
+.node-menu-group { border-top: 1px solid var(--line-2); }
+.node-menu-status { margin: 4px 9px; }
+.node-menu-status:empty { display: none; }
+@media (forced-colors: active) { .node-menu button:focus { outline: 2px solid Highlight; } }

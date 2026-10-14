@@ -2,8 +2,8 @@
  *
  * Codex 0.156 runs a model's script in its code-mode host. With more than
  * about 130 tool calls in flight in one script that host can stop dispatching
- * and never answer: no event, no timeout, no CPU (reproduced
- * offline). A controller circle sat in that state for hours and every
+ * and never answer: no event, no timeout, no CPU (lane mcp-hang, reproduced
+ * offline). Controller 1 sat in that state from 2026-09-24 02:32Z and every
  * surface showed it only as busy. Stop recovers it (turn/interrupt completes
  * the turn as interrupted in milliseconds).
  *

@@ -14,7 +14,7 @@
  * byproduct. Deleting a file that should not be distributed is the honest fix;
  * loosening the guard to stop it reporting would have been the
  * fix-that-satisfies-its-own-test trap, and the guard is the only thing
- * standing between us and shipping their home directory again.
+ * standing between us and shipping his home directory again.
  */
 import { realpathSync } from 'node:fs'
 import { readFile, rm, stat, writeFile } from 'node:fs/promises'

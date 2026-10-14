@@ -66,8 +66,8 @@ const MAX_DRAINED_ORIGINS = 32
 /* THE FLEET DOCUMENTS LIVE IN THEIR OWN FILE, AND THAT FILE IS WRITTEN OFF THE
  * MAIN THREAD.
  *
- * T369, measured on a development install: renderer-prefs.json had grown to
- * megabytes, most of it mc.fleet.chat-diffs.v1 and mc.fleet.trees.v1,
+ * T369, measured on the owner's installation 2026-09-18: renderer-prefs.json
+ * was 5.2 MB, 3.6 MB of it mc.fleet.chat-diffs.v1 and 1.5 MB mc.fleet.trees.v1,
  * and persist() below serialised, wrote, fsync'd and renamed the WHOLE record
  * synchronously on the main thread on every settings change while the renderer
  * waited on sendSync. main-lag.log recorded a 12,767 ms stall (mainThread
@@ -135,10 +135,10 @@ const RETRYABLE_READ_ERRORS = new Set(['EPERM', 'EACCES', 'EBUSY'])
  * Everything else in this file defends the record against being WRITTEN badly:
  * an unreadable file is set aside rather than flattened, a failed rename is
  * retried, a fleet document is never absent from every file at once. None of
- * that defends it against being EMPTIED correctly. A single clear() on a
- * development installation removed every tree, every agent node and every
- * renderer preference, and there was nothing on disk to go back to --
- * recovery was slow and the preferences were gone for good.
+ * that defends it against being EMPTIED correctly. On 2026-09-20 a single
+ * clear() on the owner's installation removed six trees, 82 agent nodes and
+ * every renderer preference, and there was nothing on disk to go back to --
+ * recovery took 45 minutes and the preferences are gone for good.
  *
  * So a bulk removal copies both files first, dated, newest MAX_ROLLING_BACKUPS
  * kept. Deliberately NOT the damaged path: quarantineDamaged() already
@@ -837,7 +837,7 @@ function createRendererPrefs({ directory, fs, path, randomUUID, pid = process.pi
      * serialisation it measures, so the skip is if anything conservative.
      *
      * WHY IT IS WORTH A BRANCH. Measured at this commit on a synthetic record
-     * shaped like the one the 1.0.42 limitations review found
+     * shaped like the one LIMITATIONS-AND-HANDOFF-1.0.42.md section 4.28 found
      * (whole 1,290,653 bytes, ordinary 1,000,616): one whole serialisation cost
      * 9.15 ms and the ordinary rebuild-and-serialise another 8.71 ms -- 49% of
      * the serialising a write does. persist() runs on EVERY settings change,

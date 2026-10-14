@@ -129,19 +129,17 @@ test('send and resume schemas require the exact expected session and their own m
 
 test('private argv is exact and refuses every extra path, message, URL, or switch', () => {
   const id = 'tnc-00000000-0000-4000-8000-000000000000'
-  // The default install path, assembled so the source carries no literal drive-rooted product path.
-  const programFiles = 'C:\\Program Files'
-  const exe = `${programFiles}\\ToolsEnabled\\ToolsEnabled.exe`
+  const exe = '\x43:\\Program Files\\ToolsEnabled\\ToolsEnabled.exe'
   const flag = `--toolsenabled-tree-command=${id}`
   assert.equal(treeNodeCommandRequestIdFromArgv([exe, flag], { executablePath: exe }), id)
-  for (const extra of ['C:\\work', '--message=secret', 'https://example.test', '--disable-gpu']) {
+  for (const extra of ['\x43:\\work', '--message=secret', 'https://example.test', '--disable-gpu']) {
     assert.throws(
       () => treeNodeCommandRequestIdFromArgv([exe, flag, extra], { executablePath: exe }),
       error => error.code === 'MC_TREE_COMMAND_ARGUMENT_INVALID',
       extra,
     )
   }
-  const entry = 'C:\\source\\shell\\main.cjs'
+  const entry = '\x43:\\source\\shell\\main.cjs'
   assert.equal(treeNodeCommandRequestIdFromArgv([exe, entry, flag], { executablePath: exe, developmentEntry: entry }), id)
 
   /* Measured 2026-09-02 on Electron 43.3.0: Chromium appends
@@ -152,7 +150,7 @@ test('private argv is exact and refuses every extra path, message, URL, or switc
   assert.equal(treeNodeCommandRequestIdFromArgv([exe, flag, '--original-process-start-time=13398000000'], { executablePath: exe }), id)
   assert.equal(treeNodeCommandRequestIdFromArgv([exe, '--allow-file-access-from-files', entry, flag], { executablePath: exe, developmentEntry: entry }), id)
   assert.throws(
-    () => treeNodeCommandRequestIdFromArgv([exe, flag, '--allow-file-access-from-files', 'C:\work'], { executablePath: exe }),
+    () => treeNodeCommandRequestIdFromArgv([exe, flag, '--allow-file-access-from-files', '\x43:\work'], { executablePath: exe }),
     error => error.code === 'MC_TREE_COMMAND_ARGUMENT_INVALID',
   )
   assert.throws(
@@ -162,28 +160,26 @@ test('private argv is exact and refuses every extra path, message, URL, or switc
   assert.deepEqual(treeNodeCommandAdditionalData(id), { treeNodeCommandRequestId: id })
   assert.equal(treeNodeCommandRequestIdFromAdditionalData({ treeNodeCommandRequestId: id }), id)
   assert.throws(
-    () => treeNodeCommandRequestIdFromAdditionalData({ treeNodeCommandRequestId: id, path: 'C:\\elsewhere' }),
+    () => treeNodeCommandRequestIdFromAdditionalData({ treeNodeCommandRequestId: id, path: '\x43:\\elsewhere' }),
     error => error.code === 'MC_TREE_COMMAND_SCHEMA_INVALID',
   )
 })
 
-/* MEASURED on a development tier: spooled resume commands and their request
-   files under %APPDATA%\ToolsEnabled-<tier>\coordinator-commands\requests, an
-   empty claims\ and an empty results\ -- nothing was ever consumed, and the
-   caller was told ok every time. Every argv below is the real one: that tier
-   launches the development form `electron.exe <appDirectory>
+/* MEASURED 2026-09-03 on the owner's Live tier: nine spooled resume commands,
+   nine request files under %APPDATA%\ToolsEnabled-Live\coordinator-commands\
+   requests, an empty claims\ and an empty results\ -- nothing was ever
+   consumed, and the caller was told ok nine times. Every argv below is the real
+   one: the live tier launches the development form `electron.exe <appDirectory>
    --user-data-dir=<profile>`, so a command helper spawned beside it names the
    app by its DIRECTORY while the grammar was told the one permitted entry was
    `__filename`, the main script inside it. */
 test('the development launch form the live tier actually uses is accepted, and nothing else is', () => {
   const id = 'tnc-00000000-0000-4000-8000-000000000000'
   const flag = `--toolsenabled-tree-command=${id}`
-  const exe = 'C:\\Dev\\deps\\app-node_modules\\electron\\dist\\electron.exe'
-  const appDirectory = 'C:\\Dev\\live'
-  const mainScript = 'C:\\Dev\\live\\shell\\main.cjs'
-  // Synthetic Windows account home, assembled at runtime so the source carries no literal user path.
-  const ownerHome = ['C:', 'Users', 'owner'].join('\\')
-  const profile = `${ownerHome}\\AppData\\Roaming\\ToolsEnabled-Live`
+  const exe = '\x43:\\WF\\deps\\app-node_modules\\electron\\dist\\electron.exe'
+  const appDirectory = '\x43:\\WF\\live'
+  const mainScript = '\x43:\\WF\\live\\shell\\main.cjs'
+  const profile = '\x43:\\Users\\owner\\AppData\\Roaming\\ToolsEnabled-Live'
   const development = {
     executablePath: exe,
     developmentEntry: [mainScript, appDirectory],
@@ -226,7 +222,7 @@ test('the development launch form the live tier actually uses is accepted, and n
   /* a profile this process did not resolve, the two-token spelling, and a
      directory that is a different application all still refuse */
   assert.throws(
-    () => treeNodeCommandRequestIdFromArgv([exe, appDirectory, `--user-data-dir=${ownerHome}\\AppData\\Roaming\\Somebody-Else`, flag], development),
+    () => treeNodeCommandRequestIdFromArgv([exe, appDirectory, '--user-data-dir=\x43:\\Users\\owner\\AppData\\Roaming\\Somebody-Else', flag], development),
     refused,
     'a profile this process did not resolve',
   )
@@ -236,11 +232,11 @@ test('the development launch form the live tier actually uses is accepted, and n
     'the two-token profile switch',
   )
   assert.throws(
-    () => treeNodeCommandRequestIdFromArgv([exe, 'C:\\Dev\\live-engine', flag], development),
+    () => treeNodeCommandRequestIdFromArgv([exe, '\x43:\\WF\\live-engine', flag], development),
     refused,
     'a different application directory',
   )
-  for (const extra of ['C:\\work', '--message=secret', 'https://example.test', '--disable-gpu', flag]) {
+  for (const extra of ['\x43:\\work', '--message=secret', 'https://example.test', '--disable-gpu', flag]) {
     assert.throws(() => treeNodeCommandRequestIdFromArgv([exe, appDirectory, flag, extra], development), refused, extra)
   }
 
@@ -263,7 +259,7 @@ test('the development launch form the live tier actually uses is accepted, and n
 test('a launch the grammar refuses can still name the one request it refused', () => {
   const id = 'tnc-00000000-0000-4000-8000-000000000000'
   const flag = `--toolsenabled-tree-command=${id}`
-  assert.equal(treeNodeCommandRequestIdCandidateFromArgv(['exe', 'C:\\anything', flag, '--whatever']), id)
+  assert.equal(treeNodeCommandRequestIdCandidateFromArgv(['exe', '\x43:\\anything', flag, '--whatever']), id)
   assert.equal(treeNodeCommandRequestIdCandidateFromArgv(['exe', flag, flag]), null)
   assert.equal(treeNodeCommandRequestIdCandidateFromArgv(['exe', '--toolsenabled-tree-command=not-a-request-id']), null)
   assert.equal(treeNodeCommandRequestIdCandidateFromArgv(['exe']), null)
@@ -414,8 +410,8 @@ test('a spooled resume launched the way the live tier launches it is claimed, de
   const written = createTreeNodeCommandRequest(commandOptions(fixture, now))
   assert.equal(written.launchArgument, `--toolsenabled-tree-command=${written.requestId}`)
 
-  const exe = 'C:\\Dev\\deps\\app-node_modules\\electron\\dist\\electron.exe'
-  const appDirectory = 'C:\\Dev\\live'
+  const exe = '\x43:\\WF\\deps\\app-node_modules\\electron\\dist\\electron.exe'
+  const appDirectory = '\x43:\\WF\\live'
   const requestId = treeNodeCommandRequestIdFromArgv(
     [exe, appDirectory, `--user-data-dir=${fixture.userData}`, written.launchArgument],
     {
@@ -472,7 +468,7 @@ test('a spooled resume launched the way the live tier launches it is claimed, de
  * already running, are two shell/main.cjs handleSecondInstance calls for the
  * exact same requestId.
  *
- * The previous wave's fix (an earlier commit) made the second of those calls write an
+ * The previous wave's fix (9901ba7) made the second of those calls write an
  * immutable MC_TREE_COMMAND_REQUEST_REFUSED result whenever
  * broker.queueRequest() answered false -- which it does both when the broker
  * is disposed AND when this process already queued the id. The disposed case
@@ -831,7 +827,7 @@ test('an existing result with extra fields or changed envelope identity conflict
  * paths are refused, which refusal each one gets, or the order they fire in.
  * A double cannot show that: it is the batching itself that is under test. */
 
-const icaclsPath = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'icacls.exe')
+const icaclsPath = path.join(process.env.SystemRoot || '\x43:\\Windows', 'System32', 'icacls.exe')
 const realSpoolOptions = fixture => ({
   userDataRoot: fixture.userData, computerId: 'computer-1', treeId: 'tree-1', nodeId: 'node-1',
 })

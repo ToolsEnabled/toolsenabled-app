@@ -7,8 +7,8 @@
  * the guide: `winget install OpenAI.Codex`, then `codex login` "in the same
  * window". The same window answered "'codex' is not recognized" -- winget
  * records the new program's location in the registry and a shell that is
- * already open never re-reads it -- and they were stuck at the exact step
- * predicted to be the frustrating one. Reproduced 2026-08-19 against
+ * already open never re-reads it -- and they were stuck at the exact step the
+ * owner predicted would be the frustrating one. Reproduced 2026-08-19 against
  * a PATH snapshotted before the install.
  *
  * WHAT A PRESS DOES NOW, and it is the same shape for all three programs:
@@ -198,8 +198,8 @@ const LOGIN_PROVIDER_IDS = Object.freeze(Object.keys(LOGIN_PROVIDERS))
 const LOGIN_PROVIDER_LABELS = Object.freeze({ codex: 'Codex', claude: 'Claude Code', gemini: 'Gemini CLI', grok: 'Grok' })
 
 /* THE LOCAL-RUNTIME HALF OF THIS SERVICE, ADDED ALONGSIDE THE THREE CLI
- * PROGRAMS ABOVE RATHER THAN AS A SECOND BRIDGE (design rule: extend
- * window.mcProviders with new verbs on the SAME object). A model on
+ * PROGRAMS ABOVE RATHER THAN AS A SECOND BRIDGE (owner ruling via fleet-B:
+ * extend window.mcProviders with new verbs on the SAME object). A model on
  * the user's own GPU has none of what the three programs above need -- no
  * npm package, no sign-in, no terminal -- so it does not fit installStart()/
  * start() as they stand. It DOES fit fly()'s actual job (spawn one command
@@ -369,7 +369,7 @@ function signInWindowTitle(providerId, label, client = null) {
   if (!provider) return ''
   const account = safeWindowTitle(label)
   /* THE PROGRAM IS IN IT EVEN WHEN THE ACCOUNT IS. Names are unique PER PROGRAM
-     and not across them -- shell/account-registry.cjs states it: "team" may
+     and not across them -- shell/account-registry.cjs states it: "school" may
      be both a Codex account and a Claude one -- so a title carrying only the
      name can still name two windows the same, which is the defect this is
      closing rather than a smaller version of it. */
@@ -413,7 +413,7 @@ const WINDOWS_TERMINAL = Object.freeze(['Microsoft', 'WindowsApps', 'wt.exe'])
 
 function systemRoot(env) {
   const configured = env.SystemRoot || env.SYSTEMROOT || env.windir
-  return typeof configured === 'string' && configured.trim() ? configured.trim() : 'C:\\Windows'
+  return typeof configured === 'string' && configured.trim() ? configured.trim() : '\x43:\\Windows'
 }
 
 /* Only ENOENT answers the existence question. Resource pressure, an unreadable
@@ -541,7 +541,7 @@ function resolveTerminal({ env, platform, statSync, lstatSync, accessSync, priva
 
 /* WHAT THE WINDOW IS TOLD TO DO, and why the command is echoed before it runs.
  *
- * The rule is that the window arrives with the command already
+ * The owner's instruction is that the window arrives with the command already
  * in it, printed for the person. `cmd /k` runs a command and then STAYS, which
  * is what lets somebody read what happened and try again in the same window --
  * but on its own it prints nothing, so the person never sees the line that is
@@ -578,11 +578,11 @@ function resolveTerminal({ env, platform, statSync, lstatSync, accessSync, priva
  * including the space that libuv put before the `&&`. Measured here on
  * 2026-08-23, with the directory read back out of the child's own environment:
  *
- *   set CODEX_HOME=C:\...\home-a && codex login     -> the value gains a
+ *   set CODEX_HOME=C:\...\cloud-a && codex login     -> the value gains a
  *                                                       trailing space
- *   set CODEX_HOME=C:\...\home-a&& codex login      -> exact
- *   set "CODEX_HOME=C:\a b\home-a" && codex login   -> exact
- *   set "CODEX_HOME=C:\a b\home-a&&" codex login    -> nothing after the &&
+ *   set CODEX_HOME=C:\...\cloud-a&& codex login      -> exact
+ *   set "CODEX_HOME=C:\a b\cloud-a" && codex login   -> exact
+ *   set "CODEX_HOME=C:\a b\cloud-a&&" codex login    -> nothing after the &&
  *                                                       ever runs
  *
  * libuv wraps an argument in quotes when, and only when, it contains a space, a
@@ -1067,6 +1067,25 @@ function createProviderLoginService(options = {}) {
      answer unknown, and the engine's own runtime fallbacks still apply. */
   const OWNED_PROBE_ARGS = Object.freeze({ help: ['--help'], 'agent-help': ['--no-auto-update', 'agent', '--help'] })
 
+  /* ONLY A WHOLE LISTING CAN SAY AN OPTION IS MISSING. MEASURED on claude
+     2.1.281: its --help read through a shell pipe ended after exactly 16384
+     bytes (line 230 of 306) with exit 0, and every option after the cut --
+     --tools and --verbose among them -- read as absent, so a good new copy
+     would be kept aside as "lacks --verbose, --tools". The paired engine's
+     toolchain says whether a listing is whole (helpListingComplete: true,
+     false, or null when it cannot judge). A payload that predates it gets the
+     same rule for the one listing shape it covers: Claude's commander help
+     prints Options and then Commands, so reaching Commands printed every
+     option. */
+  function helpListingComplete(toolchain, providerId, text) {
+    if (typeof toolchain.helpListingComplete === 'function') return toolchain.helpListingComplete(providerId, text)
+    if (providerId !== 'claude') return null
+    const lines = String(text).split(/\r?\n/)
+    const options = lines.findIndex(line => /^Options:\s*$/.test(line))
+    const commands = lines.findIndex(line => /^Commands:\s*$/.test(line))
+    return options >= 0 && commands > options
+  }
+
   /* npm into <owned>/<program>/.install-<n>, then the move to the version's
      own folder, then the new copy's feature check, then -- only if nothing
      required is missing -- the switch that makes it the copy in use. Each stage
@@ -1113,6 +1132,11 @@ function createProviderLoginService(options = {}) {
               forward(probe, `${label} ${done.version} was downloaded, but it did not answer its own help. ToolsEnabled keeps using the copy it used before.\n`, emit)
               return { code: 1 }
             }
+            /* A listing that did not reach its end is no evidence either way:
+               the copy is used exactly as a copy with no feature probe is
+               (activate without a remembered answer), and the engine reads
+               its help again, whole, before the first session. */
+            if (helpListingComplete(toolchain, providerId, probe.capturedStdout) === false) return activate(probe, null)
             const features = toolchain.evaluateFeatures(providerId, toolchain.featuresFromHelp(providerId, probe.capturedStdout))
             if (features && features.state === 'update-needed') {
               forward(probe, `${label} ${done.version} lacks ${features.missingRequired.join(', ')}, which ToolsEnabled needs. ToolsEnabled keeps using the copy it used before.\n`, emit)
@@ -1132,8 +1156,8 @@ function createProviderLoginService(options = {}) {
      * side: with none, the program signs in where it always does; with one, the
      * window carries that program's own home variable so the sign-in lands in
      * the directory the product created for that account. It is one call and
-     * not two, because two ways to open a sign-in is a defect ruled against
-     * twice -- and because the SECOND one would inevitably be the
+     * not two, because two ways to open a sign-in is the defect the owner has
+     * ruled against twice -- and because the SECOND one would inevitably be the
      * one that forgot something this one already gets right (a resolved
      * terminal, a fresh PATH, a closed stdin, a refusal in a sentence). */
     start(providerId, { home = null, label = null, client = null } = {}) {
@@ -1366,7 +1390,7 @@ function createProviderLoginService(options = {}) {
           reason: 'Something is already running for this program. Let it finish, or press Stop.',
         }
       }
-      /* NO SECOND COPY. The button used to install even when the
+      /* NO SECOND COPY (rc-0922). The button used to install even when the
          program was already here -- by its maker's own installer, say -- which
          left two copies and let PATH order decide which one ran. A copy that is
          found is used; a second one is only ever the person's explicit choice,

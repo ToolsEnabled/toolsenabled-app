@@ -60,7 +60,7 @@ async function fixture({ savedFailover = 'auto', mode = 'manual', rejectAccounts
     read: async () => ({ ok: true, rows: [{ id: 'agent.blocked_question', value: state.approval }] }),
     set: async (id, value) => { state.approval = value; return { ok: true, value } },
   }
-  writeStoredProfile({ status, answers: { autonomy: 'assisted', screens: 'live', approvals: 'stop', attach: 'mirror', ideImport: 'none', failover: savedFailover } })
+  writeStoredProfile({ status, answers: { autonomy: 'assisted', screens: 'live', approvals: 'stop', attach: 'mirror', ideImport: 'none' } })
   for (const flag of WRITE_ACTION_FLAGS) setWriteEnabled(flag.id, ['report-read', 'agent-session', 'dispatch', 'cloud-launch'].includes(flag.id))
   setExampleMode(false)
   writes = []
@@ -96,16 +96,16 @@ async function fixture({ savedFailover = 'auto', mode = 'manual', rejectAccounts
   }
 }
 
-function failoverRow(markup) { return markup.match(/<article[^>]*data-setup-profile-row="failover"[\s\S]*?<\/article>/)?.[0] || '' }
+
 function selected(markup, field, value) { return markup.includes(`data-setup-profile-set="${field}" data-setup-profile-value="${value}" aria-pressed="true"`) }
 function intentButton(markup, field, value) {
   return markup.match(new RegExp(`<button[^>]*data-setup-profile-set="intent:${field}"[^>]*data-setup-profile-value="${value}"[^>]*>`))?.[0] || ''
 }
 
 const choiceCeilings = {
-  guided: { approvals: ['stop'], attach: ['mirror'], ideImport: ['none'], failover: ['manual'] },
-  standard: { approvals: ['stop', 'other-work', 'judgement'], attach: ['mirror', 'fork', 'adopt'], ideImport: ['none', 'ask'], failover: ['manual', 'auto'] },
-  unrestricted: { approvals: ['stop', 'other-work', 'judgement'], attach: ['mirror', 'fork', 'adopt'], ideImport: ['none', 'ask', 'all-detected'], failover: ['manual', 'auto'] },
+  guided: { approvals: ['stop'], attach: ['mirror'], ideImport: ['none'] },
+  standard: { approvals: ['stop', 'other-work', 'judgement'], attach: ['mirror', 'fork', 'adopt'], ideImport: ['none', 'ask'] },
+  unrestricted: { approvals: ['stop', 'other-work', 'judgement'], attach: ['mirror', 'fork', 'adopt'], ideImport: ['none', 'ask', 'all-detected'] },
 }
 for (const tier of ['guided', 'standard', 'unrestricted']) test(`${tier} Setup explains and disables every above-tier intent choice without staging a clamped no-op`, async () => {
   const f = await fixture({ tier })
@@ -135,7 +135,7 @@ for (const tier of ['standard', 'unrestricted']) test(`${tier} allowed intent ch
   const f = await fixture({ tier })
   const policy = structuredClone(f.state.policy)
   try {
-    for (const field of ['approvals', 'attach', 'ideImport', 'failover']) {
+    for (const field of ['approvals', 'attach', 'ideImport']) {
       const value = choiceCeilings[tier][field].at(-1)
       await f.choose(`intent:${field}`, value)
       assert.equal(selected(f.markup(), `intent:${field}`, value), true)
@@ -144,86 +144,26 @@ for (const tier of ['standard', 'unrestricted']) test(`${tier} allowed intent ch
     }
     assert.equal(f.state.approval, 'Decide for itself')
     assert.equal(f.state.importPolicy, tier === 'standard' ? 'ask' : 'all-detected')
-    assert.deepEqual(f.state.policy, { ...policy, selectionMode: 'priority' })
-    assert.deepEqual(f.state.policyWrites, [{ selectionMode: 'priority' }])
+
+
   } finally { f.controller.destroy() }
 })
 
-test('Guided tier still displays a saved automatic Accounts policy truthfully without granting a new above-tier edit', async () => {
-  const f = await fixture({ tier: 'guided', mode: 'most-available', savedFailover: 'manual' })
-  const policy = structuredClone(f.state.policy)
-  try {
-    assert.equal(selected(f.markup(), 'intent:failover', 'auto'), true)
-    assert.match(intentButton(f.markup(), 'failover', 'auto'), /\sdisabled(?:\s|>|=)/)
-    assert.match(failoverRow(f.markup()), /Most room left first/)
-    assert.deepEqual(f.state.policy, policy)
-    assert.deepEqual(f.state.policyWrites, [])
-    assert.equal(f.draft.dirty, false)
-  } finally { f.controller.destroy() }
-})
 
-for (const mode of ['manual', 'priority', 'most-available']) test(`Setup reads canonical ${mode} account selection instead of the old walkthrough answer`, async () => {
-  const f = await fixture({ mode, savedFailover: mode === 'manual' ? 'auto' : 'manual' })
-  try {
-    assert.ok(f.state.accountReads > 0)
-    assert.equal(f.controller.matches('default account selection'), true)
-    assert.equal(selected(f.markup(), 'intent:failover', mode === 'manual' ? 'manual' : 'auto'), true)
-    if (mode === 'most-available') assert.match(failoverRow(f.markup()), /Most room left first/)
-    assert.deepEqual(f.state.policyWrites, [])
-    assert.deepEqual(writes, [])
-  } finally { f.controller.destroy() }
-})
 
-test('an unreadable account policy is unavailable, with no selected stored fallback, and can be refreshed', async () => {
-  const f = await fixture({ rejectAccounts: true })
-  try {
-    assert.doesNotMatch(failoverRow(f.markup()), /aria-pressed="true"/)
-    assert.match(failoverRow(f.markup()), /could not be read/i)
-    await f.choose('intent:failover', 'manual')
-    assert.deepEqual(f.state.policyWrites, [])
-    f.state.rejectAccounts = false
-    await f.action('refresh-account-policy')
-    assert.equal(selected(f.markup(), 'intent:failover', 'manual'), true)
-  } finally { f.controller.destroy() }
-})
 
-test('an explicit account choice changes only the default selection mode and reports the effective draft', async () => {
-  const f = await fixture()
-  const before = structuredClone(f.state.policy)
-  try {
-    await f.choose('intent:failover', 'auto')
-    assert.equal(selected(f.markup(), 'intent:failover', 'auto'), true)
-    assert.deepEqual(f.state.policyWrites, [])
-    await f.draft.save()
-    assert.deepEqual(f.state.policyWrites, [{ selectionMode: 'priority' }])
-    assert.deepEqual(f.state.policy, { ...before, selectionMode: 'priority' })
-    assert.equal(readStoredProfile().answers.failover, 'auto')
-    assert.deepEqual(writes.filter(([key]) => key !== 'mc.setup.profile'), [])
-  } finally { f.controller.destroy() }
-})
 
-test('a refused account-policy write leaves its choice pending, and retry preserves every other policy field', async () => {
-  const f = await fixture()
-  const before = structuredClone(f.state.policy)
-  try {
-    await f.choose('intent:failover', 'auto')
-    f.state.rejectPolicy = true
-    await assert.rejects(f.draft.save(), /fixture account policy locked/)
-    assert.deepEqual(f.state.policy, before)
-    assert.equal(f.draft.has('setup:account-policy'), true)
-    assert.equal(writes.some(([key]) => key === 'mc.setup.profile'), false)
-    f.state.rejectPolicy = false
-    await f.draft.save()
-    assert.deepEqual(f.state.policy, { ...before, selectionMode: 'priority' })
-    assert.equal(f.draft.dirty, false)
-  } finally { f.controller.destroy() }
-})
+
+
+
+
+
 
 test('a preset on a computer without provider accounts applies its other choices without creating account policy', async () => {
   const f = await fixture({ accounts: false })
   try {
-    assert.doesNotMatch(failoverRow(f.markup()), /data-setup-profile-set="intent:failover"/)
-    assert.match(failoverRow(f.markup()), /Add a provider account/)
+
+
     await f.choose('autonomy', 'autonomous'); await f.draft.save()
     assert.equal(isWriteEnabled('decision'), true)
     assert.deepEqual(f.state.policyWrites, [])
@@ -249,7 +189,7 @@ test('unavailable Accounts does not turn an unrelated Setup save into an account
   try {
     await f.choose('intent:attach', 'fork'); await f.draft.save()
     assert.deepEqual(f.state.policyWrites, [])
-    assert.doesNotMatch(failoverRow(f.markup()), /aria-pressed="true"/)
+
   } finally { f.controller.destroy() }
 })
 
@@ -345,20 +285,3 @@ test('Guided named action presets describe their effective limits instead of unr
    "Accounts" with no link, and no Accounts page exists: the menu is only on
    Computers. It now names "the Accounts menu on Computers" and links to an
    address that opens that menu. */
-test('Default account selection names the Accounts menu on Computers and links to it open', async () => {
-  const { ACCOUNTS_MENU_HREF } = await import('../../src/setup-profile-settings.js')
-  const { parseRoute } = await import('../../src/route-parse.js')
-  for (const accounts of [true, false]) {
-    const f = await fixture({ accounts })
-    const text = f.markup()
-    const row = text.slice(text.indexOf('Default account selection'), text.indexOf('Refresh account policy'))
-    assert.match(row, /managed in the Accounts menu on Computers\./, 'the row still names a place that is not there')
-    assert.doesNotMatch(row, /managed in Accounts\.|in Accounts before/, 'the row still says "in Accounts" with no place')
-    if (!accounts) assert.match(row, /Add a provider account in the Accounts menu on Computers before changing this rule\./)
-    assert.match(row, new RegExp(`<a class="ctl-btn" href="${ACCOUNTS_MENU_HREF.replace(/[?]/g, '\\?')}" data-setup-profile-open-accounts>Open the Accounts menu</a>`),
-      'the row offers no control that reaches the Accounts menu')
-    f.controller.destroy?.()
-  }
-  assert.equal(parseRoute(ACCOUNTS_MENU_HREF).name, 'computers', 'the link does not reach Computers')
-  assert.match(ACCOUNTS_MENU_HREF, /[?&]accounts=open(?:&|$)/, 'the link does not ask for the Accounts menu open')
-})

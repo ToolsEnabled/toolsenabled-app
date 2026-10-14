@@ -296,9 +296,9 @@ test('the mission action forwards only the project key to the local disable core
    * signed two rows -- cloud.mirror.disable.intent and cloud.mirror.disable,
    * target "engine", actor "controller" -- into whatever ledger
    * TOOLSENABLED_STATE_ROOT (or the per-user default) resolved to at the
-   * time the suite ran. MEASURED on a development machine: dozens of such
-   * pairs in a live-tier ledger and in the default-profile ledger, every
-   * one for a project no registry had held for days, plus a vault
+   * time the suite ran. MEASURED 2026-09-03 on this machine: 24 such pairs in
+   * the owner's live-tier ledger and 41 in the default-profile ledger, every
+   * one for a project no registry has held since 2026-08-30, plus a vault
    * file and audit sqlite created wherever the state root pointed, and
    * 5-15 s per pair paying the anchor. A signed ledger that says a mirror
    * was disabled sixty-five times when it was never registered is not

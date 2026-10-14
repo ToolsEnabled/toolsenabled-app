@@ -1,6 +1,7 @@
-/* THE PANEL'S PICKER LISTS TREES, AND THE AGENTS UNDER EACH. The top button
- * lists trees (or all trees) instead of every agent; from the drop-down a
- * person selects the agent to chat with right there, immediately.
+/* THE PANEL'S PICKER LISTS TREES, AND THE AGENTS UNDER EACH. Owner, 2026-09-19:
+ * "the top button instead of listing every agent or all agents, it should just
+ * list trees or all trees, then, from the drop down you can select the agent to
+ * chat right there from the list immediately."
  *
  * These call the pure half (src/home-activity.js treePickGroups) with values:
  * rows as the panel holds them and tree records as the view resolves them from
@@ -9,7 +10,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { treePickGroups, treePickChoices, TREE_PICK } from '../../src/home-activity.js'
-import { TREE_CHOICE_PREFIX, agentFilterFor } from '../../src/home-circle-action.js'
+import { TREE_CHOICE_PREFIX, agentFilterFor } from '../../src/home-following.js'
 
 const CONTROL = { id: 't-ctl', name: 'Control lane', active: true, tipKey: 'ctl', memberKeys: ['w1', 'ctl', 'w2'] }
 const DELIVERY = { id: 't-del', name: 'Delivery lane', active: false, tipKey: 'del', memberKeys: ['del', 'd1'] }

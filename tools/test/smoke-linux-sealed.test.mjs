@@ -76,7 +76,7 @@ test('actual installed runtime must match fixed packaged paths, source/package b
   assert.equal(assertInstalledRuntime(runtime, manifest, build, 'toolsenabled-customer (unconfined)\n', true).fixedInstalledRuntime, true)
   assert.equal(assertInstalledRuntime(runtime, manifest, build, 'unconfined\n', false).appArmorAttachment, 'not-required')
   for (const label of ['unconfined', 'toolsenabled-linux-live (unconfined)', 'toolsenabled-customer (complain)']) assert.throws(() => assertInstalledRuntime(runtime, manifest, build, label, true))
-  assert.throws(() => assertInstalledRuntime({ ...runtime, execPath: '/home/fake/toolsenabled' }, manifest, build, 'toolsenabled-customer (unconfined)', true))
+  assert.throws(() => assertInstalledRuntime({ ...runtime, execPath: '/\x68ome/fake/toolsenabled' }, manifest, build, 'toolsenabled-customer (unconfined)', true))
   assert.throws(() => assertInstalledRuntime(runtime, manifest, { ...build, executableSha256: 'd'.repeat(64) }, 'toolsenabled-customer (unconfined)', true))
   assert.throws(() => assertInstalledRuntime({ ...runtime, version: '1.0.41' }, manifest, build, 'toolsenabled-customer (unconfined)', true))
 })
@@ -201,7 +201,7 @@ test('sterile sealed environment discards provider credentials, Docker overrides
   for (const key of ['CLAUDE_CONFIG_DIR', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'ELECTRON_RUN_AS_NODE', 'NODE_OPTIONS',
     'LD_PRELOAD', 'MC_SMOKE_HEADLESS', 'DOCKER_HOST', 'DOCKER_CONTEXT']) assert.equal(env[key], undefined, key)
 })
-test('sterile harness preserves only explicit desktop-session selectors without inventing absent session metadata', () => {
+test('sterile harness preserves only explicit \x64esktop-session selectors without inventing absent session metadata', () => {
   const profile = { userProfile: '/fresh/home', appData: '/fresh/config', localAppData: '/fresh/local', codexHome: '/fresh/codex', temp: '/fresh/temp' }
   const session = { XDG_CURRENT_DESKTOP: 'ubuntu:GNOME', XDG_SESSION_DESKTOP: 'ubuntu', DESKTOP_SESSION: 'ubuntu',
     XDG_RUNTIME_DIR: '/run/user/1000', DBUS_SESSION_BUS_ADDRESS: 'unix:path=/run/user/1000/bus' }

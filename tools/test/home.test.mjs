@@ -224,24 +224,23 @@ test('mounted Home projects shared Local readiness without Codex installation in
   } finally { view.destroy(); globalThis.mcProviders = previous }
 })
 
-test('the phone ring stage keeps voice outside its clipped decoration', async () => {
+test('Home retains voice beside Following after its decorative stage is removed', async () => {
   const view = await mount(null)
   try {
     assert.ok(bridgeRequests.length > 0, 'the real view must observe the explicit bridge refusal')
-    const wrap = view.el.querySelector('.home-ring-wrap')
-    const stage = wrap.querySelector('.home-ring-stage')
-    const voice = wrap.querySelector('.voice-contact')
-    assert.ok(stage?.querySelector('.uring'), 'the ring belongs inside the responsive stage')
+    const column = view.el.querySelector('.home-follow-column')
+    const voice = column.querySelector('.voice-contact')
     assert.ok(voice, 'home must retain its voice contact')
-    assertSameNode(voice.parentNode, wrap, 'voice stays a sibling of the decorative stage')
-    assert.equal(stage.contains(voice), false, 'ring clipping cannot clip voice controls')
+    assertSameNode(voice.parentNode, column, 'voice has its own place beside Following')
+    assert.equal(column.querySelector('[data-home-following]').contains(voice), false, 'Following never clips voice controls')
+    assert.equal(view.el.querySelector('.uring'), null, 'no decorative ring remains')
   } finally { view.destroy() }
 })
 
 test('the home screen does not advertise subscriptions at all', async () => {
   /* REPLACES two tests that pinned a DISABLED "Subscriptions coming soon"
-     control and its reason. The app does not advertise subscriptions -- and
-     separately, payments do not open
+     control and its reason. Owner, 2026-08-26: "i dont want to advertise
+     subscriptions in the app" -- and separately, that payments do not open
      during public beta, so it was not a hold with a date behind it. Honest
      about being shut is not the same as absent, and this is the first screen
      of the product.

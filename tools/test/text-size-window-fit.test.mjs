@@ -1,7 +1,7 @@
 /* LARGE TEXT MUST NOT PUSH THE PRODUCT OFF THE SCREEN.
  *
- * A large text size hid parts of the window. Text size is `zoom`
- * on <body> (src/text-size.js). A viewport
+ * Owner, 2026-09-03: "text sizes for example large on my screen hides parts of
+ * the window". Text size is `zoom` on <body> (src/text-size.js). A viewport
  * unit is NOT scaled by an ancestor zoom while the box painted from it IS, and
  * `body { overflow: hidden }` means a box painted past the window edge is not
  * scrolled to -- it is gone.

@@ -57,7 +57,7 @@
 export const PROBE_ID = 'mc-capture-freshness-probe'
 export const PROBE_CSS_SIZE = 24
 
-/* THE TOP-LEFT CORNER, AND NOT ANY OTHER. Measured 2026-08-23 on Windows:
+/* THE TOP-LEFT CORNER, AND NOT ANY OTHER. Measured 2026-08-23 on this machine:
    a window whose page scrolls carries a CLASSIC 15px scrollbar down the right
    edge, so a probe anchored right:0 puts the frame's top-right device pixels on
    the scrollbar rather than on the probe -- and a page that overflows
@@ -66,8 +66,8 @@ export const PROBE_CSS_SIZE = 24
    scrollbar. */
 
 /* How much of that corner is NOT counted as page content. Measured: a 24 CSS px
-   probe occupied device pixels 0..32 at a 137.5% display scale, so the
-   probe's own swatch is well inside 96 device pixels at any scale a desktop
+   probe occupied device pixels 0..32 at this machine's 137.5% display scale, so
+   the probe's own swatch is well inside 96 device pixels at any scale a desktop
    produces. Excluding it matters -- without it a genuinely blank capture came
    back with SEVEN distinct colours (the swatch and its antialiased edge) against
    a floor of eight, which is a margin nobody should be relying on. */
@@ -207,7 +207,7 @@ export function colourDistance(a, b) {
  * The scale a frame is ACTUALLY at, from the page's own viewport width.
  *
  * Measured 2026-08-23: an offscreen capture of a 900x700 window came back
- * 1241x966 while the page reported devicePixelRatio 1 -- on a display at
+ * 1241x966 while the page reported devicePixelRatio 1 -- the display is at
  * 137.5%, the page cannot see it, and getSize() reported the DEVICE size, so a
  * scale derived from getSize() alone comes out 1 and every CSS coordinate after
  * the first few dozen pixels lands somewhere else. capturePage() captures the

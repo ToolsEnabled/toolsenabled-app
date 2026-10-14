@@ -1,5 +1,5 @@
-/* DIAGNOSTIC FILES beside the retention row (product rule T782/T783). The
- * panel is driven by value through a recording bridge shaped
+/* DIAGNOSTIC FILES beside the retention row (owner direction 2026-09-20,
+ * T782/T783). The panel is driven by value through a recording bridge shaped
  * like shell/fleet-profile-preload.cjs mcSettings.diagnosticsInspect / Keep /
  * Export / Archive, whose answers are the Engine's own shapes
  * (engine src/lib/diagnostic-retention.js inspect/keep/exportFile/archiveFile):
@@ -128,7 +128,7 @@ test('Keep toggles through the bridge as { id, keep } and the row follows the an
 
 test('Export sends { id } and reports the destination, a cancelled chooser, and a file still being written', async () => {
   const fixture = host()
-  const b = bridge({ diagnosticsInspect: page([file('d-1'), file('d-2')]), diagnosticsExport: request => (request.id === 'd-1' ? { ok: true, id: 'd-1', destination: '/home/redacted-profile/exports/d-1.jsonl', bytes: 2048 } : { ok: false, reason: 'cancelled' }) })
+  const b = bridge({ diagnosticsInspect: page([file('d-1'), file('d-2')]), diagnosticsExport: request => (request.id === 'd-1' ? { ok: true, id: 'd-1', destination: '/\x68ome/redacted-profile/exports/d-1.jsonl', bytes: 2048 } : { ok: false, reason: 'cancelled' }) })
   const controller = createDiagnosticSettings({ bridge: b })
   controller.bind(fixture.root); controller.afterRender(); await settle()
   await press(fixture, { 'data-diagnostic-export': 'd-1' })

@@ -2,8 +2,8 @@
 
 /* START A CHILD UNDER A MANAGER, ASK IT WHO ITS MANAGER IS, AND READ THE ANSWER.
  *
- * THE DEFECT THIS EXISTS FOR: an agent did not realize it had a manager and
- * could not contact it. The screenshot: a node called Default,
+ * THE DEFECT THIS EXISTS FOR, in the owner's words: "This one is not realizing
+ * and not able to contact its manager." His screenshot: a node called Default,
  * drawn under one called Manager, answering "I don't currently have a manager
  * agent or report content specified -- send me the manager's identifier." The
  * tree held the relationship and the session was never told it.
@@ -51,7 +51,7 @@ const RELEASE = path.resolve(argument('--release', releaseDirectory()))
 const KEEP = process.argv.includes('--keep')
 
 /* Codex, because the owner's quota is what is working and `luna` is the tier
-   they named. Nothing here is Claude-specific; the brief rides in the message
+   he named. Nothing here is Claude-specific; the brief rides in the message
    text precisely so it reaches either engine. */
 const TIER = 'luna'
 const COMPUTER_ID = 'this-computer'
@@ -233,29 +233,10 @@ async function main() {
     console.log('staging the packaged build...')
     const staged = await stage(scratch, RELEASE)
 
-    /* THE SIGN-IN THIS RUN NEEDS, borrowed into the scratch profile and deleted
-       with it. openWindow isolates USERPROFILE and APPDATA on purpose -- a
-       driver pointed at the real home once desynced the machine's audit ledger --
-       and a Codex child started under an empty home would answer "not signed
-       in", which is the product working and is not the proof. */
-    const realHome = process.env.USERPROFILE || ''
-    const credential = path.join(realHome, '.codex', 'auth.json')
-    if (!existsSync(credential)) {
-      note('FAIL', 'HARNESS STATE: this computer has no Codex sign-in to lend, so nothing below would measure a running agent.')
-      return
-    }
-    const scratchCodex = path.join(scratch, 'home', '.codex')
-    mkdirSync(scratchCodex, { recursive: true })
-    cpSync(credential, path.join(scratchCodex, 'auth.json'))
-    const realNpm = path.join(process.env.APPDATA || '', 'npm')
-    if (existsSync(realNpm)) {
-      mkdirSync(path.join(scratch, 'roaming'), { recursive: true })
-      try { symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* already linked */ }
-    }
-    note('info', 'lent the scratch profile this computer\'s Codex sign-in and npm layout; both live only in the temporary profile this run deletes.')
+    // The official CLI uses the caller-selected provider home or environment API key.
 
     seedMachineRecord(scratch, staged.appRoot, 'standard')
-    window = await openWindow(staged.executable, scratch)
+    window = await openWindow(staged.executable, scratch, { provider: 'codex' })
 
     /* Starting agents ships switched off, and a person who has reached this
        question has already turned it on. Seeded for the same reason

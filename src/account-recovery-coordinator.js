@@ -1,17 +1,15 @@
-import { captureAccountRecoveryHistory, accountRecoveryHistoryNotice } from './account-recovery-history.js'
 import { resumedTranscriptLines } from './tree-resume-transcript.js'
 import { nodeDisplayName } from './fleet-trees.js'
 import { identityRoleForTreeNode } from './tree-node-identity.js'
 import { composeNodeBrief } from './tree-node-brief.js'
 import { createSessionTextReader, sessionTurnStatus, sessionTurnSucceeded, sessionTurnCancelled, sessionTurnFailureText, recoveredNodeTurnStatus,
-  sessionEventTurnId, completionSettlesOpenTurn, sessionEndedEvent } from './agent-session-events.js'
+  sessionEventTurnId, completionSettlesOpenTurn, sessionEndedEvent, sessionSafetyRefusal } from './agent-session-events.js'
 import { MODEL_PANEL, TURN_CANCELLED } from './fleet-tree-copy.js'
 import { refusalCode, refusalAttribution, UNAVAILABLE_TEXT } from './agent-availability-copy.js'
 import { refusalCodeOf } from './refusal-copy.js'
 import { noteMeansStopped } from './stop-node-session.js'
-import { manualAccountHandoff, manualModelHandoff, accountRetryCandidates, accountRetryStatus, defaultRetryProviders, savedAccountResumeRefused, MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY } from './manual-account-continuation.js'
+import { manualAccountHandoff, manualModelHandoff, savedAccountResumeRefused, MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY } from './manual-account-continuation.js'
 import { createAutomaticImageRecoveryHostRegistry } from './automatic-image-recovery-host-registry.js'
-import { scopedEffort } from './orchestration-controls.js'
 
 /* A refused image operation can be nonfatal to text recovery only when the
    authenticated host is still the prepared owner and the image-only outcome is
@@ -96,17 +94,7 @@ export function recoveryPausedNode(node) {
 }
 
 export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveOutbox = () => {}, canStart = () => false, canContinue = () => false, isReplacing = () => false,
-  onCleanupRequired = () => {}, outbox = null, orgBridge = null, readAccounts = null, tiers = [], now = Date.now,
-  /* CONSENT TO MOVE A REFUSED CONVERSATION TO ANOTHER ACCOUNT, asked of the
-     window rather than read here: `readAccounts` above cannot express a failed
-     read (a throwing bridge and an empty list both come back as a policy that
-     reads keep-trying TRUE), and a failed read is not consent. The window's
-     keepTryingOnLimitIsOn is written failure-first; the default here answers
-     no, and an answer that is not exactly true is no. */
-  keepTryingOnLimit = async () => false } = {}) {
-  async function keepTryingConsent(nodeId = null) {
-    try { return (await keepTryingOnLimit(nodeId)) === true } catch { return false }
-  }
+  onCleanupRequired = () => {}, outbox = null, orgBridge = null, tiers = [], now = Date.now } = {}) {
   /* The person's sentence for a refusal code the table names; the raw message
      for one it does not. Read beside refusalCode, never instead of it. */
   function refusalSentenceFor(code, error) {
@@ -119,8 +107,6 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
   const seen = new Set()
   const listeners = new Set()
   const settledListeners = new Set()
-  const retryable = new Map()
-  const deferred = new Map()
   const activeStores = new Map()
   // Image custody is owned by this coordinator, never a Computers view.
   const imageRecoveryHosts = createAutomaticImageRecoveryHostRegistry()
@@ -133,18 +119,13 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
   }
   const queuedSends = new Set()
   const queuedCompletions = new Set()
-  const retryPolicies = new Map()
-  const retryFlights = new Map()
-  const retryWrites = new Map()
-  const retryChoiceRevisions = new Map()
-  const hydratingNodes = new Set()
   const continuationSeatRefusals = new Map()
   const continuationSeatTransportBackoff = new Map()
   /* ONE SWITCH OFFER PER REFUSED SESSION, keyed by the session that was
      refused and the code that refused it.
 
      MEASURED on this lane's own tests: pollContinuations runs from register(),
-     from a 5 s interval and from pollAccountRetries, and every sweep
+     and from a 5 s interval. Each read of unfinished work
      re-attempts the SAME unfinished continuation record and is refused again.
      Without this guard the offer was published on every sweep, so a person who
      pressed "Not now" had the dialog back within five seconds and could never
@@ -153,7 +134,6 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
      session changed, or the reason did) is a new question and is asked again. */
   const switchOffersMade = new Map()
   const switchOfferKey = (sessionId, code) => JSON.stringify([sessionId, code])
-  const persistedPolicy = policy => { const { handoff, ...value } = policy; return structuredClone(value) }
   let disposed = false
   let unsubscribe = null, continuationTimer = null, continuationPolling = false
   let continuationContextRevision = 0, continuationReadFailures = 0, continuationReadStatus = null
@@ -200,7 +180,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     }
   }
   function notifyRecoverySettled(nodeId) {
-    if (flights.has(nodeId) || retryFlights.has(nodeId)) return
+    if (flights.has(nodeId)) return
     for (const listener of settledListeners) {
       try { listener({ nodeId, recoverySettled: true }) } catch { /* An observer cannot alter custody. */ }
     }
@@ -218,109 +198,9 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     if (!explicitlyAllowed(canStart)) throw new Error('Starting agents is disabled on this computer.')
     if (manual && !explicitlyAllowed(canContinue)) throw new Error(MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY)
   }
-  function pauseCancelledTurn(policy) {
-    Object.assign(policy, { state: 'paused', lastFailureCode: 'TURN_CANCELLED', failurePending: false,
-      nextAttemptAt: null, autoResumeAt: null, reason: 'This turn ended. Send a new message to continue.' })
-  }
-  const retrySafetyRefusal = code => /IDENTITY|ROLE|PERMISSION|FORBIDDEN|DENIED|CLEANUP|CANCEL|STOP|INTERRUPT|CONSENT|PRINCIPAL|CONTROL|POLICY|AUTH|INVALID_THREAD/.test(String(code || ''))
-  const interruptionCodes = new Set(['CLAUDE_CLI_TURN_TIMEOUT', 'CLAUDE_CLI_INITIALIZE_TIMEOUT', 'CLAUDE_CLI_EXITED',
-    'AGY_CLI_TURN_TIMEOUT', 'AGY_CLI_EXITED',
-    'CODEX_APP_SERVER_EXITED', 'CODEX_TRANSPORT_WRITE_FAILED', 'ACP_PROCESS_EXITED', 'ACP_TRANSPORT_WRITE_FAILED',
-    'LOCAL_NODE_TURN_TIMEOUT', 'PROVIDER_PROCESS_EXITED', 'ECONNRESET', 'EPIPE', 'ETIMEDOUT'])
-  function retryFailureKind(code) {
-    if (retrySafetyRefusal(code)) return null
-    // A context-length failure needs a fresh session, not another account.
-    if (/context.limit|context.length|prompt.too.long/i.test(String(code || ''))) return 'context'
-    if (/quota|usage.limit|rate.limit|AGENT_RESUME_ACCOUNT_LIMIT/i.test(String(code || ''))) return 'limit'
-    return interruptionCodes.has(code) ? 'interruption' : null
-  }
-  // Only node-level safety stops a sweep. A provider-scoped refusal skips that
-  // provider for this sweep and keeps the reset times already observed.
-  const nodeSafetyRefusal = code => /IDENTITY|MISMATCH|OWNERSHIP|PRINCIPAL|CLEANUP|CANCEL|STOP|INTERRUPT|ROLE|TREE_|CONSENT|CONTROL|SOURCE_INVALID|INVALID_THREAD|PERMISSION|FORBIDDEN|DENIED|AUTHORITY|ISOLATION/.test(String(code || ''))
-  const providerScopedRefusal = code => /AUTH_REQUIRED|AUTH_FAILED|SHARED_AUTH|SIGN_?IN|SIGNED_OUT|LOGIN|NOT_INSTALLED|NOT_PROVISIONED|CLIENT_(?:UNSUPPORTED|UNAVAILABLE|INVALID|SHARED)|NO_LAUNCHER|MODEL|EFFORT|REQUIRES_APP_TOOLS|AMBIENT_TOOLS|BOUNDARY|PROJECT_REQUIRED|PLAN_REQUIRED|RETRY_UNAVAILABLE|PROVIDER_(?:SEAT|NOT_ALLOWED)|HANDOFF_UNAVAILABLE|STATUS_UNKNOWN/.test(String(code || ''))
-  const pauseError = (message, kind, code = undefined) => Object.assign(new Error(message), { retryPause: kind, ...(code ? { code } : {}) })
-  // A turn-level quota refusal holds that one account: 30 min, doubling, 6 h
-  // cap. Providers whose allowance is unmeasured are also capped per account.
-  const HOLD_BASE_MS = 30 * 60e3, HOLD_CAP_MS = 6 * 3600e3, UNMEASURED_PROVIDERS = new Set(['gemini', 'grok']), UNMEASURED_DISPATCH_CAP = 6
-  const RETRY_PROVIDERS = ['codex', 'claude', 'gemini', 'grok']
-  const AUTO_RESUME_LIMIT = 5, AUTO_RESUME_BASE_MS = 60e3, DIRECTION_BACKOFF_MAX_MS = 5 * 60e3
-  const directionChecks = new Map()
-  const retryWarnings = new Map()
-  function heldAccounts(policy, provider, at = now()) {
-    return Object.values(policy.holds && typeof policy.holds === 'object' ? policy.holds : {}).filter(row => row && row.provider === provider
-      && typeof row.account === 'string' && (row.capped === true || Number.isFinite(row.until) && row.until > at)).map(row => row.account)
-  }
-  function syncExclusions(policy, at = now()) {
-    policy.exclusions = Object.fromEntries(RETRY_PROVIDERS.map(provider => [provider, heldAccounts(policy, provider, at).slice(-32)]).filter(([, names]) => names.length))
-  }
-  function holdAccount(policy, provider, account, at = now()) {
-    if (!RETRY_PROVIDERS.includes(provider) || typeof account !== 'string' || !account) return
-    const holds = policy.holds && typeof policy.holds === 'object' ? policy.holds : (policy.holds = {})
-    const key = `${provider}:${account}`
-    // The host ticket and the turn event can report one refusal twice.
-    if (Number.isFinite(holds[key]?.heldAt) && at - holds[key].heldAt < 60e3) return
-    const failures = Math.min(1000, (Number(holds[key]?.failures) || 0) + 1)
-    const capped = UNMEASURED_PROVIDERS.has(provider) && failures >= UNMEASURED_DISPATCH_CAP
-    holds[key] = { provider, account, failures, heldAt: at, until: capped ? null : at + Math.min(HOLD_CAP_MS, HOLD_BASE_MS * 2 ** (failures - 1)), ...(capped ? { capped: true } : {}) }
-    syncExclusions(policy, at)
-  }
-  function releaseHold(policy, provider, account) {
-    if (policy.holds && typeof policy.holds === 'object' && provider && account) delete policy.holds[`${provider}:${account}`]
-    syncExclusions(policy)
-  }
-  const deliveryHeld = policy => ['unknown', 'accepted'].includes(policy?.deliveryHold?.outcome)
-  async function rememberRetryFailure(context, policy, code, kind) {
-    const node = context.treeStore.getNode(policy.nodeId)
-    if (!policy.enabled || deliveryHeld(policy) || !node || noteMeansStopped(node.statusNote) && !policy.stopFenceAcknowledged) return
-    policy.lastFailureCode = code
-    policy.failurePending = true
-    policy.failureKind = kind
-    // During a flight the new session's account is not recorded yet; the
-    // flight holds the account that actually refused when it returns.
-    if (kind === 'limit' && !retryFlights.has(policy.nodeId)) holdAccount(policy, policy.actualProvider, policy.actualAccount)
-    policy.state = 'waiting'; policy.nextAttemptAt = now(); policy.resetAt = null
-    await saveRetryPolicy(context, policy)
-  }
-  function retryAttemptPending(nodeId) {
-    const policy = retryPolicies.get(nodeId)
-    return deliveryHeld(policy) || retryFlights.has(nodeId) || Boolean(policy?.enabled && (policy.state === 'starting'
-      || policy.state === 'waiting' && Number.isFinite(policy.nextAttemptAt) && policy.nextAttemptAt <= now()))
-  }
-
-  /* T124. A SESSION AT A MODEL OR ACCOUNT LIMIT MUST STOP SPENDING TURNS.
-   *
-   * MEASURED (T124): a manager returned the provider's usage-limit message on
-   * more than thirty consecutive turns, each ending "Turn did not finish",
-   * while messages kept arriving. Only a manual
-   * continuation on another account ever recovered a node, and the tree lost
-   * its links every time.
-   *
-   * WHY THE EXISTING MACHINERY DID NOT CATCH IT. Everything this file knows
-   * about limits lives inside `if (policy?.enabled)` in observePacket -- the
-   * "Keep trying accounts" policy. A node with no policy, or with the setting
-   * off, had its limit refusal classified as NOTHING AT ALL: no record, no
-   * hold, no retry, no mark, and above all no reason for any sender to stop.
-   * And senders do not stop on their own: src/views/computers.js
-   * queueForSession drains the outbox IMMEDIATELY at a node that is not busy,
-   * and a limit-failed turn leaves the node 'turn-failed', which is not busy.
-   * So every delivered message became another burnt turn, which is exactly the
-   * shape of the thirty-turn run above.
-   *
-   * WHAT A BLOCK IS, AND WHAT IT IS NOT. It is a fence on SPENDING TURNS, not
-   * a stop on recovery: a scheduled retry, a reset wait and the person's own
-   * manual continuation all still run, and each of them clears the block when
-   * it works. It is the way OUT of the loop, so it must never gate them.
-   *
-   * ON THE WORD 'blocked-external'. The ledger asks for the node to be "marked
-   * blocked-external on the tree". It is recorded here as a kind, and its
-   * REASON is written to the node's status note where the manager and the
-   * Controller actually read it -- deliberately NOT as a ninth NODE_STATUSES
-   * value. fleet-trees.js refuses an unknown status (setNodeStatus), and
-   * worse, its loader treats one persisted unknown status as a corrupt file
-   * and returns EMPTY_FLEET_TREES -- every tree on the computer, gone -- so a
-   * build that wrote 'blocked-external' and was then rolled back would erase
-   * the trees it was written to protect. The person sees the reason either
-   * way; nobody loses a tree. */
+  const sessionSafetyHeld = (nodeId, sessionId) =>
+    (recoveredSessions.get(sessionId)?.nodeId === nodeId && recoveredSessions.get(sessionId)?.safetyRefused === true)
+    || (sessionNodeIds.get(sessionId) === nodeId && sessionNodeIds.automaticTurnsHeld?.(sessionId) === true)
   const externalBlocks = new Map()
   const limitDecisions = new Set()
   const EXTERNAL_BLOCK_KIND = 'blocked-external'
@@ -422,8 +302,14 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
           publish({ nodeId: node.id, error: 'AGENT_AUTOMATIC_SEND_UNAVAILABLE' })
           continue
         }
+        /* ONLY THE PERSON MOVES IT TO ANOTHER ACCOUNT (1.0.50 review, accounts
+           A). This notice used to end "It needs another model or account, or
+           the person", which invited a manager to move its worker onto another
+           of the person's accounts -- the automatic switching 1.0.50 removed.
+           An agent's request to change another agent's account is refused
+           (managed-slot-choice.js), and the notice now says why. */
         const sent = await bridge.sendAutomatic({ sessionId: target.sessionId,
-          text: `${name} is blocked outside this app and has stopped taking turns. ${reason} It needs another model or account, or the person, before it can continue.` })
+          text: `${name} is blocked outside this app and has stopped taking turns. ${reason} It stays on its account. Only the person can choose another account for it.` })
         if (sent?.ok !== false) told.push(target.id)
       } catch (error) { publish({ nodeId: node.id, error: error.message || String(error) }) }
     }
@@ -431,30 +317,19 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
   }
 
   function clearExternalBlock(nodeId) {
-    /* The candidate models this limit episode already spent are forgotten
-       here and nowhere else. A node that genuinely came back -- a landed turn,
-       a retry that found an account, the person's own continuation -- is the
-       one event that makes a tier which refused earlier worth asking again. */
-    modelsTried.delete(nodeId)
     if (!externalBlocks.delete(nodeId)) return false
     publish({ nodeId, externalBlock: null })
     return true
   }
 
-  async function blockExternally(context, nodeId, reason, modelSwitch = null, code = null) {
+  async function blockExternally(context, nodeId, reason, code = null) {
     if (externalBlocks.has(nodeId)) return externalBlocks.get(nodeId)
     const node = context.treeStore.getNode(nodeId)
     if (!node) return null
-    /* `modelSwitch` is the derived answer to the question T137's bare Boolean
-       cannot answer: which tiers this failover actually spent, and why the
-       last one would not take the agent. The manager and the Controller read
-       the reason; a person debugging this reads the pair. */
     const record = { blocked: true, kind: EXTERNAL_BLOCK_KIND, reason, since: now(), notified: [],
       /* The provider's identifier, carried and never rendered. `reason` is what
          a person reads; this is what a support conversation asks for. */
-      code: typeof code === 'string' && code.trim() ? code.trim() : null,
-      modelSwitch: Object.freeze({ attempted: Object.freeze([...(modelSwitch?.attempted || [])]),
-        refusedBecause: modelSwitch?.refusal || null }) }
+      code: typeof code === 'string' && code.trim() ? code.trim() : null }
     // Recorded BEFORE the notice goes out: the fence is what stops the loop,
     // and an escalation that hangs must not leave turns being spent meanwhile.
     externalBlocks.set(nodeId, record)
@@ -469,226 +344,77 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     return record
   }
 
-  /* T124. THE MODEL HALF OF THE FAILOVER, BUILT ON T137 AND NOT BESIDE IT.
-   *
-   * `continueOnAnotherModel` below (request T137) is the one model
-   * switch in this file: end this session, start a fresh one on the chosen
-   * tier, send it the handoff. The automatic failover calls exactly that
-   * method with exactly its signature. It does not reimplement it, it does not
-   * wrap it in an injectable seam, and it does not change it.
-   *
-   * IT ANSWERS A BARE BOOLEAN, AND A FAILOVER NEEDS MORE THAN THAT. `false`
-   * means any of "no eligible tier", "already on that tier", "a turn is still
-   * running", or "a recovery is already in flight" -- and those want opposite
-   * responses. The first two say "try the next candidate"; the last two say
-   * "stand back, something else is already moving this agent, and fencing it
-   * now would be wrong". That distinction is derived HERE, at the call site,
-   * by asking the same closure state the method's own guards ask. T137 is
-   * landed and the Controller owns its signature.
-   *
-   * AND THE WALK MUST TERMINATE, NOT CYCLE. A failover that moves an agent
-   * fable -> opus -> fable while each one refuses is T124 rebuilt one storey
-   * up, which is why `modelsTried` records a candidate as spent BEFORE it is
-   * attempted: neither a refusal nor a throw can offer the same tier twice,
-   * `tiers` is finite, so the walk ends after at most one attempt per model.
-   * The memory is forgotten only by clearExternalBlock, i.e. only when the
-   * agent genuinely came back. */
-  const modelsTried = new Map()
-
-  function modelSwitchStandBack(node) {
-    if (!node?.sessionId) return 'this agent has no live session to continue'
-    // flights/isReplacing are two the method itself refuses on; retryFlights
-    // is the account sweep, which is another recovery already in progress.
-    if (flights.has(node.id) || retryFlights.has(node.id) || isReplacing(node.id)) return 'another recovery is already moving this agent'
-    if (sessionNodeIds.has(node.sessionId) && ['starting', 'running'].includes(node.status)) return 'a turn is still running on this agent'
-    return null
-  }
-
-  /* WHICH DEPTH A MOVE TO ANOTHER MODEL CARRIES, for the automatic failover
-     below and the opted-in retry (prepareRetryRole). Within one provider the
-     wanted depth travels. ACROSS PROVIDERS ONLY THE PERSON'S OWN CHOICE DOES
-     (follow-up V4, the rule review P2 gave the next-model menu and Switch and
-     continue): `chosen` is policy.preferredEffort, the depth recorded when the
-     person opted into retries. A node's saved depth may just be its model's
-     default -- an untouched GPT-6-Astra agent saves Codex's `medium` -- and
-     carrying that onto Claude started Fable at a depth nobody chose. An
-     earlier note here said Codex and Claude share effort words, so any depth
-     crossed between them; they do share the words, but not the defaults. A
-     chosen depth crosses only onto Codex and Claude rows, the two that share
-     those words. Everything else starts at the target's own default. AND
-     ONLY WHERE THE MODEL TAKES IT (review P6, D4): scopedEffort keeps a depth
-     the row offers (Claude runs ultra as max), otherwise its own default, and
-     a row that fixes its own depth keeps it. */
-  function failoverEffort(from, to, wanted, chosen = null) {
-    const carried = from?.provider === to.provider ? wanted
-      : ['codex', 'claude'].includes(to.provider) && !to.client ? chosen : null
-    return scopedEffort(to, carried || to.effort || null) || null
-  }
-
-  async function switchToAnotherModel(context, nodeId) {
-    const attempted = []
-    let spent = modelsTried.get(nodeId)
-    if (!spent) {
-      spent = new Set()
-      modelsTried.set(nodeId, spent)
-      // Bounded like `seen` and `externalBlocks`, oldest first.
-      if (modelsTried.size > 256) modelsTried.delete(modelsTried.keys().next().value)
-    }
-    let refusal = 'no other model is offered on this computer'
-    /* A PINNED MODEL IS NEVER SWAPPED BY THE WALK (1.0.48, D6). An agent on a
-       row that names one exact model -- Opus 5, Sonnet 5 -- was put there by
-       the person, and every other row is a different model (the `claude-opus`
-       alias runs Opus 5.5). The account half of the failover still runs: the
-       same model on another account is fine, and a different one needs the
-       person. Checked before the walk, so nothing is attempted or spent. */
-    {
-      const node = context.treeStore.getNode(nodeId)
-      const standBack = modelSwitchStandBack(node)
-      if (standBack) return { moved: false, attempted, refusal: standBack, halted: true }
-      if (tiers.find(row => row.id === node.tier)?.pinned === true) {
-        return { moved: false, attempted, refusal: 'this agent keeps the model you chose', halted: false, pinned: true }
-      }
-    }
-    for (const candidate of tiers) {
-      const node = context.treeStore.getNode(nodeId)
-      const standBack = modelSwitchStandBack(node)
-      // A node-level refusal is true of every candidate, not of this one, so
-      // walking the rest would spend the same time to be refused identically.
-      if (standBack) return { moved: false, attempted, refusal: standBack, halted: true }
-      // The tier it is being refused ON is never a candidate to move it TO,
-      // and continueOnAnotherModel refuses candidate.id === node.tier anyway.
-      if (node.tier) spent.add(node.tier)
-      /* Nor is a pinned row a place the walk moves anybody TO: an exact older
-         version is a choice a person makes, not a stand-in. Nor is a row
-         marked `failoverTarget: false` -- the unpinned models added in 1.0.48
-         (GPT-6-Sol, GPT-6-Luna, Gemini 3.1 Flash Lite). With both skipped the
-         walk keeps exactly the candidates, in the order, it had before 1.0.48
-         (review P6). */
-      if (candidate?.pinned === true || candidate?.failoverTarget === false) continue
-      if (!candidate?.id || spent.has(candidate.id)) continue
-      spent.add(candidate.id)
-      attempted.push(candidate.id)
-      const policy = retryPolicies.get(nodeId)
-      const from = tiers.find(row => row.id === node.tier) || null
-      const effort = failoverEffort(from, candidate, policy?.preferredEffort || policy?.startOptions?.effort || node.effort || null,
-        policy?.preferredEffort || null)
-      try {
-        /* No roleBinding. Every AUTOMATIC start in this file goes without one
-           -- recover()'s own account recovery passes only `accountRecovery`,
-           and the retry sweep is the one exception because the person opted
-           into it and prepareRetryRole re-confirms the seat with orgBridge
-           first. An automatic failover has no confirmed seat to offer and must
-           not invent one; the start picks the ordinary identity for the tier. */
-        const moved = await coordinator.continueOnAnotherModel({ computerId: context.computerId, nodeId,
-          startOptions: { tier: candidate.id, ...(effort ? { effort } : {}),
-            ...(policy?.startOptions?.profileId ? { profileId: policy.startOptions.profileId } : {}) } })
-        if (moved === true) return { moved: true, attempted, refusal: null, halted: false }
-        refusal = `${candidate.label || candidate.id} could not take this agent`
-      } catch (error) {
-        refusal = error?.message || String(error)
-        publish({ nodeId, error: refusal })
-      }
-    }
-    return { moved: false, attempted, refusal, halted: false }
-  }
-
-  /* THE FAILOVER, IN THE ORDER THE LEDGER NAMES IT: another model (T137),
-     then another account (the rotation/auto-retry sweep this file already
-     owns), then -- and only then -- a block. */
   async function handleAccountLimit(context, nodeId, detail, code = null) {
-    if (deliveryHeld(retryPolicies.get(nodeId)) || limitDecisions.has(nodeId) || externalBlocks.has(nodeId)) return
+    if (limitDecisions.has(nodeId) || externalBlocks.has(nodeId) || flights.has(nodeId) || isReplacing(nodeId)) return
     limitDecisions.add(nodeId)
     try {
-      const switched = await switchToAnotherModel(context, nodeId)
-      if (switched.moved) { clearExternalBlock(nodeId); return }
-      /* STAND BACK, DO NOT FENCE. A turn still running, or a recovery already
-         in flight, is not "no candidate left": the thing in flight finishes
-         and this decision runs again on the next refusal. Fencing here would
-         stop a node that nothing is wrong with yet. */
-      if (switched.halted) return
-      const policy = retryPolicies.get(nodeId)
-      // A live rotation owns the account half of the decision: its sweep is
-      // already running or scheduled, and it blocks itself when it exhausts.
-      if (policy?.enabled || retryFlights.has(nodeId) || flights.has(nodeId)) return
-      /* A PINNED MODEL'S BLOCK SAYS WHAT TO DO (review P13). The walk leaves
-         the model the person chose, so only the person can change model or
-         account; the sentence names the dialog that does it. That closing is
-         the one kept whole, and it is short, so the provider's message keeps
-         its start and its retry time beside it (follow-up V3). Every other
-         block keeps the provider's message whole wherever it fits, as it did
-         before 1.0.48. */
-      const closing = switched.attempted.length
-        ? `Another model was tried and ${switched.refusal}. This agent has stopped spending turns.`
-        : switched.pinned
-          ? 'This agent keeps the model you chose and no other account is available. '
-            + 'Choose another model or account with Switch and continue.'
-          : `${switched.refusal[0].toUpperCase()}${switched.refusal.slice(1)}, and no other account is available, so this agent has stopped spending turns.`
-      await blockExternally(context, nodeId, blockNote('Blocked outside this app: ', detail, closing,
-        { keepClosing: switched.pinned === true }), switched, code)
+      await blockExternally(context, nodeId, blockNote('Usage limit reached: ', detail,
+        'Wait for this account to reset, or use Switch and continue.', { keepClosing: true }), code)
     } finally { limitDecisions.delete(nodeId) }
+  }
+  function recoveredSessionRecord(context, sessionId) {
+    let record = recoveredSessions.get(sessionId)
+    if (!record) {
+      const saved = context.transcriptStore.get(context.node.id)
+      record = { nodeId: context.node.id, computerId: context.computerId, text: '',
+        started: { sessionId, threadId: saved?.threadId, effort: saved?.effort, account: saved?.account } }
+      recoveredSessions.set(sessionId, record)
+    }
+    return record
+  }
+  function hydrateSessionSafety(context, sessionId) {
+    const record = recoveredSessionRecord(context, sessionId)
+    if (record.safetyRead) return record.safetyRead
+    const current = () => !disposed && recoveredSessions.get(sessionId) === record
+      && contexts.get(context.computerId)?.treeStore === context.treeStore
+      && sessionNodeIds.get(sessionId) === record.nodeId
+      && context.treeStore.getNode(record.nodeId)?.sessionId === sessionId
+    record.safetyRead = Promise.resolve().then(async () => {
+      const checkpoint = context.handoffStore?.readRecord
+        ? await context.handoffStore.readRecord(record.nodeId) : context.handoffStore?.get(record.nodeId)
+      if (current() && checkpoint?.safetyHold?.nodeId === record.nodeId && checkpoint.safetyHold.sessionId === sessionId) record.safetyRefused = true
+      if (typeof bridge.sessionActivity !== 'function') return { ok: true }
+      return bridge.sessionActivity({ sessionId })
+    }).then(activity => {
+      if (!current()) return false
+      if (activity?.ok !== true) throw new Error('The session safety state could not be read. Queued messages were retained.')
+      if (activity.automaticTurnBlock?.code === 'PROVIDER_SAFETY_REFUSAL') {
+        record.safetyRefused = true
+      }
+      return true
+    }).catch(error => {
+      if (current()) publish({ nodeId: record.nodeId, code: 'AGENT_SESSION_ACTIVITY_UNAVAILABLE', error: error.message || String(error) })
+      return false
+    }).then(known => {
+      if (!known && recoveredSessions.get(sessionId) === record) record.safetyRead = null
+      return known
+    })
+    return record.safetyRead
   }
   function observePacket(packet) {
     const sessionId = packet?.sessionId
     const context = find(sessionId)
     if (!context) { retireRecoveredSession(sessionId); return }
     const node = context.node
-    const policy = retryPolicies.get(node.id)
     const failure = packet?.event
-    {
-      const failedTurn = failure?.type === 'turn_completed' && ['failed', 'error'].includes(failure.status)
-      const code = failedTurn ? String(failure.code || failure.error?.code || '')
-        : failure?.type === 'session_ended' && failure.reason === 'exited' && !retrySafetyRefusal(policy?.lastFailureCode)
-          ? 'PROVIDER_PROCESS_EXITED' : null
-      /* ONE CLASSIFIER, NOT TWO. retryFailureKind() below reads a code, and a
-         provider that reports an account limit as prose sends none -- so this
-         surface used to classify the owner's real limit as nothing at all, and
-         recorded no failure, took no hold and scheduled no retry.
-         Widening the regex would not have fixed it either: the observed
-         sentence, "You've hit your session limit · resets 1:30am
-         (America/Los_Angeles)", contains none of `quota`, `usage limit` or
-         `rate limit`. The shell already owns the one rule that reads the words
-         as well as the code (account-session-recovery.cjs#limitReason) and now
-         carries its verdict on the event, so this surface consumes that verdict
-         rather than deriving a second, weaker opinion from an empty string.
-         A safety refusal still wins: it is checked first, exactly as before. */
-      const shellReason = failedTurn && !retrySafetyRefusal(code) ? String(failure.failureReason || '') : ''
-      const kind = shellReason === 'account-limit' ? 'limit'
-        : shellReason === 'context-limit' ? 'context'
-          : retryFailureKind(code)
-      /* A LIMIT WITH NO PROVIDER CODE STILL NEEDS A CODE ON THE RECORD.
-         lastFailureCode is not only a label: the retry gate reads it as
-         "is there a failure to retry" -- `if (!immediate && !policy.lastFailureCode)`
-         sends the attempt to the ledger direction check instead of to another
-         account. An empty string is falsy there, so recording the prose limit
-         with no code would have moved the policy to waiting and then declined to
-         act on it. This is the same canonical code this file already writes when
-         a limit arrives without one (see the persistent-loop branch). */
-      const failureCode = kind === 'limit' && !code ? 'ACCOUNT_LIMIT_REACHED' : code
-      if (policy?.enabled && !deliveryHeld(policy)) {
-        if (failure?.type === 'turn_completed' && sessionTurnCancelled(failure.status)) {
-          pauseCancelledTurn(policy)
-          void saveRetryPolicy(context, policy).catch(error => publish({ nodeId: node.id, error: error.message }))
-        } else if (kind) void rememberRetryFailure(context, policy, failureCode, kind).then(() => pollAccountRetries())
+    if (sessionSafetyRefusal(packet, sessionId) || /(?:PERMISSION|POLICY|AUTH|IDENTITY)/i.test(String(failure?.code || failure?.error?.code || ''))) {
+      recoveredSessionRecord(context, sessionId).safetyRefused = true
+      void Promise.resolve().then(async () => {
+        const prior = await readHandoff(context, node.id)
+        if (context.treeStore.getNode(node.id)?.sessionId !== sessionId) return
+        const record = { ...prior, handoff: prior?.handoff || manualAccountHandoff(node, context.transcriptStore.get(node.id), prior),
+          sessionId, safetyHold: { nodeId: node.id, sessionId } }
+        const saved = context.handoffStore?.saveRecord ? await context.handoffStore.saveRecord(node.id, record) : context.handoffStore?.save(node.id, record)
+        if (!saved) publish({ nodeId: node.id, error: 'The safety hold could not be saved. Review this conversation before resuming.' })
+      }).catch(error => publish({ nodeId: node.id, error: error.message || String(error) }))
+    }
+    if (failure?.type === 'turn_completed' && ['failed', 'error'].includes(failure.status)
+      && !sessionSafetyRefusal(packet, sessionId)) {
+      const code = String(failure.code || failure.error?.code || '')
+      if (!/(?:PERMISSION|POLICY|AUTH|IDENTITY)/i.test(code)
+        && (failure.failureReason === 'account-limit' || /quota|usage.limit|rate.limit|ACCOUNT_LIMIT|ACCOUNT_EXHAUSTED/i.test(code))) {
+        void handleAccountLimit(context, node.id, limitReasonText(failure), code || 'ACCOUNT_LIMIT_REACHED')
           .catch(error => publish({ nodeId: node.id, error: error.message }))
-        else if (failedTurn && retrySafetyRefusal(code)) {
-          policy.lastFailureCode = code; policy.failurePending = false; policy.state = 'paused'; policy.nextAttemptAt = null
-          policy.reason = 'This refusal needs review before another automatic attempt.'
-          void saveRetryPolicy(context, policy).catch(error => publish({ nodeId: node.id, error: error.message }))
-        }
-      }
-      /* T124. THE LIMIT DECISION IS NOT THE RETRY POLICY'S PRIVATE BUSINESS.
-         Everything above is gated on an ENABLED "Keep trying accounts" policy,
-         and the thirty-turn run the ledger measured had none -- so the limit
-         was classified as nothing at all and no sender was ever given a reason
-         to stop. A limit refusal now always reaches the failover, which tries
-         another model, then another account, and blocks only when neither is
-         available. `kind` is already null for every retrySafetyRefusal code
-         (retryFailureKind checks it first, and the shell's verdict above is
-         consulted only when the code is not a safety refusal), so a refusal
-         that needs a person's review still cannot be laundered into a limit. */
-      if (kind === 'limit') {
-        void handleAccountLimit(context, node.id, limitReasonText(failure), failureCode)
-          .catch(error => publish({ nodeId: node.id, error: error.message || String(error) }))
       }
     }
     for (const session of recoveredSessions.keys()) {
@@ -696,13 +422,9 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     }
     // Every owned session needs an off-page observer, not only sessions this
     // coordinator replaced. The Computers listener is removed on navigation.
-    let record = recoveredSessions.get(sessionId)
-    if (!record) {
-      const saved = context.transcriptStore.get(node.id)
-      record = { nodeId: node.id, computerId: context.computerId, text: '',
-        started: { sessionId, threadId: saved?.threadId, effort: saved?.effort, account: saved?.account } }
-      recoveredSessions.set(sessionId, record)
-    }
+    const record = recoveredSessionRecord(context, sessionId)
+    // A later explicit turn may succeed without releasing earlier queued work.
+    if (sessionSafetyRefusal(packet, sessionId)) record.safetyRefused = true
     record.eventCount = (record.eventCount || 0) + 1
     const observed = [...listeners].some(({ observes }) => { try { return observes(record.nodeId) } catch { return false } })
     if (sessionEndedEvent(packet, sessionId)) {
@@ -737,12 +459,6 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     }
     if (!status) return
     if (!completionSettlesOpenTurn(packet, sessionId, record.turnId)) return
-    if (policy?.enabled && sessionTurnSucceeded(status)) {
-      const changed = policy.lastFailureCode != null || policy.recheckAttempt > 0 || heldAccounts(policy, policy.actualProvider).includes(policy.actualAccount)
-      policy.recheckAttempt = 0; policy.lastFailureCode = null; policy.autoResumeCount = 0
-      releaseHold(policy, policy.actualProvider, policy.actualAccount)
-      if (changed) void saveRetryPolicy(context, policy).catch(error => publish({ nodeId: node.id, error: error.message }))
-    }
     if (!turnId && !record.text && !['starting', 'running'].includes(node.status)) return
     record.completedTurnId = turnId || null
     if (!observed) {
@@ -753,15 +469,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
           ...(turnId ? { id: `agent:${sessionId}:${turnId}`, turnStamp: turnId } : {}) }] : [])], keepUnknown: true })
       context.treeStore.setNodeReply(record.nodeId, reply)
       const outcome = recoveredNodeTurnStatus(node, status, turnId)
-      /* T124. A NODE FENCED ON AN EXTERNAL LIMIT KEEPS THE REASON FOR THE
-         FENCE AS ITS NOTE, and this line is why it needs saying: it runs
-         AFTER the limit was classified above, so a bare `reply` silently
-         blanked the reason the failover had just written. `reply` is usually
-         empty for exactly this failure -- the provider's limit sentence does
-         not survive the shell's leak filter (see T17) -- which left the tree
-         saying nothing at all about why this agent stopped taking turns. The
-         block reason already carries the provider's sentence when one
-         survived, so it is the better note of the two either way. */
+
       const blockNote = externalBlocks.get(record.nodeId)?.reason || ''
       context.treeStore.setNodeStatus(record.nodeId, outcome,
         { note: outcome === 'finished' ? '' : outcome === 'interrupted' ? 'Stopped by you.'
@@ -780,6 +488,8 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     } catch (error) { publish({ nodeId, error: error.message || String(error) }) }
   }
   async function drainQueued(context, sessionId) {
+    if (!await hydrateSessionSafety(context, sessionId)) return
+    if (disposed || contexts.get(context.computerId)?.treeStore !== context.treeStore) return
     if (!outbox || !explicitlyAllowed(canStart) || !explicitlyAllowed(canContinue)) return
     if (queuedSends.has(sessionId)) { queuedCompletions.add(sessionId); return }
     const node = context.treeStore.getNode(context.node.id)
@@ -788,7 +498,12 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
        a session whose provider is refusing on a limit spends a turn to earn
        the same refusal, which is the loop. The message stays queued, exactly
        as it does for a busy node, and goes out when the block clears. */
-    if (externalBlocks.has(node.id)) return
+    if (externalBlocks.has(node.id) || recoveredSessions.get(sessionId)?.safetyRefused) return
+    if (typeof bridge.sendAutomatic !== 'function') {
+      publish({ nodeId: node.id, code: 'AGENT_AUTOMATIC_SEND_UNAVAILABLE',
+        error: 'Automatic sending is unavailable, so the queued message was kept. Open this agent and press Send to send it yourself.' })
+      return
+    }
     const entry = outbox.takeNext(sessionId)
     if (!entry) return
     queuedSends.add(sessionId)
@@ -799,8 +514,22 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     let delivered = false
     try {
       const model = context.sessionModelOverrides?.get(sessionId)
-      const sent = await bridge.send({ sessionId, text: entry.text, ...(model ? { model } : {}) })
-      if (sent?.ok === false) throw new Error(sent.reason || sent.message || 'The queued message was refused.')
+      if (recoveredSessions.get(sessionId)?.safetyRefused) {
+        throw Object.assign(new Error('The provider safety refusal keeps queued messages on hold.'), {
+          code: 'PROVIDER_SAFETY_REFUSAL', deliveryDisposition: 'not-sent',
+        })
+      }
+      const delivery = await bridge.sendAutomatic({ sessionId, text: entry.text, ...(model ? { model } : {}) })
+      if (delivery?.ok !== true || delivery.deliveryDisposition !== 'accepted'
+        || !delivery.result || typeof delivery.result !== 'object' || Array.isArray(delivery.result) || delivery.result.ok === false) {
+        throw Object.assign(new Error(delivery?.code === 'PROVIDER_SAFETY_REFUSAL'
+          ? 'The provider safety refusal keeps queued messages on hold.'
+          : delivery?.reason || delivery?.message || 'The queued message delivery could not be confirmed.'), {
+          code: delivery?.code || 'AGENT_AUTOMATIC_DELIVERY_UNCONFIRMED',
+          deliveryDisposition: delivery?.ok === false && delivery.deliveryDisposition === 'not-sent' ? 'not-sent' : 'unknown',
+        })
+      }
+      const sent = delivery.result
       outbox.confirmDelivered(sessionId, entry)
       delivered = true
       if (context.treeStore.getNode(node.id)?.sessionId === sessionId) {
@@ -811,14 +540,20 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
             ...(turnStamp ? { turnStamp, id: `you:${sessionId}:${turnStamp}` } : {}) }] })
       }
     } catch (error) {
-      outbox.requeueFront(sessionId, entry)
+      const held = recoveredSessions.get(sessionId)
+      if (error?.code === 'PROVIDER_SAFETY_REFUSAL' && held) held.safetyRefused = true
+      // Only a tracked non-delivery can be retried automatically. An uncertain
+      // receipt retains the visible entry without risking duplicate dispatch.
+      const unconfirmed = error?.deliveryDisposition !== 'not-sent'
+      outbox.requeueFront(sessionId, unconfirmed ? { ...entry, deliveryUnconfirmed: true } : entry)
       const latest = context.treeStore.getNode(node.id)
       if (latest?.sessionId === sessionId && latest.status === 'running'
           && latest.runStartedAt === attempted.runStartedAt
           && recoveredSessions.get(sessionId)?.eventCount === eventCount) {
-        context.treeStore.setNodeStatus(node.id, 'finished', { note: 'The queued message was not sent.' })
+        context.treeStore.setNodeStatus(node.id, 'finished', { note: unconfirmed
+          ? 'The queued message delivery could not be confirmed.' : 'The queued message was not sent.' })
       }
-      publish({ nodeId: node.id, error: error.message || String(error) })
+      publish({ nodeId: node.id, code: error?.code, error: error.message || String(error) })
     } finally {
       queuedSends.delete(sessionId)
       // A very short queued turn can complete before send() acknowledges it.
@@ -939,65 +674,19 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     }
   }
 
-  async function recover(packet, manual = null, retryContext = null) {
+  async function continueManually(packet, manual) {
     const event = packet?.event
-    if (event?.type !== 'account_recovery_needed' || typeof event.recoveryId !== 'string'
+    if (event?.type !== 'manual_continuation' || typeof event.recoveryId !== 'string'
       || typeof event.handoff !== 'string' || !event.handoff.trim()) return
     const registered = manual ? contexts.get(manual.computerId) : null
     const manualNode = registered?.treeStore.getNode(manual?.nodeId)
-    const context = manual ? (manualNode?.sessionId === packet.sessionId ? { ...registered, node: manualNode } : null) : retryContext || find(packet.sessionId)
+    const context = manual ? (manualNode?.sessionId === packet.sessionId ? { ...registered, node: manualNode } : null) : null
     if (!context || seen.has(event.recoveryId)) return
-    if (manual?.flight?.cleanupOwnership && context.node.createdAt !== manual.flight.cleanupOwnership.expectedNodeCreatedAt) return false
     const entryOwnership = manual?.cleanupOwnership
     if (entryOwnership && (context.node.createdAt !== entryOwnership.expectedNodeCreatedAt
       || context.node.sessionId !== entryOwnership.expectedNodeSessionId)) return false
     let cleanupOwnership = entryOwnership || Object.freeze({ expectedNodeCreatedAt: context.node.createdAt, expectedNodeSessionId: packet.sessionId })
-    if (manual?.flight) {
-      manual.flight.cleanupOwnership = cleanupOwnership
-      manual.flight.cleanupContext = context
-    }
-    const recoveryRevision = retryChoiceRevisions.get(context.node.id) || 0
-    let automaticPolicy = null
-    if (!manual) {
-      // Host recovery tickets can arrive before register() finishes reading the
-      // saved retry policy. Read that exact conversation's choice before any
-      // close/start, and honor an Off choice made while the read was pending.
-      let retainedChoice
-      try { retainedChoice = await readHandoff(context, context.node.id) }
-      catch {
-        publish({ nodeId: context.node.id, code: 'ACCOUNT_RETRY_CHOICE_UNREADABLE',
-          error: 'The saved account retry choice could not be read. Automatic continuation is paused; the conversation is retained.' })
-        return false
-      }
-      const current = context.treeStore.getNode(context.node.id)
-      if (disposed || contexts.get(context.computerId)?.treeStore !== context.treeStore
-        || current?.createdAt !== cleanupOwnership.expectedNodeCreatedAt
-        || current?.sessionId !== packet.sessionId
-        || recoveryRevision !== (retryChoiceRevisions.get(context.node.id) || 0)
-        || seen.has(event.recoveryId)) return false
-      const savedPolicy = retainedChoice?.retryPolicy
-      const savedOff = savedPolicy?.v === 1 && savedPolicy.nodeId === current.id
-        && savedPolicy.sessionId === current.sessionId
-        && (retainedChoice.sessionId == null || retainedChoice.sessionId === current.sessionId)
-        && savedPolicy.enabled === false
-      const cachedPolicy = retryPolicies.get(current.id)
-      if (cachedPolicy?.nodeId === current.id && cachedPolicy.sessionId === current.sessionId) automaticPolicy = cachedPolicy
-      if (automaticPolicy?.enabled === false || savedOff) {
-        publish({ nodeId: current.id, code: 'ACCOUNT_RETRY_OFF',
-          error: 'Automatic continuation is off for this agent. The conversation is retained.' })
-        return false
-      }
-    }
-    // A person opted into the persistent loop. The old one-shot ticket must
-    // not race it or silently drop its provider choices after eight moves.
-    if (!manual && automaticPolicy?.enabled) {
-      const policy = automaticPolicy
-      policy.failurePending = true; policy.state = 'waiting'; policy.nextAttemptAt = now()
-      policy.lastFailureCode = policy.lastFailureCode || 'ACCOUNT_LIMIT_REACHED'
-      if (event.reason !== 'context-limit' && !retryFlights.has(context.node.id)) holdAccount(policy, policy.actualProvider, policy.actualAccount)
-      await saveRetryPolicy(context, policy); void pollAccountRetries(); return
-    }
-    if (flights.has(context.node.id)) { deferred.set(context.node.id, packet); return }
+    if (flights.has(context.node.id)) return
     const { treeStore, transcriptStore, handoffStore, node } = context
     // An explicit replacement already owns this node. It wins over the offer;
     // the host ticket remains pending if that replacement later refuses.
@@ -1018,15 +707,15 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     let imageRecovered = null
     let imageRecoveryTransferred = false
     let imageRecoveryRefused = null
-    let initialStoppedChoice = Boolean(manual && !manual.retryAttempt && noteMeansStopped(node.statusNote))
+    let initialStoppedChoice = noteMeansStopped(node.statusNote)
     const recoveryCurrent = () => !disposed
-      && recoveryRevision === (retryChoiceRevisions.get(node.id) || 0)
       && treeStore.getNode(node.id)?.createdAt === cleanupOwnership.expectedNodeCreatedAt
       && treeStore.getNode(node.id)?.sessionId === ownedSessionId
       && (initialStoppedChoice || !noteMeansStopped(treeStore.getNode(node.id)?.statusNote))
-      && !manual?.flight?.cancelled
       && (!manual?.originValid || manual.originValid())
+
     const assertRecoveryCurrent = () => {
+      if (sessionSafetyHeld(node.id, packet.sessionId)) throw Object.assign(new Error('This conversation is held for review. Continuing cannot resume it.'), { code: 'AGENT_CONTINUATION_HELD_FOR_REVIEW' })
       if (!recoveryCurrent()) throw Object.assign(new Error('This recovery was stopped or its conversation changed.'), { code: 'RECOVERY_CANCELLED' })
       assertStartAllowed(manual)
     }
@@ -1086,15 +775,16 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     /* Said on the continuation line when a move to another provider cleared
        the agent's saved account (follow-up V6); '' otherwise. */
     let accountClearedNote = ''
-    retryable.delete(node.id)
     try {
+      assertRecoveryCurrent()
+      const priorSafety = await readHandoff(context, node.id)
+      if (priorSafety?.safetyHold?.nodeId === node.id && priorSafety.safetyHold.sessionId === packet.sessionId) {
+        throw Object.assign(new Error('This conversation is held for review. Continuing cannot resume it.'), { code: 'AGENT_CONTINUATION_HELD_FOR_REVIEW' })
+      }
+      if (sessionNodeIds.has(packet.sessionId) && !await hydrateSessionSafety(context, packet.sessionId)) throw new Error('The session safety state could not be read. No continuation was started.')
       assertRecoveryCurrent()
       assertAutomaticSendAvailable()
       const saved = transcriptStore.readLatest ? await transcriptStore.readLatest(node.id) : transcriptStore.get(node.id)
-      assertRecoveryCurrent()
-      if (manual?.flight?.cancelled) throw new Error('Automatic retries were cancelled.')
-      const history = !manual ? await captureAccountRecoveryHistory({ saved, bridge, nodeId: node.id,
-        sessionId: packet.sessionId, requestKeys: address(treeStore, node).requestKeys }) : null
       assertRecoveryCurrent()
       const handoff = event.handoff.slice(0, 48000)
       /* Through the per-node file store when the shell offers it, the settings
@@ -1103,8 +793,6 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
          characters and the settings record is bounded at 1 MiB, so this is the
          write that was refused first once the record filled. */
       const record = { handoff, sessionId: packet.sessionId, recoveryId: event.recoveryId,
-        ...(history ? { conversation: history } : {}),
-        ...(retryPolicies.has(node.id) ? { retryPolicy: persistedPolicy(retryPolicies.get(node.id)) } : {}),
         ...(manual ? { kind: 'manual' } : {}) }
       const handoffSaved = handoffStore?.saveRecord
         ? await handoffStore.saveRecord(node.id, record)
@@ -1119,14 +807,15 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
        * (composeNodeBrief -> bridge.send, below), so the context channel is
        * untouched; what changes is that the chat no longer re-renders the prior
        * conversation as a giant action line on every recovery (17 today = the
-       * repeats that were seen). The `tool` label 'Recovery handoff' is kept -- it
+       * repeats the owner saw). The `tool` label 'Recovery handoff' is kept -- it
        * survives the transcript store's cleanLine and is what the carry order,
        * the t158 gate and the chat's continuation rendering read; the full
        * handoff stays in handoffStore, keyed by this node, for anything that
        * needs it. */
-      const continuationSummary = 'Continued on another '
-        + (manual?.modelContinuation ? 'model' : 'account')
-        + ' after the previous session reached a provider limit. The full handoff is kept with this conversation.'
+      const continuationSummary = manual.sameAccountReset
+        ? 'Continued on the same account after the reset time you chose.'
+        : 'Continued on another ' + (manual?.modelContinuation ? 'model' : 'account')
+          + ' by your choice. The full handoff is kept with this conversation.'
       const checkpointTranscript = transcriptStore.get(node.id) || saved
       const lines = [...(checkpointTranscript?.lines || []), { who: 'action', tool: 'Recovery handoff', state: 'done',
         text: continuationSummary, at: Date.now() }]
@@ -1143,34 +832,8 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       }
       publishedRecoveryStatus = { status: 'starting', note: manual?.modelContinuation ? 'Continuing on another model…' : 'Continuing on another account…' }
       initialStoppedChoice = false
-      /* NOTHING IS TORN DOWN BEFORE THE REPLACEMENT IS KNOWN TO BE STARTABLE.
-       *
-       * T158 (from T137): a model continuation is the ONE path here
-       * asked of a session that is alive and healthy -- an account recovery or
-       * an account continuation is asked because the session already cannot
-       * serve. Closing first therefore costs a person nothing in those cases
-       * and costs them the whole conversation in this one: measured
-       * 2026-09-16, a cross-provider switch retired the Claude session and the
-       * replacement start was then refused, so the person was left with no
-       * session, no new line in the conversation and only the generic
-       * last-turn-failed word.
-       *
-       * shell/agent-host.cjs already owns the correct boundary and says why:
-       * "Resume replacement is deliberately closed only after the owning
-       * account, admission, and authority binding checks have passed, and
-       * immediately before provider dispatch. A failed exact-account or
-       * authority check must leave the running predecessor intact; closing it
-       * in the renderer before start made AGENT_RESUME_ACCOUNT_LIMIT
-       * irreversible." That block runs for any start naming
-       * `replacesSessionId` without `accountRetry`, which is exactly this
-       * start, and it requires the predecessor to still BE there. So handing
-       * the close to the host is not a new ordering -- it is stopping this
-       * path from pre-empting the one the product already has.
-       *
-       * The guarantee that follows is the one worth stating: a cross-provider
-       * continuation either produces a live replacement carrying the handoff,
-       * or leaves the original session alive. Never both dead. */
-      hostClosesPredecessor = manual?.modelContinuation === true
+
+      hostClosesPredecessor = manual?.modelContinuation === true || manual?.sameAccountReset === true
       if (context.imageRecovery?.available === true) {
         assertRecoveryCurrent()
         // Capture the producer host before invoking prepare. prepare() crosses
@@ -1210,32 +873,14 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       }
       if (!hostClosesPredecessor && !closedSessions.has(packet.sessionId) && (!manual || sessionNodeIds.has(packet.sessionId))) {
         assertRecoveryCurrent()
-        let closed, predecessorMappingRemoved = false
-        try { closed = await bridge.close({ sessionId: packet.sessionId, ...(!manual ? { accountRecovery: { recoveryId: event.recoveryId } } : {}) }) }
-        catch (error) {
-          if (!manual?.retryAttempt || manual.policy.failureKind !== 'interruption' || refusalCode(error) !== 'MC_AGENT_UNKNOWN_SESSION') throw error
-          predecessorMappingRemoved = true
-          // This is not a cleanup receipt. The native start guard below must
-          // finish any retained predecessor cleanup before account selection.
-        }
-        if (!manual && closed?.ok === false && closed.code === 'AGENT_ACCOUNT_RECOVERY_UNAVAILABLE') {
-          // A newer turn or another recovery consumed the ticket. It owns the
-          // live state; this losing attempt neither closes nor starts again.
-          if (recoveryCurrent() && liveBefore) treeStore.setNodeStatus(node.id, liveBefore.status, { note: liveBefore.statusNote })
-          publish({ nodeId: node.id, recoveryRefused: closed.code, reason: closed.reason })
-          return false
-        }
+        const closed = await bridge.close({ sessionId: packet.sessionId })
         if (closed && (closed.closed !== true || closed.ok === false
           || closed.sessionId !== packet.sessionId)) throw new Error('The old session could not be closed.')
-        if (!closed && !predecessorMappingRemoved) throw new Error('The old session could not be closed.')
+        if (!closed) throw new Error('The old session could not be closed.')
         if (closed?.closed === true) {
           closedSessions.add(packet.sessionId)
           // The close receipt remains authoritative if the chooser expired
           // during that await. Retire only this predecessor's own mapping.
-          retireCleanupMapping(context, node.id, packet.sessionId, cleanupOwnership)
-          if (recoveredSessions.get(packet.sessionId)?.nodeId === node.id) retireRecoveredSession(packet.sessionId)
-        }
-        if (manual?.retryAttempt) {
           retireCleanupMapping(context, node.id, packet.sessionId, cleanupOwnership)
           if (recoveredSessions.get(packet.sessionId)?.nodeId === node.id) retireRecoveredSession(packet.sessionId)
         }
@@ -1254,18 +899,12 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         // Closing the predecessor can wait on its process. The earlier consent
         // observation cannot authorize a replacement after that wait.
         assertRecoveryCurrent()
-        if (manual?.retryAttempt) {
-          if (manual.flight.cancelled) throw new Error('Automatic retries were cancelled.')
-          manual.startOptions = await prepareRetryRole(context, manual.policy, manual.startOptions.tier)
-          if (manual.flight.cancelled) throw new Error('Automatic retries were cancelled.')
-          manual.flight.requestedSessionId = requestedSessionId
-        }
         assertRecoveryCurrent()
         started = await bridge.start({ sessionId: requestedSessionId, surface: 'fleet-tree', ...(packet.sessionId ? { replacesSessionId: packet.sessionId } : {}),
-          /* A model continuation (request T137) names no account to move
+          /* A model continuation (owner request T137) names no account to move
              away from: the ordinary start picks the account for the chosen
              tier, the current one included. */
-          ...(manual ? { ...manual.startOptions, ...(manual.retryAttempt ? { accountRetry: manual.accountRetry } : manual.modelContinuation || !manual.account ? {} : { continueFromAccount: manual.account }) } : { accountRecovery: { recoveryId: event.recoveryId } }),
+          ...manual.startOptions,
           ...(treeStore.getTree?.(node.treeId)?.researchProjectId ? { researchProjectId: treeStore.getTree(node.treeId).researchProjectId } : {}),
           requestKeys: identity.requestKeys, treeIdentity: identity.treeIdentity })
       } catch (error) {
@@ -1278,9 +917,17 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       }
       if (!started?.sessionId || started.ok === false) {
         const reason = started?.reason || started?.message || 'No replacement account is available.'
-        const refusal = Object.assign(new Error(reason), { code: started?.code, accountRetry: started?.accountRetry })
+        const refusal = Object.assign(new Error(reason), { code: started?.code })
         started = null
         throw refusal
+      }
+      if (manual.startOptions?.treeAccount && started.account !== manual.startOptions.treeAccount) {
+        await closeReplacementSession(context, node.id, started.sessionId, cleanupOwnership)
+        throw new Error('The continuation did not use the account you chose. It was stopped.')
+      }
+      if (manual.sameAccountReset && (started.account !== manual.account || started.threadId !== manual.startOptions.resumeThreadId || started.resumed !== true)) {
+        await closeReplacementSession(context, node.id, started.sessionId, cleanupOwnership)
+        throw new Error('The reset continuation did not preserve its saved account and thread. It was stopped.')
       }
       // A successful replacement receipt proves the host retired its predecessor.
       // Retain that fact even if this chooser expires before attachment.
@@ -1293,13 +940,13 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         if (recoveredSessions.get(packet.sessionId)?.nodeId === node.id) retireRecoveredSession(packet.sessionId)
       }
       if (!recoveryCurrent()) {
-        try { await closeRetrySession(context, node.id, started.sessionId, cleanupOwnership) }
+        try { await closeReplacementSession(context, node.id, started.sessionId, cleanupOwnership) }
         catch (error) {
           started.cleanupPending = true
           publish({ nodeId: node.id, error: error.message })
           throw error
         }
-        throw new Error('Automatic retries were cancelled.')
+        throw new Error('The continuation choice changed.')
       }
       if (manual?.startOptions?.effort && !started.effort) started = { ...started, effort: manual.startOptions.effort }
       const latest = treeStore.getNode(node.id)
@@ -1323,7 +970,6 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       }
       ownedSessionId = started.sessionId
       cleanupOwnership = Object.freeze({ ...cleanupOwnership, expectedNodeSessionId: ownedSessionId })
-      if (manual?.flight) manual.flight.cleanupOwnership = cleanupOwnership
       if (imagePrepared && context.imageRecovery?.available === true) {
         assertRecoveryCurrent()
         assertImageRecoveryAuthority(imagePrepared.sourceBinding)
@@ -1368,7 +1014,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         if (attempt === 2) throw new Error('The reporting relationship is still changing. Retry when the move finishes.')
         latestIdentity = actual
       }
-      const text = composeNodeBrief({ message: history ? handoff + accountRecoveryHistoryNotice(history) : handoff, selfName: latestIdentity.treeIdentity.selfName,
+      const text = composeNodeBrief({ message: handoff, selfName: latestIdentity.treeIdentity.selfName,
         parentName: latestIdentity.treeIdentity.managerName, childNames: latestIdentity.childNames })
       const currentTranscript = transcriptStore.get(node.id)
       /* T377 item 8: `text` (the composed handoff) is still SENT to the
@@ -1383,13 +1029,12 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       assertRecoveryCurrent()
       const recording = transcriptStore.save(node.id, { ...currentTranscript, lines: nextLines, threadId: started.threadId || null,
         effort: started.effort || currentTranscript?.effort || null, account: started.account ?? null,
-        ...(manual?.retryAttempt || manual?.modelContinuation ? { provider: tiers.find(tier => tier.id === manual.startOptions.tier)?.provider } : {}), keepUnknown: false })
+        ...(manual.modelContinuation ? { provider: tiers.find(tier => tier.id === manual.startOptions.tier)?.provider } : {}), keepUnknown: false })
       const recorded = recording?.then ? await recording : recording
       assertRecoveryCurrent()
       publish({ nodeId: node.id, previousSessionId: packet.sessionId, started, lines: nextLines })
       if (!recorded) throw new Error('Could not save the replacement session and handoff.')
-      if (manual?.retryAttempt || manual?.modelContinuation) {
-        if (manual.flight?.cancelled) throw new Error('Automatic retries were cancelled.')
+      if (manual.modelContinuation) {
         /* The node's tier is what the card, the chip and the next Resume read;
            after a model continuation it must name the tier that is actually
            running, or the person is shown the model they just left. */
@@ -1403,15 +1048,12 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         const savedAccountProvider = treeStore.getNode(node.id)?.accountChoice?.provider || null
         const clearsAccount = Boolean(savedAccountProvider && continuedProvider && savedAccountProvider !== continuedProvider)
         const changed = treeStore.setNodeLaunchPreferences(node.id, { tier: manual.startOptions.tier, effort: manual.startOptions.effort,
+          model: manual.startOptions.model ?? null, nextModelChoice: null,
           ...(clearsAccount ? { accountChoice: null } : {}) })
         if (changed?.ok !== true || changed.snapshot?.persistenceFailed) throw new Error('The actual replacement model could not be saved.')
         /* AND IT IS SAID, NOT DONE IN SILENCE (follow-up V6): the next-model
            menu says the same sentence when a person makes the same move. */
         if (clearsAccount) accountClearedNote = MODEL_PANEL.accountCleared(continuedProvider)
-      }
-      if (manual?.retryAttempt) {
-        assertRecoveryCurrent()
-        if (manual.flight.cancelled) throw new Error('Automatic retries were cancelled.')
       }
       assertRecoveryCurrent()
       const continuingNote = ['Continuing from the saved handoff.', accountClearedNote].filter(Boolean).join(' ')
@@ -1446,7 +1088,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       const sent = delivery.result
       // A send already in flight retains its actual outcome, but cannot repaint
       // a conversation stopped or replaced while delivery was pending.
-      if (!recoveryCurrent()) return manual?.retryAttempt ? { ok: true, started } : true
+      if (!recoveryCurrent()) return true
       assertImageRecoveryAuthority()
       /* Custody was transferred before this point, but the lifetime watcher is
          deliberately installed only after the handoff itself is accepted.
@@ -1474,7 +1116,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         const latest = transcriptStore.get(node.id)
         const savingThread = transcriptStore.save(node.id, { ...latest, threadId: sent.threadId, keepUnknown: true })
         if (savingThread?.then) await savingThread
-        if (!recoveryCurrent()) return manual?.retryAttempt ? { ok: true, started } : true
+        if (!recoveryCurrent()) return true
         assertImageRecoveryAuthority()
         started = { ...started, threadId: sent.threadId }
         const record = recoveredSessions.get(started.sessionId)
@@ -1482,21 +1124,20 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         publish({ nodeId: node.id, previousSessionId: packet.sessionId, started, lines: latest?.lines || nextLines })
       }
       publishImageRecoveryNotice()
-      return manual?.retryAttempt ? { ok: true, started } : true
+      return true
     } catch (error) {
       if (!recoveryCurrent()) {
         if (started?.sessionId && !handoffDispatched && !started.cleanupPending) {
-          try { await closeRetrySession(context, node.id, started.sessionId, cleanupOwnership) }
+          try { await closeReplacementSession(context, node.id, started.sessionId, cleanupOwnership) }
           catch (cleanupError) { started.cleanupPending = true; publish({ nodeId: node.id, error: cleanupError.message }) }
         }
         const cancelledNode = treeStore.getNode(node.id)
-        const currentRevision = retryChoiceRevisions.get(node.id) || 0
         const ownsPublishedStatus = publishedRecoveryStatus
           && cancelledNode?.status === publishedRecoveryStatus.status
           && cancelledNode?.statusNote === publishedRecoveryStatus.note
         if (!handoffDispatched && !started?.cleanupPending && cancelledNode?.createdAt === cleanupOwnership.expectedNodeCreatedAt
           && cancelledNode?.sessionId === ownedSessionId
-          && ownsPublishedStatus && [recoveryRevision, recoveryRevision + 1].includes(currentRevision)) {
+          && ownsPublishedStatus) {
           if (!started && !closedSessions.has(packet.sessionId) && liveBefore) {
             treeStore.setNodeStatus(node.id, liveBefore.status, { note: liveBefore.statusNote })
           } else {
@@ -1507,14 +1148,10 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         // Keep an explicit refusal or transport error instead of relabelling it.
         if (handoffDispatched) {
           publish({ nodeId: node.id, error: error.message, deliveryOutcome: error.deliveryOutcome || (handoffAccepted ? 'accepted' : 'unknown') })
-          return manual?.retryAttempt ? { ok: false, started, code: refusalCode(error), reason: error.message,
-            deliveryOutcome: error.deliveryOutcome || (handoffAccepted ? 'accepted' : 'unknown') } : false
+          return false
         }
-        return manual?.retryAttempt ? { ok: false, started, code: 'RECOVERY_CANCELLED', reason: error.message } : false
+        return false
       }
-      if (!started && !manual) retryable.set(node.id, {
-        packet, context, createdAt: node.createdAt, revision: recoveryRevision,
-      })
       const current = treeStore.getNode(node.id)
       /* THE SESSION IS STILL THERE, SO THE NODE MUST SAY SO. When this path
          never closed the predecessor and never started a replacement, nothing
@@ -1534,50 +1171,15 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       }
       const deliveryOutcome = handoffDispatched ? (error.deliveryOutcome || (handoffAccepted ? 'accepted' : 'unknown')) : null
       publish({ nodeId: node.id, error: error?.message || String(error), ...(deliveryOutcome ? { deliveryOutcome } : {}) })
-      return manual?.retryAttempt ? { ok: false, started, code: refusalCode(error), reason: error?.message || String(error), accountRetry: error?.accountRetry,
-        ...(deliveryOutcome ? { deliveryOutcome } : {}) } : false
     } finally {
       flights.delete(node.id)
       retained.count -= 1
       if (retained.count === 0) activeStores.delete(context.computerId)
-      const next = deferred.get(node.id)
-      deferred.delete(node.id)
-      if (next) void recover(next)
       notifyRecoverySettled(node.id)
     }
   }
   const readHandoff = (context, nodeId) => context.handoffStore?.readRecord
     ? context.handoffStore.readRecord(nodeId) : context.handoffStore?.get(nodeId)
-  const queuedSnapshots = new Map()
-  function saveRetryPolicy(context, policy) {
-    // Serialize the existing record. Stop mutates the same policy before it
-    // queues its write, so a late completion cannot put enabled=true back.
-    // Each write carries the snapshot taken when it was queued, and an
-    // unchanged snapshot is not written again.
-    const nodeId = policy.nodeId
-    const snapshotPolicy = persistedPolicy(policy)
-    const snapshot = JSON.stringify(snapshotPolicy)
-    const snapshotSessionId = snapshotPolicy.sessionId
-    if (queuedSnapshots.get(nodeId) === snapshot) return retryWrites.get(nodeId) || Promise.resolve()
-    queuedSnapshots.set(nodeId, snapshot)
-    const write = (retryWrites.get(nodeId) || Promise.resolve()).catch(() => {}).then(async () => {
-      try {
-        const record = await readHandoff(context, nodeId)
-        const value = { ...record,
-          ...(snapshotSessionId ? { sessionId: snapshotSessionId } : {}),
-          handoff: record?.handoff || policy.handoff, retryPolicy: JSON.parse(snapshot) }
-        const saved = context.handoffStore?.saveRecord
-          ? await context.handoffStore.saveRecord(nodeId, value) : context.handoffStore?.save(nodeId, value)
-        if (!saved) { policy.enabled = false; throw new Error('The automatic retry choice could not be saved. No further attempt was authorized.') }
-        publish({ nodeId, retryPolicy: JSON.parse(snapshot) })
-      } catch (error) {
-        if (queuedSnapshots.get(nodeId) === snapshot) queuedSnapshots.delete(nodeId)
-        throw error
-      }
-    })
-    retryWrites.set(nodeId, write)
-    return write
-  }
   function retireCleanupMapping(context, nodeId, sessionId, cleanupOwnership) {
     const current = context.treeStore.getNode(nodeId)
     // A recreated node may have rebound even the same session identifier.
@@ -1593,7 +1195,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     onCleanupRequired(context.treeStore, nodeId, sessionId, cleanupOwnership)
     return true
   }
-  async function closeRetrySession(context, nodeId, sessionId, cleanupOwnership) {
+  async function closeReplacementSession(context, nodeId, sessionId, cleanupOwnership) {
     // This immutable identity belongs to the originating flight, not whichever
     // session is visible when cleanup begins. Custody survives a stale choice;
     // the callback may mutate the node only while that identity still matches.
@@ -1618,421 +1220,111 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     closedSessions.add(sessionId)
     retireCleanupMapping(context, nodeId, sessionId, cleanupOwnership)
   }
-  async function prepareRetryRole(context, policy, tierId) {
-    const node = context.treeStore.getNode(policy.nodeId)
-    const refuse = (message, code) => { throw Object.assign(new Error(message), { code }) }
-    if (!node || node.role !== policy.nodeRole) refuse('The assigned role changed. Review the retry choice again.', 'AGENT_RETRY_ROLE_CHANGED')
-    const tier = tiers.find(row => row.id === tierId)
-    const binding = policy.startOptions?.roleBinding
-    if (!policy.allowedProviders.includes(tier?.provider)) refuse('This provider is outside the saved retry choices.', 'AGENT_RETRY_PROVIDER_NOT_ALLOWED')
-    if (!tier || !binding?.agentId || !orgBridge?.read || !orgBridge?.ensureSeat) refuse('The saved role identity cannot be confirmed.', 'AGENT_RETRY_ROLE_UNCONFIRMED')
-    const snapshot = await orgBridge.read()
-    const role = snapshot?.roles?.find(row => row.id === binding.id)
-    const seat = snapshot?.org?.agents?.find(row => row.id === binding.agentId && row.enabled === true && row.role === binding.id)
-    if (snapshot?.ok !== true || !role || !seat) refuse('The saved role identity is no longer assigned to this agent.', 'AGENT_RETRY_ROLE_UNCONFIRMED')
-    const adopted = await orgBridge.ensureSeat({ id: seat.id, role: role.id, provider: tier.provider,
-      adoptProvider: true, expectedRevision: snapshot.org.revision })
-    if (adopted?.ok !== true) refuse(adopted?.reason || 'The existing role could not adopt the selected provider.', 'AGENT_RETRY_PROVIDER_SEAT_REFUSED')
-    const preferred = tiers.find(row => row.id === policy.preferredTier)
-    // The failover's rule (failoverEffort): the wanted depth within the
-    // preferred model's provider; across providers only the person's recorded
-    // choice, and only onto Codex or Claude; otherwise the row's own default.
-    // Antigravity fixes effort in the model and Grok/Gemini offer less, so
-    // they use their verified tier value. Native admission still verifies the
-    // requested value.
-    const wanted = policy.preferredEffort || policy.startOptions?.effort || null
-    const effort = failoverEffort(preferred, tier, wanted, policy.preferredEffort || null)
-    return { ...policy.startOptions, tier: tierId, effort,
-      roleBinding: { ...binding, expectedOrgRevision: adopted.org.revision, expectedRoleRevision: role.revision } }
+  const limitWaits = new Map()
+  const limitWaitVersions = new Map()
+  const advanceLimitWait = nodeId => {
+    const version = (limitWaitVersions.get(nodeId) || 0) + 1
+    limitWaitVersions.set(nodeId, version)
+    return version
   }
-  async function retryRoleBinding(context, node, current = null) {
-    const binding = current?.roleBinding
-    if (typeof binding?.agentId === 'string' && binding.agentId
-      && typeof binding.id === 'string' && binding.id
-      && Number.isSafeInteger(binding.expectedOrgRevision) && binding.expectedOrgRevision >= 0
-      && Number.isSafeInteger(binding.expectedRoleRevision) && binding.expectedRoleRevision >= 0) return binding
-    if (!orgBridge?.read || !node?.id) return null
-    let snapshot
-    try { snapshot = await orgBridge.read() } catch { return null }
-    const org = snapshot?.org
-    const roles = Array.isArray(snapshot?.roles) ? snapshot.roles : []
-    const roleId = identityRoleForTreeNode(node.role)
-    const role = roles.find(row => row?.id === roleId)
-    if (snapshot?.ok !== true || !org || !Number.isSafeInteger(org.revision) || org.revision < 0
-      || !role || !Number.isSafeInteger(role.revision) || role.revision < 0) return null
-    const agents = Array.isArray(org.agents) ? org.agents : []
-    const assigned = agents.find(row => row?.id === node.id && row.enabled === true && row.role === role.id)
-      || (role.capabilities?.orgRoot === true
-        ? (() => {
-            const roots = agents.filter(row => row?.enabled === true && row.role === role.id)
-            return roots.length === 1 ? roots[0] : null
-          })()
-        : null)
-    if (!assigned?.id) return null
-    const selectedRole = typeof node.role === 'string' ? node.role.trim() : ''
-    return { agentId: assigned.id, id: role.id, expectedOrgRevision: org.revision, expectedRoleRevision: role.revision,
-      ...(selectedRole ? {} : { selection: '' }) }
+  let limitWaitPolling = false
+  const sameWaitSource = (context, wait) => {
+    const node = context.treeStore.getNode(wait.nodeId)
+    const saved = context.transcriptStore.get(wait.nodeId)
+    return !disposed && node?.createdAt === wait.createdAt && node.sessionId === wait.sessionId
+      && !noteMeansStopped(node.statusNote) && !['starting', 'running'].includes(node.status) && saved?.account === wait.account
+      && saved?.threadId === wait.threadId && saved?.provider === wait.provider && node.tier === wait.tier
   }
-  const retryableFailure = code => interruptionCodes.has(code) || /quota|usage.limit|rate.limit|context.limit|context.length|prompt.too.long|ACCOUNT_(?:UNAVAILABLE|EXHAUSTED|LIMIT)|ACP_(?:CLIENT_UNSUPPORTED|MODEL_REFUSED)/i.test(String(code || ''))
-  async function runAccountRetry(context, policy, { immediate = false } = {}) {
-    const nodeId = policy.nodeId
-    if (!policy.enabled || deliveryHeld(policy) || retryFlights.has(nodeId) || flights.has(nodeId) || isReplacing(nodeId) || disposed) return false
-    const flight = { cancelled: false, requestedSessionId: null }
-    retryFlights.set(nodeId, flight)
-    const allowed = () => {
-      try { assertStartAllowed(true) } catch (error) { throw pauseError(error.message, 'safety') }
-      if (flight.cancelled || !policy.enabled || disposed) throw pauseError('Automatic retries were cancelled.', 'safety')
-      const node = context.treeStore.getNode(nodeId)
-      if (!node || node.sessionId !== policy.sessionId || node.role !== policy.nodeRole) throw pauseError('This agent changed. Review its retry choice again.', 'safety')
-      return node
-    }
+  async function cancelSavedWait(context, nodeId, wait) {
+    const latest = await readHandoff(context, nodeId)
+    if (latest?.limitWait?.waitId !== wait.waitId) return
+    const cleared = { ...latest, limitWait: null }
+    const stored = context.handoffStore?.saveRecord ? await context.handoffStore.saveRecord(nodeId, cleared) : context.handoffStore?.save(nodeId, cleared)
+    if (!stored) publish({ nodeId, error: 'The reset wait cancellation could not be saved. Stop this conversation before reloading.' })
+  }
+  async function pollLimitWaits() {
+    if (disposed || limitWaitPolling) return
+    limitWaitPolling = true
     try {
-      let node = allowed()
-      if (sessionNodeIds.has(node.sessionId) && ['starting', 'running'].includes(node.status) && !policy.failurePending) return false
-      // A failed turn that has not completed since is itself open work. Only a
-      // retry with no such failure asks the ledger for direction, with backoff.
-      if (!immediate && !policy.lastFailureCode) {
-        const direction = await bridge.continuations?.({ action: 'direction', sessionId: node.sessionId,
-          requestKeys: address(context.treeStore, node).requestKeys })
-        allowed()
-        if (direction?.ok !== true || (direction.enabled === true && direction.actionable !== true)) {
-          const delay = Math.min(DIRECTION_BACKOFF_MAX_MS, (directionChecks.get(nodeId)?.delay || 2500) * 2)
-          directionChecks.set(nodeId, { delay, at: now() + delay })
-          policy.state = 'no-direction'; policy.nextAttemptAt = null
-          await saveRetryPolicy(context, policy); return false
-        }
-        directionChecks.delete(nodeId)
-      }
-      const result = await readAccounts?.()
-      allowed()
-      if (result?.available !== true && result?.ok !== true) throw pauseError('The registered account list could not be read.', 'transient')
-      const accounts = (result.accounts || []).filter(row => row.signedIn !== false && row.signedIn !== 'no')
-      const candidates = accountRetryCandidates(policy.preferredTier, tiers, accounts).filter(id => policy.allowedProviders.includes(tiers.find(row => row.id === id)?.provider))
-      const timings = [], skipped = []
-      // One bounded sweep of registered accounts. Eligibility and allowance
-      // are always probed in main; these names only avoid failed repeats.
-      let remaining = Math.min(128, accounts.length + candidates.length)
-      const sweepAt = now()
-      const initial = policy.sweepExclusions && typeof policy.sweepExclusions === 'object' ? policy.sweepExclusions : {}
-      delete policy.sweepExclusions
-      syncExclusions(policy, sweepAt)
-      policy.state = 'starting'; policy.nextAttemptAt = null
-      await saveRetryPolicy(context, policy)
-      for (const tierId of candidates) {
-        const tier = tiers.find(row => row.id === tierId)
-        const held = heldAccounts(policy, tier.provider, sweepAt)
-        const compatible = accounts.filter(row => row.provider === tier.provider && (row.client || null) === (tier.client || null))
-        if (compatible.length && compatible.every(row => held.includes(row.name))) {
-          // Every account for this client is on quota backoff: start nothing
-          // and send no handoff until the earliest hold ends.
-          const until = Math.min(...Object.values(policy.holds || {}).filter(row => row?.provider === tier.provider
-            && compatible.some(account => account.name === row.account) && Number.isFinite(row.until)).map(row => row.until))
-          if (Number.isFinite(until)) timings.push({ nextAttemptAt: new Date(until).toISOString(), resetAt: null, reason: 'account-backoff' })
+      for (const [nodeId, wait] of limitWaits) {
+        if (now() < wait.resetAt || flights.has(nodeId) || isReplacing(nodeId)) continue
+        const context = contexts.get(wait.computerId)
+        if (!context) continue
+        const prior = await readHandoff(context, nodeId)
+        if (limitWaits.get(nodeId) !== wait) continue
+        const node = context.treeStore.getNode(nodeId)
+        const safe = sameWaitSource(context, wait) && explicitlyAllowed(canStart) && explicitlyAllowed(canContinue)
+          && !(prior?.safetyHold?.nodeId === nodeId && prior.safetyHold.sessionId === wait.sessionId)
+          && (!sessionNodeIds.has(wait.sessionId) || await hydrateSessionSafety({ ...context, node }, wait.sessionId))
+          && !sessionSafetyHeld(nodeId, wait.sessionId)
+        const consumed = { ...prior, limitWait: null }
+        const stored = context.handoffStore?.saveRecord
+          ? await context.handoffStore.saveRecord(nodeId, consumed) : context.handoffStore?.save(nodeId, consumed)
+        if (!stored) { publish({ nodeId, error: 'The reset wait could not be saved. No continuation was started.' }); continue }
+        limitWaits.delete(nodeId)
+        if (!safe || !sameWaitSource(context, wait)) {
+          publish({ nodeId, error: 'The reset wait was cancelled because this conversation changed or is held for review.' })
           continue
         }
-        const excluded = new Set([...(Array.isArray(initial[tier.provider]) ? initial[tier.provider] : []), ...held])
-        while (remaining-- > 0) {
-          node = allowed()
-          const saved = context.transcriptStore.readLatest ? await context.transcriptStore.readLatest(nodeId) : context.transcriptStore.get(nodeId)
-          allowed()
-          if (saved?.provider && saved.provider !== tier.provider && saved.threadId && !saved.recoveryDirectory) {
-            skipped.push({ provider: tier.provider, code: 'AGENT_RETRY_HANDOFF_UNAVAILABLE' })
-            policy.reason = 'The complete saved conversation is unavailable for a provider handoff. The original context was retained.'
-            break
-          }
-          const prior = await readHandoff(context, nodeId)
-          const handoff = manualAccountHandoff(node, saved, prior)
-          allowed()
-          policy.failurePending = false
-          const outcome = await recover({ sessionId: node.sessionId, event: { type: 'account_recovery_needed',
-            recoveryId: globalThis.crypto.randomUUID(), handoff } }, { computerId: context.computerId, nodeId,
-            retryAttempt: true, flight, policy, startOptions: { ...policy.startOptions, tier: tierId },
-            accountRetry: { excludeAccounts: [...excluded].slice(-32), recheckAttempt: policy.recheckAttempt } })
-          flight.requestedSessionId = null
-          const unresolvedDelivery = ['unknown', 'accepted'].includes(outcome?.deliveryOutcome)
-          if (unresolvedDelivery) {
-            const current = context.treeStore.getNode(nodeId)
-            // Cancellation changes retry consent, not an already-dispatched
-            // handoff's delivery fact. Keep that fact only on its own policy,
-            // store, incarnation and attached session.
-            if (retryPolicies.get(nodeId) !== policy
-              || contexts.get(context.computerId)?.treeStore !== context.treeStore
-              || !current || current.createdAt !== flight.cleanupOwnership?.expectedNodeCreatedAt
-              || current.sessionId !== outcome.started?.sessionId
-              || (sessionNodeIds.has(current.sessionId) && sessionNodeIds.get(current.sessionId) !== nodeId)) return false
-            policy.deliveryHold = { sessionId: outcome.started.sessionId, outcome: outcome.deliveryOutcome }
-            policy.failurePending = false
-          }
-          if (outcome?.started?.sessionId) {
-            policy.sessionId = outcome.started.sessionId
-            policy.actualTier = tierId; policy.actualProvider = tier.provider; policy.actualAccount = outcome.started.account || null
-          }
-          if (outcome?.ok) {
-            policy.actualTier = tierId; policy.actualProvider = tier.provider; policy.actualAccount = outcome.started.account || null
-            if (policy.failurePending && policy.actualAccount) holdAccount(policy, tier.provider, policy.actualAccount)
-            policy.state = policy.failurePending ? 'waiting' : 'working'
-            policy.nextAttemptAt = policy.failurePending ? now() : null
-            policy.reason = null; policy.autoResumeCount = 0; policy.autoResumeAt = null
-            // T124: an account accepted this node, so it is no longer blocked.
-            if (!policy.failurePending) clearExternalBlock(nodeId)
-            await saveRetryPolicy(context, policy)
-            return true
-          }
-          if (flight.cancelled || !policy.enabled) {
-            // Save the hold without changing enabled/state or reviving timers.
-            if (unresolvedDelivery) await saveRetryPolicy(context, policy)
-            // A cancel that landed after attach leaves this replacement here.
-            if (outcome?.started?.sessionId && !outcome.started.cleanupPending && !closedSessions.has(outcome.started.sessionId)) {
-              try { await closeRetrySession(context, nodeId, outcome.started.sessionId) } catch { /* retained as a visible Stop handle */ }
-            }
-            return false
-          }
-          if (unresolvedDelivery) {
-            // A later process exit or quota packet cannot establish non-delivery.
-            throw pauseError(outcome.deliveryOutcome === 'accepted'
-              ? 'The handoff was accepted, but its result could not be saved. Check this conversation; it will not be sent again automatically.'
-              : 'Handoff delivery could not be confirmed. Check this conversation before retrying; it will not be sent again automatically.', 'safety')
-          }
-          if (outcome?.started?.cleanupPending || outcome?.code === 'AGENT_SESSION_CLEANUP_FAILED') throw pauseError(outcome.reason || 'The replacement still needs cleanup.', 'safety')
-          if (outcome?.started?.sessionId) await closeRetrySession(context, nodeId, outcome.started.sessionId)
-          const account = outcome?.accountRetry?.account || outcome?.started?.account
-          const code = String(outcome?.code || '')
-          policy.lastCode = code.slice(0, 128)
-          policy.reason = String(outcome?.reason || 'The account attempt was refused. Check the account\u2019s provider status, then try again.').slice(0, 600)
-          if (policy.reason === policy.lastCode) policy.reason = outcome?.accountRetry?.retry?.reason === 'identity-action-required'
-            ? 'An account identity could not be confirmed.' : 'No eligible account accepted this attempt. Review its provider status.'
-          if (outcome?.accountRetry?.retry?.nextAttemptAt) timings.push(outcome.accountRetry.retry)
-          if (account) excluded.add(account)
-          if (account && retryFailureKind(code) === 'limit') holdAccount(policy, tier.provider, account)
-          await saveRetryPolicy(context, policy)
-          if (nodeSafetyRefusal(code) || outcome?.accountRetry?.retry?.reason === 'identity-action-required') throw pauseError(policy.reason, 'safety')
-          if (providerScopedRefusal(code)) { skipped.push({ provider: tier.provider, code }); break }
-          if (!retryableFailure(code) && !outcome?.accountRetry) throw pauseError(policy.reason, 'transient')
-          // A provider-level refusal already walked all remaining eligible
-          // accounts. Move to the next authorized provider, never sign in.
-          if (!account) break
+        await ensureSeatForSavedContinuation(context, node, { descriptor: { tier: wait.tier, resumeThreadProvider: wait.provider } })
+        if (!sameWaitSource(context, wait) || sessionSafetyHeld(nodeId, wait.sessionId)) continue
+        const saved = context.transcriptStore.get(nodeId)
+        // Attachment advances the session id inside the existing continuation flight.
+        let safetyHeld = false
+        const choiceCurrent = () => {
+          safetyHeld ||= sessionSafetyHeld(nodeId, wait.sessionId)
+            || sessionSafetyHeld(nodeId, context.treeStore.getNode(nodeId)?.sessionId)
+          return !disposed && !safetyHeld && context.treeStore.getNode(nodeId)?.createdAt === wait.createdAt
+            && !noteMeansStopped(context.treeStore.getNode(nodeId)?.statusNote)
         }
+        const moved = await continueManually({ sessionId: wait.sessionId, event: { type: 'manual_continuation',
+          recoveryId: globalThis.crypto.randomUUID(), handoff: manualAccountHandoff(node, saved, prior) } }, {
+          computerId: wait.computerId, nodeId, account: wait.account, sameAccountReset: true,
+          startOptions: { tier: wait.tier, treeAccount: wait.account, resumeThreadId: wait.threadId,
+            resumeThreadProvider: wait.provider, resumeAccount: wait.account, ...(saved.effort ? { effort: saved.effort } : {}) },
+          originValid: choiceCurrent,
+          cleanupOwnership: { expectedNodeCreatedAt: wait.createdAt, expectedNodeSessionId: wait.sessionId }
+        })
+        if (moved) clearExternalBlock(nodeId)
       }
-      allowed()
-      const timing = timings.filter(row => Number.isFinite(Date.parse(row.nextAttemptAt)) && Date.parse(row.nextAttemptAt) > now())
-        .sort((a, b) => Date.parse(a.nextAttemptAt) - Date.parse(b.nextAttemptAt))[0]
-      policy.recheckAttempt = Math.min(100000, policy.recheckAttempt + 1)
-      policy.state = policy.waitForReset && timing ? 'waiting' : 'paused'
-      policy.nextAttemptAt = policy.waitForReset && timing ? Date.parse(timing.nextAttemptAt) : null
-      policy.resetAt = timing?.resetAt || null
-      // Waiting was requested but nothing reported a time: re-check later, bounded.
-      const count = Number(policy.autoResumeCount) || 0
-      policy.autoResumeAt = policy.waitForReset && !timing && count < AUTO_RESUME_LIMIT ? now() + AUTO_RESUME_BASE_MS * 2 ** count : null
-      if (skipped.length) policy.skippedProviders = [...new Set(skipped.map(row => row.provider))]
-      else delete policy.skippedProviders
-      if (!timing && !policy.reason) policy.reason = 'No eligible signed-in account is available.'
-      await saveRetryPolicy(context, policy)
-      /* T124. THE SWEEP IS OVER AND NOTHING TOOK THE NODE. A paused or
-         reset-waiting policy stops AUTOMATIC RETRIES; on its own it has never
-         stopped anything from delivering another message, and that is the
-         half of the loop nobody was closing. Fence it here, whichever way the
-         wait went: if a reset time is known the node is blocked until then,
-         and spending turns in the meantime only earns the same refusal. A
-         later successful attempt clears it above. */
-      if (policy.failureKind === 'limit' || retryFailureKind(policy.lastFailureCode) === 'limit') {
-        await blockExternally(context, nodeId,
-          clampNote(`Blocked outside this app: ${policy.reason || 'no other model or account is available.'} This agent has stopped spending turns.`),
-          null, policy.lastFailureCode)
-      }
-      return false
-    } catch (error) {
-      // Node-level safety waits for the person. A one-off error re-checks
-      // itself a bounded number of times.
-      const transient = error?.retryPause === 'transient' || (!error?.retryPause && !nodeSafetyRefusal(refusalCode(error)))
-      const count = Number(policy.autoResumeCount) || 0
-      policy.state = 'paused'; policy.nextAttemptAt = null; policy.reason = String(error.message || error).slice(0, 600)
-      policy.autoResumeAt = transient && policy.enabled && count < AUTO_RESUME_LIMIT ? now() + AUTO_RESUME_BASE_MS * 2 ** count : null
-      try { await saveRetryPolicy(context, policy) } catch (savingError) { policy.enabled = false; publish({ nodeId, error: savingError.message }) }
-      publish({ nodeId, error: policy.reason })
-      return false
-    } finally { retryFlights.delete(nodeId); publish({ nodeId }); notifyRecoverySettled(nodeId) }
+    } catch (error) { publish({ error: error.message || String(error) }) }
+    finally { limitWaitPolling = false }
   }
-  async function reconcileTerminalRetryPolicy(context, node, policy) {
-    const isCurrent = () => {
-      const registered = contexts.get(context.computerId)
-      const current = registered?.treeStore.getNode(node.id)
-      return !disposed && registered === context && retryPolicies.get(node.id) === policy
-        && policy.enabled && !deliveryHeld(policy)
-        && Boolean(node.sessionId)
-        && current?.status === 'turn-failed' && current.sessionId === node.sessionId
-        && policy.sessionId === current.sessionId && policy.state === 'working'
-        && policy.failurePending !== true
-    }
-    if (!isCurrent()) return false
-    let record
-    try { record = await readHandoff(context, node.id) } catch { return false }
-    if (!isCurrent()) return false
-    if (record?.sessionId != null && record.sessionId !== node.sessionId) return false
-    if (!isCurrent()) return false
-    const code = policy.lastFailureCode || 'TURN_FAILED'
-    policy.lastFailureCode = code
-    policy.failurePending = true
-    policy.failureKind = policy.failureKind || retryFailureKind(code) || null
-    const exclusions = policy.sweepExclusions && typeof policy.sweepExclusions === 'object'
-      ? { ...policy.sweepExclusions } : {}
-    if (policy.actualProvider && policy.actualAccount) {
-      exclusions[policy.actualProvider] = [...new Set([...(Array.isArray(exclusions[policy.actualProvider])
-        ? exclusions[policy.actualProvider] : []), policy.actualAccount])]
-      policy.sweepExclusions = exclusions
-    }
-    policy.state = 'waiting'
-    policy.nextAttemptAt = now()
-    policy.resetAt = null
-    policy.autoResumeAt = null
-    try {
-      await saveRetryPolicy(context, policy)
-      return true
-    } catch (error) {
-      publish({ nodeId: node.id, error: error.message || String(error) })
+  async function waitForSameAccountReset({ computerId, nodeId, resetAt, isCurrent } = {}) {
+    const version = advanceLimitWait(nodeId)
+    const chosen = () => limitWaitVersions.get(nodeId) === version && currentChoice(isCurrent)
+    const context = contexts.get(computerId), node = context?.treeStore.getNode(nodeId)
+    const saved = context?.transcriptStore.readLatest ? await context.transcriptStore.readLatest(nodeId) : context?.transcriptStore.get(nodeId)
+    const at = typeof resetAt === 'number' ? resetAt : Date.parse(resetAt)
+    if (!node?.sessionId || !saved?.account || !saved.threadId || !saved.provider || !Number.isFinite(at) || at <= now()
+      || !chosen() || noteMeansStopped(node.statusNote) || ['starting', 'running'].includes(node.status) || flights.has(nodeId) || isReplacing(nodeId)
+      || !explicitlyAllowed(canStart) || !explicitlyAllowed(canContinue)) {
+      publish({ nodeId, error: 'Choose a future reset time for this saved account. A stopped or held conversation cannot wait and continue.' })
       return false
     }
-  }
-  async function pollAccountRetries() {
-    if (disposed) return
-    for (const context of contexts.values()) for (const node of context.treeStore.snapshot().nodes) {
-      const policy = retryPolicies.get(node.id)
-      if (!policy?.enabled || deliveryHeld(policy) || retryFlights.has(node.id)) continue
-      if (noteMeansStopped(node.statusNote) && !policy.stopFenceAcknowledged) {
-        policy.enabled = false; policy.state = 'cancelled'; policy.nextAttemptAt = null
-        void saveRetryPolicy(context, policy).catch(error => publish({ nodeId: node.id, error: error.message }))
-        continue
-      }
-      await reconcileTerminalRetryPolicy(context, node, policy)
-      if (policy.state === 'working' && !sessionNodeIds.has(node.sessionId)) {
-        // A healthy saved conversation keeps native continuity on reopening.
-        // Account retry never turns an unobserved shutdown into a quota claim.
-        await pollContinuations()
-        continue
-      }
-      if (policy.state === 'no-direction') {
-        const check = directionChecks.get(node.id)
-        if (!check || check.at <= now()) void runAccountRetry(context, policy)
-        continue
-      }
-      if (policy.state === 'paused' && Number.isFinite(policy.autoResumeAt) && policy.autoResumeAt <= now()) {
-        policy.autoResumeCount = (Number(policy.autoResumeCount) || 0) + 1
-        policy.autoResumeAt = null; policy.state = 'waiting'; policy.nextAttemptAt = now()
-      }
-      if (policy.state !== 'waiting' || !policy.nextAttemptAt || policy.nextAttemptAt > now()) continue
-      // Holds are per account and expire on their own schedule; a recheck
-      // never clears them.
-      void runAccountRetry(context, policy)
+    if (!await hydrateSessionSafety({ ...context, node }, node.sessionId) || sessionSafetyHeld(nodeId, node.sessionId)) {
+      publish({ nodeId, error: 'This conversation is held for review. Waiting cannot resume it.' }); return false
     }
-  }
-  /* `effortChosen: false` says startOptions.effort was filled from the node's
-     depth or its model's default, not picked by the person (verify round 2 of
-     follow-up V4). Such a depth still starts this agent, but it is not recorded
-     as preferredEffort -- the one depth a failover may carry to another
-     provider -- so an untouched Codex agent's `medium` never reaches Claude. A
-     caller that says nothing is taken at its word, as before. */
-  async function keepTryingAccounts({ computerId, nodeId, startOptions = {}, waitForReset = false, allowedProviders = null,
-    choiceRevision = retryChoiceRevisions.get(nodeId) || 0, recordOnly = false, effortChosen = true } = {}) {
-    assertStartAllowed(true)
-    const context = contexts.get(computerId)
-    const node = context?.treeStore.getNode(nodeId)
-    const providers = allowedProviders ?? defaultRetryProviders(tiers.find(row => row.id === (startOptions.tier || node?.tier))?.provider)
-    if (!Array.isArray(providers) || !providers.length || providers.length > 4
-      || providers.some(value => !RETRY_PROVIDERS.includes(value))) throw new Error('Choose at least one allowed provider for retries.')
-    if (!node || retryFlights.has(nodeId) || flights.has(nodeId) || isReplacing(nodeId)) return false
-    const preparation = { cancelled: false, requestedSessionId: null }
-    const assertChoice = () => {
-      assertStartAllowed(true)
-      if (preparation.cancelled || choiceRevision !== (retryChoiceRevisions.get(nodeId) || 0)) throw new Error('Automatic retries were cancelled.')
+    const wait = { waitId: globalThis.crypto.randomUUID(), computerId, nodeId, sessionId: node.sessionId, createdAt: node.createdAt,
+      tier: node.tier, account: saved.account, provider: saved.provider, threadId: saved.threadId, resetAt: at }
+    if (!sameWaitSource(context, wait) || !chosen()) return false
+    const prior = await readHandoff(context, nodeId)
+    const record = { ...prior, handoff: manualAccountHandoff(node, saved, prior), sessionId: node.sessionId, kind: 'manual', limitWait: wait }
+    const stored = context.handoffStore?.saveRecord ? await context.handoffStore.saveRecord(nodeId, record) : context.handoffStore?.save(nodeId, record)
+    if (!stored || !sameWaitSource(context, wait) || !chosen()) {
+      if (stored) await cancelSavedWait(context, nodeId, wait)
+      publish({ nodeId, error: 'The reset wait could not be saved for this conversation.' }); return false
     }
-    assertChoice()
-    retryFlights.set(nodeId, preparation)
-    try {
-      const saved = context.transcriptStore.readLatest ? await context.transcriptStore.readLatest(nodeId) : context.transcriptStore.get(nodeId)
-      const prior = await readHandoff(context, nodeId)
-      assertChoice()
-      if (context.treeStore.getNode(nodeId)?.sessionId !== node.sessionId) return false
-      const existing = retryPolicies.get(nodeId)
-      const roleBinding = await retryRoleBinding(context, node, startOptions)
-      assertChoice()
-      if (!roleBinding) return false
-      const stopped = noteMeansStopped(node.statusNote)
-      const policy = { v: 1, nodeId, nodeRole: node.role, enabled: !recordOnly, waitForReset: waitForReset === true, allowedProviders: [...new Set(providers)],
-        preferredTier: existing?.preferredTier || startOptions.tier || node.tier, preferredEffort: existing?.preferredEffort || (effortChosen ? startOptions.effort : null) || null,
-        startOptions: { ...Object.fromEntries(['tier', 'effort', 'profileId'].filter(key => startOptions[key] != null).map(key => [key, startOptions[key]])), roleBinding },
-        sessionId: node.sessionId, state: recordOnly ? 'cancelled' : 'working', exclusions: {}, holds: {}, recheckAttempt: 0, nextAttemptAt: null,
-        actualTier: node.tier, actualProvider: saved?.provider || null, actualAccount: saved?.account || null,
-        // An explicit opt-in on an agent the person stopped is recorded, not
-        // undone; it still starts nothing until that agent is resumed.
-        ...(stopped ? { stopFenceAcknowledged: true } : {}),
-        handoff: manualAccountHandoff(node, saved, prior),
-        ...(recordOnly ? { reason: 'Automatic continuation is off for this agent.' } : {}) }
-      const busy = sessionNodeIds.has(node.sessionId) && ['starting', 'running'].includes(node.status)
-      if (!busy && node.status === 'turn-failed') {
-        // The failed turn is open work; its account is skipped for the first sweep only.
-        policy.lastFailureCode = 'TURN_FAILED'
-        if (saved?.account && saved?.provider) policy.sweepExclusions = { [saved.provider]: [saved.account] }
-      }
-      const priorPolicy = prior?.retryPolicy?.nodeId === nodeId && prior.retryPolicy.sessionId === node.sessionId
-        ? prior.retryPolicy : null
-      const heldPolicy = deliveryHeld(existing) ? existing : deliveryHeld(priorPolicy) ? priorPolicy : null
-      if (heldPolicy) {
-        policy.deliveryHold = structuredClone(heldPolicy.deliveryHold)
-        policy.state = 'paused'
-        policy.reason = heldPolicy.reason || 'The earlier handoff needs delivery review before automatic recovery can continue.'
-      }
-      retryPolicies.set(nodeId, policy)
-      retryWarnings.delete(nodeId)
-      if (node.status === 'cancelled') pauseCancelledTurn(policy)
-      await saveRetryPolicy(context, policy)
-      assertChoice()
-      if (recordOnly) return true
-      if (deliveryHeld(policy)) return false
-      if (busy || node.status === 'finished' || node.status === 'cancelled' || stopped) return true
-      retryFlights.delete(nodeId)
-      return runAccountRetry(context, policy, { immediate: true })
-    } finally {
-      if (retryFlights.get(nodeId) === preparation) retryFlights.delete(nodeId)
-      notifyRecoverySettled(nodeId)
+    const status = context.treeStore.setNodeStatus(nodeId, 'turn-failed', { note: 'Waiting for this account to reset at the time you chose. Stop cancels this wait.' })
+    if (status?.ok === false) {
+      await cancelSavedWait(context, nodeId, wait)
+      publish({ nodeId, error: 'This conversation changed before its reset wait could start.' }); return false
     }
-  }
-  function disableAccountRetries(nodeId) {
-    retryChoiceRevisions.set(nodeId, (retryChoiceRevisions.get(nodeId) || 0) + 1)
-    const policy = retryPolicies.get(nodeId)
-    const flight = retryFlights.get(nodeId)
-    if (flight) flight.cancelled = true
-    if (policy) { policy.enabled = false; policy.nextAttemptAt = null; policy.state = 'cancelled'; policy.autoResumeAt = null }
-    directionChecks.delete(nodeId)
-    return { policy, flight, context: [...contexts.values()].find(row => row.treeStore.getNode(nodeId)) }
-  }
-  function persistCancelledChoice(nodeId, policy, context) {
-    // Best effort and never awaited by Stop: a storage fault must not keep an
-    // agent running. The in-memory policy is already off.
-    if (!policy || !context) return
-    void saveRetryPolicy(context, policy).then(() => { retryWarnings.delete(nodeId) }, () => {
-      retryWarnings.set(nodeId, 'Retries are off for this session, but that choice could not be saved on this computer, so it may return after a restart. Check storage, then press Cancel retries again.')
-      publish({ nodeId, error: retryWarnings.get(nodeId) })
-    })
-  }
-  async function cancelAccountRetries(nodeId) {
-    const { policy, flight, context } = disableAccountRetries(nodeId)
-    if (!policy) return false
-    try { if (flight?.requestedSessionId && context) await closeRetrySession(context, nodeId, flight.requestedSessionId) }
-    finally { persistCancelledChoice(nodeId, policy, context) }
+    limitWaits.set(nodeId, wait)
+    publish({ nodeId, limitWait: { resetAt: at } })
     return true
   }
-  async function setAccountRetryOverride(nodeId, enabled) {
-    if (enabled !== false) return false
-    const context = [...contexts.values()].find(row => row.treeStore.getNode(nodeId))
-    const node = context?.treeStore.getNode(nodeId)
-    if (!context || !node?.sessionId || retryFlights.has(nodeId) || flights.has(nodeId) || isReplacing(nodeId)) return false
-    const existing = retryPolicies.get(nodeId)
-    if (existing?.enabled === false) return true
-    const tier = tiers.find(row => row.id === node.tier)
-    return keepTryingAccounts({ computerId: context.computerId, nodeId,
-      startOptions: { tier: existing?.preferredTier || node.tier, effort: existing?.preferredEffort || node.effort || tier?.effort || null,
-        ...(existing?.startOptions?.roleBinding ? { roleBinding: existing.startOptions.roleBinding } : {}) },
-      allowedProviders: existing?.allowedProviders || null, recordOnly: true, effortChosen: Boolean(existing?.preferredEffort) })
-  }
+
   async function pollContinuations() {
     if (disposed || continuationPolling || typeof bridge?.continuations !== 'function'
       || !explicitlyAllowed(canStart) || !explicitlyAllowed(canContinue)
@@ -2094,7 +1386,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
           continuationSeatRefusals.delete(id)
         }
         if (continuationSeatRetryBlocked(id)) continue
-        if (hydratingNodes.has(id) || retryAttemptPending(id) || flights.has(id) || isReplacing(id) || sessionNodeIds.has(node.sessionId)) continue
+        if (flights.has(id) || isReplacing(id) || sessionNodeIds.has(node.sessionId)) continue
         if (noteMeansStopped(node.statusNote) || node.statusNote === 'Stop could not be confirmed. Use Stop again before resuming.') {
           await bridge.continuations({ action: 'stop', key: record.key })
           /* The circle's own note is kept: restamping it would tell the person
@@ -2114,7 +1406,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         flights.add(id)
         const retained = activeStores.get(context.computerId) || { store: treeStore, count: 0 }
         retained.count += 1; activeStores.set(context.computerId, retained)
-        let started = null, retryQueued = false, refusalToContinue = null
+        let started = null, refusalToContinue = null
         const attempt = { key: record.key, stopped: false, stopConfirmed: false, finished: false }
         continuationFlights.set(id, attempt)
         attempt.showStop = () => {
@@ -2163,8 +1455,6 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
             revision: started.continuation?.revision, sessionId: started.sessionId })
           if (accepted?.ok !== true || !ownsNode()) throw new Error('This continuation changed before its circle was ready.')
           recoveredSessions.set(started.sessionId, { nodeId: id, computerId: context.computerId, started, text: '' })
-          const policy = retryPolicies.get(id)
-          if (policy?.enabled) { policy.sessionId = started.sessionId; await saveRetryPolicy(context, policy) }
           treeStore.setNodeStatus(id, 'finished', { note: 'Autonomous+ restored this conversation. Checking unfinished work.' })
           publish({ nodeId: id, previousSessionId: node.sessionId, started, lines })
         } catch (error) {
@@ -2192,27 +1482,9 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
                sentence for every code it names; the raw message is kept only
                for a failure it does not. */
             const said = refusalSentenceFor(code, error)
-            const policy = retryPolicies.get(id), kind = retryFailureKind(code)
-            /* A RESUME THAT WAS REFUSED IS NOT A TURN THAT FAILED.
-             *
-             * OBSERVED on a development profile, first reopen after the
-             * saved-continuation read started answering: a batch of resumes was
-             * refused by the host before any session existed (most because the
-             * saved seat had left the organisation) and this line rewrote
-             * FINISHED conversations to 'turn-failed'. fleet-trees.js keeps
-             * 'turn-failed' for a turn that ran and failed; no turn ran here, the
-             * node still holds the session and transcript it was saved with, and
-             * the host has already blocked the refused row or put it on its own
-             * bounded retry.
-             *
-             * So a node that was saved settled keeps its status and gains only the
-             * sentence. Two routes are left exactly as they were, because each
-             * gives the person something to do from a failed circle: a refusal of
-             * the SAVED ACCOUNT (the switch offer below) and a keep-trying policy
-             * that is about to retry. A node saved mid-start or mid-turn has no
-             * settled status to keep and is still marked. */
+
             const settled = ['finished', 'interrupted', 'cancelled'].includes(node.status)
-            const keepsStatus = !started?.sessionId && settled && !savedAccountResumeRefused(code) && !(policy?.enabled && kind)
+            const keepsStatus = !started?.sessionId && settled && !savedAccountResumeRefused(code)
             const note = `Autonomous+ recovery paused: ${said}`
             // Said once: a later sweep that is refused the same way finds the
             // same status and the same sentence already on the circle.
@@ -2221,36 +1493,11 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
               treeStore.setNodeStatus(id, keepsStatus ? node.status : 'turn-failed', { note })
               publish({ nodeId: id, error: said })
             }
-            if (policy?.enabled && kind && !attempt.cleanupRequired) {
-              policy.sessionId = ownedSessionId
-              await rememberRetryFailure(context, policy, code, kind)
-              retryQueued = true
-            }
-            /* T367 / T381: THE REOPEN PATH DID NOT RESTART ON A REFUSAL.
-             *
-             * This is the path that brings every saved agent back when the app
-             * is reopened, and until this lane an account the provider had
-             * refused simply parked the circle at "recovery paused" -- the same
-             * refusal the Resume press already continues from by itself (see
-             * resumeNodeSessionUnguarded in src/views/computers.js) did nothing
-             * here, because the only automatic route out of this catch was a
-             * per-node keep-trying policy the person had to have opted into.
-             *
-             * The decision is deferred past `finally`, because
-             * continueOnAnotherAccount refuses while this node's flight is
-             * still held. The three conditions are the Resume press's own, and
-             * each one can only say no: the PROVIDER refused it (an unattributed
-             * limit is a maybe, and a maybe does not move somebody off their own
-             * conversation); keep-trying is on, read failure-first by the
-             * window; and this was not a cleanup failure or an opted-in retry,
-             * which have their own routes. When the move cannot be made, the
-             * window is told to OFFER the switch instead, so the person can
-             * choose an account, a model and a depth on the circle. */
-            if (!retryQueued && !attempt.cleanupRequired && savedAccountResumeRefused(code)) {
+            if (!attempt.cleanupRequired && savedAccountResumeRefused(code)) {
               const descriptor = record.descriptor || {}
               refusalToContinue = { code, attribution: refusalAttribution(error), account: saved.account || null,
                 provider: saved.provider || descriptor.resumeThreadProvider || null, sentence: said,
-                startOptions: Object.fromEntries(['tier', 'effort', 'profileId'].filter(key => descriptor[key] != null).map(key => [key, descriptor[key]])) }
+                startOptions: Object.fromEntries(['tier', 'model', 'effort', 'profileId'].filter(key => descriptor[key] != null).map(key => [key, descriptor[key]])) }
             }
           }
           if (error?.seatFailureKind === 'terminal') {
@@ -2266,18 +1513,11 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
           continuationFlights.delete(id)
           flights.delete(id); retained.count -= 1
           if (retained.count === 0) activeStores.delete(context.computerId)
-          if (retryQueued) void pollAccountRetries()
         }
         if (refusalToContinue) {
           const offer = refusalToContinue
           refusalToContinue = null
-          let moved = false
-          if (offer.code === 'AGENT_RESUME_ACCOUNT_LIMIT' && offer.attribution === 'provider' && await keepTryingConsent(id)) {
-            try { moved = await coordinator.continueOnAnotherAccount({ computerId: context.computerId, nodeId: id, startOptions: offer.startOptions }) === true }
-            catch (error) { publish({ nodeId: id, error: error?.message || String(error) }) }
-          }
-          if (moved) switchOffersMade.delete(id)
-          else if (treeStore.getNode(id)?.sessionId === ownedSessionId) {
+          if (treeStore.getNode(id)?.sessionId === ownedSessionId) {
             const key = switchOfferKey(ownedSessionId, offer.code)
             if (switchOffersMade.get(id) !== key) {
               switchOffersMade.set(id, key)
@@ -2290,10 +1530,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
     } catch { /* A later bounded poll reads the durable recovery state again. */ }
     finally { continuationPolling = false }
   }
-  /* NAMED, NOT RETURNED ANONYMOUSLY, FOR EXACTLY ONE REASON (T124): the
-     automatic limit failover above has to call this object's own
-     continueOnAnotherModel -- the landed T137 switch -- rather than build a
-     second one beside it. Nothing else about the returned surface changes. */
+
   const coordinator = {
     register(computerId, context) {
       if (disposed) return
@@ -2311,107 +1548,48 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         }
       }
       if (!continuationTimer) {
-        continuationTimer = setInterval(() => { void pollAccountRetries(); void pollContinuations() }, 5000)
+        continuationTimer = setInterval(() => { void pollContinuations(); void pollLimitWaits() }, 5000)
         continuationTimer.unref?.()
       }
-      void Promise.all(context.treeStore.snapshot().nodes.map(async node => {
-        if (retryPolicies.has(node.id)) return
-        hydratingNodes.add(node.id)
-        try {
-          const record = await readHandoff(context, node.id)
-          const policy = record?.retryPolicy
-          if (policy?.v === 1 && policy.nodeId === node.id && policy.sessionId === node.sessionId
-            && (record?.sessionId == null || record.sessionId === node.sessionId)
-            && typeof policy.enabled === 'boolean' && typeof policy.startOptions?.roleBinding?.agentId === 'string'
-            && Array.isArray(policy.allowedProviders) && policy.allowedProviders.length > 0 && policy.allowedProviders.length <= 4
-            && policy.allowedProviders.every(value => ['codex', 'claude', 'gemini', 'grok'].includes(value))
-            && policy.exclusions && typeof policy.exclusions === 'object' && !retryPolicies.has(node.id)) {
-            // A sweep that was in flight when the app stopped is due again,
-            // never left claiming an attempt that no longer exists.
-            if (policy.enabled && policy.state === 'starting') { policy.state = 'waiting'; policy.nextAttemptAt = now() }
-            retryPolicies.set(node.id, policy)
-            publish({ nodeId: node.id, retryPolicy: persistedPolicy(policy) })
-          }
-        } catch (error) { publish({ nodeId: node.id, error: error.message }) }
-        finally { hydratingNodes.delete(node.id) }
-      })).then(() => { void pollAccountRetries(); void pollContinuations() })
-      /* THE STORE A RECOVERY HOLDS MUST NOT OUTLIVE THE PAGE THAT OPENED IT.
-       *
-       * MEASURED: recover() (below) reads
-       * `activeStores.get(computerId) || { store: treeStore, count: 0 }` once,
-       * the FIRST time a recovery starts for this computer, and every
-       * overlapping recover() after that only bumps `.count` -- none of them
-       * ever reassigns `.store`. A view can be destroyed and reopened for the
-       * SAME computer while that recovery is still running (activeStore's own
-       * caller, openTreeStore, exists specifically to survive exactly that
-       * teardown), and register() ran again here with a fresh treeStore and
-       * said nothing to activeStores. So `activeStore(computerId)` kept
-       * answering the superseded store for the rest of the recovery's
-       * lifetime -- the same class of staleness src/views/computers.js's
-       * resolveLiveTreeStore was written to stop trusting from this exact
-       * function.
-       *
-       * REASSIGN IN PLACE, DO NOT REFUSE. A refusal (returning null while a
-       * recovery is genuinely in flight) would be honest but pointless here:
-       * this line always has a definitively current store to give --
-       * `context.treeStore`, the same one just stored in `contexts` above --
-       * so there is no currency this function "cannot establish". recover()
-       * itself is unaffected: it destructured its own `treeStore` from
-       * `context` back when IT started and keeps using that reference for
-       * every write for the rest of its own run, exactly as before; only
-       * what `activeStore()` hands to OTHER callers changes. */
+
       const retainedStore = activeStores.get(computerId)
       if (retainedStore) retainedStore.store = context.treeStore
-      if (!unsubscribe && typeof bridge?.onEvent === 'function') unsubscribe = bridge.onEvent(packet => { observePacket(packet); void recover(packet) })
+      if (!unsubscribe && typeof bridge?.onEvent === 'function') unsubscribe = bridge.onEvent(packet => { observePacket(packet) })
+      void pollContinuations()
+      for (const node of context.treeStore.snapshot().nodes) {
+        const version = limitWaitVersions.get(node.id) || 0
+        void Promise.resolve().then(() => readHandoff(registeredContext, node.id)).then(record => {
+          const wait = record?.limitWait
+          if ((limitWaitVersions.get(node.id) || 0) === version && contexts.get(computerId) === registeredContext
+            && wait?.computerId === computerId && wait.nodeId === node.id && Number.isFinite(wait.resetAt)
+            && sameWaitSource(registeredContext, wait) && !limitWaits.has(node.id)) limitWaits.set(node.id, wait)
+        }).catch(error => publish({ nodeId: node.id, error: error.message || String(error) }))
+        if (node.sessionId && sessionNodeIds.get(node.sessionId) === node.id) {
+          void hydrateSessionSafety({ ...registeredContext, node }, node.sessionId)
+        }
+      }
       for (const [sessionId, record] of recoveredSessions) {
         if (record.computerId !== computerId || !record.text) continue
         publish({ nodeId: record.nodeId, started: { ...record.started, sessionId },
           lines: context.transcriptStore.get(record.nodeId)?.lines || [], partialText: record.text })
       }
-      // One bounded read on mounting, not a timer. Replays failures observed
-      // before the renderer registered this computer.
-      if (typeof bridge?.sessionAccounts === 'function') {
-        void Promise.resolve(bridge.sessionAccounts()).then(answer => {
-          for (const packet of answer?.recoveries || []) void recover(packet)
-        }).catch(() => {})
-      }
     },
-    recover,
     pollContinuations,
+    pollLimitWaits,
+    waitForSameAccountReset,
     continuationStatus: () => continuationReadStatus ? { ...continuationReadStatus } : null,
-    pollAccountRetries, keepTryingAccounts, cancelAccountRetries, setAccountRetryOverride,
-    retryChoiceRevision: nodeId => retryChoiceRevisions.get(nodeId) || 0,
-    retryPolicy: nodeId => { const policy = retryPolicies.get(nodeId); return policy ? structuredClone(policy) : null },
-    retryStatus: (nodeId, { compact = false } = {}) => {
-      const node = [...contexts.values()].map(row => row.treeStore.getNode(nodeId)).find(Boolean)
-      return accountRetryStatus(retryPolicies.get(nodeId), { compact, warning: retryWarnings.get(nodeId) || null, stopped: node?.statusNote === 'Stopped by you.',
-        busy: Boolean(node && sessionNodeIds.has(node.sessionId) && ['starting', 'running'].includes(node.status)) })
-    },
-    async setAllowedProviders(nodeId, providers) {
-      const policy = retryPolicies.get(nodeId)
-      const context = [...contexts.values()].find(row => row.treeStore.getNode(nodeId))
-      if (!policy || !context || retryFlights.has(nodeId)) return false
-      if (!Array.isArray(providers) || !providers.length || providers.length > 4
-        || providers.some(value => !['codex', 'claude', 'gemini', 'grok'].includes(value))) throw new Error('Choose at least one allowed provider for retries.')
-      policy.allowedProviders = [...new Set(providers)]
-      await saveRetryPolicy(context, policy); return true
-    },
-    async setWaitForResets(nodeId, enabled) {
-      const policy = retryPolicies.get(nodeId)
-      const context = [...contexts.values()].find(row => row.treeStore.getNode(nodeId))
-      if (!policy || !context) return false
-      policy.waitForReset = enabled === true
-      if (!policy.waitForReset && policy.state === 'waiting' && !policy.failurePending) { policy.state = 'paused'; policy.nextAttemptAt = null }
-      if (policy.waitForReset && policy.state === 'paused' && !deliveryHeld(policy)) { policy.state = 'waiting'; policy.nextAttemptAt = now() }
-      await saveRetryPolicy(context, policy); void pollAccountRetries(); return true
-    },
     async stopContinuation(nodeId) {
-      // Stop never waits on storage: retries are off in memory first, any
-      // replacement this flight was starting is closed, and the saved choice
-      // is written afterwards, best effort, with a visible warning on failure.
-      const { policy, flight, context } = disableAccountRetries(nodeId)
-      try { if (flight?.requestedSessionId && context) await closeRetrySession(context, nodeId, flight.requestedSessionId) }
-      finally { persistCancelledChoice(nodeId, policy, context) }
+      advanceLimitWait(nodeId)
+      const wait = limitWaits.get(nodeId)
+      if (wait) {
+        limitWaits.delete(nodeId)
+        const context = contexts.get(wait.computerId)
+        const prior = context && await readHandoff(context, nodeId)
+        if (context) {
+          const saved = context.handoffStore?.saveRecord ? await context.handoffStore.saveRecord(nodeId, { ...prior, limitWait: null }) : context.handoffStore?.save(nodeId, { ...prior, limitWait: null })
+          if (!saved) publish({ nodeId, error: 'The reset wait cancellation could not be saved. Stop this conversation before reloading.' })
+        }
+      }
       const attempt = continuationFlights.get(nodeId)
       if (!attempt) return false
       attempt.stopped = true
@@ -2421,7 +1599,6 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       return true
     },
     async continueOnAnotherAccount({ computerId, nodeId, startOptions = {}, isCurrent, assignment = null } = {}) {
-      const choiceRevision = retryChoiceRevisions.get(nodeId) || 0
       const context = contexts.get(computerId)
       const node = context?.treeStore.getNode(nodeId)
       const cleanupOwnership = Object.freeze({ expectedNodeCreatedAt: node?.createdAt, expectedNodeSessionId: node?.sessionId })
@@ -2429,16 +1606,20 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       // currency is checked separately so our own attachment remains valid.
       const originValid = () => !disposed && Boolean(node)
         && context.treeStore.getNode(nodeId)?.createdAt === cleanupOwnership.expectedNodeCreatedAt
-        && choiceRevision === (retryChoiceRevisions.get(nodeId) || 0) && currentChoice(isCurrent)
+        && currentChoice(isCurrent)
       if (!originValid()) return false
       let saved
       try { saved = context?.transcriptStore.readLatest ? await context.transcriptStore.readLatest(nodeId) : context?.transcriptStore.get(nodeId) }
       catch (error) { if (originValid()) publish({ nodeId, error: error.message || String(error) }); return false }
       if (!originValid() || context?.treeStore.getNode(nodeId)?.sessionId !== node?.sessionId
-        || !node?.sessionId || (!saved?.account && !startOptions.treeAccount) || flights.has(nodeId) || isReplacing(nodeId)) return false
+        || !node?.sessionId || flights.has(nodeId) || isReplacing(nodeId)) return false
       if (sessionNodeIds.has(node.sessionId) && ['starting', 'running'].includes(node.status)) return false
+      if (typeof startOptions.treeAccount !== 'string' || !startOptions.treeAccount.trim()) {
+        publish({ nodeId, error: 'Choose an account before continuing.', code: 'AGENT_ACCOUNT_CHOICE_REQUIRED' })
+        return false
+      }
       const account = saved?.account || null
-      const options = Object.fromEntries(['tier', 'effort', 'profileId', 'roleBinding', 'treeAccount'].filter(key => startOptions[key] != null).map(key => [key, startOptions[key]]))
+      const options = Object.fromEntries(['tier', 'model', 'effort', 'profileId', 'roleBinding', 'treeAccount'].filter(key => startOptions[key] != null).map(key => [key, startOptions[key]]))
       let priorHandoff
       try {
         priorHandoff = context.handoffStore?.readRecord
@@ -2449,7 +1630,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       // T1792: an agent.resume that carried the next assignment hands it over
       // inside this continuation's first turn, the handoff itself.
       const handoff = manualAccountHandoff(node, saved, priorHandoff, { assignment })
-      const moved = Boolean(await recover({ sessionId: node.sessionId, event: { type: 'account_recovery_needed',
+      const moved = Boolean(await continueManually({ sessionId: node.sessionId, event: { type: 'manual_continuation',
         recoveryId: globalThis.crypto.randomUUID(), handoff } }, { computerId, nodeId, account, startOptions: options, originValid, cleanupOwnership })
       )
       /* T124: this is the move that recovered the node by hand every single
@@ -2457,17 +1638,8 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       if (moved && originValid()) clearExternalBlock(nodeId)
       return moved
     },
-    /* REQUEST T137: the model switch as a continuation. The
-       Claude CLI binds --model at spawn and no thread crosses providers, so a
-       model the running thread cannot take in place is reached the way another
-       account is: end this session, start a fresh one on the chosen tier, send
-       it the handoff. Unlike continueOnAnotherAccount this is asked of a LIVE
-       session between turns (the renderer refuses it mid-turn); recover()
-       closes the predecessor, starts the replacement on whichever account the
-       ordinary start picks for that tier, records the new tier on the node and
-       the new provider on the transcript, and sends the model handoff. */
+
     async continueOnAnotherModel({ computerId, nodeId, startOptions = {}, isCurrent, assignment = null } = {}) {
-      const choiceRevision = retryChoiceRevisions.get(nodeId) || 0
       const context = contexts.get(computerId)
       const node = context?.treeStore.getNode(nodeId)
       const cleanupOwnership = Object.freeze({ expectedNodeCreatedAt: node?.createdAt, expectedNodeSessionId: node?.sessionId })
@@ -2475,7 +1647,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       // currency is checked separately so our own attachment remains valid.
       const originValid = () => !disposed && Boolean(node)
         && context.treeStore.getNode(nodeId)?.createdAt === cleanupOwnership.expectedNodeCreatedAt
-        && choiceRevision === (retryChoiceRevisions.get(nodeId) || 0) && currentChoice(isCurrent)
+        && currentChoice(isCurrent)
       if (!originValid()) return false
       const tier = tiers.find(row => row.id === startOptions.tier) || null
       if (!node?.sessionId || !tier || flights.has(nodeId) || isReplacing(nodeId)) return false
@@ -2488,8 +1660,18 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       try { saved = context?.transcriptStore.readLatest ? await context.transcriptStore.readLatest(nodeId) : context?.transcriptStore.get(nodeId) }
       catch (error) { if (originValid()) publish({ nodeId, error: error.message || String(error) }); return false }
       if (!originValid() || context.treeStore.getNode(nodeId)?.sessionId !== node.sessionId) return false
-      if (tier.id === node.tier && (!saved?.provider || saved.provider === tier.provider)) return false
-      const options = Object.fromEntries(['tier', 'effort', 'profileId', 'roleBinding', 'treeAccount'].filter(key => startOptions[key] != null).map(key => [key, startOptions[key]]))
+      if (startOptions.model == null && tier.id === node.tier && (!saved?.provider || saved.provider === tier.provider)) return false
+      // A transcript without a native thread ID intentionally has no provider
+      // metadata. The node's admitted tier still identifies its provider; an
+      // ordinary same-provider model change must not look like an account move.
+      const sourceProvider = saved?.provider || tiers.find(row => row.id === node.tier)?.provider
+      if (tier.provider !== sourceProvider && tier.provider !== 'local'
+        && (typeof startOptions.treeAccount !== 'string' || !startOptions.treeAccount.trim())) {
+        publish({ nodeId, code: 'AGENT_ACCOUNT_CHOICE_REQUIRED', error: 'Choose an account before continuing on another provider.' }); return false
+      }
+      const chosenAccount = startOptions.treeAccount || (tier.provider === sourceProvider ? saved?.account : null)
+      const options = Object.fromEntries(['tier', 'model', 'effort', 'profileId', 'roleBinding', 'treeAccount'].filter(key => startOptions[key] != null).map(key => [key, startOptions[key]]))
+      if (chosenAccount) options.treeAccount = chosenAccount
       let priorHandoff
       try { priorHandoff = await readHandoff(context, nodeId) }
       catch (error) { if (originValid()) publish({ nodeId, error: error.message || String(error) }); return false }
@@ -2499,7 +1681,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
         ? { label: saved.model || saved.provider, provider: saved.provider } : configured
       const name = row => row ? `${row.label} (${row.provider})` : 'unrecorded'
       const handoff = manualModelHandoff(node, saved, priorHandoff, { fromLabel: name(from), toLabel: name(tier), assignment })
-      return Boolean(await recover({ sessionId: node.sessionId, event: { type: 'account_recovery_needed',
+      return Boolean(await continueManually({ sessionId: node.sessionId, event: { type: 'manual_continuation',
         recoveryId: globalThis.crypto.randomUUID(), handoff } },
       { computerId, nodeId, account: saved?.account ?? null, startOptions: options, modelContinuation: true, originValid, cleanupOwnership }))
     },
@@ -2518,7 +1700,7 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
        start a turn must consult it -- the coordinator's own off-page drain
        does (drainQueued), and so does the queue door in
        src/views/computers.js (queueForSession). A refusal here is not a stop:
-       scheduled retries, reset waits and the person's manual continuation all
+       requested reset waits and the person's manual continuation
        still run, and each clears it when it works. */
     externalBlock: nodeId => { const record = externalBlocks.get(nodeId); return record ? { ...record } : null },
     subscribeRecoverySettled(listener) {
@@ -2526,27 +1708,8 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       settledListeners.add(listener)
       return () => settledListeners.delete(listener)
     },
-    isRecovering: nodeId => flights.has(nodeId) || retryFlights.has(nodeId),
+    isRecovering: nodeId => flights.has(nodeId),
     isContinuing: nodeId => continuationFlights.has(nodeId),
-    canRetry: nodeId => retryable.has(nodeId) && !flights.has(nodeId),
-    async retry(nodeId) {
-      const held = retryable.get(nodeId)
-      if (!held || flights.has(nodeId)) return false
-      const { packet, context, createdAt, revision } = held
-      const current = context.treeStore.getNode(nodeId)
-      // A confirmed close retires the live-session lookup, not this saved
-      // conversation. Retry uses its original store and immutable identity.
-      // Never reintroduce a closed session into the runtime ownership map.
-      if (contexts.get(context.computerId)?.treeStore !== context.treeStore
-        || !current || current.createdAt !== createdAt || current.sessionId !== packet.sessionId
-        || revision !== (retryChoiceRevisions.get(nodeId) || 0)
-        || (sessionNodeIds.has(packet.sessionId) && sessionNodeIds.get(packet.sessionId) !== nodeId)) {
-        publish({ nodeId, error: 'The saved recovery no longer belongs to this conversation. Review its current session before retrying.' })
-        return false
-      }
-      seen.delete(packet.event.recoveryId)
-      return await recover(packet, null, { ...context, node: current }) === true
-    },
     subscribe(listener, { observes = () => false } = {}) {
       if (disposed) return () => {}
       const entry = { listener, observes }
@@ -2562,7 +1725,6 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       continuationReadStatus = null
       continuationSeatRefusals.clear()
       continuationSeatTransportBackoff.clear()
-      for (const flight of retryFlights.values()) flight.cancelled = true
       unsubscribe?.(); unsubscribe = null; listeners.clear(); settledListeners.clear()
       if (continuationTimer) clearInterval(continuationTimer)
       continuationTimer = null
@@ -2574,7 +1736,8 @@ export function createAccountRecoveryCoordinator({ bridge, sessionNodeIds, moveO
       switchOffersMade.clear()
       externalBlocks.clear()
       limitDecisions.clear()
-      modelsTried.clear()
+      limitWaits.clear()
+      limitWaitVersions.clear()
     },
   }
   return coordinator

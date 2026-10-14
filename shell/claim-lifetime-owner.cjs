@@ -73,6 +73,11 @@ process.on('message', message => {
       if (typeof options.environment?.TOOLSENABLED_ACCOUNT_ORIGIN === 'string') {
         environment.TOOLSENABLED_ACCOUNT_ORIGIN = options.environment.TOOLSENABLED_ACCOUNT_ORIGIN
       }
+      // The GUI adds this only for a poll. Preserve its private handoff through
+      // this owner's second allowlist without widening the relay environment.
+      if (typeof options.environment?.TOOLSENABLED_CLAIM_POLL_TOKEN === 'string') {
+        environment.TOOLSENABLED_CLAIM_POLL_TOKEN = options.environment.TOOLSENABLED_CLAIM_POLL_TOKEN
+      }
       identity = id
       key = candidateKey
       launch = { command: options.command, args: options.args, payloadRoot: options.payloadRoot,

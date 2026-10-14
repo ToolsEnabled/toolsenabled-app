@@ -55,7 +55,7 @@ function git(repository, ...args) {
   return result.stdout.trim()
 }
 
-function writePayloadRecord(staged, sourceRef) {
+function writePayloadRecord(staged, sourceRef, manifest = MANIFEST) {
   const files = walk(staged).filter((relative) => relative !== 'PAYLOAD.json').sort()
   const digest = createHash('sha256')
   let byteCount = 0
@@ -75,7 +75,7 @@ function writePayloadRecord(staged, sourceRef) {
     hostModules: MANIFEST.hostModules || [],
     spawnedPrograms: MANIFEST.spawnedPrograms || [],
     helperPrograms: MANIFEST.helperPrograms || [],
-    ...(MANIFEST.providerRuntimes?.length ? { providerRuntimes: collectProviderRuntimePayload(staged, MANIFEST.providerRuntimes).records } : {}),
+    ...(manifest.providerRuntimes?.length ? { providerRuntimes: collectProviderRuntimePayload(staged, manifest.providerRuntimes).records } : {}),
     fileCount: files.length,
     byteCount,
     payloadSha256: digest.digest('hex'),
@@ -86,7 +86,7 @@ function writePayloadRecord(staged, sourceRef) {
 
 // Builds a source tree and a staged payload that mirrors it, plus the marker
 // the source resolver keys on (tools/mission-bridge.js).
-function scaffold() {
+function scaffold({ runtimes = MANIFEST.providerRuntimes || [] } = {}) {
   const base = mkdtempSync(path.join(os.tmpdir(), 'mc-cpc-'))
   const appRoot = path.join(base, 'app')
   const source = path.join(base, 'engine')
@@ -106,6 +106,9 @@ function scaffold() {
   ]) {
     put(appRoot, relative, readFileSync(path.join(REPO_ROOT, relative)))
   }
+
+  const fixtureManifest = { ...MANIFEST, providerRuntimes: runtimes }
+  put(appRoot, 'tools/capability-manifest.json', JSON.stringify(fixtureManifest))
 
   mkdirSync(source, { recursive: true })
   git(source, 'init', '--initial-branch=main')
@@ -128,7 +131,7 @@ function scaffold() {
   for (const relative of NEUTRAL) {
     put(staged, relative, readFileSync(path.join(REPO_ROOT, 'capability-defaults', relative)))
   }
-  for (const runtime of MANIFEST.providerRuntimes || []) {
+  for (const runtime of runtimes) {
     const bytes = Buffer.from('export const quotaFixture = true;\n')
     const relative = `provider-runtimes/${runtime.id}/sdk.mjs`
     const descriptor = { schemaVersion: 1, id: runtime.id, version: '0.58.0', runtimePath: `provider-runtimes/${runtime.id}`, entrypoint: 'sdk.mjs',
@@ -141,9 +144,9 @@ function scaffold() {
   git(source, 'add', '--all')
   git(source, 'commit', '-m', 'fixture source')
   const sourceRef = git(source, 'rev-parse', 'HEAD')
-  writePayloadRecord(staged, sourceRef)
+  writePayloadRecord(staged, sourceRef, fixtureManifest)
 
-  return { base, appRoot, source, sourceRef, staged }
+  return { base, appRoot, source, sourceRef, staged, fixtureManifest }
 }
 
 function run(staged, source, sourceRef) {
@@ -160,8 +163,8 @@ function run(staged, source, sourceRef) {
   return { code: result.status, out: `${result.stdout}${result.stderr}` }
 }
 
-function withScaffold(body) {
-  const made = scaffold()
+function withScaffold(body, options) {
+  const made = scaffold(options)
   try { body(made) } finally { rmSync(made.base, { recursive: true, force: true }) }
 }
 
@@ -286,18 +289,18 @@ test('a staged file with no counterpart at all is refused', () => {
 
 
 test('runtime tampering cannot be blessed by matching a modified ignored source artifact', () => {
-  withScaffold(({ source, sourceRef, staged }) => {
-    const relative = 'provider-runtimes/gemini-quota/sdk.mjs'
+  withScaffold(({ source, sourceRef, staged, fixtureManifest }) => {
+    const relative = 'provider-runtimes/fixture-runtime/sdk.mjs'
     put(source, '.gitignore', '/provider-runtimes/\n')
     git(source, 'rm', '--cached', relative)
     git(source, 'add', '.gitignore')
     git(source, 'commit', '-m', 'generated runtime remains hash pinned')
     const ref = git(source, 'rev-parse', 'HEAD')
-    writePayloadRecord(staged, ref)
+    writePayloadRecord(staged, ref, fixtureManifest)
     put(source, relative, 'modified untracked SDK')
     put(staged, relative, 'modified untracked SDK')
     const result = run(staged, source, ref)
     assert.notEqual(result.code, 0)
     assert.match(result.out, /provider runtime (byte count|hash) changed/)
-  })
+  }, { runtimes: [{ id: 'fixture-runtime', manifest: 'config/fixture-runtime-runtime.json' }] })
 })

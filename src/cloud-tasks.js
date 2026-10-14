@@ -1,55 +1,6 @@
-/* Codex Cloud, from inside the product: the two places it appears.
- *
- * THE GAP THIS CLOSES. Codex cloud launch is a product feature and works from
- * the software. The capability was finished and proven against the real provider
- * -- cloud.task_launch / task_status / task_list are in the shipped registry,
- * permission-gated, audited, and real cloud tasks ran to completion through
- * them. The INTERFACE had nothing. A grep for "cloud" across every renderer
- * source file returned one hit, in an unrelated account module, and the built
- * bundle contained zero. So the product carried a working remote-agent
- * capability that no user could reach, which from inside the app is
- * indistinguishable from not having built it.
- *
- * AND THE HALF THAT WAS STILL MISSING AFTER THAT. The first version of this
- * surface asked the person to TYPE a 32-character environment id. That is not a
- * launcher, it is a form for someone who already has the answer: the id appears
- * only in a web URL, `codex cloud list --json` reports `environment_id: null`
- * for every task it lists, and codex-cli 0.146.0 has no environment subcommand
- * at all (all three measured 2026-08-11). Machine B's offload report named the
- * same wall from the other side. So this surface now CHOOSES from the
- * environments the configured accounts are authorized for, SHOWS the source
- * repository each one is bound to, DECLARES that repository with the launch,
- * keeps the submission receipt on the glass, and follows the task's status by
- * itself.
- *
- * WHERE IT LIVES, AND WHY NOT ON A PAGE OF ITS OWN. A cloud task is an agent
- * that runs somewhere else. It belongs where the local agents already are: the
- * agent page (`mountCloudTaskSurface`, beside the local session surface) and the
- * fleet board's control rail (`cloudControlsBox`, beside Launch, Team and Loop).
- * A separate "Cloud" route would have made the same claim the product keeps
- * making by accident -- that remote work is a different kind of thing -- and
- * would have needed its own navigation entry, its own empty state, and its own
- * answer to "where did my agents go".
- *
- * WHAT IT DOES NOT DO, stated because the spec is explicit that pretending
- * otherwise costs real time (docs/CODEX-CLOUD-INTERFACE.md):
- *   - There is no cancel. Once the provider accepts a task it runs. No control
- *     here offers one, and the confirm step says so before the launch.
- *   - It does not apply diffs. A finished task's changes can now be FETCHED
- *     here -- that was the whole point of paying for the task -- but fetching is
- *     a read. Nothing on this surface applies, stages or commits anything, and
- *     no control offers to: putting remotely-produced changes into a tree is a
- *     separate reviewed act, and keeping the two apart means retrieval can never
- *     be the step that damages a tree.
- *   - It returns a diff and nothing else. No artifacts, no agent prose, no logs:
- *     the provider CLI exposes none of those, so nothing here is labelled
- *     "results" or "output".
- *   - Silence is not success. A task absent from the searched window is
- *     reported unknown, never finished, and never quietly dropped from the list.
- *
- * The rules live in ./cloud-tasks-controller.js, which has no DOM and no
- * stylesheet so that a plain `node --test` run can exercise them. This file is
- * markup and wiring.
+/* Codex Cloud launch surfaces share the controller's confirmation, refusal,
+ * receipt and task-watch rules. Environment IDs are entered by the person;
+ * the official CLI does not expose an environment catalog.
  */
 import { el } from './components.js'
 import { currentDataSource } from './data-source.js'
@@ -62,7 +13,6 @@ import {
   cloudStateView,
   createCloudTaskController,
   environmentSummary,
-  findEnvironment,
   offersDiff,
   readRemembered,
 } from './cloud-tasks-controller.js'
@@ -206,9 +156,9 @@ function renderDiff(node, state) {
   }
 }
 
-function accountOptions(select, accounts, defaultAccount) {
+function accountOptions(select, accounts) {
   const chosen = select.value
-  const options = [el(`<option value="">Automatic${defaultAccount ? ` · ${defaultAccount}` : ''}</option>`)]
+  const options = [el('<option value="">Choose a Codex account</option>')]
   for (const account of accounts) {
     const option = document.createElement('option')
     option.value = account.name
@@ -226,27 +176,11 @@ function accountOptions(select, accounts, defaultAccount) {
   if (chosen && options.some(option => option.value === chosen)) select.value = chosen
 }
 
-/* The environment picker. An environment with no single repository is LISTED and
-   DISABLED with its reason attached, never hidden: hiding it would leave a
-   person searching for an environment they can see on the provider's own site,
-   with nothing on this glass to explain why it is not offered. */
-function environmentOptions(select, state) {
-  const chosen = select.value
-  const options = [el(`<option value="">${state.environmentsLoaded ? 'Choose an environment' : 'Not read yet'}</option>`)]
-  for (const environment of state.environments) {
-    const option = document.createElement('option')
-    option.value = environment.environmentId
-    option.textContent = environmentSummary(environment)
-    if (environment.launchable !== true) option.disabled = true
-    if (environment.repository) option.dataset.repository = environment.repository
-    options.push(option)
-  }
-  select.replaceChildren(...options)
-  if (chosen && options.some(option => option.value === chosen && !option.disabled)) select.value = chosen
+function launchLabel(state, account) {
+  return state.phase === 'idle' && !account ? 'Choose a Codex account' : state.launchLabel
 }
 
-/* The receipt, rendered from the frozen record only. Every line is a fact the
-   provider acknowledged; nothing here is recomputed from the form. */
+/* The receipt records the bridge's answer, including unconfirmed binding. */
 function renderReceipt(node, receipt) {
   if (!node) return
   if (!receipt) {
@@ -260,6 +194,7 @@ function renderReceipt(node, receipt) {
     ['state at submission', cloudStateView(receipt.state).label],
     ['environment', `${receipt.environmentLabel ? `${receipt.environmentLabel} · ` : ''}${receipt.environment || 'not reported'}`],
     ['repository', receipt.repository || 'not reported'],
+    ...(receipt.repositoryBinding?.message ? [['repository binding', receipt.repositoryBinding.message]] : []),
     ['branch', receipt.branch || 'not reported'],
     ['account', receipt.account?.name || 'not reported'],
     ['submitted', receipt.submittedAt || 'not reported'],
@@ -355,12 +290,13 @@ export function mountCloudTaskSurface(root, { live = false, anchor = '.agent-str
   const surface = el(`<section class="write-surface cloud-surface" aria-label="Codex Cloud">
     <header><strong>Codex Cloud</strong><span data-cloud-status role="status">checking…</span></header>
     <div class="write-surface-grid">
-      <form class="write-form" data-cloud-form>
+      <form class="write-form" data-cloud-form novalidate>
         <span class="write-form-title">Launch a cloud task</span>
-        <label class="write-wide">Environment<select name="environment" data-cloud-environments aria-label="Codex Cloud environment" required><option value="">Not read yet</option></select></label>
+        <label class="write-wide">Environment ID<input type="text" name="environment" data-cloud-environments aria-label="Codex Cloud environment ID" maxlength="32" pattern="[0-9a-f]{32}" placeholder="32-character environment ID" autocomplete="off" spellcheck="false" required /></label>
+        <label class="write-wide">Repository<input type="text" name="repository" aria-label="Repository the cloud task runs against" maxlength="201" placeholder="owner/name" autocomplete="off" spellcheck="false" required /></label>
         <output class="cloud-binding write-wide" data-cloud-binding role="status"></output>
         <label>Branch<input name="branch" maxlength="200" placeholder="branch on the remote" required /></label>
-        <label>Account<select name="account" aria-label="Codex account to run this task under"><option value="">Automatic</option></select></label>
+        <label>Account<select name="account" aria-label="Codex account to run this task under"><option value="">Choose a Codex account</option></select></label>
         <label>Attempts<select name="attempts" aria-label="Assistant attempts">${[1, 2, 3, 4, 5].map(n => `<option value="${n}">${n}</option>`).join('')}</select></label>
         <label class="write-wide">Prompt<textarea name="prompt" maxlength="16000" rows="3" required></textarea></label>
         <button type="submit" data-cloud-launch>Launch on Codex Cloud</button>
@@ -434,10 +370,12 @@ export function mountCloudTaskSurface(root, { live = false, anchor = '.agent-str
     : null
   const canAddAccount = Boolean(addCloudAccount)
   const accountSelect = form.elements.account
-  const environmentSelect = form.elements.environment
+  const environmentInput = form.elements.environment
 
   const remembered = readRemembered()
   form.elements.branch.value = remembered.branch
+  form.elements.repository.value = remembered.repository
+  environmentInput.value = remembered.environment
 
   /* READ AS THE ACCOUNT THE LIST WAS READ AS. A cloud task is only visible to
      the account that made it, so asking for the diff as a different account
@@ -455,7 +393,6 @@ export function mountCloudTaskSurface(root, { live = false, anchor = '.agent-str
       stateNode(launchOutput, next.launchTone, readerSentence(next.launchMessage), next.launchCode)
       stateNode(watchNode, next.watchTone, readerSentence(next.watchMessage), next.watchCode)
       renderReceipt(receiptNode, next.receipt)
-      launchButton.textContent = next.launchLabel
       launchButton.classList.toggle('is-confirming', next.phase === 'armed')
       launchButton.disabled = next.phase === 'launching'
       cancelButton.hidden = next.phase !== 'armed'
@@ -465,33 +402,14 @@ export function mountCloudTaskSurface(root, { live = false, anchor = '.agent-str
          read says nothing about whether accounts exist, and offering to add one
          there invites a duplicate. */
       if (addAccountBox) addAccountBox.hidden = !(canAddAccount && next.accountsPhase === 'none')
-      accountOptions(accountSelect, next.accounts, next.defaultAccount)
-      environmentOptions(environmentSelect, next)
-      if (!environmentSelect.value && remembered.environment
-          && next.environments.some(environment => environment.environmentId === remembered.environment && environment.launchable === true)) {
-        environmentSelect.value = remembered.environment
-        applyEnvironment(next)
-      }
-      /* The whole state, not just the chosen environment: with nothing chosen
-         this line has to say WHY, and "not read yet", "could not be read" and
-         "read, none chosen" are three different answers. */
-      stateNode(bindingOutput, 'note', bindingText(findEnvironment(next, environmentSelect.value), next))
+      accountOptions(accountSelect, next.accounts)
+      launchButton.textContent = launchLabel(next, accountSelect.value)
+      stateNode(bindingOutput, 'note', bindingText(environmentInput.value, next))
       taskList.replaceChildren(...next.tasks.map(task => taskRow(task, { state: next, onGetWork })))
       renderDiff(diffNode, next)
     },
   })
 
-  /* Choosing an environment fills the branch with THAT environment's default,
-     and clears it when the provider states none. The old form defaulted the
-     field to "main" for every environment, which is the same defect in miniature
-     as the ones this feature guards against: a value nobody established,
-     presented as the answer, in a field that decides which code the cloud agent
-     reads. */
-  function applyEnvironment(state = controller.getState()) {
-    const chosen = findEnvironment(state, environmentSelect.value)
-    stateNode(bindingOutput, 'note', bindingText(chosen, state))
-    form.elements.branch.value = chosen?.defaultBranch || ''
-  }
 
   stateNode(status, 'ready', 'Codex Cloud ready · every launch asks for approval')
 
@@ -499,10 +417,11 @@ export function mountCloudTaskSurface(root, { live = false, anchor = '.agent-str
 
   const onSubmit = event => {
     event.preventDefault()
-    if (!controller.isArmed() && !form.reportValidity()) return
+    if (!controller.isArmed() && accountSelect.value && !form.reportValidity()) return
     const data = new FormData(form)
     void controller.click({
       environment: data.get('environment'),
+      repository: data.get('repository'),
       branch: data.get('branch'),
       prompt: data.get('prompt'),
       attempts: Number(data.get('attempts')) || 1,
@@ -510,12 +429,13 @@ export function mountCloudTaskSurface(root, { live = false, anchor = '.agent-str
     })
   }
   const onCancel = () => { controller.disarm() }
-  const onEnvironmentChange = () => { applyEnvironment() }
+  const onEnvironmentChange = () => { stateNode(bindingOutput, 'note', bindingText(environmentInput.value, controller.getState())) }
+  const onAccountChange = () => { launchButton.textContent = launchLabel(controller.getState(), accountSelect.value) }
   /* ONE READ, IN ORDER. These two used to race, and whichever refused second
      painted its own paragraph about the same condition into its own box. See
      refresh() in ./cloud-tasks-controller.js. */
   const onRefresh = () => {
-    void controller.refresh({ environment: environmentSelect.value || undefined })
+    void controller.refresh({ environment: environmentInput.value || undefined, account: accountSelect.value || undefined })
   }
   /* ADDING AN ACCOUNT. One press does three things a person used to do by hand:
      the account's own folder is created, the entry is written to the list this
@@ -563,14 +483,16 @@ export function mountCloudTaskSurface(root, { live = false, anchor = '.agent-str
 
   form.addEventListener('submit', onSubmit)
   cancelButton.addEventListener('click', onCancel)
-  environmentSelect.addEventListener('change', onEnvironmentChange)
+  environmentInput.addEventListener('input', onEnvironmentChange)
+  accountSelect.addEventListener('change', onAccountChange)
   refreshButton.addEventListener('click', onRefresh)
   addAccountButton?.addEventListener('click', onAddAccount)
 
   return () => {
     form.removeEventListener('submit', onSubmit)
     cancelButton.removeEventListener('click', onCancel)
-    environmentSelect.removeEventListener('change', onEnvironmentChange)
+    environmentInput.removeEventListener('input', onEnvironmentChange)
+    accountSelect.removeEventListener('change', onAccountChange)
     refreshButton.removeEventListener('click', onRefresh)
     addAccountButton?.removeEventListener('click', onAddAccount)
     controller.destroy()
@@ -589,15 +511,18 @@ export function cloudControlsBox({ postAction = postBridgeAction } = {}) {
     <div class="board-box board-cloud-box">
       <div class="board-box-h"><span class="bh-t">Codex Cloud</span></div>
       <div class="board-cap">an agent that runs on Codex Cloud instead of ${currentDataSource() === 'relay' ? 'the computer you are driving' : 'this computer'}</div>
-      <label class="ctl-field"><span class="cl">Environment</span>
-        <select class="ctl-select cloud-env" data-cloud="environment" aria-label="Codex Cloud environment"><option value="">Not read yet</option></select>
+      <label class="ctl-field"><span class="cl">Environment ID</span>
+        <input class="ctl-num cloud-env" type="text" data-cloud="environment" aria-label="Codex Cloud environment ID" maxlength="32" pattern="[0-9a-f]{32}" placeholder="32-character environment ID" autocomplete="off" spellcheck="false" />
+      </label>
+      <label class="ctl-field"><span class="cl">Repository</span>
+        <input class="ctl-num cloud-env" type="text" data-cloud="repository" aria-label="Repository the cloud task runs against" maxlength="201" placeholder="owner/name" autocomplete="off" spellcheck="false" required />
       </label>
       <div class="rail-sub cloud-binding" data-cloud="binding"></div>
       <label class="ctl-field"><span class="cl">Branch</span>
         <input class="ctl-num cloud-env" type="text" data-cloud="branch" maxlength="200" placeholder="branch on the remote" aria-label="Branch the cloud task runs against"/>
       </label>
       <label class="ctl-field"><span class="cl">Account</span>
-        <select class="ctl-select" data-cloud="account" aria-label="Codex account"><option value="">Automatic</option></select>
+        <select class="ctl-select" data-cloud="account" aria-label="Codex account"><option value="">Choose a Codex account</option></select>
       </label>
       <label class="ctl-field ctl-cloud-prompt"><span class="cl">Task</span>
         <textarea class="ctl-textarea" data-cloud="prompt" maxlength="16000" rows="2" aria-label="Cloud task prompt"></textarea>
@@ -632,13 +557,15 @@ export function cloudControlsBox({ postAction = postBridgeAction } = {}) {
   const taskList = field('tasks')
   const diffNode = field('diff')
   const accountSelect = field('account')
-  const environmentSelect = field('environment')
+  const environmentInput = field('environment')
 
   const onGetWork = task => {
     void controller.readDiff(task.taskId, { account: controller.getState().servingAccount?.name || null })
   }
 
   field('branch').value = remembered.branch
+  field('repository').value = remembered.repository
+  environmentInput.value = remembered.environment
   field('note').textContent = availability.ok
     ? 'A cloud task cannot be cancelled once Codex Cloud accepts it. Each launch asks for approval before anything is sent.'
     : readerSentence(availability.note)
@@ -652,28 +579,16 @@ export function cloudControlsBox({ postAction = postBridgeAction } = {}) {
       stateNode(environmentsOut, next.environmentsTone, readerSentence(next.environmentsMessage), next.environmentsCode)
       stateNode(watchNode, next.watchTone, readerSentence(next.watchMessage), next.watchCode)
       renderReceipt(receiptNode, next.receipt)
-      goButton.textContent = next.launchLabel
       goButton.disabled = next.phase === 'launching' || !availability.ok
       cancelButton.hidden = next.phase !== 'armed'
       refreshButton.disabled = next.phase === 'launching' || !availability.ok
-      accountOptions(accountSelect, next.accounts, next.defaultAccount)
-      environmentOptions(environmentSelect, next)
-      if (!environmentSelect.value && remembered.environment
-          && next.environments.some(environment => environment.environmentId === remembered.environment && environment.launchable === true)) {
-        environmentSelect.value = remembered.environment
-        applyEnvironment(next)
-      }
-      bindingOut.textContent = bindingText(findEnvironment(next, environmentSelect.value), next)
+      accountOptions(accountSelect, next.accounts)
+      goButton.textContent = launchLabel(next, accountSelect.value)
+      bindingOut.textContent = bindingText(environmentInput.value, next)
       taskList.replaceChildren(...next.tasks.map(task => taskRow(task, { state: next, onGetWork })))
       renderDiff(diffNode, next)
     },
   })
-
-  function applyEnvironment(state = controller.getState()) {
-    const chosen = findEnvironment(state, environmentSelect.value)
-    bindingOut.textContent = bindingText(chosen, state)
-    field('branch').value = chosen?.defaultBranch || ''
-  }
 
   if (!availability.ok) {
     for (const control of box.querySelectorAll('input, select, textarea, button')) control.disabled = true
@@ -682,7 +597,8 @@ export function cloudControlsBox({ postAction = postBridgeAction } = {}) {
     void controller.loadAccounts()
     goButton.addEventListener('click', () => {
       void controller.click({
-        environment: environmentSelect.value,
+        environment: environmentInput.value,
+        repository: field('repository').value,
         branch: field('branch').value,
         prompt: field('prompt').value,
         attempts: 1,
@@ -690,9 +606,10 @@ export function cloudControlsBox({ postAction = postBridgeAction } = {}) {
       })
     })
     cancelButton.addEventListener('click', () => { controller.disarm() })
-    environmentSelect.addEventListener('change', () => { applyEnvironment() })
+    environmentInput.addEventListener('input', () => { bindingOut.textContent = bindingText(environmentInput.value, controller.getState()) })
+    accountSelect.addEventListener('change', () => { goButton.textContent = launchLabel(controller.getState(), accountSelect.value) })
     refreshButton.addEventListener('click', () => {
-      void controller.refresh({ environment: environmentSelect.value || undefined })
+      void controller.refresh({ environment: environmentInput.value || undefined })
     })
   }
 

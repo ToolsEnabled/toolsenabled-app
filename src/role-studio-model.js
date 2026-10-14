@@ -88,3 +88,12 @@ export function functionExample(item) {
   }
   return JSON.stringify({ name: item.id, arguments: example(item.inputSchema || { type: 'object' }) }, null, 2)
 }
+
+/* WHERE A ROLE CAME FROM, in the words the role library shows under its name. A
+   plugin's role is not "Custom role": the person did not write it, its wording
+   changes when the package does, and it goes away with the plugin. The payload
+   names the plugin only while that plugin's role is the one in force. */
+export function roleSourceLabel(role) {
+  if (role && typeof role.plugin === 'string' && role.plugin) return `From the plugin \u201c${role.plugin}\u201d`
+  return role && role.custom ? 'Custom role' : 'Default role'
+}

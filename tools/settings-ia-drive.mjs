@@ -427,7 +427,7 @@ async function main() {
     /* >= 25, AND THE OLD PIN OF 84 WAS A NUMBER FROM A PAGE THAT NO LONGER
        EXISTS. It was written when the page drew 90 rows; 74 of those wrote a
        key nothing in the product read and were removed on 2026-08-20
-       (kept in the design notes), so the pin has been
+       (docs/design/UNBUILT-SETTINGS-ROWS-2026-08-20.md), so the pin has been
        asking for three times what the product has ever since. MEASURED
        2026-08-27 on the packaged build, every category opened and every tier
        revealed: 27 rows. The floor is a floor, not the measurement, because a

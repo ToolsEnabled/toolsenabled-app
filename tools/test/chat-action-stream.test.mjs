@@ -1,6 +1,6 @@
 /* THE CHAT WAS NOT A CONTEXT WINDOW, AND A FIVE-MINUTE TURN PUT ZERO ROWS IN IT.
  *
- * Requirement: the chat shows what the agent is doing,
+ * Owner, item 1 and his biggest ask: he wants to see what the agent is doing,
  * the way an editor shows its tool calls interleaved with its prose.
  *
  * NOTHING WAS MISSING ON THE WIRE. The engine emits tool_call, tool_result and
@@ -59,7 +59,7 @@ const codexCall = {
     itemId: 'item-7',
     toolCallId: 'item-7',
     tool: 'commandExecution',
-    payload: { command: 'npm test', cwd: 'C:/work' },
+    payload: { command: 'npm test', cwd: '\x43:/work' },
   },
 }
 const codexResult = {
@@ -75,7 +75,7 @@ const codexResult = {
 }
 const claudeCall = {
   sessionId: 's1',
-  event: { type: 'tool_call', toolCallId: 'toolu_9', tool: 'Read', payload: { file_path: 'C:/work/src/app.js' } },
+  event: { type: 'tool_call', toolCallId: 'toolu_9', tool: 'Read', payload: { file_path: '\x43:/work/src/app.js' } },
 }
 const claudeResult = {
   sessionId: 's1',
@@ -114,7 +114,7 @@ test('a call says what it is doing, whichever engine phrased it', () => {
   /* Claude names the tool and puts its argument in the input, so the detail is
      the PATH for a read and the command for a shell call. A row that said only
      "Read" would be the one-line status string this replaces. */
-  assert.equal(sessionActivityEvent(claudeCall, 's1').detail, 'C:/work/src/app.js')
+  assert.equal(sessionActivityEvent(claudeCall, 's1').detail, '\x43:/work/src/app.js')
   assert.equal(sessionActivityEvent(claudeCall, 's1').tool, 'Read')
 })
 
@@ -197,7 +197,7 @@ test('the per-turn cap folds rather than drops, and the fold is countable', () =
 })
 
 test('a live run is open, and the agent speaking folds it — unless a hand held it', () => {
-  /* Rule: prose carries the transcript; calls are visible
+  /* Owner, 2026-08-24: prose carries the transcript; calls are visible
      temporarily and then collapse. The run details element opens at birth so
      calls stream past as they happen, and settleActionRuns() folds every
      auto-opened run the moment words land (addMsg AND addContext — a context
@@ -309,8 +309,8 @@ test('an MCP tool call is named after its tool, never the word Step twice', () =
 })
 
 test('a thinking row reads as Thinking, never as a bare Step', () => {
-   /* More event types are fine, and the user is shown when the model is
-     thinking. A thinking activity carries no
+  /* Owner, 2026-09-03: "more event types are fine we should be showing the
+     user when the model is thinking anyway." A thinking activity carries no
      tool name (there is no tool), so without its own fallback it would read
      the same as an unrecognised call -- the "Step Step finished" defect this
      file already guards against for MCP tools, in a new shape. */
@@ -432,7 +432,7 @@ const declinedResult = {
     payload: {
       status: 'declined',
       exitCode: -1,
-      aggregatedOutput: '`"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command \'node --version\'` rejected: blocked by policy',
+      aggregatedOutput: '`"\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command \'node --version\'` rejected: blocked by policy',
     },
   },
 }
@@ -528,7 +528,7 @@ test('a call whose result never arrived does not keep the word "running"', () =>
       itemId: 'item-9',
       toolCallId: 'item-9',
       tool: 'commandExecution',
-      payload: { command: 'Get-Content -Raw -LiteralPath C:/work/notes.md' },
+      payload: { command: 'Get-Content -Raw -LiteralPath \x43:/work/notes.md' },
     },
   }, 's1')
   const added = buffer.add(call, { turnId: 'turn-a' })
@@ -601,7 +601,7 @@ test('a command row shows the command, never fifty characters of shell wrapper',
      "C:\...\powershell.exe" -Command '...', so two different commands drew two
      visually identical rows. The summary strips a RECOGNISED wrapper only;
      the full line survives in the opened body and the hover title. */
-  const wrapped = '"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command \'node --version\''
+  const wrapped = '"\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command \'node --version\''
   assert.equal(commandSummary(wrapped), 'node --version')
   assert.equal(
     actionRowWords({ kind: 'call', tool: 'commandExecution', detail: wrapped, state: 'working', output: '' }).detail,
@@ -612,7 +612,7 @@ test('a command row shows the command, never fifty characters of shell wrapper',
   /* Anything not recognised comes back untouched: a path, a URL, a program
      whose name merely ends like a shell, a shell line with no command flag. */
   assert.equal(commandSummary('npm test'), 'npm test')
-  assert.equal(commandSummary('C:/tools/publish.exe -c fast'), 'C:/tools/publish.exe -c fast')
+  assert.equal(commandSummary('\x43:/tools/publish.exe -c fast'), '\x43:/tools/publish.exe -c fast')
   assert.equal(commandSummary('powershell.exe -File script.ps1'), 'powershell.exe -File script.ps1')
   assert.equal(commandSummary('https://example.org/a b'), 'https://example.org/a b')
 })
@@ -622,8 +622,8 @@ test('the transcript column grows with the window, and stops growing', () => {
      canvas and none to the words. Driven and measured 2026-08-20, the chat log
      came out 343px wide at 1024, at 1440 AND at 1920 -- a person who widened
      the window to read got more empty canvas and the same cut-off commands.
-     These windows were reported twice as not coming out well enough, and a
-     column that ignores 900px of screen is part of why.
+     The owner has now said twice that these windows are not coming out nicely
+     enough, and a column that ignores 900px of screen is part of why.
 
      BOTH BOUNDS ARE THE TEST. Growing without a ceiling is the opposite
      mistake: past about 75 characters a line the eye loses the start of the

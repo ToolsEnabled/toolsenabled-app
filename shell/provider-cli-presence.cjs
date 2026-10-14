@@ -2,9 +2,10 @@
 
 /* IS THE PROGRAM THAT RUNS AN AGENT ON THIS COMPUTER, AND IS IT SIGNED IN.
  *
- * THE DEFECT THIS EXISTS TO CLOSE. What a stranger has to be able to do: install
- * and add Claude, Codex and Gemini CLI subscriptions smoothly, then use those
- * CLIs for their agents. Measured on the packaged product before this file existed: there is
+ * THE DEFECT THIS EXISTS TO CLOSE. The owner, on what a stranger has to be able
+ * to do: "a user needs to be able to easily install, add Claude and Codex and
+ * Gemini CLI subscriptions smoothly and easily, then use those CLI for their
+ * agents". Measured on the packaged product before this file existed: there is
  * no screen anywhere that reports whether any of those three programs is on the
  * computer, whether any of them is signed in, or what to type if not. The one
  * place the subject comes up is Settings, which says the product "never asks for
@@ -45,7 +46,7 @@
  * bearing. On Windows the PATH a process holds is the copy it was born with --
  * for an app launched from Explorer, the environment captured at login -- so
  * anything installed since is invisible in it. That is not a subtlety: it is the
- * whole of the defect reported from a second machine, where Codex
+ * whole of the defect the owner reported from his second machine, where Codex
  * and Claude were installed and this file said they were not.
  * shell/machine-search-path.cjs answers "what would a newly started process
  * search", with everything that has a child process, a timeout and a cache in it,
@@ -172,8 +173,9 @@ const PROVIDER_CLIENTS = Object.freeze([
 const PROVIDER_IDS = Object.freeze(PROVIDERS.map(provider => provider.id))
 const PRESENCE_STATES = Object.freeze(['yes', 'no', 'unknown'])
 
-/* ONE CHOICE WITH THE ENGINE (these are handled automatically, so the
- * Codex version never has to be managed by hand).
+/* ONE CHOICE WITH THE ENGINE (rc-0922, the owner: "we should really be able to
+ * handle these automatically so we dont need to try to parent the codex version
+ * all the time").
  *
  * The engine's src/lib/providers/provider-toolchain.js is the one table of
  * agent programs: where each copy is, which copy and version, and the
@@ -226,10 +228,11 @@ function ownedProviderCopy(providerId, options, { env, platform }) {
 
 /* Is a program of this name runnable from a command line on this computer?
  *
- * THE DEFECT THIS WAS REOPENED FOR, reported from a second machine: Claude and
- * Codex were installed and signed in, yet launching agents said nothing was
- * started and to run a winget install. Both programs were installed. This function said they were
- * not, and the product handed them an install command for software they already
+ * THE DEFECT THIS WAS REOPENED FOR, reported by the owner from his own second
+ * machine: "i have claude and codex downloaded and installed and signed it but
+ * when i try to launch agents it says nothing was started and to run winget
+ * install openAI". Both programs were installed. This function said they were
+ * not, and the product handed him an install command for software he already
  * had.
  *
  * WHY. It walked `env.PATH`, which on Windows is the copy this process was born
@@ -410,7 +413,7 @@ function signInPresence(provider, { env, homedir, existsSync, platform }) {
  * ONLY THE AMBIENT CALL IS MEMOISED. Any injected env, platform, statSync,
  * accessSync or searchPath skips the memo entirely, both ways: an injected
  * reader is never served a remembered answer and never contributes one. That
- * is the same rule an earlier commit wrote for the ACL inspector, and for the same
+ * is the same rule 883d589 wrote for the ACL inspector, and for the same
  * reason -- the suite drives a machine it is not running on, and a memo that
  * crossed that boundary would let one test's machine answer another's.
  *

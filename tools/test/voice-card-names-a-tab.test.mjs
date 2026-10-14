@@ -3,7 +3,7 @@
  * Found by hand on candidate 2 (c2f2): with a New agent tab running, Home's
  * Voice card and its "Talk to" list read
  *
- *   standalone-12345678-90ab-4cde-8f01-23456789abcd
+ *   standalone-2a539765-abe7-4ddd-869d-e4b3aa0a7b8c
  *
  * instead of "Agent 2". refreshTargets labels a running session through the
  * tree's saved session roles, and a New agent tab is deliberately not on the
@@ -30,7 +30,7 @@ import {
 register('./helpers/css-stub-loader.mjs', import.meta.url)
 const { voiceCoordinator } = await import('../../src/voice-coordinator.js')
 
-const SEAT = 'standalone-12345678-90ab-4cde-8f01-23456789abcd'
+const SEAT = 'standalone-2a539765-abe7-4ddd-869d-e4b3aa0a7b8c'
 const OTHER_SEAT = 'standalone-11111111-2222-4333-8444-555555555555'
 const RAW_ID = /standalone-|node-7f3a/
 

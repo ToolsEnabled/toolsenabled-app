@@ -1,6 +1,7 @@
-/* THE QUICK SLIDERS ON THE SETTINGS LANDING PAGE (a few sliders for
- * changing different things quickly, easily reachable on the Settings landing
- * page, each with about five or six options).
+/* THE QUICK SLIDERS ON THE SETTINGS LANDING PAGE (owner, 2026-09-15: "there
+ * should be a few sliders for different things to be changed quickly and they
+ * should be easily accessible on the settings landing page", then "the
+ * sliders need like 5-6 options each").
  *
  * Five or six positions have to be five or six real answers. Most enum rows
  * carry three registry values, so a stop may set more than one row -- the
@@ -64,7 +65,7 @@ test('every slider offers five or six labelled positions over rows this page wri
   assert.ok(QUICK_SLIDERS.length >= 3, 'the strip is more than one slider')
   for (const spec of QUICK_SLIDERS) {
     assert.ok(spec.stops.length >= 5 && spec.stops.length <= 6,
-      `${spec.key} offers ${spec.stops.length} positions; the rule is five or six`)
+      `${spec.key} offers ${spec.stops.length} positions; the owner asked for five or six`)
     const labels = spec.stops.map(stop => stop.label)
     assert.equal(new Set(labels).size, labels.length, `${spec.key} repeats a position label`)
     for (const stop of spec.stops) {
@@ -173,7 +174,7 @@ test('a row this host does not carry takes only its own slider out of service', 
 })
 
 test('every position of every slider can be staged and read back', async () => {
-  // The acceptance: each option applies to the setting it controls.
+  // The owner's acceptance: each option applies to the setting it controls.
   for (const spec of QUICK_SLIDERS) {
     const { root, draft } = mount()
     await settle()

@@ -7,8 +7,8 @@
  * it. All four reported the same absence from four directions ("clicking an
  * agent opens the rail board: absent", "UNMEASURED -- the control could not be
  * reached") because on a sterile profile the board opens with an EMPTY tree,
- * which is the rule for it: the node tree is empty unless a user has started a
- * session. Four private copies of this walk would drift;
+ * which is the owner's own rule for it: "the node tree should be empty unless a
+ * user has started a session". Four private copies of this walk would drift;
  * one copy is one thing to keep true.
  *
  * WHAT IT COSTS: NOTHING, AND THAT IS MEASURED RATHER THAN HOPED FOR. The walk
@@ -180,8 +180,8 @@ export async function startFleetNode({ session, evaluate, delay, brief = 'Say ok
     /* THIS WALK STILL CHOOSES A ROLE, AND IT NO LONGER HAS TO.
        The panel used to refuse a start with no role and say so ("Pick a role
        first, then press Start"), which is how this walk learned it was skipping
-       a step. That requirement was retired on 2026-08-19 (users are not forced
-       to choose a role) -- the first row of the menu is now
+       a step. That requirement was retired on 2026-08-19 (owner: "users
+       shouldnt be forced to choose a role") -- the first row of the menu is now
        a real answer meaning no role, and Start works on it.
        The step is KEPT anyway, deliberately: these drivers exist to walk the
        path a person walks, and the menu is still offered first, so exercising
@@ -196,7 +196,7 @@ export async function startFleetNode({ session, evaluate, delay, brief = 'Say ok
        <select> carries all six options and is DISABLED. A press on a disabled
        control takes no focus -- so the Escape below, meant for the native popup,
        had nothing focused to land on, bubbled to the panel root, and (since
-       an earlier commit taught Escape to cancel the start panel however it was opened)
+       3457cfa taught Escape to cancel the start panel however it was opened)
        CLOSED THE WHOLE PANEL. The walk then fell through to "the selector still
        has no value", which reads as a product defect and is not one: measured
        with a standalone probe, the panel goes true -> false across that Escape,

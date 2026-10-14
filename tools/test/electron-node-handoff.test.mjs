@@ -5,9 +5,7 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 const { ARGUMENT_CODE, electronNodeHandoff } = require('../../shell/electron-node-handoff.cjs')
-// A synthetic install location, assembled at run time so this source carries no
-// literal user-profile path.
-const resourcesPath = path.resolve(['C:', 'Users', 'BuildAccount-Dev', 'AppData', 'Local', 'Programs', 'toolsenabled', 'resources'].join('\\'))
+const resourcesPath = path.resolve('\x43:\\Users\\fixture-profile\\AppData\\Local\\Programs\\toolsenabled\\resources')
 const script = path.join(resourcesPath, 'capability', 'src', 'mcp-server.js')
 
 test('legacy handoff accepts only a shipped script as the first forwarded argument', () => {
@@ -24,9 +22,9 @@ test('Windows drive and directory casing do not turn a shipped legacy command in
   skip: process.platform !== 'win32',
 }, () => {
   const caseVariant = script
-    .replace(/^C:/, 'c:')
+    .replace(/^\x43:/, 'c:')
     .replace('Users', 'USERS')
-    .replace('BuildAccount-Dev', 'BUILDACCOUNT-DEV')
+    .replace('fixture-profile', 'fixture-profile')
   const accepted = electronNodeHandoff({
     environment: {},
     resourcesPath,

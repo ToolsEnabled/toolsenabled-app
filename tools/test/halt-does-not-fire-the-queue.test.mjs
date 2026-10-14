@@ -90,7 +90,7 @@ for (const userStopped of [false, true]) for (const replacing of [false, true]) 
     const outbox = realOutbox(), sent = []
     outbox.enqueue('session', 'FIRST'); outbox.enqueue('session', 'SECOND')
     const complete = vm.runInNewContext(`(function () { ${drains[0]} })`, {
-      userStopped, isHistoricalReplay, nativeReplayIdle: false, sessionId: 'session', nodeId: 'node', nodeReplacementFlight: { busy: () => replacing },
+      userStopped, isHistoricalReplay, automaticTurnsHeld: false, nativeReplayIdle: false, sessionId: 'session', nodeId: 'node', nodeReplacementFlight: { busy: () => replacing },
       outboxTakeNext: outbox.takeNext,
       drainOutboxMessage(sessionId, nodeId, entry) { sent.push(entry.text); outbox.confirmDelivered(sessionId, entry) },
     })

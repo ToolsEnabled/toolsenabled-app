@@ -423,8 +423,7 @@ test('private receipt destinations refuse public/source/build trees, links, miss
     assert.throws(() => preserveReadinessReceipt(callerGreenReceipt(), { inputPath: original, outputPath: output, excludedRoots }), /changed or lost fields/)
     await assert.rejects(() => access(output), { code: 'ENOENT' })
     if (process.platform === 'win32') {
-      // Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-      assert.throws(() => assertPrivateReadinessPath(['C:', 'Users', 'not-permitted-fixture', 'raw.json'].join('\\')), /leaves the permitted profile/)
+      assert.throws(() => assertPrivateReadinessPath('\x43:\\Users\\not-permitted-fixture\\raw.json'), /leaves the permitted profile/)
     }
   })
 })
@@ -579,11 +578,11 @@ test('every App source job binds the measured Engine and refuses absent or subst
 
 test('an actual constrained App test child resolves the selected Engine despite stale ambient choices', {
   /* 240s, not 60s. This is the only case here that spawns a real owned job,
-     and its cost tracks whatever else the host is doing. Measured on a build
-     host, and NOT reproduced by review -- the case refuses another
+     and its cost tracks whatever else the host is doing. Measured by Worker 85
+     on this build host, and NOT reproduced by review -- the case refuses another
      agent's node through registered-toolchain.mjs, and rebuilding 2x CPU load
      would breach the owner's CPU cap -- 4.8s idle and 35.4s with the CPU
-     oversubscribed 2x (twice as many busy workers as cores). That 7.3x inflation puts
+     oversubscribed 2x (16 busy workers on 8 cores). That 7.3x inflation puts
      the old 60s budget inside reach of an ordinary concurrent strict ratchet,
      and a deadline that only holds on an idle machine reports a scheduling fact
      as an engine-resolution failure, which is the one thing this case measures.

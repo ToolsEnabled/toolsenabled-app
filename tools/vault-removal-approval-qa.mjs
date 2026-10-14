@@ -47,8 +47,8 @@ import { qaCapabilityPayload } from './lib/qa-capability-payload.mjs'
 
 const require_ = createRequire(import.meta.url)
 const ROOT = path.resolve(import.meta.dirname, '..')
-const SYNTHETIC_KEY = 'vqa_probe_absent'
-const OTHER_KEY = 'vqa_probe_other'
+const SYNTHETIC_KEY = 'w87_probe_absent'
+const OTHER_KEY = 'w87_probe_other'
 const REASON = 'no_longer_needed'
 
 function refuse(reason) {
@@ -100,7 +100,7 @@ function check(condition, sentence) {
   if (!condition) failures += 1
 }
 
-const directory = mkdtempSync(path.join(fixtureTemp, 'vqa-removal-approval-'))
+const directory = mkdtempSync(path.join(fixtureTemp, 'w87-removal-approval-'))
 let store = null
 try {
   store = stateStore.createStateStore({ file: path.join(directory, 'state.sqlite3') })
@@ -147,13 +147,13 @@ try {
     onGrant: entryValue => audits.push(entryValue),
   })
 
-  const carried = await remover({ vaultKey: SYNTHETIC_KEY, reason: REASON, ownerPromptId: 'vqa-owner-prompt' })
+  const carried = await remover({ vaultKey: SYNTHETIC_KEY, reason: REASON, ownerPromptId: 'w87-owner-prompt' })
     .then(answer => answer.consumed, error => error?.code)
   process.stdout.write(`  the carried grant was: ${carried}\n`)
   check(carried === 'consumed',
     'the grant this shell minted was accepted by the product for this exact removal')
   check(mints.length === 1, `exactly one grant was minted for one owner decision (${mints.length})`)
-  check(audits.length === 1 && audits[0].ownerPromptId === 'vqa-owner-prompt',
+  check(audits.length === 1 && audits[0].ownerPromptId === 'w87-owner-prompt',
     'the grant is recorded against the owner decision that authorised it')
   check(!JSON.stringify(audits).includes(mints[0].tokenHash)
     && !Object.values(audits[0]).some(value => typeof value === 'string' && value.length === 43),

@@ -1,6 +1,7 @@
-/* CTRL+V, IMAGE TO THE AGENT -- R10: pasting an image with Ctrl+V must work.
+/* CTRL+V, IMAGE TO THE AGENT -- the owner, verbatim (R10): "I still cant
+ * control V and image to you please get that fixed".
  *
- * The rule this pins: the bytes an attachment is built from come
+ * Controller's ruling this pins: the bytes an attachment is built from come
  * ONLY from the renderer's own paste event -- never Electron's
  * clipboard.readImage() in the main process, which would read whatever is on
  * the clipboard at whatever moment the call happens (ambient machine state)
@@ -64,7 +65,7 @@ function mount({ onPasteAttachment = null } = {}) {
   const root = buildChat({
     title: 'agent',
     seed: 0,
-    onAttach: async () => ({ ok: true, path: 'C:\\fake\\dialog-picked.png' }),
+    onAttach: async () => ({ ok: true, path: '\x43:\\fake\\dialog-picked.png' }),
     ...(onPasteAttachment ? { onPasteAttachment: async (data, mime) => {
       calls.push({ data, mime })
       return onPasteAttachment(data, mime)
@@ -76,7 +77,7 @@ function mount({ onPasteAttachment = null } = {}) {
 
 test('pasting an image on the composer input reaches onPasteAttachment with the pasted bytes, base64, and adds the chip', async () => {
   const fixture = mount({
-    onPasteAttachment: async () => ({ ok: true, path: 'C:\\fake\\paste-attachments\\img-1.png', size: 4 }),
+    onPasteAttachment: async () => ({ ok: true, path: '\x43:\\fake\\paste-attachments\\img-1.png', size: 4 }),
   })
   const pngMagic = [0x89, 0x50, 0x4e, 0x47]
   fixture.input.dispatch('paste', { clipboardData: { items: [imageClipboardItem('image/png', pngMagic)] } })
@@ -130,7 +131,7 @@ test('paste refusal copy recognizes the exact size code through Electron wrappin
     new Error(`PREFIX_${code}`),
     new Error(`${code}_EXTRA`),
     new Error(`prefix${code}`),
-    new Error('C:\\fixture\\private.png <script>untrusted</script>'),
+    new Error('\x43:\\fixture\\private.png <script>untrusted</script>'),
   ]) assert.equal(pasteRefusalSentence(error), PALETTE_PANEL.pasteFailed)
   for (const classified of ['MC_AGENT_PASTE_REQUIRES_WINDOW', 'MC_AGENT_PASTE_UNAVAILABLE']) {
     assert.equal(pasteRefusalSentence({ code: classified }), unavailableReason(classified))
@@ -186,7 +187,7 @@ test('Page 2 preserves message-only Electron paste refusals through the real com
 })
 
 test('an unrecognized paste error cannot put its message or path on screen', async () => {
-  const onPaste = makePage2Paste(async () => { throw new Error('Could not write C:/private-untrusted-image.png') },
+  const onPaste = makePage2Paste(async () => { throw new Error('Could not write \x43:/private-untrusted-image.png') },
     { sessionId: 'paste-unknown' }, pasteRefusalSentence)
   assert.deepEqual(await onPaste('AQID', 'image/png'), { ok: false, sentence: PALETTE_PANEL.pasteFailed })
 })

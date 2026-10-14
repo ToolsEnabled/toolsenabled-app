@@ -2,14 +2,14 @@
 
 /* DRAW THE COMPUTERS PAGE WITH TWO TREES ON IT, AND LOOK AT WHAT IS THERE.
  *
- * THE DEFECT THIS EXISTS FOR. It was reported that agents would not launch
+ * THE DEFECT THIS EXISTS FOR. The owner reported that agents would not launch
  * and the chat bubbles beside tree nodes would not open. Both were one thing and
  * neither was in those features: refreshTreeSwitch() in src/views/computers.js
  * called `slot.prepend(host)` with `slot` undeclared -- the Split-pane removal
  * deleted the declaration and left the call site -- and that function runs at
  * mount. On any profile holding TWO OR MORE trees the ReferenceError aborted the
  * whole view before it drew anything: no tree, no nodes, no chips, no empty
- * slot, no zoom controls. Fixed in an earlier commit.
+ * slot, no zoom controls. Fixed in f20c39b.
  *
  * WHY EVERY GATE STAYED GREEN, which is the part this file is the answer to.
  * Multi-tree was covered by exactly one suite, tools/test/fleet-trees-multi.test.mjs,
@@ -35,7 +35,7 @@
  * WHAT MAKES IT DISCRIMINATE, MEASURED RATHER THAN ASSERTED. A guard nobody has
  * seen fail is a guard nobody has tested, so it was run against the defect. A
  * detached worktree at this commit with ONLY src/views/computers.js reverted to
- * an earlier commit , built there, driven against the same packaged shell:
+ * f20c39b^ , built there, driven against the same packaged shell:
  *
  *   fixed      14/14 checks passed, exit 0
  *   pre-fix     6/14, exit 1 -- 0 nodes, 0 slots, no switcher, nothing pressable
@@ -47,7 +47,7 @@
  * ONE CHECK BELOW IS WEAKER THAN ITS NAME WOULD SUGGEST, and it is said here
  * rather than left for the next reader to find out. "the page is not showing the
  * mount-crash sentence" PASSED on the pre-fix build: the view had died, drawn
- * nothing, and the sentence seen on a real install was not in the text
+ * nothing, and the sentence the owner saw on his own install was not in the text
  * this driver samples. So that check only reports the symptom when it is on
  * screen; what actually detects the death is the counts.
  *
@@ -61,7 +61,7 @@
  * temporary directory and runs it with --user-data-dir, LOCALAPPDATA, APPDATA
  * and USERPROFILE all pointed at a scratch profile. It never launches the
  * installed application: a harness pointed at the owner's live install desynced
- * their audit ledger. Nothing under release/ is written and the window is
+ * his audit ledger. Nothing under release/ is written and the window is
  * headless.
  *
  *   node tools/two-tree-render-qa.mjs

@@ -1,7 +1,7 @@
 /* THE LIVE CHECKPOINT'S START LOOKUP WAS TEXT-SHAPED, NOT SEMANTIC.
  *
- * B3's Set/Start split (src/agent-compose-panel.js: Set and Start are both
- * offered as options) made the compose panel legitimately show
+ * B3's Set/Start split (src/agent-compose-panel.js, owner: "ITS SUPPOSED TO
+ * HAVE SET OR START AS OPTIONS") made the compose panel legitimately show
  * BOTH a "Set" and a "Start" button on a fresh tree, where this driver's old
  * lookup -- `[...document.querySelectorAll('button')].filter(visible).find(n
  * => /^start/i.test(n.textContent.trim()))` -- had only ever needed to find

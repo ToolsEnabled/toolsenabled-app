@@ -10,6 +10,9 @@ test('mounted default example Home has one current attention answer in the strip
   t.mock.timers.enable({ apis: ['Date'], now: FIXED_NOW })
   const f = await homeFixture(t, { source: 'mock' })
   const view = await f.mount()
+  assert.equal(view.el.querySelector('.home-glance').getAttribute('aria-label'), 'Recorded activity at a glance')
+  assert.match(view.el.querySelector('.home-glance-scope').textContent, /Saved tree agents/)
+  assert.match(view.el.querySelector('.home-roster-scope').textContent, /including stopped agents/)
   const summary = view.el.querySelector('[data-agents-summary]').textContent
   const needed = Number(summary.match(/(\d+)\s*needs? you/)?.[1] || 0)
   assert.ok(needed > 0, 'the example has agents waiting on the person')

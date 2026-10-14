@@ -31,8 +31,8 @@
  *
  * It used to resolve an engine checkout at runtime (src/lib/entitlement.js) to
  * learn what is sold and which metadata keys a paid session must carry. The
- * shipped payload deliberately does not contain that module -- by rule, the
- * tier table, the licence provider and the revocation
+ * shipped payload deliberately does not contain that module -- the owner ruled
+ * on 2026-08-11 that the tier table, the licence provider and the revocation
  * store do not ship -- so on a customer's machine that lookup could only ever
  * fail. The facts it needed are now PRECOMPUTED at pack time into
  * shell/subscription-signup-model.json (see readSignupModel below and

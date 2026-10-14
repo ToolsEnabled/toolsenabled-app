@@ -20,7 +20,7 @@ import {
   takeNext,
 } from '../../src/session-outbox.js'
 import { refusalCode } from '../../src/agent-availability-copy.js'
-import { PALETTE_PANEL, startRefusalSentence, sendFailureIsUnconfirmed } from '../../src/fleet-tree-copy.js'
+import { PALETTE_PANEL, startRefusalSentence, sendFailureIsUnconfirmed, sendFailureWasAccepted } from '../../src/fleet-tree-copy.js'
 
 /* The owner's queue: messages written while the agent is busy. The store is
    renderer memory modeled on write-outcomes.js; these pin its contract, and
@@ -531,8 +531,8 @@ test('the palette holds only real actions, and says what it cannot do in words',
      when tools/agent-rewind-probe.mjs PROVED the fork semantics live
      (2026-08-14: the fork remembered turns 1-2 and had forgotten turn 3). A
      footer that still called either impossible would now be the lie. */
-  /* The palette re-homed into the chat composer's popup (iteration 6: actions
-     are a button on the chat, not a page). chatActionRowsFor is
+  /* The palette re-homed into the chat composer's popup (iteration 6, owner:
+     actions are "a button on the chat", not a page). chatActionRowsFor is
      the row source, runPaletteAction stays the verb engine, and the honest
      footer rides into the popup as its actionsNote. */
   const palette = view.slice(view.indexOf('function chatActionRowsFor'), view.indexOf('async function resumeNodeSession'))
@@ -590,15 +590,17 @@ test('the compact card is real-sourced or absent, never the simulator', () => {
 })
 
 
-test('T731 compact card registers its reply before a fast send and queues busy messages', async () => {
+test('compact card deliberate new Send stays available and queues only busy messages', async () => {
   const { withResearchTreeBinding } = await import('../../src/research-tree-session.js')
   const source = readFileSync(resolve(import.meta.dirname, '../../src/views/computers.js'), 'utf8')
   const queued = [], wire = [], replies = [], failures = []
   let busy = false, registered = null
   const node = { id: 'card-fixture', sessionId: 'card-session' }
   const values = {
+    sessionNodeIds: Object.assign(new Map([[node.sessionId, node.id]]), { automaticTurnsHeld: () => true }),
     notePersonSpokeTo() {}, treeStore: { setNodeStatus() {} }, parseSlashCommand: () => null,
     nodeBusy: () => busy, pendingModelChoice: () => null,
+    nodeReplacementFlight: { busy: () => false },
     outboxEnqueue: (sessionId, text) => { queued.push({ sessionId, text }); return { ok: true, sentence: 'Queued' } },
     window: { mcAgent: { send: async request => {
       assert.equal(typeof registered, 'function', 'the fast reply must already have its consumer')
@@ -612,6 +614,7 @@ test('T731 compact card registers its reply before a fast send and queues busy m
     sessionCompletedTurnIds: new Map(), refreshTree() {}, dropTurnReply() {},
     refusalCode: error => error.code, queuedSendRefusalSentence: () => 'Unexpected send refusal',
     sendFailureIsUnconfirmed: () => true,
+    sendFailureWasAccepted: () => false,
   }
   const send = new Function(...Object.keys(values), declaredFunctionSource(source, 'treeCardSend') + '\nreturn treeCardSend')(...Object.values(values))
   const callbacks = { reply: text => replies.push(text), fail: error => failures.push(error) }
@@ -675,11 +678,11 @@ test('the view drains one message per completed turn, and requeues on refusal', 
     'exactly one drain site in the listener; a second would race the first')
   const guard = turnBranch.match(/if \(([^\n]+)\) \{\s*const queuedNext = outboxTakeNext\(sessionId\)/)
   assert.ok(guard, 'the one drain must be guarded by turn and custody state')
-  const mayDrain = new Function('userStopped', 'isHistoricalReplay', 'nativeReplayIdle', 'succeeded', 'nodeReplacementFlight', 'nodeId', `return (${guard[1]})`)
-  for (const stopped of [false, true]) for (const historical of [false, true]) {
+  const mayDrain = new Function('automaticTurnsHeld', 'userStopped', 'isHistoricalReplay', 'nativeReplayIdle', 'succeeded', 'nodeReplacementFlight', 'nodeId', `return (${guard[1]})`)
+  for (const held of [false, true]) for (const stopped of [false, true]) for (const historical of [false, true]) {
     for (const idle of [false, true]) for (const succeeded of [false, true]) for (const replacing of [false, true]) {
-      assert.equal(mayDrain(stopped, historical, idle, succeeded, { busy: () => replacing }, 'node'),
-        !stopped && !replacing && (!historical || (idle && succeeded)),
+      assert.equal(mayDrain(held, stopped, historical, idle, succeeded, { busy: () => replacing }, 'node'),
+        !held && !stopped && !replacing && (!historical || (idle && succeeded)),
         'Stop/replacement always hold the queue; replay drains only a host-confirmed idle successful native turn')
     }
   }
@@ -687,21 +690,8 @@ test('the view drains one message per completed turn, and requeues on refusal', 
   const firstYield = turnBranch.indexOf('await ')
   assert.ok(replayCapture >= 0 && firstYield > replayCapture,
     'historical provenance must be captured before a pending interrupt yields')
-  const drainer = view.slice(view.indexOf('async function drainOutboxMessage'))
-  /* BOTH DOORS OUT OF A FAILED DELIVERY PUT THE WORDS BACK AT THE FRONT, AND
-     BOTH NOW SAY WHY. The pin used to be the single literal
-     `outboxRequeueFront(sessionId, entry)`. The entry carries heldReason (and
-     deliveryUnconfirmed when the transport never answered) so the strip can
-     name the reason it came back, which changed the spelling but not the
-     property. Pinned on both call sites rather than one literal, and on the
-     reason as well as the requeue, so this is a tighter pin than it replaces. */
-  const head = drainer.slice(0, 2600)
-  assert.match(head, /outboxRequeueFront\(sessionId, \{ \.\.\.entry, heldReason: '[A-Z_]+' \}\)/,
-    'the no-bridge door no longer returns the words to the front of the queue with a reason')
-  assert.match(head, /outboxRequeueFront\(sessionId, \{\s*\.\.\.entry,[\s\S]{0,240}?heldReason: code/,
-    'a refused drained send no longer returns to the front of the queue, or no longer records why it came back')
-  /* The visible strip lives in the chat composer now (iteration 6: a small
-     preview of the message waiting to be sent): the component renders it, the view
+  /* The visible strip lives in the chat composer now (iteration 6: "a little
+     preview of it waiting to be sent"): the component renders it, the view
      feeds it through the queue config, and the outbox event finally has its
      subscriber so every surface repaints on every change. */
   const components = readFileSync(resolve(ROOT, 'src/components.js'), 'utf8')
@@ -710,15 +700,15 @@ test('the view drains one message per completed turn, and requeues on refusal', 
 })
 
 /* A STOP ANSWERS FOR THE DELIVERIES IT STOPPED, AND FOR NO LATER ONE.
-   Measured on live an earlier commit: queue a message, let the view take it, press Stop
+   Measured on live 3c5ad80: queue a message, let the view take it, press Stop
    while that delivery is still on the wire, and let the delivery never answer
    (an answer lost to a window reload is the ordinary case on this machine).
    The next message the person wrote was taken, refused, and then DELETED --
    requeueFront returned false and the queue came back empty -- because the
    store recorded the Stop against the session id with a count instead of
-   against the deliveries that were actually outstanding. The report: queue,
-   halt and Send now were still broken, and messages were being deleted. Each
-   test below takes its own session id, because the
+   against the deliveries that were actually outstanding. The owner's words
+   for it: "i still dont think my que and halt and send now ever got fixed ...
+   things get deleted". Each test below takes its own session id, because the
    store is module memory and a queue left dirty by one test is exactly the
    confusion these tests exist to rule out. */
 test('a Stop taken while one message is out for delivery does not swallow the next message the person writes', () => {
@@ -846,7 +836,7 @@ test('a named hold reason is this run\'s and never reaches the saved queue', () 
  *
  * takeNext()'s skip -- `entry.deliveryUnconfirmed !== true` -- is the whole
  * difference between "one message the transport never acknowledged is held"
- * and the measured failure to message agents at all: the same condition used to ride
+ * and the measured "I cannot message agents": the same condition used to ride
  * in the `some()` above it, so ONE unacknowledged row stopped delivery for the
  * entire session, forever, with nothing to clear it. Nothing covered the
  * release: both tests added beside this one assert the NAMED-HOLD reason
@@ -899,7 +889,7 @@ test('Stop removes an in-flight manual send and a late refusal cannot recreate i
   assert.deepEqual(list(sid), [])
 })
 
-/* THE REPORTED HOUR-LONG QUEUE (T382), pinned by behaviour rather
+/* THE OWNER'S "IT JUST QUEUES FOR AN HOUR" (T382), pinned by behaviour rather
    than by the spelling of the condition that caused it. An entry whose delivery
    the transport never acknowledged must hold ITSELF and nothing else: the words
    may already have reached the agent, so they are never re-sent automatically,
@@ -980,7 +970,7 @@ for (const outcome of ['accepted', 'unknown']) for (const changed of ['current',
       sessionModelOverride: new Map(), withResearchTreeBinding: value => value,
       outboxRequeueFront: requeueFront,
       outboxConfirmDelivered: (id, held) => { confirmations.push(held.id); confirmDelivered(id, held) },
-      refusalCode, sendFailureIsUnconfirmed, queuedSendRefusalSentence: () => 'unconfirmed',
+      refusalCode, sendFailureIsUnconfirmed, sendFailureWasAccepted, queuedSendRefusalSentence: () => 'unconfirmed',
       QUEUE_PANEL: { notSent: 'not sent', sentNext: 'sent next' },
       transcriptAppend: (...args) => publications.push(['transcript', ...args]),
       broadcastOwnerMessage: (...args) => publications.push(['broadcast', ...args]),
@@ -1019,5 +1009,27 @@ for (const outcome of ['accepted', 'unknown']) for (const changed of ['current',
       assert.equal(takeNext(sessionId), null, 'unknown dispatch cannot automatically replay')
     }
     clearSession(sessionId)
+  })
+}
+
+
+for (const reason of ['SESSION_OUTBOX_NO_BRIDGE', 'PROVIDER_SEND_REFUSED']) {
+  test(`queued delivery keeps exact bytes and reason after ${reason}`, async () => {
+    const sid = 'named-refusal-' + reason
+    const queued = enqueue(sid, '  Synthetic queued text\nunchanged  ').entry
+    const next = enqueue(sid, 'Next').entry
+    const ticket = takeNext(sid)
+    const source = readFileSync(new URL('../../src/views/computers.js', import.meta.url), 'utf8')
+    const scope = { sessionNodeIds: new Map([[sid, 'node']]), treeStore: { getNode: () => ({ id: 'node', sessionId: sid }) },
+      destroyed: true, sessionModelOverride: new Map(), outboxRequeueFront: requeueFront,
+      window: { mcAgent: reason === 'SESSION_OUTBOX_NO_BRIDGE' ? null : { send: async () => { throw Object.assign(new Error('refused'), { code: reason }) } } },
+      withResearchTreeBinding: bridge => bridge, refusalCode, sendFailureWasAccepted, sendFailureIsUnconfirmed }
+    const drain = new Function(...Object.keys(scope), declaredFunctionSource(source, 'drainOutboxMessage') + '; return drainOutboxMessage')(...Object.values(scope))
+    try {
+      await drain(sid, 'node', ticket)
+      const retained = list(sid)
+      assert.deepEqual(retained.map(row => [row.id, row.text]), [[queued.id, queued.text], [next.id, next.text]])
+      assert.equal(retained[0].heldReason, reason)
+    } finally { clearSession(sid) }
   })
 }

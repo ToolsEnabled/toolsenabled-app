@@ -1,7 +1,8 @@
 /* THE FILES AN AGENT LEFT BEHIND, ON SCREEN -- AND A REPORT YOU CAN READ HERE.
  *
- * THE TWO REQUIREMENTS, IN ONE PANEL. PDFs and files open both on mobile and in
- * the app, and a person can view the reports an agent sends. Before this panel there was no way to
+ * THE TWO THINGS THE OWNER ASKED FOR, IN ONE PANEL. "pdf and files need to be
+ * openable both in mobile and in the app", and "they also need to be able to
+ * view reports etc that the agent sends". Before this panel there was no way to
  * do either from inside the application: measured on the tree, `openPath` and
  * `showItemInFolder` appeared zero times in the whole product.
  *
@@ -414,7 +415,7 @@ export function mountAgentFilesPanel({
     bar.appendChild(close)
     dialog.appendChild(bar)
     /* PLAIN TEXT IN A SCROLLING PANE. A markdown library is a dependency, and
-       adding one needs a product decision; a report read as written is the honest
+       adding one needs the owner's word; a report read as written is the honest
        rendering either way. `tabindex="0"` because a pane a mouse can scroll
        and a keyboard cannot is not readable. */
     const pane = element(doc, 'pre', {

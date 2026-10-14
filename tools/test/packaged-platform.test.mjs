@@ -351,7 +351,7 @@ test('a root-owned setuid chrome-sandbox passes the same preflight, because Chro
 })
 
 /* THE INSTALLED PRODUCT AS THE .DEB ACTUALLY LAYS IT OUT (T318). Measured
-   2026-09-23 on an installed Linux 1.0.45 package: chrome-sandbox
+   2026-09-23 on the Linux laptop's installed 1.0.45 package: chrome-sandbox
    root:root 0755, /etc/apparmor.d/toolsenabled-customer root:root 0644 holding
    the source profile's bytes, kernel.apparmor_restrict_unprivileged_userns=1,
    the shell unconfined. The root:4755 helper modelled above never exists in an

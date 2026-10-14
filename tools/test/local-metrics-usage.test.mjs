@@ -21,6 +21,7 @@ import {
   usageByAccount,
   usageByAgent,
   usageByDay,
+  usageByModel,
   usageByProvider,
   usageByRun,
   usageTotals,
@@ -42,6 +43,9 @@ function reply(turns, { verified = true, ok = true, total = null } = {}) {
     usage: {
       turnId: turn.turnId || `turn-${index}`,
       tier: turn.tier === undefined ? 'luna' : turn.tier,
+      /* Present only when a case sets them: every line written before 1.0.50 lacks both (CM-4). */
+      ...(turn.model !== undefined ? { model: turn.model } : {}),
+      ...(turn.modelChoice !== undefined ? { modelChoice: turn.modelChoice } : {}),
       account: turn.account === undefined ? null : turn.account,
       status: turn.status === undefined ? 'completed' : turn.status,
       /* Absent on every line written before the writer kept the field, which is
@@ -50,7 +54,7 @@ function reply(turns, { verified = true, ok = true, total = null } = {}) {
       failure: turn.failure === undefined ? null : turn.failure,
       basis: turn.basis || 'turn',
       /* Absent on every line written before the writer kept it -- which is every
-         line on an existing install -- so the default is null and the
+         line on the owner's machine today -- so the default is null and the
          reader's fallback path stays the one most of the record takes. */
       inputBasis: turn.inputBasis ?? null,
       inputTokens: turn.inputTokens ?? null,
@@ -145,10 +149,10 @@ test('a turn that reported no total has one derived from its own parts, and the 
 /* ------------------------------------------------------------------
    WHAT A CACHED READ COSTS, AND WHAT AN UNCOMPUTABLE TOTAL SAYS.
 
-   MEASURED over the whole of <state>/agent-turn-usage-records.jsonl on a
-   development install: most rows reported no total at all. This page showed
-   a few million tokens for those turns; the figures the engine reported for
-   them summed to hundreds of millions. The
+   MEASURED 2026-09-03 over the whole of
+   <state>/agent-turn-usage-records.jsonl on the owner's own machine: 488 rows,
+   403 of them reporting no total at all. This page showed 3,668,392 tokens for
+   those turns; the figures the engine reported for them sum to 857,520,354. The
    difference is every token the provider served from its cache, priced at zero
    because `input + output` was written for codex's dialect, where the cached
    reading is INSIDE the input figure, and applied to Anthropic's, where it is
@@ -158,9 +162,9 @@ test('a turn that reported no total has one derived from its own parts, and the 
    file, not composed for the test.
    ------------------------------------------------------------------ */
 
-/* A real Claude turn record, session id replaced. */
+/* Sequence 4 of the owner's ledger, verbatim. */
 const REAL_CLAUDE_TURN = Object.freeze({
-  sessionId: 'chat-0b424585-0000-4000-8000-000000000012',
+  sessionId: 'chat-744d7a70-ff51-480d-a58e-deca17f05741',
   tier: 'claude-sonnet',
   status: 'success',
   inputTokens: 6,
@@ -175,7 +179,7 @@ const REAL_CLAUDE_TURN = Object.freeze({
 /* Sequence 1 of the same file, verbatim -- the other dialect, where the engine
    totalled the turn itself and its cached reading is part of its input. */
 const REAL_CODEX_TURN = Object.freeze({
-  sessionId: 'chat-07588500-0000-4000-8000-000000000013',
+  sessionId: 'chat-967ac622-ff38-47a5-914a-cbfb6deb6852',
   tier: 'sol',
   status: 'completed',
   inputTokens: 32_839,
@@ -513,9 +517,9 @@ test('describeLocalMetrics carries the usage reading, so the view decides nothin
 /* ------------------------------------------------------------------
    A DEAD TIER SAYS WHY.
 
-   MEASURED on a development install: a run of
-   claude-fable turns wrote status "error" with every token figure zero
-   while claude-opus and claude-sonnet succeeded in the
+   MEASURED 2026-09-03 on the owner's computer: from 01:49:05Z every
+   claude-fable turn wrote status "error" with every token figure zero -- five
+   in a row -- while claude-opus wrote 160 successes and claude-sonnet 13 in the
    same window on the same install, so the tier was dead and the account was
    not. The provider had said why every time (the Claude CLI ends a refused
    turn with one human sentence, carried on `turn_completed.text`), and the
@@ -604,4 +608,38 @@ test('the metrics view prefers the failure sentence over the quiet-week sentence
     'the window-absence sentence does not read the failure reading, so a dead tier still reads as a quiet week')
   assert.ok(body.indexOf('totals.failureSentence') < body.indexOf('Pick a longer range'),
     'the quiet-week sentence is answered before the reason, so the reason can never be reached')
+})
+
+/* 1.0.50 review CM-4. A turn on a typed model name is listed under that name, not under the default row the
+   session started on; a typed name the record could not keep (it holds \\ / or :) reads "Other model"; a line
+   written before 1.0.50, or a session on a model row, reads exactly as it did. */
+test('a typed model is listed under its own name, and one the record could not keep as Other model', async () => {
+  const now = Date.UTC(2026, 9, 13, 12)
+  const reading = await readLocalUsage({
+    agent: agentWith(reply([
+      { atMs: now - HOUR, sessionId: 'typed', tier: 'astra', model: 'my-typed-model', modelChoice: 'typed', totalTokens: 4000 },
+      { atMs: now - 2 * HOUR, sessionId: 'withheld', tier: 'astra', model: null, modelChoice: 'typed', totalTokens: 2000 },
+      { atMs: now - 3 * HOUR, sessionId: 'row', tier: 'astra', model: null, modelChoice: null, totalTokens: 1000 },
+      { atMs: now - 4 * HOUR, sessionId: 'old', tier: 'claude-opus', totalTokens: 500 },
+    ])),
+  })
+  const byModel = usageByModel(reading)
+  assert.deepEqual(byModel.rows.map(row => [row.label, row.tokens]), [
+    ['my-typed-model', 4000], ['Other model', 2000], ['GPT-6-Astra', 1000], ['Opus (latest)', 500],
+  ])
+  assert.deepEqual(usageByRun(reading).rows.map(row => [row.sessionId, row.model]), [
+    ['typed', 'my-typed-model'], ['withheld', 'Other model'], ['row', 'GPT-6-Astra'], ['old', 'Opus (latest)'],
+  ])
+  assert.deepEqual(usageByProvider(reading).rows.map(row => [row.key, row.tokens]), [['codex', 7000], ['claude', 500]],
+    'a typed name still counts under the provider it ran on')
+})
+
+test('a typed model whose every turn failed is the model the failure sentence names', async () => {
+  const now = Date.parse('2026-10-13T03:30:00.000Z')
+  const totals = usageTotals(await readLocalUsage({ agent: agentWith(reply([
+    { atMs: now - HOUR, sessionId: 'chat-a', tier: 'astra', model: 'my-typed-model', modelChoice: 'typed', status: 'failed', inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+  ])) }))
+  assert.equal(totals.failedTurns, 1)
+  assert.match(totals.failureSentence, /my-typed-model/)
+  assert.doesNotMatch(totals.failureSentence, /GPT-6-Astra/)
 })

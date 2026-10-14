@@ -1,8 +1,9 @@
-/* THE QUICK STRIP ON THE SETTINGS LANDING PAGE. The drop-down gave way to a
-   few sliders for changing different things quickly, easily reachable on the
-   Settings landing page. Every slider is in view the moment Settings
+/* THE QUICK STRIP ON THE SETTINGS LANDING PAGE. Owner, 2026-09-15: "i dont
+   like the dropdown lets change that. there should be a few sliders for
+   different things to be changed quickly and they should be easily accessible
+   on the settings landing page." Every slider is in view the moment Settings
    opens: the working profile first, then one cell per quick row
-   (src/settings-quick-sliders.js). No disclosure, and -- 2026-09-09 --
+   (src/settings-quick-sliders.js). No disclosure, and -- owner, 2026-09-09 --
    no boxes: cells are separated by the page's hairline, not framed. The value
    review is the one thing that folds, under the whole strip, because it is a
    table and not a control. */
@@ -21,7 +22,7 @@
    needs its own, exactly as .ledger-file does. Without this the landing-only
    rule in src/views/settings.js sets the attribute and nothing moves. */
 .settings-quick[hidden] { display: none; }
-.settings-quick-title { margin: 0 0 4px; color: var(--ink); font-size: 15px; font-weight: 600; line-height: 1.5; }
+.settings-quick-title { margin: 0 0 4px; color: var(--ink-2); font-size: 12.5px; font-weight: 600; line-height: 1.5; }
 .settings-quick-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -32,7 +33,7 @@
 .quick-slider { position: relative; display: block; min-width: 0; padding: 6px 0 8px; border: 0; background: transparent; }
 .settings-working-profile { grid-column: 1 / -1; }
 .quick-slider-head { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: baseline; gap: 2px 14px; min-width: 0; }
-.quick-slider-title { color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.5; }
+.quick-slider-title { color: var(--ink); font-size: 13.5px; font-weight: 620; line-height: 1.5; }
 .quick-slider-state { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 0; color: var(--ink-2); font-size: 13px; line-height: 20px; }
 .quick-slider-state strong { font-weight: 500; color: var(--ink-2); }
 .working-profile-lead { cursor: default; }
@@ -67,7 +68,7 @@
    50%; only one that is not disabled is dimmed here. */
 .quick-slider[data-state="unavailable"] .quick-slider-picker :is(input[type="range"], .quick-slider-stops button):not(:disabled) { opacity: .6; }
 
-/* A NORMAL SLIDER. A plain slider bar.
+/* A NORMAL SLIDER. Owner, 2026-09-10: "please just make a normal slider bar".
    The control is the plain native range, styled by the page-wide
    `.settings-page input[type="range"]` rules like every other range here.
    Under it, the stop names in equal cells; the current one in full ink. Then
@@ -81,22 +82,22 @@
 .quick-slider-stops { display: grid; grid-template-columns: repeat(var(--stops, 3), minmax(0, 1fr)); margin: 0; }
 .quick-slider-stops button {
   min-width: 0;
-  min-height: 44px;
+  min-height: 34px;
   padding: 2px 0;
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;
   cursor: pointer;
-  color: var(--ink-2);
-  font: 600 13px/1.5 var(--font-ui);
+  color: var(--ink-3);
+  font: 450 12px/1.4 var(--font-ui);
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 .quick-slider-stops button:first-child { text-align: left; }
 .quick-slider-stops button:last-child { text-align: right; }
-.quick-slider-stops button:hover { color: var(--ink); }
-.quick-slider-stops button[aria-pressed="true"] { color: var(--ink); }
+.quick-slider-stops button:hover { color: var(--ink-3); }
+.quick-slider-stops button[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
 .quick-slider-stops button:disabled { cursor: not-allowed; opacity: .5; }
 .quick-slider-help { margin: 2px 0 0; min-height: calc(2 * 1.6 * 14px); color: var(--ink-2); font-size: 14px; line-height: 1.6; }
 .quick-slider-sets { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
@@ -122,7 +123,7 @@
 }
 .working-profile-link:hover { color: var(--ink); text-decoration-color: currentColor; }
 .working-profile-link:disabled { cursor: not-allowed; opacity: .5; }
-.settings-quick :is(input, button, summary):focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+.settings-quick :is(input, button, summary):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* The value review folds under the whole strip and opens in flow at full
    width, including at larger text. */

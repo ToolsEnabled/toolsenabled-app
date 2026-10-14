@@ -1,9 +1,9 @@
 /* THE SETTINGS ROW THAT REMEMBERS HOW UPDATES ARE CHECKED.
  *
- * The rule: a launch-time question about checking for updates, with a choice
- * to always check automatically or never check automatically so the window
- * need never be seen again, and the same choice in Settings.
- * This is the Settings half. shell/update-check.cjs asks the question at
+ * The owner's words: a launch-time question about checking for updates, a
+ * box for "always check automatically" and "never check automatically" so the
+ * window need never be seen again, "and then it should be in settings though".
+ * This is the "in settings" half. shell/update-check.cjs asks the question at
  * launch and reads `mc.update.policy` to decide whether to; this row is the
  * only place the remembered answer can be changed afterwards, which matters
  * most for `never` -- a choice that, by design, produces no further dialog to
@@ -151,11 +151,45 @@ export function createUpdateSettings({
   stageWrite = null, draft = null,
   readPolicy = defaultReadUpdatePolicy,
   writePolicy = defaultWriteUpdatePolicy,
+  readRuntimeIdentity = () => globalThis.window?.mcShell?.runtimeIdentity?.() ?? null,
   readingOverRelay = () => currentDataSource() === 'relay',
   platform = globalThis.mcSetup?.platform,
 } = {}) {
   let hostRoot = null
   let notice = ''
+  let runtimeVersion = null
+  let runtimeRead = null
+  let runtimeReadSettled = false
+  let runtimeGeneration = 0
+
+  // This identifies the local window, even when it is driving another
+  // computer. Keep paths and other private diagnostics out of the settings row.
+  function readVersion() {
+    if (runtimeRead) return runtimeRead
+    const generation = runtimeGeneration
+    runtimeRead = Promise.resolve().then(readRuntimeIdentity).then(identity => {
+      if (identity?.ok !== true || typeof identity.version !== 'string'
+          || !identity.version.trim() || identity.version.length > 128
+          || typeof identity.isPackaged !== 'boolean') return null
+      return { version: identity.version.trim(), isPackaged: identity.isPackaged }
+    }).catch(() => null).then(identity => {
+      if (generation !== runtimeGeneration || !hostRoot) return
+      runtimeVersion = identity
+      runtimeReadSettled = true
+      // Update only the label: a delayed identity reply must not replace a
+      // policy control that the person has focused or is about to press.
+      for (const node of hostRoot.querySelectorAll('[data-update-runtime-version]')) {
+        node.textContent = versionSentence()
+      }
+    })
+    return runtimeRead
+  }
+
+  function versionSentence() {
+    if (!runtimeReadSettled) return 'Reading the version of this app…'
+    if (!runtimeVersion) return 'App version could not be read in this window. Leave Settings and come back to retry.'
+    return `This window is running ToolsEnabled ${runtimeVersion.version}${runtimeVersion.isPackaged ? '.' : ' (development copy).'}`
+  }
 
   /* Null means the durable store is genuinely unavailable. A failed read is
      deliberately a different answer: it is retried on every call, rather
@@ -184,6 +218,7 @@ export function createUpdateSettings({
         <article class="settings-row update-policy-row" data-update-policy-row data-setting-id="${esc(UPDATE_SETTING_ID)}">
           <div class="settings-copy">
             <div class="settings-name" id="update-policy-label">${esc(UPDATE_CONTROL_LABEL)}</div>
+            <p class="settings-desc" data-update-runtime-version role="status">${esc(versionSentence())}</p>
             <div class="settings-desc" data-update-policy-state>${esc(state)}${unsupported ? '' : ' Ask me means a question at every launch, after setup is finished. Always check means it looks on its own and only asks before installing. Never check means it never looks, and this row is the way back.'}</div>
             ${noticeMarkup(notice)}
           </div>
@@ -230,7 +265,8 @@ export function createUpdateSettings({
     if (!normalized) return true
     const haystack = [
       UPDATE_CONTROL_LABEL,
-      'update updates upgrade new version check for updates automatically install installer download',
+      'update updates upgrade new version app version running version current build about check for updates automatically install installer download',
+      runtimeVersion?.version || '',
       UPDATE_POLICIES.map(policy => policy.label).join(' '),
       DOWNLOAD_PAGE,
       updateStateSentence(current()),
@@ -241,15 +277,21 @@ export function createUpdateSettings({
   function bind(root) {
     hostRoot = root
     root.addEventListener('click', handleClick)
+    return readVersion()
   }
 
   function afterRender(root = hostRoot) {
     hostRoot = root
+    if (root) return readVersion()
   }
 
   function destroy() {
     if (hostRoot) hostRoot.removeEventListener('click', handleClick)
     hostRoot = null
+    runtimeGeneration += 1
+    runtimeRead = null
+    runtimeVersion = null
+    runtimeReadSettled = false
   }
 
   return Object.freeze({

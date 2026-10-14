@@ -1,7 +1,7 @@
 /* THE WIDEST PERMISSION LEVEL, PRESSED, ON THE SETTINGS ROW -- and what has to
  * happen between the press and the machine moving.
  *
- * Rule X4, on the unsandboxed configuration: default
+ * The owner's X4 ruling (2026-08-15) on the unsandboxed configuration: default
  * off, the risk stated in the Terms' own words at the moment of choosing, the
  * confirmed choice recorded in the audit ledger, re-warned on re-enable.
  * tools/test/setup-permission-level-control.test.mjs proves the row PRESSES;

@@ -4,10 +4,8 @@ import { register } from 'node:module'
 import { fleetFetch, installWorld, mountView, settle } from './lib/tree-command-real-mount.mjs'
 register('./helpers/css-stub-loader.mjs', import.meta.url)
 
-// Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-const BUILD_HOME = ['C:', 'Users', 'BuildAccount-Dev'].join('\\')
-const oldProfile = { id: 'old-folder', name: 'Existing folder', cwd: BUILD_HOME + '\\Desktop\\Existing Folder' }
-const newProfile = { id: 'new-folder', name: 'QA added folder', cwd: BUILD_HOME + '\\AppData\\Local\\Temp\\QA Session With Spaces' }
+const oldProfile = { id: 'old-folder', name: 'Existing folder', cwd: '\x43:\\Users\\fixture-profile\\Desktop\\Existing Folder' }
+const newProfile = { id: 'new-folder', name: 'QA added folder', cwd: '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp\\QA Session With Spaces' }
 
 function deferred() {
  let resolve

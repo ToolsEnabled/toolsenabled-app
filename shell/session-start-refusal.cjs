@@ -21,7 +21,7 @@
  * no reason field anywhere in the record" -- and it composes the classification
  * INTO its message so a caller that carries the message carries the diagnosis.
  * This gate dropped that message on the floor. Measured again 2026-09-07:
- * two session starts refused a minute and a half apart with the bare code, and
+ * two session starts refused at 05:53:08Z and 05:54:31Z with the bare code, and
  * the ledger accepted other writes 23 seconds either side of both.
  *
  * It lives in its own file because shell/main.cjs cannot be required by a test

@@ -49,9 +49,9 @@
 .ledger-stat:last-child { border-right: 0; padding-right: 0; }
 .ledger-stat-value {
   display: block;
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1;
-  font-weight: 640;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
@@ -59,11 +59,11 @@
 .ledger-stat-note {
   display: block;
   margin-top: var(--s2);
-  font-size: 11px;
-  line-height: 1;
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-25);
 }
 .ledger-stat-note { margin-top: var(--s1); font-weight: 500; color: var(--ink-3); }
@@ -117,10 +117,10 @@
 .ledger-head { padding: var(--s3) 0 var(--s5); }
 .ledger-page .ledger-h1 {
   margin: 0;
-  font-size: 36px;
-  font-weight: 610;
-  line-height: 1.15;
-  letter-spacing: -.035em;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -.012em;
   color: var(--ink);
 }
 .ledger-lede {
@@ -165,7 +165,7 @@
 }
 .ledger-page .ledger-strip .ledger-stat:first-child { padding-left: var(--lg-pad); border-left: 0; }
 .ledger-page .ledger-strip .ledger-stat:last-child { padding-right: var(--lg-pad); }
-.ledger-page .ledger-strip .ledger-stat-value { font-size: 26px; font-weight: 620; line-height: 1.1; letter-spacing: -.02em; }
+.ledger-page .ledger-strip .ledger-stat-value { font-size: 28px; font-weight: 650; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .ledger-page .ledger-strip .ledger-stat-label { margin-top: 6px; line-height: 1.35; overflow-wrap: anywhere; }
 /* "· example data" under every tile said once what the list's own counter
    already says; it stays for a screen reader and leaves the picture. */
@@ -239,7 +239,7 @@
   cursor: pointer;
 }
 .ledger-hidden-toggle:hover { color: var(--ink); }
-.ledger-hidden-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ledger-hidden-toggle:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .ledger-hidden-toggle[hidden] { display: none; }
 
 /* The notes about the list: a hide and its Undo, Home's waiting filter, a
@@ -276,7 +276,7 @@
 }
 .ledger-add-summary::-webkit-details-marker { display: none; }
 .ledger-add-summary:hover { color: var(--ink); background: var(--state-hover, color-mix(in oklab, var(--ink) 4%, transparent)); }
-.ledger-add-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.ledger-add-summary:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .ledger-add-plus {
   display: grid;
   place-items: center;
@@ -336,11 +336,11 @@
   padding: 8px var(--lg-x) 8px var(--lg-pad);
   border-block: 1px solid var(--lg-edge);
   background: var(--lg-well);
-  font-size: var(--text-caps, 11px);
-  font-weight: var(--weight-semibold, 600);
-  line-height: 1.35;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-25);
 }
 /* No records on screen: the notice is the card's content, not a table. */
@@ -386,8 +386,8 @@
 div.ledger-row { cursor: default; }
 .ledger-row:focus-visible,
 .ledger-hide:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 
 /* The state cell: the glyph, and its words beside it. */
@@ -438,7 +438,7 @@ div.ledger-row { cursor: default; }
    at most six lines before it clips, because a register is a list and not a
    document. overflow-wrap: break-word, NOT anywhere -- a clamped box that
    breaks a word at its first opportunity loses the rest of it past the clamp
-   (measured on `.node-name .nn-t`, an earlier commit, and the tree card, an earlier commit). */
+   (measured on `.node-name .nn-t`, c06c44c, and the tree card, 0b0087e). */
 .ledger-words {
   grid-column: 3;
   grid-row: 1;
@@ -521,18 +521,19 @@ div.ledger-row { cursor: default; }
   display: inline-block;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 1px 7px;
   border: 1px solid var(--lg-edge, var(--line-2));
-  border-radius: 3px;
   background: var(--lg-well, transparent);
   color: var(--ink-2);
   font-family: var(--font-ui);
-  font-size: var(--text-xs, 12px);
-  line-height: 18px;
-  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border-radius: 11px;
+  min-height: 22px;
+  line-height: 20px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 550;
 }
 .ledger-scope[data-scope="global"] { border-style: dashed; background: transparent; }
 
@@ -558,13 +559,13 @@ div.ledger-row { cursor: default; }
   z-index: 2;
   right: 10px;
   top: 11px;
-  width: 24px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--ink-3);
   font-family: var(--font-ui);
@@ -579,7 +580,7 @@ div.ledger-row { cursor: default; }
 .ledger-hide:focus-visible { color: var(--ink); border-color: var(--line-2); }
 .ledger-hide[data-armed="true"] { color: var(--ink); border-color: var(--ink-3); }
 /* A hidden row shown on request: dimmed, with the put-back control. */
-.ledger-record[data-hidden] .ledger-row { opacity: .55; }
+.ledger-record[data-hidden] .ledger-row { opacity: 1; color: var(--ink-3); }
 
 /* ---- the state glyphs ----
    Set OPTICALLY, not geometrically: at one shared size ◐ occupies 12px of
@@ -599,14 +600,14 @@ div.ledger-row { cursor: default; }
 .ledger-line[data-state="done"] .ledger-glyph { font-size: 14px; }        /* ✓ thin open strokes */
 .ledger-line[data-state="in-progress"] .ledger-glyph,
 .ledger-stat[data-state="in-progress"] .ledger-stat-value {
-  color: color-mix(in oklab, var(--c-coordinator) 72%, var(--ink));
+  color: var(--status-info);
 }
 /* ■ is a mark and takes the yellow; the figure is words and takes the warn
    text colour (ink on White and Tan, with the yellow bar under it below). */
 .ledger-line[data-state="gated"] .ledger-glyph { color: var(--s-warn); }
 .ledger-stat[data-state="gated"] .ledger-stat-value { color: var(--s-warn-text, var(--s-warn)); }
 .ledger-line[data-state="done"] .ledger-glyph,
-.ledger-stat[data-state="done"] .ledger-stat-value { color: var(--s-good); }
+.ledger-stat[data-state="done"] .ledger-stat-value { color: var(--status-idle); }
 .ledger-line[data-state="blocked"] .ledger-glyph,
 .ledger-stat[data-state="blocked"] .ledger-stat-value { color: var(--s-serious); }
 /* "Open" is the absence of a status colour: a quiet grey dot on the rail, and
@@ -620,7 +621,7 @@ div.ledger-row { cursor: default; }
 .ledger-line[data-state="removed"] .ledger-glyph { color: var(--ink-4); }
 .ledger-line[data-state="removed"] .ledger-words { color: var(--ink-4); text-decoration: line-through; text-decoration-color: var(--line-2); }
 
-/* GATED IS NOT A GOLD STATE ON THIS PAGE (rule: no gold or
+/* GATED IS NOT A GOLD STATE ON THIS PAGE (owner, 2026-09-23: no gold or
    yellow anywhere). A rule with checks still open is held, not alarming: its
    solid square carries it, in strong ink, and its figure is plain ink like
    Open's. Scoped to the page, so the owner popup's own strip is untouched;
@@ -632,7 +633,7 @@ div.ledger-row { cursor: default; }
 /* A cell reading zero has nothing to be that colour ABOUT: a scarlet 0 under
    BLOCKED says "look here" while meaning "nothing here". A zero recedes,
    figure and label together. (Must follow the [data-state] rules.) */
-.ledger-stat[data-empty] .ledger-stat-value { color: var(--ink-4); }
+.ledger-stat[data-empty] .ledger-stat-value { color: var(--ink-3); }
 .ledger-stat[data-empty] .ledger-stat-label { color: var(--ink-3); }
 
 /* ---- under a row: notes, the controls, the editor, the hint ----
@@ -675,25 +676,27 @@ div.ledger-row { cursor: default; }
 }
 .ledger-ctl {
   min-height: 28px;
-  padding: 4px 11px;
+  padding: 0 12px;
   border: 1px solid var(--control-border, var(--line-2));
   border-radius: var(--lg-control-radius, 4px);
   background: var(--control-bg, transparent);
   box-shadow: var(--shadow-control, none);
   color: var(--control-ink, var(--ink-2));
   font-family: var(--font-ui);
-  font-size: var(--text-sm, 12.5px);
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: 13.5px;
+  font-weight: 550;
+  line-height: 1.4;
   cursor: pointer;
   transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease);
+  height: 28px;
+  box-sizing: border-box;
 }
 .ledger-page .ledger-row-actions .ledger-ctl { background: transparent; box-shadow: none; color: var(--ink-2); }
 .ledger-page .ledger-record:is(:hover, :focus-within) .ledger-row-actions .ledger-ctl { background: var(--control-bg, transparent); box-shadow: var(--shadow-control, none); color: var(--control-ink, var(--ink)); }
 .ledger-ctl:hover,
 .ledger-ctl:focus-visible,
 .ledger-page .ledger-row-actions .ledger-ctl:is(:hover, :focus-visible) { background: var(--control-hover, transparent); border-color: var(--control-border-hover, var(--ink-3)); color: var(--ink); }
-.ledger-ctl:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ledger-ctl:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .ledger-ctl.is-danger:hover { color: var(--s-serious); }
 .ledger-ctl[data-armed="true"] { color: var(--ink); border-color: var(--ink); }
 .ledger-ctl.is-danger[data-armed="true"] { color: var(--s-serious); border-color: var(--s-serious); }
@@ -712,29 +715,31 @@ div.ledger-row { cursor: default; }
   margin-bottom: var(--s2);
   padding: 8px 10px;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
-  background: transparent;
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
   color: var(--ink);
   font: inherit;
   font-size: 13.5px;
   line-height: 1.5;
   resize: vertical;
+  border-color: var(--field-border);
 }
-.ledger-editor:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.ledger-editor:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .ledger-row-editor .ledger-row-actions,
 .ledger-resolve-slot .ledger-row-actions { padding: 0; }
 .ledger-page .ledger-panel :is(.ledger-row-editor, .ledger-resolve-slot) .ledger-row-actions,
 .ledger-page .ledger-panel :is(.ledger-row-editor, .ledger-resolve-slot) .ledger-row-note { padding-left: 0; padding-right: 0; }
 .ledger-reason { display: grid; gap: var(--s1); max-width: 60ch; margin-bottom: var(--s2); font-size: var(--text-xs, 12px); font-weight: 600; color: var(--ink-2); }
 .ledger-reason-input {
-  height: 34px;
+  height: 32px;
   padding: 0 10px;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
-  background: transparent;
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
   color: var(--ink);
   font: inherit;
   font-size: 13px;
+  border-color: var(--field-border);
 }
 
 /* THE RESOLVE PICKER'S OWN SLOT (R's Resolve action): its statuses as a row
@@ -766,7 +771,7 @@ div.ledger-row { cursor: default; }
   background: var(--selected-bg, transparent);
 }
 /* Visible keyboard focus on the radio itself, not just its label. */
-.ledger-resolve-option input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ledger-resolve-option input:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 
 /* A question's detail, opened from its row. */
 .ledger-detail {
@@ -781,11 +786,12 @@ div.ledger-row { cursor: default; }
 }
 .ledger-detail[hidden] { display: none; }
 .ledger-detail-label {
-  font-size: 11px;
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-25);
+  line-height: 1.4;
 }
 .ledger-detail code { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-2); min-width: 0; overflow-wrap: anywhere; }
 .ledger-detail-sep { color: var(--ink-4); }
@@ -802,11 +808,11 @@ div.ledger-row { cursor: default; }
   padding: var(--s6, 32px) max(var(--lg-pad), calc(50% - 34ch));
   border-top: 1px solid var(--lg-rule);
   font-family: var(--font-ui);
-  font-size: var(--text-base, 14px);
-  line-height: 1.6;
   color: var(--ink-2);
   text-align: center;
   text-wrap: balance;
+  font-size: 13.5px;
+  line-height: 1.5;
 }
 .ledger-page .ledger-panel .ledger-empty + .ledger-empty { padding-top: 0; border-top: 0; }
 /* The asks and the questions are two halves of one list. */
@@ -847,7 +853,7 @@ div.ledger-row { cursor: default; }
 .ledger-decide-summary:hover,
 .ledger-decide-disclosure[open] > .ledger-decide-summary { color: var(--ink); }
 .ledger-decide-summary:hover .ledger-add-plus { border-color: var(--control-border-hover, var(--ink-3)); }
-.ledger-decide-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--lg-control-radius); }
+.ledger-decide-summary:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); border-radius: var(--lg-control-radius); }
 .ledger-decide-disclosure[open] .ledger-add-plus::before { content: "\2212"; }
 .ledger-decide-disclosure > .ledger-decide { margin-top: var(--s3); }
 /* The summary already names the decision form. */
@@ -896,7 +902,7 @@ div.ledger-row { cursor: default; }
   color: var(--ink);
 }
 .ledger-page .write-form label { font-size: var(--text-xs, 12px); font-weight: 600; color: var(--ink-2); }
-.ledger-page .write-form :is(input, select) { height: 34px; padding: 0 10px; }
+.ledger-page .write-form :is(input, select) { height: 32px; padding: 0 10px; border-radius: var(--radius-control); border-color: var(--field-border); background: var(--bg-surface); }
 .ledger-page .write-form textarea { padding: 8px 10px; }
 .ledger-page .write-form output { font-family: var(--font-ui); font-size: var(--text-xs, 12px); line-height: 1.5; }
 .ledger-page :is(.write-form button, .write-surface .write-status-retry) {
@@ -968,22 +974,25 @@ div.ledger-row { cursor: default; }
   margin: auto;
   padding: 24px;
   border: 1px solid var(--lg-edge, var(--ink-3));
-  border-radius: var(--radius-card, 8px);
-  background: var(--surface-raised, var(--sheet));
+  border-radius: 14px;
+  background: var(--bg-surface);
   color: var(--ink);
-  box-shadow: var(--shadow-overlay, 0 18px 48px -12px rgba(0, 0, 0, .35));
+  box-shadow: var(--shadow-overlay);
 }
-.ledger-reset-dialog::backdrop { background: #0009; }
-.ledger-reset-dialog h2 { margin: 0 0 16px; font-size: var(--text-xl, 17px); font-weight: 620; }
+.ledger-reset-dialog::backdrop { background: var(--bg-backdrop); }
+.ledger-reset-dialog h2 { margin: 0 0 16px; font-size: 17px; font-weight: 650; }
 .ledger-reset-dialog p { line-height: 1.5; }
+.ledger-reset-dialog .ledger-reset-actions { flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; }
+.ledger-reset-dialog .ledger-reset-actions .ledger-ctl { height: 36px; min-height: 36px; padding: 0 12px; font-size: 13.5px; font-weight: 550; }
+.ledger-reset-dialog :focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .ledger-reset-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
 .ledger-reset-actions .is-danger { border-color: var(--s-serious); color: var(--s-serious); }
 .ledger-reset-actions .ledger-ctl { min-height: 36px; padding: 8px 12px; }
 
 /* ---- focus, motion ---- */
 .ledger-page :is(input, select, textarea):focus-visible {
-  outline: var(--focus-outline, 2px solid var(--focus-ring));
-  outline-offset: var(--focus-offset, 2px);
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 @media (prefers-reduced-motion: reduce) {
   .ledger-record,
@@ -1052,10 +1061,10 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
 }
 @media (max-width: 680px) {
   .ledger-head { padding-bottom: var(--s4); }
-  .ledger-page .ledger-h1 { font-size: 28px; }
+  .ledger-page .ledger-h1 { font-size: 22px; font-weight: 650; line-height: 1.2; letter-spacing: -.012em; }
   .ledger-page .ledger-strip .ledger-stat { padding: 10px var(--s3) 12px; }
   .ledger-page .ledger-strip .ledger-stat:first-child { padding-left: var(--s3); }
-  .ledger-page .ledger-strip .ledger-stat-value { font-size: 22px; }
+  .ledger-page .ledger-strip .ledger-stat-value { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; }
 }
 
 /* Six figures on the page's own strip ("Waiting for you" joined it). The
@@ -1068,8 +1077,8 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
 /* ---------------------------------------------------------------------------
    THE OWNER'S TWO WAITING COLOURS.
 
-   The rule: red for real owner-waiting blockers, three colours
-   a person picks in quick settings, with per-theme sets. src/views/ledger.js
+   The owner's words: "... red for real owner-waiting blockers, three colours
+   user-pickable from quick settings, per-theme sets." src/views/ledger.js
    writes `data-owner-status` from ownerWaitingStatus(), the same function
    Home's circle is coloured by; nothing here re-derives it from a status word.
 
@@ -1101,7 +1110,7 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
 }
 /* ON WHITE AND TAN THE ASK IS INK ON YELLOW, NEVER YELLOW TEXT. A yellow the
    eye reads as yellow cannot carry a 14px glyph on a light ground, and the
-   ochre that could is the rejected brown. So the ◇
+   ochre that could is the brown the owner rejected (2026-09-23). So the ◇
    turns ink and sits on a small chip of the picked colour, and the two
    figures that count owner-waiting and held rows turn ink over a bar of it.
    The dark sheets keep the rules above: the yellow there reads as text. */
@@ -1121,8 +1130,8 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
 :root:is([data-theme="white"], [data-theme="tan"]) .ledger-stat[data-state="gated"]:not([data-empty]) .ledger-stat-value { text-decoration-color: var(--s-warn); }
 
 /* ===========================================================================
-   THE TRIAGE STRIP (rule: blocked and
-   waiting work should be quick to scan). The counts card became a row of filled
+   THE TRIAGE STRIP (owner, 2026-09-23: "make it easy to look at
+   blocked/waiting etc quickly"). The counts card became a row of filled
    tiles, one per state, in triage order; each is also the list's filter
    (views/ledger.js, [data-ledger-status-filter]). A tile is filled in its
    state's colour, so the eye finds Blocked and Waiting for you by colour
@@ -1162,10 +1171,10 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
 .ledger-page .ledger-strip .ledger-stat:last-child { padding-inline: 14px; border-left: 0; }
 .ledger-page .ledger-strip .ledger-stat[data-state="blocked"] { --tile-tone: var(--home-ledger-blocked, var(--s-serious)); --tile-mix: 13%; }
 .ledger-page .ledger-strip .ledger-stat[data-state="proposed"] { --tile-tone: var(--home-ledger-attention, var(--s-warn)); --tile-mix: 30%; }
-.ledger-page .ledger-strip .ledger-stat[data-state="in-progress"] { --tile-tone: var(--c-coordinator); --tile-mix: 10%; }
-.ledger-page .ledger-strip .ledger-stat[data-state="done"] { --tile-tone: var(--s-good); --tile-mix: 10%; }
-/* ON THE DARK SHEETS A DIM YELLOW IS OLIVE, the rejected mustard. So the
-   waiting tile and chip there are the clean yellow
+.ledger-page .ledger-strip .ledger-stat[data-state="in-progress"] { --tile-tone: var(--status-info); --tile-mix: 0%; }
+.ledger-page .ledger-strip .ledger-stat[data-state="done"] { --tile-tone: var(--status-idle); --tile-mix: 0%; }
+/* ON THE DARK SHEETS A DIM YELLOW IS OLIVE, the mustard the owner rejected
+   (2026-09-23). So the waiting tile and chip there are the clean yellow
    itself, nearly solid, with dark ink on it -- the same ink-on-yellow White
    and Tan use. Blocked steps up to match its weight. */
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-strip .ledger-stat[data-state="proposed"]:not(:disabled) { --tile-mix: 100%; }
@@ -1178,7 +1187,7 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
   background: var(--surface-base);
   box-shadow: inset 0 0 0 1px var(--border-hairline), var(--shadow-card);
 }
-.ledger-page .ledger-strip .ledger-stat-value { font-size: 26px; font-weight: 640; line-height: 1.05; letter-spacing: -.02em; }
+.ledger-page .ledger-strip .ledger-stat-value { font-size: 28px; font-weight: 650; line-height: 1.05; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .ledger-page .ledger-strip .ledger-stat-label {
   display: flex;
   align-items: center;
@@ -1191,8 +1200,8 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
 .ledger-page .ledger-strip .ledger-stat[data-state] .ledger-stat-label::before {
   content: '';
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: var(--radius-pill);
   background: var(--tile-tone);
 }
@@ -1227,7 +1236,7 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
 @container ledger-shell (max-width: 519.98px) {
   .ledger-page .ledger-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ledger-page .ledger-strip .ledger-stat { min-height: 64px; padding: 10px 12px; }
-  .ledger-page .ledger-strip .ledger-stat-value { font-size: 22px; }
+  .ledger-page .ledger-strip .ledger-stat-value { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; }
 }
 
 /* THE ROW'S STATE IS A FILLED CHIP: the glyph (the rail's own mark and
@@ -1247,13 +1256,14 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
   width: fit-content;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 2px 9px 2px 26px;
-  border-radius: var(--radius-sm);
+  padding: 0 9px 0 26px;
+  border-radius: 11px;
   background: color-mix(in oklab, var(--chip-tone, var(--ink-3)) var(--chip-mix, 9%), var(--surface-base));
   color: var(--ink);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 22px;
+  min-height: 22px;
 }
 .ledger-page .ledger-line:is([data-state="blocked"], [data-state="blocked-external"], [data-state="not-possible-as-asked"], [data-owner-status="blocked"]) {
   --chip-tone: var(--home-ledger-blocked, var(--s-serious)); --chip-mix: 14%;
@@ -1261,8 +1271,8 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
 .ledger-page .ledger-line:is([data-state="proposed"], [data-owner-status="attention"]) {
   --chip-tone: var(--home-ledger-attention, var(--s-warn)); --chip-mix: 32%;
 }
-.ledger-page .ledger-line:is([data-state="in-progress"], [data-state="partial"]) { --chip-tone: var(--c-coordinator); --chip-mix: 11%; }
-.ledger-page .ledger-line:is([data-state="done"], [data-state="answered"], [data-state="approved"]) { --chip-tone: var(--s-good); --chip-mix: 11%; }
+.ledger-page .ledger-line:is([data-state="in-progress"], [data-state="partial"]) { --chip-tone: var(--status-info); --chip-mix: 11%; }
+.ledger-page .ledger-line:is([data-state="done"], [data-state="answered"], [data-state="approved"]) { --chip-tone: var(--status-idle); --chip-mix: 11%; }
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-line:is([data-state="proposed"], [data-owner-status="attention"]) { --chip-mix: 100%; }
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-panel .ledger-line:is([data-state="proposed"], [data-owner-status="attention"]) :is(.ledger-title, .ledger-glyph) { color: var(--action-primary-ink); }
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page .ledger-line:is([data-state="blocked"], [data-state="blocked-external"], [data-state="not-possible-as-asked"], [data-owner-status="blocked"]) { --chip-mix: 32%; }
@@ -1271,3 +1281,23 @@ body.reduce-motion .ledger-add-plus { transition: none !important; }
    already the yellow. */
 :root:is([data-theme="white"], [data-theme="tan"]) .ledger-page .ledger-panel .ledger-line[data-owner-status="attention"] .ledger-glyph { background: transparent; }
 .ledger-page [data-ledger-status-empty] .ledger-hidden-toggle { margin-left: 4px; }
+/* Unknown counts are readable facts even when their filters are unavailable. */
+.ledger-page .ledger-strip .ledger-stat:disabled:not([aria-pressed="true"]) .ledger-stat-value { color: var(--ink-3); }
+.ledger-page .ledger-strip .ledger-stat:disabled { opacity: 1; }
+.ledger-record[data-hidden] .ledger-row .ledger-meta { color: var(--ink-3); }
+.ledger-ctl:focus-visible, .ledger-hide:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.ledger-page .ledger-panel .ledger-line:is([data-state="in-progress"], [data-state="partial"]) .ledger-title { background: var(--status-info-soft); color: var(--status-info); }
+.ledger-page .ledger-panel .ledger-line:is([data-state="done"], [data-state="answered"], [data-state="approved"], [data-state="open"], [data-state="gated"], [data-state="recurring"]) .ledger-title { background: var(--status-idle-soft); color: var(--status-idle); }
+/* Existing projection roles and repair links stay owned by the controller. */
+.ledger-page .ledger-hidden-note[data-waiting-filter] { padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--status-info-soft); color: var(--ink); font-size: 13.5px; }
+.ledger-page .ledger-chain-note:is([data-state="refused"], [data-state="unavailable"]) { padding: 12px 16px; border: 1px solid var(--status-error); border-radius: 10px; background: var(--status-error-soft); color: var(--ink); font-size: 13.5px; }
+.ledger-page .projection-loading { color: var(--ink-3); font-size: 13.5px; animation: none; }
+.ledger-page .ledger-panel .projection-unavailable { position: relative; margin: 16px; padding: 12px 16px 12px 44px; border: 1px solid var(--status-error); border-radius: 10px; background: var(--bg-surface); color: var(--ink-2); font-size: 13.5px; text-align: left; }
+.ledger-page .ledger-panel .projection-unavailable::before { content: ''; position: absolute; top: 14px; left: 16px; width: 16px; height: 16px; background: var(--status-error); mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27black%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Cpath d=%27M12 7v6m0 4h.01%27/%3E%3C/svg%3E") center / contain no-repeat; }
+.ledger-page .ledger-panel .projection-unavailable .host-absent-title { color: var(--ink); font-size: 13.5px; font-weight: 600; }
+.ledger-page .ledger-panel .projection-unavailable :is(.host-absent-reason, .host-absent-body) { color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
+.ledger-page .ledger-panel .host-absent-action { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--control-bg); color: var(--ink); font-size: 13.5px; font-weight: 550; text-decoration: none; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .ledger-page { --lg-edge: var(--line-strong); }
+@media (forced-colors: active) {
+  .ledger-page .ledger-panel .projection-unavailable::before { background: CanvasText; forced-color-adjust: none; }
+}

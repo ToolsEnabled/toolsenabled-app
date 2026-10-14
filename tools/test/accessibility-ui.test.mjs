@@ -38,7 +38,7 @@ const guardDecision = computeDisplayGuardDecision({ platform: process.platform, 
 // On Windows the real window needs an interactive desktop, the same way the
 // accessibility-desktop checks do: in a session-0 qualification guest the
 // launch has no desktop to drive and only times out (measured 2026-09-23 at
-// an earlier commit, 30000 ms). Linux keeps executing it under its private Xvfb
+// dabd2f51, 30000 ms). Linux keeps executing it under its private Xvfb
 // display; Windows executes it under TOOLSENABLED_NIGHTLY=1 and the release
 // register names the skip (tools/lib/test-suite-result.mjs).
 const windowsInteractiveDesktop = process.platform === 'win32' && !nightlySuitesEnabled()

@@ -109,7 +109,7 @@ function fixture(t, { saved = null, bridge = {} } = {}) {
     RUN_SESSION_CLEANUPS: cleanups, RUN_NODE_REMOVAL_CLOSE_RECEIPTS: new Map(), sessionNodeIds: routes, startingNodeIds: new Set(),
     RUN_NATIVE_WORK_CLOSE_LISTENERS: new Set(), nativeReconcileSessions: new Set(), sessionCompletedTurnIds: new Map(),
     nodeReplacementFlight: createSingleFlight(), startDraftFlight: createSingleFlight(),
-    // Stop consults the account recovery coordinator (an earlier commit); this fixture runs with none.
+    // Stop consults the account recovery coordinator (d839fa41); this fixture runs with none.
     recoveryCoordinator: () => null,
     nodeCleanupPending: candidate => nodeCleanupPending(candidate, cleanups),
     retainTreeSessionCleanup: (target, nodeId, sessionId, options) => retainTreeSessionCleanup(target, nodeId, sessionId, { ...options, cleanups }),
@@ -142,7 +142,7 @@ function fixture(t, { saved = null, bridge = {} } = {}) {
   }
   for (const key of [
     'remoteAppliedSequences', 'sessionTranscripts', 'sessionTurnLog', 'sessionUsage', 'sessionModelOverride', 'sessionPendingImages',
-    'sessionProfileIds', 'sessionEfforts', 'sessionThreadIds', 'sessionAccountNames',
+    'sessionProfileIds', 'sessionEfforts', 'sessionThreadIds', 'sessionAccountNames', 'sessionAccountRecords',
     'nodeDiffHistories', 'nodeReplies', 'nodeActivity', 'nodeLastTool',
     'sessionTurnText', 'sessionOpenTurns', 'sessionPendingApprovals', 'sessionActions', 'sessionRuleCalls', 'turnReplies', 'standaloneSettledTurns',
   ]) scope[key] = new Map()
@@ -384,7 +384,7 @@ function removalFixture(t) {
   for (const value of Object.values(f.scope)) if (value instanceof Map) value.set('sentinel', 'preserve')
   f.scope.sessionUsage.set('remove-session', { inputTokens: 17 })
   f.scope.nodeReplies.set(f.node.id, 'preserve reply')
-  /* Since an earlier commit (T1630) removal admits the saved-node task handoff through
+  /* Since 2a942239 (T1630) removal admits the saved-node task handoff through
      the preload bridge -- prepare and commit before the tree write, finalize
      after it -- and refuses when the bridge is absent. This double answers each
      phase for the operation it was asked about and records the order. */

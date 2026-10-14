@@ -2,8 +2,8 @@
 
 /* THE WORDS ARE THE TRUST SURFACE. THIS IS THE GATE THAT KEEPS THEM PLAIN.
  *
- * The finding, on the product a stranger meets: the wording was dense, not easy
- * to consume, and not friendly for users.
+ * The owner, on the product a stranger meets: "the wording is dense and not easy
+ * to consume or friendly for users."
  *
  * That is not a cosmetic finding. This product asks a person to let an assistant
  * reach their files, their mail, their money and their machine, and they decide
@@ -137,7 +137,7 @@ const NOT_CUSTOMER_COPY = Object.freeze(new Set([
 
 /* 25 WORDS. It is not a house style and it is not arbitrary: it is about where a
    reader stops being able to hold the start of a sentence while reaching its
-   end, and it is the number the house instruction implies -- "Short
+   end, and it is the number the owner's own instruction implies -- "Short
    sentences. Plain words. One idea per line." A sentence past this length is
    almost always two ideas joined by a semicolon or a dash. */
 const MAX_WORDS = 25
@@ -165,7 +165,7 @@ const IDENTIFIER_ALLOWED = Object.freeze(new Set([
    Rule 3 -- an id from inside the program, printed in a sentence.
    --------------------------------------------------------------- */
 
-/* THE HOUSE LIST, PLUS THE ONES THIS TREE ACTUALLY HAS. "A customer must
+/* THE OWNER'S OWN LIST, PLUS THE ONES THIS TREE ACTUALLY HAS. "A customer must
    never see `operator`, `hosted-relay`, `BRIDGE_*` or a tier key. Look up the
    label." BRIDGE_* is rule 2's business. These are the rest: lower-case slugs
    that are keys in this program and mean nothing outside it.
@@ -247,7 +247,7 @@ const JARGON = Object.freeze([
    Rule 5 -- a failure with nowhere to go.
    --------------------------------------------------------------- */
 
-/* THE NAMED PHRASE: passive dead ends ("an error occurred"). A
+/* THE PHRASE THE OWNER NAMED: "passive dead ends (\"an error occurred\")". A
  * dead end has two properties together, and either one alone is fine:
  *   it reports a failure, AND
  *   it names nothing the reader can do about it.

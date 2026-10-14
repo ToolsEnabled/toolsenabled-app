@@ -34,8 +34,8 @@ const roleAppearanceFor = (label, id) => ({
  * src/phone-ledger.js, the subtitle in src/tree-graph.js, and roleLabel() in
  * src/fleet-tree-copy.js -- degraded any of those nine declared roles to a
  * generic "Default"/"Agent" caption and a ring with no colour of its own,
- * because ROLES had no entry for them (measured, and re-measured against
- * this commit). roleAppearance() below already fell
+ * because ROLES had no entry for them (measured by Builder 4, re-measured
+ * against this commit by Controller 3). roleAppearance() below already fell
  * through to ROLE_COLOR_NAMES for an unlisted key, so it was never affected;
  * this is the same fallback applied structurally, so nothing has to fall
  * through anymore. ROLES now covers every key ROLE_COLOR_NAMES declares,
@@ -93,8 +93,8 @@ export function roleAppearance(id) {
  * takes the property out. `var(--rc)` with no declaration makes the whole
  * `border` shorthand invalid at computed-value time, so every longhand takes
  * its INITIAL value, and the initial value of `border-style` is `none`. Not a
- * grey ring, not a thin ring: no ring. That is why the rings sometimes
- * disappeared around the workers on page 2, and "sometimes" is exactly the
+ * grey ring, not a thin ring: no ring. That is the owner's "sometimes the
+ * rings disappear on pg2 around the workers", and "sometimes" is exactly the
  * shape of it — the five roles the compose panel offers (ROLE_CHOICES in
  * src/fleet-tree-copy.js) are all declared, so a circle the person made by
  * hand keeps its ring and a circle an agent spawned loses it. This function

@@ -242,7 +242,7 @@ test('a data-source change clears the previous account\'s remembered cart change
     'the second account must never be told the first account\'s request "is no longer waiting for you"')
 })
 
-/* THE OLD APPROVALS ROUTE REDIRECTS INTO THE LEDGER'S P TAB:
+/* THE OLD APPROVALS ROUTE REDIRECTS INTO THE LEDGER'S P TAB (owner, 2026-09-07):
    approvals.js's card renderer is now mounted inside the ledger shell, so a
    visitor at the old #/approvals address must land on the ledger already
    turned to P, not on a stop the ring no longer offers. */

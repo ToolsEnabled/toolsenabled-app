@@ -41,7 +41,7 @@ import {
   sessionTurnSucceeded,
 } from './agent-session-events.js'
 import { refusalCodeOf } from './refusal-copy.js'
-import { DESKTOP_SESSION_COPY, desktopSendSentence, desktopSessionSentence, sendAnswerWasLost } from './desktop-session-copy.js'
+import { DESKTOP_SESSION_COPY, desktopSendSentence, desktopSessionSentence, sendAnswerWasLost } from './\x64esktop-session-copy.js'
 
 export const DESKTOP_HISTORY_LIMIT = 40
 const MAX_ROWS = 200

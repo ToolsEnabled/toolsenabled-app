@@ -97,7 +97,7 @@ function fixture(t) {
     clearSessionApprovals: () => {},
     statusNote: text => text, notifyNodeStatusListeners: () => {},
     nodeReplacementFlight: { busy: () => false },
-    // Stop consults the account recovery coordinator (an earlier commit); this fixture runs with none.
+    // Stop consults the account recovery coordinator (d839fa41); this fixture runs with none.
     recoveryCoordinator: () => null,
     outboxTakeNext: () => { drains++; return null },
     requestAnimationFrame: callback => { frames.push(callback); return frames.length },

@@ -236,7 +236,7 @@ async function drive(executable, scratch) {
   /* Never the developer-bridge path, even by accident. A packaged build fences
      the variable anyway; this states the intent where it can be read. */
   delete environment.MC_BRIDGE_PROOF_FILE
-  /* Rule R193: no window on the owner's desktop for automated QA.
+  /* Owner directive R193: no window on the owner's desktop for automated QA.
      The exact string '1' -- shell/window-options.cjs matches nothing else. */
   environment.MC_SMOKE_HEADLESS = '1'
 

@@ -378,7 +378,7 @@ test('command fields apply and undo, retain the existing collection declaration,
   await applyFields(view); assert.deepEqual(specOf(view), applied)
 
   // The established Conditions (JSON) path authors R2's full collection
-  // declaration. A later change adds command fields, not a new collection contract/editor.
+  // declaration. RP5 adds command fields, not a new collection contract/editor.
   const collection = { comparisonUnit: 'model', instructions: { system: null, developer: null }, tools: [],
     contextConstruction: 'frozen-public-request', sessionIsolation: 'fresh-request' }
   const declarations = structuredClone(applied.conditions)

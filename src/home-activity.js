@@ -88,8 +88,10 @@ export function activityMatches(filter, kind, unread) {
 /* ============================================================================
    THE PICKER LISTS TREES, AND THE AGENTS UNDER EACH.
 
-   The top button lists trees (or all trees) instead of every agent; from the
-   drop-down a person selects the agent to chat with right there, immediately.
+   Owner, 2026-09-19: "the top button instead of listing every agent or all
+   agents, it should just list trees or all trees, then, from the drop down you
+   can select the agent to chat right there from the list immediately. Much
+   smoother process."
 
    So the menu is: the whole view ("All trees"), then one group per tree --
    headed by the tree's name with how many agents it has and how many are
@@ -107,7 +109,7 @@ export function activityMatches(filter, kind, unread) {
    agentName, working }); trees are the records the view resolves from the
    fleet tree store ({ id, name, tipKey, memberKeys, memberNames?, liveKeys? }).
    ========================================================================= */
-import { TREE_CHOICE_PREFIX } from './home-circle-action.js'
+import { TREE_CHOICE_PREFIX } from './home-following.js'
 import { NODE_STATUS_WORDS } from './fleet-tree-copy.js'
 
 export const TREE_PICK = Object.freeze({
@@ -172,8 +174,8 @@ export function treePickChoices(groups) {
 /* ============================================================================
    AGENTS AT A GLANCE.
 
-   The contents carry more useful, easy, on-demand information. For the
-   panel's scope, one line per agent: what it is doing
+   Owner, 2026-09-19: "the contents inside need to have more useful, easy, on
+   demand info." For the panel's scope, one line per agent: what it is doing
    right now and since when, or its last result and when; what is waiting on
    the owner, with the reason; and, on demand, what it was asked, what it said
    back, and how many runs it has here. Nothing here is fetched: the rows are
@@ -193,15 +195,16 @@ export const ROSTER = Object.freeze({
   agent: 'Agent', status: 'Status', doing: 'What it is doing', since: 'Since', actions: 'Actions', close: 'Close details',
   task: 'Task', asked: 'Asked', result: 'Last result', waiting: 'Waiting on you', now: 'Now', earlier: 'Earlier runs',
   open: 'Open details',
-   /* THE FACTS LINE under what an agent is doing (the extra information, put
-     back): the live tool and steps while it runs, else
+  /* THE FACTS LINE under what an agent is doing (owner, 2026-09-20: 'add
+     back in the extra info'): the live tool and steps while it runs, else
      what it is waiting on you for, else how the last run ended; then what
      it asked. One line, the rest of it in the title. */
   facts: ({ detail, waiting, result, asked }) => [detail, waiting || result, asked ? `asked: ${asked}` : ''].filter(Boolean).join(' · '),
 })
 
 export const AGENT_BOARD = Object.freeze({
-  label: 'Agents at a glance',
+  label: 'Saved agents and activity',
+  scope: 'Agents from saved trees and run history, including stopped agents. Working means activity observed now.',
   heading: 'Agents',
   summary: (working, attention) => [
     working ? `${working} working` : '',
@@ -235,8 +238,8 @@ export const AGENT_BOARD = Object.freeze({
   /* ON DEMAND, under the fold: what the live run is doing right now (tool,
      steps, since when), or how the last one ended; then its recent runs. */
   detail: (tool, events, clock) => [tool ? `using ${tool}` : '', events ? `${events} ${events === 1 ? 'step' : 'steps'}` : '', clock ? `since ${clock}` : ''].filter(Boolean).join(' · '),
-   /* ONE WORD OF STATE on the row (the rows were hard to follow -- a state and
-     a whole task sentence on one line).
+  /* ONE WORD OF STATE on the row (owner, 2026-09-19 late: the rows were
+     "messy, hard to follow" -- a state and a whole task sentence on one line).
      The sentence lives under the fold as Task. */
   stateWord: (state, label) => state === 'working' ? 'Working' : state === 'attention' ? 'Needs you' : state === 'finished' ? 'Finished' : (label || 'Idle'),
   historyHeading: 'Earlier runs',
@@ -295,7 +298,7 @@ const clip = (value, limit = 240) => {
    scope where there is only one. */
 /* The round monogram on an agent's line: the first letters of its name's
    first two words, letters and digits only. A name the store made unique,
-   'Agent (fa51c0de)', gives 'AF', never the '(' of its suffix (T1514). */
+   'Agent (f885ad47)', gives 'AF', never the '(' of its suffix (T1514). */
 export function agentMonogram(name) {
   const words = String(name || '').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
   if (words.length > 1) return (words[0][0] + words[1][0]).toUpperCase()
@@ -309,8 +312,9 @@ export function agentBoardLines(rows, groups, { nowMs = Date.now(), keep = () =>
     if (!byKey.has(row.agentKey)) byKey.set(row.agentKey, [])
     byKey.get(row.agentKey).push(row)
   }
-   /* THE WHOLE TREE. Selecting a tree shows the whole tree under the overview,
-     not just one agent. A chosen tree (showAll) puts every member on the glass, including
+  /* THE WHOLE TREE. Owner, 2026-09-19: "you're supposed to be able to select
+     trees so the whole tree is what's shown under the overview, not just one
+     agent." A chosen tree (showAll) puts every member on the glass, including
      one that has no run yet; so does a small fleet, where folding three
      finished agents under "3 finished" hid more than it saved. */
   const kept = new Set()
@@ -353,6 +357,7 @@ export function agentBoardLines(rows, groups, { nowMs = Date.now(), keep = () =>
         /* The runs BEFORE the latest one: the latest is the head line. */
         history: mine.slice(1, 5).map(row => AGENT_BOARD.historyLine(row.when, row.statusLabel, clip(row.doing || row.brief, 90))),
         runs: mine.length,
+        statusLabel: live || agent.working ? ACTIVITY_LABELS.working : latest ? latest.statusLabel : saved?.label || 'Idle',
         word: AGENT_BOARD.stateWord(state, latest ? latest.statusLabel : saved?.label),
         task: clip(state === 'working' ? (live?.doing || latest?.brief || '') : (latest?.brief || latest?.doing || saved?.brief || ''), 160),
       })

@@ -168,22 +168,10 @@ try {
   console.log('staging the packaged build...')
   const staged = await stage(scratch, RELEASE)
 
-  /* A sign-in is lent so the LAST step can be a real answer rather than a
-     sign-in refusal. It is not needed for the switch itself. */
-  const realHome = process.env.USERPROFILE || ''
-  const credential = path.join(realHome, '.codex', 'auth.json')
-  if (existsSync(credential)) {
-    mkdirSync(path.join(scratch, 'home', '.codex'), { recursive: true })
-    cpSync(credential, path.join(scratch, 'home', '.codex', 'auth.json'))
-    const realNpm = path.join(process.env.APPDATA || '', 'npm')
-    if (existsSync(realNpm)) {
-      mkdirSync(path.join(scratch, 'roaming'), { recursive: true })
-      try { symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* linked */ }
-    }
-  }
+    // The official CLI uses the caller-selected provider home or environment API key.
 
   seedMachineRecord(scratch, staged.appRoot, 'standard')
-  window = await openWindow(staged.executable, scratch)
+  window = await openWindow(staged.executable, scratch, { provider: 'codex' })
 
   /* THE ANSWER A PERSON REALLY GAVE. Written as the walkthrough writes it, and
      it is the ONLY thing seeded -- the write flag it implies is deliberately

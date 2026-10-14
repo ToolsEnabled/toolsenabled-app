@@ -11,7 +11,7 @@
  * resolves inside drainOutboxMessage's own success branch. So for the whole
  * span of that one IPC round trip, nodeBusy(node) reads false over a node
  * that genuinely has a delivery in flight -- the exact window the previous
- * two waves' commits (earlier commits) already measured
+ * two waves' commits (d40226d, c1deccc, 3fbcb92, 04e7719) already measured
  * and fixed for a resume, a Stop, and the Send-now button.
  *
  * performNodeRemoval() is gated on the identical nodeBusy() read
@@ -220,6 +220,8 @@ function drainFixture(t) {
     outboxConfirmDelivered: confirmDelivered, currentRailTreeNode: null,
     refusalCode: error => error.code,
     sendFailureIsUnconfirmed: code => code === 'TRANSPORT_UNCONFIRMED',
+    // Neither fixture code proves provider acceptance (transcript-sent-unsaved covers that branch).
+    sendFailureWasAccepted: () => false,
     queuedSendRefusalSentence: () => 'delivery unconfirmed',
     QUEUE_PANEL: { notSent: 'not sent', sentNext: 'sent next' },
     WRITE_OUTCOME_KEYS: { SESSION_OUTBOX: 'outbox' },

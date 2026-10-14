@@ -54,9 +54,8 @@ const { createAgentHost } = require_(path.join(ROOT, 'shell/agent-host.cjs'))
    and fell back to the temp root when it was. The fallback is now the only
    path, for every suite, in tools/lib/test-scratch-root.mjs -- including the
    8.3-short-name resolution this file discovered, which is why that helper
-   calls realpathSync.native: a TEMP handed down under the profile's 8.3 short
-   name (the ~1 alias of %USERPROFILE%) does not start with the long profile
-   root, and the host's cwd confinement then
+   calls realpathSync.native: a TEMP handed down as <profile-root>/TOOLSE~1\... does
+   not start with the long profile root, and the host's cwd confinement then
    refuses it as another account's folder. */
 const SCRATCH = testScratchRoot('.toolsenabled-tree-address-saved-tree-wins-test')
 mkdirSync(SCRATCH, { recursive: true })

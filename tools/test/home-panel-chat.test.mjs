@@ -13,8 +13,8 @@ import { homeFixture, until, settle, THIS_COMPUTER_ID, fleetTreesStorageKey } fr
 const TREE_NODE_REMOVED_EVENT = 'mc-tree-node-removed'
 
 const STAMP = '2026-09-22T00:00:00.000Z'
-const TREE = 'tree-1-00000001-0000-4000'
-const NODE = 'node-2-fa51c0de-771b-4509-a1b2'
+const TREE = 'tree-1-6a83ca13-23c4-4b8d'
+const NODE = 'node-2-f885ad47-771b-4509-a1b2'
 // One saved agent whose session has ended: the state every agent is in after a run and a restart.
 function seedEndedAgent(storage) {
   storage.setItem(fleetTreesStorageKey(THIS_COMPUTER_ID), JSON.stringify({ version: 1, computerId: THIS_COMPUTER_ID,

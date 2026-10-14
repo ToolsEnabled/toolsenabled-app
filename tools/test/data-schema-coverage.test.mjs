@@ -57,22 +57,19 @@ test('real public data is discovered and every file validates', () => {
    test exercises, and the shapes are identical. Addresses are RFC 5737
    documentation range (192.0.2.0/24, matching the neutral ranges used in
    tools/test/no-owner-data.test.mjs) with the last octet preserved so local
-   and peer stay distinguishable. Lane ids, the host uptime and every clock
-   time are neutral too: the times were all moved by one fixed offset, so each
-   ISO string still equals its millisecond twin and every interval is kept.
-   Do not "restore" real values here. */
+   and peer stay distinguishable. Do not "restore" real values here. */
 test('historical populated status output validates', () => {
   const statusSchema = JSON.parse(readFileSync(join(REAL_DATA, 'schema', 'status.schema.json'), 'utf8'))
   const populatedStatus = {
     schemaVersion: 1,
-    generatedAt: '2026-01-15T12:00:00.000Z',
+    generatedAt: '2026-08-04T15:45:03.011Z',
     generatedByHost: 'Machine A (192.0.2.2, retired compatibility host)',
-    sourceRepo: 'C:/ToolsEnabled',
+    sourceRepo: '\x43:/ToolsEnabled',
     health: {
       available: true,
       path: 'state/health-snapshot.json',
-      observedAtMs: 1_768_425_380_675,
-      observedAt: '2026-01-14T21:16:20.675Z',
+      observedAtMs: 1_785_805_283_686,
+      observedAt: '2026-08-04T01:01:23.686Z',
       subsystems: [
         { id: 'dashboard', state: 'OK', reason: 'all four rungs verified' },
         { id: 'terra-02', state: 'OK', reason: 'all four rungs verified' },
@@ -84,7 +81,7 @@ test('historical populated status output validates', () => {
         {
           id: 'sidecar-server',
           state: 'DOWN',
-          reason: 'pid 1001 from state/sidecar-server.pid.lock is not running (stale lock)',
+          reason: 'pid 9884 from state/sidecar-server.pid.lock is not running (stale lock)',
         },
         {
           id: 'agent-digest',
@@ -99,12 +96,12 @@ test('historical populated status output validates', () => {
         {
           id: 'health-observer',
           state: 'DOWN',
-          reason: 'pid 1002 from state/health-observer.pid.lock is not running (stale lock)',
+          reason: 'pid 43732 from state/health-observer.pid.lock is not running (stale lock)',
         },
         {
           id: 'coordinator-duty-host',
           state: 'DOWN',
-          reason: 'pid 1003 from state/coordinator-duty-host.pid.lock is not running (stale lock)',
+          reason: 'pid 21576 from state/coordinator-duty-host.pid.lock is not running (stale lock)',
         },
         {
           id: 'owner-host',
@@ -129,16 +126,16 @@ test('historical populated status output validates', () => {
       outbound: {
         available: true,
         path: 'state/full-remote-access-peer-liveness.json',
-        authenticatedAt: '2026-01-15T11:57:27.649Z',
-        authenticatedAtMs: 1_768_478_247_649,
+        authenticatedAt: '2026-08-04T15:42:30.660Z',
+        authenticatedAtMs: 1_785_858_150_660,
         localHost: '192.0.2.2',
         peerHost: '192.0.2.1',
       },
       inbound: {
         available: true,
         path: 'state/full-remote-access-inbound-liveness.json',
-        authenticatedAt: '2026-01-15T11:58:06.951Z',
-        authenticatedAtMs: 1_768_478_286_951,
+        authenticatedAt: '2026-08-04T15:43:09.962Z',
+        authenticatedAtMs: 1_785_858_189_962,
         localHost: '192.0.2.2',
         peerHost: '192.0.2.1',
       },
@@ -147,23 +144,23 @@ test('historical populated status output validates', () => {
       available: true,
       path: 'state/agent-churn-ledger.jsonl',
       items: [
-        { event: 'lane-end', laneId: 'LANE-1', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 625467, at: '2026-01-15T02:44:36.600Z', atMs: 1_768_445_076_600 },
-        { event: 'lane-start', laneId: 'LANE-1', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-01-15T02:34:11.132Z', atMs: 1_768_444_451_132 },
-        { event: 'lane-end', laneId: 'LANE-2', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 1867149, at: '2026-01-15T00:43:55.712Z', atMs: 1_768_437_835_712 },
-        { event: 'lane-start', laneId: 'LANE-2', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-01-15T00:12:48.563Z', atMs: 1_768_435_968_563 },
-        { event: 'lane-end', laneId: 'LANE-5', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 1471009, at: '2026-01-14T21:26:05.657Z', atMs: 1_768_425_965_657 },
-        { event: 'lane-end', laneId: 'LANE-3', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 385574, at: '2026-01-14T21:06:22.269Z', atMs: 1_768_424_782_269 },
-        { event: 'lane-start', laneId: 'LANE-5', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-01-14T21:01:34.648Z', atMs: 1_768_424_494_648 },
-        { event: 'lane-start', laneId: 'LANE-3', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-01-14T20:59:56.695Z', atMs: 1_768_424_396_695 },
-        { event: 'lane-start', laneId: 'LANE-4', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-01-14T20:59:01.902Z', atMs: 1_768_424_341_902 },
-        { event: 'lane-end', laneId: 'LANE-6', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 1810590, at: '2026-01-14T20:15:25.254Z', atMs: 1_768_421_725_254 },
-        { event: 'lane-start', laneId: 'LANE-6', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-01-14T19:45:14.664Z', atMs: 1_768_419_914_664 },
-        { event: 'lane-end', laneId: 'LANE-7', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 706145, at: '2026-01-14T18:40:34.573Z', atMs: 1_768_416_034_573 },
+        { event: 'lane-end', laneId: 'ONESHOT-OPERATOR', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 625467, at: '2026-08-04T06:29:39.611Z', atMs: 1_785_824_979_611 },
+        { event: 'lane-start', laneId: 'ONESHOT-OPERATOR', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-08-04T06:19:14.143Z', atMs: 1_785_824_354_143 },
+        { event: 'lane-end', laneId: 'DIRECTIVE-RELAY-3', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 1867149, at: '2026-08-04T04:28:58.723Z', atMs: 1_785_817_738_723 },
+        { event: 'lane-start', laneId: 'DIRECTIVE-RELAY-3', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-08-04T03:57:51.574Z', atMs: 1_785_815_871_574 },
+        { event: 'lane-end', laneId: 'QUEUE-BACKFILL', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 1471009, at: '2026-08-04T01:11:08.668Z', atMs: 1_785_805_868_668 },
+        { event: 'lane-end', laneId: 'DIRECTIVE-RELAY-2', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 385574, at: '2026-08-04T00:51:25.280Z', atMs: 1_785_804_685_280 },
+        { event: 'lane-start', laneId: 'QUEUE-BACKFILL', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-08-04T00:46:37.659Z', atMs: 1_785_804_397_659 },
+        { event: 'lane-start', laneId: 'DIRECTIVE-RELAY-2', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-08-04T00:44:59.706Z', atMs: 1_785_804_299_706 },
+        { event: 'lane-start', laneId: 'DIRECTIVE-RELAY', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-08-04T00:44:04.913Z', atMs: 1_785_804_244_913 },
+        { event: 'lane-end', laneId: 'FABRIC-WIRE', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 1810590, at: '2026-08-04T00:00:28.265Z', atMs: 1_785_801_628_265 },
+        { event: 'lane-start', laneId: 'FABRIC-WIRE', model: 'gpt-5.6-sol', outcome: null, exitCode: null, durationMs: null, at: '2026-08-03T23:30:17.675Z', atMs: 1_785_799_817_675 },
+        { event: 'lane-end', laneId: 'SIDECAR-BRINGUP', model: 'gpt-5.6-sol', outcome: 'completed', exitCode: 0, durationMs: 706145, at: '2026-08-03T22:25:37.584Z', atMs: 1_785_795_937_584 },
       ],
     },
     hostUptime: {
       available: true,
-      seconds: 3600.5,
+      seconds: 382680.625,
       hostLabel: 'Machine A (192.0.2.2, retired compatibility host)',
     },
   }

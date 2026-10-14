@@ -943,7 +943,7 @@ if (!ownsDiffCardSeam) {
 
     // Mutation D5: normalize paths by splitting only on `/`; the Windows
     // exact-path fixture turns red.
-    for (const exactPath of ['C:\\work\\src\\panel.js', '/workspace/src/panel.js']) {
+    for (const exactPath of ['\x43:\\work\\src\\panel.js', '/workspace/src/panel.js']) {
       const pathRoot = mount({ onOpenDiff: () => {} });
       const exactFile = file(exactPath, 'M', 5, 2);
       pathRoot.addDiff({ source, files: [exactFile] });

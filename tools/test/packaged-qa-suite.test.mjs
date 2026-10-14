@@ -123,7 +123,7 @@ test('3a. settings never name a driver that is not on disk', () => {
   assert.deepEqual(stale, [],
     `tools/packaged-qa-suite.mjs carries settings for files that no longer exist: ${stale.join(', ')}`)
   const sourceBrowserNames = [
-    'home-circle-agent', 'home-circle-form', 'home-circle-motion', 'home-circle-style',
+    'home-following',
     'home-hotload', 'home-ledger-colors', 'home-panel', 'hotload-status',
     'research-data-contrast', 'research-data-open', 'research-data', 'research-data-quality',
     'research-data-quality-real', 'research-page-contrast', 'research-snippets',
@@ -613,14 +613,12 @@ test("5. the runner sets MC_SMOKE_HEADLESS to the exact string '1' -- absence sh
 })
 
 test('5b. the suite removes only foreign-profile PATH entries before any driver code runs', () => {
-  // Synthetic Windows profile paths, assembled at runtime so the source carries no literal user path.
-  const usersDir = ['C:', 'Users'].join('\\')
-  const accountHome = usersDir + '\\BuildAccount-Dev'
-  const cwd = `${accountHome}\\src\\work\\app-reconciled`
+  const accountHome = '\x43:\\Users\\fixture-profile'
+  const cwd = `${accountHome}\\Desktop\\WorkingFolder\\app-reconciled`
   const retained = [
-    'C:\\Windows\\System32',
-    'C:\\Program Files\\Git\\cmd',
-    'C:\\Program Files\\nodejs',
+    '\x43:\\Windows\\System32',
+    '\x43:\\Program Files\\Git\\cmd',
+    '\x43:\\agent-apps\\node-v22.19.0',
     `${accountHome}\\AppData\\Roaming\\npm`,
   ]
   const environment = accountFencedDriverEnvironment({
@@ -629,9 +627,9 @@ test('5b. the suite removes only foreign-profile PATH entries before any driver 
       '.\\tools',
       '..\\..\\..\\..\\Foreign-QA-Path\\bin',
       '\\\\server\\share',
-      '\\\\?\\' + usersDir + '\\Foreign-QA-Path\\bin',
+      '\\\\?\\\x43:\\Users\\Foreign-QA-Path\\bin',
       '\\\\.\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy1',
-      '\\??\\' + usersDir + '\\Foreign-QA-Path\\bin',
+      '\\??\\\x43:\\Users\\Foreign-QA-Path\\bin',
     ].join(';'),
     PATHEXT: '.COM;.EXE',
   }, {
@@ -979,14 +977,11 @@ test('7b. account-cart is registered, routes exact releases, and closes each mea
     'the diagnostic must not manufacture a zero when no engine root was read')
 
   let reads = 0
-  // Synthetic Windows profile paths, assembled at runtime so the source carries no literal user path.
-  const usersDir = ['C:', 'Users'].join('\\')
-  const buildHome = usersDir + '\\BuildAccount-Dev'
-  const foreignRoot = usersDir + '\\ForeignAccount\\private-engine'
+  const foreignRoot = '\x43:\\Users\\ForeignAccount\\private-engine'
   const refused = engineQueueCount({
     environment: { TOOLSENABLED_ENGINE_ROOT: foreignRoot },
     platform: 'win32',
-    currentUserHome: buildHome,
+    currentUserHome: '\x43:\\Users\\fixture-profile',
     readStore() { reads += 1; throw new Error('must never read a foreign profile') },
   })
   assert.equal(refused.readable, false)
@@ -994,21 +989,21 @@ test('7b. account-cart is registered, routes exact releases, and closes each mea
   assert.equal(refused.reason.includes(foreignRoot), false, 'the diagnostic must not publish a private profile path')
 
   const escaped = engineQueueCount({
-    environment: { TOOLSENABLED_ENGINE_ROOT: buildHome + '\\..\\ForeignAccount\\private-engine' },
+    environment: { TOOLSENABLED_ENGINE_ROOT: '\x43:\\Users\\fixture-profile\\..\\ForeignAccount\\private-engine' },
     platform: 'win32',
-    currentUserHome: buildHome,
+    currentUserHome: '\x43:\\Users\\fixture-profile',
     readStore() { reads += 1; throw new Error('must never read a normalized foreign profile') },
   })
   assert.equal(escaped.readable, false)
   assert.equal(reads, 0, 'dot-segment normalization must happen before the foreign-profile decision')
 
-  const linkedRoot = 'C:\\example\\engine-link'
+  const linkedRoot = '\x43:\\agent-apps\\engine-link'
   const linkProbes = []
-  const linkTarget = usersDir + '\\ForeignAccount\\private-engine'
+  const linkTarget = '\x43:\\Users\\ForeignAccount\\private-engine'
   const linked = engineQueueCount({
     environment: { TOOLSENABLED_ENGINE_ROOT: linkedRoot },
     platform: 'win32',
-    currentUserHome: buildHome,
+    currentUserHome: '\x43:\\Users\\fixture-profile',
     filesystem: {
       lstatSync(candidate) {
         linkProbes.push(String(candidate))
@@ -1029,12 +1024,12 @@ test('7b. account-cart is registered, routes exact releases, and closes each mea
   assert.equal(linkProbes.some(candidate => candidate.toLowerCase().startsWith(linkTarget.toLowerCase())), false,
     'the resolver must stop on a junction target string before probing the foreign profile')
 
-  const aliasRoot = usersDir + '\\BUILDA~9'
+  const aliasRoot = '\x43:\\Users\\TOOLSE~9'
   const aliasEngine = `${aliasRoot}\\engine`
   const aliasResult = engineQueueCount({
     environment: { TOOLSENABLED_ENGINE_ROOT: aliasEngine },
     platform: 'win32',
-    currentUserHome: buildHome,
+    currentUserHome: '\x43:\\Users\\fixture-profile',
     resolveTrustedAlias: () => aliasRoot,
     filesystem: {
       lstatSync: () => ({ isSymbolicLink: () => false }),
@@ -1048,11 +1043,11 @@ test('7b. account-cart is registered, routes exact releases, and closes each mea
   assert.deepEqual(aliasResult, { readable: true, prompts: 0, purchaseBatches: 0 },
     'the same trusted current-profile alias must survive lexical, link-target, and canonical checks')
 
-  const externalRoot = 'C:\\example\\engine'
+  const externalRoot = '\x43:\\agent-apps\\engine'
   const external = engineQueueCount({
     environment: { TOOLSENABLED_ENGINE_ROOT: externalRoot },
     platform: 'win32',
-    currentUserHome: buildHome,
+    currentUserHome: '\x43:\\Users\\fixture-profile',
     readStore(store) {
       reads += 1
       assert.equal(store, path.join(externalRoot, 'state', 'owner-public-prompts.json'))
@@ -1065,7 +1060,7 @@ test('7b. account-cart is registered, routes exact releases, and closes each mea
   const unreadable = engineQueueCount({
     environment: { TOOLSENABLED_ENGINE_ROOT: externalRoot },
     platform: 'win32',
-    currentUserHome: buildHome,
+    currentUserHome: '\x43:\\Users\\fixture-profile',
     readStore() { throw new Error(`native failure leaked ${foreignRoot}`) },
   })
   assert.equal(unreadable.readable, false)
@@ -1184,8 +1179,8 @@ test('10. a timeout is re-run only after proved cleanup, and a second-ask result
  * skipped -- they were never SEEN. 52 discovered, 28 invisible, every gate
  * green. Two of the invisible ones are the only drivers that exercise getting
  * an assistant program and signing in to it, which is the first thing a
- * customer does; the hole was found by a product telling its person that the
- * two programs they had installed and signed into were not installed.
+ * customer does; the owner found the hole by being told by his own product that
+ * the two programs he had installed and signed into were not installed.
  *
  * Every test above this line stayed green throughout, INCLUDING test 2, because
  * its independent second opinion happened to spell the pattern the same wrong

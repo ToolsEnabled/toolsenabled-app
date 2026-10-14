@@ -1,6 +1,6 @@
 'use strict'
 
-/* T180: a main process wrote its last main-lag.log entry and never
+/* T180: pid 44348 wrote its last main-lag.log entry at 19:28:38.757Z and never
  * wrote another. No surviving record said WHY the process went away -- not
  * which quit path ran, not what asked for it, not what was still open. This
  * writes that sentence down, from every place in this file that can end the

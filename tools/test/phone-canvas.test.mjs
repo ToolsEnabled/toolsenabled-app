@@ -1,7 +1,7 @@
 /* THE PHONE CANVAS, PINNED AT SOURCE.
  *
- * The hard constraint: mobile development must not change the main app or the
- * normal site. That is the first requirement, so it
+ * The owner's hard constraint, verbatim: "we cannot let mobile development
+ * change the main app or the normal site". That is the first requirement, so it
  * is the first thing this file tests, and it is tested as a MECHANISM rather
  * than as a promise:
  *
@@ -257,7 +257,7 @@ test('the complete control vocabulary shares one phone-only touch floor', () => 
   ], 'link plumbing must not introduce another size declaration')
 })
 
-/* THE NAMED SETTING — an optional second view style — exists, is the
+/* THE SETTING THE OWNER NAMED — "an optional 2nd view style" — exists, is the
    first thing the decision reads, and is not written by anything that ships. */
 test('the mode is a setting a switch could flip, and nothing flips it yet', () => {
   assert.deepEqual(PHONE_CANVAS_CHOICES, ['auto', 'on', 'off'])
@@ -451,7 +451,7 @@ test('a fine-pointer desktop that followed the ledger link boots writing the one
 })
 
 /* ==================================================================
-   THE LOCK. What was asked for, in the declarations that deliver it.
+   THE LOCK. What the owner asked for, in the declarations that deliver it.
    ================================================================== */
 
 const phoneRule = (selector) => cssRules(read('phone-canvas.css')).find(rule => rule.selector.trim() === selector)
@@ -556,7 +556,7 @@ test('the accounts panel is capped by the visual space below its phone trigger',
 })
 
 /* ==================================================================
-   NOTHING IS LOST. The functionality stays isomorphic with the desktop.
+   NOTHING IS LOST. The owner: "the functionality must remain isomorphic".
    ================================================================== */
 
 /* The same rule tools/test/mobile-size-floor.test.mjs applies to widths, applied
@@ -700,7 +700,7 @@ test('a window that asked for nothing still gets no listeners at all', () => {
 })
 
 /* ==================================================================
-   THE THEME. It strictly agrees with the theme.
+   THE THEME. The owner: "it must strictly agree with the theme."
    ================================================================== */
 
 /* NO NEW COLOUR. Every colour in the phone sheet resolves through the token

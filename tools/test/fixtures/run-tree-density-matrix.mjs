@@ -166,8 +166,8 @@ try {
             assert.ok(within(node.textRect, node.contextRect), `${stage}: context fits inside the allocated box body`)
             /* This used to assert that Mini's box showed the TOOL line instead
                of the agent's own words -- the `compact` branch in
-               _paintBoxPreview. Mini was retired for exactly that (R1207: a box
-               exists to inform the person), the branch went with it, and
+               _paintBoxPreview. Mini was retired for exactly that (R1207: "THE
+               WHOLE POINT IS TO INFORM THE USER"), the branch went with it, and
                the assertion is inverted rather than deleted: the SMALLEST size
                must now show what the agent said. */
             if (size === 'small') assert.notEqual(node.text, 'Read src/tree-graph.js',

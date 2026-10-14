@@ -169,7 +169,8 @@ export function createNodeTranscriptClient({ computerId, bridge, legacy, nodeIds
         // captured request and its pending generation, not invented reply fields.
         if (answer?.ok !== true) {
           const error = new Error(answer?.error?.message || 'Conversation binding did not confirm readiness.')
-          if (typeof answer?.error?.code === 'string' && /^[A-Z][A-Z0-9_]{1,127}$/.test(answer.error.code)) error.code = answer.error.code
+          const code = answer?.code || answer?.error?.code
+          error.code = typeof code === 'string' && /^[A-Z][A-Z0-9_]{1,127}$/.test(code) ? code : 'TRANSCRIPT_BIND_UNCONFIRMED'
           throw error
         }
         return answer
@@ -305,7 +306,7 @@ export function createNodeTranscriptClient({ computerId, bridge, legacy, nodeIds
     },
     /* A FULL CLEAR, NOT THE SINGLE-LINE ROLLBACK THIS USED TO BE.
      *
-     * MEASURED: agent.restart refused four different
+     * MEASURED, Controller 2026-09-06: agent.restart refused four different
      * circles with MC_TREE_COMMAND_TRANSCRIPT_RESET_FAILED, both before and
      * after an app restart. fresh-start-existing-node.js checks
      * `transcriptStore.remove(node.id) !== true` -- a contract this client

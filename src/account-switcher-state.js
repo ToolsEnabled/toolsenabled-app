@@ -12,16 +12,12 @@
  * one and the gate can measure it.
  *
  * WHAT THE MENU IS FOR. A person can hold several Codex, Claude or Gemini
- * accounts. Until now the only way to see them was a form buried on the guide
- * page, the only way to change which one was in use was to start an agent and
- * hope, and the only way to control automatic switching was a single yes/no
- * question asked once during the first-run walkthrough, which was a poor
- * experience. This is the one control that does all
- * four: see them, add one, switch to one, and choose how the computer picks.
+ * accounts. This menu lets the person see them, add one, sign in and choose
+ * the account used by each program.
  *
- * ADDING ONE IS A FEW CLICKS, NOT A FORM. The rule for this surface: adding
- * accounts in the app takes a few clicks, and the customer sets it up easily.
- * So the menu asks for no folder. Pressing a
+ * ADDING ONE IS A FEW CLICKS, NOT A FORM. The owner, on this exact surface:
+ * "it should just be easy to add them in the app, just a few clicks" and "let
+ * the customer set it up easily". So the menu asks for no folder. Pressing a
  * program's name asks the shell to make a folder of its own choosing for the
  * new account (accountAddManaged) and then to open that program's sign-in
  * window aimed at it (accountSignIn). The person signs in there; this menu
@@ -34,126 +30,9 @@
  * had vouched for.
  */
 
-/* THE WAYS TO PICK, IN THE ORDER THE MENU OFFERS THEM.
- *
- * The ids are the engine's (capability/src/lib/multi-account/selection-modes.js)
- * and they are the contract; the words are this file's. `manual` is first
- * because it is the safest and it is what every unreadable answer falls back
- * to. The DEFAULT when nobody has chosen is `priority`: a person who adds two
- * accounts and signs them in expects them to stay signed in and rotate on
- * their own.
- * tools/test/account-switcher-state.test.mjs holds this
- * list equal to the packaged engine's and the shell's, so a mode added to one
- * of the three and not the others cannot ship as a dropdown choice the computer
- * does not honour.
- *
- * Each `help` describes an OUTCOME rather than an algorithm, because the person
- * choosing is deciding what they want to happen, not how it is computed. Each
- * one says only what the code does: the manual help used to promise that this
- * menu would name the ready account when work stopped, and nothing delivered
- * that sentence, so it was cut to the half that is true. */
+
 import { withDeadline } from './read-deadline.js'
-import { readAllowanceBuckets, bucketHasMeasurement } from './allowance-buckets.js'
-import { applyDeferredAccountPolicy } from './setup-intent-commit.js'
 
-export const SELECTION_MODE_CHOICES = Object.freeze([
-  Object.freeze({
-    id: 'manual',
-    label: 'Stop and let me switch',
-    help: 'Never changes account on its own. When the one in use runs out, work stops until you switch here.',
-  }),
-  Object.freeze({
-    id: 'priority',
-    label: 'In the order listed',
-    help: 'Uses the first account here until it runs out, then the next one down.',
-  }),
-  Object.freeze({
-    id: 'rotate',
-    label: 'Rotate',
-    help: 'Each new run takes the next signed-in account in the listed order, skipping accounts at their limit. Remembers the last account across restarts.',
-  }),
-  Object.freeze({
-    id: 'most-available',
-    label: 'Most room left first',
-    help: 'Starts each run on whichever account has the most of its 5-hour and weekly allowance still free. Best for long runs that must not stop halfway.',
-  }),
-  Object.freeze({
-    id: 'least-available',
-    label: 'Least room left first',
-    help: 'Finishes off the account closest to its limit before touching the others, so the rest stay whole as a reserve.',
-  }),
-  Object.freeze({
-    id: 'even',
-    label: 'Keep them even',
-    help: 'Spreads work so every account ends the week at about the same place. An account whose 5-hour window is spent waits its turn.',
-  }),
-  Object.freeze({
-    id: 'dynamic',
-    label: 'Dynamic',
-    help: 'Drains one account at a time while there is plenty spare, then spreads the load once every account is getting tight.',
-  }),
-  /* Expiring-first is offered as an option too. Room left
-     in a window is gone when that window turns over, so this spends the
-     account whose window resets soonest. The engine ranks on the reset times
-     the programs report; an account that reported none cannot be placed and
-     waits behind the rest, which the second sentence says. */
-  Object.freeze({
-    id: 'resets-soonest',
-    label: 'Resetting soonest first',
-    help: 'Uses the account whose window resets soonest, so room that would be lost at the reset gets used first. An account that has not said when it resets waits behind the rest.',
-  }),
-])
-
-export const SELECTION_MODE_IDS = Object.freeze(SELECTION_MODE_CHOICES.map(choice => choice.id))
-export const DEFAULT_SELECTION_MODE = 'priority'
-/* What an id this build does not know reads as: the stop, because the
-   unreadable choice might have been the stop. Distinct from the default. */
-export const UNRECOGNISED_SELECTION_MODE = 'manual'
-export const DEFAULT_RESERVE_PERCENT = 25
-
-/* THE MODES THAT RANK ON ALLOWANCE. Under these the engine honours a manual
-   switch exactly once -- the next run starts on the chosen account, and every
-   run after that is placed by the ranking -- so the confirmation a person
-   reads after pressing "Use this one" has to say so. Under `manual` and
-   `priority` the switch simply holds. */
-export const RANKED_MODE_IDS = Object.freeze(['most-available', 'least-available', 'even', 'dynamic', 'resets-soonest'])
-/* The id the last mode shipped under for a few hours; a shell that still
-   answers it is read as the current id. Mirrors the engine's table. */
-export const LEGACY_SELECTION_MODES = Object.freeze({ 'expiring-first': 'resets-soonest' })
-
-/* WHICH WINDOW A RANKED MODE READS (a weekly or hourly choice). The ids are
-   the engine's RANK_WINDOW_IDS; the words are here. */
-export const RANK_WINDOW_CHOICES = Object.freeze([
-  Object.freeze({ id: 'either', label: 'Whichever window is tighter' }),
-  Object.freeze({ id: 'hourly', label: '5-hour window' }),
-  Object.freeze({ id: 'weekly', label: 'Weekly window' }),
-])
-export const RANK_WINDOW_IDS = Object.freeze(RANK_WINDOW_CHOICES.map(choice => choice.id))
-export const DEFAULT_RANK_WINDOW = 'either'
-export function normalizeRankWindow(value) {
-  return RANK_WINDOW_IDS.includes(value) ? value : DEFAULT_RANK_WINDOW
-}
-export function rankWindowChoice(id) {
-  return RANK_WINDOW_CHOICES.find(choice => choice.id === id) || null
-}
-
-export function isRankedMode(id) {
-  return RANKED_MODE_IDS.includes(id)
-}
-
-export function selectionModeChoice(id) {
-  return SELECTION_MODE_CHOICES.find(choice => choice.id === id) || null
-}
-
-/** Anything this build does not recognise means `manual`. */
-export function normalizeSelectionMode(value) {
-  const known = Object.hasOwn(LEGACY_SELECTION_MODES, value) ? LEGACY_SELECTION_MODES[value] : value
-  return SELECTION_MODE_IDS.includes(known) ? known : UNRECOGNISED_SELECTION_MODE
-}
-
-/* The three programs this menu can hold accounts for, and their own names for
-   themselves. Kept as a table so a provider added later has one place to be
-   named rather than a string in six branches. */
 export const PROVIDER_LABELS = Object.freeze({ codex: 'Codex', claude: 'Claude', gemini: 'Gemini', grok: 'Grok' })
 export const PROVIDER_IDS = Object.freeze(Object.keys(PROVIDER_LABELS))
 
@@ -174,7 +53,7 @@ export const COPY = Object.freeze({
   title: 'Accounts',
   computerAccounts: 'On this computer',
   connectedAccounts: 'Connected accounts',
-  switchingSettings: 'Switching & recovery',
+
   close: 'Close accounts',
   searchAccounts: 'Find an account',
   searchPlaceholder: 'Search name, sign-in or plan',
@@ -192,23 +71,6 @@ export const COPY = Object.freeze({
   accountCheckFailed: 'Couldn’t check',
   allowanceCheckTimeUnknown: 'Check time not reported',
   allowanceOlderReading: 'Older reading',
-  bucketScopeUnknown: 'Model not reported',
-  bucketTokenUnknown: 'Token scope not reported',
-  bucketScopes: 'Each limit applies to its reported model and token scope.',
-  bucketPartial: 'Some allowance details could not be read.',
-  bucketUnknown: 'No allowance amounts were reported.',
-  bucketInvalid: 'The allowance reply could not be read.',
-  bucketResetUnknown: 'Reset time not reported',
-  bucketAmount: value => `${value} remaining`,
-  bucketFraction: value => `${value}% remaining`,
-  bucketInvalidScope: 'The model or token scope could not be read; its amount is unavailable.',
-  bucketInvalidFraction: 'The remaining percentage could not be read.',
-  bucketInvalidAmount: 'The remaining amount could not be read.',
-  bucketInvalidReset: 'The reset time could not be read.',
-  bucketDuplicate: 'The provider repeated this limit.',
-  bucketConflict: 'The provider gave different readings for this limit. Use Check allowances to try again.',
-  bucketInvalidEntry: 'Some reported limits could not be read.',
-  bucketLimit: 'The reply contained more limits than this copy can display.',
   allowanceLastChecked: age => `Last checked ${age}`,
   allowanceNoReading: 'No allowance reading reported',
   allowanceSomeFailed: count => `Couldn’t check allowances for ${count} ${count === 1 ? 'account' : 'accounts'}. See each account for details.`,
@@ -216,31 +78,31 @@ export const COPY = Object.freeze({
   loading: 'Loading accounts…',
   accountSummary: (count, providers) => `${count} ${count === 1 ? 'account' : 'accounts'} across ${providers} ${providers === 1 ? 'provider' : 'providers'}`,
   listUnavailable: 'Could not load accounts. Try Refresh accounts.',
-  autosave: 'Changes save automatically',
-  editing: 'Finish editing to save changes',
-  saved: 'All changes saved',
-  saveFailed: 'Some changes could not be saved',
-  savedRefreshFailed: 'Changes saved. Could not refresh accounts; try Refresh accounts.',
+
+
+
+
+
   refreshAccounts: 'Refresh accounts',
   refreshingAccounts: 'Refreshing…',
   accountsRefreshed: 'Accounts and saved settings refreshed.',
   refreshFailed: 'Could not refresh the account list. Try Refresh accounts.',
-  recoveryLabel: 'Continue agents after a limit',
-  recoveryHelp: 'Try another available account with the agent’s brief and recent conversation. Keep its name and reporting relationships. If none is available, keep the handoff for retry.',
-  recoverySaved: enabled => enabled ? 'Automatic recovery is on.' : 'Automatic recovery is off.',
+
+
+
   /* WHAT THE BUTTON SAYS WHEN NOTHING HAS BEEN READ YET, and it is not a
      number. A chip reading "0%" before the first read would be a measurement
      nobody took. */
   buttonUnread: 'Accounts',
   buttonMultiple: count => `Accounts · ${count} in use`,
-  modeLabel: 'Default account rule',
-  rankLabel: 'Rank on',
-  rankHelp: 'Which window the ranking reads. The tighter one is the window closer to running out.',
+
+
+
   /* One program's own rule, or the rule above. */
-  providerRule: program => `${program} rule`,
-  sameAsAbove: 'Use default',
-  rankSaved: label => `Ranking on: ${label}.`,
-  providerRuleSaved: (program, label) => `${program} now follows: ${label}.`,
+
+
+
+
   /* SAID WHEN THE DEFAULT IS NOT WHAT RUNS. A program that recorded a rule of
      its own keeps it when the rule above changes -- that is what "Default
      account rule" means, and dropping those rules from here would throw away
@@ -250,21 +112,19 @@ export const COPY = Object.freeze({
      this menu read Rotate (T378): the mode saved correctly, Claude was simply
      following a "Dynamic" rule of its own, which drains one account while
      there is room. Naming the programs is the whole notice. */
-  overrideNotice: (programs, count, mode) => count === 1
-    ? `${programs} has a rule of its own, so it is not following "${mode}".`
-    : `${programs} have rules of their own, so they are not following "${mode}".`,
+
   /* The one thing here that changes anything, and only on a click. It presses
      the same "Use default" the person already has on each program's own row,
      rather than writing a second way to clear a rule. */
-  overrideNoticeApply: 'Apply the default to these programs',
-  modeHelpLead: 'What this does:',
-  reserveLabel: 'Treat an account as tight below',
-  reserveUnit: '% free',
-  reserveHelp: 'Only “Dynamic” reads this. It is the point where an account stops counting as having plenty spare.',
+
+
+
+
+
   /* Said instead of saving. An empty box used to be sent as 0, which turned
      "I cleared the field" into "treat nothing as tight" with a "Saved"
      confirmation on top of it. */
-  reserveInvalid: 'Type a number from 0 to 100.',
+
   refresh: 'Check allowances',
   refreshing: 'Checking…',
   /* THE SENTENCE THAT ENDS A CHECK. The first draft cleared the status line
@@ -285,14 +145,14 @@ export const COPY = Object.freeze({
   switchTo: 'Use this one',
   inUse: 'In use now',
   /* WHEN THE COMPUTER IS RUNNING SOMETHING OTHER THAN WHAT WAS CHOSEN.
-     MEASURED 2026-09-03 on a real machine: a hand switch to one account,
+     MEASURED 2026-09-03 on the owner's machine: a hand switch to one account,
      a start 87 seconds later that could not use it, and a menu that from then
      on showed the other account "In use now" with nothing anywhere saying a
      choice had been made -- which reads as a pick that reverted itself. The
      choice still stands; this says so, and says what stopped it, so the person
      can wait, pick another, or fix the account rather than guess. */
   chosenLabel: 'Chosen',
-  movedOff: (chosen, using) => `“${chosen}” is the account you chose. It could not be used, so this computer is on “${using}” for now and returns to “${chosen}” once it can serve.`,
+  movedOff: (chosen, using) => `“${chosen}” is the account you chose. This computer last reported “${using}” in use. Choose the account you want before continuing.`,
   /* The chosen account's OWN line from the start that moved off it. Said only
      when there is one: a start that never reached the account carries no
      reason for it, and "could not look" is not "not there". */
@@ -302,6 +162,11 @@ export const COPY = Object.freeze({
      the first, an answer this build did not recognise draws the second, and
      "yes" draws neither. */
   notSignedIn: 'not signed in',
+  /* A Claude folder with no saved sign-in is not proof of a sign-out: Claude
+     Code also runs with an API key, a key helper or a cloud provider (1.0.50
+     review, accounts C). Only Check allowances can say it is signed out. */
+  noSavedSignIn: 'no saved sign-in',
+  noSavedSignInWhy: 'Claude Code can also run with an API key, a key helper or a cloud provider. Those leave no saved sign-in here.',
   signInUnchecked: 'sign-in not checked',
   notKnown: 'not known',
   /* An account that reported one window and not the other: the other is not
@@ -316,19 +181,7 @@ export const COPY = Object.freeze({
   removing: 'Removing…',
   checkedJustNow: 'Checked just now.',
   checkedAgo: text => `Checked ${text}.`,
-  /* THE ONE SENTENCE THAT SAYS A FAILOVER HAPPENED.
-   *
-   * The menu could say WHEN this computer last changed account and never what
-   * the change WAS -- the shell answered the clock time off the record and
-   * threw the rest away. An automatic switch is exactly the change nobody was
-   * present for, so it is the one that has to be readable afterwards: a person
-   * who finds their work on a different sign-in is owed which one it left,
-   * which one it is on, and that the computer did it rather than them.
-   *
-   * FOUR SENTENCES BECAUSE THERE ARE FOUR FACTS TO TELL APART, not four
-   * phrasings of one. A change the person made must never read as one the
-   * computer made, and a record that did not say which it was must say neither
-   * -- `automatic` is three-valued the whole way to here for that reason. */
+
   switchAuto: (from, to, when) => `This computer moved from “${from}” to “${to}” on its own, ${when}.`,
   switchAutoFirst: (to, when) => `This computer chose “${to}” on its own, ${when}.`,
   switchByHand: (to, when) => `You switched to “${to}” ${when}.`,
@@ -349,6 +202,11 @@ export const COPY = Object.freeze({
   renamed: (from, to) => `Renamed “${from}” to “${to}”.`,
   renameRefused: 'That account was not renamed. Nothing changed.',
   removed: name => `Removed “${name}” from the list. Its folder and sign-in stay where they are.`,
+  /* 1.0.50 review, accounts G: an account whose folder Accounts made has the
+     sign-in saved in that folder deleted when it is removed
+     (shell/account-registry.cjs destroyCredential). The receipt says which. */
+  removedWithSignIn: name => `Removed “${name}” from the list and deleted the sign-in saved in its folder. The folder stays where it is.`,
+  removeArmedNote: 'If Accounts made this account’s folder, removing it also deletes the sign-in saved there.',
   removeRefused: 'That account was not removed. Nothing changed.',
   /* THE PROGRESS WORDS. Each is on the status line for the length of one
      round trip, so a person who pressed something knows the press landed. */
@@ -366,7 +224,7 @@ export const COPY = Object.freeze({
   providerSetup: 'Set up programs in Settings',
   setupProvider: program => `Set up ${program}`,
   setupHelp: 'Install the program in Settings, under "This computer", then refresh accounts to add it here.',
-  policyNeedsAccount: 'Add an account to set switching rules and recovery.',
+
   /* IT SAYS WHAT ARRIVES, in the order it arrives. The first draft said "its
      own sign-in window opens", which described neither of the two things a
      person actually sees: a terminal window with the program's own sign-in
@@ -388,10 +246,8 @@ export const COPY = Object.freeze({
      nothing at all until its own program has fetched usage once. */
   usageUnknown: 'How much is left is not known for this account.',
   usageUnknownWhy: 'That is normal until the program has looked once itself. It does not mean anything is wrong.',
-  /* Before a Gemini checker result arrives, say only that this view has not
-     checked it. Supported readings and explicit limitations use the returned
-     bucket envelope or checker explanation instead of this initial state. */
-  usageNotMeasured: 'Gemini allowance has not been checked in this view.',
+  /* Gemini CLI owns the sign-in. This copy does not read its allowance. */
+  usageNotMeasured: 'Gemini allowance is unknown. Start an agent to let the official Gemini CLI check whether it can serve.',
   /* THE SAME FACT FOR A PROGRAM THAT HAS A READ OF ITS OWN (Grok's billing
      read, Antigravity's /quota) but did not report a figure on this check.
      Named for the program, because the sentence above says "Gemini" and was
@@ -420,14 +276,14 @@ export const COPY = Object.freeze({
   /* THE LIMIT CONTROLS. "Move off" rather than "stop", because that is what
      the number does: the account keeps its remaining allowance and stops
      being chosen for new work. */
-  limitsLabel: 'Move agents off an account at',
-  limitWeeklyLabel: 'this week',
-  limitHourlyLabel: '5-hour window',
-  limitUnit: '%',
-  limitHelp: 'The two allowances refill at very different speeds, so each gets its own number. A weekly allowance is worth leaving early; a 5-hour one refills while you work.',
-  limitInherited: single => `using ${single}% for both`,
-  limitSaved: (windowLabel, percent) => `Saved. Agents move off an account at ${percent}% of ${windowLabel}.`,
-  limitRefused: 'That limit was not saved. Nothing changed.',
+
+
+
+
+
+
+
+
   hourly: 'this 5-hour window',
   weekly: 'this week',
   hourlyBar: '5-hour window',
@@ -436,8 +292,8 @@ export const COPY = Object.freeze({
   /* THE WEEK, WHEN THERE IS MORE THAN ONE OF IT. Claude meters the week twice
      -- once across every model and once for the model in use -- and until this
      the menu drew ONE "this week" bar holding whichever of the two was worse
-     (for Claude the per-model weekly limit could hide the all-models one, and
-     both belong on screen). Both are drawn now, so both
+     (owner: "i think fable weekly limit instead of all models weekly limit is
+     shown for claude we should include both"). Both are drawn now, so both
      have to say which they are. The plain 'this week' above still stands where
      a plan reports only one week, because "(all models)" beside a lone bar
      would invite a person to look for the other one. */
@@ -454,12 +310,12 @@ export const COPY = Object.freeze({
   switched: name => `Now using “${name}”. The next run starts on it.`,
   signInBeforeRun: 'Choose Sign in on this row before starting a run with this account.',
   switchedNeedsSignIn: name => `Selected “${name}”. ${COPY.signInBeforeRun}`,
-  switchedRotate: name => `Now using “${name}”. Rotate will choose the next available account when you start a run.`,
-  switchedRanked: (name, modeLabel) => `Now using “${name}”. The next run starts on it; after that, “${modeLabel}” picks.`,
+
+
   switchedAlready: name => `Already using “${name}”. Nothing changed.`,
   switchRefused: 'That account was not switched to. Nothing changed.',
-  modeSaved: label => `Saved. This computer now picks: ${label}.`,
-  modeRefused: 'That setting was not saved. Nothing changed.',
+
+
   /* THE ADD CONFIRMATION BORROWS THE SIGN-IN ONE rather than repeating it, so
      the two can never describe the same window differently. */
   added: (name, title) => `Added “${name}”. ${COPY.signInOpened(name, title)}`,
@@ -588,25 +444,6 @@ export function readWindows(value) {
   })
 }
 
-/* The engine's own default when a registry names no limit at all. Kept here
-   so a menu drawn before the shell answers shows the number a start would
-   actually use rather than a blank. */
-const DEFAULT_EXHAUSTED_AT_PERCENT = 99
-
-const NO_POLICY = Object.freeze({
-  /* Matches the shell's own default, for the reason stated two fields below
-     DEFAULT_EXHAUSTED_AT_PERCENT above: a menu drawn before the shell answers
-     must show what a start would actually do. Drawn as off while the shell
-     answers on, the checkbox told the person recovery was off when it was on. */
-  autoRecoverOnLimit: true,
-  selectionMode: DEFAULT_SELECTION_MODE,
-  recorded: false,
-  reservePercent: DEFAULT_RESERVE_PERCENT,
-  exhaustedAtPercent: DEFAULT_EXHAUSTED_AT_PERCENT,
-  exhaustedAtPercentHourly: null,
-  exhaustedAtPercentWeekly: null,
-})
-
 /* WHICH ACCOUNT EACH PROGRAM IS ON, one name per provider or null.
    Returns null (not an empty table) when the shell did not say, so the merge
    below can tell "the shell answered per provider" from "an older shell
@@ -651,19 +488,6 @@ function readMovedOffByProvider(value) {
  * person to two different places, and only one of them is an invitation to add
  * a first account.
  */
-/* Which fields of a program's rule are its own. A shell that answered one
-   boolean for the whole entry is read as all-or-nothing. */
-const NO_OWN = Object.freeze({ selectionMode: false, reservePercent: false, rankWindow: false })
-function readOwn(value) {
-  if (value === true) return Object.freeze({ selectionMode: true, reservePercent: true, rankWindow: true })
-  if (!isPlainObject(value)) return NO_OWN
-  return Object.freeze({
-    selectionMode: value.selectionMode === true,
-    reservePercent: value.reservePercent === true,
-    rankWindow: value.rankWindow === true,
-  })
-}
-
 /* THE LAST CHANGE OF ACCOUNT, or null when this computer has never made one.
  *
  * `automatic` stays three-valued all the way to the screen. A record written
@@ -700,7 +524,6 @@ export function readAccountList(value) {
       lastSwitch: null,
       chosenByProvider: null,
       movedOffByProvider: null,
-      policy: NO_POLICY,
       note: COPY.unavailable,
     })
   }
@@ -709,11 +532,14 @@ export function readAccountList(value) {
     .map(account => Object.freeze({
       name: boundedText(account.name, 64) || '',
       provider: PROVIDER_IDS.includes(account.provider) ? account.provider : null,
+      ...(Array.isArray(account.previousNames) && account.previousNames.length <= 64
+        && account.previousNames.every(label => typeof label === 'string' && label.trim() && label.length <= 120)
+        ? { previousNames: Object.freeze(account.previousNames.map(label => label.trim())) } : {}),
       directory: boundedText(account.directory, 1024),
       allowanceBinding: readAllowanceBinding(account.allowanceBinding),
       ...(Object.hasOwn(account, 'authGeneration') ? { authGeneration: readAuthGeneration(account.authGeneration) } : {}),
       ...(account.provider === 'gemini' && account.client === 'antigravity' ? { client: 'antigravity' } : {}),
-      priority: Number.isSafeInteger(account.priority) ? account.priority : null,
+
       /* THREE-VALUED ON PURPOSE. The shell answers 'yes' or 'no' from a single
          existence check; anything else is a build that did not say, and a
          missing answer must not draw as "not signed in" -- that sends somebody
@@ -722,10 +548,6 @@ export function readAccountList(value) {
       command: boundedText(account.command, 600),
     }))
     .filter(account => account.name && account.provider)
-
-  const policySource = isPlainObject(value.policy) && isPlainObject(value.policy.policy)
-    ? value.policy.policy
-    : (isPlainObject(value.policy) ? value.policy : null)
 
   const active = isPlainObject(value.active) ? value.active : null
   const problem = isPlainObject(value.problem) && Number.isSafeInteger(value.problem.index)
@@ -743,11 +565,7 @@ export function readAccountList(value) {
     activeAt: active ? boundedText(active.at, 40) : null,
     activeProvider: active && PROVIDER_IDS.includes(active.provider) ? active.provider : null,
     activeByProvider: readActiveByProvider(value.activeByProvider),
-    /* WHAT THE LAST CHANGE WAS, not only when it happened. `activeAt` above is
-       the clock time off this same record, and it was all the menu had -- so it
-       could say the computer changed account and never that it changed FROM
-       one account TO another, or that it did so on its own. A failover is
-       precisely the change nobody was present for. */
+
     lastSwitch: readLastSwitch(value.lastSwitch),
     /* THE ACCOUNT EACH PROGRAM WAS TOLD TO USE, AND WHAT MOVED OFF IT.
        Separate from `activeByProvider` because they answer different
@@ -756,45 +574,6 @@ export function readAccountList(value) {
        same as a table saying nobody chose. */
     chosenByProvider: readActiveByProvider(active && active.chosenByProvider),
     movedOffByProvider: readMovedOffByProvider(active && active.movedOffByProvider),
-    policy: Object.freeze({
-      /* Same asymmetry as the shell: absent is "nobody decided", literal false
-         is a decision. A shell that has not answered yet leaves this undefined,
-         and undefined must not draw as off -- see NO_POLICY above. */
-      autoRecoverOnLimit: policySource?.autoRecoverOnLimit !== false,
-      selectionMode: (policySource && policySource.selectionMode != null ? normalizeSelectionMode(policySource.selectionMode) : DEFAULT_SELECTION_MODE),
-      /* "Nobody has chosen" is not "somebody chose the cautious one". The menu
-         draws the difference, so it has to survive this far. */
-      recorded: Boolean(policySource && policySource.recorded === true),
-      reservePercent: policySource && finitePercent(policySource.reservePercent)
-        ? policySource.reservePercent
-        : DEFAULT_RESERVE_PERCENT,
-      rankWindow: normalizeRankWindow(policySource && policySource.rankWindow),
-      /* Null means this window has no limit of its own and is using the
-         single number. The menu draws that difference rather than showing an
-         inherited number as though somebody had chosen it. */
-      exhaustedAtPercent: policySource && finitePercent(policySource.exhaustedAtPercent)
-        ? policySource.exhaustedAtPercent
-        : DEFAULT_EXHAUSTED_AT_PERCENT,
-      exhaustedAtPercentHourly: policySource && finitePercent(policySource.exhaustedAtPercentHourly)
-        ? policySource.exhaustedAtPercentHourly : null,
-      exhaustedAtPercentWeekly: policySource && finitePercent(policySource.exhaustedAtPercentWeekly)
-        ? policySource.exhaustedAtPercentWeekly : null,
-      /* Each program's rule in force (own or inherited) and whether it is its
-         own, so the per-program control can read "same as above" honestly.
-         An older shell that did not say answers the global rule for each. */
-      byProvider: Object.freeze(Object.fromEntries(PROVIDER_IDS.map(id => {
-        const entry = policySource && isPlainObject(policySource.byProvider) && isPlainObject(policySource.byProvider[id])
-          ? policySource.byProvider[id] : null
-        return [id, Object.freeze({
-          selectionMode: entry && entry.selectionMode != null ? normalizeSelectionMode(entry.selectionMode)
-            : (policySource && policySource.selectionMode != null ? normalizeSelectionMode(policySource.selectionMode) : DEFAULT_SELECTION_MODE),
-          reservePercent: entry && finitePercent(entry.reservePercent) ? entry.reservePercent
-            : (policySource && finitePercent(policySource.reservePercent) ? policySource.reservePercent : DEFAULT_RESERVE_PERCENT),
-          rankWindow: normalizeRankWindow(entry && entry.rankWindow != null ? entry.rankWindow : (policySource && policySource.rankWindow)),
-          own: readOwn(entry && entry.own),
-        })]
-      }))),
-    }),
     note: value.damaged === true
       ? (problem ? COPY.unusableEntry(boundedText(problem.name, 64), problem.index + 1) : COPY.damaged)
       : (accounts.length === 0 ? COPY.none : null),
@@ -853,9 +632,10 @@ function readCachedUsage(value) {
   // which account was checked after that label is removed and reused.
   if (!isPlainObject(value) || !Array.isArray(value.accounts)
     || value.accounts.some(row => !isPlainObject(row) || !readAllowanceBinding(row.allowanceBinding))) return null
-  const accounts = value.accounts.filter(row => readAuthGeneration(row.authGeneration)?.kind === 'file')
+  const accounts = value.accounts.filter(row => readAuthGeneration(row.authGeneration)?.kind === 'file'
+    && (row.provider !== 'gemini' || row.client === 'antigravity'))
   const removedProviders = new Set(value.accounts.filter(row => !accounts.includes(row)).map(row => row.provider))
-  value = { ...value, accounts, orders: (Array.isArray(value.orders) ? value.orders : []).filter(order => !removedProviders.has(order?.provider)) }
+  value = { ...value, accounts }
   return readUsageReply(value)
 }
 
@@ -867,8 +647,7 @@ function readReportedUsage(value) {
 }
 
 function hasUsageMeasurements(reading) {
-  return Boolean(reading?.reportedUsage || reading?.windows?.hourly || reading?.windows?.weekly || reading?.windows?.weeklyWindows?.length
-    || reading?.allowanceBuckets?.buckets.some(bucketHasMeasurement))
+  return Boolean(reading?.reportedUsage || reading?.windows?.hourly || reading?.windows?.weekly || reading?.windows?.weeklyWindows?.length)
 }
 
 export function readUsageReply(value) {
@@ -879,7 +658,7 @@ export function readUsageReply(value) {
         ? value.reason
         : COPY.usageUnavailable,
       readings: Object.freeze({}),
-      orders: Object.freeze([]),
+
     })
   }
   const readings = {}
@@ -897,7 +676,7 @@ export function readUsageReply(value) {
       usageCode: boundedText(row.usageCode, 80),
       usageReason: boundedText(row.usageReason, 400),
       reportedUsage: readReportedUsage(row.reportedUsage),
-      allowanceBuckets: readAllowanceBuckets(row.allowanceBuckets, provider),
+      allowanceBuckets: null,
       status: boundedText(row.status, 32),
       canServe: row.canServe === true,
       usedPercent: finitePercent(row.usedPercent) ? row.usedPercent : null,
@@ -922,20 +701,12 @@ export function readUsageReply(value) {
       reason: boundedText(row.reason, 400),
     })
   }
-  const orders = (Array.isArray(value.orders) ? value.orders : [])
-    .filter(isPlainObject)
-    .map(order => Object.freeze({
-      provider: PROVIDER_IDS.includes(order.provider) ? order.provider : null,
-      names: Object.freeze((Array.isArray(order.names) ? order.names : []).map(name => boundedText(name, 64)).filter(Boolean)),
-      why: boundedText(order.why, 400),
-    }))
-    .filter(order => order.provider)
 
   return Object.freeze({
     ok: true,
     reason: null,
     readings: Object.freeze(readings),
-    orders: Object.freeze(orders),
+
     /* When it was read, or null for a reply that did not say. */
     readAt: boundedText(value.readAt, 40),
   })
@@ -1003,7 +774,7 @@ export function lastSwitchSentence(list, { now = Date.now() } = {}) {
 
 /* IS THIS ROW THE ONE ITS PROGRAM IS ON?
  *
- * The registry allows one name per provider, so "team" can be both a Codex
+ * The registry allows one name per provider, so "school" can be both a Codex
  * and a Claude account, and the first draft marked both rows active whenever
  * either was. The shell now says which account each program is on
  * (activeByProvider), and that table is the answer when it is present. An
@@ -1026,8 +797,10 @@ export function mergeAccounts(list, usage, { now = Date.now() } = {}) {
     const candidate = readings[`${account.provider}:${account.name.toLowerCase()}`] || null
     const reading = candidate && readAllowanceBinding(account.allowanceBinding)
       && candidate.allowanceBinding === account.allowanceBinding && matchesUsageGeneration(account, candidate) ? candidate : null
-    const windows = reading ? reading.windows : NO_WINDOWS
-    const measured = hasUsageMeasurements(reading)
+    // Gemini CLI allowance is unknown, including observations cached by older copies.
+    const allowance = account.provider === 'gemini' && account.client !== 'antigravity' ? null : reading
+    const windows = allowance ? allowance.windows : NO_WINDOWS
+    const measured = hasUsageMeasurements(allowance)
     const usageReadAt = reading ? reading.readAt : null
     const failed = Boolean(usage?.ok === false || (reading && (reading.usageStatus === 'unavailable' || reading.status === 'transient'
       || (!measured && reading.status === null))))
@@ -1044,7 +817,7 @@ export function mergeAccounts(list, usage, { now = Date.now() } = {}) {
       status: reading ? reading.status : null,
       canServe: reading ? reading.canServe : null,
       reason: reading ? reading.reason : null,
-      resetsAt: reading ? reading.resetsAt : null,
+      resetsAt: allowance ? allowance.resetsAt : null,
       /* The account the program answered with, or null when nothing has been
          read yet. Not defaulted to the row's own name: the row's name is what
          a person typed, and the whole point of this field is that the two can
@@ -1053,12 +826,12 @@ export function mergeAccounts(list, usage, { now = Date.now() } = {}) {
       /* The plan the program reported, or null when it named none. */
       planType: reading ? reading.planType : null,
       windows,
-      reportedUsage: reading?.reportedUsage || null,
-      allowanceBuckets: reading?.allowanceBuckets || null,
-      usageStatus: reading?.usageStatus || null,
-      usageSource: reading?.usageSource || null,
-      usageCode: reading?.usageCode || null,
-      usageReason: reading?.usageReason || null,
+      reportedUsage: allowance?.reportedUsage || null,
+      allowanceBuckets: null,
+      usageStatus: allowance?.usageStatus || (account.provider === 'gemini' && account.client !== 'antigravity' ? 'not_reported' : null),
+      usageSource: allowance?.usageSource || null,
+      usageCode: allowance?.usageCode || null,
+      usageReason: allowance?.usageReason || (account.provider === 'gemini' && account.client !== 'antigravity' ? COPY.usageNotMeasured : null),
       measured,
       usageReadAt,
       usageState,
@@ -1133,8 +906,17 @@ export function needsSignIn(account) {
   return account.signedIn === false || engineSaysSignedOut(account)
 }
 
+/* MUST THIS ACCOUNT SIGN IN BEFORE A RUN? (REVIEW-1050 #12.) needsSignIn is
+   whether the row offers Sign in. A Claude folder with no saved sign-in may
+   still run on an API key, a key helper or a cloud provider (accounts C, the
+   "no saved sign-in" flag), so for Claude only the engine's own signed-out
+   verdict asks for a sign-in before a run. */
+export function signInRequiredBeforeRun(account) {
+  return needsSignIn(account) && (account.provider !== 'claude' || engineSaysSignedOut(account))
+}
+
 /* HOW ONE ROW IS REMEMBERED BETWEEN TWO READS OF THE LIST. Names are unique
-   PER PROGRAM and not across them -- shell/account-registry.cjs says "team"
+   PER PROGRAM and not across them -- shell/account-registry.cjs says "school"
    may be both a Codex account and a Claude one -- so the program is half the
    key, and the name is compared the way every other comparison on this surface
    compares it (sameName above, case-insensitively). */
@@ -1188,8 +970,8 @@ function windowsNameAReset(windows) {
  * The engine's sentences no longer name a reset time. MEASURED 2026-09-03 in
  * the installed copy's accounts-usage-cache.json, they did: an exhausted
  * Claude row ended "...92% of its weekly allowance is used; resets
- * 2026-01-02T17:00:00.123456+00:00." and a healthy Codex row ended "; resets
- * 2026-01-06T02:30:00.000Z." -- microsecond ISO strings on a screen a person
+ * 2026-09-03T17:00:00.309845+00:00." and a healthy Codex row ended "; resets
+ * 2026-09-07T02:29:34.000Z." -- microsecond ISO strings on a screen a person
  * reads. The time still arrives, as the row's `resetsAt`, and THIS is where it
  * becomes words, through the same resetPhrase() the rest of the menu uses.
  *
@@ -1213,7 +995,9 @@ export function rowFlags(account, { now = Date.now() } = {}) {
   const flags = []
   const signedOut = engineSaysSignedOut(account)
   if (needsSignIn(account)) {
-    flags.push({ text: COPY.notSignedIn, tone: signedOut ? 'bad' : 'plain', title: null })
+    const savedSignInOnly = !signedOut && account.provider === 'claude'
+    flags.push({ text: savedSignInOnly ? COPY.noSavedSignIn : COPY.notSignedIn, tone: signedOut ? 'bad' : 'plain',
+      title: savedSignInOnly ? COPY.noSavedSignInWhy : null })
   } else if (account.signedIn === null) {
     flags.push({ text: COPY.signInUnchecked, tone: 'plain', title: null })
   }
@@ -1269,10 +1053,8 @@ function unmeasuredLines(account, { now = Date.now() } = {}) {
  * flag's tooltip. */
 export function rowLines(account, { now = Date.now(), includeIdentity = true, includeAllowance = true } = {}) {
   const lines = []
-  if (account.active && needsSignIn(account)) lines.push({ text: COPY.signInBeforeRun, quiet: false })
-  if (includeAllowance && account.allowanceBuckets) {
-    lines.push(...allowanceBucketNotes(account.allowanceBuckets).map(text => ({ text, quiet: false })))
-  } else if (includeAllowance && !account.measured && account.usageReason
+  if (account.active && signInRequiredBeforeRun(account)) lines.push({ text: COPY.signInBeforeRun, quiet: false })
+  if (includeAllowance && !account.measured && account.usageReason
       && ['unsupported', 'not_reported'].includes(account.usageStatus)
       && !engineFault(account) && !engineSaysSignedOut(account)) {
     lines.push({ text: account.usageReason, quiet: false })
@@ -1311,21 +1093,7 @@ export function rowLines(account, { now = Date.now(), includeIdentity = true, in
    which, above a row saying this copy never measures Gemini, reads as a
    fault. Orders for a provider outside USAGE_MEASURED_PROVIDERS are dropped
    before a word is written. */
-export function orderExplanation(orders) {
-  const programsBySentence = new Map()
-  for (const order of Array.isArray(orders) ? orders : []) {
-    if (!isPlainObject(order) || typeof order.why !== 'string' || !order.why) continue
-    if (!providerMeasuresUsage(order.provider)) continue
-    const programs = programsBySentence.get(order.why) || []
-    if (PROVIDER_IDS.includes(order.provider) && !programs.includes(order.provider)) programs.push(order.provider)
-    programsBySentence.set(order.why, programs)
-  }
-  if (programsBySentence.size === 0) return ''
-  if (programsBySentence.size === 1) return [...programsBySentence.keys()][0]
-  return [...programsBySentence]
-    .map(([why, programs]) => COPY.orderFor(programs.map(providerLabel).join(' and '), why))
-    .join(' ')
-}
+
 
 /* THE PARAGRAPH UNDER THE LIST, OR NOTHING. Under "stop and let me switch" and
    "in the order listed" the order IS the list, and the engine's sentence for
@@ -1333,11 +1101,7 @@ export function orderExplanation(orders) {
    already show it -- the first draft printed it anyway. Only the modes that
    rank on allowance (RANKED_MODE_IDS) have an order that needs words, and
    only a read that succeeded has any. */
-export function orderParagraph(mode, usage) {
-  if (!isRankedMode(mode)) return ''
-  if (!isPlainObject(usage) || usage.ok !== true) return ''
-  return orderExplanation(usage.orders)
-}
+
 
 /* WHAT THE MENU SAYS WHEN THE COMPUTER IS NOT ON THE ACCOUNT THAT WAS CHOSEN.
  *
@@ -1378,8 +1142,8 @@ export function windowSentence(window, { now = Date.now(), where = null } = {}) 
  *
  * A ceiling scoped to a model is named for that model. An unscoped one is
  * "this week" when it is the only week on the row and "this week (all models)"
- * when a scoped one sits under it -- because that is the pair that could not
- * be told apart, and "(all models)" is only true as a contrast. Two unscoped
+ * when a scoped one sits under it -- because that is the pair the owner could
+ * not tell apart, and "(all models)" is only true as a contrast. Two unscoped
  * weeks fall back to the provider's own word for each rather than either being
  * dropped or both reading the same. */
 function weeklyPhrase(window, siblings) {
@@ -1395,7 +1159,7 @@ function weeklyPhrase(window, siblings) {
  * One short window, then EVERY weekly ceiling the engine reported, in the
  * engine's order. MEASURED 2026-09-02 (Claude Code 2.1.258): Claude answers
  * `get_usage` with a week across all models AND a week for the model in use --
- * 25% and 46% used on a measured account -- and the menu had one weekly
+ * 25% and 46% used on the owner's own account -- and the menu had one weekly
  * slot, so it drew the worse of the two under the word "this week" and a
  * person could tell neither which week that was nor that the other existed.
  *
@@ -1406,6 +1170,7 @@ function weeklyPhrase(window, siblings) {
  * nobody could ask about has to keep its row.
  */
 export function accountBars(account, { now = Date.now() } = {}) {
+  if (account?.provider === 'gemini' && account.client !== 'antigravity') return Object.freeze([])
   const windows = account && isPlainObject(account.windows) ? account.windows : NO_WINDOWS
   const weeklies = Array.isArray(windows.weeklyWindows) && windows.weeklyWindows.length > 0
     ? windows.weeklyWindows
@@ -1443,43 +1208,7 @@ export function accountBars(account, { now = Date.now() } = {}) {
     bars.push(Object.freeze({ key: `reported-${reported.period}`, label: where, window,
       sentence: windowSentence(window, { now, where }) }))
   }
-  if (account?.allowanceBuckets) {
-    // Independent provider scopes cannot supply imaginary period slots.
-    for (let index = bars.length - 1; index >= 0; index--) if (!bars[index].window) bars.splice(index, 1)
-    for (const bucket of account.allowanceBuckets.buckets) {
-      bars.push(Object.freeze({ key: `bucket:${bucket.key}`, label: bucket.modelId || COPY.bucketScopeUnknown,
-        tokenLabel: bucket.tokenType || COPY.bucketTokenUnknown, bucket }))
-    }
-  }
   return Object.freeze(bars)
-}
-
-export function allowanceBucketNotes(reading) {
-  if (!reading) return Object.freeze([])
-  const notes = reading.status === 'partial' ? [COPY.bucketPartial] : reading.status === 'unknown' ? [COPY.bucketUnknown] : []
-  for (const issue of reading.issues) {
-    const text = issue.code === 'invalid_reading' || issue.code === 'invalid_buckets' ? COPY.bucketInvalid
-      : issue.code === 'bucket_limit_exceeded' ? COPY.bucketLimit : COPY.bucketInvalidEntry
-    if (!notes.includes(text)) notes.push(text)
-  }
-  if (reading.issues.some(issue => issue.code === 'invalid_reading' || issue.code === 'invalid_buckets')) {
-    return Object.freeze(notes.filter(text => text !== COPY.bucketUnknown))
-  }
-  return Object.freeze(notes)
-}
-
-export function allowanceBucketIssueNotes(bucket) {
-  const textFor = { invalid_modelId: COPY.bucketInvalidScope, invalid_tokenType: COPY.bucketInvalidScope,
-    invalid_remainingFraction: COPY.bucketInvalidFraction, invalid_remainingAmount: COPY.bucketInvalidAmount,
-    invalid_resetsAt: COPY.bucketInvalidReset, duplicate_bucket: COPY.bucketDuplicate, conflicting_buckets: COPY.bucketConflict }
-  return Object.freeze([...new Set(bucket.issues.map(issue => textFor[issue]).filter(Boolean))])
-}
-
-export function allowanceBucketPercent(fraction) {
-  const percent = fraction * 100
-  if (percent > 0 && percent < 0.1) return '<0.1'
-  if (percent < 100 && percent > 99.9) return '>99.9'
-  return String(Math.round(percent * 10) / 10)
 }
 
 /* WHEN IT COMES BACK, IN WORDS RATHER THAN AS A TIMESTAMP. An ISO string is an
@@ -1560,6 +1289,50 @@ export async function loadAccounts(scope = globalThis) {
   try { return readAccountList(await bridge.accounts()) } catch { return readAccountList(null) }
 }
 
+// Display names follow registry rename history. Native conversation identity
+// stays on its recorded label, which the host uses for exact resume binding.
+const accountNameStates = new WeakMap()
+function accountNameState(scope) {
+  const bridge = accountsBridge(scope)
+  if (!bridge) return null
+  let state = accountNameStates.get(bridge)
+  if (!state) {
+    state = { accounts: [], listeners: new Set(), revision: 0, pending: null }
+    accountNameStates.set(bridge, state)
+  }
+  return state
+}
+
+export async function refreshAccountNames(scope = globalThis) {
+  const state = accountNameState(scope)
+  if (!state) return
+  const revision = ++state.revision
+  const listing = await loadAccounts(scope)
+  if (revision !== state.revision) return
+  state.accounts = listing.available && !listing.damaged ? listing.accounts : []
+  for (const listener of [...state.listeners]) {
+    try { listener() } catch { /* a detached display cannot interrupt an Accounts change */ }
+  }
+}
+
+export function observeAccountNames(listener, scope = globalThis) {
+  const state = accountNameState(scope)
+  if (!state || typeof listener !== 'function') return () => {}
+  state.listeners.add(listener)
+  if (!state.pending) {
+    state.pending = refreshAccountNames(scope).finally(() => { state.pending = null })
+  }
+  return () => state.listeners.delete(listener)
+}
+
+export function sessionAccountDisplayRecord(record, scope = globalThis) {
+  if (typeof record?.account !== 'string' || !record.account.trim()) return record
+  const wanted = record.account.toLowerCase()
+  const matches = (accountNameState(scope)?.accounts || []).filter(account => account.provider === record.provider
+    && [account.name, ...(account.previousNames || [])].some(name => name.toLowerCase() === wanted))
+  return matches.length === 1 ? { ...record, displayAccount: matches[0].name } : record
+}
+
 // This is the same file-presence read used by the Settings section This
 // computer. It launches no
 // provider and never treats an unreadable or older bridge as a missing program.
@@ -1618,12 +1391,11 @@ export async function loadUsage(scope = globalThis, { previousUsage = null } = {
         && current.allowanceBinding === previous?.allowanceBinding
         && sameFileGeneration(current.authGeneration, previous?.authGeneration)
         && (!current.email || !previous.email || current.email.toLowerCase() === previous.email.toLowerCase())
-      if (current.usageStatus !== 'unavailable' || current.allowanceBuckets || hasUsageMeasurements(current) || !sameIdentity
+      if (current.usageStatus !== 'unavailable' || hasUsageMeasurements(current) || !sameIdentity
         || !['healthy', 'exhausted'].includes(current.status) || !hasUsageMeasurements(previous)) return [key, current]
       // Retain measurement data only. Current authentication, identity and the
       // failed check remain authoritative; the old reading keeps its own age.
       return [key, Object.freeze({ ...current, windows: previous.windows, reportedUsage: previous.reportedUsage,
-        allowanceBuckets: previous.allowanceBuckets,
         usedPercent: previous.usedPercent, resetsAt: previous.resetsAt, readAt: previous.readAt,
         usageSource: previous.usageSource })]
     }))
@@ -1636,19 +1408,7 @@ export async function loadUsage(scope = globalThis, { previousUsage = null } = {
 }
 
 /** Record how this computer picks between accounts. */
-export async function saveSelectionMode(request, scope = globalThis) {
-  const bridge = accountsBridge(scope)
-  if (!bridge || typeof bridge.accountPolicy !== 'function') {
-    return refusalOf(null, COPY.unavailable)
-  }
-  try {
-    const answer = await bridge.accountPolicy(request)
-    if (!isPlainObject(answer) || answer.ok !== true) return refusalOf(answer, COPY.modeRefused)
-    return Object.freeze({ ok: true, code: null, reason: null })
-  } catch (error) {
-    return refusalOf(error, COPY.modeRefused)
-  }
-}
+
 
 /** Give a listed account a new name. The folder and its sign-in stay. */
 export async function renameAccount(request, scope = globalThis) {
@@ -1659,13 +1419,15 @@ export async function renameAccount(request, scope = globalThis) {
   try {
     const answer = await bridge.accountRename(request)
     if (!isPlainObject(answer) || answer.ok !== true) return refusalOf(answer, COPY.renameRefused)
+    if (answer.renamed === true) await refreshAccountNames(scope)
     return Object.freeze({ ok: true, renamed: answer.renamed === true, name: boundedText(answer.name, 64), reason: null })
   } catch (error) {
     return refusalOf(error, COPY.renameRefused)
   }
 }
 
-/** Take a listed account off the list. The folder and its sign-in stay. */
+/** Take a listed account off the list. The folder stays; a sign-in saved in a
+ *  folder Accounts made is deleted, and `credentialDestroyed` says so. */
 export async function removeAccount(request, scope = globalThis) {
   const bridge = accountsBridge(scope)
   if (!bridge || typeof bridge.accountRemove !== 'function') {
@@ -1674,7 +1436,8 @@ export async function removeAccount(request, scope = globalThis) {
   try {
     const answer = await bridge.accountRemove(request)
     if (!isPlainObject(answer) || answer.ok !== true) return refusalOf(answer, COPY.removeRefused)
-    return Object.freeze({ ok: true, removed: answer.removed === true, reason: null })
+    return Object.freeze({ ok: true, removed: answer.removed === true,
+      credentialDestroyed: answer.credentialDestroyed === true, reason: null })
   } catch (error) {
     return refusalOf(error, COPY.removeRefused)
   }
@@ -1720,7 +1483,6 @@ export async function addRegisteredAccount(request, scope = globalThis) {
     const answer = await bridge.accountAdd(request)
     if (answer?.ok !== true) return refusalOf(answer, COPY.addRefused)
     /* A setup answer that waited for the first account is applied now (T1582). */
-    await applyDeferredAccountPolicy(scope).catch(() => null)
     return { ok: true, name: request.name, provider: request.provider, client: request.client || null }
   } catch (error) { return refusalOf(error, COPY.addRefused) }
 }
@@ -1739,7 +1501,6 @@ export async function addManagedAccount(request, scope = globalThis) {
       : (isPlainObject(request) && PROVIDER_IDS.includes(request.provider) ? request.provider : null)
     if (!name || !provider) return refusalOf(null, COPY.addRefused)
     /* A setup answer that waited for the first account is applied now (T1582). */
-    await applyDeferredAccountPolicy(scope).catch(() => null)
     return Object.freeze({ ok: true, code: null, name, provider, reason: null })
   } catch (error) {
     return refusalOf(error, COPY.addRefused)

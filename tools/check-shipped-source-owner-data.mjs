@@ -10,7 +10,7 @@
 // discovered only when a cutter is 18 steps into a build.
 //
 // MEASURED 2026-09-18, and this file exists because of it: shell/spawn-record.cjs
-// landed on the assembly branch with a comment documenting a real measurement
+// landed on cut2/app-assembly-20260917 with a comment documenting a real measurement
 // by quoting the owner's actual account-registry names. `npm test` was green. The
 // integrated cut from that tip stopped at step 18 with two hits inside
 // resources/app.asar, and the whole artifact half had to be re-run from scratch after
@@ -37,7 +37,7 @@
 //   config/  contains config/google-signin.json, the third asar input. The whole
 //            directory is scanned rather than that one file because the guard's roots
 //            are directories; the rest of config/ is committed product configuration
-//            in which no owner value belongs either. Measured clean at an earlier commit.
+//            in which no owner value belongs either. Measured clean at 3b9c32ac.
 //
 // dist/ itself is deliberately NOT scanned: it is a build output, absent from a clean
 // checkout, and already covered by the two release-time runs.
@@ -59,7 +59,7 @@ const SHIPPED_SOURCE_ROOTS = [
 
 // AN EMPTY ALLOWLIST IS A MEASUREMENT, NOT AN OVERSIGHT.
 //
-// Measured at an earlier commit over 634 files / 33,578,855 bytes: "Total matches: 0." No
+// Measured at 3b9c32ac over 634 files / 33,578,855 bytes: "Total matches: 0." No
 // shipped source file carries a fence literal, so nothing needs excusing. The four
 // hits the guard did resolve were published attribution ("Joshua Pinckard" in a
 // licence header), which the guard itself already excuses and which is not owner data
@@ -181,7 +181,7 @@ function main() {
     // The guard prints one row per file AND PATTERN, so a single dirty file that
     // trips three rules produces three rows. Reporting `refused.length` as the
     // file count said "3 shipped source file(s)" for one dirty file -- measured
-    // 2026-09-18 against a planted probe -- and sends the next
+    // 2026-09-18 by Manager 13 against a planted probe -- and sends the next
     // person hunting two files that do not exist. A gate the landing relies on
     // must not overstate its own blast radius. Distinct paths are the file
     // number; the per-pattern rows stay underneath, now grouped by file so the

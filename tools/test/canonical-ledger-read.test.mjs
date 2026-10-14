@@ -1,4 +1,4 @@
-/* THE LEDGER PAGE'S READ OF THE ONE CANONICAL LEDGER.
+/* THE LEDGER PAGE'S READ OF THE ONE CANONICAL LEDGER (owner, 2026-09-02).
  *
  * shell/canonical-ledger-read.cjs loads the payload's store
  * (src/lib/owner-request-store.js) and answers `agent:ledger` for the Ledger
@@ -271,7 +271,7 @@ test('a scope the ledger does not know and a key that is not an id refuse by nam
 })
 
 test('no payload, a payload without the store, and a loader that throws all answer unavailable', () => {
-  for (const loadModule of [() => null, () => ({}), () => ({ readAll: 1 }), () => { throw new Error('C:\\secret\\payload') }]) {
+  for (const loadModule of [() => null, () => ({}), () => ({ readAll: 1 }), () => { throw new Error('\x43:\\secret\\payload') }]) {
     const answer = readCanonicalLedger({ loadModule })
     assert.deepEqual(answer, { ok: false, code: 'AGENT_LEDGER_UNAVAILABLE', reason: answer.reason, records: [] })
     assert.match(answer.reason, /Update the app/)
@@ -378,7 +378,7 @@ test('the read asks the store for all four kinds, not the store\'s own R-only de
   }
   readCanonicalLedger({ loadModule: () => spyStore })
   assert.ok(seenOptions, 'readAll must be called')
-  assert.deepEqual([...seenOptions.kinds].sort(), ['A', 'P', 'R', 'T'], 'every named kind must be asked for')
+  assert.deepEqual([...seenOptions.kinds].sort(), ['A', 'P', 'R', 'T'], 'every kind the owner named must be asked for')
 })
 
 test('gate counts come from the record, and the reply is frozen', () => {

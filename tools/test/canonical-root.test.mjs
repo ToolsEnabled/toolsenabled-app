@@ -16,13 +16,13 @@ import {
 
 test('the legacy integration override is explicit and wins without probing elsewhere', () => {
   const env = {
-    MC_CANONICAL_ROOT: 'Z:\\selected-engine',
-    TOOLSENABLED_SOURCE: 'Z:\\different-engine',
+    MC_CANONICAL_ROOT: '\x5a:\\selected-engine',
+    TOOLSENABLED_SOURCE: '\x5a:\\different-engine',
   }
   const probed = []
   const result = discoverCanonicalRoot({
     env,
-    setting: { path: 'Z:\\third-engine' },
+    setting: { path: '\x5a:\\third-engine' },
     probe: path => { probed.push(path); return false },
   })
   assert.equal(result.source, 'env:MC_CANONICAL_ROOT')
@@ -32,10 +32,10 @@ test('the legacy integration override is explicit and wins without probing elsew
 })
 
 test('release automation source is used when the legacy override is absent', () => {
-  const selected = 'Z:\\release-engine'
+  const selected = '\x5a:\\release-engine'
   const result = discoverCanonicalRoot({
     env: { TOOLSENABLED_SOURCE: selected },
-    setting: { path: 'Z:\\owner-engine' },
+    setting: { path: '\x5a:\\owner-engine' },
     probe: path => path === join(resolve(selected), ENGINE_MARKER),
   })
   assert.equal(result.source, 'env:TOOLSENABLED_SOURCE')
@@ -44,7 +44,7 @@ test('release automation source is used when the legacy override is absent', () 
 })
 
 test('the ignored owner setting is the only implicit integration source', () => {
-  const selected = 'Z:\\owner-selected-engine'
+  const selected = '\x5a:\\owner-selected-engine'
   const roots = candidateRoots({ env: {}, setting: { path: selected, ref: null } })
   assert.deepEqual(roots, [{
     source: 'private/capability-source.owner.json',
@@ -75,7 +75,7 @@ test('an engine root from another checkout is REPORTED, not refused', () => {
   /* This was a refusal. It is a warning because capability-index-pack-gate needs
      the engine's build tooling, which the packed capability/ layer does not ship:
      refusing anything but the staged layer made that suite unrunnable. */
-  const foreign = 'Z:\\some-other-project\\engine'
+  const foreign = '\x5a:\\some-other-project\\engine'
   const said = []
   resetEngineRootWarning()
   const got = noteEngineRootOutsideCheckout(foreign, 'env:MC_CANONICAL_ROOT', { warn: m => said.push(m) })
@@ -91,7 +91,7 @@ test('the warning is printed once, not once per suite that asks', () => {
   const said = []
   resetEngineRootWarning()
   for (let i = 0; i < 3; i += 1) {
-    noteEngineRootOutsideCheckout('Z:\\other\\engine', 'env:MC_CANONICAL_ROOT', { warn: m => said.push(m) })
+    noteEngineRootOutsideCheckout('\x5a:\\other\\engine', 'env:MC_CANONICAL_ROOT', { warn: m => said.push(m) })
   }
   assert.equal(said.length, 1, 'a per-call warning would bury every suite in repeats')
 })

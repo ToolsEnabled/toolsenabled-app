@@ -2,13 +2,14 @@
 
 // WHAT THIS PRODUCT COSTS THE MACHINE IT RUNS ON, MEASURED ON THE PACKAGED WINDOW.
 //
-// WHY IT EXISTS. The requirement: the software performs at a high level with no
-// lag, including when many cloud agents run on a very weak PC, and it is never
-// the reason that system struggles. That names a worst case --
+// WHY IT EXISTS. The owner's requirement, in his words: "make sure the software
+// performs at a high level as in there is no lag. This could potentially be
+// being used to have many cloud agents work on a very weak pc, the last thing we
+// want is to be the reason that system [struggles]." That names a worst case --
 // a WEAK machine running MANY agents -- and nothing in this tree measured it.
 // Every existing packaged driver asks whether a thing WORKS. None asks what it
 // COSTS. A product that works perfectly and burns a core doing nothing is the
-// exact failure they described.
+// exact failure he described.
 //
 // FOUR COSTS, EACH MEASURED WHERE A PERSON WOULD FEEL IT:
 //
@@ -609,9 +610,9 @@ function seedMachineRecord(profile, appRoot, tier) {
   return servicesRoot
 }
 
-/* MANY AGENTS, WHICH IS THE REAL WORST CASE.
+/* MANY AGENTS, WHICH IS THE OWNER'S ACTUAL WORST CASE.
  *
- * Many cloud agents on a very weak PC is a statement about SCALE, and every
+ * "Many cloud agents on a very weak pc" is a statement about SCALE, and every
  * other measurement in this file is taken on a copy that declares one seat. The
  * declared organisation is where an agent count comes from on a real install
  * (src/declared-fleet.js turns it into the fleet the computers page draws), and

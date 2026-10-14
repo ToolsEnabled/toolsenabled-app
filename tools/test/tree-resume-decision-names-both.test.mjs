@@ -13,7 +13,7 @@
  * refusals that name the provider, over a renderer that performs the silent fresh
  * start the ledger forbids.
  *
- * THE BAR: the refusal names BOTH providers — the one that
+ * THE BAR, set by the Controller: the refusal names BOTH providers — the one that
  * owns the conversation and the one being asked to continue it. "This cannot be
  * resumed" sends a person to check everything; naming both tells them what
  * happened and what to change.

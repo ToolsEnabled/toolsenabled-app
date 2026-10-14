@@ -178,7 +178,9 @@ function remoteActionsReopenLiteral([, detail]) {
    sentence in front of every account row -- so it is a literal rather than a
    pattern, kept here beside its templated neighbours because it is the same
    defect on the same page. */
+const DESK_CONVERSATION_RETURN = /\bReturn to this computer’s chats and try again\./
 const DESK_PATTERNS = Object.freeze([
+  [DESK_CONVERSATION_RETURN, match => match.input.replace(DESK_CONVERSATION_RETURN, 'Return to that computer’s chats and try again from here.')],
   [DESK_TERMINAL_CLAUSE, match => match.input.replace(DESK_TERMINAL_CLAUSE, remoteTerminalClause(match)).replace('this computer does not hold one', 'that computer does not hold one')],
   [DESK_SIGNIN_LEAD, remoteSignInLead],
   [DESK_SIGNIN_OPENED, remoteSignInOpened],
@@ -212,6 +214,19 @@ const DESK_PATTERNS = Object.freeze([
  * RESTART_REMEDY_REMOTE was written under. */
 const REMOTE_TWIN = Object.freeze(new Map([
   [RESTART_REMEDY, RESTART_REMEDY_REMOTE],
+
+  ['Uninstalling removes the program. On Windows, the uninstaller then keeps or deletes your saved credentials, '
+    + 'your linked accounts, the signed record of every action taken, your agent history '
+    + 'and your settings. Choose what the Windows uninstaller does with them; kept, they let '
+    + 'a reinstall pick up where you left off. '
+    + 'On Linux, removing the package always keeps them; to delete them, use '
+    + 'Remove this program’s data on the Account page before you uninstall.',
+    'Uninstalling removes the program. If that computer runs Windows, its uninstaller then keeps or deletes your saved credentials, '
+    + 'your linked accounts, the signed record of every action taken, your agent history '
+    + 'and your settings. Choose what the Windows uninstaller on that computer does with them; kept, they let '
+    + 'a reinstall pick up where you left off. '
+    + 'If that computer runs Linux, removing the package always keeps them; to delete them, use '
+    + 'Remove this program’s data on that computer’s Account page before you uninstall there.'],
 
   // Home keeps the bare sentence; shared refusals add punctuation and tree
   // starts add their outcome. Each live form keeps the same host repair.

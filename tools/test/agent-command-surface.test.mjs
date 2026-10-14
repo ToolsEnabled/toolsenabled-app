@@ -25,11 +25,15 @@
  *      construction, not a command later. */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
+import { cpSync, readFileSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import os from 'node:os'
 import { canonicalRootForTests } from '../canonical-root.mjs'
+
+// Capture the selected preload retention contract before any case changes env.
+const retainFixtures = process.env.TOOLSENABLED_TEST_RETAIN_FIXTURES === '1'
+  || process.env.TOOLSENABLED_TEST_STRICT === '1'
 
 const require = createRequire(import.meta.url)
 const surfaceModule = require('../../shell/agent-command-surface.cjs')
@@ -210,7 +214,7 @@ for (const phase of ['account', 'authority']) {
       else process.env.MC_TEST_CONFINEMENT_PLAN = priorPlan
       const relative = path.relative(scratch, realpathSync(cwd))
       assert.ok(relative && !relative.startsWith('..') && !path.isAbsolute(relative))
-      rmSync(cwd, { recursive: true, force: true })
+      if (!retainFixtures) rmSync(cwd, { recursive: true, force: true })
     }
   })
 }
@@ -372,18 +376,18 @@ function fakeDeps(overrides = {}) {
     savePasteAttachment: (mime, bytes) => {
       note('savePasteAttachment', mime, bytes.length)
       sequence += 1
-      return { path: 'C:\\fake\\paste-attachments\\img-' + sequence + '.' + PASTE_IMAGE_MIME_EXTENSIONS[mime], size: bytes.length }
+      return { path: '\x43:\\fake\\paste-attachments\\img-' + sequence + '.' + PASTE_IMAGE_MIME_EXTENSIONS[mime], size: bytes.length }
     },
     rendererSafeAgentError,
     spawnRecordAvailability: () => { note('spawnRecordAvailability'); return { ok: true } },
     spawnRecordHistory: (limit) => { note('spawnRecordHistory', limit); return { ok: true, total: 0, entries: [], limit } },
     usageRecordHistory: (limit) => { note('usageRecordHistory', limit); return { ok: true, total: 0, entries: [], limit } },
     engineAvailability: (options) => { note('engineAvailability', options); return { ok: true, code: 'AGENT_ENGINE_READY' } },
-    ensureWorkspaceRoot: () => { note('ensureWorkspaceRoot'); return 'C:\\fake\\workspace' },
+    ensureWorkspaceRoot: () => { note('ensureWorkspaceRoot'); return '\x43:\\fake\\workspace' },
     chosenWorkspaceCwd: () => { note('chosenWorkspaceCwd'); return null },
     readAgentConfinement: (options) => { note('readAgentConfinement', options); return { ok: true, tier: 'guided' } },
     listAgentTools: (options) => { note('listAgentTools', options); return { ok: true, tier: 'guided', total: 0, tools: [] } },
-    resolveCapabilityRoot: () => { note('resolveCapabilityRoot'); return 'C:\\fake\\capability' },
+    resolveCapabilityRoot: () => { note('resolveCapabilityRoot'); return '\x43:\\fake\\capability' },
     requireModule: (file) => { note('requireModule', file); return { ownerJournal: async ({ limit }) => ({ ok: true, messages: [], limit }) } },
     readStandingRequests: (request) => { note('readStandingRequests', request); return { ok: true, exists: false, entries: [] } },
     readCanonicalLedger: (request) => {
@@ -394,13 +398,13 @@ function fakeDeps(overrides = {}) {
       list: () => { note('profiles.list'); return [{ id: 'p1', name: 'one' }] },
       create: (request) => { note('profiles.create', request); return { id: 'p2', ...request } },
       remove: (id) => { note('profiles.remove', id); return true },
-      resolveCwd: (id) => { note('profiles.resolveCwd', id); if (id === 'missing') { const e = new Error('gone'); e.code = 'PROFILE_UNKNOWN'; throw e } return 'C:\\fake\\profile\\' + id },
+      resolveCwd: (id) => { note('profiles.resolveCwd', id); if (id === 'missing') { const e = new Error('gone'); e.code = 'PROFILE_UNKNOWN'; throw e } return '\x43:\\fake\\profile\\' + id },
     },
     recordSpawnIntent: (request) => { note('recordSpawnIntent', request); sequence += 1; return { sequence, eventHash: 'hash-' + sequence, durable: true, signed: true } },
     recordSpawnOutcome: (request, receipt, result, reason, detail) => { note('recordSpawnOutcome', request, receipt, result, reason, detail) },
     recordSessionEnd: (session, sessionId, reason) => { note('recordSessionEnd', sessionId, reason); session.ended = true },
     bindAgentOwner: (owner) => { note('bindAgentOwner', owner) },
-    /* Required since an earlier commit (saved-node task handoffs). Inert here: with no
+    /* Required since 2a942239 (saved-node task handoffs). Inert here: with no
        phase functions every task-topology request refuses as unavailable, and
        nothing in this suite asks for one. */
     taskTopologyAdmission: Object.freeze({}),
@@ -433,12 +437,12 @@ function fakeDeps(overrides = {}) {
       exportOrg: () => { note('org.exportOrg'); return { ok: true, document: {} } },
     },
     dialog: {
-      showOpenDialog: async (options) => { note('showOpenDialog', options); return { canceled: false, filePaths: ['C:\\fake\\picked.png'] } },
+      showOpenDialog: async (options) => { note('showOpenDialog', options); return { canceled: false, filePaths: ['\x43:\\fake\\picked.png'] } },
     },
     MAX_AGENT_SESSIONS: 8,
     MAX_SESSION_ID_LENGTH,
     AGENT_EFFORT_VALUES,
-    WORKSPACE_ROOT: 'C:\\fake\\workspace',
+    WORKSPACE_ROOT: '\x43:\\fake\\workspace',
     ...overrides,
   }
   return Object.assign(deps, { calls, host, names: () => calls.map(c => c.name) })
@@ -654,13 +658,274 @@ test('availability: the recorder is asked first, then the engine about the prepa
   const answer = await surface.run('agent:availability', undefined, window)
   assert.deepEqual(answer, { ok: true, code: 'AGENT_ENGINE_READY' })
   assert.deepEqual(deps.names(), ['spawnRecordAvailability', 'ensureWorkspaceRoot', 'engineAvailability'])
-  assert.deepEqual(deps.calls[2].args[0], { defaultCwd: 'C:\\fake\\workspace' })
+  assert.deepEqual(deps.calls[2].args[0], { defaultCwd: '\x43:\\fake\\workspace' })
 
   const refused = fakeDeps({ spawnRecordAvailability: () => ({ ok: false, code: 'SPAWN_RECORD_UNAVAILABLE' }) })
   const answer2 = await createAgentCommandSurface(refused).run('agent:availability', {}, window)
   assert.deepEqual(answer2, { ok: false, code: 'SPAWN_RECORD_UNAVAILABLE' })
   assert.ok(!refused.names().includes('engineAvailability'), 'the engine was asked after the recorder refused')
   assert.equal((await refusal(surface.run('agent:availability', { extra: 1 }, window))).code, 'MC_AGENT_INVALID_PAYLOAD')
+})
+
+test('availability validates a selected tier through the real host and engine readiness path', async () => {
+  const { createAgentHost, engineAvailability } = require('../../shell/agent-host.cjs')
+  const enginePath = path.join(import.meta.dirname, 'fixtures/confined-engine/src/lib/agent-engine/codex-process.js')
+  const workdir = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'selected-tier-readiness-')))
+  const agyParent = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'selected-tier-antigravity-')))
+  const agyRoot = path.join(agyParent, 'engine')
+  cpSync(path.join(import.meta.dirname, 'fixtures/confined-engine'), agyRoot, { recursive: true })
+  writeFileSync(path.join(agyRoot, 'src/lib/agent-engine/antigravity-cli-process.js'), [
+    "'use strict'",
+    'const noop = () => ({ ok: true })',
+    'module.exports = { startAntigravitySession: noop, resumeAntigravitySession: noop, ROOT_ADMISSION_CONTRACT_VERSION: 1, MODEL_SELECTION_CONTRACT_VERSION: 1 }',
+    '',
+  ].join(String.fromCharCode(10)))
+  const plannerPath = path.join(agyRoot, 'src/lib/agent-session-confinement.js')
+  writeFileSync(plannerPath, readFileSync(plannerPath, 'utf8') + String.fromCharCode(10) + 'module.exports.antigravitySessionPlan = () => ({ ok: true })' + String.fromCharCode(10))
+  const agyEnginePath = path.join(agyRoot, 'src/lib/agent-engine/codex-process.js')
+  const providerRows = ({ claude = 'yes', codex = 'no', gemini = 'no', clients = [] } = {}) => ({
+    ok: true,
+    providers: [
+      { id: 'claude', installed: claude },
+      { id: 'codex', installed: codex },
+      { id: 'gemini', installed: gemini },
+    ],
+    clients,
+  })
+  const makeHost = (selectedEngine = enginePath) => createAgentHost({
+    enginePath: selectedEngine,
+    defaultCwd: workdir,
+    freeMemory: () => 64 * 1024 ** 3,
+    providerSignIn: () => 'yes',
+  })
+  const run = async ({ presence, cwd = workdir, route = 'claude', providerPresence, selectedEngine = enginePath } = {}) => {
+    const host = makeHost(selectedEngine)
+    const selectedHost = route === 'local'
+      ? {
+          ...host,
+          startRouteForTier: () => ({ provider: 'local' }),
+          startableTiers: () => ({ ok: true, tier: 'local' }),
+        }
+      : route === 'antigravity'
+        ? {
+            ...host,
+            startRouteForTier: () => ({ provider: 'gemini', client: 'antigravity' }),
+            startableTiers: () => ({ ok: true, tier: 'agy-gemini-3-8-flash-low' }),
+          }
+        : host
+    const deps = fakeDeps({
+      getAgentHost: async () => selectedHost,
+      ensureWorkspaceRoot: () => cwd,
+      engineAvailability: options => engineAvailability({
+        ...options,
+        enginePath: selectedEngine,
+        providerPresence: providerPresence || (() => presence),
+      }),
+      ...(route === 'local'
+        ? { detectLocal: async () => ({ ok: true, ready: false }) }
+        : {}),
+    })
+    try {
+      return await createAgentCommandSurface(deps).run(
+        'agent:availability',
+        { tier: route === 'local' ? 'local' : route === 'antigravity' ? 'agy-gemini-3-8-flash-low' : 'claude-sonnet' },
+        window,
+      )
+    } finally {
+      await host.closeAll()
+    }
+  }
+  try {
+    /* The real host selects Claude and the real engine checks its module,
+       provider presence and common launch environment. Codex is deliberately
+       absent here: a ready selected Claude must not borrow the default answer. */
+    const ready = await run({ presence: providerRows({ claude: 'yes', codex: 'no' }) })
+    assert.equal(ready.ok, true)
+    assert.equal(ready.readyProvider, 'claude')
+    assert.equal(ready.tier, 'claude-sonnet')
+
+    /* A real selected-host route with Codex present still refuses when the
+       selected Claude provider is absent. */
+    const missing = await run({ presence: providerRows({ claude: 'no', codex: 'yes' }) })
+    assert.deepEqual(missing, {
+      ok: false, code: 'PROVIDER_LOGIN_NOT_INSTALLED', tier: 'claude-sonnet',
+    })
+
+    /* The common host boundary rejects a non-directory cwd before the
+       selected provider is consulted. This uses the real fixture engine file,
+       so the case does not rely on a fabricated or missing profile path. */
+    const common = await run({
+      presence: providerRows(),
+      cwd: enginePath,
+    })
+    assert.deepEqual(common, {
+      ok: false, code: 'AGENT_HOST_INVALID_CWD', tier: 'claude-sonnet',
+    })
+
+    /* Local readiness has its own diagnosis and does not borrow hosted engine
+       copy. The command still uses the real engineAvailability implementation. */
+    const local = await run({ route: 'local', presence: providerRows() })
+    assert.deepEqual(local, {
+      ok: false, code: 'LOCAL_NODE_RUNTIME_UNAVAILABLE', tier: 'local',
+    })
+
+    /* Antigravity has its own provider-cli-presence client row. A ready
+       agy executable must remain usable when the ordinary Gemini CLI is absent;
+       the client row, not the provider row, is authoritative for this route. */
+    const agyPresence = providerRows({
+      claude: 'no',
+      codex: 'no',
+      gemini: 'no',
+      clients: [{ provider: 'gemini', client: 'antigravity', installed: 'yes' }],
+    })
+    const agy = await run({
+      route: 'antigravity',
+      selectedEngine: agyEnginePath,
+      presence: agyPresence,
+    })
+    assert.equal(agy.ok, true)
+    assert.equal(agy.readyProvider, 'gemini')
+    assert.equal(agy.tier, 'agy-gemini-3-8-flash-low')
+
+    const noTierAgy = engineAvailability({
+      enginePath: agyEnginePath,
+      defaultCwd: workdir,
+      providerPresence: () => agyPresence,
+    })
+    assert.equal(noTierAgy.ok, true)
+    assert.equal(noTierAgy.code, 'AGENT_ENGINE_READY')
+
+    const agyMissing = await run({
+      route: 'antigravity',
+      selectedEngine: agyEnginePath,
+      presence: { ...agyPresence, clients: [{ provider: 'gemini', client: 'antigravity', installed: 'no' }] },
+    })
+    assert.deepEqual(agyMissing, {
+      ok: false, code: 'PROVIDER_LOGIN_NOT_INSTALLED', tier: 'agy-gemini-3-8-flash-low',
+    })
+
+    /* A provider probe that throws is unknown, not proof that the program is
+       absent. The dedicated provider-presence refusal is mapped on both
+       surfaces, rather than borrowing the account sign-in sentence. */
+    const unknown = await run({
+      providerPresence: () => { throw new Error('presence read failed') },
+    })
+    assert.deepEqual(unknown, {
+      ok: false, code: 'AGENT_PROVIDER_PRESENCE_UNAVAILABLE', tier: 'claude-sonnet',
+    })
+    const [{ unavailableReason, UNAVAILABLE_TEXT }, { ENGINE_REASON }] = await Promise.all([
+      import('../../src/agent-availability-copy.js'),
+      import('../../src/local-activity.js'),
+    ])
+    assert.equal(unavailableReason(unknown.code), UNAVAILABLE_TEXT[unknown.code])
+    assert.match(unavailableReason(unknown.code), /could not verify/i)
+    assert.match(unavailableReason(unknown.code), /selected provider/i)
+    assert.match(ENGINE_REASON[unknown.code], /provider.*verified/i)
+    assert.doesNotMatch(unavailableReason(unknown.code), /account|sign-in/i)
+  } finally {
+    if (!retainFixtures) rmSync(workdir, { recursive: true, force: true })
+    if (!retainFixtures) rmSync(agyParent, { recursive: true, force: true })
+  }
+})
+
+
+for (const [fault, code] of [
+  ['engine', 'AGENT_ENGINE_UNAVAILABLE'],
+  ['profile', 'AGENT_CONFINEMENT_FOREIGN_PROFILE'],
+  ['launch environment', 'AGENT_LAUNCH_ENVIRONMENT_UNAVAILABLE'],
+]) {
+  test('selected availability retains the common ' + fault + ' refusal', async () => {
+    const { createAgentHost, engineAvailability } = require('../../shell/agent-host.cjs')
+    const fixtureRoot = path.join(import.meta.dirname, 'fixtures/confined-engine')
+    const validEngine = path.join(fixtureRoot, 'src/lib/agent-engine/codex-process.js')
+    const workdir = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'selected-common-boundary-')))
+    const brokenRoot = path.join(workdir, 'engine')
+    cpSync(fixtureRoot, brokenRoot, { recursive: true })
+    let probeCwd = workdir
+    if (fault === 'engine') {
+      writeFileSync(path.join(brokenRoot, 'src/lib/agent-engine/codex-process.js'), 'module.exports = {}\n')
+    } else if (fault === 'profile') {
+      probeCwd = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'foreign-profile-sentinel-')))
+    } else {
+      writeFileSync(path.join(brokenRoot, 'src/lib/providers/subscription-launch-env.js'), 'module.exports = {}\n')
+    }
+    // Tier selection is real and ready; the separate real engine probe must
+    // still preserve its common refusal at the command boundary.
+    const host = createAgentHost({
+      enginePath: validEngine, defaultCwd: workdir,
+      freeMemory: () => 64 * 1024 ** 3, providerSignIn: () => 'yes',
+    })
+    const deps = fakeDeps({
+      getAgentHost: async () => host,
+      ensureWorkspaceRoot: () => probeCwd,
+      engineAvailability: options => engineAvailability({
+        ...options,
+        enginePath: path.join(brokenRoot, 'src/lib/agent-engine/codex-process.js'),
+        providerPresence: () => ({
+          ok: true, providers: [{ id: 'claude', installed: 'yes' }, { id: 'codex', installed: 'no' }],
+        }),
+      }),
+    })
+    try {
+      const result = await createAgentCommandSurface(deps).run(
+        'agent:availability', { tier: 'claude-sonnet' }, window,
+      )
+      assert.deepEqual(result, { ok: false, code, tier: 'claude-sonnet' })
+      assert.equal(deps.names().includes('startSession'), false)
+    } finally {
+      await host.closeAll()
+    }
+    // The canonical source runner retains these isolated fixtures.
+  })
+}
+
+test('selected availability rechecks recording after a held host or Local detector and fails closed without engine access', async () => {
+  for (const phase of ['host', 'detector']) {
+    let release, entered
+    const gate = new Promise(resolve => { release = resolve })
+    const waiting = new Promise(resolve => { entered = resolve })
+    let recordReads = 0
+    let engineReads = 0
+    const host = {
+      startRouteForTier: () => ({ provider: 'local' }),
+      startableTiers: () => ({ ok: true, tier: 'local' }),
+    }
+    const deps = fakeDeps({
+      getAgentHost: phase === 'host'
+        ? async () => { entered(); await gate; return host }
+        : () => host,
+      detectLocal: phase === 'detector'
+        ? async () => { entered(); await gate; return { ok: true, ready: true } }
+        : undefined,
+      spawnRecordAvailability: () => ++recordReads === 1
+        ? { ok: true }
+        : { ok: false, code: 'SPAWN_RECORD_UNAVAILABLE' },
+      engineAvailability: () => { engineReads += 1; return { ok: true, code: 'AGENT_ENGINE_READY' } },
+    })
+    const pending = createAgentCommandSurface(deps).run(
+      'agent:availability', { tier: 'local' }, window,
+    )
+    await waiting
+    release()
+    assert.deepEqual(await pending, { ok: false, code: 'SPAWN_RECORD_UNAVAILABLE' }, phase)
+    assert.equal(engineReads, 0, phase + ': a post-await recorder refusal must precede engine access')
+  }
+
+  let engineReads = 0
+  const missingRoute = fakeDeps({
+    getAgentHost: () => ({
+      startableTiers: () => ({ ok: true, tier: 'claude-sonnet' }),
+      startRouteForTier: () => null,
+    }),
+    engineAvailability: () => { engineReads += 1; return { ok: true, code: 'AGENT_ENGINE_READY' } },
+  })
+  assert.deepEqual(
+    await createAgentCommandSurface(missingRoute).run(
+      'agent:availability', { tier: 'claude-sonnet' }, window,
+    ),
+    { ok: false, tier: 'claude-sonnet', code: 'AGENT_TIER_NO_LAUNCHER' },
+  )
+  assert.equal(engineReads, 0, 'a route-less selection cannot borrow default availability')
 })
 
 test('availability uses Local runtime evidence only after a provider-specific refusal and rechecks shared fences', async () => {
@@ -676,7 +941,7 @@ test('availability uses Local runtime evidence only after a provider-specific re
     })
     const answer = await createAgentCommandSurface(deps).run('agent:availability', {}, window)
     assert.equal(answer.readyProvider, 'local')
-    assert.deepEqual(calls, [{ defaultCwd: 'C:\\fake\\workspace' }, 'local', { defaultCwd: 'C:\\fake\\workspace', localRuntime: local }])
+    assert.deepEqual(calls, [{ defaultCwd: '\x43:\\fake\\workspace' }, 'local', { defaultCwd: '\x43:\\fake\\workspace', localRuntime: local }])
   }
   for (const first of [{ ok: true, code: 'AGENT_ENGINE_READY' }, { ok: false, code: 'AGENT_CONFINEMENT_FOREIGN_PROFILE' }]) {
     let probes = 0
@@ -702,10 +967,10 @@ test('availability does not turn absent, malformed, or failed Local probes into 
 })
 
 test('Local can answer an unknown hosted sign-in, using a fresh workspace after the runtime read', async () => {
-  let cwd = 'C:\\fake\\before', reads = 0
+  let cwd = '\x43:\\fake\\before', reads = 0
   const deps = fakeDeps({
     ensureWorkspaceRoot: () => cwd,
-    detectLocal: async () => { cwd = 'C:\\fake\\after'; return { ok: true, ready: true } },
+    detectLocal: async () => { cwd = '\x43:\\fake\\after'; return { ok: true, ready: true } },
     engineAvailability: options => {
       reads++
       assert.equal(options.defaultCwd, cwd)
@@ -747,9 +1012,9 @@ test('confinement and tools read through the capability root', async () => {
   const deps = fakeDeps()
   const surface = createAgentCommandSurface(deps)
   assert.deepEqual(await surface.run('agent:confinement', undefined, window), { ok: true, tier: 'guided' })
-  assert.deepEqual(deps.calls.at(-1), { name: 'readAgentConfinement', args: [{ capabilityRoot: 'C:\\fake\\capability' }] })
+  assert.deepEqual(deps.calls.at(-1), { name: 'readAgentConfinement', args: [{ capabilityRoot: '\x43:\\fake\\capability' }] })
   assert.deepEqual(await surface.run('agent:tools', undefined, window), { ok: true, tier: 'guided', total: 0, tools: [] })
-  assert.deepEqual(deps.calls.at(-1), { name: 'listAgentTools', args: [{ capabilityRoot: 'C:\\fake\\capability' }] })
+  assert.deepEqual(deps.calls.at(-1), { name: 'listAgentTools', args: [{ capabilityRoot: '\x43:\\fake\\capability' }] })
 })
 
 test('local-messages bounds the limit, loads the journal from the engine root, and degrades honestly', async () => {
@@ -761,7 +1026,7 @@ test('local-messages bounds the limit, loads the journal from the engine root, a
   assert.match(deps.calls.find(c => c.name === 'requireModule').args[0], /agent-comms-local\.js$/)
   const absent = createAgentCommandSurface(fakeDeps({ resolveCapabilityRoot: () => null }))
   assert.deepEqual(await absent.run('agent:local-messages', {}, window), { ok: false, reason: 'the live message reader is not available in this build' })
-  const broken = createAgentCommandSurface(fakeDeps({ requireModule: () => { throw new Error('C:\\secret\\path') } }))
+  const broken = createAgentCommandSurface(fakeDeps({ requireModule: () => { throw new Error('\x43:\\secret\\path') } }))
   assert.deepEqual(await broken.run('agent:local-messages', {}, window), { ok: false, reason: 'the live message reader is not available in this build' })
 })
 
@@ -1036,22 +1301,22 @@ test('start: forged and stale role packets refuse before a record, session, or c
 })
 
 test('start: a profile is resolved in the main process, a missing one refuses by name, and cwd falls back to the chosen workspace', async () => {
-  const deps = fakeDeps({ chosenWorkspaceCwd: () => 'C:\\fake\\chosen' })
+  const deps = fakeDeps({ chosenWorkspaceCwd: () => '\x43:\\fake\\chosen' })
   const surface = createAgentCommandSurface(deps)
   await surface.run('agent:start', { sessionId: 'a', profileId: 'p1' }, window)
   const spawned = deps.calls.find(c => c.name === 'startSession').args[0]
-  assert.equal(spawned.cwd, 'C:\\fake\\profile\\p1')
+  assert.equal(spawned.cwd, '\x43:\\fake\\profile\\p1')
   assert.equal(deps.agentSessions.get('a').cwd, spawned.cwd, 'changed file paths retain the session profile folder')
   assert.equal(deps.agentSessions.get('a').profileId, 'p1', 'native review retains the selected registered ID')
   assert.equal(spawned.profileId, undefined, 'profileId does not reach the host')
   await surface.run('agent:start', { sessionId: 'b' }, window)
-  assert.equal(deps.calls.filter(c => c.name === 'startSession')[1].args[0].cwd, 'C:\\fake\\chosen')
-  assert.equal(deps.agentSessions.get('b').cwd, 'C:\\fake\\chosen', 'the session captures the workspace selected at start')
+  assert.equal(deps.calls.filter(c => c.name === 'startSession')[1].args[0].cwd, '\x43:\\fake\\chosen')
+  assert.equal(deps.agentSessions.get('b').cwd, '\x43:\\fake\\chosen', 'the session captures the workspace selected at start')
   assert.equal(deps.agentSessions.get('b').profileId, null, 'default workspace never gains a made-up profile')
   const refused = await refusal(surface.run('agent:start', { sessionId: 'c', profileId: 'missing' }, window))
   assert.equal(refused.code, 'MC_AGENT_PROFILE_UNKNOWN')
   assert.ok(!deps.agentSessions.has('c'))
-  assert.equal((await refusal(surface.run('agent:start', { sessionId: 'd', cwd: 'C:\\anywhere' }, window))).code, 'MC_AGENT_CWD_NOT_YOURS')
+  assert.equal((await refusal(surface.run('agent:start', { sessionId: 'd', cwd: '\x43:\\anywhere' }, window))).code, 'MC_AGENT_CWD_NOT_YOURS')
 })
 
 test('start: a session that already exists refuses before anything is recorded, and NOTHING refuses for being the nth', async () => {
@@ -1062,7 +1327,7 @@ test('start: a session that already exists refuses before anything is recorded, 
   assert.equal((await refusal(surface.run('agent:start', { sessionId: 'one' }, window))).code, 'MC_AGENT_SESSION_EXISTS')
   assert.ok(!deps.names().includes('recordSpawnIntent'), 'a refused start records no intent')
 
-  /* THE CEILING IS GONE (rule: there is no ceiling).
+  /* THE CEILING IS GONE (owner, 2026-09-03: it was never supposed to exist).
      Twelve is the number in the request that found it -- a tree of twelve
      workers -- so twelve is what this starts, and every one of them starts. */
   for (let index = 0; index < 12; index += 1) {
@@ -1178,7 +1443,7 @@ test('start: failed audit admission crosses IPC as a code without creating a hos
 
 test('start: a refused spawn is recorded as refused, leaves no session, and crosses as a renderer-safe code', async () => {
   const deps = fakeDeps()
-  deps.host.startSession = async request => { throw fixtureStartRefusal(request.sessionId, 'AGENT_ENGINE_MISSING', 'Unable to run codex: C:\\secret\\engine') }
+  deps.host.startSession = async request => { throw fixtureStartRefusal(request.sessionId, 'AGENT_ENGINE_MISSING', 'Unable to run codex: \x43:\\secret\\engine') }
   const surface = createAgentCommandSurface(deps)
   const refused = await surface.run('agent:start', { sessionId: 'x' }, window)
   assert.equal(refused.ok, false)
@@ -1190,7 +1455,7 @@ test('start: a refused spawn is recorded as refused, leaves no session, and cros
   /* T393: the measured sentence goes to the RECORDER beside the code (the
      recorder decides whether it is safe to keep); it still never crosses to
      the renderer, as asserted on refused.message above. */
-  assert.equal(outcome.args[4], 'Unable to run codex: C:\\secret\\engine')
+  assert.equal(outcome.args[4], 'Unable to run codex: \x43:\\secret\\engine')
 
   const cleanup = fakeDeps()
   cleanup.host.startSession = async () => { const e = new Error('x'); e.code = 'AGENT_SESSION_CLEANUP_FAILED'; throw e }
@@ -1284,19 +1549,19 @@ test('send: owned sessions only, and only picked images ride', async () => {
 
   /* THE IMAGE FENCE. Unpicked refuses by name and nothing is sent. */
   deps.calls.length = 0
-  const unpicked = await refusal(surface.run('agent:send', { sessionId: 'chat-1', text: 'look', images: [{ path: 'C:\\anything.png' }] }, window))
+  const unpicked = await refusal(surface.run('agent:send', { sessionId: 'chat-1', text: 'look', images: [{ path: '\x43:\\anything.png' }] }, window))
   assert.equal(unpicked.code, 'MC_AGENT_ATTACHMENT_UNKNOWN')
   assert.ok(!deps.names().includes('sendTurn'), 'an unpicked image reached the engine')
 
   /* Picked in THIS session by THIS owner's dialog: rides. */
   await surface.run('agent:pick-attachment', { sessionId: 'chat-1' }, window)
   deps.calls.length = 0
-  await surface.run('agent:send', { sessionId: 'chat-1', text: 'look', images: [{ path: 'C:\\fake\\picked.png' }] }, window)
-  assert.deepEqual(deps.calls.at(-1).args[0], { sessionId: 'chat-1', text: 'look', images: [{ path: 'C:\\fake\\picked.png' }], origin: 'person' })
+  await surface.run('agent:send', { sessionId: 'chat-1', text: 'look', images: [{ path: '\x43:\\fake\\picked.png' }] }, window)
+  assert.deepEqual(deps.calls.at(-1).args[0], { sessionId: 'chat-1', text: 'look', images: [{ path: '\x43:\\fake\\picked.png' }], origin: 'person' })
 
   /* Picked in ANOTHER session: refused -- the allowlist is per session. */
   await startedSession(deps, surface, 'chat-2')
-  assert.equal((await refusal(surface.run('agent:send', { sessionId: 'chat-2', text: 'look', images: [{ path: 'C:\\fake\\picked.png' }] }, window))).code, 'MC_AGENT_ATTACHMENT_UNKNOWN')
+  assert.equal((await refusal(surface.run('agent:send', { sessionId: 'chat-2', text: 'look', images: [{ path: '\x43:\\fake\\picked.png' }] }, window))).code, 'MC_AGENT_ATTACHMENT_UNKNOWN')
 })
 
 test('tree adoption preserves the exact session owner and only records an acknowledged first assignment', async () => {
@@ -1433,7 +1698,7 @@ test('request files through the host; requests reads the ledger without a host',
   assert.equal((await refusal(surface.run('agent:requests', undefined, window))).code, 'MC_AGENT_INVALID_PAYLOAD', 'scope is required')
 })
 
-/* THE LEDGER KINDS SPLIT (the shared interface): a
+/* THE LEDGER KINDS SPLIT (Controller 3's shared interface, 2026-09-07): a
    /Task or /Ask files through this exact same agent:request channel, with an
    OPTIONAL `kind` field ('T' or 'A') riding beside scope, key, words and
    label. Before this field existed on the allowlist, agentPayload() refused
@@ -1518,7 +1783,7 @@ test('request: an optional kind of T or A rides to the host; an unrecognized kin
     'MC_AGENT_INVALID_PAYLOAD', 'a kind that is not text must refuse rather than reach the host')
 })
 
-/* THE WHOLE LEDGER FOR THE LEDGER PAGE (rule: one canonical
+/* THE WHOLE LEDGER FOR THE LEDGER PAGE (owner, 2026-09-02: one canonical
    ledger with scope tiers). A READ: no host, no session, the reader's own
    answer passed through, and a read-only caller served -- because the reader
    never creates the file, a read is all it is. */
@@ -1552,7 +1817,7 @@ test('ledger reads the whole ledger without a host, bounded, and serves a read-o
   for (const payload of [
     undefined,
     null,
-    { scope: 'tree', path: 'C:\\anywhere' },
+    { scope: 'tree', path: '\x43:\\anywhere' },
     { scope: 'x'.repeat(17) },
     { key: 'k'.repeat(129) },
     { removed: 'yes' },
@@ -1574,7 +1839,7 @@ test('ledger reads the whole ledger without a host, bounded, and serves a read-o
   }
 })
 
-/* THE PERSON'S DECISION ON ONE RECORD: approve a proposal
+/* THE PERSON'S DECISION ON ONE RECORD (owner, 2026-09-02): approve a proposal
    an agent filed, or decline it. A write, person-only exactly like edit and
    remove, through the built host; one of two decision words; an optional
    bounded reason. */
@@ -1613,7 +1878,7 @@ test('request-decide: a person-only write with two decision words, through the b
   }
 
   /* The host's own refusal crosses as its code, never its prose. */
-  deps.host.decideStandingRequest = async () => { const e = new Error('R9 is not in the ledger (C:\\secret\\ledger.json)'); e.code = 'AGENT_REQUEST_ENTRY_UNKNOWN'; throw e }
+  deps.host.decideStandingRequest = async () => { const e = new Error('R9 is not in the ledger (\x43:\\secret\\ledger.json)'); e.code = 'AGENT_REQUEST_ENTRY_UNKNOWN'; throw e }
   const unknown = await refusal(surface.run('agent:request-decide', { id: 'R9', decision: 'approve' }, window))
   assert.equal(unknown.code, 'AGENT_REQUEST_ENTRY_UNKNOWN')
   assert.equal(unknown.message, 'AGENT_REQUEST_ENTRY_UNKNOWN', 'the prose (and the path in it) stays behind')
@@ -1636,7 +1901,7 @@ test('request-decide: a person-only write with two decision words, through the b
 })
 
 /* THE PERSON'S RESOLUTION OF ONE STANDING REQUEST (R_LEDGER kinds follow-on,
-   kinds follow-on). The exact mirror of request-decide just
+   2026-09-07, Controller 3 L4e). The exact mirror of request-decide just
    above: a write, person-only, through the built host; a bounded id, a
    bounded status word, an optional bounded reason. The id's kind letter and
    the status vocabulary are the host's job, not this seam's -- this test
@@ -1680,7 +1945,7 @@ test('request-resolve: a person-only write with a bounded status word, through t
      posture as decide (a re-prefixed R_LEDGER_* code) and as completeTask
      etc (the store's own code passed through unchanged): either way this
      seam never invents or rewrites the code, only forwards it. */
-  deps.host.resolveStandingRequest = async () => { const e = new Error('T9 is not a standing request record (C:\\secret\\ledger.json)'); e.code = 'AGENT_LEDGER_ID_KIND_MISMATCH'; throw e }
+  deps.host.resolveStandingRequest = async () => { const e = new Error('T9 is not a standing request record (\x43:\\secret\\ledger.json)'); e.code = 'AGENT_LEDGER_ID_KIND_MISMATCH'; throw e }
   const unknown = await refusal(surface.run('agent:request-resolve', { id: 'T9', status: 'done' }, window))
   assert.equal(unknown.code, 'AGENT_LEDGER_ID_KIND_MISMATCH')
   assert.equal(unknown.message, 'AGENT_LEDGER_ID_KIND_MISMATCH', 'the prose (and the path in it) stays behind')
@@ -1702,8 +1967,9 @@ test('request-resolve: a person-only write with a bounded status word, through t
   assert.deepEqual(deps.names(), [], 'a person-only refusal touched the host')
 })
 
-/* THE PERSON'S HAND ON ONE STANDING RULE (O7 improvements: the person can change
-   or delete ledger entries directly). Two verbs, registered as writes without a
+/* THE PERSON'S HAND ON ONE STANDING RULE (O7 improvements, owner 2026-08-22:
+   "its a hand edit tool. for the user to go in on the toolsenabled ledger and
+   hand edit or delete them"). Two verbs, registered as writes without a
    dialog; the same bounds as filing (id, optional key, and for an edit the
    words at the ledger's 16KB cap); the host is BUILT for them like a filing
    is, because no session need exist. And PERSON-ONLY: the window and the
@@ -1756,7 +2022,7 @@ test('request-edit and request-remove: person-only writes, bounded like filing, 
   }
 
   /* The host's own refusal crosses as its code, never its prose. */
-  deps.host.editStandingRequest = async () => { const e = new Error('RT9 is not in this ledger (C:\\secret\\ledger.md)'); e.code = 'AGENT_REQUEST_ENTRY_UNKNOWN'; throw e }
+  deps.host.editStandingRequest = async () => { const e = new Error('RT9 is not in this ledger (\x43:\\secret\\ledger.md)'); e.code = 'AGENT_REQUEST_ENTRY_UNKNOWN'; throw e }
   const unknown = await refusal(surface.run('agent:request-edit', { id: 'RT9', key: 'k1', words: 'w' }, window))
   assert.equal(unknown.code, 'AGENT_REQUEST_ENTRY_UNKNOWN')
   assert.equal(unknown.message, 'AGENT_REQUEST_ENTRY_UNKNOWN', 'the prose (and the path in it) stays behind')
@@ -1795,7 +2061,7 @@ test('request-edit and request-remove: person-only writes, bounded like filing, 
 })
 
 /* THE LEDGER PAGE'S WRITE VERBS FOR TASK AND ASK RECORDS (ledger kinds,
-   kinds). The exact mirror of the block
+   2026-09-07, Controller 3 ruling 05:20Z). The exact mirror of the block
    just above: writes, no dialog, person-only, bounded ids, and for
    answerAsk the words at the same 16KB cap as filing. */
 test('task-complete, task-remove, ask-answer, ask-decline, ask-remove: person-only writes through the built host', async () => {
@@ -1868,7 +2134,7 @@ test('task-complete, task-remove, ask-answer, ask-decline, ask-remove: person-on
   /* The store's own refusal crosses as its code, never its prose -- see the
      interface ruling: "the store's typed refusal codes pass through
      unchanged" (unlike the R family's re-prefix). */
-  deps.host.completeTask = async () => { const e = new Error('T9 is done (C:\\secret\\ledger.md)'); e.code = 'AGENT_LEDGER_ID_KIND_MISMATCH'; throw e }
+  deps.host.completeTask = async () => { const e = new Error('T9 is done (\x43:\\secret\\ledger.md)'); e.code = 'AGENT_LEDGER_ID_KIND_MISMATCH'; throw e }
   const unknown = await refusal(surface.run('agent:task-complete', { id: 'T9' }, window))
   assert.equal(unknown.code, 'AGENT_LEDGER_ID_KIND_MISMATCH')
   assert.equal(unknown.message, 'AGENT_LEDGER_ID_KIND_MISMATCH', 'the prose (and the path in it) stays behind')
@@ -1902,7 +2168,7 @@ test('profiles: list, create through the dialog, remove', async () => {
   const deps = fakeDeps()
   const surface = createAgentCommandSurface(deps)
   assert.deepEqual(await surface.run('agent:profiles', undefined, window), { ok: true, profiles: [{ id: 'p1', name: 'one' }] })
-  assert.deepEqual(await surface.run('agent:profile-create', { name: 'work' }, window), { ok: true, profile: { id: 'p2', name: 'work', cwd: 'C:\\fake\\picked.png' } })
+  assert.deepEqual(await surface.run('agent:profile-create', { name: 'work' }, window), { ok: true, profile: { id: 'p2', name: 'work', cwd: '\x43:\\fake\\picked.png' } })
   assert.deepEqual(deps.calls.find(c => c.name === 'showOpenDialog').args[0], { title: 'Choose the folder agents in this profile work in', properties: ['openDirectory'] })
   const cancelled = createAgentCommandSurface(fakeDeps({ dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) } }))
   assert.deepEqual(await cancelled.run('agent:profile-create', { name: 'work' }, window), { ok: true, profile: null })
@@ -1915,20 +2181,20 @@ test('pick-attachment issues into the owning session only; pick-mention issues n
   const deps = fakeDeps()
   const surface = createAgentCommandSurface(deps)
   await startedSession(deps, surface)
-  assert.deepEqual(await surface.run('agent:pick-attachment', { sessionId: 'chat-1' }, window), { ok: true, path: 'C:\\fake\\picked.png' })
-  assert.deepEqual([...deps.agentSessions.get('chat-1').attachments], ['C:\\fake\\picked.png'])
+  assert.deepEqual(await surface.run('agent:pick-attachment', { sessionId: 'chat-1' }, window), { ok: true, path: '\x43:\\fake\\picked.png' })
+  assert.deepEqual([...deps.agentSessions.get('chat-1').attachments], ['\x43:\\fake\\picked.png'])
   assert.equal((await refusal(surface.run('agent:pick-attachment', { sessionId: 'chat-1' }, otherWindow))).code, 'MC_AGENT_UNKNOWN_SESSION')
   assert.equal(deps.names().filter(n => n === 'showOpenDialog').length, 1, 'the dialog opened for a caller that does not own the session')
 
   deps.calls.length = 0
-  assert.deepEqual(await surface.run('agent:pick-mention', { sessionId: 'chat-1' }, window), { ok: true, path: 'C:\\fake\\picked.png' })
-  assert.equal(deps.calls.find(c => c.name === 'showOpenDialog').args[0].defaultPath, 'C:\\fake\\workspace')
-  assert.deepEqual([...deps.agentSessions.get('chat-1').attachments], ['C:\\fake\\picked.png'], 'a mention issued an attachment right')
+  assert.deepEqual(await surface.run('agent:pick-mention', { sessionId: 'chat-1' }, window), { ok: true, path: '\x43:\\fake\\picked.png' })
+  assert.equal(deps.calls.find(c => c.name === 'showOpenDialog').args[0].defaultPath, '\x43:\\fake\\workspace')
+  assert.deepEqual([...deps.agentSessions.get('chat-1').attachments], ['\x43:\\fake\\picked.png'], 'a mention issued an attachment right')
   assert.equal((await refusal(surface.run('agent:pick-mention', { sessionId: 'chat-1' }, otherWindow))).code, 'MC_AGENT_UNKNOWN_SESSION')
 })
 
-/* THE THIRD BUTTON'S SIBLING: R10, pasting an image with Ctrl+V must work.
- * The rule: bytes come ONLY
+/* THE THIRD BUTTON'S SIBLING: R10, verbatim, "I still cant control V and
+ * image to you please get that fixed". Controller's ruling: bytes come ONLY
  * from the renderer's own paste event (never clipboard.readImage() in main),
  * a size cap applies, and the allowlist gains a second feeder for this
  * command alone. */
@@ -1941,7 +2207,7 @@ test('paste-attachment issues into the owning session only, from the window alon
 
   const result = await surface.run('agent:paste-attachment', { sessionId: 'chat-1', mime: 'image/png', data: 'QQ==' }, window)
   assert.equal(result.ok, true)
-  assert.match(result.path, /^C:\\fake\\paste-attachments\\img-\d+\.png$/, 'the path was not built by the injected save function alone')
+  assert.match(result.path, /^\x43:\\fake\\paste-attachments\\img-\d+\.png$/, 'the path was not built by the injected save function alone')
   assert.equal(result.size, Buffer.from('QQ==', 'base64').length)
   assert.deepEqual([...deps.agentSessions.get('chat-1').attachments], [result.path])
   assert.equal(deps.agentSessions.get('chat-2').attachments.size, 0,
@@ -2076,22 +2342,7 @@ test('native opaque approval ids reach the owned host intact within the ACP boun
  * scenarios elsewhere in this file, which prove the FEATURE works but never
  * assert what happens to an UNEXPECTED field at either level, which is the
  * one thing an allow-list exists to refuse. */
-test('close: accountRecovery carries a bounded recoveryId through, and an unexpected field at either level refuses', async () => {
-  const deps = fakeDeps()
-  const surface = createAgentCommandSurface(deps)
-  await startedSession(deps, surface, 'chat-recovery')
-  await surface.run('agent:close', { sessionId: 'chat-recovery', accountRecovery: { recoveryId: 'ticket-7' } }, window)
-  assert.deepEqual(deps.calls[0], { name: 'closeSession', args: [{ sessionId: 'chat-recovery', accountRecovery: { recoveryId: 'ticket-7' } }] })
 
-  await startedSession(deps, surface, 'chat-recovery-2')
-  const topLevel = await refusal(surface.run('agent:close', { sessionId: 'chat-recovery-2', accountRecovery: { recoveryId: 'ticket-7' }, extra: 1 }, window))
-  assert.equal(topLevel.code, 'MC_AGENT_INVALID_PAYLOAD')
-  assert.ok(deps.agentSessions.has('chat-recovery-2'), 'a refused close must not close the session')
-
-  const nested = await refusal(surface.run('agent:close', { sessionId: 'chat-recovery-2', accountRecovery: { recoveryId: 'ticket-7', extra: 1 } }, window))
-  assert.equal(nested.code, 'MC_AGENT_INVALID_PAYLOAD')
-  assert.ok(deps.agentSessions.has('chat-recovery-2'), 'a refused nested field must not close the session either')
-})
 
 test('models: a named session must be owned; no session asks the engine catalog outright', async () => {
   const deps = fakeDeps()
@@ -2248,7 +2499,7 @@ test('mayWrite:false refuses every write with the documented code before touchin
     'agent:modes': { sessionId: 'chat-1' },
     'agent:mode': { sessionId: 'chat-1', modeId: 'plan' },
     'agent:close': { sessionId: 'chat-1' },
-    // Added with an earlier commit (saved-node task handoffs); a write like close.
+    // Added with 2a942239 (saved-node task handoffs); a write like close.
     'agent:remove-node': { phase: 'prepare', computerId: 'computer-1', sourceNodeId: 'node-1', reason: 'fixture' },
     'org:read': undefined,
     'org:reparent': { agentId: 'a', parentId: null },
@@ -2460,8 +2711,8 @@ test('org:ensure-seat bounds the seat id, role and provider before the record is
 
 /* EVERY CONTROLLER CIRCLE, IN EVERY TREE, BINDS TO THE ONE ORGANISATION ROOT.
    Refusing a Claude circle's adoption there while a Codex Controller ran is
-   what stopped a Claude Opus Controller from starting at all
-   (MC_AGENT_SEAT_PROVIDER_IN_USE). The root now ADDS the
+   what stopped the owner's Claude Opus Controller from starting at all
+   (2026-09-23 13:14, MC_AGENT_SEAT_PROVIDER_IN_USE). The root now ADDS the
    provider, so the start is admitted and the live Codex session keeps its
    exact provider; any seat whose adoption would replace one still refuses. */
 test('org:ensure-seat lets a Claude circle join the organisation root while a Codex Controller is live', async () => {
@@ -2477,7 +2728,7 @@ test('org:ensure-seat lets a Claude circle join the organisation root while a Co
   const codex = { agentId: 'controller', agentAuthority: authority, treeNodeId: 'node-codex-controller',
     owner: window.owner, ownerKind: window.kind, state: 'ready', ended: false }
   deps.agentSessions.set('codex-controller', codex)
-  const join = { id: 'controller', role: 'controller', provider: 'claude', adoptProvider: true, requestingNodeId: 'node-2-00000202', expectedRevision: 12 }
+  const join = { id: 'controller', role: 'controller', provider: 'claude', adoptProvider: true, requestingNodeId: 'node-2-99180884', expectedRevision: 12 }
   // A tree start names its circle; "Keep trying accounts" names none.
   for (const request of [join, { ...join, requestingNodeId: undefined }]) {
     const answer = await surface.run('org:ensure-seat', request, window)
@@ -2502,11 +2753,11 @@ test('org:ensure-seat lets a Claude circle join the organisation root while a Co
     'MC_AGENT_SEAT_PROVIDER_IN_USE', 'a seat whose adoption replaces still refuses to take a live conversation\'s provider')
 })
 
-/* A LEFTOVER ENTRY IS NOT A LIVE CONVERSATION. Measured on a running app: a
-   controller's agent.resume of three Codex
+/* A LEFTOVER ENTRY IS NOT A LIVE CONVERSATION. Measured on the owner's LIVE app,
+   2026-09-23 13:50-13:52: Controller 2b93's agent.resume of three Codex
    Controllers was refused MC_AGENT_SEAT_PROVIDER_IN_USE within 14-25 ms while
    the only host session on 'controller' was Codex. The surface still held
-   entries revoked earlier -- a Claude session on 'controller' among them --
+   entries revoked at 09:20 -- a Claude session on 'controller' among them --
    marked 'ended' by an exit path or unknown to the host. Such entries no longer
    block an adoption that would replace a provider; a live Claude session still
    does, and so does one still starting or one a host cannot answer for. */
@@ -2519,19 +2770,19 @@ test('org:ensure-seat does not count a leftover entry as a live conversation on 
   const entry = (sessionId, fields = {}) => deps.agentSessions.set(sessionId, { agentId: 'controller', agentAuthority: { provider: 'claude' },
     treeNodeId: 'node-1-claude', owner: window.owner, ownerKind: window.kind, state: 'ready', ended: false, ...fields })
   const resume = { id: 'controller', role: 'controller', provider: 'codex', adoptProvider: true, requestingNodeId: 'node-3-astra' }
-  entry('sess0001', { state: 'ended' })
-  entry('sess0002')
+  entry('475bd978', { state: 'ended' })
+  entry('c68df196')
   const admitted = await surface.run('org:ensure-seat', resume, window)
   assert.equal(admitted.ok, true, 'an entry ended by its exit path, and one the host no longer knows, do not block a Codex Controller resume')
   assert.equal(deps.calls.at(-1).name, 'org.ensureSeat')
-  known.add('sess0002')
+  known.add('c68df196')
   assert.equal((await surface.run('org:ensure-seat', resume, window)).code, 'MC_AGENT_SEAT_PROVIDER_IN_USE',
     'a Claude session the host still runs is a live conversation, and its provider is not replaced')
-  known.delete('sess0002')
-  entry('sess0002', { state: 'starting' })
+  known.delete('c68df196')
+  entry('c68df196', { state: 'starting' })
   assert.equal((await surface.run('org:ensure-seat', resume, window)).code, 'MC_AGENT_SEAT_PROVIDER_IN_USE',
     'a session still starting counts until the host can answer for it')
-  entry('sess0002')
+  entry('c68df196')
   delete deps.host.sessionActivity
   assert.equal((await surface.run('org:ensure-seat', resume, window)).code, 'MC_AGENT_SEAT_PROVIDER_IN_USE',
     'a host that cannot answer leaves the entry counted')
@@ -2542,10 +2793,10 @@ test('org:ensure-seat does not count a leftover entry as a live conversation on 
    comes from the host's tier table, never from the renderer's packet. */
 test('with the real organisation record, a Claude Controller joins the root seat and starts bound on Claude', async t => {
   const record = require('../../shell/agent-org-record.cjs')
-  // Its own installation: this gate row runs without the per-file isolation
-  // preload, so the organisation it writes must never be the caller's.
+  // Its own installation stays below the selected preload temporary root in
+  // strict runs; the organisation it writes must never be the caller's.
   const directory = mkdtempSync(path.join(os.tmpdir(), 'seat-providers-'))
-  t.after(() => rmSync(directory, { recursive: true, force: true }))
+  t.after(() => { if (!retainFixtures) rmSync(directory, { recursive: true, force: true }) })
   const env = { ...process.env, LOCALAPPDATA: path.join(directory, 'local'),
     TOOLSENABLED_STATE_ROOT: path.join(directory, 'roaming', 'SeatProviders', 'capability') }
   const modules = record.loadModules({ root: canonicalRootForTests({ warn: () => {} }) })
@@ -2562,7 +2813,7 @@ test('with the real organisation record, a Claude Controller joins the root seat
   const codex = { agentId: 'controller', agentAuthority: codexAuthority, treeNodeId: 'node-1-codex', owner: window.owner, ownerKind: window.kind, state: 'ready', ended: false }
   deps.agentSessions.set('codex-controller', codex)
 
-  const joined = await rootAdopts('claude', 'node-2-00000202')
+  const joined = await rootAdopts('claude', 'node-2-99180884')
   assert.equal(joined.ok, true, joined.reason)
   const root = joined.org.agents.find(agent => agent.id === 'controller')
   assert.equal(root.provider, 'codex', 'the live Codex Controller\'s provider stays the seat\'s own')
@@ -2604,23 +2855,7 @@ test('org:release-seat bounds the seat id before the record is touched', async (
 })
 
 
-test('recovery inherits launch choices after close, rechecks role authority, and keeps the current node address', async () => {
- const deps = fakeDeps(); const surface = createAgentCommandSurface(deps)
- const roleBinding = { agentId: 'builder-seat', id: 'builder', expectedOrgRevision: 1, expectedRoleRevision: 1 }
- deps.agentOrgRecord.read = () => ({ ok: true, org: { revision: 20, agents: [{ id: 'builder-seat', role: 'builder', enabled: true }] }, roles: [{ id: 'builder', revision: 2 }] })
- await surface.run('agent:start', { sessionId: 'original', tier: 'luna', profileId: 'profile-1', roleBinding }, window)
- await surface.run('agent:close', { sessionId: 'original' }, window)
- const current = { selfName: 'Renamed builder', managerName: 'New manager' }
- await surface.run('agent:start', { sessionId: 'replacement', replacesSessionId: 'original', accountRecovery: { recoveryId: 'ticket-1' }, treeIdentity: current }, window)
- const request = deps.calls.filter(c => c.name === 'startSession').at(-1).args[0]
- assert.equal(request.tier, 'luna'); assert.deepEqual(request.treeIdentity, current)
- assert.equal(deps.calls.filter(c => c.name === 'org.resolveRoleBinding').length, 2)
- assert.equal(deps.calls.filter(c => c.name === 'org.resolveRoleBinding').at(-1).args[0].expectedOrgRevision, 20)
- assert.equal(request.accountRecovery.recoveryId, 'ticket-1')
- const stranger = { ...window, owner: { id: 'other-window' } }
- await assert.rejects(surface.run('agent:start', { sessionId: 'stolen', replacesSessionId: 'original', accountRecovery: { recoveryId: 'ticket-1' } }, stranger), { code: 'AGENT_ACCOUNT_RECOVERY_UNAVAILABLE' })
- assert.equal(deps.calls.filter(c => c.name === 'startSession').length, 2)
-})
+
 
 
 test('accepted starts and tree moves report transcript binding without retrying accepted operations', async () => {
@@ -2636,68 +2871,13 @@ test('accepted starts and tree moves report transcript binding without retrying 
  assert.deepEqual(bindings, [{ sessionId: 'original', nodeId: 'node-1', treeId: 'root' }, { sessionId: 'original', nodeId: 'node-1', treeId: 'new-root' }])
 })
 
-test('accepted sends report canonical transcript ingress and preserve actual model for recovery', async () => {
- const recorded = []
- const deps = fakeDeps({ recordAcceptedTranscriptSend: async value => { recorded.push(value); throw new Error('Storage refused') } })
- const surface = createAgentCommandSurface(deps)
- await surface.run('agent:start', { sessionId: 'original', tier: 'luna' }, window)
- const transcriptPrompt = { text: 'Continue the task', additions: [{ kind: 'role', text: 'Host-consumed role directions.' }] }
- deps.host.sendTurn = async () => ({ sessionId: 'original', turnId: 'turn-confirmed', tier: 'sol', transcriptPrompt })
- const result = await surface.run('agent:send', { sessionId: 'original', text: 'Continue the task', model: 'chosen-model' }, window)
- assert.equal(result.turnId, 'turn-confirmed')
- assert.deepEqual(recorded, [{ sessionId: 'original', text: 'Continue the task', turnId: 'turn-confirmed', transcriptPrompt }])
- deps.host.sendTurn = async () => { throw new Error('Provider refused') }
- await assert.rejects(surface.run('agent:send', { sessionId: 'original', text: 'Refused text' }, window))
- assert.equal(recorded.length, 1)
- await surface.run('agent:close', { sessionId: 'original' }, window)
- await surface.run('agent:start', { sessionId: 'replacement', replacesSessionId: 'original', accountRecovery: { recoveryId: 'ticket-1' },
-  treeIdentity: { selfName: 'Worker', managerName: 'Controller' } }, window)
- assert.equal(deps.calls.filter(c => c.name === 'startSession').at(-1).args[0].tier, 'sol')
-})
-
-for (const outcome of ['accepted', 'refused', 'thrown']) test(`automatic recovery retains the last accepted effort after a live change (${outcome})`, async () => {
- const deps = fakeDeps(); const surface = createAgentCommandSurface(deps)
- await surface.run('agent:start', { sessionId: 'original', tier: 'luna', effort: 'xhigh' }, window)
- await surface.run('agent:effort', { sessionId: 'original', effort: 'medium' }, window)
- deps.host.setSessionEffort = async request => {
-  if (outcome === 'thrown') throw Object.assign(new Error('Change refused'), { code: 'AGENT_EFFORT_FIXED' })
-  return outcome === 'refused' ? { ok: false } : request
- }
- const change = surface.run('agent:effort', { sessionId: 'original', effort: 'low' }, window)
- if (outcome === 'thrown') await assert.rejects(change)
- else await change
- await surface.run('agent:close', { sessionId: 'original' }, window)
- await surface.run('agent:start', { sessionId: 'replacement', replacesSessionId: 'original',
-  accountRecovery: { recoveryId: 'ticket-1' }, treeIdentity: { selfName: 'Worker', managerName: 'Controller' } }, window)
- const request = deps.calls.filter(c => c.name === 'startSession').at(-1).args[0]
- assert.equal(request.effort, outcome === 'accepted' ? 'low' : 'medium')
- assert.equal(request.tier, 'luna')
-})
-
-test('production start parser and surface preserve Claude launch choices from a minimal headless recovery request', async () => {
- const at = MAIN.indexOf('function parseAgentStart(value) {'); const end = MAIN.indexOf('\n}', at)
- assert.ok(at > 0 && end > at)
- const productionParse = new Function('agentPayload', 'boundedAgentString', 'agentIpcError', 'AGENT_EFFORT_VALUES',
-   'MAX_SESSION_ID_LENGTH', 'MAX_CWD_LENGTH', 'MAX_SURFACE_LENGTH', 'MAX_ACCOUNT_NAME_LENGTH',
-   MAIN.slice(at, end + 2) + '; return parseAgentStart;')(
-   agentPayload, boundedAgentString, agentIpcError, AGENT_EFFORT_VALUES, 128, 32768, 128, 64)
- const deps = fakeDeps({ parseAgentStart: productionParse }); const surface = createAgentCommandSurface(deps)
- const identity = { treeIdentity: { selfName: 'Worker', managerName: 'Controller' }, requestKeys: { treeAnchors: ['root', 'node-42'], threadId: 'node-42' } }
- await surface.run('agent:start', { sessionId: 'claude-original', tier: 'claude-fable', effort: 'max', profileId: 'profile-1', ...identity }, window)
- await surface.run('agent:close', { sessionId: 'claude-original' }, window)
- const minimal = { sessionId: 'claude-new', surface: 'fleet-tree', replacesSessionId: 'claude-original', accountRecovery: { recoveryId: 'ticket-42' }, ...identity }
- assert.equal(Object.hasOwn(productionParse(minimal), 'tier'), false)
- assert.equal(Object.hasOwn(productionParse(minimal), 'effort'), false)
- assert.equal(Object.hasOwn(productionParse(minimal), 'profileId'), false)
- await surface.run('agent:start', minimal, window)
- const actual = deps.calls.filter(c => c.name === 'startSession').at(-1).args[0]
- assert.equal(actual.tier, 'claude-fable'); assert.equal(actual.effort, 'max')
- assert.equal(actual.cwd, deps.calls.filter(c => c.name === 'startSession')[0].args[0].cwd)
- assert.deepEqual(actual.accountRecovery, { recoveryId: 'ticket-42' }); assert.equal(actual.requestKeys.threadId, 'node-42')
-})
 
 
-test('manual account continuation crosses the real parser only for an explicit fresh window start', async () => {
+
+
+
+
+test('manual account continuation carries the picked account and launch choices through the real parser', async () => {
  const at = MAIN.indexOf('function parseAgentStart(value) {'); const end = MAIN.indexOf('\n}', at)
  const productionParse = new Function('agentPayload', 'boundedAgentString', 'agentIpcError', 'AGENT_EFFORT_VALUES',
   'MAX_SESSION_ID_LENGTH', 'MAX_CWD_LENGTH', 'MAX_SURFACE_LENGTH', 'MAX_ACCOUNT_NAME_LENGTH',
@@ -2705,17 +2885,16 @@ test('manual account continuation crosses the real parser only for an explicit f
   agentPayload, boundedAgentString, agentIpcError, AGENT_EFFORT_VALUES, 128, 32768, 128, 64)
  const deps = fakeDeps({ parseAgentStart: productionParse }); const surface = createAgentCommandSurface(deps)
  const request = { sessionId: 'manual-new', surface: 'fleet-tree', tier: 'claude-opus', effort: 'medium',
-  replacesSessionId: 'closed-old', continueFromAccount: 'original@example.com',
+  replacesSessionId: 'closed-old', treeAccount: 'picked-account',
   treeIdentity: { selfName: 'Controller', managerName: null }, requestKeys: { treeAnchors: ['same-node'], threadId: 'same-node' } }
- for (const extra of [{ resumeThreadId: 'old-native-thread' }, { resumeAccount: 'original@example.com' },
-  { accountRecovery: { recoveryId: 'auto-ticket' } }, { continueFromAccount: '' }, { continueFromAccount: 'x'.repeat(65) },
-  { treeIdentity: null }, { replacesSessionId: undefined }]) assert.throws(() => productionParse({ ...request, ...extra }))
- await assert.rejects(surface.run('agent:start', request, { kind: 'relay', owner: 'remote-owner', mayWrite: true, label: 'remote caller' }), { code: 'AGENT_MANUAL_ACCOUNT_CONTINUATION_WINDOW_ONLY' })
+ for (const extra of [{ resumeAccount: 'original@example.com' },
+  { treeAccount: '' }, { treeAccount: 'x'.repeat(65) }, { replacesSessionId: 'manual-new' }]) assert.throws(() => productionParse({ ...request, ...extra }))
+
  await assert.rejects(surface.run('agent:start', request, readOnly), { code: READ_ONLY_REFUSAL })
  assert.equal(deps.calls.filter(c => c.name === 'startSession').length, 0)
  await surface.run('agent:start', request, window)
  const launched = deps.calls.find(c => c.name === 'startSession').args[0]
- assert.equal(launched.continueFromAccount, 'original@example.com')
+ assert.equal(launched.treeAccount, 'picked-account')
  assert.equal(launched.tier, 'claude-opus'); assert.equal(launched.effort, 'medium')
  assert.equal(launched.requestKeys.threadId, 'same-node'); assert.equal(launched.resumeThreadId, undefined)
 })
@@ -2805,33 +2984,7 @@ test('a restored process closed after missing terminal evidence retires its exac
   assert.equal(deps.calls.filter(row => row.name === 'recordSessionEnd').length, 1)
 });
 
-test('persistent account retries use the real parser, native-window consent and bounded refusal timing', async () => {
- const at = MAIN.indexOf('function parseAgentStart(value) {'), end = MAIN.indexOf('\n}', at)
- const productionParse = new Function('agentPayload', 'boundedAgentString', 'agentIpcError', 'AGENT_EFFORT_VALUES',
-  'MAX_SESSION_ID_LENGTH', 'MAX_CWD_LENGTH', 'MAX_SURFACE_LENGTH', 'MAX_ACCOUNT_NAME_LENGTH',
-  MAIN.slice(at, end + 2) + '; return parseAgentStart;')(
-  agentPayload, boundedAgentString, agentIpcError, AGENT_EFFORT_VALUES, 128, 32768, 128, 64)
- const request = { sessionId: 'retry-owned', surface: 'fleet-tree', tier: 'claude-fable', effort: 'max',
-  accountRetry: { excludeAccounts: ['previous'], recheckAttempt: 4 },
-  requestKeys: { threadId: 'saved-node', treeAnchors: ['saved-root', 'saved-node'] }, treeIdentity: { selfName: 'Worker', managerName: 'Controller' } }
- for (const addition of [{ resumeThreadId: 'original-native' }, { resumeAccount: 'original-account' }, { continueFromAccount: 'previous' },
-   { accountRecovery: { recoveryId: 'old-ticket' } }, { accountRetry: { excludeAccounts: Array(33).fill('a'), recheckAttempt: 0 } },
-   { accountRetry: { excludeAccounts: [], recheckAttempt: -1 } }, { accountRetry: { excludeAccounts: [], recheckAttempt: 0, home: '/forged' } }]) {
-   assert.throws(() => productionParse({ ...request, ...addition }))
- }
- const deps = fakeDeps({ parseAgentStart: productionParse }), surface = createAgentCommandSurface(deps)
- await assert.rejects(surface.run('agent:start', request, { kind: 'relay', owner: 'remote', mayWrite: true, label: 'Remote' }), { code: 'AGENT_MANUAL_ACCOUNT_CONTINUATION_WINDOW_ONLY' })
- assert.equal(deps.calls.filter(row => row.name === 'startSession').length, 0)
- const metadata = { provider: 'claude', account: null, attempts: [], retry: { nextAttemptAt: '2026-09-11T01:00:00Z', resetAt: null } }
- deps.host.startSession = async actual => { assert.deepEqual(actual.accountRetry, request.accountRetry);
-   throw Object.assign(fixtureStartRefusal(actual.sessionId, 'ACCOUNT_RECOVERY_NO_ALTERNATE', 'private provider payload'), { accountRetry: metadata }) }
- const result = await surface.run('agent:start', request, window)
- assert.equal(result.ok, false)
- assert.equal(result.code, 'ACCOUNT_RECOVERY_NO_ALTERNATE')
- assert.deepEqual(result.accountRetry, metadata)
- assert.equal(JSON.stringify(result).includes('private provider payload'), false)
- assert.equal(deps.agentSessions.has(request.sessionId), false)
-})
+
 
 test('direction query uses verified host selection and rejects malformed node scope or a relay caller', async () => {
  const deps = fakeDeps(), surface = createAgentCommandSurface(deps)
@@ -3002,19 +3155,7 @@ test('workspace recovery reads current facts after the refused host await', asyn
   assert.equal((await pending).code, 'OWNER_HOST_PERMISSION_UNAVAILABLE', 'a formerly unchosen folder is not reported after it was confirmed')
 })
 
-test('account retry returns the same bounded workspace remedy while retaining native cause in the record', async () => {
-  const deps = fakeDeps({
-    parseAgentStart: value => ({ ...parseAgentStart(value), accountRetry: true }),
-    readWorkspaceState: () => ({ ok: true, available: true, configured: true, chosen: false }),
-  })
-  deps.host.startSession = async request => { throw fixtureStartRefusal(request.sessionId, 'OWNER_HOST_PERMISSION_UNAVAILABLE', 'private detail') }
-  const result = await createAgentCommandSurface(deps).run('agent:start', { sessionId: 'account-retry-workspace' }, window)
-  assert.equal(result.ok, false)
-  assert.equal(result.code, 'AGENT_START_WORKSPACE_UNCONFIRMED')
-  assert.equal(result.reason, result.code)
-  assert.equal(deps.calls.find(call => call.name === 'recordSpawnOutcome').args[3], 'OWNER_HOST_PERMISSION_UNAVAILABLE')
-  assert.equal(deps.agentSessions.size, 0)
-})
+
 
 /* THE PAYLOAD THE RENDERER ACTUALLY SENDS, DRIVEN THROUGH THE REAL SURFACE.
  *
@@ -3173,9 +3314,59 @@ async function ownerSetupFixture(t, { mismatch = false, cleanupFails = false, au
   const { canonicalRootForTests } = await import('../canonical-root.mjs')
   const engineRoot = canonicalRootForTests({ requireConfigured: true })
   const root = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'research-owner-surface-')))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => { if (!retainFixtures) rmSync(root, { recursive: true, force: true }) })
   const access = require(path.join(engineRoot, 'src/lib/research-access.js'))
-  const authority = require('../../shell/research-delegation-authority.cjs').createResearchDelegationAuthority({
+  // Keep the real authority and its logical cleanup, but retain removed rooms
+  // inside this fixture. Only this module instance receives the filesystem seam.
+  const authorityFile = require.resolve('../../shell/research-delegation-authority.cjs')
+  let authorityModule
+  if (retainFixtures) {
+    const retainedRooms = []
+    const roomBytes = directory => fs.readdirSync(directory).sort().map(name => {
+      const file = path.join(directory, name), stat = fs.lstatSync(file)
+      assert.equal(stat.isSymbolicLink(), false)
+      if (stat.isDirectory()) return [name, roomBytes(file)]
+      assert.equal(stat.isFile(), true)
+      return [name, fs.readFileSync(file).toString('base64')]
+    })
+    t.after(() => {
+      for (const { room, destination, bytes, dev, ino } of retainedRooms) {
+        assert.equal(fs.existsSync(room), false)
+        const stat = fs.lstatSync(destination)
+        assert.equal(stat.dev, dev)
+        assert.equal(stat.ino, ino)
+        assert.deepEqual(roomBytes(destination), bytes)
+      }
+    })
+    const fixtureFs = { ...fs, rmSync(room, options) {
+      assert.deepEqual(options, { recursive: true, force: true })
+      assert.equal(typeof room, 'string')
+      assert.equal(path.dirname(room), path.join(root, 'rooms'))
+      assert.match(path.basename(room), /^room-[A-Za-z0-9]{6}$/)
+      assert.equal(realpathSync(room), room)
+      const before = fs.lstatSync(room)
+      assert.equal(before.isDirectory() && !before.isSymbolicLink(), true)
+      const bytes = roomBytes(room)
+      const retained = fs.mkdtempSync(path.join(root, 'retained-cleanup-'))
+      const destination = path.join(retained, path.basename(room))
+      fs.renameSync(room, destination)
+      assert.equal(fs.existsSync(room), false)
+      const after = fs.lstatSync(destination)
+      assert.equal(after.dev, before.dev)
+      assert.equal(after.ino, before.ino)
+      assert.deepEqual(roomBytes(destination), bytes)
+      retainedRooms.push({ room, destination, bytes, dev: before.dev, ino: before.ino })
+      t.diagnostic('RETAINED_COMMAND_CLEANUP ' + JSON.stringify({ room, destination }))
+    } }
+    const localModule = { exports: {} }
+    const authorityRequire = createRequire(authorityFile)
+    const localRequire = name => name === 'node:fs' ? fixtureFs : authorityRequire(name)
+    new Function('require', 'module', 'exports', '__filename', '__dirname',
+      readFileSync(authorityFile, 'utf8'))(localRequire, localModule, localModule.exports,
+        authorityFile, path.dirname(authorityFile))
+    authorityModule = localModule.exports
+  } else authorityModule = require(authorityFile)
+  const authority = authorityModule.createResearchDelegationAuthority({
     readParent: () => { throw new Error('Owner setup cannot borrow a parent') },
     normalizeRequest: require(path.join(engineRoot, 'src/lib/research-delegation-request.js')).normalizeResearchDelegation,
     validateAccess: access.validateResearchAccess, enforceAccess: access.enforceResearchAccess,

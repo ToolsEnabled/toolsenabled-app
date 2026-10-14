@@ -1,8 +1,8 @@
 /* A START THE COMPUTER IS TOO BUSY FOR SAYS SO, AND TRIES AGAIN BY ITSELF.
  *
- * T289. Page 2: a start held by the resource guard sat SIX MINUTES
- * across eight manual attempts with no progress shown and no retry. The same
- * thing was reproduced on a second window -- the status read "refused · this computer is
+ * T289. Worker 82, page 2: a start held by the resource guard sat SIX MINUTES
+ * across eight manual attempts with no progress shown and no retry. I saw the
+ * same thing on my own window -- the status read "refused · this computer is
  * under heavy load..." and then nothing happened, forever, unless the person
  * pressed send again. A person creating their first agent watches six minutes
  * of apparent nothing and concludes the product is broken. It is the worst

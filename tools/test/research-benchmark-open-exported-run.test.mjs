@@ -1,8 +1,8 @@
 import { useArithmeticExample } from './lib/benchmark-example.mjs'
-// Re-opening a completed run in the Research page (ask A14, answer B).
+// Re-opening a completed run in the Research page (owner ask A14, answer B).
 //
 // Opening an exported archive puts its frozen project in the page. This file proves
-// the rest of what was asked for: the run's own evidence is admitted, the run
+// the rest of what the owner asked for: the run's own evidence is admitted, the run
 // can be inspected in place, and its report is reproduced in the page. For an archive
 // this build can rebuild, the page's report is byte-identical to what the exported
 // runner's `node cli.mjs analyze` writes. That runner is executed here as child
@@ -163,7 +163,7 @@ test('the report of a run re-opened read-only is rendered through the archive in
 
 test('page and exported-runner report bytes agree for a run re-opened from its own archive', async t => {
   const archive = await exportedArchive()
-  const root = await mkdtemp(resolve(tmpdir(), 'open-exported-'))
+  const root = await mkdtemp(resolve(tmpdir(), 'w20-open-exported-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   for (const [file, text] of Object.entries(archive.files)) { await mkdir(dirname(resolve(root, file)), { recursive: true }); await writeFile(resolve(root, file), text) }
   // The real exported runner as the owner runs it, replay-only: verify, run, analyze.
@@ -248,7 +248,7 @@ test('a run made on the page declares the renderer runtime it ran on, in the jou
 })
 
 test('the page answers the report with the digest of its own bundled source for every pinned runtime file', async () => {
-  // Manager finding F4, report.mjs contract (an earlier commit): a map file -> running digest, null
+  // Manager finding F4, report.mjs contract (431cdec3): a map file -> running digest, null
   // when this build bundles no such file; the report compares it with the project's pins.
   const archive = await exportedArchive()
   assert.equal(typeof runtimeIntegrityFor, 'function')
@@ -304,7 +304,7 @@ test('the handoff and the import refusal name the ZIP that Export runnable ZIP d
   assert.match(status(other), /This evidence belongs to a different frozen project/)
   assert.match(status(other), /the <identifier>\.zip that Export runnable ZIP downloaded/)
   assert.ok(!status(other).includes('standalone-project.zip'), status(other))
-  assert.match(status(other), /cli\.mjs/, 'the working path stays named')
+  assert.match(status(other), /cli\.mjs/, "Worker 9's working path stays named")
 })
 
 test('Export evidence and Export results CSV write a status line naming the file', async () => {

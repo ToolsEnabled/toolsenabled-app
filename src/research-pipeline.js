@@ -70,9 +70,9 @@ export function createPipelineEditor({ onChange, settings = () => null, onOpenJu
       const missing = entry.model && !draft.models.some(model => model.id === entry.model)
       return `<label class="pipe-field">Custom model<select data-pipe-${attr}="${i}">${option('', draft.models.length ? 'Choose a registered model' : 'No custom model registered yet', entry.model)}${draft.models.map(model => option(model.id, modelLabel(model), entry.model)).join('')}${missing ? option(entry.model, entry.model + ' (not registered)', entry.model) : ''}</select></label>`
     }
-    return `<label class="pipe-field">Exact model id<input data-pipe-${attr}="${i}" list="pipe-${attr}s-${i}" value="${esc(entry.model)}" maxlength="80" placeholder="${esc(surface.models[0])}"><datalist id="pipe-${attr}s-${i}">${surface.models.map(model => `<option value="${esc(model)}"></option>`).join('')}</datalist></label>`
+    return `<label class="pipe-field">Exact model id<input data-pipe-${attr}="${i}" list="pipe-${attr}s-${i}" value="${esc(entry.model)}" placeholder="${esc(surface.models[0])}"><datalist id="pipe-${attr}s-${i}">${surface.models.map(model => `<option value="${esc(model)}"></option>`).join('')}</datalist></label>`
   }
-  const executableControl = (attr, i, entry) => entry.surface === 'http' ? '' : `<label class="pipe-field pipe-exe">Executable <span class="pipe-meta">optional; the npm global install or PATH otherwise</span><input data-pipe-${attr}="${i}" value="${esc(entry.executable)}" maxlength="400" placeholder="C:/path/to/${esc(PIPELINE_SURFACES[entry.surface].short)}"></label>`
+  const executableControl = (attr, i, entry) => entry.surface === 'http' ? '' : `<label class="pipe-field pipe-exe">Executable <span class="pipe-meta">optional; the npm global install or PATH otherwise</span><input data-pipe-${attr}="${i}" value="${esc(entry.executable)}" maxlength="400" placeholder="\x43:/path/to/${esc(PIPELINE_SURFACES[entry.surface].short)}"></label>`
   function row(entry, i) {
     const missing = entry.tools && !draft.tools.profiles.some(profile => profile.id === entry.tools)
     return `<li class="pipe-row"><div class="pipe-row-line"><span class="pipe-index">${i + 1}</span>
@@ -140,7 +140,7 @@ export function createPipelineEditor({ onChange, settings = () => null, onOpenJu
       <button type="button" class="pipe-small pipe-drop" data-pipe-server-remove="${i}" aria-label="Remove server ${i + 1}">×</button></div>
       ${entry.kind === 'http' ? `<label class="pipe-field pipe-exe">URL<input data-pipe-server-url="${i}" value="${esc(entry.url)}" maxlength="400" placeholder="http://127.0.0.1:8765/mcp"></label>`
         : `<label class="pipe-field pipe-exe">Command<input data-pipe-server-command="${i}" value="${esc(entry.command)}" maxlength="400" placeholder="python"></label>
-      <label class="pipe-field pipe-prompt">Arguments <span class="pipe-meta">one per line</span><textarea data-pipe-server-args="${i}" rows="2" placeholder="C:/tools/rag/server.py">${esc(entry.args.join('\n'))}</textarea></label>`}
+      <label class="pipe-field pipe-prompt">Arguments <span class="pipe-meta">one per line</span><textarea data-pipe-server-args="${i}" rows="2" placeholder="\x43:/tools/rag/server.py">${esc(entry.args.join('\n'))}</textarea></label>`}
       <div class="pipe-row-line"><label class="pipe-field pipe-prompt">Tools it offers <span class="pipe-meta">one name per line; a profile can enable the whole server without them</span><textarea data-pipe-server-tools="${i}" rows="2" placeholder="search_index">${esc(entry.tools.join('\n'))}</textarea></label>
       <label class="pipe-field pipe-prompt">Environment variable names it needs <span class="pipe-meta">names only, one per line; values stay on the run computer</span><textarea data-pipe-server-env="${i}" rows="2" placeholder="RAG_INDEX_DIR">${esc(entry.env.join('\n'))}</textarea></label></div>
       <label class="pipe-field pipe-exe">Note <span class="pipe-meta">optional</span><input data-pipe-server-note="${i}" value="${esc(entry.note)}" maxlength="400"></label>
@@ -156,7 +156,7 @@ export function createPipelineEditor({ onChange, settings = () => null, onOpenJu
       <h4>Tool servers</h4>
       <p class="pipe-hint">Your own programs spoken to over the Model Context Protocol: a retrieval index, a compiler feedback loop. Nothing here holds a secret; a server's environment is named, never valued.</p>
       <ol class="pipe-rows">${draft.tools.servers.map(server).join('') || '<li class="pipe-hint">No servers registered.</li>'}</ol>
-      <div class="pipe-row-line pipe-describe"><label class="pipe-field">Add a server from its path or address<input data-pipe-server-path value="${esc(describePath)}" maxlength="400" placeholder="C:/tools/rag/server.py or http://127.0.0.1:8765/mcp" spellcheck="false"></label>
+      <div class="pipe-row-line pipe-describe"><label class="pipe-field">Add a server from its path or address<input data-pipe-server-path value="${esc(describePath)}" maxlength="400" placeholder="\x43:/tools/rag/server.py or http://127.0.0.1:8765/mcp" spellcheck="false"></label>
       <button type="button" class="pipe-small" data-pipe-server-describe>Describe</button><button type="button" class="pipe-small" data-pipe-server-add>Add a server by hand</button>${listsTools ? '<button type="button" class="pipe-small" data-pipe-server-toolsenabled>Add the ToolsEnabled tools as a server</button>' : ''}</div>
       <p class="pipe-hint" data-pipe-server-status></p>
       <p class="pipe-preview" data-pipe-tool-problems></p></details>`
@@ -171,7 +171,7 @@ export function createPipelineEditor({ onChange, settings = () => null, onOpenJu
       <label class="pipe-field">API kind<select data-pipe-model-kind="${i}">${Object.entries(MODEL_KINDS).map(([id, item]) => option(id, item.label, entry.kind)).join('')}</select></label>
       <button type="button" class="pipe-small pipe-drop" data-pipe-model-remove="${i}" aria-label="Remove model ${i + 1}">×</button></div>
       <label class="pipe-field pipe-exe">Endpoint URL <span class="pipe-meta">${kind.url ? 'the kind\'s default when empty' : 'required for your own endpoint'}</span><input data-pipe-model-url="${i}" value="${esc(entry.url)}" maxlength="400" placeholder="${esc(kind.url || 'https://models.example.org/v1/generate')}" spellcheck="false"></label>
-      <div class="pipe-row-line"><label class="pipe-field">Model id the endpoint expects<input data-pipe-model-id="${i}" value="${esc(entry.model)}" maxlength="120" placeholder="my-model-7b" spellcheck="false"></label>
+      <div class="pipe-row-line"><label class="pipe-field">Model id the endpoint expects<input data-pipe-model-id="${i}" value="${esc(entry.model)}" placeholder="my-model-7b" spellcheck="false"></label>
       <label class="pipe-field">Provider label <span class="pipe-meta">optional; for accounting</span><input data-pipe-model-provider="${i}" value="${esc(entry.provider)}" maxlength="40" placeholder="${esc(entry.kind.split('-')[0])}"></label></div>
       <div class="pipe-row-line">${vaultNames ? `<label class="pipe-field">From the vault<select data-pipe-model-credential-pick="${i}">${option('', 'Choose a credential name', vaultNames.includes(entry.credential) ? entry.credential : '')}${vaultNames.map(name => option(name, name, entry.credential)).join('')}</select></label>` : ''}
       <label class="pipe-field">Credential name<input data-pipe-model-credential="${i}" value="${esc(entry.credential)}" maxlength="100" placeholder="LEAN_KEY" spellcheck="false"></label>
@@ -208,7 +208,7 @@ export function createPipelineEditor({ onChange, settings = () => null, onOpenJu
     const catalog = toolCatalog(draft.tools)
     el.innerHTML = `<div class="pipe-head"><h3>LeanBench-style pipeline</h3>
       <p class="pipe-intro">Each row is a vendor CLI, an exact model and the efforts to run. Generate makes one condition for each surface × model × effort combination. Its command runs the generated harness with a fresh working directory, blank homes, the allowed environment and LeanBench's invocation flags. Each surface requires a canary from the same day. Provider notices and truncated responses stop collection. Attempt timeout comes from Schedule and budgets below. The output cap, room and canary rules come from the settings above. Prompt wording is used as authored in Prompt design.</p></div>
-      <label class="pipe-field">Clean-room root<input data-pipe-root value="${esc(draft.root)}" maxlength="200" placeholder="C:/cleanroom"></label>
+      <label class="pipe-field">Clean-room root<input data-pipe-root value="${esc(draft.root)}" maxlength="200" placeholder="\x43:/lbres"></label>
       <ol class="pipe-rows">${draft.rows.map(row).join('') || '<li class="pipe-hint">No surfaces yet.</li>'}</ol>
       ${draft.rows.some(row => row.noask) ? '<p class="pipe-hint" data-pipe-previous>Previous no-ask selections are kept with this draft for reference. New pipeline conditions use the authored prompt without an added instruction. Existing conditions remain in Systems and conditions below.</p>' : ''}
       <p class="pipe-preview" data-pipe-row-problems hidden></p>
@@ -336,10 +336,10 @@ export function createPipelineEditor({ onChange, settings = () => null, onOpenJu
   for (const section of [el, judgesEl]) section.addEventListener('input', event => {
     const target = event.target, at = name => target.getAttribute(`data-pipe-${name}`), has = name => target.hasAttribute(`data-pipe-${name}`), index = name => Number(at(name))
     if (target.tagName === 'SELECT' || ['checkbox', 'radio'].includes(target.getAttribute('type'))) return
-    if (has('root')) { draft.root = target.value.trim().slice(0, 200) || 'C:/cleanroom'; emit(); return }
-    if (has('model')) { draft.rows[index('model')].model = target.value.trim().slice(0, 80); refreshPreview(); refreshJudges(); emit(); return }
+    if (has('root')) { draft.root = target.value.trim().slice(0, 200) || '\x43:/lbres'; emit(); return }
+    if (has('model')) { draft.rows[index('model')].model = target.value; refreshPreview(); refreshJudges(); emit(); return }
     if (has('exe')) { draft.rows[index('exe')].executable = target.value.trim().slice(0, 400); emit(); return }
-    if (has('judge-model')) { draft.judges[index('judge-model')].model = target.value.trim().slice(0, 80); refreshJudges(); emit(); return }
+    if (has('judge-model')) { draft.judges[index('judge-model')].model = target.value; refreshJudges(); emit(); return }
     if (has('judge-exe')) { draft.judges[index('judge-exe')].executable = target.value.trim().slice(0, 400); emit(); return }
     if (has('judge-prompt')) { draft.judges[index('judge-prompt')].prompt = target.value.slice(0, JUDGE_PROMPT_LIMIT); refreshJudges(); emit(); return }
     if (has('profile-label')) { draft.tools.profiles[index('profile-label')].label = target.value.trim().slice(0, 80); refreshTools(); emit(); return }
@@ -357,7 +357,7 @@ export function createPipelineEditor({ onChange, settings = () => null, onOpenJu
     const model = ['name', 'url', 'id', 'provider', 'credential'].find(name => has(`model-${name}`))
     if (model) {
       const i = index(`model-${model}`), entry = draft.models[i], value = target.value.trim()
-      if (model === 'id') entry.model = value.slice(0, 120)
+      if (model === 'id') entry.model = target.value
       else entry[model] = value.slice(0, model === 'url' ? 400 : model === 'credential' ? 100 : model === 'provider' ? 40 : 80)
       if (model === 'credential') { const pick = q(`model-credential-pick="${i}"`); if (pick) pick.value = vaultNames?.includes(entry.credential) ? entry.credential : '' }
       refreshModels(); emit(); return
@@ -373,11 +373,11 @@ export function createPipelineEditor({ onChange, settings = () => null, onOpenJu
     if (has('surface')) { const entry = draft.rows[index('surface')], next = PIPELINE_SURFACES[target.value] ? target.value : entry.surface; if ((next === 'http') !== (entry.surface === 'http')) entry.model = ''; entry.surface = next; render(); emit(); return }
     if (has('effort')) { const effort = target.value, entry = draft.rows[index('effort')]; entry.efforts = PIPELINE_EFFORTS.filter(item => item === effort ? target.checked : entry.efforts.includes(item)); refreshPreview(); emit(); return }
     if (has('tools')) { draft.rows[index('tools')].tools = String(target.value).slice(0, 40); refreshPreview(); refreshTools(); emit(); return }
-    if (has('model') && target.tagName === 'SELECT') { draft.rows[index('model')].model = String(target.value).slice(0, 80); refreshPreview(); refreshJudges(); emit(); return }
+    if (has('model') && target.tagName === 'SELECT') { draft.rows[index('model')].model = String(target.value); refreshPreview(); refreshJudges(); emit(); return }
     if (has('judge-count')) { draft.judges = resizeJudges(draft.judges, target.value); render(); emit(); return }
     if (has('judge-surface')) { const entry = draft.judges[index('judge-surface')], next = PIPELINE_SURFACES[target.value] ? target.value : entry.surface; if ((next === 'http') !== (entry.surface === 'http')) entry.model = ''; entry.surface = next; render(); emit(); return }
     if (has('judge-effort')) { draft.judges[index('judge-effort')].effort = target.value; emit(); return }
-    if (has('judge-model') && target.tagName === 'SELECT') { draft.judges[index('judge-model')].model = String(target.value).slice(0, 80); refreshJudges(); emit(); return }
+    if (has('judge-model') && target.tagName === 'SELECT') { draft.judges[index('judge-model')].model = String(target.value); refreshJudges(); emit(); return }
     if (has('profile-label')) { renameProfile(index('profile-label'), target.value); render(); emit(); return }
     if (has('profile-tool')) { const entry = draft.tools.profiles[index('profile-tool')], id = target.value; entry.enabled = target.checked ? [...new Set([...entry.enabled, id])] : entry.enabled.filter(item => item !== id); refreshTools(); emit(); return }
     if (has('server-name')) { renameServer(index('server-name'), target.value); render(); emit(); return }

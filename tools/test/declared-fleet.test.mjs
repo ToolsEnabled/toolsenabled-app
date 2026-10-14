@@ -11,8 +11,8 @@
  * used to. It pinned that a fresh install DRAWS every declared agent, which was
  * a fair reading when the shipped default declared one controller and is a
  * defect now that it declares eight seats: a person who has started nothing
- * opened the page and found eight agents they did not create. The rule is that
- * the node tree is empty unless a user has started a session. So
+ * opened the page and found eight agents they did not create. The owner's rule
+ * is "the node tree should be empty unless a user has started a session". So
  * the properties that suite was protecting — a seat for every engine a dispatch
  * can ask for, a manager for every seat — are still asserted here, against
  * CAPACITY, where they were always facts about the declaration rather than
@@ -112,8 +112,8 @@ test('the shipped organisation is neutral and reserves four Claude worker seats'
 })
 
 test('a fresh computer draws an empty tree, not the seats it declares', () => {
-  /* THE RULE, AND THE ONE ASSERTION THIS FILE EXISTS FOR: the node tree is
-     empty unless a user has started a session.
+  /* THE OWNER'S RULE, AND THE ONE ASSERTION THIS FILE EXISTS FOR:
+     "the node tree should be empty unless a user has started a session".
      The machine still appears — the page needs somewhere to put the offer to
      start one — and there is not a single agent on it. */
   const data = declaredFleetData(FRESH_INSTALL_ORG)

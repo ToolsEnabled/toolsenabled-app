@@ -160,7 +160,7 @@ export function validateCondition(condition, { moment = MOMENTS.generation, fiel
 }
 
 /* A REASON IS A LIST OF CONDITIONS, ALL OF WHICH MUST HOLD. There is no
-   grouping and there are no brackets: neither is needed, and a ladder
+   grouping and there are no brackets: the owner asked for neither, and a ladder
    of rungs already carries the choice between alternatives. */
 export function validateReason(reason, { moment = MOMENTS.generation, fields = null, where = 'This reason' } = {}) {
   invariant(Array.isArray(reason), `${where}: a reason is a list of conditions.`)

@@ -27,23 +27,23 @@ test('every shipped product control has exactly one explicit profile disposition
   assert.deepEqual([...mapped, ...kept].sort(), [...PRODUCT_SETTING_IDS].sort())
   for (const [id, reason] of Object.entries(PROFILE_PRODUCT_PRESERVED)) assert.ok(reason.length > 30, id)
   assert.equal(mapped.length, 19)
-  // agent.product_source_writes is a separate opt-in a
+  // agent.product_source_writes (owner, 2026-09-19) is a separate opt-in a
   // profile never lifts, so it joins the preserved list: 21 -> 22.
-  // audit.activity (product rule T782) is no longer a preset
+  // audit.activity (owner direction 2026-09-20, T782) is no longer a preset
   // value: detailed auditing is opt-in setup under Advanced, so it moves from
   // the applied list to the preserved list: 20/22 -> 19/23. The reusable-slot
-  // shape (fleet.tree_width, fleet.tree_depth; an earlier commit) is the person's own
+  // shape (fleet.tree_width, fleet.tree_depth; a8aee112a) is the person's own
   // tree layout and joins the preserved list: 23 -> 25.
   // Task ratings, task-only delegation and agent communication are separate
   // choices, preserved across all working profiles.
-  // Metrics history (metrics.local_history) is a separate
+  // Metrics history (metrics.local_history, owner 2026-09-23) is a separate
   // choice under Advanced that no preset writes: 31 -> 32.
   assert.equal(kept.length, 32)
   for (const id of ['agent.task_difficulty_enabled', 'agent.task_only_delegation', 'agent.comms_enabled']) {
     assert.ok(kept.includes(id), id)
     for (const profile of WORKING_PROFILES) assert.equal(Object.hasOwn(make(profile.id).product, id), false, id)
   }
-  assert.equal(mapped.length + flagIds.length + PROFILE_INTENT.filter(field => field.id !== 'approvals').length + PROFILE_RESOURCE_KEYS.length, 37, 'approval intent shares the canonical product field')
+  assert.equal(mapped.length + flagIds.length + PROFILE_INTENT.filter(field => field.id !== 'approvals').length + PROFILE_RESOURCE_KEYS.length, 36, 'approval intent shares the canonical product field')
   assert.ok(kept.includes('agent.agent_api'))
   assert.ok(kept.includes('agent.product_source_writes'))
   assert.ok(kept.includes('agent.subagent_route'))
@@ -57,7 +57,7 @@ test('every shipped product control has exactly one explicit profile disposition
   }
 })
 
-/* BASIC IS BASIC (product rule T782): a working preset never
+/* BASIC IS BASIC (owner direction 2026-09-20, T782): a working preset never
    switches detailed activity auditing or enforced resource admission on. Both
    are explicit setup under Advanced; a preset carries pacing values for the
    person who has enabled admission and leaves the switch itself alone. */
@@ -94,7 +94,7 @@ test('every ordinary Settings tunable is either a mapped action flag or an expla
   const { SETTINGS } = await import('../../src/views/settings.js')
   const writable = SETTINGS.filter(row => !['action', 'custom', 'link'].includes(row.type)).map(row => row.id)
   assert.deepEqual(writable.sort(), [...flagIds.map(id => `write_${id}`), ...Object.keys(PROFILE_LOCAL_PRESERVED)].sort())
-  /* vault_credentials joined this_computer_programs at T254 (an earlier commit,
+  /* vault_credentials joined this_computer_programs at T254 (6cd8427a,
      2026-09-17): it stores no mc.set.* preference either -- the vault IS
      the store, per src/views/settings.js's own comment on that row -- so it
      is exactly the same kind of exclusion, not a second category. */
@@ -227,7 +227,7 @@ test('absent accounts and remote-only resources are explicit exclusions, not sub
   state.resources = null; state.resourceApplicable = false
   assert.equal(matchWorkingProfile(plan, state).matches, true)
   state.setup.accounts.applicable = true
-  assert.equal(matchWorkingProfile(plan, state).matches, false)
+  assert.equal(matchWorkingProfile(plan, state).matches, true, 'retired account policy fields cannot influence profile matching')
 })
 
 test('Setup autonomy is Custom after edits; equivalent Guided outcomes use history only as a tie-breaker', () => {

@@ -132,7 +132,7 @@ test('a later explicit allowed set supersedes an older grant waiting for audit',
   /* 'b' holds the newer allowed set, so control is plainly ON and 'a' simply is
      not who it was granted to. This used to answer SCREEN_ACCESS_OFF, which told
      the person to enable a permission already enabled -- the round trip behind
-     the it-was-on report of 2026-09-15. The supersession under test is
+     the owner's "its on" of 2026-09-15. The supersession under test is
      unchanged; only the sentence 'a' is given is. */
   assert.throws(() => f.host.control(f.principal('a'), { action: 'click' }), { code: 'SCREEN_ACCESS_NOT_THIS_SESSION' })
   await f.host.control(f.principal('b'), { action: 'click' })

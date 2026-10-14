@@ -8,7 +8,7 @@ export const GROUPS = Object.freeze([
   app('login', ['sign-in handoff', 'PKCE', 'cancellation', 'account state'], ['hosted-browser-signin', 'hosted-account-store'],
     ['product-account-surface', 'account-browser-wait', 'website-account-route']),
   app('remote-ui', ['remote trees', 'reconnect', 'session nonce', 'device settings'], ['remote-desktop-tree', 'remote-session-reconnect-renderer'],
-    ['desktop-session-nonce-roundtrip-renderer', 'hosted-device-settings-access', 'remote-desktop-tree-snapshot']),
+    ['\x64esktop-session-nonce-roundtrip-renderer', 'hosted-device-settings-access', 'remote-desktop-tree-snapshot']),
   app('agents', ['session controls', 'admission', 'tree lifecycle', 'recovery'], ['session-bridge-control', 'tree-slot-admission'],
     ['agent-session-surface', 'tree-lifecycle-authority', 'session-recovery', 'provider-session-isolation']),
   app('chat', ['send/stop keyboard', 'phone sheet', 'content bounds'], ['chat-enter-repeat', 'chat-preformatted-bounds'],

@@ -10,7 +10,8 @@ import { createCompareFilesDoor } from '../../src/diff-editor.js'
 import { mountChatSessionChanges } from '../../src/chat-session-changes.js'
 import { createChatDiffOpenHandler } from '../../src/components.js'
 
-const { createDiffFiles } = createRequire(import.meta.url)('../../shell/diff-file.cjs')
+const { createDiffFiles, diffAnswer } = createRequire(import.meta.url)('../../shell/diff-file.cjs')
+const { createSessionDiffAccess } = createRequire(import.meta.url)('../../shell/session-diff-access.cjs')
 const { bindSessionChangePaths } = createRequire(import.meta.url)('../../shell/session-change-paths.cjs')
 const change = (file, extra = {}) => ({ path: file, status: 'M', added: 1, removed: 1, edits: 1, complete: false, patches: [], ...extra })
 const reading = (file, text = file) => ({ ok: true, path: file, text, exists: true, bytes: Buffer.byteLength(text), modifiedMs: 1 })
@@ -104,6 +105,10 @@ test('clicking a changed file loads that real file and its original into both pa
   t.after(() => {
     assert.equal(fs.realpathSync.native(scratch), owned)
     assert.equal(path.dirname(owned), fs.realpathSync.native(path.dirname(scratch)))
+    if (process.env.TOOLSENABLED_TEST_RETAIN_FIXTURES === '1') {
+      t.diagnostic(`Retained Compare fixture: ${owned}`)
+      return
+    }
     fs.rmSync(owned, { recursive: true })
   })
   const first = path.join(scratch, 'first.txt'), target = path.join(scratch, 'selected.txt')
@@ -247,7 +252,7 @@ test('closing a window invalidates its pending file result', async t => {
   assert.equal(door.isOpen(), false)
 })
 
-for (const [platform, adapter, cwd] of [['Windows', path.win32, 'C:\\workspace'], ['Linux', path.posix, '/workspace']]) {
+for (const [platform, adapter, cwd] of [['Windows', path.win32, '\x43:\\workspace'], ['Linux', path.posix, '/workspace']]) {
   test(`${platform} session-relative targets reach the reader with their exact bound path`, async t => {
     const packet = bindSessionChangePaths({ event: { type: 'tool_call', tool: 'fileChange', payload: { changes: [{ path: 'nested/selected.txt' }] } } }, cwd, adapter)
     const target = packet.event.payload.changes[0].path
@@ -269,3 +274,233 @@ test('an unavailable exact target stays a refusal and never falls back to anothe
   assert.equal(editor.state.refusal.code, 'MC_DIFF_PATH_UNBOUND')
   assert.equal(editor.state.sides.proposed.path, null)
 })
+
+// The real door selects split-first itself. These cases do not supply a create
+// override or set controller state to select a view. Disk operations stay in
+// Maps; the real file reader and registered-session authority still run.
+function splitFirstFiles({ rootsAvailable = true, wrongOwner = false } = {}) {
+  const workspace = path.resolve('t1890-workspace')
+  const registered = path.resolve('t1890-registered')
+  const outside = path.resolve('t1890-outside')
+  const target = path.join(registered, 'changed.txt')
+  const directories = new Set([workspace, registered, outside])
+  const contents = new Map([workspace, registered, outside].map(root => [path.join(root, 'changed.txt'), 'after\n']))
+  const descriptors = new Map(), reads = [], writes = []
+  let descriptor = 0, fault = null, profileRoot = registered
+  const error = code => Object.assign(new Error('fixture-internal-details: fixture-private-path'), { code })
+  const disk = {
+    realpathSync(candidate) {
+      if (directories.has(candidate) || contents.has(candidate)) return candidate
+      throw error('ENOENT')
+    },
+    statSync(candidate) {
+      if (directories.has(candidate)) return { isDirectory: () => true, isFile: () => false }
+      if (fault && ['EACCES', 'EIO', 'ENOENT'].includes(fault)) throw error(fault)
+      if (!contents.has(candidate)) throw error('ENOENT')
+      return { isDirectory: () => false,
+        isFile: () => { if (fault === 'unexpected') throw error('FIXTURE_FAULT'); return true },
+        size: Buffer.byteLength(contents.get(candidate)), mtimeMs: 1 }
+    },
+    readFileSync(candidate) {
+      reads.push(candidate)
+      if (fault === 'read') throw error('EIO')
+      if (!contents.has(candidate)) throw error('ENOENT')
+      return Buffer.from(contents.get(candidate))
+    },
+    openSync(candidate, mode) {
+      assert.equal(mode, 'wx')
+      if (contents.has(candidate)) throw error('EEXIST')
+      contents.set(candidate, '')
+      descriptors.set(++descriptor, candidate)
+      return descriptor
+    },
+    writeFileSync(fd, text) { contents.set(descriptors.get(fd), text) },
+    fsyncSync(fd) { assert.ok(descriptors.has(fd)) },
+    closeSync(fd) { descriptors.delete(fd) },
+    renameSync(from, to) {
+      assert.ok(contents.has(from))
+      contents.set(to, contents.get(from)); contents.delete(from)
+      writes.push(to)
+    },
+    unlinkSync(candidate) { if (!contents.delete(candidate)) throw error('ENOENT') },
+  }
+  const files = createDiffFiles({ fs: disk, path, workspaceRoots: () => rootsAvailable ? [workspace] : [] })
+  const owner = { isDestroyed: () => false }
+  const sessionId = 't1890-session'
+  const session = { started: true, owner: wrongOwner ? { isDestroyed: () => false } : owner,
+    ownerKind: 'window', profileId: 't1890-profile', cwd: registered }
+  const access = createSessionDiffAccess({ fs: disk, path, sessions: new Map([[sessionId, session]]),
+    readDefault: file => files.readChange(file), stampDefault: file => files.stamp(file),
+    writeDefault: (file, text) => files.write(file, text), readPreferences: () => ({ ok: true, values: {} }),
+    resolveProfile: () => profileRoot, assertPath: value => value,
+    captureCeiling: roots => roots.map(canonical => ({ canonical })),
+    intersectCeiling: (_ceiling, roots) => roots,
+  })
+  const calls = []
+  const bridge = {
+    readChange(file, options) {
+      calls.push(['readChange', file, options?.sessionId])
+      const result = access.read(owner, { path: file, ...options })
+      // Even a future transport that attaches raw failure details must not
+      // cause the renderer to expose them. Successful content is untouched.
+      return result.ok ? result : { ...result, message: 'fixture-internal-details',
+        path: 'fixture-private-path', text: 'fixture-private-content' }
+    },
+    stamp(file, options) {
+      calls.push(['stamp', file, options?.sessionId])
+      return access.stamp(owner, { path: file, ...options })
+    },
+    save(file, text, options) {
+      calls.push(['save', file, options?.sessionId])
+      return diffAnswer('MC_DIFF_WRITE_FAILED', () => access.write(owner, { path: file, text, ...options }))
+    },
+  }
+  return { target, outside: path.join(outside, 'changed.txt'), sessionId, bridge, contents, reads, writes, calls,
+    fail: cause => { fault = cause },
+    revoke: () => access.ended(sessionId, session, 'revoked'),
+    rebind: () => { profileRoot = outside },
+  }
+}
+
+function visibleControl(document, selector) {
+  const node = document.body.querySelector(selector)
+  assert.ok(node, `missing ${selector}`)
+  assert.ok(node.closest('[hidden]') === null, `${selector} is hidden with its parent`)
+  assert.ok(node.closest('[aria-hidden="true"]') === null, `${selector} is hidden from assistive technology`)
+  return node
+}
+
+function visibleReadRefusal(document, code, words) {
+  const refusal = visibleControl(document, '.diff-refusal')
+  assert.equal(refusal.getAttribute('role'), 'alert')
+  assert.equal(refusal.getAttribute('data-refusal-code'), code)
+  assert.ok(refusal.closest('[data-diff-edit-body]') === null, 'the diagnostic must survive switching views')
+  assert.match(refusal.textContent, words)
+  assert.doesNotMatch(document.body.textContent, /fixture-internal-details|fixture-private-|MC_DIFF_/)
+  return refusal
+}
+
+const splitReadFailures = [
+  ['no workspace', { rootsAvailable: false }, null, 'MC_DIFF_NO_WORKSPACE', /could not find the folder/i],
+  ['outside registered workspace', {}, null, 'MC_DIFF_OUTSIDE_WORKSPACE', /outside the folder/i],
+  ['stat failure', {}, 'EACCES', 'MC_DIFF_STAT_FAILED', /details could not be checked/i],
+  ['read failure', {}, 'read', 'MC_DIFF_READ_FAILED', /file could not be read/i],
+  ['unexpected reader failure', {}, 'unexpected', 'MC_DIFF_HANDLER_FAILED', /unexpected error/i],
+  ['another session owner', { wrongOwner: true }, null, 'MC_DIFF_SESSION_SCOPE_UNAVAILABLE', /session folder.*not currently available/i],
+]
+
+for (const [cause, options, fault, code, words] of splitReadFailures) {
+  test(`T1890 split-first door visibly distinguishes ${cause} through the real session reader`, async t => {
+    const native = splitFirstFiles(options)
+    native.fail(fault)
+    const { document, door } = fixture(t, native.bridge)
+    const target = cause === 'outside registered workspace' ? native.outside : native.target
+    const editor = door.open(change(target, { sessionId: native.sessionId }))
+    await settle()
+    visibleControl(document, '[data-diff-split]')
+    assert.equal(document.body.querySelector('[data-diff-edit-body]').hidden, true)
+    visibleReadRefusal(document, code, words)
+    visibleControl(document, '[data-diff-view="edit"]').click()
+    assert.equal(document.body.querySelector('[data-diff-edit-body]').hidden, false)
+    visibleReadRefusal(document, code, words)
+    for (const side of ['original', 'proposed']) {
+      assert.equal(document.body.querySelector(`[data-diff-pane="${side}"]`).value, '')
+      assert.equal(document.body.querySelectorAll('[data-diff-action="save"]').find(node => node.dataset.diffSide === side).disabled, true)
+      await editor.commitSave(side)
+    }
+    assert.deepEqual(native.calls, [['readChange', target, native.sessionId]])
+    assert.equal(native.writes.length, 0)
+    assert.equal(native.contents.get(native.target), 'after\n')
+    if (cause === 'another session owner' || cause === 'outside registered workspace') assert.equal(native.reads.length, 0)
+  })
+}
+
+test('T1890 split-first rejected read stays visible and cannot retain the previous file contents', async t => {
+  const native = splitFirstFiles()
+  const { document, door } = fixture(t, native.bridge)
+  door.open(change(native.target, { sessionId: native.sessionId }))
+  await settle()
+  assert.equal(document.body.querySelector('[data-diff-pane="proposed"]').value, 'after\n')
+  native.bridge.readChange = async () => { throw Error('fixture-internal-details') }
+  door.open(change(path.join(path.dirname(native.target), 'unavailable.txt'), { sessionId: native.sessionId }))
+  await settle()
+  visibleControl(document, '[data-diff-split]')
+  visibleReadRefusal(document, 'MC_DIFF_HANDLER_FAILED', /unexpected error/i)
+  visibleControl(document, '[data-diff-view="edit"]').click()
+  for (const side of ['original', 'proposed']) assert.equal(document.body.querySelector(`[data-diff-pane="${side}"]`).value, '')
+  assert.equal(native.writes.length, 0)
+})
+
+async function editThroughSplitDoor(t, native) {
+  const mounted = fixture(t, native.bridge)
+  mounted.door.open(change(native.target, { sessionId: native.sessionId, complete: true,
+    patches: [{ path: native.target, diff: '@@ -1 +1 @@\n-before\n+after\n' }] }))
+  await settle()
+  visibleControl(mounted.document, '[data-diff-split]')
+  visibleControl(mounted.document, '[data-diff-view="edit"]').click()
+  const box = visibleControl(mounted.document, '[data-diff-pane="proposed"]')
+  box.value = 'retained manual edit\n'
+  box.dispatchEvent({ type: 'input' })
+  visibleControl(mounted.document, '[data-diff-view="split"]').click()
+  assert.match(visibleControl(mounted.document, '[data-diff-split]').textContent, /retained manual edit/)
+  visibleControl(mounted.document, '[data-diff-view="edit"]').click()
+  assert.equal(visibleControl(mounted.document, '[data-diff-pane="proposed"]').value, 'retained manual edit\n')
+  return mounted
+}
+
+async function askToSave(document) {
+  const save = document.body.querySelectorAll('[data-diff-action="save"]').find(node => node.dataset.diffSide === 'proposed')
+  assert.ok(save)
+  assert.equal(save.closest('[hidden]'), null)
+  assert.equal(save.disabled, false)
+  save.click()
+  await settle()
+  const confirm = visibleControl(document, '[data-diff-action="confirm-save"]')
+  assert.equal(confirm.disabled, false)
+  assert.match(visibleControl(document, '.diff-warning').textContent, /could not be read/i)
+  return confirm
+}
+
+for (const cause of ['EACCES', 'EIO', 'unexpected', 'rejected bridge', 'ENOENT']) {
+  test(`T1890 split-first Edit retains manual save after stamp ${cause}`, async t => {
+    const native = splitFirstFiles()
+    const { document } = await editThroughSplitDoor(t, native)
+    if (cause === 'rejected bridge') native.bridge.stamp = async () => { throw Error('fixture-internal-details') }
+    else native.fail(cause)
+    await askToSave(document)
+    if (cause === 'ENOENT') assert.equal(document.body.querySelector('.diff-refusal'), null, 'known absence remains a warning, not a stat failure')
+    else visibleReadRefusal(document, cause === 'unexpected' || cause === 'rejected bridge' ? 'MC_DIFF_HANDLER_FAILED' : 'MC_DIFF_STAT_FAILED',
+      cause === 'unexpected' || cause === 'rejected bridge' ? /unexpected error/i : /details could not be checked/i)
+    const split = visibleControl(document, '[data-diff-view="split"]')
+    assert.equal(split.disabled, true, 'a view switch must not hide the pending save question')
+    split.click()
+    visibleControl(document, '[data-diff-action="confirm-save"]')
+    visibleControl(document, '[data-diff-action="cancel-save"]').click()
+    assert.equal(visibleControl(document, '[data-diff-pane="proposed"]').value, 'retained manual edit\n')
+    assert.equal(native.contents.get(native.target), 'after\n')
+    const confirm = await askToSave(document)
+    confirm.click()
+    await settle()
+    assert.equal(native.contents.get(native.target), 'retained manual edit\n')
+    assert.deepEqual(native.writes, [native.target], 'one deliberate confirmation writes exactly once')
+    assert.deepEqual(native.calls.filter(([verb]) => verb === 'save'), [['save', native.target, native.sessionId]])
+    assert.equal(document.body.querySelector('.diff-refusal'), null)
+    assert.equal(visibleControl(document, '[data-diff-pane="proposed"]').value, 'retained manual edit\n')
+  })
+}
+
+for (const loss of ['revoke', 'rebind']) {
+  test(`T1890 split-first manual confirmation preserves edits when registered authority changes by ${loss}`, async t => {
+    const native = splitFirstFiles()
+    const { document } = await editThroughSplitDoor(t, native)
+    native.fail('EACCES')
+    const confirm = await askToSave(document)
+    native[loss]()
+    confirm.click()
+    await settle()
+    visibleReadRefusal(document, 'MC_DIFF_SESSION_SCOPE_UNAVAILABLE', /session folder.*not currently available/i)
+    assert.equal(native.writes.length, 0)
+    assert.equal(native.contents.get(native.target), 'after\n')
+    assert.equal(visibleControl(document, '[data-diff-pane="proposed"]').value, 'retained manual edit\n')
+  })
+}

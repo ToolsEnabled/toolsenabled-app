@@ -6,7 +6,7 @@ import { FEATURE_GUIDES } from '../../src/feature-guides.js'
 
 // THE INTRO CARD MUST NOT COVER THE PAGE'S OWN CONTROLS (ledger T143).
 //
-// Measured by the acceptance judge on 2026-09-16 (run #310, an earlier app commit): on a
+// Measured by the acceptance judge on 2026-09-16 (run #310, app 85dc71a8): on a
 // fresh profile at #/computers the first-use card opened by itself at 12,76
 // (352x326) and completely covered the workspace header plus at 325,174
 // (32x32), the only way owner request T62 left to create a tree, so a person's

@@ -4,8 +4,8 @@ dialog.role-studio {
   box-sizing: border-box;
   /* THE THEME TOKENS THIS PANEL READS ARE THE ONES THE THEME ACTUALLY WRITES.
    *
-   * Reported on the black theme: the page was entirely unreadable. Two of the
-   * six names below were invented here and are
+   * Reported by the owner on the black theme: "i cant see literally anything
+   * its unreadable". Two of the six names below were invented here and are
    * defined nowhere -- `--paper` had exactly one reader in the whole app (this
    * line) and `--accent` none -- so those two fell to their light-theme
    * literals while the four real names resolved per theme. On black that

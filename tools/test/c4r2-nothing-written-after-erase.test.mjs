@@ -23,6 +23,7 @@ import { createRequire } from 'node:module'
 import test from 'node:test'
 
 const require = createRequire(import.meta.url)
+const { createLegacyStandaloneTranscriptReader } = require('../../shell/legacy-standalone-identity.cjs')
 const { createNodeTranscriptStore } = require('../../shell/node-transcript-store.cjs')
 const { createNodeTranscriptCapture } = require('../../shell/node-transcript-capture.cjs')
 const MAIN = readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf8')
@@ -62,6 +63,11 @@ function transcriptChannels(store, flags) {
     withConversationStorageState: answer => answer,
     retryConversationStorage: () => store.retry(),
   }
+  sandbox.readStandaloneTranscript = createLegacyStandaloneTranscriptReader({
+    readTranscript: request => store.read(request),
+    readTabs: () => assert.fail('an ordinary tree read must not inspect standalone tabs'),
+    readContinuation: () => assert.fail('an ordinary tree read must not inspect native identities'),
+  })
   vm.createContext(sandbox)
   vm.runInContext(slice('function prefsErasedRefusal(what) {', '\nlet actionPermissionProfileHost'), sandbox)
   vm.runInContext(slice('const transcriptRefusalCode = ', "ipcMain.handle('mc-transcripts:chooseArchiveDirectory'"), sandbox)

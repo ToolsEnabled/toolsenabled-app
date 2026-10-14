@@ -224,7 +224,7 @@ test('A RECORD WHOSE OTHER FIELDS ARE HUGE IS REFUSED — the bound is on the re
     const answer = await store.save({
       computerId: 'c',
       nodeId: 'a',
-      record: { v: 1, handoff: 'well within the handoff cap', junk: 'x'.repeat(2_000_000) },
+      record: { v: 1, handoff: 'well within the handoff cap', conversation: 'x'.repeat(2_000_000) },
     })
     assert.equal(answer.ok, false, 'an unbounded record must not reach the disk')
     assert.equal((await store.get({ computerId: 'c', nodeId: 'a' })).record, null,
@@ -262,7 +262,7 @@ test('THE SPECIFIED PROOF: 23 records including 7 orphans -> 0 in ordinary, 23 i
   try {
     const values = { 'mc.theme': 'black' }
     for (let index = 0; index < 23; index += 1) {
-      const nodeId = `node-${index}-77777777-8888-4999-8aaa-bbbbbbbbbbbb`
+      const nodeId = `node-${index}-1f0e3dad-9999-4444-8888-abcdefabcdef`
       /* The last 7 are orphans: no circle anywhere names them. Under this ruling
          that changes nothing about how they are treated. */
       values[recoveryKey('this-computer', nodeId)] =
@@ -366,14 +366,14 @@ for (const [label, handoff] of [['ASCII', 'h'.repeat(48_000)], ['Unicode', '界'
     const { MAX_RECORD_CHARS, MAX_RECORD_BYTES } = require_('../../shell/node-recovery-store.cjs')
     const { dir, store } = storeIn('exact-bound-')
     try {
-      const record = { v: 1, handoff, extra: '' }
-      record.extra = 'x'.repeat(MAX_RECORD_CHARS - JSON.stringify(record).length)
+      const record = { v: 1, handoff, conversation: '' }
+      record.conversation = 'x'.repeat(MAX_RECORD_CHARS - JSON.stringify(record).length)
       assert.equal(JSON.stringify(record).length, MAX_RECORD_CHARS)
       assert.ok(Buffer.byteLength(JSON.stringify(record)) <= MAX_RECORD_BYTES)
       assert.equal((await store.save({ computerId: 'c', nodeId: 'n', record })).ok, true)
       const file = fs.readdirSync(store.directory).find(name => name.endsWith('.json'))
       const before = fs.readFileSync(path.join(store.directory, file))
-      const refused = await store.save({ computerId: 'c', nodeId: 'n', record: { ...record, extra: record.extra + 'x' } })
+      const refused = await store.save({ computerId: 'c', nodeId: 'n', record: { ...record, conversation: record.conversation + 'x' } })
       assert.equal(refused.ok, false)
       assert.equal(refused.error.code, 'RECOVERY_RECORD_TOO_LARGE')
       assert.deepEqual(fs.readFileSync(path.join(store.directory, file)), before)
@@ -417,7 +417,7 @@ test('a cyclic payload refuses before changing the prior checkpoint', async () =
   const { dir, store } = storeIn('cyclic-')
   try {
     await store.save({ computerId: 'c', nodeId: 'n', record: RECORD })
-    const cycle = { ...RECORD }; cycle.self = cycle
+    const cycle = { ...RECORD }; cycle.conversation = cycle
     const answer = await store.save({ computerId: 'c', nodeId: 'n', record: cycle })
     assert.equal(answer.error.code, 'RECOVERY_RECORD_INVALID')
     assert.deepEqual((await store.get({ computerId: 'c', nodeId: 'n' })).record, RECORD)
@@ -634,7 +634,7 @@ test('full local-data erase removes legacy and external checkpoints; a refused r
 })
 
 for (const [label, record] of [
-  ['extra fields', { ...RECORD, extra: 'x'.repeat(65_536) }],
+  ['extra fields', { ...RECORD, conversation: 'x'.repeat(65_536) }],
   ['handoff length', { ...RECORD, handoff: 'h'.repeat(48_001) }],
 ]) {
   test(`persisted read refuses oversized ${label} without altering the stored file`, async () => {
@@ -671,7 +671,7 @@ test('persisted file envelope is bounded before a large file is read or parsed',
   try {
     await store.save({ computerId: 'c', nodeId: 'n', record: RECORD })
     const file = path.join(store.directory, fs.readdirSync(store.directory)[0])
-    const bytes = JSON.stringify({ computerId: 'c', nodeId: 'n', record: RECORD, junk: 'x'.repeat(2_000_000) })
+    const bytes = JSON.stringify({ computerId: 'c', nodeId: 'n', record: RECORD, conversation: 'x'.repeat(2_000_000) })
     fs.writeFileSync(file, bytes)
     let reads = 0
     const io = { ...fs.promises, open: async (...args) => {
@@ -690,7 +690,7 @@ test('persisted file envelope is bounded before a large file is read or parsed',
 test('retained legacy reads enforce the whole-record limit without deleting source data', async () => {
   const { createRecoveryPersistence } = require_('../../shell/node-recovery-store.cjs')
   const key = recoveryKey('c', 'n')
-  const raw = JSON.stringify({ ...RECORD, extra: 'x'.repeat(65_536) })
+  const raw = JSON.stringify({ ...RECORD, conversation: 'x'.repeat(65_536) })
   const prefs = fakePrefs({ [key]: raw })
   const service = createRecoveryPersistence({ prefs, store: { get: () => assert.fail('retained source must remain authoritative') } })
   const answer = await service.get({ computerId: 'c', nodeId: 'n' })
@@ -748,4 +748,26 @@ test('corrupt retained legacy values refuse without replacing, migrating or dele
     assert.deepEqual(prefs.snapshot(), before)
     assert.deepEqual(prefs.removed, [])
   }
+})
+
+test('old disk checkpoint policies load cleanly, keep safety holds, and drop unknown fields on save', async () => {
+  const { dir, store } = storeIn('old-policy-')
+  const computerId = 'synthetic-computer', nodeId = 'synthetic-node'
+  try {
+    assert.equal((await store.save({ computerId, nodeId, record: RECORD })).ok, true)
+    const file = path.join(store.directory, fs.readdirSync(store.directory)[0])
+    const envelope = JSON.parse(fs.readFileSync(file, 'utf8'))
+    envelope.record = { ...RECORD, retryPolicy: { enabled: true, safetyHold: { nodeId, sessionId: RECORD.sessionId } }, unknownPolicy: { enabled: true } }
+    fs.writeFileSync(file, JSON.stringify(envelope))
+    const loaded = await store.get({ computerId, nodeId })
+    assert.equal(loaded.ok, true)
+    assert.deepEqual(loaded.record.safetyHold, { nodeId, sessionId: RECORD.sessionId })
+    assert.equal(Object.hasOwn(loaded.record, 'retryPolicy'), false)
+    assert.equal(Object.hasOwn(loaded.record, 'unknownPolicy'), false)
+    assert.equal((await store.save({ computerId, nodeId, record: loaded.record })).ok, true)
+    const saved = JSON.parse(fs.readFileSync(file, 'utf8')).record
+    assert.equal(Object.hasOwn(saved, 'retryPolicy'), false)
+    assert.equal(Object.hasOwn(saved, 'unknownPolicy'), false)
+    assert.deepEqual(saved.safetyHold, { nodeId, sessionId: RECORD.sessionId })
+  } finally { discard(dir) }
 })

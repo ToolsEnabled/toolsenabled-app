@@ -47,7 +47,7 @@ test('concurrent pre-readiness callers construct exactly one agent host', async 
 })
 
 test('the bootstrap account fence accepts redirected profiles and rejects their siblings', { skip: process.platform !== 'win32' }, t => {
-  // A redirected profile is any ordinary drive path outside %SystemDrive%\Users. Real
+  // A redirected profile is any ordinary drive path outside <profile-root>/. Real
   // directories stand in for the redirected parent: a drive letter that does
   // not exist on the host answers lstat with UNKNOWN rather than ENOENT, and
   // the fence rightly refuses a path it cannot read (measured 2026-09-23 in
@@ -60,7 +60,7 @@ test('the bootstrap account fence accepts redirected profiles and rejects their 
   assert.equal(
     assertBootstrapAccountPath(engine, { profileRoot }),
     engine,
-    'an owned redirected-profile path must not require a C:\\Users spelling',
+    'an owned redirected-profile path must not require a \x43:\\Users spelling',
   )
   assert.throws(
     () => assertBootstrapAccountPath(path.join(parent, 'Bob', 'engine.js'), { profileRoot }),

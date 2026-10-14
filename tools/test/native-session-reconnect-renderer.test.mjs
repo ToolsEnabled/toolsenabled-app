@@ -1,11 +1,13 @@
 /* A RENDERER RELOAD IS NOT AN APP RESTART -- the native half.
  *
- * A renderer reload while a host session was working left the page on the
- * previous reply. The answer that session produced later is durable in
- * node-transcripts, and the page still showed the node drawn as "starting".
- * The session was alive the whole time. The same shape reproduces on Codex: a
+ * OWNER HAND TEST on the promoted native pair (app 2fd352b2; 68c7bca9 is the
+ * later, unpromoted transcript repair this branch builds on): Page 2 was
+ * reloaded at 10:21 while a host session was working. The answer that session
+ * produced at 10:30 is durable in node-transcripts, and the page still showed
+ * the previous reply with the node drawn as "starting". The session was alive
+ * the whole time. Root's baseline reproduced the same shape on Codex: a
  * twenty-second child exited with its nonce on disk while the reloaded page
- * stayed running with no answer.
+ * stayed running with no answer (evidence native-reload-before-proof.json).
  *
  * RUN_SESSION_NODES is module-local, so the reload emptied it, and
  * handleAgentEvent discards every event whose session is not in it.
@@ -477,10 +479,10 @@ test('a direct send in a rejoined native chat stamps its original owner row when
 
 /* ---------- T830: the reconnect storm ---------- */
 
-/* MEASURED on a development install: hundreds of lines of
+/* MEASURED 2026-09-21 on the LIVE generation (app d46c18f49): 303 lines of
    "Error occurred in handler for 'mc-agent:models': Error: MC_AGENT_UNKNOWN_SESSION"
-   in the host's log within half an hour of activation, in bursts -- one
-   refused read per saved circle of an earlier run, per mount of
+   in the host's log within 27 minutes of activation, in bursts of 77, 76, 75
+   and 75 -- one refused read per saved circle of an earlier run, per mount of
    this view or of the Home chat. Each is an Electron handler stack, because
    the host refuses by throwing. The refusal reaches the window as the sentence
    Electron wraps a rejected invoke in, without the code property. */
@@ -597,8 +599,8 @@ test('a cold mounted fleet checks 96 stale sessions in one batch with zero unkno
   }))
   f.world.storage.setItem(key, JSON.stringify(original))
   await f.mount()
-  // T830: batch absence replaces the
-  // earlier per-session cold-start probe; live-session checks remain.
+  // T830 Controller decision, 2026-09-23: batch absence replaces the
+  // pre-534967817 per-session cold-start probe; live-session checks remain.
   assert.equal(reads.size, 0, 'absent saved sessions must never enter the models handler')
   assert.equal(batches.length, 1, 'one host query covers the cold saved inventory')
   assert.deepEqual(new Set(batches[0]), new Set(original.nodes.map(node => node.sessionId)))

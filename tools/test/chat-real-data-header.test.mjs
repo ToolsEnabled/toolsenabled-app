@@ -28,7 +28,7 @@ if (!armed) {
   const CONTEXT_HOOK = '[data-chat-header-context]'
   const ALL_HOOKS = [PATH_HOOK, STATUS_HOOK, BRANCH_HOOK, CONTEXT_HOOK]
 
-  const PROFILE_PATH = Object.freeze({ source: 'profile-cwd', value: 'C:\\work\\engine' })
+  const PROFILE_PATH = Object.freeze({ source: 'profile-cwd', value: '\x43:\\work\\engine' })
   const WORKSPACE_PATH = Object.freeze({ source: 'session-workspace', value: '/workspace/engine' })
   const RUNNING_STATUS = Object.freeze({ source: 'session-node-status', key: 'running' })
   const BRANCH = Object.freeze({ source: 'git', name: 'feature/header', dirty: true })
@@ -954,7 +954,7 @@ if (!armed) {
     test('invalid discriminated records return null and paint no targeted hook', () => {
       const invalidCases = [
         {
-          label: 'H2 bare path record', member: 'path', value: 'C:\\work\\engine',
+          label: 'H2 bare path record', member: 'path', value: '\x43:\\work\\engine',
           hook: PATH_HOOK, helper: chatHeaderPathCopy,
           sibling: ['status', STATUS_HOOK, chatHeaderStatusCopy, RUNNING_STATUS],
         },
@@ -966,7 +966,7 @@ if (!armed) {
         },
         {
           label: 'unknown path source', member: 'path',
-          value: { source: 'test-unknown-path-source', value: 'C:\\work\\engine' },
+          value: { source: 'test-unknown-path-source', value: '\x43:\\work\\engine' },
           hook: PATH_HOOK, helper: chatHeaderPathCopy,
           sibling: ['status', STATUS_HOOK, chatHeaderStatusCopy, RUNNING_STATUS],
         },

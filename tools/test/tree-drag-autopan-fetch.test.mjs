@@ -1,4 +1,4 @@
-/* DOES THE AUTO-PAN ACTUALLY FETCH? T15.
+/* DOES THE AUTO-PAN ACTUALLY FETCH? T15, Controller 2026-09-15 22:14Z.
  *
  * The edge auto-pan exists to bring an off-screen drop target to the hand. Its
  * stop rule (_dropTargetInView, src/tree-graph.js) is right in intent — do not

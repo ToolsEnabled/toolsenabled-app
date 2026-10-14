@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createSettingsDraft, draftSettingsBridge } from '../../src/settings-draft.js'
-import { createSetupPolicyDraft, SETUP_PROFILE_DEPENDENCIES, SETUP_APPROVAL_DRAFT_KEY, SETUP_EDITOR_POLICY_KEY, SETUP_ACCOUNT_POLICY_KEY } from '../../src/setup-policy-draft.js'
+import { createSetupPolicyDraft, SETUP_PROFILE_DEPENDENCIES, SETUP_APPROVAL_DRAFT_KEY, SETUP_EDITOR_POLICY_KEY } from '../../src/setup-policy-draft.js'
 
 function fixture() {
   const state = { approvals: 'Stop and wait for me', ideImport: 'none', writes: [], failImport: false, selectionMode: 'manual' }
@@ -25,10 +25,10 @@ function fixture() {
 test('Setup reads canonical policies and overlays pending choices without writing on read', async () => {
   const f = fixture(); f.state.approvals = 'Decide for itself'; f.state.ideImport = 'ask'
   await f.setup.load()
-  assert.deepEqual(f.setup.values({ approvals: 'stop', ideImport: 'none' }), { approvals: 'judgement', ideImport: 'ask', failover: 'manual' })
+  assert.deepEqual(f.setup.values({ approvals: 'stop', ideImport: 'none' }), { approvals: 'judgement', ideImport: 'ask' })
   await f.setup.stage({ approvals: 'other-work', ideImport: 'all-detected' })
   await f.setup.load()
-  assert.deepEqual(f.setup.values(), { approvals: 'other-work', ideImport: 'all-detected', failover: 'manual' })
+  assert.deepEqual(f.setup.values(), { approvals: 'other-work', ideImport: 'all-detected' })
   assert.deepEqual(f.state.writes, [])
 })
 
@@ -97,7 +97,7 @@ test('partial policy Save does not file an agreeing profile, and retry does not 
   f.state.failImport = false
   await f.draft.save()
   assert.equal(f.state.writes.filter(row => row[0] === 'approval').length, 1)
-  assert.deepEqual(f.state.writes.at(-1), ['profile', { approvals: 'judgement', ideImport: 'ask', failover: 'manual' }])
+  assert.deepEqual(f.state.writes.at(-1), ['profile', { approvals: 'judgement', ideImport: 'ask' }])
   assert.equal(f.draft.dirty, false)
 })
 
@@ -108,22 +108,7 @@ test('an unreadable canonical choice blocks Save and preserves native values', a
   assert.deepEqual(f.state.writes, [])
 })
 
-test('account-policy edits enter the shared draft before a slow native read, so an immediate revert wins', async () => {
-  const f = fixture(); await f.setup.load()
-  let release
-  const gate = new Promise(resolve => { release = resolve })
-  const original = f.scope.mcProviders.accounts
-  f.scope.mcProviders.accounts = async () => { await gate; return original() }
-  const first = f.setup.stage({ failover: 'auto' })
-  assert.equal(f.setup.values().failover, 'auto')
-  const second = f.setup.stage({ failover: 'manual' })
-  assert.equal(f.setup.values().failover, 'manual')
-  assert.equal(f.draft.has(SETUP_ACCOUNT_POLICY_KEY), false)
-  release(); await Promise.all([first, second])
-  await f.draft.save()
-  assert.equal(f.state.selectionMode, 'manual')
-  assert.deepEqual(f.state.writes, [])
-})
+
 
 test('a pending Accounts read does not delay unrelated Setup policies', async () => {
   const f = fixture()

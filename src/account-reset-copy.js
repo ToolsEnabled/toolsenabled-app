@@ -36,11 +36,35 @@
  * program would have assumed it from silence.
  */
 
-export const RESET_TITLE = 'Remove this program’s data from the computer you are driving'
+export const RESET_SUBJECT_HERE = 'this computer'
+export const RESET_SUBJECT_REMOTE = 'the computer you are driving'
 
-export const RESET_LEAD = 'Deleting removes what ToolsEnabled has saved on the computer you are driving: every account on that computer, '
-  + 'your saved credentials, the signed record of everything it has done, your settings, and the permission '
-  + 'level you chose. It cannot be undone, and it does not uninstall the program.'
+/* WHICH COMPUTER THE CARD NAMES (B32, 1.0.49). The title and the lead were
+   fixed strings naming "the computer you are driving", so the person at the
+   desk -- the only place this card can delete anything -- read words written
+   for somebody driving that computer from a browser. src/views/account.js
+   view() already works out the reader (RESET_SUBJECT_HERE at the desk,
+   RESET_SUBJECT_REMOTE over the relay) and hands it to every line below. A
+   caller that names no reader gets the desk words, the same default as
+   survivesLines(). */
+export function resetComputer(subject) {
+  return subject === RESET_SUBJECT_REMOTE ? RESET_SUBJECT_REMOTE : RESET_SUBJECT_HERE
+}
+
+export function resetTitle({ subject } = {}) {
+  return `Remove this program’s data from ${resetComputer(subject)}`
+}
+
+export function resetLead({ subject } = {}) {
+  const everyAccount = subject === RESET_SUBJECT_REMOTE ? 'every account on that computer' : 'every account on it'
+  return `Deleting removes what ToolsEnabled has saved on ${resetComputer(subject)}: ${everyAccount}, `
+    + 'your saved credentials, the signed record of everything it has done, your settings, and the permission '
+    + 'level you chose. It cannot be undone, and it does not uninstall the program.'
+}
+
+export function resetMeasuring({ subject } = {}) {
+  return `Measuring what is on ${resetComputer(subject)} right now. Nothing has been deleted.`
+}
 
 /* THE SIGN-OUT SENTENCES ARE HERE TOO, NEXT TO THE DELETE. They used to say only
    what the buttons do; what they do not do is the part somebody acting on a
@@ -61,7 +85,12 @@ export const SIGN_OUT_DESC = '“Sign out” ends this sign-in on the computer y
  * A FUNCTION, not two constants, because account-markup.js already branches on
  * state.signInMethod for the rename row twenty lines away and got it right
  * there. One shape for one question. */
-export function signOutLimits(signInMethod) {
+/* WHICH COMPUTER, AGAIN. The last sentence named "the computer you are driving"
+   to everybody, so at the desk it sat directly above "Remove this program’s
+   data from this computer" (1.0.50 release review, release-ops F8). The caller
+   names the reader the same way the reset card's lines do; with none named it
+   gets the desk words. */
+export function signOutLimits(signInMethod, { subject } = {}) {
   /* THREE CASES, NOT TWO. A caller that does not know the method must not have
      one guessed for it: naming either credential would be wrong for half of the
      people who read it, which is the defect this function exists to close. */
@@ -70,9 +99,11 @@ export function signOutLimits(signInMethod) {
     : signInMethod === 'password'
       ? 'the same password signs you back in'
       : 'signing in again brings you straight back'
+  const computer = resetComputer(subject)
+  const whose = computer === RESET_SUBJECT_HERE ? 'this computer’s' : 'that computer’s'
   return 'Neither one deletes anything: your account, your settings and your history stay '
     + `exactly as they are, and ${backIn}. There is no server involved — an account here `
-    + 'exists only on the computer you are driving, so “everywhere” means every copy of that computer’s sign-in.'
+    + `exists only on ${computer}, so “everywhere” means every copy of ${whose} sign-in.`
 }
 
 /* Kept for callers that have no method to hand. Method-neutral on purpose: a
@@ -89,8 +120,10 @@ export const NO_BRIDGE_DETAIL = 'This browser is not connected to the installed 
   + 'controls on this screen are unavailable. Data can only be removed from inside ToolsEnabled on the computer you are driving.'
 
 /* Said BEFORE the second press, because after it there is nothing to save. */
-export const BACKUP_NOTICE = 'There is no undo and no copy anywhere else. If you want one, copy the folders named '
-  + 'above somewhere safe on the computer you are driving before continuing.'
+export function backupNotice({ subject } = {}) {
+  return 'There is no undo and no copy anywhere else. If you want one, copy the folders named '
+    + `above somewhere safe on ${resetComputer(subject)} before continuing.`
+}
 
 /* WHAT IS NOT DELETED. Written as claims this build can stand behind, each with
    the reason it survives, and deliberately not as reassurance. */
@@ -110,7 +143,7 @@ export const SURVIVES = Object.freeze([
   },
   {
     title: 'Anything that already left this computer',
-    detail: 'Mail that was sent, a file that was uploaded, work started on a service that is not the computer you are driving, or a '
+    detail: 'Mail that was sent, a file that was uploaded, work started on a service that is not this computer, or a '
       + 'Google account you signed in with — deleting here cannot reach any of it and does not undo it. If you '
       + 'signed in with Google, remove this program’s access in your Google account as well.',
   },
@@ -124,12 +157,12 @@ export const SURVIVES = Object.freeze([
 /* The survivor list is also read through the relay. Keep the desk copy as the
    canonical table, and give only the verified desk-bound entry a remote twin;
    the other entries already describe the driven computer correctly. */
-export const RESET_SUBJECT_HERE = 'this computer'
-export const RESET_SUBJECT_REMOTE = 'the computer you are driving'
-
 const REMOTE_SURVIVES = Object.freeze(SURVIVES.map((entry, index) => Object.freeze({
   ...entry,
   title: index === 2 ? 'Anything that already left the computer you are driving' : entry.title,
+  /* B32: the desk entry says "a service that is not this computer"; the relay
+     reader is told which computer that is. */
+  detail: index === 2 ? entry.detail.replace('that is not this computer', 'that is not the computer you are driving') : entry.detail,
 })))
 
 /* The uninstall sentence belongs to the TARGET named by the reset surface.
@@ -245,7 +278,7 @@ export function readPlan(reply) {
  * installation folder is, and the honest thing on that screen is "this folder
  * was not found, so it stays" -- not a shorter list.
  */
-export function planLines(plan) {
+export function planLines(plan, { subject } = {}) {
   const lines = []
   for (const root of plan.roots || []) {
     if (!root.guarded) {
@@ -258,7 +291,7 @@ export function planLines(plan) {
       continue
     }
     if (!root.present) {
-      lines.push({ tone: 'quiet', title: rootLabel(root.kind), detail: 'There is nothing here on the computer you are driving.', directory: root.directory })
+      lines.push({ tone: 'quiet', title: rootLabel(root.kind), detail: `There is nothing here on ${resetComputer(subject)}.`, directory: root.directory })
       continue
     }
     const named = root.named.length > 0 ? ` They include ${root.named.map(entry => entry.what).join(', ')}.` : ''
@@ -398,20 +431,21 @@ export function outcomeLines(sweep, { subject = RESET_SUBJECT_HERE, platform } =
       detail: reason || 'The application did not confirm whether anything was deleted. Restart ToolsEnabled before trying again.',
     }
   }
+  const takenOff = subject === RESET_SUBJECT_REMOTE ? 'that computer' : 'this computer'
   if (sweep.complete) {
     return {
       tone: 'good',
       title: 'It is gone.',
-      detail: `Every file this program had saved on the computer you are driving was removed, checked one by one after deleting.${
+      detail: `Every file this program had saved on ${resetComputer(subject)} was removed, checked one by one after deleting.${
         /* revokedSessions, NOT revoked. `revoked` only says the step RAN. Somebody
            wiping a laptop they believe is compromised is exactly the person who
            presses this, and telling them every copied sign-in is now refused when no
            epoch was bumped is precisely why they would stop worrying. Same defect as
            the "Sign out everywhere" button beside it, which was fixed hours earlier. */
         sweep.revokedSessions
-          ? ' Every sign-in was ended first, including any copy taken off that computer.'
+          ? ` Every sign-in was ended first, including any copy taken off ${takenOff}.`
           : sweep.revoked
-            ? ' No sign-in was active, so none had to be ended; any copy taken off that computer is unchanged.'
+            ? ` No sign-in was active, so none had to be ended; any copy taken off ${takenOff} is unchanged.`
             : ''
       } ${removalOutcomeDetail({ subject, platform: target })}`,
     }
@@ -445,8 +479,10 @@ export function outcomeLines(sweep, { subject = RESET_SUBJECT_HERE, platform } =
     tone: 'warn',
     title: 'Almost all of it is gone.',
     detail: `${sweep.remainingFiles} file${sweep.remainingFiles === 1 ? '' : 's'} could not be deleted while the program `
-      + 'is running, because Windows had them open. They are named below with the folder they are in. Closing '
-      + 'ToolsEnabled on the computer you are driving releases them, and deleting that folder on that computer finishes the job.'
+      + 'is running, because Windows had them open. They are named below with the folder they are in. '
+      + (subject === RESET_SUBJECT_REMOTE
+        ? 'Closing ToolsEnabled on the computer you are driving releases them, and deleting that folder on that computer finishes the job.'
+        : 'Closing ToolsEnabled on this computer releases them, and deleting that folder then finishes the job.')
     /* AND NAME THE LEDGER IF IT IS ONE OF THEM. shell/main.cjs closes the
        canonical ledger before the sweep and reports whether it closed, precisely
        so this screen can account for a survivor. When it did not close, the

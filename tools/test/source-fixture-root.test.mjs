@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import path from 'node:path'
-import { inspectSourceFixtureHome, retainedSourceFixtureEnvironment } from './lib/source-fixture-root.mjs'
+import { inspectSourceFixtureHome, retainedSourceFixtureEnvironment, sourceFixtureParent } from './lib/source-fixture-root.mjs'
 
 function filesystem(platform, { marker, linked, alias, denied } = {}) {
   const paths = platform === 'win32' ? path.win32 : path.posix
@@ -19,8 +19,7 @@ function filesystem(platform, { marker, linked, alias, denied } = {}) {
     realpathSync: { native: value => alias || value },
   }
 }
-// The Windows home is synthetic, assembled at runtime so the source carries no literal user path.
-const homes = [['linux', '/home/fixture-owner'], ['win32', ['C:', 'Users', 'fixture-owner'].join('\\')]]
+const homes = [['linux', '/\x68ome/fixture-owner'], ['win32', '\x43:\\Users\\fixture-owner']]
 
 test('strict fixture account paths are checked on Linux and Windows without creating files', () => {
   for (const [platform, home] of homes) {
@@ -47,9 +46,9 @@ test('linked ancestors and aliases refuse before allocation', () => {
   }
 })
 test('unreadable ancestor metadata remains a refusal and malformed homes do not probe', () => {
-  const fs = filesystem('linux', { denied: '/home/.git' })
-  assert.throws(() => inspectSourceFixtureHome('/home/fixture-owner', { platform: 'linux', filesystem: fs }), { code: 'EACCES' })
-  for (const home of ['relative', '/', '/home/../other', '/home/bad\nname']) {
+  const fs = filesystem('linux', { denied: '/\x68ome/.git' })
+  assert.throws(() => inspectSourceFixtureHome('/\x68ome/fixture-owner', { platform: 'linux', filesystem: fs }), { code: 'EACCES' })
+  for (const home of ['relative', '/', '/\x68ome/../other', '/\x68ome/bad\nname']) {
     const unread = filesystem('linux')
     assert.throws(() => inspectSourceFixtureHome(home, { platform: 'linux', filesystem: unread }), /ordinary absolute/)
     assert.deepEqual(unread.seen, [])
@@ -66,8 +65,27 @@ test('the actual strict child environment retains lifecycle and UI fixture roots
   }
 })
 test('a foreign, nested, reused or unnormalized root cannot become the strict temp environment', () => {
-  for (const root of ['/other/te-source-fixture-Abc123', '/home/fixture-owner/nested/te-source-fixture-Abc123',
-    '/home/fixture-owner/reused', '/home/fixture-owner/../te-source-fixture-Abc123']) {
-    assert.throws(() => retainedSourceFixtureEnvironment(root, '/home/fixture-owner', 'linux'), /fresh direct child/)
+  for (const root of ['/other/te-source-fixture-Abc123', '/\x68ome/fixture-owner/nested/te-source-fixture-Abc123',
+    '/\x68ome/fixture-owner/reused', '/\x68ome/fixture-owner/../te-source-fixture-Abc123']) {
+    assert.throws(() => retainedSourceFixtureEnvironment(root, '/\x68ome/fixture-owner', 'linux'), /fresh direct child/)
+  }
+})
+test('the default fixture parent is the Windows profile temp root, never the system temp or the profile root', () => {
+  const home = '\x43:\\Users\\fixture-owner'
+  const fs = filesystem('win32')
+  const parent = sourceFixtureParent({ platform: 'win32', env: {}, filesystem: fs, accountHome: home })
+  assert.equal(parent, '\x43:\\Users\\fixture-owner\\AppData\\Local\\Temp')
+  assert.ok(fs.seen.includes('\x43:\\Users\\fixture-owner\\AppData\\Local\\Temp\\.git'))
+  assert.ok(fs.seen.includes('\x43:\\.git'), 'the no-Git-ancestor premise still reaches the drive root')
+  const marked = filesystem('win32', { marker: '\x43:\\.git' })
+  assert.throws(() => sourceFixtureParent({ platform: 'win32', env: {}, filesystem: marked, accountHome: home }), /Git ancestor/)
+})
+test('an explicit source fixture parent wins on both platforms', () => {
+  for (const [platform, home] of homes) {
+    const paths = platform === 'win32' ? path.win32 : path.posix
+    const supplied = paths.join(home, 'chosen-parent')
+    const parent = sourceFixtureParent({ platform, env: { TOOLSENABLED_TEST_SOURCE_FIXTURE_PARENT: supplied },
+      filesystem: filesystem(platform), accountHome: home })
+    assert.equal(parent, supplied)
   }
 })

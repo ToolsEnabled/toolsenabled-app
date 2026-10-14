@@ -7,9 +7,9 @@
  *   effort: launchTier(request.tier)?.provider === 'codex' ? request.effort : null
  *
  * so a bounded child on any claude tier was added with `effort: ''` and started
- * with `effort: null`, ran at the vendor default, and recorded nothing. A
- * manager tier at xhigh and a builder tier at medium is the usual shape;
- * this is the same defect agent.spawn was corrected for, in the second
+ * with `effort: null`, ran at the vendor default, and recorded nothing. The
+ * owner's managers run claude-opus at xhigh and his builders claude-opus at
+ * medium; this is the same defect agent.spawn was corrected for, in the second
  * doorway. The `effort` column on a tier row is that tier's DEFAULT depth, not
  * its allowed set -- every claude row reads null and Claude takes `--effort`
  * (engine src/lib/agent-engine/claude-cli-adapter.js baseClaudeArgs).

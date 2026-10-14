@@ -91,8 +91,8 @@ test('double click focuses the branch and consumes the pending chat activation',
   assert.deepEqual(f.selected, ['manager', 'manager'])
 })
 
-/* THE WORKSPACE GESTURES, double-clicking the circle brings up a
-   window, and clicking the card brings up the sidebar.
+/* THE WORKSPACE GESTURES, owner 2026-09-10: "double clicking the circle should
+   bring up a window and clicking on the card should bring up the sidebar".
    Page 2 and its tree windows always have a workspace (or a chat owner). */
 function workspaceFixture(t, nodeStyle) {
   const f = fixture(t), chats = []

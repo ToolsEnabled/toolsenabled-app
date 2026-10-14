@@ -2,9 +2,10 @@
 
 /* DOES THE CHATBOX OPEN, ON EVERY STATE A NODE CAN BE IN?
  *
- * THE REPORT THIS ANSWERS. On the installed build the chatboxes did not open;
- * this had been right before, with the buttons in the chat window, and was
- * probably disabled by accident. It is a happy path that must work.
+ * THE REPORT THIS ANSWERS. Owner, on the installed build: "The chatboxes also
+ * dont open, we had this right in the past and it had the buttons in the chat
+ * window so maybe it just got disabled on accident but thats a happy path i
+ * want resolved."
  *
  * TWO SURFACES CARRY THAT NAME, and a driver that measures one and reports
  * about "the chatbox" is guessing. They are:
@@ -129,7 +130,7 @@ async function press(window, selector, timeoutMs = 9000) {
 /* WHAT IS ON THE GLASS AFTER A PRESS, read from both surfaces at once so a
    report can never say "the chatbox did not open" about the surface it did not
    look at. `buttons` is the list of pressable controls INSIDE whichever chat
-   appeared -- the buttons that belong in the chat window. */
+   appeared -- the owner's "it had the buttons in the chat window". */
 const READ_CHAT = `function readChat(nodeId) {
   const describe = (chat) => {
     if (!chat) return null
@@ -368,7 +369,7 @@ async function main() {
           ? `${afterBubble.railChat.messages} message(s), composer=${afterBubble.railChat.hasComposer}, buttons=${JSON.stringify(afterBubble.railChat.buttons.map(b => b.hook))}`
           : `NO CHAT. railOpen=${afterBubble.railOpen} host=${afterBubble.railChatHost} words=${JSON.stringify(afterBubble.railChatTabWords)}`}`)
 
-      /* THE SECOND HALF: the buttons in the chat window. The
+      /* THE OWNER'S SECOND HALF: "it had the buttons in the chat window". The
          rail carried the actions button all along; the compact card did not.
          Both are checked by name on every state. */
       if (afterBubble.railChat) {
@@ -390,8 +391,8 @@ async function main() {
         const hooks = afterChip.chipChat.buttons.map(b => b.hook)
         /* THE ASSERTION THAT FAILS ON THE OLD CODE. src/tree-graph.js used to
            hand buildChat a hand-picked six fields, so `actions` -- added to the
-           SHARED config at an earlier commit and taken up by the rail the same day --
-           never reached the card. Measured absent on an earlier commit, present here. */
+           SHARED config at 7cce02c and taken up by the rail the same day --
+           never reached the card. Measured absent on 4a839f3, present here. */
         note(hooks.includes('actions') ? 'ok' : 'FAIL', `compact card carries the actions button: ${JSON.stringify(hooks)}`)
 
         /* AND THE BUTTON IS PRESSED, not merely counted. A control that is in

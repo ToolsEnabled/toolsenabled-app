@@ -369,8 +369,8 @@ function machineMarkup(machine, index) {
         </article>
 
         <!-- AND THE ROW THAT ANSWERS THE QUESTION THE ONE ABOVE KEPT BEING
-             ASKED: after signing up, a user could not see how to connect their
-             computer. The connect screen is a section of this same
+             ASKED. "as a user I dont even see how after signing up that I now
+             connect my computer." The connect screen is a section of this same
              page, several screens down, and until now nothing in the System
              group -- the group a first-time visitor is landed in -- said it
              existed. -->

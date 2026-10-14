@@ -191,7 +191,7 @@ function createScreenControlHost({ sessions, readBinding, readBindingSnapshot = 
          tells the person to switch on something already on.
 
          That is not hypothetical: an agent reported access off, filed a durable
-         ask, and the answer was that access was on. Both were right. A
+         ask, and the owner answered "its on" (2026-09-15). Both were right. A
          later Settings/Page 2 choice had replaced the allowed set, and a
          session id that changes -- a continuation or account change -- misses
          this map the same way.

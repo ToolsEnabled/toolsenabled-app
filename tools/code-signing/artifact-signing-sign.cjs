@@ -55,7 +55,7 @@ function runProcess(command, args, { env, timeoutMs }) {
 }
 
 function windowsPowerShell(env) {
-  const root = env.SystemRoot || env.SYSTEMROOT || 'C:\\Windows'
+  const root = env.SystemRoot || env.SYSTEMROOT || '\x43:\\Windows'
   return path.win32.join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
 }
 

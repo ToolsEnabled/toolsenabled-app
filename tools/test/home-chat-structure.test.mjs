@@ -1,6 +1,6 @@
 /* PAGE 1'S CHAT, DRIVEN RATHER THAN READ.
  *
- * The page 1 full chat needed a full rework. These are the
+ * The owner, 2026-09-03: "the pg1 full chat needs a full rework". These are the
  * structural halves of that -- the parts that are wrong whatever the panel ends
  * up looking like -- and every one of them is an observation of the DOM the
  * view actually builds, driven through the same sources the shipped screen
@@ -33,8 +33,8 @@ test('the conversation half really is on the glass in this fixture', async () =>
   const { view } = await mount()
   try {
     assert.equal(turnsOf(view).length, 3, `the fixture thread must reach the pane; pane held: "${view.el.querySelector('.log-turns').textContent}"`)
-    /* And it is the SHARED surface (the chat in the chat view is the same as
-       every chat surface in the app), not a painter of its own. */
+    /* And it is the SHARED surface (owner: "the chat in the chat view needs to
+       be the same as every chat surface in the app"), not a painter of its own. */
     assert.ok(view.el.querySelector('.log-turns').querySelector('.chat'), 'the thread is mounted on the shared buildChat surface')
     assert.equal(view.el.querySelector('.log-turns').querySelectorAll('.turn').length, 0, 'no row of the old .turn painter remains')
   } finally { view.destroy() }

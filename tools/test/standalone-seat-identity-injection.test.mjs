@@ -42,7 +42,7 @@ test('the Computers view hands the solo surface a seat declarer and a seat binde
   assert.equal(typeof injection.declareSeat, 'function',
     'without a declarer the roster shows a raw session id, which is the complaint this closes')
   /* Binding it is what tells the host WHICH agent the session is. These are
-     two different things and the product needs both: measured at an earlier commit,
+     two different things and the product needs both: measured at 88bc31ae,
      treeIdentity carries selfName and managerName only, so roleBinding is the
      single route by which an agentId reaches shell/main.cjs. */
   assert.equal(typeof injection.roleBindingFor, 'function',

@@ -81,15 +81,15 @@ registered gap below was closed by the named commit(s) on this branch.
 | G2 Generic execution contract | Data-contract proposal only | lane proposal, outside this repository |
 | G3 Environment fixtures | Data-contract proposal only | lane proposal, outside this repository |
 | G4 Agent adapter | Blocked on the owner's event-log answer | lane proposal, outside this repository |
-| G5 Grouped assignment design | **Delivered**, earlier commits | `docs/research-benchmark-design.md`, `tools/test/research-benchmark-design.test.mjs` |
-| G6 Typed endpoints | **Delivered**, earlier commits | `docs/research-benchmark-endpoints.md`, `tools/test/research-benchmark-endpoint-fields.test.mjs`, `tools/test/research-benchmark-endpoints.test.mjs` |
+| G5 Grouped assignment design | **Delivered**, commits `192008c2`, `532ba042`, `8ce36862`, `20bbbcd9` | `docs/research-benchmark-design.md`, `tools/test/research-benchmark-design.test.mjs` |
+| G6 Typed endpoints | **Delivered**, commits `192008c2`, `532ba042`, `8ce36862`, `20bbbcd9` | `docs/research-benchmark-endpoints.md`, `tools/test/research-benchmark-endpoint-fields.test.mjs`, `tools/test/research-benchmark-endpoints.test.mjs` |
 | G7 Environment qualification gates | Data-contract proposal only | lane proposal, outside this repository |
 | G8 Stop rules and phases | Proposal written; ordinary half **DEFERRED to 1.0.45** (proposal `G8-stop-rules-phases-v2` is a lane document, not in this repository) | — |
 | G9 Ledger and guide | **Delivered by this stage** | this file and `docs/research-generic-templates-guide.md`, checked by `tools/test/research-generic-docs-links.test.mjs` |
 
 ## 5. Owner standard
 
-The standard — both study designs completable end to end with only the
+The owner's standard — both study designs completable end to end with only the
 generic templates, minus engine/container setup — is **not met** as of this
 stage: Study B's design and analysis are now expressible generically (G5, G6),
 but collection for both studies still stops at G1/G2/G3/G4/G7, and G8's

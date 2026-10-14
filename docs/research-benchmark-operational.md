@@ -2,7 +2,7 @@
 
 This source stage adds a normalized composition representation and a tested
 operational consumer of the real four-role Strategy / recursive Template
-grammar. Its fixtures are synthetic draft contracts. They are not real
+grammar. Its fixtures are synthetic draft contracts. They are not Example's
 atom/operator/runtime approvals or a counted study.
 
 ## One composition, independent consumers
@@ -100,7 +100,7 @@ bound activation and wrong-reading checks with diagnostic sequence shrinking.
 Remaining work includes the personally reviewed constitution and atom/operator
 catalog, complete requirement and wrong-reading coverage beyond the five
 synthetic controls, options semantics, complete T1–T4 qualification and actual
-approved collection. The synthetic starter and qualification controls
+owner-approved collection. The synthetic starter and qualification controls
 do not discharge those study gates.
 LIVE/next-start activation belongs to the existing promotion owner.
 

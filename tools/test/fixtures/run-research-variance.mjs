@@ -25,17 +25,17 @@ try {
   await page.locator('button[data-research-area="design"]').click()
   const tip = page.getByRole('button', { name: 'Not now', exact: true }); if (await tip.isVisible()) await tip.click()
   await idle()
-  await openResearchProject(page); await f('starter').selectOption('example-snippets-and-compositions'); await f('use-starter').click(); await idle()
-  await tab('nesting'); await n('selected').selectOption('Variant'); await n('variance').click(); await ready()
-  assert.equal(await v('source').inputValue(), 'Variant')
+  await openResearchProject(page); await f('starter').selectOption('lean-bench-snippets-and-compositions'); await f('use-starter').click(); await idle()
+  await tab('nesting'); await n('selected').selectOption('BL-08'); await n('variance').click(); await ready()
+  assert.equal(await v('source').inputValue(), 'BL-08')
   await v('filter').selectOption('compositions'); await v('target').selectOption('root/strategy_b#1')
-  assert.ok((await v('text').inputValue()).length > 30, 'the example draft\'s nested levels are available')
-  await v('name').fill('Variant omission study'); await v('whole').click(); await preview()
+  assert.ok((await v('text').inputValue()).length > 30, 'LeanBench nested levels are available')
+  await v('name').fill('BL-08 omission study'); await v('whole').click(); await preview()
   assert.ok((await v('result').textContent()).length < (await v('original').textContent()).length)
   await v('save').click(); await idle()
   assert.match(await v('status').textContent(), /reusable variants saved to Nesting/)
-  const exampleRouting = JSON.parse(await f('routing').inputValue())
-  assert.equal(exampleRouting.compositions.at(-1).node.composition, 'Variant')
+  const leanRouting = JSON.parse(await f('routing').inputValue())
+  assert.equal(leanRouting.compositions.at(-1).node.composition, 'BL-08')
 
   const spec = genericStarter(); spec.protocol.grading = { kind: 'json' }
   spec.catalog = [
@@ -101,6 +101,6 @@ try {
   assert.equal(await v('name').inputValue(), 'Full nest omission')
   assert.equal(await page.locator('[data-var-enabled]').count(), 1)
   assert.deepEqual(errors, [])
-  const result = { pass: true, exampleNestedSelection: true, reusableSnippet: true, mixedOriginalAndVariant: true, compositionOmission: true, fullNestOmission: true, retainedDraft: true, existingControlReused: true, taskCount: 3, errors }
+  const result = { pass: true, leanBenchNestedSelection: true, reusableSnippet: true, mixedOriginalAndVariant: true, compositionOmission: true, fullNestOmission: true, retainedDraft: true, existingControlReused: true, taskCount: 3, errors }
   await writeFile(resolve(out, 'results.json'), JSON.stringify(result, null, 2) + '\n'); console.log(JSON.stringify(result))
 } finally { await browser.close() }

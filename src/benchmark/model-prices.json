@@ -3,7 +3,7 @@
   "frozenAsOf": "2026-09-11",
   "currency": "USD",
   "unit": 1000000,
-  "note": "List prices for estimation only. Compiled from each provider's official pricing page on 2026-09-11, with the HTTP status, content digest and verbatim quote kept for each rate. An estimate from this table is an estimate at list prices, not a bill.",
+  "note": "List prices for estimation only. Compiled by Worker 5 from each provider's official pricing page on 2026-09-11; evidence/manager-45-20260910/R1220/PRICE-SOURCES.json holds the HTTP status, content digest and verbatim quotes. An estimate from this table is an estimate at list prices, not a bill.",
   "excludes": [
     "Time-billed cache storage (Google charges 4.50 per 1M tokens per hour). No usage field reports cache residency time, so it is never included in an estimate from this table.",
     "Cache-write (cache-creation) tokens. No usage field reports them, so their cost component is unavailable rather than zero.",
@@ -299,7 +299,7 @@
     }
   ],
   "modelStringInventory": {
-    "source": "app src/orchestration-controls.js:63-85; engine mission-bridge/actions.js:127-130 and claude-cli-adapter.js:118 (cliModelFor, called at :244)",
+    "source": "app src/orchestration-controls.js:63-85 at 94757749; engine mission-bridge/actions.js:127-130 and claude-cli-adapter.js:118 (cliModelFor, called at :244)",
     "codex": "Tiers already carry exact billing ids (gpt-6-astra, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna). No map entry exists or is needed.",
     "claude": "Tiers pass the bare aliases fable, sonnet, opus. Mapped above, dated, labelled tier-mapped.",
     "autoTiers": "gemini/auto, grok/auto and local/auto pin no model (cliModel null). They are priced ONLY from a provider-reported model id that matches a row; otherwise unpriced.",

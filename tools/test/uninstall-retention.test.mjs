@@ -112,7 +112,7 @@ test('a policy file that cannot be read resolves to ask and says so, without cla
       throw error;
     },
   };
-  const result = readRecordedChoice({ userDataDir: 'C:\\nowhere', fs: failingFs });
+  const result = readRecordedChoice({ userDataDir: '\x43:\\nowhere', fs: failingFs });
   assert.equal(result.choice, CHOICE_ASK);
   assert.equal(result.decided, false);
   assert.equal(result.readError, 'EACCES');
@@ -346,8 +346,7 @@ test('an unreadable data directory is not reported as containing no saved data',
   const error = new Error('access denied');
   error.code = 'EACCES';
   const report = inventory({
-    // Synthetic Windows data directory, assembled at runtime so the source carries no literal user path.
-    userDataDir: ['C:', 'Users', 'person', 'AppData', 'Roaming', 'ToolsEnabled'].join('\\'),
+    userDataDir: '\x43:\\Users\\person\\AppData\\Roaming\\ToolsEnabled',
     fs: { statSync() { throw error; } },
   });
 
@@ -436,22 +435,63 @@ test('the uninstaller never asks or removes during an upgrade', () => {
 // modal and blocks forever while returning success. An unguarded MessageBox here
 // would deepen exactly that, and it would do it in the uninstall path, where the
 // caller is usually a script that will wait for a window nobody can see.
-test('the uninstaller checks for silent mode before it can open a dialog', () => {
-  const macro = NSH.slice(NSH.indexOf('!macro customUnInstall'));
-  const silentAt = macro.indexOf('${Silent}');
+//
+// AND THE GUARD MUST NOT BE ${Silent} (1.0.50 platform review, U5). This is a
+// one-click build: app-builder-lib's un.onInit calls `SetSilent silent` for an
+// uninstall started WITHOUT /S too, before customUnInit, so ${Silent} is true in
+// customUnInstall for every uninstall and the question could never be shown. The
+// guard is $TEInteractive, read from the command line in customUnInit.
+const unInit = () => {
+  const start = NSH.indexOf('!macro customUnInit');
+  return NSH.slice(start, NSH.indexOf('!macroend', start));
+};
+const unInstall = () => {
+  const start = NSH.indexOf('!macro customUnInstall');
+  return NSH.slice(start, NSH.indexOf('!macroend', start));
+};
+
+test('the template really does set silent mode before customUnInit (why ${Silent} cannot be the guard)', () => {
+  const template = readFileSync(join(REPO, 'node_modules', 'app-builder-lib', 'templates', 'nsis', 'uninstaller.nsh'), 'utf8');
+  const onInit = template.slice(template.indexOf('Function un.onInit'), template.indexOf('FunctionEnd', template.indexOf('Function un.onInit')));
+  const oneClick = onInit.indexOf('!ifdef ONE_CLICK');
+  const setSilent = onInit.indexOf('SetSilent silent', oneClick);
+  const custom = onInit.indexOf('!insertmacro customUnInit');
+  assert.ok(oneClick !== -1 && setSilent > oneClick && custom > setSilent,
+    'if app-builder-lib stops calling SetSilent before customUnInit, revisit $TEInteractive');
+  const pkg = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8'));
+  assert.equal(pkg.build.nsis.oneClick, true, 'this reasoning is about the one-click uninstaller');
+});
+
+test('customUnInit records whether /S was on the command line, the way the template decides it', () => {
+  const macro = unInit();
+  assert.match(macro, /Var \/GLOBAL TEInteractive/);
+  assert.match(macro, /StrCpy \$TEInteractive 0[\s\S]*\$\{GetParameters\} \$R0[\s\S]*ClearErrors[\s\S]*\$\{GetOptions\} \$R0 "\/S" \$R1[\s\S]*\$\{If\} \$\{Errors\}\s+StrCpy \$TEInteractive 1\s+\$\{EndIf\}/,
+    'interactive only when the template\'s own /S test found no /S');
+  assert.match(macro, /Push \$R0\s+Push \$R1[\s\S]*Pop \$R1\s+Pop \$R0/, 'the registers the template uses are given back');
+});
+
+test('the uninstaller checks for an interactive uninstall before it can open a dialog', () => {
+  const macro = unInstall();
+  const guardAt = macro.indexOf('${If} $TEInteractive != 1');
   const dialogAt = macro.indexOf('MessageBox');
-  assert.ok(silentAt !== -1, 'the retention branch must test ${Silent}');
+  assert.ok(guardAt !== -1, 'the retention branch must test $TEInteractive');
   assert.ok(dialogAt !== -1, 'the interactive branch must actually ask');
-  assert.ok(
-    silentAt < dialogAt,
-    'the ${Silent} test must come BEFORE the MessageBox, or a silent uninstall opens a modal ' +
-      'and blocks forever'
-  );
-  assert.match(
-    macro,
-    /\/SD IDNO/,
-    'the dialog must declare a silent default, and it must be the non-destructive answer'
-  );
+  assert.ok(guardAt < dialogAt,
+    'the $TEInteractive test must come BEFORE the MessageBox, or a silent uninstall opens a modal and blocks forever');
+  const declareAt = macro.indexOf('TE_DeclareRetention');
+  assert.ok(guardAt < declareAt && declareAt < dialogAt, 'no /S on the command line: the note is never written instead of asking');
+  assert.ok(!macro.includes('${Silent}'), 'the one-click template made ${Silent} true for every uninstall; it cannot decide this');
+  const box = macro.slice(dialogAt, macro.indexOf('te_remove_user_data:', dialogAt));
+  assert.doesNotMatch(box, /\/SD\b/,
+    'a silent-mode section answers a MessageBox that has /SD without showing it; the person must see this one');
+  assert.match(box, /IDYES te_remove_user_data IDNO te_keep_user_data/);
+});
+
+test('the note left after a silent uninstall is true: it is written only when /S was given', () => {
+  const declaration = NSH.slice(NSH.indexOf('!macro TE_DeclareRetention'), NSH.indexOf('!macroend', NSH.indexOf('!macro TE_DeclareRetention')));
+  assert.match(declaration, /this was a silent uninstall/);
+  const macro = unInstall();
+  assert.match(macro, /\$\{If\} \$TEInteractive != 1\s+!insertmacro TE_DeclareRetention "\$R0"/);
 });
 
 test('the settings page offers the choice and defaults to asking', () => {

@@ -5,7 +5,6 @@ import { createTranscriptStore } from './session-transcript-store.js'
 import { safeTreeStorage } from './fleet-trees.js'
 import { readStandaloneTabNames, standaloneTabNameFor, unnamedAgentLabel } from './standalone-tab-ledger.js'
 import { createVoiceAudioVisualizer } from './voice-audio-visualizer.js'
-import { publishVoiceHeard, publishVoiceLevel } from './voice-signal.js'
 import './home-voice.css'
 
 let voiceControlsId = 0
@@ -38,7 +37,7 @@ function errorCopy(error, remote = false) {
     || (raw.includes('NotAllowedError') ? (remote ? 'Allow microphone access for this site in your browser and phone settings.' : 'Allow microphone access for this app in your computer’s privacy settings.') : 'Voice could not connect. Typed chat still works.')
 }
 
-export function voiceCoordinator({ sample = false, ring = null, onState = () => {} } = {}) {
+export function voiceCoordinator({ sample = false, onState = () => {} } = {}) {
   const root = document.createElement('section')
   root.className = 'voice-contact voice-contact-panel'
   root.setAttribute('aria-label', 'Voice contact')
@@ -92,8 +91,6 @@ export function voiceCoordinator({ sample = false, ring = null, onState = () => 
   const bars = [...root.querySelectorAll('.voice-wave i')]
   const visualizer = createVoiceAudioVisualizer({ onFrame: levels => {
     for (let index = 0; index < bars.length; index++) bars[index].style.transform = `scaleY(${0.08 + (levels[index] || 0) * 0.92})`
-    // The Home circle's voice-mode animations follow the same on-screen level (voice-signal.js).
-    publishVoiceLevel(levels)
   } })
   const playbackEvents = ['playing', 'pause', 'waiting', 'ended', 'emptied', 'volumechange']
   let replyPlaying = false
@@ -130,7 +127,6 @@ export function voiceCoordinator({ sample = false, ring = null, onState = () => 
   function notify(message) { if (!destroyed) get('status').textContent = message }
   function setState(state) {
     root.dataset.state = state
-    if (ring) ring.dataset.voice = state
     get('state').textContent = state.charAt(0).toUpperCase() + state.slice(1)
     refreshCompact()
     onState(state)
@@ -311,7 +307,6 @@ export function voiceCoordinator({ sample = false, ring = null, onState = () => 
     if (!binding || packet.sessionId !== binding.sessionId || packet.generation !== binding.generation) return
     controller.onVoice(packet)
     if (packet.type === 'transcript.partial' || packet.type === 'transcript.final') get('heard').textContent = typeof packet.text === 'string' ? packet.text.slice(0, 8192) : ''
-    if (packet.type === 'transcript.final' && typeof packet.text === 'string') publishVoiceHeard(packet.text)
     if (packet.type === 'playback.started') setState('speaking')
     if (packet.type === 'playback.stopped' || packet.type === 'speech.started') setState(muted ? 'muted' : 'listening')
     if (packet.type === 'error') { void stop(); notify('Speech paused: ' + errorCopy(packet, voice.remote)) }
@@ -357,7 +352,6 @@ export function voiceCoordinator({ sample = false, ring = null, onState = () => 
       selectionQueue = selection.catch(() => {})
       return selection
     },
-    setRing(value) { if (ring) delete ring.dataset.voice; ring = value; if (ring) ring.dataset.voice = root.dataset.state },
     destroy() { destroyed = true; window.removeEventListener('pagehide', onPageHide); document.removeEventListener('visibilitychange', onHidden); clearTimeout(pollTimer); detachVoice?.(); detachAgent?.(); for (const event of playbackEvents) audio.removeEventListener(event, syncVisualPlayback); void stop(); visualizer.destroy(); root.remove() },
   }
 }
@@ -370,15 +364,15 @@ export function resetPersistentVoice() {
   persistent?.destroy(); persistent = null
   dock?.remove(); dock = null
 }
-export function attachPersistentVoice({ sample = false, ring = null } = {}) {
-  if (sample) { resetPersistentVoice(); return voiceCoordinator({ sample, ring }) }
+export function attachPersistentVoice({ sample = false } = {}) {
+  if (sample) { resetPersistentVoice(); return voiceCoordinator({ sample }) }
   if (!persistent) {
     dock = document.createElement('div')
     dock.className = 'voice-screen-dock voice-widget-dock'
     dock.hidden = true
     dock.setAttribute('aria-label', 'Voice connection across screens')
     document.body.append(dock)
-    persistent = voiceCoordinator({ ring, onState: state => {
+    persistent = voiceCoordinator({ onState: state => {
       if (dock) {
         dock.hidden = state === 'off' || !dock.contains(persistent?.el)
       }
@@ -386,14 +380,12 @@ export function attachPersistentVoice({ sample = false, ring = null } = {}) {
   }
   const currentLease = ++lease, contact = persistent
   dock.hidden = true
-  contact.setRing(ring)
   return { el: contact.el, getContact: () => contact.getContact(),
     selectTarget: (sessionId, { isCurrent = () => true } = {}) => contact.selectTarget(sessionId, {
       isCurrent: () => currentLease === lease && persistent === contact && isCurrent(),
     }), destroy() {
     if (currentLease !== lease || persistent !== contact) return
     lease++
-    contact.setRing(null)
     dock.append(contact.el)
     dock.hidden = contact.el.dataset.state === 'off'
   } }

@@ -636,8 +636,8 @@ export async function dispatchExperiment(experimentId, { agent, persist, startAg
         message: workerBrief(experiment, cell),
         /* THE MARK IS SET HERE, ON THE TREE, ONCE. The first cell mints the
            experiment's own tree, and naming its kind is what exempts the grid
-           from the agent-tree width (loops and grids do not need to be tied
-           together or to any of this). Every later cell
+           from the agent-tree width (owner, 2026-09-11: "loops and grids dont
+           even need to be tied together or to any of this"). Every later cell
            joins that tree as a child and inherits the rule from it. */
         ...(rootId ? {} : { treeKind: EXPERIMENT_TREE_KIND }),
       })

@@ -1,7 +1,7 @@
 // THE PRODUCT ACCOUNT: is it actually an auth system, or does it just look
 // like one?
 //
-// A user login is a launch requirement, and an auth system
+// The owner ruled that a user login is a launch requirement, and an auth system
 // is the one kind of code where "it works when I try it" is worth nothing. All
 // three of the ways this can be quietly wrong are silent from the interface:
 //
@@ -76,7 +76,7 @@ function store(directory, options = {}) {
 
 async function withAccount(directory, options = {}) {
   const account = store(directory, options)
-  const created = await account.createAccount({ username: 'alex', displayName: 'Alex P', password: PASSWORD })
+  const created = await account.createAccount({ username: 'Example', displayName: 'Example P', password: PASSWORD })
   assert.equal(created.ok, true, 'the fixture account must be creatable')
   return account
 }
@@ -87,7 +87,7 @@ test('a failed durable rename does not leave the replacement file behind', async
   const renameSync = fs.renameSync
   fs.renameSync = () => { throw new Error('simulated rename failure') }
   try {
-    const created = await account.createAccount({ username: 'alex', password: PASSWORD })
+    const created = await account.createAccount({ username: 'Example', password: PASSWORD })
     assert.equal(created.ok, false)
     assert.equal(created.code, 'ACCOUNT_STORE_WRITE_FAILED')
     assert.deepEqual(readdirSync(directory), [], 'the failed replacement was left beside the account file')
@@ -101,7 +101,7 @@ test('a failed durable rename does not leave the replacement file behind', async
 test('the password is not on disk, in any form, anywhere in the account directory', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
 
   /* Every file the store touched, not just the one it is expected to write.
      A password leaking into a stray temp file is still a leak. */
@@ -164,10 +164,10 @@ test('no reply from any channel carries a password, a verifier, a salt or a toke
 
   const replies = [
     account.availability(),
-    await account.createAccount({ username: 'alex', displayName: 'Alex P', password: PASSWORD }),
-    await account.signIn({ username: 'alex', password: PASSWORD }),
+    await account.createAccount({ username: 'Example', displayName: 'Example P', password: PASSWORD }),
+    await account.signIn({ username: 'Example', password: PASSWORD }),
     account.current(),
-    await account.signIn({ username: 'alex', password: 'wrong wrong wrong wrong' }),
+    await account.signIn({ username: 'Example', password: 'wrong wrong wrong wrong' }),
     await account.changePassword({ currentPassword: PASSWORD, newPassword: OTHER_PASSWORD }),
     account.signOut(),
     account.signOutEverywhere(),
@@ -217,22 +217,22 @@ test('a person can create an account, sign in, and be named by the principal', a
   assert.equal(account.principal(), UNAUTHENTICATED_PRINCIPAL)
   assert.equal(account.current().signedIn, false)
 
-  const created = await account.createAccount({ username: 'Alex', displayName: 'Alex P', password: PASSWORD })
+  const created = await account.createAccount({ username: 'Example', displayName: 'Example P', password: PASSWORD })
   assert.equal(created.ok, true)
-  assert.equal(created.account.username, 'alex', 'the username is normalized to lower case')
+  assert.equal(created.account.username, 'Example', 'the username is normalized to lower case')
 
   /* Creating does NOT sign anyone in. The two are separate actions, so an
      account file appearing on disk can never by itself produce a signed-in
      user. */
   assert.equal(account.principal(), UNAUTHENTICATED_PRINCIPAL)
 
-  const signedIn = await account.signIn({ username: 'ALEX', password: PASSWORD })
+  const signedIn = await account.signIn({ username: 'Example', password: PASSWORD })
   assert.equal(signedIn.ok, true)
   assert.equal(signedIn.persisted, true)
 
   const state = account.current()
   assert.equal(state.signedIn, true)
-  assert.equal(state.account.displayName, 'Alex P')
+  assert.equal(state.account.displayName, 'Example P')
   assert.match(state.principal, new RegExp(`^${PRINCIPAL_PREFIX}[0-9a-f]{32}$`))
   assert.equal(account.principal(), state.principal)
 })
@@ -240,7 +240,7 @@ test('a person can create an account, sign in, and be named by the principal', a
 test('the sign-in survives a relaunch, and signing out ends it', async (t) => {
   const directory = workspace(t)
   const first = await withAccount(directory)
-  const signedIn = await first.signIn({ username: 'alex', password: PASSWORD })
+  const signedIn = await first.signIn({ username: 'Example', password: PASSWORD })
   assert.equal(signedIn.ok, true)
   const principal = first.principal()
 
@@ -261,7 +261,7 @@ test('the sign-in survives a relaunch, and signing out ends it', async (t) => {
 test('the persisted session is encrypted, not readable JSON on disk', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
 
   const raw = readFileSync(account.sessionPath, 'utf8')
   assert.match(raw, /^enc:/, 'the session must go through the keystore')
@@ -279,7 +279,7 @@ test('the persisted session is encrypted, not readable JSON on disk', async (t) 
 test('fails closed: a session file that cannot be decrypted', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
 
   const broken = createAccountStore({ safeStorage: keystore({ corruptOnRead: true }), directory })
   assert.equal(broken.current().signedIn, false)
@@ -289,7 +289,7 @@ test('fails closed: a session file that cannot be decrypted', async (t) => {
 test('fails closed: a session file of garbage bytes', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
 
   writeFileSync(account.sessionPath, Buffer.from('not encrypted by anything'))
   assert.equal(store(directory).principal(), UNAUTHENTICATED_PRINCIPAL)
@@ -298,7 +298,7 @@ test('fails closed: a session file of garbage bytes', async (t) => {
 test('fails closed: a session file that decrypts to a valid-looking but wrong shape', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
 
   /* Encrypted correctly by the same keystore, so decryption SUCCEEDS -- the
      refusal has to come from validating the contents, which is the check most
@@ -322,7 +322,7 @@ test('fails closed: a session file that decrypts to a valid-looking but wrong sh
 test('fails closed: a session file that decrypts to valid JSON that is not an object', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
 
   for (const document of ['null', '"signed in"', '42', '[]', 'true']) {
     writeFileSync(account.sessionPath, keystore().encryptString(document))
@@ -341,7 +341,7 @@ test('fails closed: a session file that decrypts to valid JSON that is not an ob
 test('fails closed: a session is not resurrected after the account file becomes readable again', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   const goodStore = readFileSync(account.accountsPath)
 
   const reopened = store(directory)
@@ -372,7 +372,7 @@ test('fails closed: an expired session', async (t) => {
      immediately below already knew this and says so in three words. */
   let clock = Date.now()
   const account = await withAccount(directory, { store: { sessionLifetimeMs: 1000, now: () => clock } })
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.current().signedIn, true)
 
   /* Time moves, nothing else does. */
@@ -386,8 +386,8 @@ test('fails closed: a session that expires while the window is still open', asyn
   const directory = workspace(t)
   let clock = Date.now()
   const account = createAccountStore({ safeStorage: keystore(), directory, now: () => clock, sessionLifetimeMs: 60_000 })
-  assert.equal((await account.createAccount({ username: 'alex', password: PASSWORD })).ok, true)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.createAccount({ username: 'Example', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.current().signedIn, true)
 
   /* The same live store, no relaunch. An expiry only checked at startup is an
@@ -427,20 +427,20 @@ test('fails closed: an account file whose entry is missing its verifier', async 
   assert.equal(damaged.availability().ok, false)
   assert.equal(damaged.principal(), UNAUTHENTICATED_PRINCIPAL)
   /* An entry with no verifier must never be signable-into with any password. */
-  const attempt = await damaged.signIn({ username: 'alex', password: PASSWORD })
+  const attempt = await damaged.signIn({ username: 'Example', password: PASSWORD })
   assert.equal(attempt.ok, false)
 })
 
 test('fails closed: no keystore means signed out after relaunch, not signed in', async (t) => {
   const directory = workspace(t)
   const account = createAccountStore({ safeStorage: keystore({ available: false }), directory })
-  assert.equal((await account.createAccount({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.createAccount({ username: 'Example', password: PASSWORD })).ok, true)
 
   const availability = account.availability()
   assert.equal(availability.ok, true, 'a missing keystore must not make the product unusable')
   assert.equal(availability.canPersistSession, false, 'and it must say so rather than pretend')
 
-  const signedIn = await account.signIn({ username: 'alex', password: PASSWORD })
+  const signedIn = await account.signIn({ username: 'Example', password: PASSWORD })
   assert.equal(signedIn.ok, true, 'sign-in still works for this run')
   assert.equal(signedIn.persisted, false, 'and reports that it will not survive a relaunch')
   assert.equal(account.current().signedIn, true)
@@ -454,8 +454,8 @@ test('fails closed: a store with no safeStorage at all', async (t) => {
   const account = createAccountStore({ safeStorage: undefined, directory })
   assert.equal(account.availability().canPersistSession, false)
   assert.equal(account.principal(), UNAUTHENTICATED_PRINCIPAL)
-  assert.equal((await account.createAccount({ username: 'alex', password: PASSWORD })).ok, true)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.createAccount({ username: 'Example', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.current().signedIn, true, 'this run signs in')
   assert.equal(createAccountStore({ safeStorage: undefined, directory }).principal(), UNAUTHENTICATED_PRINCIPAL)
 })
@@ -465,7 +465,7 @@ test('fails closed: a store with no safeStorage at all', async (t) => {
 test('signing out everywhere refuses a session file copied beforehand', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
 
   /* The backup a real attacker takes: the exact bytes, while they were valid. */
   const stolen = readFileSync(account.sessionPath)
@@ -483,7 +483,7 @@ test('signing out everywhere refuses a session file copied beforehand', async (t
 test('changing the password ends every session and only the new password works', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   const stolen = readFileSync(account.sessionPath)
 
   const wrongCurrent = await account.changePassword({ currentPassword: 'not the password', newPassword: OTHER_PASSWORD })
@@ -500,8 +500,8 @@ test('changing the password ends every session and only the new password works',
   assert.equal(store(directory).principal(), UNAUTHENTICATED_PRINCIPAL,
     'a session from before the password change must not be replayable')
 
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, false, 'the old password must stop working')
-  assert.equal((await account.signIn({ username: 'alex', password: OTHER_PASSWORD })).ok, true, 'the new password must work')
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, false, 'the old password must stop working')
+  assert.equal((await account.signIn({ username: 'Example', password: OTHER_PASSWORD })).ok, true, 'the new password must work')
 })
 
 test('changing the password requires being signed in', async (t) => {
@@ -518,7 +518,7 @@ test('a wrong password and an unknown username are indistinguishable', async (t)
   const directory = workspace(t)
   const account = await withAccount(directory)
 
-  const wrongPassword = await account.signIn({ username: 'alex', password: 'wrong wrong wrong wrong' })
+  const wrongPassword = await account.signIn({ username: 'Example', password: 'wrong wrong wrong wrong' })
   const noSuchUser = await account.signIn({ username: 'nobody', password: 'wrong wrong wrong wrong' })
 
   /* Identical code AND identical wording. Two different messages enumerate the
@@ -527,7 +527,7 @@ test('a wrong password and an unknown username are indistinguishable', async (t)
   assert.equal(wrongPassword.code, 'ACCOUNT_CREDENTIALS_REJECTED')
   assert.equal(noSuchUser.code, wrongPassword.code)
   assert.equal(noSuchUser.reason, wrongPassword.reason)
-  assert.ok(!wrongPassword.reason.includes('alex'), 'the refusal must not confirm the username exists')
+  assert.ok(!wrongPassword.reason.includes('Example'), 'the refusal must not confirm the username exists')
 })
 
 /* Identical WORDING is not enough on its own. If an unknown username returns in
@@ -558,7 +558,7 @@ test('a malformed sign-in request also costs the work, rather than returning ins
   const directory = workspace(t)
   const account = await withAccount(directory)
   const started = process.hrtime.bigint()
-  const refused = await account.signIn({ username: 'alex', password: null })
+  const refused = await account.signIn({ username: 'Example', password: null })
   const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6
   assert.equal(refused.code, 'ACCOUNT_CREDENTIALS_REJECTED')
   assert.ok(elapsedMs >= 100, `a malformed request answered in ${elapsedMs.toFixed(1)}ms`)
@@ -568,39 +568,39 @@ test('repeated wrong passwords lock the account, and the lock survives a relaunc
   const directory = workspace(t)
   let clock = Date.now()
   const account = createAccountStore({ safeStorage: keystore(), directory, now: () => clock })
-  assert.equal((await account.createAccount({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.createAccount({ username: 'Example', password: PASSWORD })).ok, true)
 
   for (let attempt = 1; attempt < MAX_FAILED_ATTEMPTS; attempt += 1) {
-    const result = await account.signIn({ username: 'alex', password: 'wrong wrong wrong wrong' })
+    const result = await account.signIn({ username: 'Example', password: 'wrong wrong wrong wrong' })
     assert.equal(result.code, 'ACCOUNT_CREDENTIALS_REJECTED', `attempt ${attempt} should not lock yet`)
   }
-  const locked = await account.signIn({ username: 'alex', password: 'wrong wrong wrong wrong' })
+  const locked = await account.signIn({ username: 'Example', password: 'wrong wrong wrong wrong' })
   assert.equal(locked.code, 'ACCOUNT_LOCKED')
 
   /* THE RIGHT password is refused while locked, or the lock buys nothing. */
-  const whileLocked = await account.signIn({ username: 'alex', password: PASSWORD })
+  const whileLocked = await account.signIn({ username: 'Example', password: PASSWORD })
   assert.equal(whileLocked.code, 'ACCOUNT_LOCKED')
 
   /* A new process must not clear it -- otherwise the lock is bypassed by
      closing the window. */
   const relaunched = createAccountStore({ safeStorage: keystore(), directory, now: () => clock })
-  assert.equal((await relaunched.signIn({ username: 'alex', password: PASSWORD })).code, 'ACCOUNT_LOCKED')
+  assert.equal((await relaunched.signIn({ username: 'Example', password: PASSWORD })).code, 'ACCOUNT_LOCKED')
 
   clock += LOCKOUT_MS + 1000
   const afterWait = createAccountStore({ safeStorage: keystore(), directory, now: () => clock })
-  assert.equal((await afterWait.signIn({ username: 'alex', password: PASSWORD })).ok, true, 'the lock must expire')
+  assert.equal((await afterWait.signIn({ username: 'Example', password: PASSWORD })).ok, true, 'the lock must expire')
 })
 
 test('a successful sign-in clears the failed-attempt count', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
   for (let attempt = 0; attempt < MAX_FAILED_ATTEMPTS - 1; attempt += 1) {
-    await account.signIn({ username: 'alex', password: 'wrong wrong wrong wrong' })
+    await account.signIn({ username: 'Example', password: 'wrong wrong wrong wrong' })
   }
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   /* If the counter had not been cleared, this run of wrong attempts would lock. */
   for (let attempt = 0; attempt < MAX_FAILED_ATTEMPTS - 1; attempt += 1) {
-    const result = await account.signIn({ username: 'alex', password: 'wrong wrong wrong wrong' })
+    const result = await account.signIn({ username: 'Example', password: 'wrong wrong wrong wrong' })
     assert.equal(result.code, 'ACCOUNT_CREDENTIALS_REJECTED')
   }
 })
@@ -609,19 +609,19 @@ test('the password rules are enforced where they can be, and stated as they are'
   const directory = workspace(t)
   const account = store(directory)
 
-  const short = await account.createAccount({ username: 'alex', password: 'a'.repeat(MIN_PASSWORD_LENGTH - 1) })
+  const short = await account.createAccount({ username: 'Example', password: 'a'.repeat(MIN_PASSWORD_LENGTH - 1) })
   assert.equal(short.code, 'ACCOUNT_PASSWORD_TOO_SHORT')
 
-  const long = await account.createAccount({ username: 'alex', password: 'a'.repeat(5000) })
+  const long = await account.createAccount({ username: 'Example', password: 'a'.repeat(5000) })
   assert.equal(long.code, 'ACCOUNT_PASSWORD_TOO_LONG')
 
-  const common = await account.createAccount({ username: 'alex', password: 'PasswordPassword' })
+  const common = await account.createAccount({ username: 'Example', password: 'PasswordPassword' })
   assert.equal(common.code, 'ACCOUNT_PASSWORD_COMMON', 'the screen must be case-insensitive')
 
-  const sameAsName = await account.createAccount({ username: 'alexarchibald', password: 'alexarchibald' })
+  const sameAsName = await account.createAccount({ username: 'josharchibald', password: 'josharchibald' })
   assert.equal(sameAsName.code, 'ACCOUNT_PASSWORD_IS_USERNAME')
 
-  const blank = await account.createAccount({ username: 'alex', password: '            ' })
+  const blank = await account.createAccount({ username: 'Example', password: '            ' })
   assert.equal(blank.code, 'ACCOUNT_PASSWORD_BLANK')
 
   /* Nothing was written by any of those. */
@@ -629,7 +629,7 @@ test('the password rules are enforced where they can be, and stated as they are'
 })
 
 test('usernames are bounded, normalized, unique, and free of confusables', async (t) => {
-  assert.equal(normalizeUsername('  AlEx  '), 'alex')
+  assert.equal(normalizeUsername('  Example  '), 'Example')
   assert.equal(normalizeUsername('a.b_c-d'), 'a.b_c-d')
   assert.equal(normalizeUsername('ab'), null, 'too short')
   assert.equal(normalizeUsername('a'.repeat(65)), null, 'too long')
@@ -637,14 +637,14 @@ test('usernames are bounded, normalized, unique, and free of confusables', async
   assert.equal(normalizeUsername('trailing.'), null)
   assert.equal(normalizeUsername('has space'), null)
   assert.equal(normalizeUsername('раssword'), null, 'Cyrillic look-alikes must be refused')
-  assert.equal(normalizeUsername('alex\n'), 'alex')
+  assert.equal(normalizeUsername('Example\n'), 'Example')
   assert.equal(normalizeUsername(null), null)
   assert.equal(normalizeUsername(123), null)
 
   const directory = workspace(t)
   const account = store(directory)
-  assert.equal((await account.createAccount({ username: 'alex', password: PASSWORD })).ok, true)
-  const duplicate = await account.createAccount({ username: 'ALEX', password: OTHER_PASSWORD })
+  assert.equal((await account.createAccount({ username: 'Example', password: PASSWORD })).ok, true)
+  const duplicate = await account.createAccount({ username: 'Example', password: OTHER_PASSWORD })
   assert.equal(duplicate.code, 'ACCOUNT_USERNAME_TAKEN', 'case must not create a second account')
 })
 
@@ -653,18 +653,18 @@ test('a display name cannot smuggle control characters into the interface', asyn
   const account = store(directory)
   /* Escapes, not literal characters: a test file containing a real bidi
      override displays its own source misleadingly, which is the attack. */
-  const hostile = 'Alex\u202e gnihtemos\u0000\r\n\u200b '
-  const created = await account.createAccount({ username: 'alex', displayName: hostile, password: PASSWORD })
+  const hostile = 'Example\u202e gnihtemos\u0000\r\n\u200b '
+  const created = await account.createAccount({ username: 'Example', displayName: hostile, password: PASSWORD })
   assert.equal(created.ok, true)
   const name = created.account.displayName
   assert.ok(!/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/.test(name),
     'control, zero-width and bidi characters must be stripped from a display name')
-  assert.equal(name, 'Alex gnihtemos')
+  assert.equal(name, 'Example gnihtemos')
 
   /* And the stripped name is what is stored and read back, not just what the
      create call returned. */
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
-  assert.equal(account.current().account.displayName, 'Alex gnihtemos')
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
+  assert.equal(account.current().account.displayName, 'Example gnihtemos')
 })
 
 /* The product's own source must not contain what it strips from user input.
@@ -682,9 +682,9 @@ test('the account source files contain no invisible control or bidi characters',
 test('an empty display name falls back to the username rather than to nothing', async (t) => {
   const directory = workspace(t)
   const account = store(directory)
-  assert.equal((await account.createAccount({ username: 'alex', displayName: '   ', password: PASSWORD })).ok, true)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
-  assert.equal(account.current().account.displayName, 'alex')
+  assert.equal((await account.createAccount({ username: 'Example', displayName: '   ', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
+  assert.equal(account.current().account.displayName, 'Example')
 })
 
 test('signing out when nobody is signed in is a no-op that still reports success', async (t) => {
@@ -701,7 +701,7 @@ test('the principal is always a bounded non-empty string the spawn record accept
   const directory = workspace(t)
   const account = await withAccount(directory)
 
-  for (const value of [account.principal(), (await account.signIn({ username: 'alex', password: PASSWORD })) && account.principal()]) {
+  for (const value of [account.principal(), (await account.signIn({ username: 'Example', password: PASSWORD })) && account.principal()]) {
     assert.equal(typeof value, 'string')
     assert.ok(value.length > 0 && value.length <= 200,
       'shell/spawn-record.cjs refuses a principal outside 1..200 characters')
@@ -727,24 +727,24 @@ test('the principal is always a bounded non-empty string the spawn record accept
 test('two accounts on one computer do not see each other settings', async (t) => {
   const directory = workspace(t)
   const account = store(directory)
-  assert.equal((await account.createAccount({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.createAccount({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal((await account.createAccount({ username: 'guest', password: OTHER_PASSWORD })).ok, true)
 
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.putSetting({ key: 'mc.theme', value: 'black' }).ok, true)
   assert.equal(account.getSetting('mc.theme').value, 'black')
-  const alexId = account.current().account.id
+  const joshId = account.current().account.id
 
   assert.equal((await account.signIn({ username: 'guest', password: OTHER_PASSWORD })).ok, true)
   const guestId = account.current().account.id
-  assert.notEqual(guestId, alexId)
+  assert.notEqual(guestId, joshId)
   /* THE ASSERTION THE WHOLE PARTITION EXISTS FOR. */
   assert.equal(account.getSetting('mc.theme').value, null,
     'the second account can read the first account settings, so the partition does nothing')
   assert.equal(account.accountDataForRenderer().settingCount, 0)
 
   assert.equal(account.putSetting({ key: 'mc.theme', value: 'white' }).ok, true)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.getSetting('mc.theme').value, 'black',
     'the second account overwrote the first account setting, so they share one file')
 })
@@ -753,9 +753,9 @@ test('two accounts on one computer do not see each other settings', async (t) =>
 test('a captured account fence refuses an account switch before either partition is read or written', async t => {
   const directory = workspace(t)
   const account = store(directory)
-  assert.equal((await account.createAccount({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.createAccount({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal((await account.createAccount({ username: 'guest', password: OTHER_PASSWORD })).ok, true)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.putSetting({ key: 'research_queue', value: 'account-a' }).ok, true)
   const captured = account.getSetting('research_queue')
   assert.equal(captured.ok, true)
@@ -774,14 +774,14 @@ test('a captured account fence refuses an account switch before either partition
   assert.equal(account.putSetting({ key: 'research_queue', value: 'ordinary-b' }).ok, true,
     'an unfenced legacy caller must still write the current account')
   assert.equal(account.getSetting('research_queue').value, 'ordinary-b')
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.getSetting('research_queue').value, 'account-a', 'the refused write crossed partitions')
 })
 
 test('signed out, nothing can be read from or written to any account partition', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.putSetting({ key: 'mc.theme', value: 'black' }).ok, true)
 
   account.signOut()
@@ -792,7 +792,7 @@ test('signed out, nothing can be read from or written to any account partition',
   assert.equal(account.putSetting({ key: 'mc.theme', value: 'white' }).ok, false)
   assert.equal(account.attachPaymentMethod({ vaultKey: 'payment_card_default' }).ok, false)
   /* And the write that was refused really did not happen. */
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.getSetting('mc.theme').value, 'black')
 })
 
@@ -804,7 +804,7 @@ test('the first account on a used computer inherits its settings and the second 
   }))
   const account = store(directory)
 
-  const first = await account.createAccount({ username: 'alex', password: PASSWORD })
+  const first = await account.createAccount({ username: 'Example', password: PASSWORD })
   assert.equal(first.ok, true)
   assert.equal(first.adoptedSettings, true, 'the settings already on this computer were thrown away')
   assert.equal(first.adoptedSettingCount, 2)
@@ -814,7 +814,7 @@ test('the first account on a used computer inherits its settings and the second 
   assert.equal(second.adoptedSettings, false,
     'a later account inherited settings that belong to whoever made the first one')
 
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.getSetting('mc.setup.profile').value, '{"status":"complete"}')
   assert.equal(account.accountDataForRenderer().adopted.count, 2)
 
@@ -831,7 +831,7 @@ test('the first account on a used computer inherits its settings and the second 
 test('a damaged partition is reported, never silently replaced with an empty one', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.putSetting({ key: 'mc.theme', value: 'black' }).ok, true)
 
   const id = account.current().account.id
@@ -847,10 +847,10 @@ test('a damaged partition is reported, never silently replaced with an empty one
 test('a partition file whose contents name another account is refused', async (t) => {
   const directory = workspace(t)
   const account = store(directory)
-  assert.equal((await account.createAccount({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.createAccount({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal((await account.createAccount({ username: 'guest', password: OTHER_PASSWORD })).ok, true)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
-  const alexId = account.current().account.id
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
+  const joshId = account.current().account.id
   assert.equal((await account.signIn({ username: 'guest', password: OTHER_PASSWORD })).ok, true)
   const guestId = account.current().account.id
   /* Give the guest a partition file of their own first, so the directory
@@ -861,7 +861,7 @@ test('a partition file whose contents name another account is refused', async (t
      by id; if its CONTENTS name a different account, answering with it would
      show one person another person settings. */
   writeFileSync(account.accountDataPath(guestId), JSON.stringify({
-    version: 1, accountId: alexId, settings: { 'mc.theme': 'black' }, paymentMethod: null, updatedAtMs: 1,
+    version: 1, accountId: joshId, settings: { 'mc.theme': 'black' }, paymentMethod: null, updatedAtMs: 1,
   }))
   const read = account.accountDataForRenderer()
   assert.equal(read.ok, false)
@@ -873,9 +873,9 @@ test('a partition file whose contents name another account is refused', async (t
 test('attaching a payment method writes a vault key name and nothing that could be a card', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
 
-  const attached = account.attachPaymentMethod({ vaultKey: 'payment_card_default', vaultStore: 'C:\\somewhere\\vault\\secrets.json' })
+  const attached = account.attachPaymentMethod({ vaultKey: 'payment_card_default', vaultStore: '\x43:\\somewhere\\vault\\secrets.json' })
   assert.equal(attached.ok, true)
   assert.equal(attached.vaultKey, 'payment_card_default')
 
@@ -905,7 +905,7 @@ test('attaching a payment method writes a vault key name and nothing that could 
 test('only an allowlisted vault key may be attached, and never the identity record', async (t) => {
   const directory = workspace(t)
   const account = await withAccount(directory)
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
 
   for (const vaultKey of ['owner_legal_identity_v1', 'google_client_secret', '../../elsewhere', '', null, 42]) {
     const result = account.attachPaymentMethod({ vaultKey })
@@ -918,10 +918,10 @@ test('only an allowlisted vault key may be attached, and never the identity reco
 test('a payment method does not survive into another account', async (t) => {
   const directory = workspace(t)
   const account = store(directory)
-  assert.equal((await account.createAccount({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.createAccount({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal((await account.createAccount({ username: 'guest', password: OTHER_PASSWORD })).ok, true)
 
-  assert.equal((await account.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+  assert.equal((await account.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   assert.equal(account.attachPaymentMethod({ vaultKey: 'payment_card_default' }).ok, true)
 
   assert.equal((await account.signIn({ username: 'guest', password: OTHER_PASSWORD })).ok, true)

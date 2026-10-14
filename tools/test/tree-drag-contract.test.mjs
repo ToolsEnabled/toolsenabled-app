@@ -23,7 +23,7 @@ const view = readFileSync(join(SRC, 'views', 'computers.js'), 'utf8')
 
 test('an override dies with its parent: v2 entries carry parentId and are validated on apply', () => {
   // Written with the parent it was measured under...
-  assert.match(graph, /v:\s*2,[\s\S]{0,200}parentId:\s*record\.agent\.parentId/, 'writes no longer record the parent')
+  assert.match(graph, /\x76:\s*2,[\s\S]{0,200}parentId:\s*record\.agent\.parentId/, 'writes no longer record the parent')
   // ...validated against the CURRENT parent at apply time...
   assert.match(graph, /offset\.v === 2 && \(offset\.parentId \?\? null\) !== \(record\.agent\.parentId \?\? null\)/, 'apply no longer checks the recorded parent')
   // ...and v1 blobs are discarded on read.
@@ -87,13 +87,13 @@ test('the cycle check reads the same resolver as the layout', () => {
 })
 
 test('the corridor constrains nudges and NEVER the layout\'s own position', () => {
-   /* Amendment (iteration 6): keep the new version, but make it act and feel
-     as before. The corridor stays — iteration 5's top circles staying at the
-     top — but its band must always CONTAIN the record's own
+  /* Owner amendment (iteration 6): "keep the new version but make it act
+     and feel like before". The corridor stays — iteration 5's "top circles
+     stay at the top" — but its band must always CONTAIN the record's own
      slot, so an un-nudged node sits exactly where the layout put it. The
      first corridor kept the old canvas-edge floor (r + 64), which
      disagrees with the layout's padTop for big circles and pushed the
-     whole top row down AT REST — the regression a reported screenshot showed. */
+     whole top row down AT REST — the regression the owner screenshotted. */
   const graph = graphNow()
   assert.match(graph, /_rankCorridor\(record, result, slot\.y\)/, 'the offset apply no longer clamps into a slot-containing rank corridor')
   assert.match(graph, /_rankCorridor\(focusRecord, this\._layoutResult, targetSlot\.y\)/, 'the focus-animation path lost the slot-containing corridor; the settle jumps or shifts at rest')
@@ -103,8 +103,8 @@ test('the corridor constrains nudges and NEVER the layout\'s own position', () =
    * the regression: the corridor is half the pitch to the next row, every
    * empty slot is in a DIFFERENT row from the node you would drag onto it, and
    * contact needs about 77px. So no cross-row drop could register at any
-   * realistic window size -- nodes could not be dropped onto the new bubbles,
-   * in all three reported cases at once.
+   * realistic window size -- the owner's "you cant drag and drop the nodes
+   * onto the new bubbles anymore", all three of his cases at once.
    *
    * The corridor still bounds a NUDGE, which is what stops the snap on
    * release; dragBand() widens it by the reach of the targets on screen, so a
@@ -116,7 +116,7 @@ test('the corridor constrains nudges and NEVER the layout\'s own position', () =
   assert.match(graph, /Math\.min\(Math\.max\(canvasLow, rowY - up\), slotY\)/, 'the corridor stopped containing the slot — un-nudged nodes will shift at rest again')
   /* The band is the midline between ranks, full half-pitch each way: the
      label-stack subtraction plus zero floor made tight rows refuse every
-     nudge, the rejected snap-back feel. The precise label veto
+     nudge, the snap-back feel the owner rejected. The precise label veto
      below is the overlap check, not this fence. */
   assert.ok(!/TREE_LABEL_STACK \/ 2/.test(graph), 'the corridor re-grew the label-stack subtraction; tight rows will refuse nudges again (the snap-back feel)')
 })
@@ -137,8 +137,8 @@ test('the override veto sees words at their TRUE width, not only circles', () =>
 })
 
 test('a status tick moves nothing: geometry follows structure, not events', () => {
-  /* Iteration 7: the tree's motion was messy. Every reply, usage reading and
-     status change ran the full layout
+  /* Owner, iteration 7: "the tree action is a mess like the way it moves and
+     such". Every reply, usage reading and status change ran the full layout
      — packers plus the vertical fitter, which may rescale every radius —
      and nodes carry no transition on left/top, so each one was an instant
      jump. The reconcile now skips the layout when the shape is unchanged. */
@@ -173,8 +173,8 @@ function graphNow() {
   return readFileSync(join(SRC, 'tree-graph.js'), 'utf8')
 }
 
-/* EDIT MODE MOVES FREELY TO THE RIGHT (in edit mode agents could
-   not be moved right, where the + slots are).
+/* EDIT MODE MOVES FREELY TO THE RIGHT (owner, 2026-09-10: "i cant move any
+   agents in edit mode they cant be moved right which is where the + are").
    Three things stopped it: the canvas edge was a wall, a drop near the node's
    own family "+" was refused as "already under" and snapped back, and the
    layout threw away any nudge that sat on an offered "+". */

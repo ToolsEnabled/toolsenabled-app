@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import vm from 'node:vm'
+import { createRequire } from 'node:module'
+const { createLegacyStandaloneTranscriptReader } = createRequire(import.meta.url)('../../shell/legacy-standalone-identity.cjs')
 const main = fs.readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf8')
 function fixture() {
   const callbacks = new Map(), calls = []
@@ -25,6 +27,11 @@ function fixture() {
     localDataErased: false, agentRuntimeStoppedForReset: false, prefsErasedRefusal: () => ({ ok: false }),
     transcriptRefusalCode: error => error.code, ipcMain: { handle: (name, handler) => callbacks.set(name, handler) },
   }
+  context.readStandaloneTranscript = createLegacyStandaloneTranscriptReader({
+    readTranscript: request => context.nodeTranscripts.read(request),
+    readTabs: () => assert.fail('an ordinary tree read must not inspect saved standalone tabs'),
+    readContinuation: () => assert.fail('an ordinary tree read must not inspect native identities'),
+  })
   const start = main.indexOf('function transcriptsCanQuit() {')
   const end = main.indexOf('\nlet transcriptCloseNoticePending', start)
   assert.ok(start >= 0 && end > start)

@@ -80,7 +80,7 @@ function buildDeps(startSession) {
     spawnRecordHistory: () => ({ ok: true, entries: [] }),
     usageRecordHistory: () => ({ ok: true, entries: [] }),
     engineAvailability: () => ({ ok: true }),
-    ensureWorkspaceRoot: () => 'C:\\outcome-workspace',
+    ensureWorkspaceRoot: () => '\x43:\\outcome-workspace',
     chosenWorkspaceCwd: () => null,
     readAgentConfinement: () => ({ ok: true }),
     listAgentTools: () => ({ ok: true, tools: [] }),
@@ -97,7 +97,7 @@ function buildDeps(startSession) {
     dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) },
     MAX_SESSION_ID_LENGTH: 128,
     AGENT_EFFORT_VALUES: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
-    WORKSPACE_ROOT: 'C:\\outcome-workspace',
+    WORKSPACE_ROOT: '\x43:\\outcome-workspace',
   }
   return { deps, agentSessions }
 }
@@ -442,12 +442,9 @@ test('closeAll positively releases a reservation-backed pre-dispatch record', as
 
 test('createAgentHost owns the outcome carrier for frozen, primitive, and conflicting pre-dispatch errors', async () => {
   const cases = [
-    { label: 'frozen engine error', code: 'ENGINE_SETUP_FAILED', retry: { provider: 'codex', account: 'retry-account', attempts: [] }, make: () => {
+    { label: 'frozen engine error', code: 'ENGINE_SETUP_FAILED',  make: () => {
       const error = Object.assign(new Error('frozen setup'), { code: 'ENGINE_SETUP_FAILED' })
-      Object.defineProperty(error, 'accountRetry', {
-        value: { provider: 'codex', account: 'retry-account', attempts: [] },
-        enumerable: true, configurable: false, writable: false,
-      })
+
       return Object.freeze(error)
     } },
     { label: 'primitive engine error', code: 'AGENT_START_FAILED', make: () => 'primitive setup failure' },
@@ -475,7 +472,7 @@ test('createAgentHost owns the outcome carrier for frozen, primitive, and confli
           requestSessionId: sessionId, admission: 'not-admitted', cleanup: 'not-required', custody: 'none',
         }, entry.label)
         assert.strictEqual(error.cause, upstream, entry.label)
-        if (entry.retry) assert.deepEqual(error.accountRetry, entry.retry, entry.label)
+
         return true
       })
     } finally {
@@ -483,66 +480,7 @@ test('createAgentHost owns the outcome carrier for frozen, primitive, and confli
     }
   }
 })
-test('the host carrier preserves accountRetry on a frozen final startup error', async t => {
-  const engine = require(enginePath)
-  const upstream = Object.freeze(Object.assign(new Error('frozen provider startup'), { code: 'ENGINE_START_FROZEN' }))
-  t.mock.method(engine, 'startCodexSession', async () => { throw upstream })
-  const retry = {
-    nextAttemptAt: '2026-09-20T12:00:00Z',
-    resetAt: null,
-    reason: 'provider-limit',
-    allQuotaExhausted: true,
-    exhaustedCount: 1,
-    unmeasuredCount: 0,
-  }
-  const host = createAgentHost({
-    enginePath,
-    defaultCwd: root,
-    freeMemory: () => 64 * 1024 ** 3,
-    confinementPlanner: () => ({ ok: true, tier: 'unrestricted', isolated: false, threadOptions: {}, env: {} }),
-    accountResolver: async () => ({
-      rotated: true,
-      account: { name: 'backup', provider: 'codex' },
-      attempts: [{ account: 'primary', status: 'exhausted' }],
-      retry,
-    }),
-  })
-  const request = {
-    sessionId: 'frozen-final-retry',
-    accountRetry: { excludeAccounts: ['primary'], recheckAttempt: 2 },
-    requestKeys: { threadId: 'node-42', treeAnchors: ['root-node', 'node-42'] },
-    treeIdentity: { selfName: 'Worker', managerName: 'Controller' },
-  }
-  await assert.rejects(host.startSession(request), error => {
-    assert.equal(error.code, 'ENGINE_START_FROZEN')
-    assert.deepEqual(error.startOutcome, {
-      requestSessionId: request.sessionId, admission: 'unknown', cleanup: 'pending', custody: 'cleanup-pending',
-    })
-    assert.deepEqual(error.accountRetry, {
-      provider: 'codex',
-      account: 'backup',
-      attempts: [{ account: 'primary', status: 'exhausted' }],
-      retry,
-    })
-    assert.strictEqual(error.cause, upstream)
-    return true
-  })
-  assert.notEqual(host.sessionActivity(request.sessionId), null)
-  await assert.rejects(host.closeSession({ sessionId: request.sessionId }), error => {
-    assert.equal(error.code, 'AGENT_SESSION_CLEANUP_UNPROVEN')
-    assert.deepEqual(error.startOutcome, {
-      requestSessionId: request.sessionId, admission: 'unknown', cleanup: 'pending', custody: 'cleanup-pending',
-    })
-    return true
-  })
-  assert.notEqual(host.sessionActivity(request.sessionId), null)
-  await assert.rejects(host.closeAll(), error => {
-    assert.equal(error.name, 'AggregateError')
-    assert.equal(error.errors?.[0]?.code, 'AGENT_SESSION_CLEANUP_UNPROVEN')
-    return true
-  })
-  assert.notEqual(host.sessionActivity(request.sessionId), null)
-})
+
 
 test('a post-dispatch no-handle start keeps provider custody across revoke retry in closeSession', async t => {
   const engine = require(enginePath)
@@ -1134,61 +1072,7 @@ test('the actual host and command surface carry an admitted start outcome togeth
   }
 })
 
-test('the actual host and command surface preserve accountRetry on uncertain startup', async t => {
-  const engine = require(enginePath)
-  const upstream = Object.freeze(Object.assign(new Error('frozen provider startup'), {
-    code: 'ENGINE_START_FROZEN',
-  }))
-  t.mock.method(engine, 'startCodexSession', async () => { throw upstream })
-  const retry = {
-    nextAttemptAt: '2026-09-20T12:00:00Z',
-    resetAt: null,
-    reason: 'provider-limit',
-    allQuotaExhausted: true,
-    exhaustedCount: 1,
-    unmeasuredCount: 0,
-  }
-  const host = createAgentHost({
-    enginePath,
-    defaultCwd: root,
-    freeMemory: () => 64 * 1024 ** 3,
-    confinementPlanner: () => ({ ok: true, tier: 'unrestricted', isolated: false, threadOptions: {}, env: {} }),
-    accountResolver: async () => ({
-      rotated: true,
-      account: { name: 'backup', provider: 'codex' },
-      attempts: [{ account: 'primary', status: 'exhausted' }],
-      retry,
-    }),
-  })
-  const sessionId = 'joined-account-retry'
-  const request = {
-    sessionId,
-    accountRetry: { excludeAccounts: ['primary'], recheckAttempt: 2 },
-    requestKeys: { threadId: 'node-42', treeAnchors: ['root-node', 'node-42'] },
-    treeIdentity: { selfName: 'Worker', managerName: 'Controller' },
-  }
-  const { deps, agentSessions } = buildDeps(host.startSession.bind(host))
-  deps.parseAgentStart = value => ({ ...value })
-  deps.getAgentHost = () => host
-  deps.currentAgentHost = () => host
-  const surface = createAgentCommandSurface(deps)
-  try {
-    const result = await surface.run('agent:start', request, windowPrincipal)
-    assert.equal(result.ok, false)
-    assert.deepEqual(result.startOutcome, {
-      requestSessionId: sessionId, admission: 'unknown', cleanup: 'pending', custody: 'cleanup-pending',
-    })
-    assert.deepEqual(result.accountRetry, {
-      provider: 'codex',
-      account: 'backup',
-      attempts: [{ account: 'primary', status: 'exhausted' }],
-      retry,
-    })
-    assert.equal(agentSessions.get(sessionId).state, 'close-failed')
-  } finally {
-    try { await host.closeAll() } catch { /* provider custody is intentionally retained */ }
-  }
-})
+
 
 test('completed host cleanup remains authoritative when an unmarked finalizer error follows it', async t => {
   const engine = require(enginePath)

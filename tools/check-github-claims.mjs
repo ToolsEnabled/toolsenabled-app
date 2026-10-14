@@ -2,20 +2,20 @@
 
 /* THE PRODUCT MAY BE PUBLISHED ON GITHUB. IT MAY NOT CLAIM TO RUN ON IT.
  *
- * The rule, stated in full because every edge case below is decided by it:
+ * The owner's ruling, verbatim, because every edge case below is decided by it
+ * and a paraphrase would decide them differently:
  *
- *   1. The GitHub link stays, so people know the product is open source.
- *   2. The product never says it USES GitHub.
- *   3. A user can still connect their own GitHub: the GitHub integration and
- *      source publication on GitHub both stay.
- *   4. Agent comms is never described as Discord, and Filekeeper is never
- *      described as GitHub.
- *   5. Things are identified correctly.
+ *   "we keep the github link -> we want people to know we are open source and
+ *   such. BUT we dont want to say we are USING or USE github. THOUGH we still
+ *   WANT to be able to connect a user to their github. SO we want github
+ *   integration, with github source code publication, BUT WE DONT WANT TO SAY
+ *   AGENT COMMS IS DISCORD AND WE DONT WANT TO SAY FILEKEEPER IS GITHUB. WE
+ *   just want to make sure we are identifying things correctly."
  *
  * So there are three things in play and only one of them is forbidden:
  *
  *   PUBLICATION is fine.  "Published at github.com/ToolsEnabled", "read the
- *                         source", "open source". That is the link that is kept.
+ *                         source", "open source". That is the link he wants kept.
  *   INTEGRATION is fine.  The `github.*` connector, the "GitHub personal access
  *                         token" credential label, connecting a PERSON to THEIR
  *                         OWN GitHub account. That is a tool the product offers.
@@ -148,8 +148,8 @@ const DETERMINER = '(?:the\\s+|a\\s+|an\\s+|our\\s+|its\\s+)?'
  *
  * The connector's tools are named `github_issue_create` and `github.issue.list`,
  * and its credential key is `github_pat`. Those are things the product OFFERS,
- * and they stay: a user can still connect their own GitHub. Two shapes have to
- * be told apart from the name:
+ * and the owner keeps them: "we still WANT to be able to connect a user to their
+ * github". Two shapes have to be told apart from the name:
  *
  *   github_issue_create   `\b` already refuses it -- `_` is a word character, so
  *                         there is no boundary after `github`. Free.
@@ -177,7 +177,7 @@ const CLAIMS = Object.freeze([
   Object.freeze({
     id: 'uses-github',
     pattern: new RegExp(`\\b(?:use|uses|used|using)\\s+${DETERMINER}${GITHUB_NAME}`, 'i'),
-    instead: 'the product never says it uses GitHub. '
+    instead: 'the owner\'s words are "we dont want to say we are USING or USE github". '
       + 'Say what the product itself does, or say where the source is published.',
   }),
   Object.freeze({
@@ -188,7 +188,7 @@ const CLAIMS = Object.freeze([
   Object.freeze({
     id: 'hosted-on-github',
     pattern: new RegExp(`\\bhost(?:ed|s|ing)?\\s+(?:on|by|in|at|with)\\s+${DETERMINER}${GITHUB_NAME}`, 'i'),
-    instead: 'say "published at github.com/ToolsEnabled" — publication is the claim to keep, '
+    instead: 'say "published at github.com/ToolsEnabled" — publication is what the owner wants kept, '
       + 'and it cannot be misread as the product being operated by somebody else.',
   }),
   Object.freeze({
@@ -295,7 +295,7 @@ export function findingsInText(text) {
         rule: 'filekeeper-is-github',
         detail: `“${presented.first}” and “${presented.second}” are joined by “${presented.between.trim() || 'nothing'}”, `
           + 'which presents one as the other. Filekeeper is ours and GitHub is not. '
-          + 'Filekeeper is never described as GitHub.',
+          + 'The owner: "WE DONT WANT TO SAY FILEKEEPER IS GITHUB."',
         excerpt: sentence,
       })
     }
@@ -526,8 +526,8 @@ export function scan() {
   if (mentions.length === 0) {
     throw new Error(
       'SETUP: not one user-facing passage on this tree names GitHub. This tree publishes its source there and '
-      + 'says so in the help page and in README.md, so either that link has been removed — which the rule '
-      + 'does not allow (the GitHub link stays) — or this scan has stopped reading. Both need a '
+      + 'says so in the help page and in README.md, so either that link has been removed — which is a decision '
+      + 'the owner has not made ("we keep the github link") — or this scan has stopped reading. Both need a '
       + 'person; neither is a pass.',
     )
   }

@@ -67,7 +67,7 @@ function prepare({ stateRoot, scratchRoot, engineRoot = process.env.MC_SETTINGS_
 // under load; every OTHER vault operation here (adding a key to a container
 // that already exists) is the same op every real install performs
 // constantly and is not what T310 found broken. Pre-seeding just the key --
-// generated locally via tools/test/lib/generate-audit-native-seed-vault.mjs,
+// generated once, for real, via tools/test/lib/generate-audit-native-seed-vault.mjs,
 // never the owner's vault -- removes that one fragile spawn from all 14
 // scenarios while every other operation (the fixture write, the anchor's own
 // first-write establishment, every tamper/repair/recover call) still goes
@@ -75,13 +75,7 @@ function prepare({ stateRoot, scratchRoot, engineRoot = process.env.MC_SETTINGS_
 function seedSigningKey(stateRoot) {
   const vaultFile = path.join(stateRoot, 'vault', 'secrets.json')
   if (fs.existsSync(vaultFile)) return null
-  // The published source ships no seed: DPAPI CurrentUser output carries the
-  // generating account's master-key identifier and decrypts nowhere else, so
-  // without a locally generated file every scenario takes the ordinary cold
-  // bootstrap, exactly as confirmSeedReadable does for an unreadable seed.
-  const seedFile = path.join(__dirname, 'fixtures', 'audit-native-seed-vault.json')
-  if (!fs.existsSync(seedFile)) return null
-  const seed = require(seedFile)
+  const seed = require('./fixtures/audit-native-seed-vault.json')
   fs.mkdirSync(path.dirname(vaultFile), { recursive: true, mode: 0o700 })
   fs.writeFileSync(vaultFile, `${JSON.stringify(seed)}\n`, { mode: 0o600 })
   return vaultFile
@@ -90,7 +84,7 @@ function seedSigningKey(stateRoot) {
 // bytes are bound to that account's master key, so on any other Windows account
 // -- the offline qualification guest, a fresh CI account -- every scenario's
 // first key read answered "Key not valid for use in specified state" and all 14
-// custody rows failed (measured 2026-09-23 at an earlier commit). A seed this account
+// custody rows failed (measured 2026-09-23 at dabd2f51). A seed this account
 // cannot read is worth nothing here, so it is removed again -- the file this
 // fixture itself wrote a moment ago, nothing else -- and the scenario takes the
 // ordinary cold bootstrap through getOrCreateSecret, exactly as every real

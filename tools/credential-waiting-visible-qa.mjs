@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /* A CREDENTIAL REQUEST IS WAITING. CAN THE PERSON TELL?
  *
- * WHY THIS EXISTS. The first external user reported that agents could not use
- * the credential manager or the vault. Part of that is a deliberate tier gate
+ * WHY THIS EXISTS. The first external user reported that agents "weren't able
+ * to use credential manager or vault". Part of that is a deliberate tier gate
  * (system.credential_request is withheld at Guided, present at Standard and
  * above -- measured, and correct). This file is about the part that is NOT
  * deliberate: when an agent at Standard DOES ask, the only thing that happens

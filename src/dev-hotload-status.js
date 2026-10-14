@@ -2,8 +2,8 @@
  *
  * WHY IT EXISTS. A window served by the dev server keeps drawing, animating and
  * responding long after its update channel has gone. Nothing on the glass
- * changes, so the page looks current and is not. Finished work has been
- * reported missing several separate times from exactly that state --
+ * changes, so the page looks current and is not. The owner has reported
+ * finished work as missing five separate times from exactly that state --
  * including once when the fix was in the served code and their window could not
  * receive it. The cost is not a stale pixel; it is a person disbelieving work
  * that is done, and the only defence is for the page to say so itself.

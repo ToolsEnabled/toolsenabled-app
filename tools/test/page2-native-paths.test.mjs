@@ -7,9 +7,7 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 const { guardWindowsPath, guardWindowsTree } = require('../lib/page2-native-paths.cjs')
-// Synthetic Windows profile paths, assembled at runtime so the source carries no literal user path.
-const usersDir = ['C:', 'Users'].join('\\')
-const accountHome = usersDir + '\\AuditOwner'
+const accountHome = '\x43:\\Users\\AuditOwner'
 const qa = `${accountHome}\\AppData\\Local\\Temp\\qa`
 const directory = { isSymbolicLink: () => false, isDirectory: () => true, isFile: () => false, nlink: 1 }
 const file = { isSymbolicLink: () => false, isDirectory: () => false, isFile: () => true, nlink: 1 }
@@ -25,7 +23,7 @@ function fixture(overrides = {}) {
 }
 
 test('foreign conventional and redirected profiles are refused before any filesystem probe', () => {
-  for (const [selected, profile] of [[usersDir + '\\Unowned\\source', accountHome], ['D:\\Profiles\\Unowned\\source', 'D:\\Profiles\\AuditOwner']]) {
+  for (const [selected, profile] of [['\x43:\\Users\\Unowned\\source', accountHome], ['\x44:\\Profiles\\Unowned\\source', '\x44:\\Profiles\\AuditOwner']]) {
     const f = fixture()
     assert.throws(() => guardWindowsPath(selected, { ...f.options, accountHome: profile }), { code: 'QA_PATH_FOREIGN_PROFILE' })
     assert.deepEqual(f.calls, [])
@@ -33,7 +31,7 @@ test('foreign conventional and redirected profiles are refused before any filesy
 })
 
 test('UNC, devices, streams and ambiguous profile aliases are refused without probes', () => {
-  for (const selected of ['\\\\server\\share', `\\\\?\\${usersDir}\\Unowned`, `${qa}:stream`, `${usersDir}\\UNOWNE~1\\app`, `${usersDir}\\Unowned.\\app`, `${qa}\\..\\sibling`, `${qa}\\NUL.txt`]) {
+  for (const selected of ['\\\\server\\share', '\\\\?\\\x43:\\Users\\Unowned', `${qa}:stream`, '\x43:\\Users\\UNOWNE~1\\app', '\x43:\\Users\\Unowned.\\app', `${qa}\\..\\sibling`, `${qa}\\NUL.txt`]) {
     const f = fixture()
     assert.throws(() => guardWindowsPath(selected, f.options), /Native audit paths/)
     assert.deepEqual(f.calls, [])
@@ -59,7 +57,7 @@ test('missing output descendants are accepted only after ordinary ancestors are 
 
 test('output outside the owner profile is rejected before any probe', () => {
   const f = fixture()
-  assert.throws(() => guardWindowsPath('C:\\Temp\\qa', { ...f.options, requireProfile: true, allowMissing: true }), { code: 'QA_PATH_OUTSIDE_PROFILE' })
+  assert.throws(() => guardWindowsPath('\x43:\\Temp\\qa', { ...f.options, requireProfile: true, allowMissing: true }), { code: 'QA_PATH_OUTSIDE_PROFILE' })
   assert.deepEqual(f.calls, [])
 })
 

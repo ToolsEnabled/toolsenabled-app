@@ -1,7 +1,7 @@
 # The stranger walkthrough
 
 What a person who has never seen this product actually meets, in order, and what stops
-them. Written 2026-08-12 against the working tree at that time.
+them. Written 2026-08-12 against this working tree (`packaging/capability-layer`).
 
 **This is a paper walk plus code reading.** No installer was run, nothing was built, and
 no machine was changed. One read-only measurement was taken:
@@ -15,14 +15,12 @@ Section 4 is the test that would.
 
 ## 1. What `tools/stranger-onboarding-qa.mjs` measures — and what it does not
 
-### Its four machine states (`SCENARIOS`, lines 206–260)
+### Its two provider-free machine states (`SCENARIOS`)
 
 | Scenario | Machine state | What it asserts |
 |---|---|---|
 | `bare` | no `codex` on PATH, no sign-in | readiness answers `AGENT_CODEX_CLI_NOT_INSTALLED`; setup **and** home carry `winget install OpenAI.Codex` on the glass |
-| `signed-out` | a **real copy of the developer's** Codex staged into the profile's `APPDATA`, nobody signed in | readiness answers `AGENT_CONFINEMENT_SIGNED_OUT`; `codex login` is on the glass |
-| `auth-no-cli` | `auth.json` present, no `codex` anywhere | readiness must **not** say ready — the state that used to lie |
-| `broken-cli` | `codex.cmd` that runs and exits 1, plus a fake `auth.json` | readiness passes *by design*; the **press** must say "did not answer when asked its version", and the ledger and home must record one refused run |
+| `signed-out` | a **real copy of the owner's** Codex staged into the profile's `APPDATA`, nobody signed in | readiness answers `AGENT_CONFINEMENT_SIGNED_OUT`; `codex login` is on the glass |
 
 ### What it genuinely asserts
 
@@ -45,22 +43,21 @@ what the product can do:
    directory that only exists on a build machine. Finding a download, transferring it,
    verifying it, SmartScreen, the NSIS installer, the Start-menu shortcut: none of it is
    touched.
-2. **It runs on a development machine.** Same registry, same Defender/SmartScreen posture
-   as that machine, which is not a default-security environment. A fresh
+2. **It runs on the owner's machine.** Same registry, same Defender/SmartScreen posture —
+   which the owner has lowered as far as it goes on both machines. A fresh
    `--user-data-dir` is a fresh *profile*, not a fresh *machine*.
 3. **The window is never shown.** `MC_SMOKE_HEADLESS=1` gives `{ show: false }`
    (`shell/window-options.cjs:18`). Everything is read as `innerText`. Nothing about what
    a person *sees* — legibility, layout, whether the screen paints at all on a default
    GPU — is measured.
-4. **No scenario ever reaches a running agent.** `signed-out` has a CLI and no sign-in;
-   `broken-cli` has a fake token and a CLI that cannot run. There is no state with a real
-   CLI *and* a real sign-in, so the suite has never once asserted that an agent answers.
-   Its own header records why: the only time that was achieved, it was achieved by
-   copying a developer's credential, which a customer cannot do (lines 6–17).
+4. **No scenario reaches a running agent.** Both scenarios have no sign-in. The
+   former synthetic signed-in scenarios were removed with their credential staging.
+   Real-provider drives require an explicit existing home on the command line or an
+   environment API key; they never duplicate a provider sign-in.
 5. **It cannot run on a bare machine anyway.** The `signed-out` scenario copies the real
    Codex from `%APPDATA%\npm\node_modules\@openai\codex` and throws `HarnessError` — exit
    2, NO VERDICT — when it is absent (lines 296–303). The suite that asks "can a stranger
-   succeed" requires a developer's own install to be present.
+   succeed" requires the owner's own install to be present.
 6. **It walks one path of several.** It always presses `Continue` on the preselected tier
    and always answers `assisted`. It never presses **Skip the rest for now**, which is on
    every step (`src/views/setup.js:320`) and applies `SAFE_ANSWERS` → `observe` → *no
@@ -179,7 +176,7 @@ repeats the two commands (`src/first-run-needs.js`, `FIRST_RUN_NEEDS`).
 So the single-agent path is honest and completable — **if** the person will open Windows
 Terminal, install a second program, create an OpenAI account, and sign in. That is the
 real shape of "reach a running agent", and it has never been walked end to end by anyone
-who had not built it.
+who was not already the owner.
 
 ---
 
@@ -242,8 +239,8 @@ must additionally state, per provider and as a command, not a concept:
 
 ## 4. The clean-environment test
 
-A default-security environment is a **prerequisite** for this phase. A development
-machine is not one, so it cannot produce this evidence. Run this
+A default-security environment is a **prerequisite** for this phase. Both owner machines
+have security lowered as far as it goes, so neither can produce this evidence. Run this
 on a VM; it is a checklist, not a description.
 
 ### The machine
@@ -316,5 +313,5 @@ this product asks of a stranger and nothing has ever measured what it costs them
 **And the harness stays honest about its own scope:** running
 `node tools/stranger-onboarding-qa.mjs` on that VM would be measuring the *packaged
 directory*, not the *installed product*, and its `signed-out` scenario would exit 2 (NO
-VERDICT) for want of a developer's Codex. That suite is a good instrument for the four
+VERDICT) for want of the owner's Codex. That suite is a good instrument for the four
 blocked states; it is not this test, and it cannot become it.

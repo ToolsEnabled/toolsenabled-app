@@ -67,7 +67,7 @@ Two surfaces say different things on purpose, and the difference is the owner's:
 
 ## Current legal status
 
-**ToolsEnabled, Inc. is the publisher** (the Windows installer is
+**ToolsEnabled, Inc. is the publisher** (owner, 2026-09-25; the Windows installer is
 code-signed by the Microsoft-validated identity "ToolsEnabled, Inc.").
 
 Copyright still vests in **Joshua Pinckard** personally until it is assigned to the company,

@@ -9,13 +9,13 @@
  *
  * THE MECHANISM WAS ALREADY FOUND AND FIXED TWICE IN THIS EXACT SHAPE OF BOX,
  * both times in src/tree-graph.css:
- *   - an earlier commit, `.node-name .nn-t`: "anywhere broke names mid-word at
- *     the first opportunity ('Coordinat / or 1', found in a
- *     walkthrough)".
- *   - an earlier commit, the tree card copy rule (`.cl-current`/`.cl-previous`/
+ *   - commit c06c44c, `.node-name .nn-t`: "anywhere broke names mid-word at
+ *     the first opportunity ('Coordinat / or 1' -- owner walkthrough,
+ *     iteration 6)".
+ *   - commit 0b0087e, the tree card copy rule (`.cl-current`/`.cl-previous`/
  *     `.cl-chat`/`.cl-unavailable`/`.cl-name b`): the identical shape --
  *     `-webkit-line-clamp`, `white-space: normal`, arbitrary un-pre-measured
- *     text -- reported as a long Windows profile path ("%USERPROFILE%\...") cut off
+ *     text -- reported by the owner as "<profile-root>/ToolsEnabled-..." cut off
  *     mid-word, left unfixed across two reports because the lesson from the
  *     first fix was never carried to the second rule.
  *
@@ -73,7 +73,7 @@ test('.ledger-words divides its forced wrap the proven way: break-word, not anyw
     'this test is about the clamped shape of the box; if the clamp moved, re-verify the wrap fix still applies to it')
   assert.doesNotMatch(block, /overflow-wrap:\s*anywhere/,
     '.ledger-words forces a break at the first character once its 6-line box runs out of room -- proven ' +
-    'on `.node-name .nn-t` and the tree card copy rule (earlier commits) to turn an ordinary ' +
+    'on `.node-name .nn-t` (commit c06c44c) and the tree card copy rule (commit 0b0087e) to turn an ordinary ' +
     'word into a fragment ("Coordinat" / "or 1") even though a space was available one line earlier. ' +
     'item.words is the same kind of un-pre-measured free text. Use overflow-wrap: break-word.')
   assert.match(block, /overflow-wrap:\s*break-word/,
@@ -96,6 +96,6 @@ test('no line-clamped rule anywhere in src/ reaches for overflow-wrap: anywhere'
   assert.deepEqual(offences, [],
     'a -webkit-line-clamp box that also sets overflow-wrap: anywhere breaks an ordinary word at the first ' +
     'character the instant it runs out of vertical room, silently losing the rest of the word past the clamp ' +
-    '-- measured on .node-name .nn-t, the tree card copy rule and .ledger-words. Use ' +
+    '-- measured on .node-name .nn-t (c06c44c), the tree card copy rule (0b0087e) and .ledger-words. Use ' +
     'overflow-wrap: break-word, which only forces a mid-word split once ordinary wrapping has nowhere left to go.')
 })

@@ -11,7 +11,7 @@ const SYSTEM = Object.freeze(Object.fromEntries(Object.entries({
   libc: ['libc.so.6', '3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf'],
   libm: ['libm.so.6', 'fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0'],
   zlib: ['libz.so.1.3', '86200da370f20476a2507e9097a789b5ef97269b4ca8d5e164ad82dab9d99892'],
-  // Ubuntu libexpat1 2.6.1-2ubuntu0.6 (security update, unattended-upgrades 2026-09-25);
+  // Ubuntu libexpat1 2.6.1-2ubuntu0.6 (security update, unattended-upgrades 2026-09-25 06:30);
   // installed ELF matches the archive package (.deb SHA256 494b8e67... as listed in the signed index).
   expat: ['libexpat.so.1.9.1', '286682ecbc5e59a638963b1a4e6351e65eb32fcf4bdcb9cb7569b6a61fe06a8d'],
   ffi: ['libffi.so.8.1.4', '00f593fe192f2851b8ce23b25cec2488d769beb5a8f63e8c9e563071e1075153'],
@@ -32,9 +32,11 @@ const LINKS = Object.freeze({
   [`${ROOT}/libexpat.so.1`]: 'libexpat.so.1.9.1', [`${ROOT}/libffi.so.8`]: 'libffi.so.8.1.4',
 });
 const CACHE = '/etc/ld.so.cache';
-// Regenerated 2026-09-25 by libc-bin's ldconfig trigger during unattended-upgrades
-// (libexpat1 above, kernel tools, curl, libgit2); every reviewed library and its resolution is unchanged.
-const CACHE_SHA256 = '782f0a61bf762e5d97606887cf941a366f597f0d3ffdcef4bc3854b4a5ab617f';
+// Reviewed 2026-09-29: declared static tool/library/Python/data identities and
+// protected resolver paths/resolutions still match their existing policy.
+// Cache timing matches the NVIDIA-update libc-bin trigger; origin is not proven.
+// Pin only these reviewed bytes; future cache changes still require review.
+const CACHE_SHA256 = 'b299d6040dded0babf74e42597dc14a9359f1028f459aed28af2261784e4952f';
 // These non-executable data maps are actual inputs to the fixed C.UTF-8
 // environment. Keep them separate from the ELF graph and do not silently
 // discard them when checking the native owner's observed mappings.

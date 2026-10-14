@@ -2,8 +2,8 @@
 
 /* Refuse an artefact that carries a secret CONTAINER or this machine's identity.
  *
- * RULING R1191: the cut makes sure no private owner information leaves it.
- * R1180 adds that this is a CUT concern only -- the live
+ * OWNER RULING R1191: "The cut must carefully make sure my private info does not
+ * make it out period." R1180 adds that this is a CUT concern only -- the live
  * working tree keeps its own files, and nothing here touches them.
  *
  * WHAT ALREADY EXISTED, SO THAT THIS ADDS ONLY WHAT WAS MISSING.
@@ -67,13 +67,12 @@ const RULE_CLASS = {
 /* THE TOOLING REPO MUST NOT REACH THE INSTALLER, and these nine files are why it
  * matters rather than being a tidiness rule.
  *
- * A review measured 34 added lines carrying the literal Dev-account profile
- * path (<drive>:\Users\<dev account>) across nine tooling files (27 lines in
- * qualification-automation/, 7 in live/test/). Those literals are CORRECT
- * where they live: ACCOUNT-FENCE.md mandates the fence and the person's R1179
- * keeps them hardcoded -- one of those files runs under a live scheduled task.
- * They are not a defect to rewrite; they are a reason the tooling repo must
- * never be packaged.
+ * Lane A3 measured 34 added lines carrying the literal <profile-root>/fixture-profile
+ * across nine tooling files (27 lines in qualification-automation/, 7 in
+ * live/test/). Those literals are CORRECT where they live: ACCOUNT-FENCE.md
+ * mandates the fence and the person's R1179 keeps them hardcoded -- one of those
+ * files runs under a live scheduled task. They are not a defect to rewrite; they
+ * are a reason the tooling repo must never be packaged.
  *
  * True today by construction: package.json's build.files is an allow-list
  * (dist/**, shell/**, config/google-signin.json, with !tools/** and
@@ -105,10 +104,10 @@ function toolingRepoFiles(relativePaths) {
   return found
 }
 
-/* RULING R1180: profile material is removed when a cut is made; the live working
- * tree does not need it removed.
+/* OWNER RULING R1180: "WHEN CUT my profile stuff needs to be removed BUT LIVE
+ * does not need it removed ; the cut should remove it."
  *
- * These are run records from local debugging sessions -- capture logs,
+ * These are run records from the owner's own debugging sessions -- capture logs,
  * evaluation results, a cardroom evidence dump -- and the development probes that
  * produced them, one of which carries a hardcoded profile path and a fixture path.
  * They are legitimate in the repository and in the running tree, which the ruling
@@ -188,7 +187,7 @@ async function walk(directory, base, out) {
  * switch, and all three put their bin directory ahead of the system directory
  * on PATH. On any such build host -- the common case on Windows -- the call
  * threw, the catch returned null, and the step fell back to the shape rule and
- * still printed "clean". MEASURED on the 1.0.45 Windows cut of an earlier app commit:
+ * still printed "clean". MEASURED on the 1.0.45 Windows cut of app a4d37a5d:
  * `whoami` resolved to Git's copy first and the exact-value check did not run.
  *
  * The old code paired that fallback with a claim that made it look harmless --

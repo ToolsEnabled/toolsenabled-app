@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # T378 -- "Default account rule" is a DEFAULT, not an override. RED/GREEN.
 #
-# WHAT THIS GATES. an earlier commit added a block to the UNSCOPED branch of
+# WHAT THIS GATES. Commit 3a6a7526 added a block to the UNSCOPED branch of
 # setPolicy in shell/account-registry.cjs which deleted selectionMode from
 # EVERY entry of selectionByProvider whenever a whole-computer mode was
 # written. That silently destroyed a per-program choice the owner had made,
@@ -26,10 +26,10 @@ NODE_BIN="${NODE_BIN:-node}"
 OUT="$(mktemp -d)"
 
 SUBJECT=shell/account-registry.cjs
-MUTANT_SHA=aaaaaaaa
+MUTANT_SHA=3a6a7526
 CLEARING_MARK='THE NEWEST CHOICE WINS'
 
-# The guard this lane adds, and the pre-existing guarantee an earlier commit broke.
+# The guard this lane adds, and the pre-existing guarantee 3a6a7526 broke.
 GATE1_FILE=tools/test/account-registry.test.mjs
 GATE1_NAME="a mode chosen for the whole computer is the DEFAULT"
 GATE2_FILE=tools/test/page2-native-provider-account.test.mjs

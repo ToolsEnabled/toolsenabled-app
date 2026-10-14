@@ -1,8 +1,9 @@
 // WHAT THIS PINS.
 //
-// Windows recorded this application as hung (an AppHangB1 and several
-// AppHangTransient events) and wrote NO dump for any of them: the WER report
-// folder held only Report.wer, and no LocalDumps entry covered this app. So there was no way, after
+// Windows recorded this application as hung four times on 2026-09-03 (AppHangB1
+// 17:12:58, AppHangTransient 17:12:13 / 19:12:44 / 20:57:38) and wrote NO dump
+// for any of them: the WER report folder holds Report.wer and nothing else, and
+// LocalDumps is configured only for unrelated vendors. So there was no way, after
 // the fact, to ask which piece of work stopped the loop.
 //
 // shell/main-lag.cjs answers that question at the time. This file pins the four
@@ -120,7 +121,7 @@ test("a late tick is written down and names the longest span in the window it mi
 });
 
 test("a drained burst of many small spans under one label is named by topTotal, while blocker/blockerMs still name the single longest span", () => {
-  // The previous generation's own record named this
+  // The previous generation's own record (gen-6bfe1887, pid 20464) named this
   // exact shape: a stall of lagMs 6544 attributed to agent-event:forward with
   // blockerMs 0, and eleven of twelve stalls carrying a blockerMs far below
   // their lagMs -- a contended lock's retry loop, calling its sleeper many
@@ -434,7 +435,7 @@ test('packaged stall gate binds the real services resolver to the sterile profil
   assert.throws(() => lagObservationBinding({ profile, userData, environment: { ...environment, LOCALAPPDATA: '/ambient-owner' }, pid: process.pid, startedAt: 1 }), /not isolated/);
 });
 
-// T837 (STALLS-01). Two 9 s main-thread stalls on a live generation ran in the courier's delivery path,
+// T837 (STALLS-01). Two 9 s main-thread stalls on gen-ca97a363 ran in the courier's delivery path,
 // which no timed span covered. The spans that now cover it carry how big the work was, and only that.
 test("a span's counts ride with its label's longest span into the record, numbers only, and a bad description costs nothing", () => {
   const h = harness({ thresholdMs: 500, intervalMs: 250 });

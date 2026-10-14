@@ -15,9 +15,9 @@
  *     the anchor id, shaped like the fleet-tree ids this window mints.
  *   - status, state: the ledger's status word and the rail glyph the page
  *     draws for it. R3's `state` reads 'blocked-external', its own exact
- *     rail mark since the Resolve action gave that
+ *     rail mark since the owner's Resolve action (2026-09-07) gave that
  *     status its own glyph -- but the six-tile SUMMARY STRIP stays coarse
- *     by rule (src/views/ledger.js
+ *     by Controller's ruling the same day (src/views/ledger.js
  *     summaryTileOf): a blocked-external row still counts in the existing
  *     'blocked' tile, so R3 lights it again by a real status even though
  *     its rail glyph is no longer literally 'blocked'. Every one of the six
@@ -70,7 +70,7 @@ const SAMPLE_LIVE_REQUESTS = Object.freeze([
     filedBy: 'owner', agoMs: 9 * DAY_MS, gateCount: 1, unmetGateCount: 0, decisions: 0, removed: false,
   }),
   Object.freeze({
-    id: 'R1.1', parentId: 'R1', scope: 'tree', scopeKey: 'node-1-00000101', scopeLabel: 'Coordinator',
+    id: 'R1.1', parentId: 'R1', scope: 'tree', scopeKey: 'node-1-2f6a9c3e', scopeLabel: 'Coordinator',
     status: 'done', state: 'done',
     words: 'Detect a host on this machine before asking the person to name one.',
     filedBy: 'claude', agoMs: 8 * DAY_MS, gateCount: 0, unmetGateCount: 0, decisions: 1, removed: false,
@@ -82,7 +82,7 @@ const SAMPLE_LIVE_REQUESTS = Object.freeze([
     filedBy: 'owner', agoMs: 6 * DAY_MS, gateCount: 2, unmetGateCount: 1, decisions: 0, removed: false,
   }),
   Object.freeze({
-    id: 'R3', parentId: null, scope: 'thread', scopeKey: 'node-3-00000103', scopeLabel: 'Manager 2',
+    id: 'R3', parentId: null, scope: 'thread', scopeKey: 'node-3-9b4e1d20', scopeLabel: 'Manager 2',
     status: 'blocked-external', state: 'blocked-external',
     words: 'Decide what may run without asking, and never widen that list on your own.',
     filedBy: 'owner', agoMs: 5 * DAY_MS, gateCount: 1, unmetGateCount: 1, decisions: 0, removed: false,
@@ -106,14 +106,14 @@ const SAMPLE_LIVE_REQUESTS = Object.freeze([
     filedBy: 'owner', agoMs: 2 * DAY_MS, gateCount: 1, unmetGateCount: 1, decisions: 0, removed: false,
   }),
   Object.freeze({
-    id: 'R7', parentId: null, scope: 'tree', scopeKey: 'node-1-00000101', scopeLabel: 'Coordinator',
+    id: 'R7', parentId: null, scope: 'tree', scopeKey: 'node-1-2f6a9c3e', scopeLabel: 'Coordinator',
     status: 'proposed', state: 'proposed',
     words: 'Ask me before installing anything on a machine I have not named.',
     filedBy: 'codex', agoMs: 5 * HOUR_MS, gateCount: 0, unmetGateCount: 0, decisions: 0, removed: false,
   }),
 ])
 
-/* THE OTHER SUBSETS, DEMONSTRATED (T1416). The example used to hold
+/* THE OWNER'S OTHER SUBSETS, DEMONSTRATED (T1416). The example used to hold
  * rules only, so its Tasks and Asks tabs showed "There are no tasks" to the
  * very person the example exists to show them to. A handful of tasks and asks
  * in their own statuses -- one in progress, one repeating with its runs, one
@@ -122,7 +122,7 @@ const SAMPLE_LIVE_REQUESTS = Object.freeze([
  * words stay clear of money. */
 const SAMPLE_TASKS_AND_ASKS = Object.freeze([
   Object.freeze({
-    id: 'T21', state: 'in-progress', kind: 'T', parentId: null, scope: 'tree', scopeKey: 'node-1-00000101', scopeLabel: 'Coordinator',
+    id: 'T21', state: 'in-progress', kind: 'T', parentId: null, scope: 'tree', scopeKey: 'node-1-2f6a9c3e', scopeLabel: 'Coordinator',
     status: 'in-progress', words: 'Draft a one-page summary of what each machine did this week.',
     filedBy: 'claude', agoMs: 2 * DAY_MS, gateCount: 0, unmetGateCount: 0, decisions: 0, removed: false,
   }),
@@ -145,7 +145,7 @@ const SAMPLE_TASKS_AND_ASKS = Object.freeze([
     doneAgoMs: 5 * DAY_MS,
   }),
   Object.freeze({
-    id: 'A11', state: 'open', kind: 'A', parentId: null, scope: 'tree', scopeKey: 'node-1-00000101', scopeLabel: 'Coordinator',
+    id: 'A11', state: 'open', kind: 'A', parentId: null, scope: 'tree', scopeKey: 'node-1-2f6a9c3e', scopeLabel: 'Coordinator',
     status: 'open', words: 'May I restart the build machine tonight to finish the update?',
     filedBy: 'codex', agoMs: 3 * HOUR_MS, gateCount: 0, unmetGateCount: 0, decisions: 0, removed: false,
   }),
@@ -201,7 +201,7 @@ function rowOf(item, index, nowMs) {
   const removedAt = fields.removed ? iso(nowMs - agoMs + 6 * HOUR_MS) : null
   const history = [{ seq: index + 1, kind: 'file', at: filedAt, actor: fields.filedBy }]
   if (fields.removed) history.push({ seq: SAMPLE_LIVE_REQUESTS.length + 1, kind: 'remove', at: removedAt, actor: 'owner' })
-  /* THE FOUR LEDGER SUBSETS: every sample here is an R, and
+  /* THE OWNER'S FOUR SUBSETS (2026-09-07): every sample here is an R, and
      src/ledger-live.js rowOf() answers 'R' for a record with no kind field
      and an id starting with a letter it does not mint T/A/P from -- see its
      own KIND_LETTERS comment. The five kind-specific fields (recurrence,

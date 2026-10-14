@@ -1,5 +1,5 @@
 /* READ ONLY. Prints SCHEME TOKENS and counts only -- never a path, never a URL,
-   never a stored value. Which link targets does the renderer refuse, and why? */
+   never an owner value. Which link targets does the renderer refuse, and why? */
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'

@@ -6,9 +6,9 @@ export const LIVE_FLAGS_EVENT = 'mc:live-flags-changed'
 
 export const LIVE_VIEW_FLAGS = Object.freeze([
   Object.freeze({ id: 'home', label: 'Home page', domain: 'coordinator' }),
-   /* Computers ran simulated-by-default for a few hours on 2026-08-06; that
-     was reversed the same day, because changing the source is the worst way
-     to fix the problem. The graph reads live and the RENDER absorbs the data
+  /* Computers ran simulated-by-default for a few hours on 2026-08-06; the
+     owner overruled it the same day: "changing source is the worst way to
+     fix the problem." The graph reads live and the RENDER absorbs the data
      shape instead — a flat swarm of subagents draws as the uniform grey
      spawned tree, culled to the density budget (see computers.js/graph.js).
      defaultLive stays supported for any future view that needs it. */

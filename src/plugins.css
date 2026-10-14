@@ -1,0 +1,139 @@
+/* The plugins page. It borrows the settings page's tokens rather than declaring a
+   palette, so a plugin's own colour tokens (--plugin-accent and friends, set only
+   where a package was allowed a skin) sit INSIDE a card and cannot reach the
+   product's chrome. That containment is the whole reason a skin is a token set and
+   not a stylesheet; see src/lib/plugin-host/manifest.js in the engine. */
+
+.plugins-page { max-width: 980px; margin: 0 auto; }
+.plugins-header { margin-bottom: 18px; }
+.plugins-eyebrow { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-2); margin: 0 0 4px; }
+.plugins-h1 { font-size: 22px; font-weight: 650; line-height: 1.2; letter-spacing: -.012em; margin: 0 0 8px; }
+.plugins-lede { margin: 0 0 16px; color: var(--ink-2); font-size: 13.5px; line-height: 1.5; max-width: 62ch; }
+.plugins-header-actions { display: flex; gap: 8px; }
+
+.plugins-status { min-height: 1.5em; margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.plugins-status.is-good { opacity: 1; }
+.plugins-status.is-bad { opacity: 1; }
+
+.plugins-list { display: grid; gap: 16px; }
+
+.plugin-card {
+  border: 1px solid var(--line);
+  border-radius: var(--plugin-radius, var(--radius-card));
+  padding: 20px;
+  background: var(--plugin-surface, var(--bg-surface));
+  /* Set only together with a surface it can be read on (skinStyle() in
+     src/plugins-markup.js); otherwise the theme's own text colour. */
+  color: var(--plugin-surface-text, inherit);
+}
+.plugin-card.is-refused { border-left: 3px solid var(--status-error); }
+.plugin-card.is-empty { border-style: dashed; }
+
+.plugin-card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 12px; }
+.plugin-card-head h3 { font-size: 13.5px; font-weight: 620; line-height: 1.3; margin: 0; }
+.plugin-id {
+  font: 12.5px/1.4 var(--font-mono);
+  color: var(--plugin-surface-text, var(--ink-3)); background: transparent; overflow-wrap: anywhere;
+}
+.plugin-summary { margin: 8px 0 12px; color: var(--plugin-surface-text, var(--ink-2)); font-size: 13.5px; line-height: 1.5; max-width: 68ch; }
+.plugin-state { margin: 0 0 14px; font-size: 13.5px; max-width: 68ch; }
+
+.plugin-caps { display: grid; gap: 10px; margin-bottom: 16px; }
+.plugin-cap {
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-radius: 0;
+  padding: 12px 0 12px 12px;
+}
+/* A declined capability is dimmed, never hidden: a person has to be able to see
+   what a plugin asked for and that they said no. */
+.plugin-cap.is-withheld { opacity: 1; }
+.plugin-cap.is-allowed { border-left-color: var(--plugin-accent, var(--status-working)); }
+.plugin-cap-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.plugin-cap-name { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.plugin-cap-state { display: inline-flex; align-items: center; gap: 6px; min-height: 22px; padding: 0 8px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 550; letter-spacing: 0; text-transform: none; background: var(--plugin-surface, var(--status-idle-soft)); color: var(--plugin-surface-text, var(--status-idle)); }
+.plugin-cap-state::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.plugin-cap.is-allowed .plugin-cap-state { background: var(--plugin-surface, var(--status-info-soft)); color: var(--plugin-surface-text, var(--status-info)); }
+.plugin-cap-head { flex-wrap: wrap; }
+.plugins-page :is(button, input, a, summary):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.plugin-save:hover:not(:disabled), .plugin-revoke:hover:not(:disabled) { background: var(--bg-hover); }
+.plugin-cap-grants { margin: 6px 0 4px; font-size: 13px; max-width: 66ch; }
+.plugin-cap-risk { margin: 0; font-size: 13.5px; line-height: 1.5; max-width: 66ch; }
+
+.plugin-card h4 { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; margin: 0 0 8px; }
+.plugin-tools { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; }
+.plugin-tool { border-left: 2px solid var(--line); padding-left: 12px; }
+.plugin-tool-name { font: 12.5px/1.5 var(--font-mono); overflow-wrap: anywhere; }
+.plugin-tool-summary { margin: 2px 0; font-size: 13px; }
+.plugin-tool-effect { margin: 4px 0 0; font-size: 12.5px; color: var(--plugin-surface-text, var(--ink-2)); max-width: 66ch; }
+.plugin-none, .plugin-contrib { font-size: 13.5px; line-height: 1.5; margin: 0 0 12px; }
+
+.plugin-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.plugin-save, .plugin-revoke {
+  font: 550 13.5px/1.2 var(--font-ui); min-height: var(--control-h); padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-control);
+  background: var(--plugin-surface, var(--bg-surface)); color: var(--plugin-surface-text, var(--ink)); cursor: pointer;
+}
+.plugin-save { border-color: var(--plugin-accent, var(--line-strong)); }
+.plugin-save:disabled, .plugin-revoke:disabled { opacity: .45; cursor: default; }
+.plugin-restart { margin: 0; font-size: 12.5px; color: var(--plugin-surface-text, var(--ink-2)); max-width: 66ch; }
+
+.plugin-refusal, .plugin-path {
+  font: 12.5px/1.5 var(--font-mono);
+  white-space: pre-wrap; word-break: break-word;
+  margin: 8px 0 0; padding: 10px 12px;
+  border-radius: var(--radius-code); background: var(--plugin-surface, var(--bg-subtle));
+}
+
+@media (max-width: 620px) {
+  .plugin-card-head { flex-direction: column; gap: 2px; }
+  .plugin-cap-head { flex-direction: column; align-items: flex-start; gap: 4px; }
+}
+
+/* A PLUGIN'S OWN SETTINGS, AND ITS OWN CLAIMED LIMITS.
+   Both live inside .plugin-card, which is where the skin custom properties are set
+   too, so a package's colours reach its own block and nothing else. */
+
+.plugin-badge {
+  display: inline-block; vertical-align: middle;
+  font-size: 12px; font-weight: 550; letter-spacing: 0; text-transform: none;
+  padding: 2px 7px; margin-left: 6px; border-radius: 999px;
+  border: 1px solid var(--plugin-accent, var(--line));
+  color: var(--plugin-surface-text, var(--ink));
+  /* A badge is a word from a plugin. It is bounded so a long one cannot push the
+     digest off the header row, and it never wraps to a second line. */
+  max-width: 14ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.plugin-settings { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 12px; }
+.plugin-setting {
+  border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 12px 0;
+}
+.plugin-setting-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.plugin-setting-label { font-weight: 500; font-size: 13.5px; }
+.plugin-setting-default { font-size: 12.5px; color: var(--plugin-surface-text, var(--ink-2)); white-space: normal; }
+.plugin-setting-consequence { margin: 6px 0; font-size: 13px; max-width: 66ch; }
+.plugin-setting-gains, .plugin-setting-risks {
+  margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; max-width: 64ch;
+}
+.plugin-setting-list-label { margin: 8px 0 0; font-size: 12.5px; font-weight: 600; }
+.plugin-setting-gains { opacity: 1; }
+/* The risk lines are not dimmed below the gains. A person scanning a consent screen
+   reads what is darkest, and on this screen that must not be the upside. */
+.plugin-setting-risks { opacity: 1; }
+.plugin-setting-risks li::marker { color: var(--status-error); }
+
+.plugin-limits { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.plugin-limits li { display: grid; gap: 2px; font-size: 13px; }
+.plugin-limit-rule { font-weight: 500; }
+.plugin-limit-why { font-size: 12.5px; color: var(--plugin-surface-text, var(--ink-2)); }
+.plugin-limits-note, .plugin-limits-sub { margin: 0 0 8px; font-size: 12.5px; color: var(--plugin-surface-text, var(--ink-2)); max-width: 66ch; }
+
+.plugin-contrib-refused { border-left: 3px solid var(--status-error); padding-left: 12px; margin-bottom: 12px; }
+.plugin-contrib-refused-what { margin: 6px 0 0; font-size: 13px; }
+
+@media (max-width: 620px) {
+  .plugin-setting-head { flex-direction: column; gap: 2px; }
+}

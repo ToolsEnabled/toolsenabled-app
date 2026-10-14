@@ -117,8 +117,8 @@ function actualFunction(name, context) {
 // locals `agentShutdownPromise` and `agentShutdownComplete` -- went with it, so
 // the coordinator's `flight` promise and `appShutdown.complete` stand in for
 // them. Those are the same two observations under different names.
-// T1685: landed an earlier commit added the transcript quit predicate/refusal, and
-// an earlier commit added the awaited fleet flush. Supply their storage boundaries,
+// T1685: landed 138dab290 added the transcript quit predicate/refusal, and
+// 9e29fdd57 added the awaited fleet flush. Supply their storage boundaries,
 // but execute the actual predicate and refusal callback from main.cjs.
 function quittingMain({ host = true, complete = false } = {}) {
   const events = []
@@ -218,7 +218,7 @@ function quittingMain({ host = true, complete = false } = {}) {
   context.relayPrincipal = actualFunction('relayPrincipal', context)
   context.relayMachineIsEnrolled = actualFunction('relayMachineIsEnrolled', context)
   context.armRelayFacade = actualFunction('armRelayFacade', context)
-  // MEASURED 2026-09-17 at an earlier app commit: this used to require that the
+  // MEASURED 2026-09-17 at app 5c7798a3: this used to require that the
   // before-quit handler BE the createAppQuitGate(...) call expression. T180
   // hoisted the gate to `const appQuitGate` and registered a handler that first
   // writes a durable exit record and then delegates to it -- a strictly larger

@@ -14,8 +14,7 @@ import { createRecoveryHandoffStore } from '../../src/recovery-handoff-store.js'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SOURCE = fs.readFileSync(path.join(ROOT, 'public', 'durable-storage.js'), 'utf8')
 
-// Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-const RECORD = ['C:', 'Users', 'someone', 'AppData', 'Roaming', 'ToolsEnabled', 'renderer-prefs.json'].join('\\')
+const RECORD = '\x43:\\Users\\someone\\AppData\\Roaming\\ToolsEnabled\\renderer-prefs.json'
 const TOO_LARGE = {
   ok: false,
   error: { code: 'MC_PREFS_TOO_LARGE', message: 'The settings file would exceed its size limit.' },

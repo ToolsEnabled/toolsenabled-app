@@ -67,8 +67,8 @@ test('all four modes write through the real shell, generator, Claude argv and Co
     assert.deepEqual(apiPolicy.agentApiArgs(), choice === mode.MODE.ONLY ? ['--tools', '', '--setting-sources', '', '--disable-slash-commands']
       : choice === mode.MODE.OPTIMIZED ? ['--tools', 'Glob,Grep,Skill,TodoWrite,ToolSearch'] : [])
     const config = engine('./src/lib/agent-session-confinement.js').confinedCodexConfig({ tier: 'unrestricted', sandbox: 'danger-full-access', approvalPolicy: 'never' }, { mcpServers: {} }, machine, null, choice === mode.MODE.ONLY)
-    assert.equal(config.includes('shell_tool = false'), choice === mode.MODE.ONLY)
-    assert.equal(config.includes("sandbox_mode = 'read-only'"), choice === mode.MODE.ONLY)
+    assert.equal(config.features.shell_tool === false, choice === mode.MODE.ONLY)
+    assert.equal(config.sandbox_mode === 'read-only', choice === mode.MODE.ONLY)
   }
   assert.equal(set('agent.agent_api', false).ok, true)
   assert.equal(mode.toolMode(), mode.MODE.BOTH)

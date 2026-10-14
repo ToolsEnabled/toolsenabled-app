@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { join, resolve, relative, isAbsolute } from 'node:path'
 import { createRequire } from 'node:module'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
 const require = createRequire(import.meta.url)
 const { createDurableImageCustody, custodyFileIO } = require('../../shell/durable-image-custody.cjs')
 const { createImageOutbox } = require('../../shell/image-outbox.cjs')
@@ -11,15 +11,15 @@ const enabled = !!process.env.IMAGE_CLEANUP_TEST_ROOT
 const skip = enabled ? false : 'Explicit cleanup approval and IMAGE_CLEANUP_TEST_ROOT fixture are required; no cleanup executed.'
 function fixture() {
   const root = resolve(process.env.IMAGE_CLEANUP_TEST_ROOT)
-  // The explicit approval is the exact precreated fixture-owner.json marker checked below;
-  // the source pins no machine path and no digest of one.
+  // Exact precreated approval target; digest avoids embedding an account path in source.
+  assert.equal(createHash('sha256').update(root).digest('hex'), 'd0ca2c9620be70537d060d83e4a204a534c3923a21bfbc34df128b518d639aef', 'root is not the reviewed cleanup fixture')
   custodyFileIO.plain(root, true)
   assert.equal(fs.realpathSync(root), root, 'cleanup root must be its literal real path')
   const markerPath = join(root, 'fixture-owner.json')
   custodyFileIO.plain(markerPath, false)
   assert.equal(fs.realpathSync(markerPath), markerPath, 'marker must be its literal real path')
   const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'))
-  assert.deepEqual(marker, { task: 'T489', worker: '00000001', purpose: 'fresh harmless image retention cleanup tests' })
+  assert.deepEqual(marker, { task: 'T489', worker: '9542bfe2', purpose: 'fresh harmless image retention cleanup tests' })
   const child = fs.mkdtempSync(join(root, 'owned-run-'))
   assert.ok(relative(root, child) && !relative(root, child).startsWith('..') && !isAbsolute(relative(root, child)))
   custodyFileIO.plain(child, true)

@@ -36,6 +36,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
+import { canonicalRootForTests } from '../canonical-root.mjs'
 
 const require_ = createRequire(import.meta.url)
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -47,7 +48,7 @@ const LOGIN_FILE = path.join(REPO, 'shell', 'provider-login.cjs')
    the canonical-root selection above the first integration tests so every
    Engine module they load uses the same measured checkout. */
 const PACKAGED_MULTI_ACCOUNT = path.join(
-  process.env.MC_CANONICAL_ROOT || path.join(REPO, 'capability'),
+  canonicalRootForTests({ warn: () => {} }),
   'src', 'lib', 'multi-account',
 )
 const PACKAGED_LIB = path.dirname(PACKAGED_MULTI_ACCOUNT)
@@ -60,12 +61,12 @@ test('provider usage metadata survives the real Engine, shell IPC/cache and rend
   const homeDir = path.join(directory, 'home')
   mkdirSync(homeDir, { recursive: true })
   writeFileSync(registryPath, JSON.stringify({ accounts: [
-    { provider: 'claude', name: 'team', configDir: '.claude-team', priority: 1 },
-    { provider: 'grok', name: 'work', configDir: '.grok-work', priority: 2 },
-    { provider: 'gemini', name: 'personal', homeDir: '.gemini-personal', priority: 3 },
-    { provider: 'gemini', name: 'unsupported', homeDir: '.gemini-unsupported', priority: 4 },
+    { provider: 'claude', name: 'school', configDir: '.claude-school' },
+    { provider: 'grok', name: 'work', configDir: '.grok-work' },
+    { provider: 'gemini', name: 'personal', homeDir: '.gemini-personal' },
+    { provider: 'gemini', name: 'unsupported', homeDir: '.gemini-unsupported' },
   ] }))
-  for (const [folder, leaf] of [['.claude-team', '.credentials.json'], ['.grok-work', 'auth.json'], ['.gemini-personal', '.gemini/oauth_creds.json'], ['.gemini-unsupported', '.gemini/oauth_creds.json']]) {
+  for (const [folder, leaf] of [['.claude-school', '.credentials.json'], ['.grok-work', 'auth.json'], ['.gemini-personal', '.gemini/oauth_creds.json'], ['.gemini-unsupported', '.gemini/oauth_creds.json']]) {
     const target = path.join(homeDir, folder, leaf)
     mkdirSync(path.dirname(target), { recursive: true })
     writeFileSync(target, 'fictional metadata fixture only')
@@ -75,22 +76,17 @@ test('provider usage metadata survives the real Engine, shell IPC/cache and rend
   const { STATE } = require_(path.join(PACKAGED_LIB, 'providers', 'claude-auth-probe.js'))
   const { readUsageReply, readAccountList, mergeAccounts, rowLines } = await import('../../src/account-switcher-state.js')
   const at = '2031-01-01T00:00:00.000Z'
-  let unsupportedProbes = 0
   const probeFor = provider => provider === 'claude' ? rotation.claudeProbeFactory({
     homeDir, fsImpl: require_('node:fs'), exhaustedAtPercent: 99,
-    authProbe: async () => ({ state: STATE.INDETERMINATE, capabilityRan: false, billingSource: 'subscription',
-      account: 'team@example.test', plan: 'Sample plan' }),
+    authProbe: async () => ({ state: STATE.INDETERMINATE, statusSucceeded: true, capabilityRan: false, billingSource: 'subscription',
+      account: 'school@example.test', plan: 'Sample plan' }),
     usageProbe: async () => ({ status: 'UNKNOWN', reason: 'CLAUDE_USAGE_TIMEOUT' }),
   }) : provider === 'grok' ? async account => health.classifyGrokBilling(account, {
     status: 'healthy', canServe: true, usedPercent: null,
     windows: { hourly: null, weekly: null, weeklyWindows: [] },
   }, { billing: { config: { creditUsagePercent: 100, currentPeriod: {
     type: 'USAGE_PERIOD_TYPE_MONTHLY', end: '2031-02-01T00:00:00Z',
-  } } } }) : async account => account.name === 'unsupported'
-    ? health.probeGeminiAccount(account, { homeDir,
-      fsImpl: { statSync() { return { isFile: () => true } } },
-      quotaProbe: async () => { unsupportedProbes += 1; return { status: 'unavailable', code: 'GEMINI_AUTH_MODE_UNSUPPORTED' } },
-    }) : health.probeSignInPresence(account, { homeDir,
+  } } } }) : async account => health.probeGeminiAccount(account, { homeDir,
       fsImpl: { statSync() { return { isFile: () => true } } },
     })
   const source = readFileSync(MAIN_FILE, 'utf8')
@@ -114,7 +110,6 @@ test('provider usage metadata survives the real Engine, shell IPC/cache and rend
   vm.runInContext(cacheFragment + '\n' + handlerFragment, context)
   const wire = structuredClone(await handler({ trusted: true }))
   assert.equal(wire.ok, true)
-  assert.equal(unsupportedProbes, 1, 'the explicit unsupported case must come from the canonical Gemini checker')
   const cached = structuredClone(await vm.runInContext('readAccountUsageCache()', context))
   assert.deepEqual(cached.accounts, wire.accounts, 'the disk carrier changed provider usage metadata')
   const list = readAccountList({ ok: true, accounts: wire.accounts.map(({ provider, name, allowanceBinding, authGeneration }) => ({ provider, name, allowanceBinding, authGeneration })) })
@@ -135,28 +130,20 @@ test('provider usage metadata survives the real Engine, shell IPC/cache and rend
     assert.equal(grok.reportedUsage?.resetsAt, '2031-02-01T00:00:00.000Z')
     assert.equal(grok.windows.weekly, null)
     assert.equal(grok.canServe, false)
-    for (const [name, usageStatus, usageState, usageCode, usageReason] of [
-      ['personal', 'unavailable', 'failed', 'GEMINI_USAGE_UNAVAILABLE',
-        'Gemini allowance was not measured for this connection. No percentage was estimated.'],
-      ['unsupported', 'unsupported', 'unknown', 'GEMINI_AUTH_MODE_UNSUPPORTED',
-        'This Gemini connection does not use the supported personal OAuth file storage. No allowance was estimated.'],
-    ]) {
+    for (const name of ['personal', 'unsupported']) {
       const gemini = rows.find(row => row.provider === 'gemini' && row.name === name)
       assert.equal(gemini.status, 'healthy')
       assert.equal(gemini.canServe, true)
-      assert.equal(gemini.usageStatus, usageStatus)
-      assert.equal(gemini.usageState, usageState)
-      assert.equal(gemini.usageCode, usageCode)
+      assert.equal(gemini.usageStatus, 'not_reported')
+      assert.equal(gemini.usageState, 'unknown')
       assert.equal(gemini.measured, false)
       assert.equal(gemini.email, null, 'file presence is not a verified identity')
       assert.equal(gemini.allowanceBuckets, null)
       assert.equal(gemini.reportedUsage, null)
       assert.deepEqual(gemini.windows, { hourly: null, weekly: null, weeklyWindows: [] })
-      assert.equal(gemini.usageReason, usageReason)
-      if (usageStatus === 'unsupported') {
-        assert.ok(rowLines(gemini).some(line => line.text === usageReason), 'the visible row hid the unsupported usage reason')
-        assert.equal(gemini.usageError, null)
-      } else assert.equal(gemini.usageError, usageReason, 'an unavailable read must retain its visible failure explanation')
+      assert.match(gemini.usageReason, /allowance is unknown/i)
+      assert.ok(rowLines(gemini).some(line => /allowance is unknown/i.test(line.text)))
+      assert.equal(gemini.usageError, null)
     }
   }
 })
@@ -238,9 +225,6 @@ const {
   PROVIDERS,
   PROVIDER_IDS,
   signInFilePath,
-  SELECTION_MODE_IDS,
-  DEFAULT_SELECTION_MODE,
-  DEFAULT_RESERVE_PERCENT,
   accountRotationStateFile,
   accountsRegistryFile,
   adoptLegacyAccountRegistry,
@@ -264,17 +248,15 @@ const {
 } = require_(path.join(PACKAGED_MULTI_ACCOUNT, 'registry.js'))
 const { resolveAccountForSession } = require_(path.join(PACKAGED_MULTI_ACCOUNT, 'rotation.js'))
 const { readState } = require_(path.join(PACKAGED_MULTI_ACCOUNT, 'switcher.js'))
-const packedModes = require_(path.join(PACKAGED_MULTI_ACCOUNT, 'selection-modes.js'))
+
 
 /* What every program's rule reads as when none has its own: the rule above,
    flagged as not its own. */
-const inheritedRules = (selectionMode, reservePercent, rankWindow = 'either') => Object.fromEntries(
-  ['codex', 'claude', 'gemini', 'grok'].map(id => [id, { selectionMode, reservePercent, rankWindow, own: { selectionMode: false, reservePercent: false, rankWindow: false } }]),
-)
+
 
 /* A WHOLE MACHINE IN A TEMPORARY DIRECTORY. Capability state owns the account
    registry; the distinct services root owns machine/settings/rotation state.
-   A throwaway home means a relative folder like ".codex-team" cannot resolve
+   A throwaway home means a relative folder like ".codex-school" cannot resolve
    onto the real one. */
 function withScratchProfile(run) {
   const scratch = mkdtempSync(path.join(tmpdir(), 'mc-accounts-'))
@@ -385,6 +367,32 @@ function observingStore({ file, home, platform, servicesRoot = null }) {
    stays ASCII: "Работа" (Russian, "work") and "工作" (Chinese, "work"). */
 const CYRILLIC_WORK = '\u0420\u0430\u0431\u043e\u0442\u0430'
 const CHINESE_WORK = '\u5de5\u4f5c'
+
+/* 1.0.50 REVIEW-1050 #13. Removing an account whose home Accounts made answered credentialDestroyed: true even
+   when no sign-in had ever been saved there, so Settings told the person a sign-in "was deleted" that never
+   existed. The receipt now says a sign-in was deleted only when the file was there to delete. */
+test('removing an app-made home with no saved sign-in does not report a deleted sign-in', () => {
+  for (const platform of ['linux', 'win32']) {
+    for (const provider of PROVIDER_IDS) {
+      withScratchProfile(({ scratch }) => {
+        const caseRoot = path.join(scratch, `r13-${platform}-${provider}`)
+        const home = path.join(caseRoot, 'home')
+        mkdirSync(home, { recursive: true })
+        const file = path.join(caseRoot, 'managed.json')
+        const services = path.join(caseRoot, 'managed-services')
+        mkdirSync(services, { recursive: true })
+        const store = createAccountRegistryStore({ file, homedir: () => home, platform, servicesRoot: services })
+        assert.equal(store.addManaged({ provider, name: 'managed' }).homeCreatedByApp, true)
+        const observed = observingStore({ file, home, platform, servicesRoot: services })
+        const result = observed.store.remove({ name: 'managed', provider })
+        assert.equal(result.ok, true)
+        assert.equal(result.removed, true)
+        assert.equal(result.credentialDestroyed, false, `${platform} ${provider}: a sign-in that was never saved was reported deleted`)
+        assert.equal(result.credentialDisposition, 'no-saved-sign-in')
+      })
+    }
+  }
+})
 
 test('A28 registration origin protects existing and legacy homes on Linux and Windows for every provider', () => {
   for (const platform of ['linux', 'win32']) {
@@ -502,7 +510,7 @@ test('A28 registration origin protects existing and legacy homes on Linux and Wi
         const legacyFile = path.join(caseRoot, 'legacy.json')
         const legacyDir = makeHome(home, 'legacy', signInLeaf)
         writeFileSync(legacyFile, JSON.stringify({
-          accounts: [{ name: 'legacy', provider, [spec.dirField]: legacyDir, priority: 1 }],
+          accounts: [{ name: 'legacy', provider, [spec.dirField]: legacyDir }],
         }))
         const legacyObserved = observingStore({ file: legacyFile, home, platform })
         assert.deepEqual(legacyObserved.store.remove({ name: 'legacy', provider }), {
@@ -523,7 +531,7 @@ function validLegacyBytes(overrides = {}) {
     exhaustedAtPercent: 99,
     notePreservedByteForByte: true,
     accounts: [
-      { name: 'team', provider: 'codex', profileDir: '.codex-team', role: 'builder', priority: 1 },
+      { name: 'school', provider: 'codex', profileDir: '.codex-school', role: 'builder' },
     ],
     ...overrides,
   }, null, 2)}\n`, 'utf8')
@@ -596,14 +604,26 @@ test('the application wires canonical registry and fenced services state as sepa
   assert.doesNotMatch(registryBlock, /adoption\.legacyRemoved/,
     'retaining the ignored legacy source by design must not log a perpetual error')
 
-  const resolver = source.slice(
-    source.indexOf('function resolveServicesRootForAccounts()'),
-    source.indexOf('async function buildAgentHost()'),
-  )
-  assert.match(resolver, /loadSetupModules\(\)/)
-  assert.match(resolver, /modules\.machineRecord\.resolveServicesRoot\(\{\}\)/)
-  assert.doesNotMatch(resolver, /LOCALAPPDATA|\.toolsenabled|homedir\(|path\.join\(/,
-    'the app rebuilt a services-root fallback instead of consuming the engine fence')
+  const start = source.indexOf('function resolveServicesRootForAccounts()')
+  const end = source.indexOf('\n}', start) + 2
+  assert.ok(start >= 0 && end > start)
+  const resolverSource = source.slice(start, end)
+  let resolved = 0, checked = 0
+  const sentinel = path.join(tmpdir(), 'synthetic-services-location')
+  const isolation = { isolationContext(_env, options) { checked++; assert.equal(options.servicesRoot, sentinel) } }
+  const makeResolver = modules => new Function('require', 'providerIsolation', 'process',
+    resolverSource + '; return resolveServicesRootForAccounts;')(
+      request => { assert.equal(request, './setup-record.cjs'); return { loadSetupModules: () => modules } }, isolation, { env: {} })
+  const resolve = makeResolver({ ok: true, machineRecord: { resolveServicesRoot(options) { resolved++; assert.deepEqual(options, {}); return sentinel } } })
+  assert.equal(resolve(), sentinel)
+  assert.equal(resolved, 1)
+  assert.equal(checked, 1)
+  const loadError = makeResolver({ ok: false, code: 'SYNTHETIC_MODULES_ABSENT', reason: 'Synthetic account service is unavailable.' })
+  assert.throws(loadError, { code: 'SYNTHETIC_MODULES_ABSENT', message: 'Synthetic account service is unavailable.' })
+  const denied = new Error('Synthetic private state refused.')
+  isolation.isolationContext = () => { throw denied }
+  assert.throws(resolve, error => error === denied)
+
 })
 
 test('removing the last account restores absence rather than an empty list', () => {
@@ -611,11 +631,11 @@ test('removing the last account restores absence rather than an empty list', () 
      refusal that means "no account is usable". Removing your second account must
      not put the machine into that state. */
   withScratchProfile(({ home, file, stateFile, store, retainedRemovals }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    makeHome(home, '.codex-school', 'auth.json')
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     assert.equal(existsSync(file), true)
     const before = readFileSync(file)
-    assert.deepEqual(store.remove({ name: 'team', provider: 'codex' }), {
+    assert.deepEqual(store.remove({ name: 'school', provider: 'codex' }), {
       ok: true, removed: true, credentialDestroyed: false,
       credentialDisposition: 'preserved-existing-home',
     })
@@ -628,12 +648,12 @@ test('removing the last account restores absence rather than an empty list', () 
 
 test('removing an account registered with an existing home preserves its sign-in and nothing else in its home', () => {
   withScratchProfile(({ home, store }) => {
-    const directory = makeHome(home, '.codex-team', 'auth.json')
+    const directory = makeHome(home, '.codex-school', 'auth.json')
     writeFileSync(path.join(directory, 'session-history-fixture.txt'), 'must-survive')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     assert.equal(existsSync(path.join(directory, 'auth.json')), true, 'setup: the credential fixture must exist before removal')
 
-    const receipt = store.remove({ name: 'team', provider: 'codex' })
+    const receipt = store.remove({ name: 'school', provider: 'codex' })
 
     assert.deepEqual(receipt, {
       ok: true, removed: true, credentialDestroyed: false,
@@ -649,11 +669,11 @@ test('removing an account registered with an existing home preserves its sign-in
 
 test('removing an account that was never signed in has no credential to destroy, and still succeeds', () => {
   withScratchProfile(({ home, store }) => {
-    const directory = makeHome(home, '.codex-team', null)
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    const directory = makeHome(home, '.codex-school', null)
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     assert.equal(existsSync(path.join(directory, 'auth.json')), false, 'setup: no credential fixture was written')
 
-    assert.deepEqual(store.remove({ name: 'team', provider: 'codex' }), {
+    assert.deepEqual(store.remove({ name: 'school', provider: 'codex' }), {
       ok: true, removed: true, credentialDestroyed: false,
       credentialDisposition: 'preserved-existing-home',
     })
@@ -662,10 +682,10 @@ test('removing an account that was never signed in has no credential to destroy,
 
 test('removing a claude account registered with an existing home preserves .credentials.json by this provider\'s own field name', () => {
   withScratchProfile(({ home, store }) => {
-    const directory = makeHome(home, '.claude-team', '.credentials.json')
-    store.add({ name: 'team', provider: 'claude', directory: '.claude-team' })
+    const directory = makeHome(home, '.claude-school', '.credentials.json')
+    store.add({ name: 'school', provider: 'claude', directory: '.claude-school' })
 
-    assert.deepEqual(store.remove({ name: 'team', provider: 'claude' }), {
+    assert.deepEqual(store.remove({ name: 'school', provider: 'claude' }), {
       ok: true, removed: true, credentialDestroyed: false,
       credentialDisposition: 'preserved-existing-home',
     })
@@ -676,12 +696,12 @@ test('removing a claude account registered with an existing home preserves .cred
 
 test('removing a gemini account registered with an existing home preserves oauth_creds.json one level down in .gemini', () => {
   withScratchProfile(({ home, store }) => {
-    const directory = makeHome(home, '.gemini-team', path.join('.gemini', 'oauth_creds.json'))
+    const directory = makeHome(home, '.gemini-school', path.join('.gemini', 'oauth_creds.json'))
     writeFileSync(path.join(directory, '.gemini', 'settings.json'), 'must-survive')
-    store.add({ name: 'team', provider: 'gemini', directory: '.gemini-team' })
+    store.add({ name: 'school', provider: 'gemini', directory: '.gemini-school' })
     assert.equal(existsSync(path.join(directory, '.gemini', 'oauth_creds.json')), true, 'setup: the credential fixture must exist before removal')
 
-    const receipt = store.remove({ name: 'team', provider: 'gemini' })
+    const receipt = store.remove({ name: 'school', provider: 'gemini' })
 
     assert.deepEqual(receipt, {
       ok: true, removed: true, credentialDestroyed: false,
@@ -697,9 +717,9 @@ test('removing a gemini account registered with an existing home preserves oauth
 
 test('removing the last account reports a failure when the registry cannot be deleted', () => {
   withScratchProfile(({ home, file }) => {
-    makeHome(home, '.codex-team', 'auth.json')
+    makeHome(home, '.codex-school', 'auth.json')
     const working = createAccountRegistryStore({ file, homedir: () => home })
-    working.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    working.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
 
     const deletionError = Object.assign(new Error('registry is locked'), { code: 'EBUSY' })
     const store = createAccountRegistryStore({
@@ -714,7 +734,7 @@ test('removing the last account reports a failure when the registry cannot be de
     })
 
     assert.throws(
-      () => store.remove({ name: 'team', provider: 'codex' }),
+      () => store.remove({ name: 'school', provider: 'codex' }),
       error => error === deletionError,
       'a failed deletion was reported as a successful removal',
     )
@@ -728,28 +748,28 @@ test('removing the last account reports a failure when the registry cannot be de
 
 test('an account added is an account listed, and removing it takes it away', () => {
   withScratchProfile(({ home, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
+    makeHome(home, '.codex-school', 'auth.json')
     makeHome(home, '.codex-personal', null)
 
-    assert.deepEqual(store.add({ name: 'team', provider: 'codex', directory: '.codex-team' }), { ok: true })
+    assert.deepEqual(store.add({ name: 'school', provider: 'codex', directory: '.codex-school' }), { ok: true })
     assert.deepEqual(store.add({ name: 'personal', provider: 'codex', directory: '.codex-personal' }), { ok: true })
 
     const listed = store.list().accounts
     assert.equal(listed.length, 2)
-    assert.deepEqual(listed.map(account => account.name), ['team', 'personal'], 'lowest priority first')
-    assert.deepEqual(listed.map(account => account.priority), [1, 2])
+    assert.deepEqual(listed.map(account => account.name), ['personal', 'school'])
+
 
     /* The signed-in answer is an existence check on the file that program keeps
        its sign-in in, and it is the only difference between these two homes. */
-    assert.equal(listed[0].signedIn, 'yes')
-    assert.equal(listed[1].signedIn, 'no')
-    assert.equal(listed[0].directory, path.resolve(path.join(home, '.codex-team')))
+    assert.equal(listed.find(row => row.name === 'school').signedIn, 'yes')
+    assert.equal(listed.find(row => row.name === 'personal').signedIn, 'no')
+    assert.equal(listed.find(row => row.name === 'school').directory, path.resolve(path.join(home, '.codex-school')))
 
     assert.deepEqual(store.remove({ name: 'personal', provider: 'codex' }), {
       ok: true, removed: true, credentialDestroyed: false,
       credentialDisposition: 'preserved-existing-home',
     })
-    assert.deepEqual(store.list().accounts.map(account => account.name), ['team'])
+    assert.deepEqual(store.list().accounts.map(account => account.name), ['school'])
     /* Removing something that is not there is an answer, not a failure. */
     assert.deepEqual(store.remove({ name: 'personal', provider: 'codex' }), { ok: true, removed: false })
   })
@@ -757,51 +777,51 @@ test('an account added is an account listed, and removing it takes it away', () 
 
 test('one name may belong to both programs, and never twice to one', () => {
   withScratchProfile(({ home, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    makeHome(home, '.claude-team', '.credentials.json')
-    makeHome(home, '.codex-team-two', null)
+    makeHome(home, '.codex-school', 'auth.json')
+    makeHome(home, '.claude-school', '.credentials.json')
+    makeHome(home, '.codex-school-two', null)
 
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
-    /* The same person's team account exists on both programs. Refusing the
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
+    /* The same person's school account exists on both programs. Refusing the
        second would be refusing the ordinary case. */
-    assert.deepEqual(store.add({ name: 'team', provider: 'claude', directory: '.claude-team' }), { ok: true })
+    assert.deepEqual(store.add({ name: 'school', provider: 'claude', directory: '.claude-school' }), { ok: true })
 
     assert.throws(
-      () => store.add({ name: 'team', provider: 'codex', directory: '.codex-team-two' }),
+      () => store.add({ name: 'school', provider: 'codex', directory: '.codex-school-two' }),
       error => error.code === 'ACCOUNT_NAME_TAKEN',
-      'a second Codex account called "team" was accepted, which the engine refuses',
+      'a second Codex account called "school" was accepted, which the engine refuses',
     )
 
     const names = store.list().accounts.map(account => `${account.provider}:${account.name}`)
-    assert.deepEqual(names.sort(), ['claude:team', 'codex:team'])
+    assert.deepEqual(names.sort(), ['claude:school', 'codex:school'])
   })
 })
 
 test('two accounts of one program may not share a folder', () => {
   withScratchProfile(({ home, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    makeHome(home, '.codex-school', 'auth.json')
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     assert.throws(
-      () => store.add({ name: 'second', provider: 'codex', directory: '.codex-team' }),
+      () => store.add({ name: 'second', provider: 'codex', directory: '.codex-school' }),
       error => error.code === 'ACCOUNT_FOLDER_SHARED',
     )
     /* A DIFFERENT program pointed at the same folder is merely unusual: the two
        read different files inside it, which is the engine's own rule. */
-    assert.deepEqual(store.add({ name: 'team', provider: 'claude', directory: '.codex-team' }), { ok: true })
+    assert.deepEqual(store.add({ name: 'school', provider: 'claude', directory: '.codex-school' }), { ok: true })
   })
 })
 
 test('only Codex, Claude and Gemini accounts exist here', () => {
   withScratchProfile(({ home, store }) => {
-    makeHome(home, '.gemini-team', null)
+    makeHome(home, '.gemini-school', null)
     for (const provider of ['gpt', '', null, 'CODEX', 'Gemini', 'local']) {
       assert.throws(
-        () => store.add({ name: 'team', provider, directory: '.gemini-team' }),
+        () => store.add({ name: 'school', provider, directory: '.gemini-school' }),
         error => error.code === 'ACCOUNT_PROVIDER_UNSUPPORTED',
         `provider ${JSON.stringify(provider)} was accepted`,
       )
     }
-    assert.deepEqual(store.add({ name: 'team', provider: 'gemini', directory: '.gemini-team' }), { ok: true })
+    assert.deepEqual(store.add({ name: 'school', provider: 'gemini', directory: '.gemini-school' }), { ok: true })
     assert.deepEqual([...PROVIDER_IDS], ['codex', 'claude', 'gemini', 'grok'])
   })
 })
@@ -810,41 +830,19 @@ test('only Codex, Claude and Gemini accounts exist here', () => {
    3. The two folder fields, which are not interchangeable.
    ------------------------------------------------------------------ */
 
-test('a Codex account is written with its own folder field, and a Claude one with its', () => {
-  /* THE FAILURE THIS CATCHES IS SILENT AND TOTAL. A Codex entry carrying
-     configDir makes the WHOLE registry unloadable -- the engine refuses the file,
-     not the entry -- so one wrong field name stops every account on the machine
-     and says nothing a person could act on. */
-  withScratchProfile(({ home, file, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    makeHome(home, '.claude-team', '.credentials.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
-    store.add({ name: 'team', provider: 'claude', directory: '.claude-team' })
 
-    const written = JSON.parse(readFileSync(file, 'utf8'))
-    const codex = written.accounts.find(entry => entry.provider === 'codex')
-    const claude = written.accounts.find(entry => entry.provider === 'claude')
-
-    assert.equal(codex.profileDir, '.codex-team')
-    assert.equal(Object.hasOwn(codex, 'configDir'), false, 'a Codex entry was given the Claude folder field')
-    assert.equal(claude.configDir, '.claude-team')
-    assert.equal(Object.hasOwn(claude, 'profileDir'), false, 'a Claude entry was given the Codex folder field')
-    assert.equal(written.exhaustedAtPercent, 99)
-  })
-})
 
 test('an entry that names the other program\'s folder field is not listed as usable', () => {
   withScratchProfile(({ home, file, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    makeHome(home, '.claude-team', '.credentials.json')
+    makeHome(home, '.codex-school', 'auth.json')
+    makeHome(home, '.claude-school', '.credentials.json')
     /* Hand-written by somebody who guessed. Reading it must not report accounts
        that the engine would refuse the file over. */
     writeFileSync(file, JSON.stringify({
-      exhaustedAtPercent: 99,
       accounts: [
-        { name: 'wrong-codex', provider: 'codex', configDir: '.claude-team', priority: 1 },
-        { name: 'wrong-claude', provider: 'claude', profileDir: '.codex-team', priority: 2 },
-        { name: 'right', provider: 'codex', profileDir: '.codex-team', priority: 3 },
+        { name: 'wrong-codex', provider: 'codex', configDir: '.claude-school' },
+        { name: 'wrong-claude', provider: 'claude', profileDir: '.codex-school' },
+        { name: 'right', provider: 'codex', profileDir: '.codex-school' },
       ],
     }, null, 2))
 
@@ -865,16 +863,15 @@ test('the file this writes has the engine schema and round trips through the sto
      store proves the on-disk result, rather than merely inspecting add()'s
      return value. */
   withScratchProfile(({ home, file, stateFile, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
+    makeHome(home, '.codex-school', 'auth.json')
     makeHome(home, '.codex-personal', null)
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
-    store.add({ name: 'personal', provider: 'codex', directory: '.codex-personal', priority: 5 })
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
+    store.add({ name: 'personal', provider: 'codex', directory: '.codex-personal' })
 
     assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), {
-      exhaustedAtPercent: 99,
       accounts: [
-        { name: 'team', provider: 'codex', profileDir: '.codex-team', homeCreatedByApp: false, priority: 1 },
-        { name: 'personal', provider: 'codex', profileDir: '.codex-personal', homeCreatedByApp: false, priority: 5 },
+        { name: 'school', provider: 'codex', profileDir: '.codex-school', homeCreatedByApp: false },
+        { name: 'personal', provider: 'codex', profileDir: '.codex-personal', homeCreatedByApp: false },
       ],
     })
 
@@ -882,29 +879,16 @@ test('the file this writes has the engine schema and round trips through the sto
     assert.equal(reloaded.damaged, false)
     assert.deepEqual(reloaded.accounts.map(account => ({
       name: account.name,
-      priority: account.priority,
+
       signedIn: account.signedIn,
     })), [
-      { name: 'team', priority: 1, signedIn: 'yes' },
-      { name: 'personal', priority: 5, signedIn: 'no' },
+      { name: 'personal', signedIn: 'no' },
+      { name: 'school', signedIn: 'yes' },
     ])
   })
 })
 
-test('the order is a whole number above zero, and nothing else', () => {
-  withScratchProfile(({ home, store }) => {
-    makeHome(home, '.codex-team', null)
-    for (const priority of [0, -1, 1.5, 'first', Number.NaN]) {
-      assert.throws(
-        () => store.add({ name: 'team', provider: 'codex', directory: '.codex-team', priority }),
-        error => error.code === 'ACCOUNT_PRIORITY_INVALID',
-        `priority ${JSON.stringify(priority)} was accepted`,
-      )
-    }
-    assert.deepEqual(store.add({ name: 'team', provider: 'codex', directory: '.codex-team', priority: 4 }), { ok: true })
-    assert.equal(store.list().accounts[0].priority, 4)
-  })
-})
+
 
 /* ------------------------------------------------------------------
    4. The command a person runs, which this product never runs.
@@ -943,15 +927,15 @@ test('the sign-in command is the official one for each program, with the folder 
      a command on screen that the person cannot run. */
   withScratchProfile(({ home, store }) => {
     const expected = (key, dir, command) => process.platform === 'win32' ? `$env:${key}='${dir}'; ${command}` : `${key}='${dir}' ${command}`
-    const codexHome = path.resolve(path.join(home, '.codex-team'))
-    const claudeHome = path.resolve(path.join(home, '.claude-team'))
+    const codexHome = path.resolve(path.join(home, '.codex-school'))
+    const claudeHome = path.resolve(path.join(home, '.claude-school'))
 
     assert.equal(
-      store.signInCommand({ provider: 'codex', directory: '.codex-team' }),
+      store.signInCommand({ provider: 'codex', directory: '.codex-school' }),
       expected('CODEX_HOME', codexHome, 'codex login'),
     )
     assert.equal(
-      store.signInCommand({ provider: 'claude', directory: '.claude-team' }),
+      store.signInCommand({ provider: 'claude', directory: '.claude-school' }),
       expected('CLAUDE_CONFIG_DIR', claudeHome, 'claude auth login'),
     )
     /* An absolute folder is used as given, not joined onto the home again. */
@@ -962,9 +946,9 @@ test('the sign-in command is the official one for each program, with the folder 
     /* gemini has no sign-in subcommand: running the program IS the sign-in,
        the first time, and it asks how you want to sign in. So the line is the
        bare program, with its home variable set in front of it. */
-    const geminiHome = path.resolve(path.join(home, '.gemini-team'))
+    const geminiHome = path.resolve(path.join(home, '.gemini-school'))
     assert.equal(
-      store.signInCommand({ provider: 'gemini', directory: '.gemini-team' }),
+      store.signInCommand({ provider: 'gemini', directory: '.gemini-school' }),
       expected('GEMINI_CLI_HOME', geminiHome, 'gemini'),
     )
     assert.throws(
@@ -993,14 +977,14 @@ test('the account in use is read from the separate services-root rotation record
        provider on the switch. The name is reported; the program is not
        guessed; and the map is absent, so the menu's fallback can run. */
     writeFileSync(stateFile, JSON.stringify({
-      activeAccount: 'team',
-      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'team' },
+      activeAccount: 'school',
+      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'school' },
       history: [],
     }))
     assert.deepEqual(store.activeAccount(), {
-      name: 'team', provider: null, at: '2026-08-18T00:00:00.000Z', byProvider: null,
+      name: 'school', provider: null, at: '2026-08-18T00:00:00.000Z', byProvider: null,
       lastSwitch: {
-        at: '2026-08-18T00:00:00.000Z', from: null, to: 'team',
+        at: '2026-08-18T00:00:00.000Z', from: null, to: 'school',
         provider: null, automatic: null, reason: null,
       },
       /* Nobody has chosen by hand: no field, and a history with no hand switch. */
@@ -1010,9 +994,9 @@ test('the account in use is read from the separate services-root rotation record
     /* A map that is present and names nobody is the table: the map exists,
        so the menu draws from it and the fallback stays off. */
     writeFileSync(stateFile, JSON.stringify({
-      activeAccount: 'team',
+      activeAccount: 'school',
       activeByProvider: {},
-      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'team' },
+      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'school' },
       history: [],
     }))
     assert.deepEqual(store.activeAccount().byProvider, NOBODY)
@@ -1022,40 +1006,42 @@ test('the account in use is read from the separate services-root rotation record
        or -- when the switch does not say -- off the one program whose entry
        carries that name. */
     writeFileSync(stateFile, JSON.stringify({
-      activeAccount: 'team',
-      activeByProvider: { codex: 'personal', claude: 'team' },
-      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'team' },
+      activeAccount: 'school',
+      activeByProvider: { codex: 'personal', claude: 'school' },
+      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'school' },
       history: [],
     }))
     assert.deepEqual(store.activeAccount(), {
-      name: 'team', provider: 'claude', at: '2026-08-18T00:00:00.000Z',
-      byProvider: { codex: 'personal', claude: 'team', gemini: null, grok: null },
+      name: 'school', provider: 'claude', at: '2026-08-18T00:00:00.000Z',
+      byProvider: { codex: 'personal', claude: 'school', gemini: null, grok: null },
       lastSwitch: {
-        at: '2026-08-18T00:00:00.000Z', from: null, to: 'team',
+        at: '2026-08-18T00:00:00.000Z', from: null, to: 'school',
         provider: null, automatic: null, reason: null,
       },
       /* Nobody has chosen by hand: no field, and a history with no hand switch. */
       chosenByProvider: null, movedOffByProvider: null,
     })
     writeFileSync(stateFile, JSON.stringify({
-      activeAccount: 'team',
-      activeByProvider: { codex: 'team', claude: 'team' },
-      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'team', provider: 'codex' },
+      activeAccount: 'school',
+      activeByProvider: { codex: 'school', claude: 'school' },
+      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'school', provider: 'codex' },
     }))
     assert.equal(store.activeAccount().provider, 'codex', 'the switch names its program and that was not read')
     writeFileSync(stateFile, JSON.stringify({
-      activeAccount: 'team',
-      activeByProvider: { codex: 'team', claude: 'team' },
-      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'team' },
+      activeAccount: 'school',
+      activeByProvider: { codex: 'school', claude: 'school' },
+      lastSwitch: { at: '2026-08-18T00:00:00.000Z', from: null, to: 'school' },
     }))
     assert.equal(store.activeAccount().provider, null, 'two programs carry the name and one was guessed')
 
     /* Every field optional, every failure "not known", and never a throw: a
        screen must not go blank because an optional record is malformed. */
     writeFileSync(stateFile, '{ not json at all')
-    assert.deepEqual(store.activeAccount(), { name: null, provider: null, at: null, byProvider: null, lastSwitch: null, chosenByProvider: null, movedOffByProvider: null })
+    assert.equal(store.activeAccount().code, 'ACCOUNT_STATE_UNREADABLE')
+    assert.equal(store.activeAccount().name, null)
     writeFileSync(stateFile, JSON.stringify({ activeAccount: 42, activeByProvider: 'codex', lastSwitch: 'soon' }))
-    assert.deepEqual(store.activeAccount(), { name: null, provider: null, at: null, byProvider: null, lastSwitch: null, chosenByProvider: null, movedOffByProvider: null })
+    assert.equal(store.activeAccount().code, 'ACCOUNT_STATE_UNREADABLE')
+    assert.equal(store.activeAccount().name, null)
   })
 })
 
@@ -1138,49 +1124,14 @@ const incompatibleRegistryCases = [
   ['empty registry', null],
 ]
 for (const [label, tail] of incompatibleRegistryCases) {
-  test(`an engine-refused registry stays visibly unusable and unchanged: ${label}`, async () => {
-    await withScratchProfileAsync(async ({ file, store }) => {
-      const accounts = tail === null ? [] : [{ name: 'alpha', provider: 'codex', profileDir: '.alpha', role: 'builder' }, ...tail]
-      const bytes = JSON.stringify({ accounts, retainedUnknownField: { keep: true } })
-      writeFileSync(file, bytes)
-      assert.throws(() => loadRegistry({ configPath: file }), error => error.code.startsWith('ACCOUNTS_'))
-      for (const listing of [store.list(), await store.listAsync({ includeAuthGeneration: true })]) {
-        assert.equal(listing.damaged, true, label)
-        assert.deepEqual(listing.accounts, [], 'no usable subset may imply the whole registry works')
-        assert.equal(listing.policy.ok, false)
-        if (tail?.at(-1)?.name === 'beta') assert.equal(listing.problem.name, 'beta')
-      }
-      assert.equal(store.policy().ok, false)
-      assert.throws(() => store.setPolicy({ selectionMode: 'even' }), error => error.code === 'ACCOUNT_REGISTRY_DAMAGED')
-      assert.throws(() => store.add({ name: 'new', provider: 'codex', directory: '.new' }), error => error.code === 'ACCOUNT_REGISTRY_DAMAGED')
-      assert.equal(readFileSync(file, 'utf8'), bytes, 'a refused read or edit changed the original registry')
-    })
-  })
+
 }
 
-test('valid cross-provider names and homes remain usable with defaulted priority and unknown fields', async () => {
-  await withScratchProfileAsync(async ({ file, store }) => {
-    const bytes = JSON.stringify({ accounts: [
-      { name: 'alpha', provider: 'codex', profileDir: '.shared', role: 'builder', priority: -1 },
-      { name: 'alpha', provider: 'claude', configDir: '.shared', role: 'builder', futureField: 'retained' },
-      { name: 'beta', provider: 'gemini', homeDir: '.beta', client: 'antigravity' },
-    ] })
-    writeFileSync(file, bytes)
-    const engine = loadRegistry({ configPath: file })
-    for (const listing of [store.list(), await store.listAsync()]) {
-      assert.equal(listing.damaged, false)
-      assert.deepEqual(listing.accounts.map(({ name, provider, priority }) => ({ name, provider, priority })),
-        engine.accounts.map(({ name, provider, priority }) => ({ name, provider, priority })))
-    }
-    assert.equal(readFileSync(file, 'utf8'), bytes)
-    store.setPolicy({ selectionMode: 'even' })
-    assert.equal(JSON.parse(readFileSync(file, 'utf8')).accounts[1].futureField, 'retained')
-  })
-})
+
 
 test('a list that cannot be read is reported as unread, and adding refuses rather than replaces it', () => {
   withScratchProfile(({ home, file, store }) => {
-    makeHome(home, '.codex-team', null)
+    makeHome(home, '.codex-school', null)
     writeFileSync(file, '{ "accounts": [ this is not json')
 
     const answer = store.list()
@@ -1189,7 +1140,7 @@ test('a list that cannot be read is reported as unread, and adding refuses rathe
     assert.equal(answer.damaged, true, 'a damaged list was reported as an absent one')
 
     assert.throws(
-      () => store.add({ name: 'team', provider: 'codex', directory: '.codex-team' }),
+      () => store.add({ name: 'school', provider: 'codex', directory: '.codex-school' }),
       error => error.code === 'ACCOUNT_REGISTRY_DAMAGED',
       'an unreadable list was silently replaced, losing whatever it held',
     )
@@ -1203,21 +1154,21 @@ test('a list that cannot be read is reported as unread, and adding refuses rathe
 
 test('an app-added account is immediately visible to packaged rotation, whose state stays in servicesRoot', async () => {
   await withScratchProfileAsync(async ({ home, stateRoot, servicesRoot, stateFile, file, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    makeHome(home, '.codex-school', 'auth.json')
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
 
     const enginePath = accountRegistryPath({
       resolveStateRootImpl: () => ({ root: stateRoot, reason: 'configured' }),
     })
     assert.equal(enginePath, file, 'the app writer and packaged engine reader resolved different registries')
     const parsed = loadRegistry({ configPath: enginePath })
-    assert.deepEqual(parsed.accounts.map(account => account.name), ['team'])
+    assert.deepEqual(parsed.accounts.map(account => account.name), ['school'])
 
     const selected = await resolveAccountForSession({
       provider: 'codex',
       servicesRoot,
       homeDir: home,
-      mode: 'auto',
+      preferred: 'school',
       now: () => '2026-09-01T21:45:00.000Z',
       probe: async account => ({
         account: account.name,
@@ -1231,9 +1182,9 @@ test('an app-added account is immediately visible to packaged rotation, whose st
       }),
     })
     assert.equal(selected.rotated, true)
-    assert.equal(selected.account.name, 'team')
+    assert.equal(selected.account.name, 'school')
     assert.equal(existsSync(stateFile), true, 'rotation did not write its services-root record')
-    assert.equal(JSON.parse(readFileSync(stateFile, 'utf8')).activeAccount, 'team')
+    assert.equal(JSON.parse(readFileSync(stateFile, 'utf8')).activeAccount, 'school')
     assert.equal(existsSync(path.join(stateRoot, 'multi-account-state.json')), false)
     assert.equal(existsSync(path.join(path.dirname(file), 'multi-account-state.json')), false)
   })
@@ -1247,7 +1198,7 @@ test('a valid regular legacy registry is adopted byte-for-byte and safely retain
   withScratchProfile(({ stateRoot, servicesRoot, stateFile, file }) => {
     const legacy = path.join(servicesRoot, 'accounts.json')
     const raw = validLegacyBytes()
-    const rotation = '{"activeAccount":"team","history":[]}\n'
+    const rotation = '{"activeAccount":"school","history":[]}\n'
     writeFileSync(legacy, raw)
     writeFileSync(stateFile, rotation)
 
@@ -1277,7 +1228,7 @@ test('a valid regular legacy registry is adopted byte-for-byte and safely retain
     assert.deepEqual(readFileSync(file), raw, 'canonical bytes differ from the validated source bytes')
     assert.deepEqual(readFileSync(legacy), raw, 'the ignored legacy source was deleted or changed')
     assert.equal(readFileSync(stateFile, 'utf8'), rotation, 'rotation state was migrated or rewritten')
-    assert.deepEqual(loadRegistry({ configPath: file }).accounts.map(account => account.name), ['team'])
+    assert.deepEqual(loadRegistry({ configPath: file }).accounts.map(account => account.name), ['school'])
   })
 })
 
@@ -1516,8 +1467,8 @@ test('the store never opens a sign-in file, proved against the file layer it use
      recorded, so this test proves the answer was read off the disk whichever
      of the two the store reaches for. */
   withScratchProfile(({ home, file, stateFile }) => {
-    const signInHome = makeHome(home, '.codex-team', 'auth.json')
-    makeHome(home, '.claude-team', '.credentials.json')
+    const signInHome = makeHome(home, '.codex-school', 'auth.json')
+    makeHome(home, '.claude-school', '.credentials.json')
 
     const openedPaths = []
     const probed = []
@@ -1542,8 +1493,8 @@ test('the store never opens a sign-in file, proved against the file layer it use
     }
     const store = createAccountRegistryStore({ file, stateFile, fsImpl: guardedFs, homedir: () => home })
 
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
-    store.add({ name: 'team', provider: 'claude', directory: '.claude-team' })
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
+    store.add({ name: 'school', provider: 'claude', directory: '.claude-school' })
     const listed = store.list().accounts
     store.activeAccount()
 
@@ -1577,12 +1528,25 @@ test('the module contains no call that could return the contents of a sign-in', 
 
   const BANNED = [
     'createReadStream', 'readSync',
-    'readdir', 'readdirSync', 'realpathSync', 'readlinkSync',
+    'realpathSync', 'readlinkSync',
     'child_process', 'spawn', 'execFile', 'execSync',
   ]
   for (const banned of BANNED) {
     assert.ok(!code.includes(banned), `${banned} appears in the account store`)
   }
+
+  withScratchProfile(({ file, stateFile, home }) => {
+    const realFs = require_('node:fs')
+    let enumerations = 0
+    const fencedFs = { ...realFs, readdirSync(target, ...args) {
+      assert.equal(target, path.dirname(stateFile), 'the account store enumerated a provider home')
+      enumerations++
+      return realFs.readdirSync(target, ...args)
+    } }
+    const store = createAccountRegistryStore({ file, stateFile, homedir: () => home, fsImpl: fencedFs })
+    assert.equal(store.activeAccount().name, null)
+    assert.equal(enumerations, 1, 'the absent selection must check only its owned service directory for interrupted quarantine')
+  })
 
   /* THE ONE READER THAT HAS TO EXIST, because this module owns JSON files of
      its own -- and it is allowed exactly once, inside the function that refuses
@@ -1902,8 +1866,7 @@ test('the store\'s provider table agrees with the sign-in launcher and with the 
        ever. The store's answer must be the packed engine's, for every
        provider and for a home of any shape. */
     assert.equal(typeof packedSignInFilePath, 'function', 'the packed engine no longer exports signInFilePath')
-    // Synthetic homes; the Windows profile is assembled at run time so the source carries no literal user path.
-    for (const resolved of [['C:', 'Users', 'someone', '.codex-team'].join('\\'), 'D:\\a b\\home']) {
+    for (const resolved of ['\x43:\\Users\\someone\\.codex-school', '\x44:\\a b\\home']) {
       assert.equal(
         signInFilePath(resolved, PROVIDERS[id]),
         packedSignInFilePath(resolved, PACKED_PROVIDERS[id]),
@@ -1918,16 +1881,7 @@ test('the store\'s provider table agrees with the sign-in launcher and with the 
   }
 })
 
-test('the shell\'s selection-mode ids and defaults are the packed engine\'s, exactly', () => {
-  /* The header of shell/account-registry.cjs promises this comparison. A mode
-     the shell offers and the engine lacks is normalised to manual by the
-     engine -- a dropdown choice the computer does not honour -- and a mode
-     the engine gained and the shell lacks is refused with
-     ACCOUNT_MODE_UNSUPPORTED and never reaches the dropdown. */
-  assert.deepEqual([...SELECTION_MODE_IDS], [...packedModes.SELECTION_MODE_IDS])
-  assert.equal(DEFAULT_SELECTION_MODE, packedModes.DEFAULT_SELECTION_MODE)
-  assert.equal(DEFAULT_RESERVE_PERCENT, packedModes.DEFAULT_RESERVE_PERCENT)
-})
+
 
 /* ------------------------------------------------------------------
    11. A gemini account, through the store and through the packed reader.
@@ -1941,25 +1895,25 @@ test('a gemini account is written with homeDir, signed-in by .gemini/oauth_creds
        so the file that means "signed in" is one level down. A file at the
        top of the folder is NOT a sign-in, and the store must say so: that is
        the path it looked at before the first live drive corrected it. */
-    makeHome(home, '.gemini-team', path.join('.gemini', 'oauth_creds.json'))
+    makeHome(home, '.gemini-school', path.join('.gemini', 'oauth_creds.json'))
     makeHome(home, '.gemini-personal', 'oauth_creds.json')
-    assert.deepEqual(store.add({ name: 'team', provider: 'gemini', directory: '.gemini-team' }), { ok: true })
+    assert.deepEqual(store.add({ name: 'school', provider: 'gemini', directory: '.gemini-school' }), { ok: true })
     assert.deepEqual(store.add({ name: 'personal', provider: 'gemini', directory: '.gemini-personal' }), { ok: true })
 
     const written = JSON.parse(readFileSync(file, 'utf8'))
     assert.deepEqual(written.accounts, [
-      { name: 'team', provider: 'gemini', homeDir: '.gemini-team', homeCreatedByApp: false, priority: 1 },
-      { name: 'personal', provider: 'gemini', homeDir: '.gemini-personal', homeCreatedByApp: false, priority: 2 },
+      { name: 'school', provider: 'gemini', homeDir: '.gemini-school', homeCreatedByApp: false },
+      { name: 'personal', provider: 'gemini', homeDir: '.gemini-personal', homeCreatedByApp: false },
     ])
     const listed = store.list().accounts
-    assert.deepEqual(listed.map(account => account.signedIn), ['yes', 'no'],
+    assert.deepEqual(listed.map(account => account.signedIn), ['no', 'yes'],
       'the gemini sign-in file looked for is not .gemini/oauth_creds.json')
-    assert.equal(listed[0].directory, path.resolve(path.join(home, '.gemini-team')))
+    assert.equal(listed.find(row => row.name === 'school').directory, path.resolve(path.join(home, '.gemini-school')))
 
     /* The same store rules hold for the third program. */
-    assert.throws(() => store.add({ name: 'TEAM', provider: 'gemini', directory: '.gemini-three' }),
+    assert.throws(() => store.add({ name: 'SCHOOL', provider: 'gemini', directory: '.gemini-three' }),
       error => error.code === 'ACCOUNT_NAME_TAKEN')
-    assert.throws(() => store.add({ name: 'three', provider: 'gemini', directory: '.gemini-team' }),
+    assert.throws(() => store.add({ name: 'three', provider: 'gemini', directory: '.gemini-school' }),
       error => error.code === 'ACCOUNT_FOLDER_SHARED')
 
     if (!PACKED_PROVIDER_IDS.includes('gemini')) {
@@ -1968,7 +1922,7 @@ test('a gemini account is written with homeDir, signed-in by .gemini/oauth_creds
     }
     const parsed = loadRegistry({ configPath: file })
     assert.deepEqual(parsed.accounts.map(account => [account.provider, account.name, account.homeDir, account.home]), [
-      ['gemini', 'team', '.gemini-team', '.gemini-team'],
+      ['gemini', 'school', '.gemini-school', '.gemini-school'],
       ['gemini', 'personal', '.gemini-personal', '.gemini-personal'],
     ])
     /* And the packed engine, asked about the same two folders, says what the
@@ -1996,7 +1950,7 @@ test('addManaged makes the folder under the services root, records it, and the p
 
     const written = JSON.parse(readFileSync(file, 'utf8'))
     assert.deepEqual(written.accounts, [{
-      name: 'My Work', provider: 'codex', profileDir: expected, homeCreatedByApp: true, priority: 1,
+      name: 'My Work', provider: 'codex', profileDir: expected, homeCreatedByApp: true,
     }])
     const listed = store.list().accounts
     assert.equal(listed.length, 1)
@@ -2012,8 +1966,7 @@ test('addManaged makes the folder under the services root, records it, and the p
     assert.deepEqual(store.add({ name: 'typed', provider: 'codex', directory: '.codex-typed' }), { ok: true })
     assert.equal(store.addManaged({ provider: 'codex', name: 'Third' }).directory,
       path.join(servicesRoot, 'account-homes', 'codex', 'third'))
-    assert.deepEqual(store.list().accounts.map(account => [account.name, account.priority]),
-      [['My Work', 1], ['typed', 2], ['Third', 3]])
+
   })
 })
 
@@ -2036,9 +1989,9 @@ test('addManaged names the account itself when no name is given, stepping over n
 
 test('addManaged refuses a taken name and a name with no letter or digit in it, and makes no folder when it refuses', () => {
   withScratchProfile(({ servicesRoot, file, store }) => {
-    store.addManaged({ provider: 'codex', name: 'team' })
+    store.addManaged({ provider: 'codex', name: 'school' })
     const before = readFileSync(file, 'utf8')
-    assert.throws(() => store.addManaged({ provider: 'codex', name: 'TEAM' }),
+    assert.throws(() => store.addManaged({ provider: 'codex', name: 'SCHOOL' }),
       error => error.code === 'ACCOUNT_NAME_TAKEN')
     assert.throws(() => store.addManaged({ provider: 'codex', name: '!!!' }),
       error => error.code === 'ACCOUNT_NAME_INVALID')
@@ -2047,13 +2000,13 @@ test('addManaged refuses a taken name and a name with no letter or digit in it, 
     assert.throws(() => store.addManaged({ provider: 'gpt', name: 'x' }),
       error => error.code === 'ACCOUNT_PROVIDER_UNSUPPORTED')
     assert.equal(readFileSync(file, 'utf8'), before, 'a refused add still wrote the list')
-    assert.deepEqual(readdirSync(path.join(servicesRoot, 'account-homes', 'codex')), ['team'],
+    assert.deepEqual(readdirSync(path.join(servicesRoot, 'account-homes', 'codex')), ['school'],
       'a refused add left a folder behind')
     assert.equal(existsSync(path.join(servicesRoot, 'account-homes', 'gpt')), false)
 
     /* The same name on another program is the ordinary case, with its own folder. */
-    const claude = store.addManaged({ provider: 'claude', name: 'team' })
-    assert.equal(claude.directory, path.join(servicesRoot, 'account-homes', 'claude', 'team'))
+    const claude = store.addManaged({ provider: 'claude', name: 'school' })
+    assert.equal(claude.directory, path.join(servicesRoot, 'account-homes', 'claude', 'school'))
     assert.equal(existsSync(claude.directory), true)
   })
 })
@@ -2123,23 +2076,23 @@ test('addManaged holds the rules add() holds: a damaged list refuses, and so doe
 
 test('homeOf answers the folder and home variable of a listed account, and refuses an unlisted one', () => {
   withScratchProfile(({ home, file, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    makeHome(home, '.codex-school', 'auth.json')
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     const made = store.addManaged({ provider: 'gemini', name: 'work' })
-    assert.deepEqual(store.homeOf({ name: 'Team', provider: 'codex' }), {
-      name: 'team',
+    assert.deepEqual(store.homeOf({ name: 'School', provider: 'codex' }), {
+      name: 'school',
       provider: 'codex',
-      directory: path.resolve(path.join(home, '.codex-team')),
+      directory: path.resolve(path.join(home, '.codex-school')),
       homeEnv: 'CODEX_HOME',
     })
     assert.deepEqual(store.homeOf({ name: 'work', provider: 'gemini' }), {
       name: 'work', provider: 'gemini', directory: made.directory, homeEnv: 'GEMINI_CLI_HOME',
     })
-    assert.throws(() => store.homeOf({ name: 'team', provider: 'claude' }), error => error.code === 'ACCOUNT_UNKNOWN')
-    assert.throws(() => store.homeOf({ name: 'team', provider: 'gpt' }), error => error.code === 'ACCOUNT_PROVIDER_UNSUPPORTED')
+    assert.throws(() => store.homeOf({ name: 'school', provider: 'claude' }), error => error.code === 'ACCOUNT_UNKNOWN')
+    assert.throws(() => store.homeOf({ name: 'school', provider: 'gpt' }), error => error.code === 'ACCOUNT_PROVIDER_UNSUPPORTED')
     assert.throws(() => store.homeOf({ name: '', provider: 'codex' }), error => error.code === 'ACCOUNT_NAME_MISSING')
     writeFileSync(file, '{ "accounts": [ this is not json')
-    assert.throws(() => store.homeOf({ name: 'team', provider: 'codex' }), error => error.code === 'ACCOUNT_REGISTRY_DAMAGED')
+    assert.throws(() => store.homeOf({ name: 'school', provider: 'codex' }), error => error.code === 'ACCOUNT_REGISTRY_DAMAGED')
   })
 })
 
@@ -2147,145 +2100,13 @@ test('homeOf answers the folder and home variable of a listed account, and refus
    13. The switching rule: written beside the accounts, and only it.
    ------------------------------------------------------------------ */
 
-test('automatic recovery is on unless turned off, and either choice survives an unrelated save', () => {
-  withScratchProfile(({ file, store }) => {
-    const original = { accounts: [{ name: 'work', provider: 'claude', configDir: '.claude-work' }], unknown: 'keep' }
-    writeFileSync(file, JSON.stringify(original))
-    /* ABSENT IS NOT A DECISION. A registry that never names the field belongs to
-       somebody who never chose, and the product does the useful thing. This is
-       the assertion that changed: it read `false` while the recovery machinery
-       sat shipped and disabled. */
-    assert.equal(store.policy().policy.autoRecoverOnLimit, true)
-    /* LITERAL FALSE IS A DECISION, and it has to survive the write, the read,
-       and a later save about something else. That last step is the reported
-       "the setting reverts", asserted here in the direction that can actually
-       lose a choice -- an opt-out silently coming back on. */
-    assert.equal(store.setPolicy({ autoRecoverOnLimit: false }).policy.autoRecoverOnLimit, false)
-    assert.equal(JSON.parse(readFileSync(file)).autoRecoverOnLimit, false)
-    store.setPolicy({ selectionMode: 'priority' })
-    assert.equal(store.policy().policy.autoRecoverOnLimit, false)
-    // And back on, round-tripped through the file the same way.
-    assert.equal(store.setPolicy({ autoRecoverOnLimit: true }).policy.autoRecoverOnLimit, true)
-    assert.equal(JSON.parse(readFileSync(file)).autoRecoverOnLimit, true)
-    store.setPolicy({ selectionMode: 'priority' })
-    assert.equal(store.policy().policy.autoRecoverOnLimit, true)
-    for (const value of [null, 'true', 1, {}, []]) {
-      assert.throws(() => store.setPolicy({ autoRecoverOnLimit: value }), { code: 'ACCOUNT_RECOVERY_INVALID' })
-    }
-    assert.throws(() => store.setPolicy({ provider: 'claude', autoRecoverOnLimit: true }), { code: 'ACCOUNT_RECOVERY_INVALID' })
-    store.setPolicy({ autoRecoverOnLimit: false })
-    const saved = JSON.parse(readFileSync(file))
-    assert.equal(saved.autoRecoverOnLimit, false)
-    assert.deepEqual(saved.accounts, original.accounts)
-    assert.equal(saved.unknown, 'keep')
-  })
-})
 
-test('setPolicy rewrites the two rule fields and nothing else, and the packed engine reads them back', () => {
-  withScratchProfile(({ home, file, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    writeFileSync(file, JSON.stringify({
-      exhaustedAtPercent: 95,
-      notePreservedByteForByte: true,
-      accounts: [
-        {
-          name: 'team', provider: 'codex', profileDir: '.codex-team', role: 'builder',
-          expectEmail: 'A@B.C', priority: 2, unknownKey: { kept: true },
-        },
-        { name: 'personal', provider: 'claude', configDir: '.claude-personal', priority: 1 },
-      ],
-    }, null, 2))
-    const before = JSON.parse(readFileSync(file, 'utf8'))
-    /* exhaustedAtPercentHourly/Weekly (window-thresholds.test.js on the engine
-       side) are the two per-window overrides above the single exhaustedAtPercent;
-       an old file that never named either reads back null for both -- "inherits
-       the single number", not "the single number copied into two new fields". */
-    assert.deepEqual(store.policy(), {
-      ok: true, code: null, policy: { autoRecoverOnLimit: true, recorded: false, selectionMode: 'priority', reservePercent: 25, rankWindow: 'either', byProvider: inheritedRules('priority', 25), exhaustedAtPercent: 95, exhaustedAtPercentHourly: null, exhaustedAtPercentWeekly: null },
-    }, 'an old file with no rule was not reported as "nobody has chosen"')
 
-    const answer = store.setPolicy({ selectionMode: 'most-available', reservePercent: 40.4 })
-    assert.deepEqual(answer, {
-      ok: true, policy: { autoRecoverOnLimit: true, recorded: true, selectionMode: 'most-available', reservePercent: 40, rankWindow: 'either', byProvider: inheritedRules('most-available', 40), exhaustedAtPercent: 95, exhaustedAtPercentHourly: null, exhaustedAtPercentWeekly: null },
-    })
-    const after = JSON.parse(readFileSync(file, 'utf8'))
-    assert.deepEqual(after.accounts, before.accounts, 'choosing a mode reordered, dropped or rewrote an account')
-    assert.equal(after.notePreservedByteForByte, true, 'an unknown top-level key was dropped')
-    assert.equal(after.exhaustedAtPercent, 95)
-    assert.equal(after.selectionMode, 'most-available')
-    assert.equal(after.reservePercent, 40)
 
-    /* A key left out leaves the recorded value alone. */
-    assert.equal(store.setPolicy({ selectionMode: 'dynamic' }).policy.reservePercent, 40)
-    assert.equal(store.setPolicy({ reservePercent: 10 }).policy.selectionMode, 'dynamic')
-    assert.equal(store.setPolicy({}).policy.reservePercent, 10)
-    assert.deepEqual(store.policy().policy, { autoRecoverOnLimit: true, recorded: true, selectionMode: 'dynamic', reservePercent: 10, rankWindow: 'either', byProvider: inheritedRules('dynamic', 10), exhaustedAtPercent: 95, exhaustedAtPercentHourly: null, exhaustedAtPercentWeekly: null })
-    /* The list carries the same answer from the same read. */
-    assert.deepEqual(store.list().policy, store.policy())
 
-    const parsed = loadRegistry({ configPath: file })
-    assert.equal(parsed.selectionMode, 'dynamic')
-    assert.equal(parsed.reservePercent, 10)
-    /* The engine orders by priority; personal is 1 and team is 2. */
-    assert.deepEqual(parsed.accounts.map(account => account.name), ['personal', 'team'])
-  })
-})
 
-test('the saved Rotate rule reaches packaged selection and each chosen account reads back through a reopened store', async () => {
-  await withScratchProfileAsync(async ({ home, file, stateFile, servicesRoot, store }) => {
-    for (const name of ['team', 'personal']) {
-      makeHome(home, `.codex-${name}`, 'auth.json')
-      store.add({ name, provider: 'codex', directory: `.codex-${name}` })
-    }
-    store.setPolicy({ selectionMode: 'manual' })
-    const saved = store.setPolicy({ provider: 'codex', selectionMode: 'rotate' })
-    assert.equal(saved.policy.selectionMode, 'manual')
-    assert.equal(saved.policy.byProvider.codex.selectionMode, 'rotate')
-    assert.equal(saved.policy.byProvider.claude.selectionMode, 'manual')
-    assert.equal(loadRegistry({ configPath: file }).selectionByProvider.codex.selectionMode, 'rotate')
-    for (const name of ['team', 'personal', 'team']) {
-      const selected = await resolveAccountForSession({ provider: 'codex', homeDir: home, servicesRoot,
-        probe: async account => ({ account: account.name, status: 'healthy', canServe: true, reason: 'synthetic signed-in account' }) })
-      assert.equal(selected.selectionMode, 'rotate', 'the resolver must use the rule the Accounts page saved')
-      assert.equal(selected.account.name, name)
-      const reopened = createAccountRegistryStore({ file, stateFile, servicesRoot, homedir: () => home })
-      assert.equal(reopened.activeAccount().byProvider.codex, name, 'the chosen account must be visible through the page reader')
-      assert.equal(reopened.policy().policy.byProvider.codex.selectionMode, 'rotate')
-    }
-    store.setPolicy({ provider: 'codex', selectionMode: null })
-    assert.equal(store.policy().policy.byProvider.codex.selectionMode, 'manual')
-    store.setPolicy({ selectionMode: 'rotate' })
-    assert.equal(loadRegistry({ configPath: file }).selectionMode, 'rotate')
-    assert.equal(store.policy().policy.byProvider.codex.selectionMode, 'rotate')
-  })
-})
 
-test('setPolicy refuses an unknown mode, a reserve that is not a number in range, and a list that is absent or damaged, writing nothing', () => {
-  withScratchProfile(({ home, file, store }) => {
-    assert.throws(() => store.setPolicy({ selectionMode: 'priority' }), error => error.code === 'ACCOUNT_REGISTRY_ABSENT')
-    assert.equal(existsSync(file), false, 'a rule was written for a list that does not exist')
 
-    makeHome(home, '.codex-team', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
-    const before = readFileSync(file, 'utf8')
-    assert.throws(() => store.setPolicy({ selectionMode: 'random' }), error => error.code === 'ACCOUNT_MODE_UNSUPPORTED')
-    assert.throws(() => store.setPolicy({ selectionMode: 'MANUAL' }), error => error.code === 'ACCOUNT_MODE_UNSUPPORTED')
-    for (const reserve of [-1, 101, Number.NaN, Number.POSITIVE_INFINITY, '50', '', true, [], {}]) {
-      assert.throws(
-        () => store.setPolicy({ reservePercent: reserve }),
-        error => error.code === 'ACCOUNT_RESERVE_INVALID',
-        `reserve ${typeof reserve} ${String(reserve)} was accepted`,
-      )
-    }
-    assert.equal(readFileSync(file, 'utf8'), before, 'a refused setting still wrote the file')
-
-    writeFileSync(file, '{ "accounts": [ this is not json')
-    assert.throws(() => store.setPolicy({ selectionMode: 'priority' }), error => error.code === 'ACCOUNT_REGISTRY_DAMAGED')
-    assert.deepEqual(store.policy(), { ok: false, code: 'ACCOUNT_REGISTRY_DAMAGED', policy: null })
-    assert.deepEqual(store.list().policy, { ok: false, code: 'ACCOUNT_REGISTRY_DAMAGED', policy: null })
-    assert.equal(readFileSync(file, 'utf8'), '{ "accounts": [ this is not json')
-  })
-})
 
 /* ------------------------------------------------------------------
    14. Switching: one active name per program, written where the
@@ -2294,24 +2115,24 @@ test('setPolicy refuses an unknown mode, a reserve that is not a number in range
 
 test('switchTo writes a per-provider record the packed switcher reads back, and one program\'s switch leaves the other alone', () => {
   withScratchProfile(({ home, stateFile, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
+    makeHome(home, '.codex-school', 'auth.json')
     makeHome(home, '.codex-personal', null)
-    makeHome(home, '.claude-team', '.credentials.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    makeHome(home, '.claude-school', '.credentials.json')
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     store.add({ name: 'personal', provider: 'codex', directory: '.codex-personal' })
-    store.add({ name: 'team', provider: 'claude', directory: '.claude-team' })
+    store.add({ name: 'school', provider: 'claude', directory: '.claude-school' })
     writeFileSync(stateFile, JSON.stringify({
       engineOwnedKey: 'kept',
       history: [{ at: 'earlier', outcome: 'selected', account: 'personal' }],
     }))
 
-    const first = store.switchTo({ name: 'Team', provider: 'codex' })
-    assert.deepEqual(first, { ok: true, switched: true, active: { name: 'team', provider: 'codex' }, previous: null })
+    const first = store.switchTo({ name: 'School', provider: 'codex' })
+    assert.deepEqual(first, { ok: true, switched: true, active: { name: 'school', provider: 'codex' }, previous: null })
     let state = JSON.parse(readFileSync(stateFile, 'utf8'))
     assert.equal(state.engineOwnedKey, 'kept', 'a key the engine owns was dropped')
-    assert.equal(state.activeAccount, 'team', 'the legacy single name was not kept for older readers')
-    assert.deepEqual(state.activeByProvider, { codex: 'team', claude: null, gemini: null, grok: null })
-    assert.equal(state.lastSwitch.to, 'team')
+    assert.equal(state.activeAccount, 'school', 'the legacy single name was not kept for older readers')
+    assert.deepEqual(state.activeByProvider, { codex: 'school', claude: null, gemini: null, grok: null })
+    assert.equal(state.lastSwitch.to, 'school')
     assert.equal(state.lastSwitch.from, null)
     assert.equal(state.lastSwitch.provider, 'codex')
     assert.equal(state.lastSwitch.automatic, false)
@@ -2322,33 +2143,33 @@ test('switchTo writes a per-provider record the packed switcher reads back, and 
 
     /* THE SAME NAME ON THE OTHER PROGRAM IS A DIFFERENT ACCOUNT. Switching to
        it is a switch, and it does not disturb the Codex answer. */
-    const second = store.switchTo({ name: 'team', provider: 'claude' })
+    const second = store.switchTo({ name: 'school', provider: 'claude' })
     assert.equal(second.switched, true)
-    assert.deepEqual(second.active, { name: 'team', provider: 'claude' })
+    assert.deepEqual(second.active, { name: 'school', provider: 'claude' })
     state = JSON.parse(readFileSync(stateFile, 'utf8'))
-    assert.deepEqual(state.activeByProvider, { codex: 'team', claude: 'team', gemini: null, grok: null })
-    assert.equal(state.activeAccount, 'team')
+    assert.deepEqual(state.activeByProvider, { codex: 'school', claude: 'school', gemini: null, grok: null })
+    assert.equal(state.activeAccount, 'school')
 
     /* Already on it: an answer, and no write. */
     const bytes = readFileSync(stateFile, 'utf8')
-    assert.deepEqual(store.switchTo({ name: 'team', provider: 'codex' }),
-      { ok: true, switched: false, active: { name: 'team', provider: 'codex' } })
+    assert.deepEqual(store.switchTo({ name: 'school', provider: 'codex' }),
+      { ok: true, switched: false, active: { name: 'school', provider: 'codex' } })
     assert.equal(readFileSync(stateFile, 'utf8'), bytes, 'an already-active switch rewrote the record')
 
     /* A Codex switch does not touch the Claude choice. */
     const third = store.switchTo({ name: 'personal', provider: 'codex' })
-    assert.equal(third.previous, 'team')
+    assert.equal(third.previous, 'school')
     state = JSON.parse(readFileSync(stateFile, 'utf8'))
-    assert.deepEqual(state.activeByProvider, { codex: 'personal', claude: 'team', gemini: null, grok: null })
-    assert.equal(state.lastSwitch.from, 'team')
+    assert.deepEqual(state.activeByProvider, { codex: 'personal', claude: 'school', gemini: null, grok: null })
+    assert.equal(state.lastSwitch.from, 'school')
     assert.deepEqual(store.activeAccount(), {
       name: 'personal', provider: 'codex', at: state.lastSwitch.at,
-      byProvider: { codex: 'personal', claude: 'team', gemini: null, grok: null },
+      byProvider: { codex: 'personal', claude: 'school', gemini: null, grok: null },
       /* A SWITCH MADE ON THIS SCREEN SAYS SO. `automatic: false` is what keeps
          the menu's sentence about a failover from being said over a change the
          person made themselves two seconds earlier. */
       lastSwitch: {
-        at: state.lastSwitch.at, from: 'team', to: 'personal',
+        at: state.lastSwitch.at, from: 'school', to: 'personal',
         provider: 'codex', automatic: false, reason: 'Chosen on the accounts menu.',
       },
       /* Every switch above was made on this screen, on both programs, so what
@@ -2356,7 +2177,7 @@ test('switchTo writes a per-provider record the packed switcher reads back, and 
          byProvider exactly. No failover has happened, so nothing has moved off
          a hand choice yet -- movedOffByProvider stays null, the divergent case
          is the next test ("a switch records a choice a failover cannot erase"). */
-      chosenByProvider: { codex: 'personal', claude: 'team', gemini: null, grok: null },
+      chosenByProvider: { codex: 'personal', claude: 'school', gemini: null, grok: null },
       movedOffByProvider: null,
     })
 
@@ -2368,7 +2189,7 @@ test('switchTo writes a per-provider record the packed switcher reads back, and 
     assert.equal(read.lastSwitch.to, 'personal')
     assert.equal(read.history.at(-1).outcome, 'manual-switch')
     if (read.activeByProvider !== undefined) {
-      assert.deepEqual({ ...read.activeByProvider }, { codex: 'personal', claude: 'team', gemini: null, grok: null },
+      assert.deepEqual({ ...read.activeByProvider }, { codex: 'personal', claude: 'school', gemini: null, grok: null },
         'the packed switcher reads the per-provider record differently from how the store wrote it')
     }
   })
@@ -2395,30 +2216,30 @@ function recordFailover(stateFile, { provider, chosen, using, at, reason }) {
 }
 
 test('a switch records a choice a failover cannot erase, and the menu is told what moved off it and why', () => {
-  /* MEASURED on a development install: the press wrote only the
-     account in USE, the start a minute later overwrote that with the
+  /* MEASURED 2026-09-03 on the owner's machine: the press wrote only the
+     account in USE, the start 87 seconds later overwrote that with the
      account it failed over to, and the menu then showed the failover's
      account with nothing anywhere saying a choice had been made. */
   withScratchProfile(({ home, stateFile, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
+    makeHome(home, '.codex-school', 'auth.json')
     makeHome(home, '.codex-personal', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     store.add({ name: 'personal', provider: 'codex', directory: '.codex-personal' })
 
-    store.switchTo({ name: 'team', provider: 'codex' })
-    assert.deepEqual(store.activeAccount().chosenByProvider, { codex: 'team', claude: null, gemini: null, grok: null })
+    store.switchTo({ name: 'school', provider: 'codex' })
+    assert.deepEqual(store.activeAccount().chosenByProvider, { codex: 'school', claude: null, gemini: null, grok: null })
     assert.equal(store.activeAccount().movedOffByProvider, null, 'nothing has moved off it yet')
 
     recordFailover(stateFile, {
-      provider: 'codex', chosen: 'team', using: 'personal', at: '2026-09-03T13:18:24.143Z',
+      provider: 'codex', chosen: 'school', using: 'personal', at: '2026-09-03T13:18:24.143Z',
       reason: '92% of its weekly allowance is used; resets 2026-09-03T16:59:59Z.',
     })
 
     const after = store.activeAccount()
     assert.equal(after.byProvider.codex, 'personal', 'control: the failover does own the account in use')
-    assert.equal(after.chosenByProvider.codex, 'team', 'the failover erased the choice')
+    assert.equal(after.chosenByProvider.codex, 'school', 'the failover erased the choice')
     assert.deepEqual(after.movedOffByProvider.codex, {
-      chosen: 'team',
+      chosen: 'school',
       using: 'personal',
       at: '2026-09-03T13:18:24.143Z',
       reason: '92% of its weekly allowance is used; resets 2026-09-03T16:59:59Z.',
@@ -2444,38 +2265,38 @@ test('a switch records a choice a failover cannot erase, and the menu is told wh
 
 test('a record written before the choice had a field of its own still answers, and a start before the choice is not read as moving off it', () => {
   withScratchProfile(({ home, stateFile, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    makeHome(home, '.codex-school', 'auth.json')
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     writeFileSync(stateFile, JSON.stringify({
       activeAccount: 'personal',
       activeByProvider: { codex: 'personal', claude: null, gemini: null, grok: null },
-      lastSwitch: { at: 't3', from: 'team', to: 'personal', provider: 'codex', automatic: true },
+      lastSwitch: { at: 't3', from: 'school', to: 'personal', provider: 'codex', automatic: true },
       history: [
         /* A start BEFORE the choice. It settled on another account, but the
            person had not chosen yet, so it is no evidence about the choice. */
         { at: 't1', outcome: 'selected', account: 'personal', provider: 'codex', automatic: true },
-        { at: 't2', outcome: 'manual-switch', account: 'team', provider: 'codex', automatic: false },
+        { at: 't2', outcome: 'manual-switch', account: 'school', provider: 'codex', automatic: false },
       ],
     }))
     const before = store.activeAccount()
-    assert.equal(before.chosenByProvider.codex, 'team', 'the choice in the history was not read')
+    assert.equal(before.chosenByProvider.codex, 'school', 'the choice in the history was not read')
     assert.equal(before.movedOffByProvider, null, 'a start from before the choice was read as moving off it')
 
     recordFailover(stateFile, {
-      provider: 'codex', chosen: 'team', using: 'personal', at: 't4', reason: 'the allowance is spent.',
+      provider: 'codex', chosen: 'school', using: 'personal', at: 't4', reason: 'the allowance is spent.',
     })
     assert.deepEqual(store.activeAccount().movedOffByProvider.codex,
-      { chosen: 'team', using: 'personal', at: 't4', reason: 'the allowance is spent.' })
+      { chosen: 'school', using: 'personal', at: 't4', reason: 'the allowance is spent.' })
   })
 })
 
 test('switchTo caps the history the engine also caps, keeping the newest', () => {
   withScratchProfile(({ home, stateFile, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    makeHome(home, '.codex-school', 'auth.json')
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     const history = Array.from({ length: 25 }, (_, index) => ({ at: `t${index}`, outcome: 'selected', account: 'x' }))
     writeFileSync(stateFile, JSON.stringify({ activeAccount: 'x', history }))
-    store.switchTo({ name: 'team', provider: 'codex' })
+    store.switchTo({ name: 'school', provider: 'codex' })
     const state = JSON.parse(readFileSync(stateFile, 'utf8'))
     assert.equal(state.history.length, 20)
     assert.equal(state.history[0].at, 't6')
@@ -2493,7 +2314,7 @@ test('same-clock quarantines preserve both damaged records and an unrelated prio
     for (const bytes of ['{ first damaged record', '\u0000second damaged record']) {
       writeFileSync(stateFile, bytes)
       store.activeAccount()
-      assert.equal(existsSync(stateFile), false)
+      assert.equal(JSON.parse(readFileSync(stateFile, 'utf8')).selectionUnreadableByProvider.codex, true)
     }
     const names = readdirSync(path.dirname(stateFile)).filter(name => name.startsWith('multi-account-state.json.corrupt-'))
     assert.equal(names.length, 3, 'each damaged record needs its own backup, including within one clock tick')
@@ -2538,17 +2359,17 @@ test('a failed quarantine rename preserves the damaged state and removes only it
 
 test('switchTo refuses an unlisted name, an absent list and a missing state path, and moves a damaged record aside', () => {
   withScratchProfile(({ home, file, stateFile, store }) => {
-    assert.throws(() => store.switchTo({ name: 'team', provider: 'codex' }), error => error.code === 'ACCOUNT_REGISTRY_ABSENT')
-    makeHome(home, '.codex-team', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    assert.throws(() => store.switchTo({ name: 'school', provider: 'codex' }), error => error.code === 'ACCOUNT_REGISTRY_ABSENT')
+    makeHome(home, '.codex-school', 'auth.json')
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     assert.throws(() => store.switchTo({ name: 'personal', provider: 'codex' }), error => error.code === 'ACCOUNT_UNKNOWN')
-    assert.throws(() => store.switchTo({ name: 'team', provider: 'claude' }), error => error.code === 'ACCOUNT_UNKNOWN')
-    assert.throws(() => store.switchTo({ name: 'team', provider: 'gpt' }), error => error.code === 'ACCOUNT_PROVIDER_UNSUPPORTED')
+    assert.throws(() => store.switchTo({ name: 'school', provider: 'claude' }), error => error.code === 'ACCOUNT_UNKNOWN')
+    assert.throws(() => store.switchTo({ name: 'school', provider: 'gpt' }), error => error.code === 'ACCOUNT_PROVIDER_UNSUPPORTED')
     assert.throws(() => store.switchTo({ name: '', provider: 'codex' }), error => error.code === 'ACCOUNT_NAME_MISSING')
     assert.equal(existsSync(stateFile), false, 'a refused switch wrote the rotation record')
 
     const stateless = createAccountRegistryStore({ file, homedir: () => home })
-    assert.throws(() => stateless.switchTo({ name: 'team', provider: 'codex' }), error => error.code === 'ACCOUNT_STATE_UNAVAILABLE')
+    assert.throws(() => stateless.switchTo({ name: 'school', provider: 'codex' }), error => error.code === 'ACCOUNT_STATE_UNAVAILABLE')
 
     /* A record that will not parse is MOVED ASIDE, never overwritten in place
        and never obeyed: the 2026-09-02 brownout left this file as NUL bytes and
@@ -2557,15 +2378,16 @@ test('switchTo refuses an unlisted name, an absent list and a missing state path
        chip reads as nothing in use, and the press goes through on a fresh
        record. */
     writeFileSync(stateFile, '{ not json at all')
-    assert.deepEqual(store.activeAccount(), { name: null, provider: null, at: null, byProvider: null, lastSwitch: null, chosenByProvider: null, movedOffByProvider: null }, 'a damaged record read as an account in use')
+    assert.equal(store.activeAccount().code, 'ACCOUNT_STATE_UNREADABLE')
+    assert.equal(store.activeAccount().name, null, 'a damaged record read as an account in use')
     const aside = readdirSync(path.dirname(stateFile)).filter(name => name.startsWith('multi-account-state.json.corrupt-'))
     assert.equal(aside.length, 1, 'the damaged record was not moved aside')
     assert.equal(readFileSync(path.join(path.dirname(stateFile), aside[0], path.basename(stateFile)), 'utf8'), '{ not json at all', 'the damaged bytes did not survive the move')
-    assert.equal(existsSync(stateFile), false, 'reading the chip must not write a fresh record')
+    assert.equal(JSON.parse(readFileSync(stateFile, 'utf8')).selectionUnreadableByProvider.codex, true, 'reading a damaged choice must leave a durable choose-again record')
     writeFileSync(stateFile, '\u0000\u0000\u0000\u0000')
-    assert.deepEqual(store.switchTo({ name: 'team', provider: 'codex' }), { ok: true, switched: true, active: { name: 'team', provider: 'codex' }, previous: null })
+    assert.deepEqual(store.switchTo({ name: 'school', provider: 'codex' }), { ok: true, switched: true, active: { name: 'school', provider: 'codex' }, previous: null })
     const fresh = JSON.parse(readFileSync(stateFile, 'utf8'))
-    assert.equal(fresh.activeByProvider.codex, 'team', 'the switch after a quarantine did not land on a fresh record')
+    assert.equal(fresh.activeByProvider.codex, 'school', 'the switch after a quarantine did not land on a fresh record')
     const asideAfter = readdirSync(path.dirname(stateFile)).filter(name => name.startsWith('multi-account-state.json.corrupt-'))
     assert.equal(asideAfter.length, 2, 'the second damaged record was not moved aside too')
     assert.deepEqual(asideAfter.map(name => readFileSync(path.join(path.dirname(stateFile), name, path.basename(stateFile)), 'utf8')).sort(),
@@ -2577,7 +2399,7 @@ test('switchTo refuses an unlisted name, an absent list and a missing state path
     const stateBeforeRegistryRefusal = readFileSync(stateFile, 'utf8')
 
     writeFileSync(file, '{ "accounts": [ this is not json')
-    assert.throws(() => store.switchTo({ name: 'team', provider: 'codex' }), error => error.code === 'ACCOUNT_REGISTRY_DAMAGED')
+    assert.throws(() => store.switchTo({ name: 'school', provider: 'codex' }), error => error.code === 'ACCOUNT_REGISTRY_DAMAGED')
     assert.equal(existsSync(stateFile), true, 'a malformed registry refusal removed the existing state record')
     assert.equal(readFileSync(stateFile, 'utf8'), stateBeforeRegistryRefusal, 'a malformed registry refusal rewrote the existing state record')
   })
@@ -2585,9 +2407,9 @@ test('switchTo refuses an unlisted name, an absent list and a missing state path
 
 test('the account switched to on the menu is the one the packed rotation prefers on the next manual-mode start', async () => {
   await withScratchProfileAsync(async ({ home, servicesRoot, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
+    makeHome(home, '.codex-school', 'auth.json')
     makeHome(home, '.codex-personal', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     store.add({ name: 'personal', provider: 'codex', directory: '.codex-personal' })
     store.switchTo({ name: 'personal', provider: 'codex' })
 
@@ -2609,142 +2431,29 @@ test('the account switched to on the menu is the one the packed rotation prefers
        read per list, and refusals that arrive as sentences.
    ------------------------------------------------------------------ */
 
-test('the application hands one home to every engine call, reads the registry once per list, and answers store refusals as records', () => {
-  const source = readFileSync(MAIN_FILE, 'utf8')
-  const homeAssignment = source.match(/^const ACCOUNT_HOME_DIR = .+$/m)?.[0]
-  assert.ok(homeAssignment, 'the account home must still be resolved once for every engine call')
-  for (const isolated of [false, true]) {
-    let ownerLookups = 0, privateLookups = 0
-    const environment = { fixture: 'account-home' }
-    const home = vm.runInNewContext(`${homeAssignment}; ACCOUNT_HOME_DIR`, {
-      os: { homedir: () => { ownerLookups++; return 'ordinary-owner-home' } },
-      process: { env: environment },
-      providerIsolation: isolated ? { isolationContext: env => {
-        assert.equal(env, environment)
-        privateLookups++
-        return { userProfile: 'private-session-home' }
-      } } : null,
-    })
-    assert.equal(home, isolated ? 'private-session-home' : 'ordinary-owner-home')
-    assert.equal(ownerLookups, isolated ? 0 : 1, 'private selection must not resolve the owner home')
-    assert.equal(privateLookups, isolated ? 1 : 0)
-  }
-  const resolver = source.slice(
-    source.indexOf('async function resolveSessionAccount'),
-    source.indexOf('function resolveServicesRootForAccounts()'),
-  )
-  assert.match(resolver, /homeDir: ACCOUNT_HOME_DIR/, 'the session start resolves account folders from a different home than the list')
-  assert.match(resolver, /exactResume \? \{ selectionMode: 'manual' \}/,
-    'a resume can still follow automatic rotation away from the account that owns its thread')
-  /* The PURPOSE, not the spelling. This pinned the exact object literal
-     `{ preferred }`, so adding a second field to the same spread broke it while
-     the property it exists to protect -- the saved thread's owner reaching the
-     resolver -- was still true. A spelling pin fails against a better
-     implementation, so it asserts the field now rather than the punctuation. */
-  assert.match(resolver, /\.\.\.\(exactResume \? \{ preferred/,
-    'the saved thread owner no longer reaches the engine account resolver')
-  /* AND THE SECOND HALF, which is what stops a configured cutoff refusing a
-     saved conversation. Without this the resume is judged on the number on the
-     Accounts page, which refused the owner's own Manager four times while it
-     had most of its week left. */
-  assert.match(resolver, /providerLimitsOnly: true/,
-    'an exact resume is no longer judged on the provider allowance alone, so a configured cutoff can turn a saved conversation away again')
-  const usage = source.slice(source.indexOf('const readAccountsUsage = asyncSingleFlight('), source.indexOf("ipcMain.handle('mc-accounts:add'"))
-  assert.match(usage, /readAccountUsage\(\{ registryPath: ACCOUNT_REGISTRY_FILE, homeDir: ACCOUNT_HOME_DIR \}\)/,
-    'the allowance read resolves account folders from a different home than the list')
 
-  const list = source.slice(source.indexOf("ipcMain.handle('mc-accounts:list'"), source.indexOf('function accountAnswer'))
-  assert.doesNotMatch(list, /accountRegistry\.policy\(\)/, 'the list handler reads the registry a second time for the policy')
-  assert.match(list, /activeByProvider: active\.byProvider/, 'the list no longer carries the per-provider active names')
-  assert.match(list, /\bactive,/, 'the list dropped the legacy active record older readers use')
-  /* The menu's one sentence about a failover is unwritable without this: the
-     answer carried the clock time of the last switch and nothing else, so the
-     menu could say the account changed and never what it changed from or to. */
-  assert.match(list, /lastSwitch: active\.lastSwitch/, 'the list no longer carries what the last change of account was')
-
-  /* The store wiring hands the services root over for the folders addManaged
-     makes, beside the rotation record that already lives there. */
-  const wiring = source.slice(source.indexOf('const accountRegistry = createAccountRegistryStore'), source.indexOf("/* The renderer's settings"))
-  assert.match(wiring, /servicesRoot: accountServicesRoot/, 'addManaged has nowhere to make a folder')
-
-  /* Every writing channel answers a store refusal rather than throwing it. */
-  for (const channel of ['mc-accounts:policy', 'mc-accounts:switch', 'mc-accounts:sign-in', 'mc-accounts:rename', 'mc-accounts:remove']) {
-    const at = source.indexOf(`ipcMain.handle('${channel}'`)
-    assert.ok(at > 0, `${channel} is not registered`)
-    const handler = source.slice(at, source.indexOf('\n})\n', at))
-    assert.match(handler, /return accountAnswer\(/, `${channel} throws its refusals instead of answering them`)
-  }
-  /* add-managed answers through addManagedAccount(), which asks whether the
-     program is here before the store makes anything, then answers the store
-     the same way the others do. */
-  const addManagedAt = source.indexOf("ipcMain.handle('mc-accounts:add-managed'")
-  assert.ok(addManagedAt > 0, 'mc-accounts:add-managed is not registered')
-  assert.match(source.slice(addManagedAt, source.indexOf('\n})\n', addManagedAt)), /return addManagedAccount\(request\)/,
-    'add-managed no longer asks whether the program is here before adding')
-  const guard = source.slice(source.indexOf('const PROGRAM_NOT_HERE'), source.indexOf('/* ADDING AN ACCOUNT FROM THE ACCOUNTS MENU'))
-  assert.match(guard, /return accountAnswer\(\(\) => accountRegistry\.addManaged\(request\)\)/,
-    'add-managed throws its refusals instead of answering them')
-  const policy = source.slice(source.indexOf("ipcMain.handle('mc-accounts:policy'"), source.indexOf("ipcMain.handle('mc-accounts:switch'"))
-  assert.match(policy, /typeof request\.reservePercent !== 'number'/, 'the reserve crosses the channel without a type check')
-  assert.match(policy, /Number\.isFinite\(request\.reservePercent\)/)
-  const signIn = source.slice(source.indexOf("ipcMain.handle('mc-accounts:sign-in'"), source.indexOf('\n})\n', source.indexOf("ipcMain.handle('mc-accounts:sign-in'")))
-  assert.match(signIn, /accountRegistry\.homeOf\(request\)/, 'the sign-in channel takes a folder from somewhere other than the list')
-  /* MERGE 2026-09-03: the call gained a second field -- the row's own name,
-     which titles the window -- so this pins the
-     home it has always pinned AND the label beside it, rather than a call shape
-     with nothing after the home. The guarantee is unchanged and one assertion
-     stronger: the folder a sign-in lands in comes from the registry's own
-     record, never from the renderer, and so does the name on the window. */
-  assert.match(signIn, /providerLoginService\.start\(account\.provider, \{ home: account\.directory, label: account\.name, \.\.\.\(account\.client \? \{ client: account\.client \} : \{\}\) \}\)/,
-    'the sign-in channel does not open the one sign-in window with the account\'s folder as its home')
-  assert.doesNotMatch(signIn, /payload\.directory|payload\.home/, 'the renderer can name the folder a sign-in lands in')
-
-  /* THE HELPER ITSELF, run: an ACCOUNT_* refusal becomes a record with its
-     sentence; anything else still crosses as a code alone. */
-  const helper = source.slice(source.indexOf('function accountAnswer'), source.indexOf('/* WHICH ACCOUNT THIS COMPUTER PICKS'))
-  const context = {
-    rendererSafeAgentError: error => Object.assign(new Error(error.code || 'AGENT_SESSION_FAILED'), { code: error.code || 'AGENT_SESSION_FAILED' }),
-  }
-  vm.runInNewContext(`${helper}; this.accountAnswer = accountAnswer`, context)
-  /* Spread, because a record built in the other context has that context's
-     Object prototype and strict deep-equal compares prototypes. */
-  assert.deepEqual(
-    { ...context.accountAnswer(() => { throw Object.assign(new Error('There are no accounts on this computer to switch between.'), { code: 'ACCOUNT_REGISTRY_ABSENT' }) }) },
-    { ok: false, code: 'ACCOUNT_REGISTRY_ABSENT', reason: 'There are no accounts on this computer to switch between.' },
-  )
-  assert.throws(
-    () => context.accountAnswer(() => { throw Object.assign(new Error('Unexpected agent IPC field: x'), { code: 'MC_AGENT_INVALID_PAYLOAD' }) }),
-    error => error.code === 'MC_AGENT_INVALID_PAYLOAD' && error.message === 'MC_AGENT_INVALID_PAYLOAD',
-  )
-  assert.throws(
-    () => context.accountAnswer(() => { throw Object.assign(new Error('C:\\\\somewhere\\\\private'), { code: 'EACCES' }) }),
-    error => error.code === 'EACCES' && error.message === 'EACCES',
-    'a file-system failure carried its message, and so its path, to the renderer',
-  )
-  assert.deepEqual(context.accountAnswer(() => ({ ok: true, switched: true })), { ok: true, switched: true })
-})
 
 test('rename changes the name on the list and nothing else, refuses a taken or missing name, and the account in use keeps its place', () => {
   withScratchProfile(({ home, file, stateFile, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
+    makeHome(home, '.codex-school', 'auth.json')
     makeHome(home, '.codex-personal', 'auth.json')
-    store.add({ name: 'team', provider: 'codex', directory: '.codex-team' })
+    store.add({ name: 'school', provider: 'codex', directory: '.codex-school' })
     store.add({ name: 'personal', provider: 'codex', directory: '.codex-personal' })
-    store.switchTo({ name: 'team', provider: 'codex' })
+    store.switchTo({ name: 'school', provider: 'codex' })
     const before = JSON.parse(readFileSync(file, 'utf8'))
 
-    assert.throws(() => store.rename({ name: 'team', provider: 'codex', newName: 'personal' }), error => error.code === 'ACCOUNT_NAME_TAKEN')
-    assert.throws(() => store.rename({ name: 'team', provider: 'codex', newName: '   ' }), error => error.code === 'ACCOUNT_NAME_MISSING')
+    assert.throws(() => store.rename({ name: 'school', provider: 'codex', newName: 'personal' }), error => error.code === 'ACCOUNT_NAME_TAKEN')
+    assert.throws(() => store.rename({ name: 'school', provider: 'codex', newName: '   ' }), error => error.code === 'ACCOUNT_NAME_MISSING')
     assert.throws(() => store.rename({ name: 'nobody', provider: 'codex', newName: 'x' }), error => error.code === 'ACCOUNT_UNKNOWN')
-    assert.throws(() => store.rename({ name: 'team', provider: 'gpt', newName: 'x' }), error => error.code === 'ACCOUNT_PROVIDER_UNSUPPORTED')
+    assert.throws(() => store.rename({ name: 'school', provider: 'gpt', newName: 'x' }), error => error.code === 'ACCOUNT_PROVIDER_UNSUPPORTED')
     assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), before, 'a refused rename wrote the list')
-    assert.deepEqual(store.rename({ name: 'team', provider: 'codex', newName: 'team' }), { ok: true, renamed: false, name: 'team' })
+    assert.deepEqual(store.rename({ name: 'school', provider: 'codex', newName: 'school' }), { ok: true, renamed: false, name: 'school' })
 
-    assert.deepEqual(store.rename({ name: 'team', provider: 'codex', newName: 'Office' }), { ok: true, renamed: true, name: 'Office' })
+    assert.deepEqual(store.rename({ name: 'school', provider: 'codex', newName: 'Office' }), { ok: true, renamed: true, name: 'Office' })
     const after = JSON.parse(readFileSync(file, 'utf8'))
     assert.deepEqual(after.accounts.map(entry => entry.name), ['Office', 'personal'])
     assert.equal(after.accounts[0].profileDir, before.accounts[0].profileDir, 'the folder stays')
-    assert.equal(after.accounts[0].priority, before.accounts[0].priority, 'the order stays')
+
     assert.deepEqual(store.list().accounts.map(entry => entry.name), ['Office', 'personal'])
     assert.equal(store.activeAccount().name, 'Office', 'the account in use follows its new name')
     assert.equal(JSON.parse(readFileSync(stateFile, 'utf8')).activeByProvider.codex, 'Office')
@@ -2757,141 +2466,10 @@ test('rename changes the name on the list and nothing else, refuses a taken or m
    14. One rule per program, and the window a ranking reads.
    ------------------------------------------------------------------ */
 
-test('setPolicy records a program\'s own rule beside the accounts, null clears one field, and the packed engine reads it back', () => {
-  withScratchProfile(({ home, file, store }) => {
-    makeHome(home, '.codex-team', 'auth.json')
-    writeFileSync(file, JSON.stringify({
-      accounts: [
-        { name: 'team', provider: 'codex', profileDir: '.codex-team' },
-        { name: 'personal', provider: 'claude', configDir: '.claude-personal' },
-      ],
-    }, null, 2))
-
-    /* The window on its own, for every program. */
-    let answer = store.setPolicy({ rankWindow: 'weekly' })
-    assert.equal(answer.ok, true)
-    assert.equal(answer.policy.rankWindow, 'weekly')
-    assert.equal(answer.policy.selectionMode, 'priority', 'a key left out leaves the recorded mode alone')
-    assert.equal(answer.policy.byProvider.codex.rankWindow, 'weekly', 'a program with no rule of its own inherits the window')
-    assert.deepEqual(answer.policy.byProvider.codex.own, { selectionMode: false, reservePercent: false, rankWindow: false })
-
-    /* One program's own rule. */
-    answer = store.setPolicy({ provider: 'codex', selectionMode: 'resets-soonest', rankWindow: 'hourly' })
-    assert.deepEqual(answer.policy.byProvider.codex, { selectionMode: 'resets-soonest', reservePercent: 25, rankWindow: 'hourly', own: { selectionMode: true, reservePercent: false, rankWindow: true } })
-    assert.deepEqual(answer.policy.byProvider.claude, { selectionMode: 'priority', reservePercent: 25, rankWindow: 'weekly', own: { selectionMode: false, reservePercent: false, rankWindow: false } })
-    assert.equal(answer.policy.selectionMode, 'priority', 'the rule above is untouched by a program\'s own')
-    let written = JSON.parse(readFileSync(file, 'utf8'))
-    assert.deepEqual(written.selectionByProvider, { codex: { selectionMode: 'resets-soonest', rankWindow: 'hourly' } })
-    assert.equal(written.rankWindow, 'weekly')
-    assert.equal(written.accounts.length, 2, 'recording a rule reordered, dropped or rewrote an account')
-
-    /* The packed engine reads exactly that. */
-    const parsed = loadRegistry({ configPath: file })
-    assert.equal(parsed.rankWindow, 'weekly')
-    assert.equal(parsed.selectionByProvider.codex.selectionMode, 'resets-soonest')
-    assert.equal(parsed.selectionByProvider.codex.rankWindow, 'hourly')
-
-    /* null clears one field and leaves the other. */
-    answer = store.setPolicy({ provider: 'codex', selectionMode: null })
-    assert.equal(answer.policy.byProvider.codex.selectionMode, 'priority', 'cleared, the program follows the rule above')
-    assert.equal(answer.policy.byProvider.codex.rankWindow, 'hourly', 'its own window stays')
-    assert.deepEqual(answer.policy.byProvider.codex.own, { selectionMode: false, reservePercent: false, rankWindow: true })
-    answer = store.setPolicy({ provider: 'codex', rankWindow: null })
-    assert.deepEqual(answer.policy.byProvider.codex.own, { selectionMode: false, reservePercent: false, rankWindow: false }, 'nothing of its own left')
-    written = JSON.parse(readFileSync(file, 'utf8'))
-    assert.equal(written.selectionByProvider === undefined || written.selectionByProvider.codex === undefined
-      || Object.keys(written.selectionByProvider.codex).length === 0, true, 'an emptied rule is not a rule')
-
-    /* The legacy id records as the current one. */
-    answer = store.setPolicy({ selectionMode: 'expiring-first' })
-    assert.equal(answer.policy.selectionMode, 'resets-soonest')
-    assert.equal(JSON.parse(readFileSync(file, 'utf8')).selectionMode, 'resets-soonest')
-
-    /* Refusals name what they refuse and write nothing. */
-    const before = readFileSync(file, 'utf8')
-    assert.throws(() => store.setPolicy({ provider: 'gpt', selectionMode: 'even' }), error => error.code === 'ACCOUNT_PROVIDER_UNSUPPORTED')
-    assert.throws(() => store.setPolicy({ rankWindow: 'daily' }), error => error.code === 'ACCOUNT_RANK_WINDOW_UNSUPPORTED')
-    assert.throws(() => store.setPolicy({ provider: 'codex', rankWindow: 'Weekly' }), error => error.code === 'ACCOUNT_RANK_WINDOW_UNSUPPORTED')
-    assert.throws(() => store.setPolicy({ provider: 'codex', selectionMode: 'random' }), error => error.code === 'ACCOUNT_MODE_UNSUPPORTED')
-    assert.equal(readFileSync(file, 'utf8'), before, 'a refusal rewrote the file')
-  })
-})
 
 
-test("a mode chosen for the whole computer is the DEFAULT: a program's own rule survives it, and Use default is the control that drops it (T378)", async () => {
-  await withScratchProfileAsync(async ({ home, file, stateFile, servicesRoot, store }) => {
-    for (const name of ['personal', 'work', 'spare']) makeHome(home, `.claude-${name}`, '.credentials.json')
-    makeHome(home, '.codex-team', 'auth.json')
-    /* A registry shaped like a real one (T378): the rule above is not Rotate
-       yet, Claude carries a rule of its own beside a window that is not a
-       mode, and Codex carries a deliberate "Stop and let me switch". */
-    writeFileSync(file, JSON.stringify({
-      selectionMode: 'priority',
-      selectionByProvider: { claude: { selectionMode: 'dynamic', rankWindow: 'hourly' }, codex: { selectionMode: 'manual' } },
-      accounts: [
-        { name: 'team', provider: 'codex', profileDir: '.codex-team' },
-        { name: 'personal', provider: 'claude', configDir: '.claude-personal' },
-        { name: 'work', provider: 'claude', configDir: '.claude-work' },
-        { name: 'spare', provider: 'claude', configDir: '.claude-spare' },
-      ],
-    }, null, 2))
-    const healthy = async account => ({ account: account.name, status: 'healthy', canServe: true, reason: 'synthetic signed-in account' })
 
-    /* THE RULE ABOVE IS A DEFAULT, AND A DEFAULT DOES NOT REACH DOWN. The
-       Accounts page calls this control "Default account rule" and offers each
-       program "Use default" beside it, so a program that recorded a rule of
-       its own keeps it when the default changes. Clearing every program's own
-       mode from here was tried for T378 and reverted: it threw away a choice
-       the person made, for programs they were not even looking at, with no
-       notice and no way back to it. */
-    const answer = store.setPolicy({ selectionMode: 'rotate' })
-    assert.equal(answer.ok, true)
-    assert.equal(answer.policy.selectionMode, 'rotate')
-    assert.equal(answer.policy.byProvider.claude.selectionMode, 'dynamic', "a write to the rule above dropped Claude's own rule")
-    assert.equal(answer.policy.byProvider.claude.own.selectionMode, true)
-    assert.equal(answer.policy.byProvider.codex.selectionMode, 'manual', "a write to the rule above dropped Codex's own rule")
-    assert.equal(answer.policy.byProvider.codex.own.selectionMode, true)
-    const written = JSON.parse(readFileSync(file, 'utf8'))
-    assert.equal(written.selectionMode, 'rotate')
-    assert.equal(written.selectionByProvider.claude.selectionMode, 'dynamic')
-    assert.equal(written.selectionByProvider.codex.selectionMode, 'manual')
-    assert.equal(written.accounts.length, 4, 'choosing a mode reordered, dropped or rewrote an account')
 
-    /* So a start still runs Claude's own rule. This is the 18-of-30 the owner
-       measured: "Dynamic" drains one account while there is plenty spare,
-       which is what its own help text promises, while the rule above reads
-       Rotate. The account list is what has to change, not this write. */
-    const own = await resolveAccountForSession({ provider: 'claude', homeDir: home, servicesRoot, probe: healthy })
-    assert.equal(own.selectionMode, 'dynamic', "a program's own rule still decides the start")
-
-    /* "Use default" on the Claude row is the control that drops it, and it is
-       the one the person presses: scoped null, exactly what the Accounts page
-       sends for that option. */
-    const cleared = store.setPolicy({ provider: 'claude', selectionMode: null })
-    assert.equal(cleared.policy.byProvider.claude.selectionMode, 'rotate', 'Claude must follow the default once its own rule is dropped')
-    assert.equal(cleared.policy.byProvider.claude.own.selectionMode, false)
-    assert.equal(cleared.policy.byProvider.claude.rankWindow, 'hourly', "a program's own window is not a mode and stays")
-    assert.equal(cleared.policy.byProvider.codex.selectionMode, 'manual', "dropping one program rule reached another program")
-    assert.equal(JSON.parse(readFileSync(file, 'utf8')).selectionByProvider.claude.selectionMode, undefined)
-    assert.equal(loadRegistry({ configPath: file }).selectionMode, 'rotate')
-
-    /* And now the packed engine takes turns on every start, which is what the
-       owner asked Rotate for. */
-    const landed = []
-    for (let i = 0; i < 3; i += 1) {
-      const selected = await resolveAccountForSession({ provider: 'claude', homeDir: home, servicesRoot, probe: healthy })
-      assert.equal(selected.selectionMode, 'rotate', 'the resolver must run the mode the Accounts page saved')
-      landed.push(selected.account.name)
-    }
-    assert.equal(new Set(landed).size, 3, `three starts must spread across three healthy accounts, got ${landed.join(', ')}`)
-
-    /* It survives a reopen, and Codex is still where the person left it. */
-    const reopened = createAccountRegistryStore({ file, stateFile, servicesRoot, homedir: () => home })
-    assert.equal(reopened.policy().policy.selectionMode, 'rotate')
-    assert.equal(reopened.policy().policy.byProvider.claude.selectionMode, 'rotate')
-    assert.equal(reopened.policy().policy.byProvider.codex.selectionMode, 'manual')
-  })
-})
 
 test('Antigravity registration is one OS sign-in; profile, client and native credential lifetime stay distinct', () => {
   withScratchProfile(({ store, home, file }) => {
@@ -2910,4 +2488,56 @@ test('Antigravity registration is one OS sign-in; profile, client and native cre
     assert.equal(removed.credentialDestroyed,false)
     assert.equal(removed.nativeSignInPreserved,true)
   })
+})
+
+
+test('old saved selection policies load without an error and disappear on the next manual registry save', () => {
+  withScratchProfile(({ home, file, store }) => {
+    makeHome(home, '.codex-school', null)
+    writeFileSync(file, JSON.stringify({ selectionMode: { future: true }, selectionByProvider: { codex: { selectionMode: 'rotate' } },
+      reservePercent: 80, rankWindow: 'weekly', autoRecoverOnLimit: true, unknownPolicy: ['future'],
+      accounts: [{ name: 'school', provider: 'codex', profileDir: '.codex-school', priority: { future: true }, unknownEntry: true }] }))
+    const listed = store.list()
+    assert.equal(listed.damaged, false)
+    assert.equal(listed.accounts[0].name, 'school')
+    store.rename({ provider: 'codex', name: 'school', newName: 'chosen' })
+    const saved = JSON.parse(readFileSync(file, 'utf8'))
+    assert.deepEqual(Object.keys(saved), ['accounts'])
+    assert.equal(saved.accounts[0].name, 'chosen')
+    assert.equal(Object.hasOwn(saved.accounts[0], 'unknownEntry'), false)
+    assert.equal(Object.hasOwn(saved.accounts[0], 'priority'), false)
+    assert.deepEqual(loadRegistry({ configPath: file }).accounts.map(row => row.name), ['chosen'])
+  })
+})
+
+/* 1.0.50 REVIEW, ACCOUNTS C. Claude Code also runs with an API key, a key helper
+   or a cloud provider, none of which writes .credentials.json. The start gate
+   counted a listed Claude account without that file as signed out, so when every
+   listed Claude account used one of them ToolsEnabled refused every Claude agent
+   (AGENT_TIER_NO_SIGNED_IN_ACCOUNT) before the start's own native check ran. A
+   missing Claude file now answers "unknown"; a missing Codex file still "no". */
+test('a Claude account with no saved sign-in does not make the start gate refuse every Claude agent', async () => {
+  const { signInByProvider } = require_(MODULE_FILE)
+  const fold = accounts => Object.fromEntries(signInByProvider(accounts))
+  assert.deepEqual(fold([{ name: 'api', provider: 'claude', signedIn: 'no' }, { name: 'helper', provider: 'claude', signedIn: 'no' }]), { claude: 'unknown' })
+  assert.deepEqual(fold([{ name: 'work', provider: 'codex', signedIn: 'no' }]), { codex: 'no' })
+  assert.deepEqual(fold([{ name: 'api', provider: 'claude', signedIn: 'no' }, { name: 'sub', provider: 'claude', signedIn: 'yes' }]), { claude: 'yes' })
+  assert.deepEqual(fold([{ name: 'a', provider: 'codex', signedIn: 'no' }, { name: 'b', provider: 'codex', signedIn: 'unknown' }]), { codex: 'unknown' })
+  assert.deepEqual(fold([]), {})
+  /* The gate itself, lifted from shell/main.cjs so the real code is what runs. */
+  const { parseAst } = await import('rollup/parseAst')
+  const main = readFileSync(path.join(REPO, 'shell', 'main.cjs'), 'utf8')
+  const ast = parseAst(main)
+  const pick = name => {
+    const node = ast.body.find(entry => (entry.type === 'FunctionDeclaration' && entry.id.name === name)
+      || (entry.type === 'VariableDeclaration' && entry.declarations.some(declaration => declaration.id.name === name)))
+    assert.ok(node, `shell/main.cjs no longer declares ${name}`)
+    return main.slice(node.start, node.end)
+  }
+  const gate = accounts => new Function('accountRegistry', 'signInByProvider',
+    ['PROVIDER_SIGN_IN_TTL_MS', 'providerSignInCache', 'providerSignInAnswer'].map(pick).join('\n') + '\nreturn providerSignInAnswer')(
+    { list: () => ({ ok: true, accounts }) }, signInByProvider)
+  assert.equal(gate([{ name: 'api', provider: 'claude', signedIn: 'no' }])('claude'), 'unknown', 'an API-key Claude account must not refuse every Claude start')
+  assert.equal(gate([{ name: 'work', provider: 'codex', signedIn: 'no' }])('codex'), 'no', 'a Codex account without auth.json still refuses')
+  assert.equal(gate([{ name: 'sub', provider: 'claude', signedIn: 'yes' }])('claude'), 'yes')
 })

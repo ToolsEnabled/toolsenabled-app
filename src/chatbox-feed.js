@@ -1,12 +1,12 @@
 /* WHAT THE CHAT BOX ON THE FIRST PAGE IS ALLOWED TO CONTAIN.
  *
- * Two controls were asked for, and they are two because they answer two
+ * The owner asked for two controls, and they are two because they answer two
  * different questions:
  *
  *   1. WHICH AGENTS' CONTEXT APPEARS. A selection over agents, not one choice
- *      out of a list -- which agents' context shows up in the chatbox.
- *   2. WHETHER AGENT RUNS APPEAR. Three states, not a switch -- runs shown as
- *      well, not shown, or shown only. Runs alongside the conversation, runs
+ *      out of a list -- "select which agents context shows up in the chatbox".
+ *   2. WHETHER AGENT RUNS APPEAR. Three states, not a switch -- "if agent runs
+ *      shows up too or not or only". Runs alongside the conversation, runs
  *      hidden, or runs and nothing else.
  *
  * The box's contents are the product of those two. This module owns both
@@ -41,7 +41,7 @@
 
 export const CHATBOX_FEED_EVENT = 'mc:chatbox-feed-changed'
 
-/* THE THREE STATES, in their stated order: as well, not, or only. */
+/* THE THREE STATES, in the owner's own order: "too or not or only". */
 export const RUNS_MODES = Object.freeze([
   Object.freeze({
     id: 'with',

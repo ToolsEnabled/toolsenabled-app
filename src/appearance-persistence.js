@@ -130,10 +130,7 @@ export function applyAppearance({ documentRef = globalThis.document, storage = b
   const applied = { glow: null, reduceMotion: null }
   if (!documentRef) return applied
   const chosen = storedAppearance(storage)
-  if (chosen.glow !== null) {
-    documentRef.documentElement?.style?.setProperty('--glow', String(chosen.glow / 100))
-    applied.glow = chosen.glow
-  }
+  // Retired decoration: preserve its stored preference but never apply it.
   if (chosen.reduceMotion !== null) {
     documentRef.body?.classList?.toggle('reduce-motion', chosen.reduceMotion)
     applied.reduceMotion = chosen.reduceMotion

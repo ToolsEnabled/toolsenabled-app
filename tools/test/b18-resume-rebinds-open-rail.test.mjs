@@ -73,7 +73,7 @@ function resumeWithOpenRail(t, { focusComposer, railOnAnotherNode = false }) {
     profileId: null, out: null, destroyed: false, graph: null, store, treeStore: store,
     sessionNodeIds: new Map([[node.sessionId, node.id]]), sessionTranscripts: new Map(), sessionTurnLog: new Map(),
     sessionUsage: new Map(), sessionModelOverride: new Map(), sessionPendingImages: new Map(), sessionProfileIds: new Map(),
-    sessionEfforts: new Map(), sessionThreadIds: new Map(), sessionAccountNames: new Map(), nodeActivity: new Map(),
+    sessionEfforts: new Map(), sessionThreadIds: new Map(), sessionAccountNames: new Map(), sessionAccountRecords: new Map(), nodeActivity: new Map(),
     outboxMoveSession() {}, resetSessionMetrics() {}, notifyNodeStatusListeners() {}, refreshTree() {},
     rememberBoundSessionProfile() {}, persistTranscript() {}, resumedTranscripts: null,
     resumedTranscriptLines: ({ savedLines }) => savedLines.slice(), RESUME_PANEL: { marker: '', continued: '', done: '' },

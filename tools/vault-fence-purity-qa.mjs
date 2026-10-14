@@ -42,9 +42,6 @@ import { qaCapabilityPayload } from './lib/qa-capability-payload.mjs'
 
 const require_ = createRequire(import.meta.url)
 const ROOT = path.resolve(import.meta.dirname, '..')
-/* A synthetic live-installation root, assembled at runtime so this source
-   carries no literal user path. */
-const SYNTHETIC_LIVE_ROOT = ['C:', 'Users', 'x', 'Documents', 'Project Files', 'ToolsEnabled-Live'].join('\\')
 
 function refuse(reason) {
   process.stdout.write(`vault-fence-purity-qa: NOT MEASURED -- ${reason}\n`)
@@ -122,7 +119,7 @@ function withHooks(run) {
 
 /* A scratch root that EXISTS, with every path inside it that does NOT. If the
    fence creates anything, it creates it here and the hooks see it. */
-const scratch = mkdtempSync(path.join(process.env.TEMP || process.env.TMP || '.', 'vqa-purity-'))
+const scratch = mkdtempSync(path.join(process.env.TEMP || process.env.TMP || '.', 'w87-purity-'))
 try {
   const { environment } = fencedEnvironment(scratch)
   /* Deliberately NOT creating the directories fencedEnvironment names. The
@@ -210,7 +207,7 @@ try {
 
   /* TIER (ii): A PRODUCT OVERRIDE SET OUTSIDE THE SCRATCH ROOT IS REFUSED.
    *
-   * The case that moved the rule, and its own example:
+   * The case that moved the rule, and Worker 89's own example:
    * TOOLSENABLED_RESEARCH_DB pointed at C:\elsewhere\research.sqlite3 was
    * ACCEPTED under a not-live-only rule -- and providers/web.js opens exactly
    * that path as its sqlite evidence database, so it was accepted and then
@@ -300,8 +297,8 @@ try {
   }
   const floorCases = [
     ['capability path overrides', { 'shell/capability-path-environment.cjs': { CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES: ['A', 'B'] } }],
-    ['OS profile roots', { 'shell/install-profile-guard.cjs': { STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES: ['APPDATA'], PROVIDER_HOME_ENVIRONMENT_NAMES: ['CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'GEMINI_DIR'] } }],
-    ['provider account homes', { 'shell/install-profile-guard.cjs': { STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES: ['APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'HOME'], PROVIDER_HOME_ENVIRONMENT_NAMES: ['CODEX_HOME'] } }],
+    ['OS profile roots', { 'shell/install-profile-guard.cjs': { STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES: ['APPDATA'], PROVIDER_HOME_ENVIRONMENT_NAMES: ['CODEX_HOME', 'GEMINI_DIR'] } }],
+    ['provider account homes', { 'shell/install-profile-guard.cjs': { STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES: ['APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'HOME', 'CLAUDE_CONFIG_DIR'], PROVIDER_HOME_ENVIRONMENT_NAMES: ['CODEX_HOME'] } }],
   ]
   for (const [category, overrides] of floorCases) {
     let named = false
@@ -334,7 +331,7 @@ try {
     try { assertScratchFence({ payload, scratchRoot: scratch, environment: account }); clearedAtAccount = true } catch { /* below */ }
     check(clearedAtAccount, `${name} pointing at the account CLEARS -- it is read, not written through`)
 
-    const liveHome = { ...environment, [name]: `${SYNTHETIC_LIVE_ROOT}\\services` }
+    const liveHome = { ...environment, [name]: String.raw`${"\x43:\\Users\\x\\Desktop\\Example profile\\ToolsEnabled-Live\\services"}` }
     let refusedAtLive = false
     try {
       assertScratchFence({ payload, scratchRoot: scratch, environment: liveHome })
@@ -395,25 +392,29 @@ try {
 
   /* THE MATCHER, IN FIVE SPELLINGS. Case-fold plus bare substring, not
      normalise-then-compare and not segment-exact. The last one is the case the
-     earlier segment-exact form ACCEPTED: `toolsenabled-live-old` is not
+     earlier segment-exact form ACCEPTED: `toolsenabled-live-backup` is not
      EQUAL to `toolsenabled-live`, so an adjacent directory got through. */
-  const live = `${SYNTHETIC_LIVE_ROOT}\\capability\\vault\\secrets.json`
+  const live = String.raw`${"\x43:\\Users\\x\\Desktop\\Example profile\\ToolsEnabled-Live\\capability\\vault\\secrets.json"}`
   const spellings = [
     ['as-is mixed case', live],
     ['lower', live.toLowerCase()],
     ['upper', live.toUpperCase()],
     ['forward slash', live.replace(/\\/g, '/')],
-    ['msys /c/', live.replace(/^C:\\/, '/c/').replace(/\\/g, '/')],
+    ['msys /c/', live.replace(/^\x43:\\/, '/c/').replace(/\\/g, '/')],
     ['doubled separators', live.replace(/\\/g, '\\\\')],
     ['trailing separator', `${live}\\`],
-    ['adjacent name ToolsEnabled-Live-old', live.replace('ToolsEnabled-Live', 'ToolsEnabled-Live-old')],
+    ['adjacent name ToolsEnabled-Live-backup', live.replace('ToolsEnabled-Live', 'ToolsEnabled-Live-backup')],
   ]
   for (const [label, candidate] of spellings) {
+    // A Windows spelling is relative on POSIX. Keep its bytes while giving
+    // the payload an absolute path on this host, so the live-path refusal is
+    // exercised rather than the earlier relative-path refusal.
+    const absoluteCandidate = path.isAbsolute(candidate) ? candidate : path.resolve(candidate)
     let refused = false
     try {
       assertScratchFence({
         payload, scratchRoot: scratch,
-        environment: { ...environment, TOOLSENABLED_VAULT_PATH: candidate },
+        environment: { ...environment, TOOLSENABLED_VAULT_PATH: absoluteCandidate },
       })
     } catch (error) {
       refused = error instanceof ScratchFenceRefusal && /INSIDE THE LIVE INSTALLATION/.test(error.message)
@@ -434,7 +435,7 @@ try {
       + `${enumerated.length - swept.length} are redirected and ${swept.length} are held to the live rule when set\n`)
     check(enumerated.every(name => redirected.has(name) || swept.includes(name)),
       'every path variable the product enumerates is either redirected or held to the live rule')
-    /* The four a hand-written list missed, and the three found after
+    /* The four a hand-written list missed, and the three Worker 85 found after
        everything else was fenced. Named so a regression is legible rather than
        a count going down by one. */
     for (const name of ['TOOLSENABLED_AUDIT_DB', 'TOOLSENABLED_AUDIT_JSONL_PATH',

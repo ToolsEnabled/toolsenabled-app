@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url'
 import os from 'node:os'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const ROOT = dirname(here) // repository root
+const ROOT = dirname(here) // mission-control/
 
 const liveRoot = process.env.MC_LIVE_ROOT?.trim()
 if (!liveRoot) {

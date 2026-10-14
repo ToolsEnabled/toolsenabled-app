@@ -24,7 +24,7 @@
  * THE SANCTIONED SET IS TWO, NOT ONE. The clamp's own comment names laneSweep
  * and it is easy to read that as the only exception; `.node-drift-light` runs
  * driftLightIn under the same `!important` and has done since before this
- * build. Measured identical at an earlier commit and here. This test therefore pins
+ * build. Measured identical at 2ff5e1e0 and here. This test therefore pins
  * the set as the sheet actually has it and asserts that this build added
  * nothing to it -- an assertion written from the shorthand would have failed
  * on correct pre-existing code, which is a test reporting its own premise

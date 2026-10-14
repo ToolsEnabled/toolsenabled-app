@@ -1194,8 +1194,8 @@ if (!hasWorkingMetricsSeam) {
 
     const aliasBuffer = createActionBuffer({ platform: 'win32' });
     const aliasChanges = [
-      { path: 'C:\\Work\\src\\A.js', status: 'M', added: 4, removed: 1 },
-      { path: 'c:/work/src/a.js', status: 'M', added: 90, removed: 80 },
+      { path: '\x43:\\Work\\src\\A.js', status: 'M', added: 4, removed: 1 },
+      { path: '\x63:/work/src/a.js', status: 'M', added: 90, removed: 80 },
     ];
     const aliases = addPacket(
       aliasBuffer,
@@ -1234,7 +1234,7 @@ if (!hasWorkingMetricsSeam) {
     const changedReplay = addPacket(
       aliasBuffer,
       fileChangePacket('alias-1', [
-        { path: 'C:/Work/src/A.js', status: 'M', added: 400, removed: 300 },
+        { path: '\x43:/Work/src/A.js', status: 'M', added: 400, removed: 300 },
       ]),
       't-alias',
       2_300,
@@ -1255,7 +1255,7 @@ if (!hasWorkingMetricsSeam) {
     const newEvent = addPacket(
       aliasBuffer,
       fileChangePacket('alias-2', [
-        { path: 'c:/work/src/A.js', status: 'M', added: 3, removed: 2 },
+        { path: '\x63:/work/src/A.js', status: 'M', added: 3, removed: 2 },
       ]),
       't-alias',
       2_400,
@@ -1276,10 +1276,10 @@ if (!hasWorkingMetricsSeam) {
 
   test('path identity is platform-aware and root-safe', () => {
     const windowsBackslash = normalizeChatPathIdentity(
-      'C:\\Work\\.\\src\\A.js',
+      '\x43:\\Work\\.\\src\\A.js',
       'win32',
     );
-    const windowsSlash = normalizeChatPathIdentity('c:/work/src/A.js', 'win32');
+    const windowsSlash = normalizeChatPathIdentity('\x63:/work/src/A.js', 'win32');
     assert.notEqual(
       windowsBackslash,
       null,
@@ -1298,8 +1298,8 @@ if (!hasWorkingMetricsSeam) {
       'bad value: differently cased identities would split Windows aliases',
     );
 
-    const otherUpper = normalizeChatPathIdentity('C:\\Work\\src\\A.js', 'linux');
-    const otherLower = normalizeChatPathIdentity('c:/work/src/A.js', 'linux');
+    const otherUpper = normalizeChatPathIdentity('\x43:\\Work\\src\\A.js', 'linux');
+    const otherLower = normalizeChatPathIdentity('\x63:/work/src/A.js', 'linux');
     assert.notEqual(
       otherUpper,
       null,
@@ -1317,10 +1317,10 @@ if (!hasWorkingMetricsSeam) {
     );
 
     const resolved = normalizeChatPathIdentity(
-      'C:\\Work\\src\\..\\lib\\A.js',
+      '\x43:\\Work\\src\\..\\lib\\A.js',
       'win32',
     );
-    const direct = normalizeChatPathIdentity('c:/work/lib/a.js', 'win32');
+    const direct = normalizeChatPathIdentity('\x63:/work/lib/a.js', 'win32');
     assert.notEqual(
       resolved,
       null,
@@ -1332,9 +1332,9 @@ if (!hasWorkingMetricsSeam) {
       'bad value: an identity retaining a dot-dot segment would miss lexical resolution',
     );
     assert.equal(
-      normalizeChatPathIdentity('C:\\..\\escape.js', 'win32'),
+      normalizeChatPathIdentity('\x43:\\..\\escape.js', 'win32'),
       null,
-      'bad value: c:/escape.js would allow dot-dot to cross the detected root',
+      'bad value: \x63:/escape.js would allow dot-dot to cross the detected root',
     );
   });
 
@@ -1519,7 +1519,7 @@ if (!hasWorkingMetricsSeam) {
   test('public clear methods clear dedupe identities at exact scope', () => {
     const buffer = createActionBuffer({ platform: 'win32' });
     const turnOnePacket = fileChangePacket('clear-1', [
-      { path: 'C:\\Work\\src\\A.js', status: 'M', added: 5, removed: 2 },
+      { path: '\x43:\\Work\\src\\A.js', status: 'M', added: 5, removed: 2 },
     ]);
     const turnTwoPacket = fileChangePacket('clear-2', [
       { path: 'src/other.js', status: 'M', added: 3, removed: 1 },

@@ -1,8 +1,10 @@
 /* A REAL AGENT'S LIVE ANSWER, NOT JUST ITS HISTORY REPLAY, DRAWS CODE AND
  * TABLES AS SUCH.
  *
- * Chat formatting was messy and needed fixing, including the
- * formatting of inline responses, which was part of the same issue.
+ * Owner, 2026-09-03: "chat formatting needs to be fixed - its messy right
+ * now", and a minute later, "try your best to make it formatted cleanly in
+ * your inline response since thats exactly part of the messy issue i meant
+ * earlier".
  *
  * src/components.js's makeMsg() now draws an agent turn through
  * src/chat-markdown.js's renderChatMarkdown() instead of formatInlineText --

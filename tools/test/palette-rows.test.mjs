@@ -8,8 +8,8 @@
  * sentence the row would really carry, and a row that lost its group or its
  * reason fails here whatever it looks like.
  *
- * WHAT IT DEFENDS, in the requirement's terms (more like VS Code, much more
- * intuitive): every action this build performs has a row; the rows are
+ * WHAT IT DEFENDS, in the owner's terms ("more like vscode, much more
+ * intuitive"): every action this build performs has a row; the rows are
  * grouped, with the group that ends or forgets something last; every row that
  * can be switched off says why in the state that switches it off; and the
  * cancelled-mention sentence is its own.
@@ -49,6 +49,9 @@ const ROW_BUILDERS = ['nodeRemovalBlock', 'commonChatActionsFor', 'chatActionRow
 function rowsFor({
   running = false,
   started = false,
+  sessionOwner = undefined,
+  sessionLive = undefined,
+  canClose = true,
   cleanupPending = false,
   canPick = true,
   turnsSoFar = 0,
@@ -77,12 +80,13 @@ function rowsFor({
     PALETTE_PANEL, EFFORT_SWITCH, RESUME_PANEL, REWIND_PANEL, SWITCH_PANEL, MODEL_PANEL, REMOVE_PANEL,
     MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY, LOOP_BOUNDS, controlState, cloudCommandAction, launchTier,
     planNodeRemoval, startDraftFlight: createSingleFlight(), nodeBranchRemovalFlight: createSingleFlight(),
+    ownedSessions: () => new Map(started ? [[node.sessionId, sessionOwner === undefined ? node.id : sessionOwner]] : []),
     treeNodeName: value => value.id,
     treeStore: { getNode: id => id === node.id ? node : children.find(child => child.id === id), childrenOf: id => id === node.id ? children : [],
       ...(childSlot === undefined ? {} : { childSlot: id => (id === node.id ? childSlot : null) }) },
-    window: { mcAgent: { start: stub, close: stub, interrupt: stub, rewind: stub, setEffort: stub,
+    window: { mcAgent: { start: stub, ...(canClose ? { close: stub } : {}), interrupt: stub, rewind: stub, setEffort: stub,
       ...(canPick ? { pickAttachment: stub, pickMention: stub } : {}) } },
-    nodeBusy: value => value.id === node.id ? running : busyChild, nodeSessionLive: () => started && !cleanupPending,
+    nodeBusy: value => value.id === node.id ? running : busyChild, nodeSessionLive: () => sessionLive ?? (started && !cleanupPending),
     nodeCleanupPending: () => cleanupPending, nodeSessionEnded: () => !started,
     startCleanupSentence: () => 'Cleanup has not finished. Try Stop again.',
     START_NEEDS_APP_TEXT: () => 'Starting an agent needs the installed application.',
@@ -91,6 +95,7 @@ function rowsFor({
     nodeReplies: new Map(reply ? [[node.id, reply]] : []),
     sessionTurnLog: new Map([[node.sessionId, Array.from({ length: turnsSoFar }, (_, index) => ({ turnId: `turn-${index}`, yourText: `Message ${index}` }))]]),
     transcriptStore: { has: () => Boolean(savedConversation), get: () => savedConversation },
+    exampleBoardText: () => 'Example actions cannot start work.',
     loopIntervals, mockSource: () => sourceMode === 'mock',
     setOrgStatus: (...args) => { assert.ok(loopSurface, 'A loop action must supply its explicit surface'); return loopSurface.setOrgStatus(...args) },
     statusSink: stub, runPaletteAction, openComposeFor: stub, focusDetailsControl: stub, resumeNodeSession: stub,
@@ -100,7 +105,11 @@ function rowsFor({
   }
   scope.openLoopFor = node => {
     assert.ok(loopSurface, 'A loop action test must supply its explicit surface')
-    const loopScope = { showWorkspaceControls: stub, mockSource: scope.mockSource, PALETTE_PANEL, treeStore: scope.treeStore, ...loopSurface }
+    const loopScope = {
+      showWorkspaceControls: stub, mockSource: scope.mockSource, PALETTE_PANEL,
+      treeStore: scope.treeStore, nodeSessionLive: scope.nodeSessionLive,
+      nodeCleanupPending: scope.nodeCleanupPending, ...loopSurface,
+    }
     const open = new Function(...Object.keys(loopScope), `${declaredFunctionSource(VIEW, 'openLoopFor')}; return openLoopFor`)(...Object.values(loopScope))
     return open(node)
   }
@@ -110,53 +119,27 @@ function rowsFor({
 
 const byId = rows => Object.fromEntries(rows.map(row => [row.id, row]))
 
-test('manual continuation and retry stay together after the conversation rows', () => {
-  const rows = rowsFor({ saved: true, savedAccount: 'saved-account', recovery: { canRetry: () => true, isRecovering: () => false } })
+test('manual continuation stays together after the conversation rows', () => {
+  const rows = rowsFor({ saved: true, savedAccount: 'saved-account' })
   const ids = rows.map(row => row.id)
-  assert.equal(ids.indexOf('retry-account-recovery'), ids.indexOf('copy-reply') + 1)
-  assert.equal(ids.indexOf('continue-another-account'), ids.indexOf('retry-account-recovery') + 1)
-  /* T381's `switch-continue` row joined this contiguous run on 2026-09-18,
-     between the account continuation and the first plain Agent row. The line
-     below pinned `child` directly after `continue-another-account`, which was
-     the whole run until then. It is EXTENDED rather than relaxed: what this
-     test protects is that the continuation rows stay together and in order, not
-     that there happen to be two of them, so the new row is named explicitly and
-     a future one will fail here again rather than slip in unnoticed. */
-  assert.equal(ids.indexOf('switch-continue'), ids.indexOf('continue-another-account') + 1)
+  /* Since 1.0.50 the continuation run is Switch and continue only: the account
+     recovery retry and "continue on another account" rows left with automatic
+     account recovery. What this protects is that the run stays together and in
+     order, so a future row fails here rather than slipping in unnoticed. */
+  assert.equal(ids.indexOf('switch-continue'), ids.indexOf('copy-reply') + 1)
   assert.equal(ids.indexOf('child'), ids.indexOf('switch-continue') + 1)
-  assert.equal(byId(rows)['continue-another-account'].group, PALETTE_PANEL.groupAgent)
 })
 
-test('a retryable account recovery adds one contiguous Agent row for its exact node', () => {
-  assert.equal(byId(rowsFor())['retry-account-recovery'], undefined)
-  assert.equal(byId(rowsFor({ recovery: { canRetry: () => false } }))['retry-account-recovery'], undefined)
-  const checked = []
-  const rows = rowsFor({ recovery: { canRetry: id => { checked.push(id); return true } } })
-  assert.deepEqual(checked, ['node-a'])
-  assert.equal(rows.filter(row => row.id === 'retry-account-recovery').length, 1)
-  assert.equal(byId(rows)['retry-account-recovery'].group, PALETTE_PANEL.groupAgent)
+test('no row retries account recovery or continues on another account', () => {
+  const recovery = { canRetry: () => true, isRecovering: () => false, retry: async () => assert.fail('recovery must not run') }
+  for (const options of [{}, { saved: true, savedAccount: 'saved-account' }, { recovery }, { recovery, saved: true, savedAccount: 'saved-account' }]) {
+    const ids = rowsFor(options).map(row => row.id)
+    assert.equal(ids.includes('retry-account-recovery'), false)
+    assert.equal(ids.includes('continue-another-account'), false)
+  }
+  const rows = rowsFor({ recovery })
   const groupRuns = rows.filter((row, index) => index === 0 || rows[index - 1].group !== row.group).map(row => row.group)
   assert.deepEqual(groupRuns, [PALETTE_PANEL.groupCommon, PALETTE_PANEL.groupConversation, PALETTE_PANEL.groupAgent, PALETTE_PANEL.groupDanger])
-})
-
-test('account recovery retry explains a running session or a disabled start control', () => {
-  const recovery = { canRetry: () => true }
-  for (const running of [false, true]) {
-    for (const startEnabled of [false, true]) {
-      const row = byId(rowsFor({ recovery, running, startEnabled }))['retry-account-recovery']
-      assert.equal(row.enabled, !running && startEnabled)
-      if (!row.enabled) assert.equal(row.disabledHint, running ? RESUME_PANEL.busy : 'Starting agents is switched off.')
-    }
-  }
-})
-
-test('the enabled account recovery row closes the menu and retries its exact node once', async () => {
-  const calls = []
-  const recovery = { canRetry: () => true, retry: async id => { calls.push(['retry', id]) } }
-  const row = byId(rowsFor({ recovery }))['retry-account-recovery']
-  assert.equal(row.enabled, true)
-  await row.run({ close: () => calls.push(['close']) })
-  assert.deepEqual(calls, [['close'], ['retry', 'node-a']])
 })
 
 test('a failed start with retained cleanup offers Stop without offering another start or removal', () => {
@@ -225,7 +208,8 @@ test('Common actions use this node state and its own loop interval', () => {
   const cleanup = byId(rowsFor({ started: true, cleanupPending: true }))
   assert.equal(cleanup.cloud.enabled, false)
   assert.equal(cleanup.goal.enabled, false)
-  assert.equal(cleanup.goal.disabledHint, PALETTE_PANEL.whyNotStarted)
+  assert.equal(cleanup.goal.disabledHint, 'Cleanup has not finished. Try Stop again.')
+  assert.equal(cleanup.cloud.disabledHint, cleanup.goal.disabledHint)
   const example = byId(rowsFor({ sourceMode: 'mock' }))
   assert.equal(example.loop.enabled, false)
   assert.equal(example.loop.disabledHint, PALETTE_PANEL.loopExample)
@@ -438,8 +422,8 @@ test('every reason and every group heading reads as a sentence', () => {
   }
 })
 
-/* R1238: the switch-model row is always present and works.
-   Switch and continue was spread in behind `savedConversation`, so on a
+/* OWNER REQUEST R1238 (2026-09-19): "why does the button hide now it needs to
+   work". Switch and continue was spread in behind `savedConversation`, so on a
    circle with nothing saved the row was not refused, it was ABSENT -- and an
    absent control is indistinguishable from a product that never had one. This
    pins the palette's own standing rule for it: the row exists in every state,
@@ -483,4 +467,20 @@ test('Start an agent under this one follows the free child slots the store admit
   assert.equal(row.disabledHint, full.reason, 'the row says the store\'s own reason')
   assert.equal(byId(rowsFor({ childSlot: { total: 1, limit: 4, canAdd: true, reason: '' } })).child.enabled, true)
   assert.equal(byId(rowsFor()).child.enabled, true, 'a node the store does not know keeps the row')
+})
+
+
+test('Stop follows the owned session, including idle failed sessions with stale activity', () => {
+  const calls = []
+  const rows = byId(rowsFor({ started: true, running: false, sessionLive: false,
+    runPaletteAction: (verb, node) => calls.push([verb, node.id, node.sessionId]) }))
+  assert.equal(rows.stop.enabled, true)
+  assert.equal(rows.stop.disabledHint, '')
+  assert.equal(rows.interrupt.enabled, false)
+  rows.stop.run({ say() {} })
+  assert.deepEqual(calls, [['stop', 'node-a', 'chat-a']])
+  assert.equal(byId(rowsFor({ started: true, sessionLive: true, sessionOwner: 'another-node' })).stop.enabled, false)
+  assert.equal(byId(rowsFor({ started: true, sessionLive: false, canClose: false })).stop.enabled, false)
+  assert.equal(byId(rowsFor({ cleanupPending: true })).stop.enabled, true)
+  // (An account-recovery retry policy no longer enables Stop: automatic account recovery left in 1.0.50.)
 })

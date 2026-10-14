@@ -152,8 +152,8 @@ function heroOption(P) {
         return mtip(`<div class="tt-title">${bandLabel(R, i)}</div>${rows}<div class="tt-row tt-total">Total <b>${Math.round(total)}k</b></div>`)
       },
     },
-    /* TRUE stacked bands, rebuilt from zero (the old chart's four independent
-       translucent areas pouring to baseline read as mud). Every
+    /* TRUE stacked bands, rebuilt from zero (owner verdict on the old one:
+       four independent translucent areas pouring to baseline = mud). Every
        band is a SOLID Carbon categorical fill — bands physically cannot
        overlap, so no boundary can muddy. A 1.5px --bg seam rides each
        band's top line: the page's own colour drawn between fills, which is
@@ -250,7 +250,7 @@ function stripOption(P) {
 }
 
 /* ---------- token routing sankey — THE HERO ----------
-   The one chart chosen as the page's lead, promoted to the
+   The one chart with an explicit owner verdict ("cool"), promoted to the
    page's centerpiece: full column, 430px, bare on the page. The view
    derives the flows (metrics.js buildSankey — data stays with the data
    owner); this builder only dresses them. Centerpiece dress: slim 3px-

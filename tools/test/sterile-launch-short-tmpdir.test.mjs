@@ -158,7 +158,7 @@ test('S-TMPDIR-2: providerAuthenticatedLaunchEnvironment (the real caller run-ag
   const environment = providerAuthenticatedLaunchEnvironment(
     { accountHome, scratchRoot: deepScratchRoot },
     { PATH: '/usr/bin:/bin' },
-    { platform: 'linux' },
+    { platform: 'linux', argv: ['--codex-home', path.join(accountHome, 'selected-provider')] },
   )
   assert.equal(environment.TMPDIR, shortLinuxTmpdir())
   assert.equal(environment.USERPROFILE, accountHome, 'the real account identity is still preserved, unrelated to this fix')

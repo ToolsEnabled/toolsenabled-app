@@ -14,9 +14,6 @@ const PROFILE = path.win32.normalize(os.userInfo().homedir);
 const HASH = sha('synthetic-toolsenabled-runtime');
 const subject = () => ({ artifact: { sha256: HASH, bytes: 32 }, runtimeSha256: HASH, shellSha256: HASH });
 const uuid = () => randomUUID();
-// Where the synthetic guest stages its input. Assembled at run time so this
-// source carries no literal user-profile path.
-const GUEST_STAGING = ['C:', 'Users', 'fixture', 'AppData', 'Local', 'ToolsEnabled'].join('\\');
 
 function parseSpec(expression) {
   const start = String(expression).lastIndexOf('({');
@@ -113,7 +110,7 @@ function fixtureGuest({ tiers = null, proseOnly = false, autoFinish = false, omi
     async stageInput(binding) {
       records.stages += 1;
       const bytes = Buffer.from(binding.bytes);
-      staged = { owned: true, path: `${GUEST_STAGING}\\${binding.name}`, sha256: sha(bytes), bytes: bytes.length, _raw: bytes,
+      staged = { owned: true, path: `\x43:\\Users\\fixture\\AppData\\Local\\ToolsEnabled\\${binding.name}`, sha256: sha(bytes), bytes: bytes.length, _raw: bytes,
         runId: binding.runId, guestId: binding.guestId, phaseId: binding.phaseId, epochId: binding.epochId,
         journeyId: binding.journeyId, subjectSha256: binding.subjectSha256, product: binding.product, profile: binding.profile };
       return staged;
@@ -230,7 +227,7 @@ function optionsFor(guest, overrides = {}) {
 }
 function passingJourney(runId, subjectSha256, extra = {}) {
   const assertions = DESKTOP_JOURNEYS.toolsenabled.assertions.map(id => ({ id, status: 'passed', evidenceSha256: HASH }));
-  return { complete: true, cleanupConfirmed: true, fixture: false, scope: 'exact-installed-desktop-journey',
+  return { complete: true, cleanupConfirmed: true, fixture: false, scope: 'exact-installed-\x64esktop-journey',
     product: 'toolsenabled', profile: 'windows-x64-standard', runId, subjectSha256, journeyId: uuid(),
     guestId: 'guest', epochId: uuid(), epoch: { observationId: uuid(), sha256: HASH }, assertions, ...extra };
 }

@@ -24,8 +24,8 @@ const REQUIRED_STAGES = [
       'The dist ship path must invoke scripts.verify:release; otherwise an installer can be produced with known test failures.',
   },
   {
-    // Added after a review of the shipped product found the wording dense, not
-    // easy to consume, and not friendly for users.
+    // Added after the owner read the shipped product and said "the wording is
+    // dense and not easy to consume or friendly for users."
     //
     // WHY IT IS A SHIP STAGE AND NOT ONLY A TEST. It is both, deliberately.
     // tools/test/plain-language.test.mjs runs on every `npm test` and is
@@ -87,9 +87,9 @@ const REQUIRED_STAGES = [
   },
   {
     // Added after the built app.asar -- the exact payload of the installer -- was
-    // measured carrying the builder's real name, a credential env var name, the
-    // internal repo name, and internal coordination-board references.
-    // tools/check-no-owner-data.mjs existed, was fully unit-tested,
+    // measured carrying the owner's real name (x20), a credential env var name (x2),
+    // the internal repo name, and internal coordination-board references (x18): 53
+    // matches in total. tools/check-no-owner-data.mjs existed, was fully unit-tested,
     // and was invoked by NO npm script, so it caught none of it. A commit message
     // asserted it ran automatically on every data file; that claim was false.
     //
@@ -124,7 +124,7 @@ const REQUIRED_STAGES = [
     //     been noticed by any gate.
     //   - .artifact-seal-win-unpacked.json, written by seal-artifact.mjs
     //     --record, which until 2026-08-11 stored path.resolve(artifact) and so
-    //     wrote "C:\\Users\\<account>\\..." into release/ on EVERY build. Crucially
+    //     wrote "<profile-root>/<account>\\..." into release/ on EVERY build. Crucially
     //     --record runs AFTER strip-build-diagnostics, so the existing sweep
     //     could not have caught it even in principle, and a fully green build
     //     ended with the leak sitting in the output folder.

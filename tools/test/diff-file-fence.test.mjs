@@ -327,7 +327,7 @@ test('a junction inside the work folder does not lead out of it', (t) => {
 
 test('a path on another drive is refused rather than treated as relative', (t) => {
   if (process.platform !== 'win32') { t.skip('drive letters are a Windows shape'); return }
-  const other = workRoot.toLowerCase().startsWith('c:') ? 'D:\\somewhere\\file.txt' : 'C:\\somewhere\\file.txt'
+  const other = workRoot.toLowerCase().startsWith('c:') ? '\x44:\\somewhere\\file.txt' : '\x43:\\somewhere\\file.txt'
   assert.equal(files().write(other, 'no\n').code, 'MC_DIFF_OUTSIDE_WORKSPACE')
 })
 

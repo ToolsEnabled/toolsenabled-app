@@ -128,6 +128,7 @@ test('actual agent close warning uses normal close, honors a renderer veto, and 
     destroy() { assert.fail('A native warning must not destroy an unsaved renderer') },
   }
   const context = { window, win: window, quitWithoutWindowClose: false, runningAgentCount: () => 1,
+    installerAfterQuit: { cancel() {} },
     nodeTranscripts: { getStorageStatus: () => ({ durable: true, pendingWrites: 0 }) },
     transcriptCapture: { hasPendingWrites: () => false },
     rendererPrefs: { snapshot: () => ({ values: {} }) }, CLOSE_WARNING_KEY: 'fixture',
@@ -172,8 +173,9 @@ function quitWarningFixture({ failClose = false, diskFull = false, pendingWrites
     destroy() { assert.fail('The quit gate must not destroy an unsaved renderer') },
   }
   f.windows.push(window)
+  const installerAfterQuit = { cancels: 0, cancel() { this.cancels++ } }
   const context = {
-    window, win: window, createAppQuitGate, appShutdown: f.shutdown,
+    window, win: window, createAppQuitGate, appShutdown: f.shutdown, installerAfterQuit,
     nodeTranscripts: { getStorageStatus: () => ({ durable: !diskFull, pendingWrites }) },
     transcriptCapture: { hasPendingWrites: () => pendingCapture },
     reportUnsavedTranscriptClose() {},
@@ -186,7 +188,7 @@ function quitWarningFixture({ failClose = false, diskFull = false, pendingWrites
   }
   transcriptGuard(context)
   vm.runInNewContext(`let closeRequested = false; let closeWarningPending = false;\n${main.slice(vetoStart, vetoEnd)}\n${main.slice(closeStart, closeEnd)}\n${main.slice(quitStart, quitEnd)}`, context)
-  return { ...f, draft, window, answer, beforeQuit: e => beforeQuit(e),
+  return { ...f, draft, window, answer, installerAfterQuit, beforeQuit: e => beforeQuit(e),
     get prompts() { return prompts }, get closed() { return closed } }
 }
 
@@ -200,6 +202,7 @@ test('quit-gate closes bypass the agent warning, preserve drafts, and rearm manu
   assert.equal(f.draft.dirty, true)
   assert.equal(f.shutdown.started, false)
   assert.deepEqual(f.calls, [])
+  assert.equal(f.installerAfterQuit.cancels, 1, 'U1: the renderer veto cancels an update installer waiting on this quit')
 
   f.window.close()
   assert.equal(f.prompts, 1, 'a later manual close must ask again after the renderer veto')

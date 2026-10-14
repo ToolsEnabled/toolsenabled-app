@@ -10,7 +10,7 @@ import { refusalCode } from '../../src/agent-availability-copy.js'
 import { LAUNCH_TIERS } from '../../src/orchestration-controls.js'
 import { slotAccountStartOptions } from '../../src/slot-account-choice.js'
 import { withResearchTreeBinding } from '../../src/research-tree-session.js'
-import { RECOVERED_SESSION, QUEUE_PANEL, RESUME_PANEL, START_REFUSAL, sendFailureIsUnconfirmed } from '../../src/fleet-tree-copy.js'
+import { RECOVERED_SESSION, QUEUE_PANEL, RESUME_PANEL, START_REFUSAL, sendFailureIsUnconfirmed, sendFailureWasAccepted } from '../../src/fleet-tree-copy.js'
 
 const { restore } = installDomStandIn(globalThis)
 const originalStorage = globalThis.localStorage
@@ -41,7 +41,7 @@ function fixture({ startAllowed = true, resume = 'refused', initialQueue = [], s
     sessionTranscripts: turns, transcriptAppend(sessionId, line) { (turns.get(sessionId) || lines).push(line) },
     transcriptStore: { has: () => true, get: () => ({ lines: [] }) }, TRANSCRIPT_LIMITS: { maxLineChars: 600 },
     turnLogAppend() {}, refreshTree() {}, refusalCode, queuedSendRefusalSentence: code => code,
-    sendFailureIsUnconfirmed, START_NEEDS_APP_TEXT: () => 'Open the app.',
+    sendFailureIsUnconfirmed, sendFailureWasAccepted, START_NEEDS_APP_TEXT: () => 'Open the app.',
     isWriteEnabled: () => startAllowed, START_CONTROL_FLAG: 'start', startControlOffReason: () => 'Starting agents is switched off.',
     START_REFUSAL, RECOVERED_SESSION, QUEUE_PANEL, RESUME_PANEL,
     recoveringNodes: new Set(), nodeReplacementFlight: createSingleFlight(), recoveryCoordinator: () => null, isResourceHold,

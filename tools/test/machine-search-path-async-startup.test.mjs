@@ -12,13 +12,13 @@ const missing = () => Object.assign(new Error('fixture entry absent'), { code: '
 // Execute the real module with inert OS boundaries. No process, provider home,
 // registry key or executable on the test machine is consulted. Held callbacks
 // prove ordering independently of machine load or a timing threshold.
-function fixture({ npmDirectory = 'Q:\\RegistryNpm', statError = null } = {}) {
+function fixture({ npmDirectory = '\x51:\\RegistryNpm', statError = null } = {}) {
   const calls = [], syncCalls = [], statCalls = []
-  const fakeProcess = { platform: 'win32', env: { SystemRoot: 'Q:\\Windows', PATH: 'Q:\\Inherited' } }
+  const fakeProcess = { platform: 'win32', env: { SystemRoot: '\x51:\\Windows', PATH: '\x51:\\Inherited' } }
   const childProcess = {
     execFileSync(file, args, options) {
       syncCalls.push({ file, args, options })
-      return registryText('Q:\\SynchronousOnly')
+      return registryText('\x51:\\SynchronousOnly')
     },
     execFile(file, args, options, callback) {
       const call = { file, args, options, callback, settled: false, kind: args[0] === 'query' ? 'registry' : 'package' }
@@ -45,7 +45,7 @@ function fixture({ npmDirectory = 'Q:\\RegistryNpm', statError = null } = {}) {
     call.settled = true
     call.callback(error, stdout)
   }
-  const answerRegistry = (machine = 'Q:\\RegistryNpm', user = 'Q:\\User') => {
+  const answerRegistry = (machine = '\x51:\\RegistryNpm', user = '\x51:\\User') => {
     const held = pending('registry')
     assert.equal(held.length, 2)
     for (const call of held) answer(call, null, registryText(call.args[1].startsWith('HKLM') ? machine : user))
@@ -60,7 +60,7 @@ test('startup warm-up starts bounded asynchronous registry reads and returns bef
   assert.equal(f.pending('registry').length, 2)
   assert.equal(typeof warming.then, 'function')
   for (const call of f.pending('registry')) {
-    assert.equal(call.file, 'Q:\\Windows\\System32\\reg.exe')
+    assert.equal(call.file, '\x51:\\Windows\\System32\\reg.exe')
     assert.equal(call.options.timeout, 2500)
     assert.equal(call.options.maxBuffer, 512 * 1024)
     assert.equal(call.options.windowsHide, true)
@@ -71,22 +71,22 @@ test('startup warm-up starts bounded asynchronous registry reads and returns bef
   assert.equal(settled, false)
   assert.equal(f.statCalls.length, 0, 'npm discovery ran before registry directories arrived')
   const provisional = f.api.machineSearchPath()
-  assert.deepEqual([...provisional.directories], ['Q:\\Inherited'])
+  assert.deepEqual([...provisional.directories], ['\x51:\\Inherited'])
   assert.equal(provisional.complete, false)
   assert.equal(f.pending('registry').length, 2, 'snapshot lookup duplicated pending discovery')
   f.answerRegistry()
   await flush()
   assert.equal(f.pending('package').length, 1, 'registry-only npm directory was not searched')
   const command = f.pending('package')[0]
-  assert.equal(command.file, 'Q:\\Windows\\System32\\cmd.exe')
+  assert.equal(command.file, '\x51:\\Windows\\System32\\cmd.exe')
   assert.equal(command.options.timeout, 10000)
   assert.equal(command.options.maxBuffer, 64 * 1024)
   assert.equal(command.options.windowsHide, true)
-  f.answer(command, null, 'Q:\\CustomPrefix\r\n')
+  f.answer(command, null, '\x51:\\CustomPrefix\r\n')
   await warming
   const complete = f.api.machineSearchPath()
   assert.equal(complete.complete, true)
-  assert.ok(complete.directories.includes('Q:\\CustomPrefix'))
+  assert.ok(complete.directories.includes('\x51:\\CustomPrefix'))
   assert.notEqual(complete, provisional)
   assert.equal(f.api.machineSearchPath(), complete, 'settled cache identity changed without new data')
   assert.equal(f.calls.length, 3)
@@ -96,7 +96,7 @@ test('missing npm is complete only after asynchronous directory discovery finish
   const f = fixture({ npmDirectory: null })
   const warming = f.api.warmMachineSearchPath()
   assert.equal(f.syncCalls.length, 0)
-  f.answerRegistry('Q:\\Machine', 'Q:\\User')
+  f.answerRegistry('\x51:\\Machine', '\x51:\\User')
   await warming
   assert.ok(f.statCalls.length > 0)
   assert.equal(f.pending('package').length, 0)
@@ -118,19 +118,19 @@ test('a failed registry key is retried later while the successful key stays cach
   const first = f.api.warmMachineSearchPath()
   assert.equal(f.syncCalls.length, 0)
   const initial = f.pending('registry')
-  f.answer(initial.find(call => call.args[1].startsWith('HKLM')), null, registryText('Q:\\Machine'))
+  f.answer(initial.find(call => call.args[1].startsWith('HKLM')), null, registryText('\x51:\\Machine'))
   f.answer(initial.find(call => call.args[1].startsWith('HKCU')), Object.assign(new Error('busy'), { code: 'EMFILE' }))
   await first
   const provisional = f.api.machineSearchPath()
   assert.equal(provisional.complete, false)
-  assert.ok(provisional.directories.includes('Q:\\Machine'))
+  assert.ok(provisional.directories.includes('\x51:\\Machine'))
   const retry = f.api.warmMachineSearchPath()
   assert.equal(f.pending('registry').length, 1)
   assert.ok(f.pending('registry')[0].args[1].startsWith('HKCU'))
-  f.answer(f.pending('registry')[0], null, registryText('Q:\\Recovered'))
+  f.answer(f.pending('registry')[0], null, registryText('\x51:\\Recovered'))
   await retry
   assert.equal(f.api.machineSearchPath().complete, true)
-  assert.ok(f.api.machineSearchPath().directories.includes('Q:\\Recovered'))
+  assert.ok(f.api.machineSearchPath().directories.includes('\x51:\\Recovered'))
   assert.equal(f.calls.filter(call => call.kind === 'registry').length, 3)
 })
 
@@ -147,10 +147,10 @@ test('failed package discovery permits one later attempt without repeating succe
   await flush()
   assert.equal(f.pending('package').length, 1)
   assert.equal(f.calls.filter(call => call.kind === 'registry').length, 2)
-  f.answer(f.pending('package')[0], null, 'Q:\\RecoveredPrefix\r\n')
+  f.answer(f.pending('package')[0], null, '\x51:\\RecoveredPrefix\r\n')
   await retry
   assert.equal(f.api.machineSearchPath().complete, true)
-  assert.ok(f.api.machineSearchPath().directories.includes('Q:\\RecoveredPrefix'))
+  assert.ok(f.api.machineSearchPath().directories.includes('\x51:\\RecoveredPrefix'))
 })
 
 test('invalidation during a registry read cannot publish old paths or multiply pending reads', async () => {
@@ -160,17 +160,17 @@ test('invalidation during a registry read cannot publish old paths or multiply p
   f.api.invalidateMachineSearchPath()
   const fresh = f.api.warmMachineSearchPath()
   assert.equal(f.pending('registry').length, 2, 'obsolete bounded reads must settle before another batch')
-  f.answerRegistry('Q:\\Obsolete', 'Q:\\OldUser')
+  f.answerRegistry('\x51:\\Obsolete', '\x51:\\OldUser')
   await old
   await flush()
   assert.equal(f.api.machineSearchPath().complete, false)
-  assert.ok(!f.api.machineSearchPath().directories.includes('Q:\\Obsolete'))
-  f.answerRegistry('Q:\\Current', 'Q:\\CurrentUser')
+  assert.ok(!f.api.machineSearchPath().directories.includes('\x51:\\Obsolete'))
+  f.answerRegistry('\x51:\\Current', '\x51:\\CurrentUser')
   await fresh
   const answer = f.api.machineSearchPath()
   assert.equal(answer.complete, true)
-  assert.ok(answer.directories.includes('Q:\\Current'))
-  assert.ok(!answer.directories.includes('Q:\\Obsolete'))
+  assert.ok(answer.directories.includes('\x51:\\Current'))
+  assert.ok(!answer.directories.includes('\x51:\\Obsolete'))
 })
 
 test('late package-manager completion after invalidation cannot install an old prefix', async () => {
@@ -182,24 +182,24 @@ test('late package-manager completion after invalidation cannot install an old p
   const obsolete = f.pending('package')[0]
   f.api.invalidateMachineSearchPath()
   const fresh = f.api.warmMachineSearchPath()
-  f.answer(obsolete, null, 'Q:\\ObsoletePrefix\r\n')
+  f.answer(obsolete, null, '\x51:\\ObsoletePrefix\r\n')
   await old
   await flush()
   assert.equal(f.api.machineSearchPath().complete, false)
-  assert.ok(!f.api.machineSearchPath().directories.includes('Q:\\ObsoletePrefix'))
+  assert.ok(!f.api.machineSearchPath().directories.includes('\x51:\\ObsoletePrefix'))
   f.answerRegistry()
   await flush()
-  f.answer(f.pending('package')[0], null, 'Q:\\CurrentPrefix\r\n')
+  f.answer(f.pending('package')[0], null, '\x51:\\CurrentPrefix\r\n')
   await fresh
   assert.equal(f.api.machineSearchPath().complete, true)
-  assert.ok(f.api.machineSearchPath().directories.includes('Q:\\CurrentPrefix'))
-  assert.ok(!f.api.machineSearchPath().directories.includes('Q:\\ObsoletePrefix'))
+  assert.ok(f.api.machineSearchPath().directories.includes('\x51:\\CurrentPrefix'))
+  assert.ok(!f.api.machineSearchPath().directories.includes('\x51:\\ObsoletePrefix'))
 })
 
 test('fabricated and Linux snapshots remain independent of Windows discovery', () => {
   const f = fixture()
-  const windows = f.api.machineSearchPath({ platform: 'win32', env: { PATH: 'Q:\\Fictional' } })
-  assert.deepEqual([...windows.directories], ['Q:\\Fictional'])
+  const windows = f.api.machineSearchPath({ platform: 'win32', env: { PATH: '\x51:\\Fictional' } })
+  assert.deepEqual([...windows.directories], ['\x51:\\Fictional'])
   assert.equal(windows.complete, false)
   const linux = f.api.machineSearchPath({ platform: 'linux', env: { PATH: '/usr/bin:/bin' }, loginHome: '/fixture/login' })
   assert.deepEqual([...linux.directories], ['/fixture/login/.local/bin', '/fixture/login/bin', '/usr/bin', '/bin'])

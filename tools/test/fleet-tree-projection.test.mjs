@@ -22,7 +22,7 @@ const circle = (id, name, sessionId = null, parentId = null) => ({
 })
 
 test('the mounted graph draws one saved circle when the fleet repeats its raw node ID', () => {
-  const saved = circle('node-2-0b5e0c0a-0000-4000-8000-000000000002', 'Controller', 'session-one')
+  const saved = circle('node-2-6c518599-05aa-4c77-a154-cefe49b278ed', 'Controller', 'session-one')
   const computer = { agents: [{ id: saved.id, name: saved.id }], graphEdges: [] }
   const result = graphComputer(computer, () => [saved], mergeFleetTreeProjection)
   assert.deepEqual(result.agents, [saved])

@@ -5,7 +5,7 @@ import { phoneCanvasDecision, readPhoneCanvasEnvironment } from '../../src/phone
 
 const CANVAS_SOURCE = readFileSync(new URL('../../src/phone-canvas.js', import.meta.url), 'utf8')
 
-/* THE LEDGER LINK'S OWN OVERRIDE (M2, approved).
+/* THE LEDGER LINK'S OWN OVERRIDE (M2, owner-approved).
  *
  * /app/?ledger=1 is ITSELF the deliberate act — someone followed the mobile
  * page's own link, asking for the phone surface by name — so ledgerRoute

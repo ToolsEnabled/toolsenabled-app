@@ -1,3 +1,4 @@
+import { canonicalRootForTests } from '../canonical-root.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
@@ -72,7 +73,7 @@ test('reading reports both present and unavailable rows and preserves an enforce
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 
-/* THE APPROVAL ROW (rule: an agent's filing may wait for the
+/* THE APPROVAL ROW (owner, 2026-09-02: an agent's filing may wait for the
    person). It is a writable row, listed directly after its sibling so the
    page draws the two sub-settings in order, and a write of it returns the
    payload's verdict exactly as every other row's does. */
@@ -443,4 +444,40 @@ test('missing or unreadable Optimized support metadata leaves settings and disco
     assert.equal(answer.rows.find(row => row.id === 'agent.tool_summary').value, false)
     assert.equal(answer.rows.find(row => row.id === 'agent.capability_recall').value, true)
   }
+})
+
+
+test('retired settings load silently, unknown settings are named, and both drop on the next person save', () => {
+  const f = fixture()
+  try {
+    mkdirSync(path.dirname(f.valuesPath), { recursive: true })
+    writeFileSync(f.valuesPath, JSON.stringify({ revision: 2, unknownEnvelope: true,
+      values: { 'accounts.failover': 'auto', 'future.setting': { unknown: true }, 'research.pipeline': false },
+      provenance: { 'accounts.failover': { source: 'user' }, 'future.setting': { source: 'user' }, 'research.pipeline': { source: 'user' } } }))
+    const valuesModule = require_(path.join(canonicalRootForTests(), 'src/lib/settings-values.js'))
+    f.settings.loadSettings = ({ valuesPath = f.valuesPath } = {}) => {
+      const document = JSON.parse(readFileSync(valuesPath, 'utf8'))
+      const resolved = { values: {}, provenance: {}, rejected: [], enforcement: {}, revision: document.revision, valuesPath }
+      valuesModule.applyStoredValues({ registry: f.registry, document, ...resolved, validate: (_entry, value) => typeof value === 'boolean' ? null : 'Invalid test value' })
+      return resolved
+    }
+    const read = f.settings.loadSettings()
+    assert.deepEqual(read.rejected.map(row => ({ id: row.id, raw: row.raw })),
+      [{ id: 'future.setting', raw: { unknown: true } }])
+    assert.match(read.rejected[0].reason, /unknown.*registry/,
+      'an unrecognized setting must name why it was refused; only retired settings are silent')
+    assert.deepEqual(read.values, { 'research.pipeline': false })
+    const saved = shell.setProductSetting({ id: 'research.pipeline', value: true }, f.options)
+    assert.equal(saved.ok, true)
+    const document = JSON.parse(readFileSync(f.valuesPath, 'utf8'))
+    assert.deepEqual(document.values, { 'research.pipeline': true })
+    assert.deepEqual(Object.keys(document.provenance), ['research.pipeline'])
+    assert.equal(Object.hasOwn(document, 'unknownEnvelope'), false)
+    assert.deepEqual(f.settings.loadSettings().rejected, [])
+    writeFileSync(f.valuesPath, JSON.stringify({ ...document, values: { ...document.values, 'accounts.failover': 'rotate', 'future.setting': true }, provenance: { ...document.provenance, 'accounts.failover': { source: 'user' } } }))
+    assert.equal(shell.setProductSettingsMany({ items: [{ id: 'research.pipeline', value: false }] }, f.options).ok, true)
+    const batch = JSON.parse(readFileSync(f.valuesPath, 'utf8'))
+    assert.deepEqual(batch.values, { 'research.pipeline': false })
+    assert.deepEqual(Object.keys(batch.provenance), ['research.pipeline'])
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
 })

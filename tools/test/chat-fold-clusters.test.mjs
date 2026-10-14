@@ -205,8 +205,8 @@ test('a turn that ends in pure tool calls, with no reply text at all, still fold
 })
 
 /* ---------------------------------------------------------------
-   A RUN OF ONE IS NOT A RUN -- tools condense more. Every test above proves
-   an 18-, 9- or 3-call burst settles behind
+   A RUN OF ONE IS NOT A RUN -- owner, 2026-09-03: "Tools need to condense
+   more." Every test above proves an 18-, 9- or 3-call burst settles behind
    ONE line; none of them says what happens at the other end of that range,
    where a turn ran exactly one tool. Before this, that solo call still paid
    for the SAME wrapper an 18-call burst pays for: its own "1 tool call"

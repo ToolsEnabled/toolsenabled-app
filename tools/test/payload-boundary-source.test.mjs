@@ -257,7 +257,7 @@ test('an unclassified tracked file refuses the publish', async () => {
 })
 
 test('pending REFUSES a source publish, where the payload verdict tolerates it', async () => {
-  // The two verdicts differ on purpose. pending means "it has been decided and
+  // The two verdicts differ on purpose. pending means "the owner has ruled and
   // the removal has not landed"; the payload mode stays green so ordinary dev
   // builds are not blocked by it. There is no dev build in a publish question,
   // and publishing is the exact event a pending file is waiting to be removed
@@ -269,7 +269,7 @@ test('pending REFUSES a source publish, where the payload verdict tolerates it',
     write(dir, 'src/lib/still-here.js', '// decided, not yet removed\n')
     commit(dir, 'a pending file')
     const manifest = fixtureManifest(dir, {
-      pending: { 'src/lib/still-here.js': 'ruled paid, decoupling work not landed' },
+      pending: { 'src/lib/still-here.js': 'owner-ruled paid, decoupling work not landed' },
     })
 
     const result = await gate(['--source', dir, '--manifest', manifest])

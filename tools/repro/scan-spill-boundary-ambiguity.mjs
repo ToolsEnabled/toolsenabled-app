@@ -1,4 +1,4 @@
-/* READ ONLY over a local node-transcript store. Counts only, no text.
+/* READ ONLY over the owner's LIVE node-transcripts. Counts only, no text.
    Before extending the read-time repair, ask whether the doubling boundary is
    even decidable: how many split points n satisfy text[0..n) === text[n..2n)? */
 import fs from 'node:fs'

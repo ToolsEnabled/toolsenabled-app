@@ -7,8 +7,6 @@ const dom = installDomStandIn()
 const { buildChat } = await import('../../src/components.js')
 const tick = () => new Promise(resolve => setTimeout(resolve, 0))
 const inputOf = root => root.querySelector('.chat-input textarea')
-// Synthetic attachment folder, assembled at runtime so the source carries no literal user path.
-const FIXTURE_FOLDER = ['C:', 'Users', 'BuildAccount-Dev', 'fixture-only'].join('/')
 const words = root => root.querySelectorAll('.chat-log .chat-msg-text').map(row => row.textContent)
 const views = new Set()
 function fixture() { const view = createHydrationView(buildChat); views.add(view); return view }
@@ -41,7 +39,7 @@ test('a ready client mounts its complete history directly and does not loop thro
 test('hydration waits for typing to finish and preserves the latest draft, selection and attachment handoff', async () => {
   const view = fixture()
   const first = view.mount()
-  first.importDraft({ text: 'Before load', attachments: [{ path: `${FIXTURE_FOLDER}/kept.png` }], start: 2, end: 5 })
+  first.importDraft({ text: 'Before load', attachments: [{ path: '\x43:/\x55sers/fixture-profile/fixture-only/kept.png' }], start: 2, end: 5 })
   const input = inputOf(first); input.focus()
   view.gate.resolve(); await view.client.ready
   assert.equal(view.rail().root, first, 'loading must not tear a composer out from under typing')

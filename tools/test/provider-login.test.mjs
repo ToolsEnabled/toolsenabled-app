@@ -1,10 +1,11 @@
+import { canonicalRootForTests } from '../canonical-root.mjs'
 /* THE TWO BUTTONS EVERY ASSISTANT PROGRAM GETS, AND THE WAYS THEY COULD
  * QUIETLY STOP BEING SAFE OR STOP BEING ONE PATH.
  *
  * WHAT IS BEING GUARDED. shell/provider-login.cjs is the one place this product
  * installs an assistant program for somebody, and the one place it starts that
- * program's own sign-in. A tester who installed 1.0.20 got stuck exactly
- * where predicted: the guide told them to run "codex login" in the
+ * program's own sign-in. The friend who installed 1.0.20 got stuck exactly
+ * where the owner predicted: the guide told them to run "codex login" in the
  * window the install had just finished in, and that window answered "'codex'
  * is not recognized" -- a PATH written by an installer is not re-read by a
  * shell that is already open.
@@ -76,18 +77,18 @@ function fakeChild() {
   return child
 }
 
-const APPDATA = 'C:/u/AppData/Roaming'
-const LOCALAPPDATA = 'C:/u/AppData/Local'
-const CMD = 'c:/windows/system32/cmd.exe'
-const WT = 'c:/u/appdata/local/microsoft/windowsapps/wt.exe'
-const NPM_CODEX = 'C:/u/AppData/Roaming/npm/node_modules/@openai/codex/bin/codex.js'
-const NPM_CLAUDE = 'C:/u/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/bin/claude.exe'
-const NPM_GEMINI = 'C:/u/AppData/Roaming/npm/node_modules/@google/gemini-cli/bundle/gemini.js'
+const APPDATA = '\x43:/u/AppData/Roaming'
+const LOCALAPPDATA = '\x43:/u/AppData/Local'
+const CMD = '\x63:/windows/system32/cmd.exe'
+const WT = '\x63:/u/appdata/local/microsoft/windowsapps/wt.exe'
+const NPM_CODEX = '\x43:/u/AppData/Roaming/npm/node_modules/@openai/codex/bin/codex.js'
+const NPM_CLAUDE = '\x43:/u/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/bin/claude.exe'
+const NPM_GEMINI = '\x43:/u/AppData/Roaming/npm/node_modules/@google/gemini-cli/bundle/gemini.js'
 
 /* The fixture filesystem is exhaustive. Completeness is supplied explicitly;
    a fabricated environment alone is not evidence about a real machine. */
 function completeSearchPath({ env, platform }) {
-  const fallback = platform === 'win32' ? 'C:/fixture/programs' : '/fixture/programs'
+  const fallback = platform === 'win32' ? '\x43:/fixture/programs' : '/fixture/programs'
   return Object.freeze({
     directories: Object.freeze((env.PATH || fallback).split(platform === 'win32' ? ';' : ':').filter(Boolean)),
     complete: true,
@@ -127,7 +128,7 @@ function harness({ files = [], links = [], env = {}, platform = 'win32', provide
     env: {
       APPDATA,
       LOCALAPPDATA,
-      SystemRoot: 'C:/Windows',
+      SystemRoot: '\x43:/Windows',
       PATH: '',
       PATHEXT: '.COM;.EXE;.BAT;.CMD',
       ...env,
@@ -150,7 +151,7 @@ function harness({ files = [], links = [], env = {}, platform = 'win32', provide
 
 /* The ordinary machine: a Command Prompt where Windows keeps it, no Windows
    Terminal, and whichever programs a test names. */
-const withCmd = extra => [`C:/Windows/System32/cmd.exe`, ...extra]
+const withCmd = extra => [`\x43:/Windows/System32/cmd.exe`, ...extra]
 
 const retainFixtures = process.env.TOOLSENABLED_TEST_RETAIN_FIXTURES === '1'
 
@@ -342,7 +343,7 @@ test('an unknown name is refused in a sentence, and opens nothing', () => {
 
 test('a sign-in opens a terminal running that program, and never spawns it here', () => {
   for (const id of LOGIN_PROVIDER_IDS) {
-    const entry = { codex: NPM_CODEX, claude: NPM_CLAUDE, gemini: NPM_GEMINI, grok: 'C:/u/AppData/Roaming/npm/node_modules/@xai-official/grok/bin/grok' }[id]
+    const entry = { codex: NPM_CODEX, claude: NPM_CLAUDE, gemini: NPM_GEMINI, grok: '\x43:/u/AppData/Roaming/npm/node_modules/@xai-official/grok/bin/grok' }[id]
     const { service, spawns, terminals } = harness({ files: withCmd([entry]) })
     const answer = service.start(id)
     assert.equal(answer.ok, true, `${id} could not be signed in`)
@@ -356,7 +357,7 @@ test('a sign-in opens a terminal running that program, and never spawns it here'
       `${id}'s window was told: ${line}`)
     /* AND THE WINDOW SAYS WHICH SIGN-IN IT IS, before the command. Without it
        every sign-in window for a given program prints the same words, which is
-       what left the owner with two windows they could not tell apart. */
+       what left the owner with two windows he could not tell apart. */
     assert.ok(line.startsWith(`/k echo ToolsEnabled sign-in: ${id} &&`),
       `${id}'s window did not name itself first: ${line}`)
   }
@@ -408,12 +409,12 @@ test('the terminal is named by absolute path, and SystemRoot is read rather than
      plain names with something else entirely. And Windows is not always at
      C:\\Windows: imaged machines and non-C: system drives move it. */
   const { service, terminals } = harness({
-    files: ['D:/OtherWindows/System32/cmd.exe', NPM_CODEX],
-    env: { SystemRoot: 'D:/OtherWindows' },
+    files: ['\x44:/OtherWindows/System32/cmd.exe', NPM_CODEX],
+    env: { SystemRoot: '\x44:/OtherWindows' },
   })
   assert.equal(service.start('codex').ok, true)
     assert.ok(path.win32.isAbsolute(terminals[0].command), `the terminal was named ${terminals[0].command}`)
-  assert.equal(norm(terminals[0].command), 'd:/otherwindows/system32/cmd.exe')
+  assert.equal(norm(terminals[0].command), '\x64:/otherwindows/system32/cmd.exe')
 })
 
 test('a machine with no command prompt where Windows keeps it is a refusal, not a guess', () => {
@@ -460,7 +461,7 @@ test('a busy presence probe is not absence, is not cached, and ENOENT remains ab
     spawnHidden: () => fakeChild(),
     openTerminal: () => {},
     providerSpawnRefused: () => false,
-    env: { APPDATA, LOCALAPPDATA, SystemRoot: 'C:/Windows', PATH: '', PATHEXT: '.EXE' },
+    env: { APPDATA, LOCALAPPDATA, SystemRoot: '\x43:/Windows', PATH: '', PATHEXT: '.EXE' },
     platform: 'win32',
     readSearchPath: completeSearchPath,
     statSync: target => {
@@ -521,9 +522,9 @@ test('an incomplete Windows search does not claim that npm is missing', () => {
 })
 
 test('an incomplete Windows search still accepts a proven WinGet alternative to npm', () => {
-  const alias = 'C:/fixture/programs/winget.exe'
+  const alias = '\x43:/fixture/programs/winget.exe'
   const { service, spawns, child } = harness({ links: [alias],
-    env: { PATH: 'C:/fixture/programs' }, readSearchPath: incompleteSearchPath })
+    env: { PATH: '\x43:/fixture/programs' }, readSearchPath: incompleteSearchPath })
   assert.equal(service.installStart('codex', () => {}).ok, true)
   assert.equal(spawns.length, 1)
   assert.equal(norm(spawns[0].command), norm(alias))
@@ -531,15 +532,15 @@ test('an incomplete Windows search still accepts a proven WinGet alternative to 
 })
 
 test('an incomplete Windows search still accepts a known program and npm', () => {
-  for (const program of ['C:/fixture/programs/codex.exe', NPM_CODEX]) {
+  for (const program of ['\x43:/fixture/programs/codex.exe', NPM_CODEX]) {
     const { service, spawns, terminals, child } = harness({
-      files: withCmd([program, 'C:/fixture/programs/npm.cmd']),
-      env: { PATH: 'C:/fixture/programs' }, readSearchPath: incompleteSearchPath,
+      files: withCmd([program, '\x43:/fixture/programs/npm.cmd']),
+      env: { PATH: '\x43:/fixture/programs' }, readSearchPath: incompleteSearchPath,
     })
     assert.equal(service.installed('codex'), true)
     assert.equal(service.start('codex').ok, true)
     assert.equal(terminals.length, 1)
-    /* The known program is used, not installed a second time. */
+    /* The known program is used, not installed a second time (rc-0922). */
     assert.equal(service.installStart('codex', () => {}).code, 'PROVIDER_LOGIN_ALREADY_INSTALLED')
     assert.equal(spawns.length, 0)
     child.emit('exit', 0)
@@ -570,7 +571,7 @@ test('installed() answers in advance what start() decides, and a probe that fail
     spawnHidden: () => fakeChild(),
     openTerminal: () => {},
     providerSpawnRefused: () => false,
-    env: { APPDATA, LOCALAPPDATA, SystemRoot: 'C:/Windows', PATH: '', PATHEXT: '.EXE' },
+    env: { APPDATA, LOCALAPPDATA, SystemRoot: '\x43:/Windows', PATH: '', PATHEXT: '.EXE' },
     platform: 'win32',
     statSync: () => { const error = new Error('busy'); error.code = 'EMFILE'; throw error },
     lstatSync: () => enoent(),
@@ -581,8 +582,8 @@ test('installed() answers in advance what start() decides, and a probe that fail
 
 test('a program found only on PATH counts as here', () => {
   const { service, terminals } = harness({
-    files: withCmd(['C:/somewhere/bin/codex.exe']),
-    env: { PATH: 'C:/other;C:/somewhere/bin' },
+    files: withCmd(['\x43:/somewhere/bin/codex.exe']),
+    env: { PATH: '\x43:/other;\x43:/somewhere/bin' },
   })
   assert.equal(service.start('codex').ok, true)
   assert.equal(terminals.length, 1)
@@ -594,7 +595,7 @@ test('a terminal that will not open is a sentence, not a thrown error', () => {
     spawnHidden: () => { throw new Error('no') },
     openTerminal: () => { throw new Error('no') },
     providerSpawnRefused: () => false,
-    env: { APPDATA, LOCALAPPDATA, SystemRoot: 'C:/Windows', PATH: '', PATHEXT: '.EXE' },
+    env: { APPDATA, LOCALAPPDATA, SystemRoot: '\x43:/Windows', PATH: '', PATHEXT: '.EXE' },
     platform: 'win32',
     statSync: target => (norm(target) === CMD || norm(target) === norm(NPM_CODEX) ? { isFile: () => true } : enoent()),
     lstatSync: () => enoent(),
@@ -632,7 +633,7 @@ test('providerSpawnRefused stops a sign-in before any terminal window opens', ()
     spawnHidden: (command, args, options) => { spawns.push({ command, args, options }); return fakeChild() },
     openTerminal: (...args) => { terminals.push(args) },
     providerSpawnRefused: () => refused,
-    env: { APPDATA, LOCALAPPDATA, SystemRoot: 'C:/Windows', PATH: '', PATHEXT: '.EXE' },
+    env: { APPDATA, LOCALAPPDATA, SystemRoot: '\x43:/Windows', PATH: '', PATHEXT: '.EXE' },
     platform: 'win32',
     statSync: target => (norm(target) === CMD || norm(target) === norm(NPM_CODEX) ? { isFile: () => true } : enoent()),
     lstatSync: () => enoent(),
@@ -654,13 +655,13 @@ test('providerSpawnRefused stops a sign-in before any terminal window opens', ()
    5. The install, hidden, for all three, under the old rules exactly.
    ------------------------------------------------------------------ */
 
-const NPM_CMD = 'c:/nodejs/npm.cmd'
+const NPM_CMD = '\x63:/nodejs/npm.cmd'
 
 test('install runs the official package command through npm found fresh on PATH', () => {
   for (const id of LOGIN_PROVIDER_IDS) {
     const { service, spawns, terminals } = harness({
-      files: withCmd(['C:/nodejs/npm.cmd']),
-      env: { PATH: 'C:/nodejs' },
+      files: withCmd(['\x43:/nodejs/npm.cmd']),
+      env: { PATH: '\x43:/nodejs' },
     })
     const answer = service.installStart(id, () => {})
     assert.equal(answer.ok, true, `${id} could not be installed`)
@@ -685,9 +686,9 @@ test('a machine without npm gets the real fix named, not an npm error', () => {
 })
 
 test('Codex installs without Node through a Windows app execution alias', () => {
-  const alias = 'C:/u/AppData/Local/Microsoft/WindowsApps/winget.exe'
+  const alias = '\x43:/u/AppData/Local/Microsoft/WindowsApps/winget.exe'
   const { service, spawns, terminals, child } = harness({
-    links: [alias], env: { PATH: 'C:/u/AppData/Local/Microsoft/WindowsApps' },
+    links: [alias], env: { PATH: '\x43:/u/AppData/Local/Microsoft/WindowsApps' },
   })
   const events = []
   assert.equal(service.installStart('codex', event => events.push(event)).ok, true)
@@ -710,7 +711,7 @@ test('Codex installs without Node through a Windows app execution alias', () => 
 
 test('an existing npm install path takes precedence over WinGet', () => {
   const { service, spawns } = harness({
-    files: ['C:/nodejs/npm.cmd', 'C:/tools/winget.exe'], env: { PATH: 'C:/nodejs;C:/tools' },
+    files: ['\x43:/nodejs/npm.cmd', '\x43:/apps/winget.exe'], env: { PATH: '\x43:/nodejs;\x43:/apps' },
   })
   assert.equal(service.installStart('codex', () => {}).ok, true)
   assert.equal(norm(spawns[0].command), NPM_CMD)
@@ -718,7 +719,7 @@ test('an existing npm install path takes precedence over WinGet', () => {
 
 test('WinGet is not offered for another provider or a Linux installation', () => {
   for (const id of ['claude', 'gemini']) {
-    const { service, spawns } = harness({ files: ['C:/tools/winget.exe'], env: { PATH: 'C:/tools' } })
+    const { service, spawns } = harness({ files: ['\x43:/apps/winget.exe'], env: { PATH: '\x43:/apps' } })
     assert.equal(service.installStart(id, () => {}).code, 'PROVIDER_LOGIN_NPM_MISSING')
     assert.equal(spawns.length, 0)
   }
@@ -728,7 +729,7 @@ test('WinGet is not offered for another provider or a Linux installation', () =>
 })
 
 test('WinGet failure and Stop keep the install retryable', () => {
-  const { service, child, spawns } = harness({ files: ['C:/tools/winget.exe'], env: { PATH: 'C:/tools' } })
+  const { service, child, spawns } = harness({ files: ['\x43:/apps/winget.exe'], env: { PATH: '\x43:/apps' } })
   const events = []
   assert.equal(service.installStart('codex', event => events.push(event)).ok, true)
   assert.equal(service.installStart('codex', () => {}).code, 'PROVIDER_LOGIN_RUNNING')
@@ -743,7 +744,7 @@ test('WinGet failure and Stop keep the install retryable', () => {
 })
 
 test('a second install while the first still runs is refused, not doubled', () => {
-  const { service, spawns } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, spawns } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   assert.equal(service.installStart('codex', () => {}).ok, true)
   const again = service.installStart('codex', () => {})
   assert.equal(again.ok, false)
@@ -756,10 +757,10 @@ test('a sign-in never has to wait for an install, because it holds nothing', () 
      in during an install was refused. A window is not a flight: it belongs to
      the person and this product holds no handle on it. */
   /* A program that is already here is installed again only as an explicit
-     private copy, so that is the install this runs beside. */
+     private copy (rc-0922), so that is the install this runs beside. */
   const { service, terminals } = harness({
-    files: withCmd(['C:/nodejs/npm.cmd', NPM_CLAUDE]),
-    env: { PATH: 'C:/nodejs' },
+    files: withCmd(['\x43:/nodejs/npm.cmd', NPM_CLAUDE]),
+    env: { PATH: '\x43:/nodejs' },
     providerToolchain: pairedToolchain(),
   })
   assert.equal(service.installStart('claude', () => {}, { privateCopy: true }).ok, true)
@@ -769,7 +770,7 @@ test('a sign-in never has to wait for an install, because it holds nothing', () 
 })
 
 test('stop kills the installer and the next install is allowed', () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   service.installStart('codex', () => {})
   assert.equal(service.stop('codex').stopped, true)
   assert.equal(child.killed, true)
@@ -777,7 +778,7 @@ test('stop kills the installer and the next install is allowed', () => {
 })
 
 test('an exit frees the flight and reaches the listener with its code', () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   const events = []
   service.installStart('codex', event => events.push(event))
   child.emit('exit', 0)
@@ -800,7 +801,7 @@ test('a listener lost with its window cannot crash child output or strand the in
    ------------------------------------------------------------------ */
 
 test('output arrives as colour-stripped lines', () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   const events = []
   service.installStart('claude', event => events.push(event))
   child.stdout.emit('data', Buffer.from('\u001b[94madded 1 package\u001b[0m\nplain words\n'))
@@ -810,7 +811,7 @@ test('output arrives as colour-stripped lines', () => {
 })
 
 test('a last line with no newline still reaches the person', () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   const events = []
   service.installStart('gemini', event => events.push(event))
   child.stdout.emit('data', Buffer.from('npm warn deprecated something'))
@@ -820,7 +821,7 @@ test('a last line with no newline still reaches the person', () => {
 })
 
 test('a flood is capped instead of forwarded forever', () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   const events = []
   service.installStart('codex', event => events.push(event))
   for (let index = 0; index < 4000; index += 1) {
@@ -835,7 +836,7 @@ test('a flood is capped instead of forwarded forever', () => {
    ------------------------------------------------------------------ */
 
 test('no event carries a filesystem path field or an environment', () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   const events = []
   service.installStart('codex', event => events.push(event))
   child.stdout.emit('data', Buffer.from('hello\n'))
@@ -876,7 +877,7 @@ test('a sign-in sends the renderer nothing the window produced', () => {
  *
  * Measured while checking this by hand: a nearby form -- one argument holding a
  * quoted redirect -- silently did nothing at all. Exit code 0, no error, no
- * file. So "it looks right" is not evidence about this, and the rule is
+ * file. So "it looks right" is not evidence about this, and the owner's rule is
  * that the installer paths get checked before every publication rather than
  * once by somebody who happened to wonder.
  *
@@ -892,7 +893,7 @@ test('the echo-then-run shape survives node and cmd.exe and really executes', as
   const fs = await import('node:fs')
   const nodePath = await import('node:path')
 
-  const terminal = nodePath.join(process.env.SystemRoot || 'C:\Windows', 'System32', 'cmd.exe')
+  const terminal = nodePath.join(process.env.SystemRoot || '\x43:\Windows', 'System32', 'cmd.exe')
   const proof = nodePath.join(os.tmpdir(), `provider-login-shape-${process.pid}-${Date.now()}`)
 
   /* The same construction terminalInvocation makes, with '/c' for '/k' and a
@@ -936,7 +937,7 @@ test('the account name survives node and cmd.exe and is printed in the window', 
   const { spawn } = await import('node:child_process')
   const nodePath = await import('node:path')
 
-  const terminal = nodePath.join(process.env.SystemRoot || 'C:\Windows', 'System32', 'cmd.exe')
+  const terminal = nodePath.join(process.env.SystemRoot || '\x43:\Windows', 'System32', 'cmd.exe')
   const title = 'ToolsEnabled sign-in: work laptop - codex'
   const invocation = terminalInvocation({ program: terminal, lead: [] }, ['echo', 'the-sign-in-would-run-here'], { title })
   const args = invocation.args.map(word => (word === '/k' ? '/c' : word))
@@ -974,13 +975,12 @@ test('the account name survives node and cmd.exe and is printed in the window', 
    environment variable and from nothing else, so a sign-in window that could
    not carry one could only ever sign in the same identity again -- and the
    product's own answer to "how do I add a second account" was a PowerShell line
-   for a person to paste. A person was handed that line, was in cmd.exe, and it
+   for a person to paste. The owner was handed that line, was in cmd.exe, and it
    failed four times in a row with "The filename, directory name, or volume
    label syntax is incorrect." A customer has nobody to correct them.
    ------------------------------------------------------------------ */
 
-// Synthetic Windows profile path, assembled at runtime so the source carries no literal drive-rooted product path.
-const HOME_A = ['C:', 'u', 'AppData', 'Roaming', 'ToolsEnabled', 'capability', 'codex-homes', 'home-a'].join('/')
+const HOME_A = '\x43:/u/AppData/Roaming/ToolsEnabled/capability/codex-homes/cloud-a'
 
 test('a sign-in for a named account carries that program\'s own home variable', () => {
   const { service, terminals } = harness({ files: withCmd([NPM_CODEX]) })
@@ -1024,14 +1024,14 @@ test('a sign-in opened for a named account says whose it is, on the window and i
 })
 
 test('the program is in the title even when the account is, because two programs may hold the same name', () => {
-  /* shell/account-registry.cjs: names are unique PER PROVIDER -- "team" may
+  /* shell/account-registry.cjs: names are unique PER PROVIDER -- "school" may
      be both a Codex account and a Claude one -- so a title carrying only the
      name would still put two identical names on the taskbar, which is a
      smaller version of the defect rather than a fix for it. */
   const codex = harness({ files: withCmd([NPM_CODEX]) })
   const claude = harness({ files: withCmd([NPM_CLAUDE]) })
-  assert.equal(codex.service.start('codex', { label: 'team' }).title, 'ToolsEnabled sign-in: team - codex')
-  assert.equal(claude.service.start('claude', { label: 'team' }).title, 'ToolsEnabled sign-in: team - claude')
+  assert.equal(codex.service.start('codex', { label: 'school' }).title, 'ToolsEnabled sign-in: school - codex')
+  assert.equal(claude.service.start('claude', { label: 'school' }).title, 'ToolsEnabled sign-in: school - claude')
 })
 
 test('a name a person typed cannot become an operator in the command line the window is opened with', () => {
@@ -1186,7 +1186,7 @@ test('with no account named, nothing at all is added -- the old rule, unchanged'
  * nobody chose. Both branches are exercised, because libuv quotes an argument
  * only when it contains a space and the quoting is what decides which form is
  * correct. A machine whose user folder has a space in it takes the other
- * branch, and that is most machines whose owner has a two-word name.
+ * branch, and that is most machines with two words in the owner's name.
  *
  * It signs nothing in: the sign-in words are replaced with a node one-liner
  * that writes the value it was actually given, and the directory is a temporary
@@ -1199,7 +1199,7 @@ test('the home assignment survives node and cmd.exe with the exact directory', a
   const fs = await import('node:fs')
   const nodePath = await import('node:path')
 
-  const terminal = nodePath.join(process.env.SystemRoot || 'C:\Windows', 'System32', 'cmd.exe')
+  const terminal = nodePath.join(process.env.SystemRoot || '\x43:\Windows', 'System32', 'cmd.exe')
   const readBack = 'require("fs").writeFileSync(process.argv[1], String(process.env.CODEX_HOME))'
 
   for (const leaf of ['plain-home', 'home with spaces']) {
@@ -1234,7 +1234,7 @@ test('the home assignment survives node and cmd.exe with the exact directory', a
 })
 
 test('snapshot reports a silent running install and bounded log', () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   service.installStart('codex', () => {})
   child.stdout.emit('data', Buffer.from('downloading official 0.154.0\n'))
   const snap = service.snapshot('codex')
@@ -1247,7 +1247,7 @@ test('snapshot reports a silent running install and bounded log', () => {
 })
 
 test('Stop during a still-running installer is stopping, not complete, and blocks a second install', () => {
-  const { service, child, spawns } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child, spawns } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   service.installStart('codex', () => {})
   child.kill = () => { child.killed = true; return true }
   const stop = service.stop('codex')
@@ -1267,7 +1267,7 @@ test('Stop during a still-running installer is stopping, not complete, and block
 })
 
 test('completed and failed installs keep an honest last snapshot', () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   service.installStart('gemini', () => {})
   child.stdout.emit('data', Buffer.from('added 1 package\n'))
   child.emit('exit', 0)
@@ -1282,7 +1282,7 @@ test('completed and failed installs keep an honest last snapshot', () => {
 })
 
 test('owned installer remains busy until both zero-process outcome and wrapper close arrive', async () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   let finishOutcome, finishClosed
   child.jobOutcome = new Promise(resolve => { finishOutcome = resolve })
   child.jobClosed = new Promise(resolve => { finishClosed = resolve })
@@ -1304,7 +1304,7 @@ test('owned installer remains busy until both zero-process outcome and wrapper c
 for (const first of ['timeout', 'user', 'error', 'shutdown']) {
   test(`installer preserves ${first} as the first termination cause through retained cleanup`, async () => {
     let watchdog, finishOutcome, finishClosed
-    const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' },
+    const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' },
       timers: { setTimeout(fn) { watchdog = fn; return { unref() {} } }, clearTimeout() {} } })
     child.jobOutcome = new Promise(resolve => { finishOutcome = resolve })
     child.jobClosed = new Promise(resolve => { finishClosed = resolve })
@@ -1339,7 +1339,7 @@ for (const first of ['timeout', 'user', 'error', 'shutdown']) {
 
 test('provider installs have one bounded thirty-minute default allowance', () => {
   let delay
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' },
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' },
     timers: { setTimeout(_fn, ms) { delay = ms; return { unref() {} } }, clearTimeout() {} } })
   assert.equal(service.installStart('codex', () => {}).ok, true)
   assert.ok(delay > 29 * 60 * 1000 && delay <= 30 * 60 * 1000)
@@ -1348,7 +1348,7 @@ test('provider installs have one bounded thirty-minute default allowance', () =>
 })
 
 test('unconfirmed installer cleanup retains custody and consumes termination rejection', async () => {
-  const { service, child } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' } })
+  const { service, child } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' } })
   child.jobOutcome = Promise.resolve({ type: 'unknown', activeProcesses: null, exitCode: null })
   child.jobClosed = Promise.resolve({ failure: 'fixture cleanup failure' })
   child.terminateJob = () => Promise.reject(new Error('fixture termination unavailable'))
@@ -1369,13 +1369,13 @@ test('unconfirmed installer cleanup retains custody and consumes termination rej
 test('an isolated session refuses a second provider install while one is in flight', () => {
   const isolation = {
     PROVIDER_SESSION_ISOLATION_VERSION: 1,
-    providerSessionEnvironment: environment => ({ ...environment, USERPROFILE: 'C:/iso', npm_config_prefix: 'C:/iso/npm' }),
-    resolvePrivateProviderExecutable: () => 'C:/iso/npm/codex.cmd',
+    providerSessionEnvironment: environment => ({ ...environment, USERPROFILE: '\x43:/iso', npm_config_prefix: '\x43:/iso/npm' }),
+    resolvePrivateProviderExecutable: () => '\x43:/iso/npm/codex.cmd',
     codexFileCredentialArgs: () => [],
   }
   const { service, spawns } = harness({
-    files: withCmd(['C:/nodejs/npm.cmd']),
-    env: { PATH: 'C:/nodejs', TOOLSENABLED_PROVIDER_ISOLATION_ROOT: 'C:/iso' },
+    files: withCmd(['\x43:/nodejs/npm.cmd']),
+    env: { PATH: '\x43:/nodejs', TOOLSENABLED_PROVIDER_ISOLATION_ROOT: '\x43:/iso' },
     providerIsolation: isolation,
   })
   assert.equal(service.installStart('codex', () => {}).ok, true)
@@ -1538,7 +1538,7 @@ writeFileSync(process.argv[2], String(child.pid))
 setInterval(() => {}, 1000)
 `)
   let child
-  const { service } = harness({ files: withCmd(['C:/nodejs/npm.cmd']), env: { PATH: 'C:/nodejs' },
+  const { service } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd']), env: { PATH: '\x43:/nodejs' },
     spawnHiddenImpl: (_command, _args, options) => {
       assert.equal(options.containProcessTree, true)
       child = spawnHidden(process.execPath, [script, marker], { ...options, cwd: dir, env: { PATH: process.env.PATH, HOME: dir } })
@@ -1574,10 +1574,10 @@ setInterval(() => {}, 1000)
 })
 
 /* ------------------------------------------------------------------
-   NO SECOND COPY, AND INSTALLS INTO TOOLSENABLED'S OWN FOLDER.
+   NO SECOND COPY, AND INSTALLS INTO TOOLSENABLED'S OWN FOLDER (rc-0922).
 
-   The question: whether install overwrote things in a user's paths, and how to
-   do better at install time. The Install button ran
+   The owner: "right now do we aggressively try to write over a users paths or
+   such? Can we do a better job at install time?" The Install button ran
    `npm install -g` in the person's own npm folder even when the program was
    already on the computer -- by its maker's own installer, say -- which left a
    second copy and let PATH order decide which one ran. Now a copy that is
@@ -1588,18 +1588,19 @@ setInterval(() => {}, 1000)
    ------------------------------------------------------------------ */
 
 function pairedToolchain() {
-  const root = process.env.MC_CANONICAL_ROOT
-  assert.ok(root && path.isAbsolute(root), 'MC_CANONICAL_ROOT must name the paired engine')
+  const root = canonicalRootForTests({ requireConfigured: true })
   return require_(path.join(root, 'src', 'lib', 'providers', 'provider-toolchain.js'))
 }
 
-/* Every option claude-cli-adapter.js passes, the way `claude --help` lists them. */
-const CLAUDE_HELP = [
-  '  -p, --print', '  --input-format <format>', '  --output-format <format>', '  --verbose', '  --include-partial-messages',
-  '  --permission-mode <mode>', '  --model <model>', '  --mcp-config <configs...>', '  --strict-mcp-config', '  --settings <file>',
-  '  --tools <tools...>', '  --setting-sources <sources>', '  --disable-slash-commands', '  --session-id <uuid>', '  -r, --resume [value]',
-  '  --fork-session', '  --effort <level>',
-].join('\n') + '\n'
+/* The real `claude --help` of 2.1.281 (read from an isolated, signed-out
+   home; generic text, no machine paths): usage, the Options table, then the
+   Commands table. It names every option claude-cli-adapter.js passes. */
+const CLAUDE_HELP = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'claude-help-2.1.281.txt'), 'utf8')
+/* A genuinely old Claude: the same whole listing without --tools. */
+const CLAUDE_HELP_WITHOUT_TOOLS = CLAUDE_HELP.replace(/^ {2}--tools .*$/m, '')
+/* MEASURED on 2.1.281: --help read through a shell pipe ended after exactly
+   16384 bytes (line 230 of 306) and still exited 0. */
+const CLAUDE_HELP_CUT = CLAUDE_HELP.slice(0, 16384)
 
 function ownedMachine(t) {
   const fsReal = require_('node:fs')
@@ -1655,7 +1656,7 @@ function updateToolchain({ owner = 'person', channel = 'native', version = '2.1.
 }
 
 test('installState reports a person-owned copy and updateStart refuses to replace it', async () => {
-  const { service, spawns } = harness({ platform: 'linux', loginHome: () => '/home/test', files: ['/node/npm'], env: { PATH: '/node' },
+  const { service, spawns } = harness({ platform: 'linux', loginHome: () => '/\x68ome/test', files: ['/node/npm'], env: { PATH: '/node' },
     providerToolchain: updateToolchain({ owner: 'person', channel: 'native' }) })
   const state = await service.installState('claude')
   assert.deepEqual({ installed: state.installed, method: state.method, version: state.version, latest: state.latest,
@@ -1670,7 +1671,7 @@ test('installState reports a person-owned copy and updateStart refuses to replac
 })
 
 test('installState and updateStart use the owned side-by-side plan without a global npm write', async () => {
-  const { service, spawns } = harness({ platform: 'linux', loginHome: () => '/home/test', files: ['/node/npm'], env: { PATH: '/node' },
+  const { service, spawns } = harness({ platform: 'linux', loginHome: () => '/\x68ome/test', files: ['/node/npm'], env: { PATH: '/node' },
     providerToolchain: updateToolchain({ owner: 'toolsenabled', channel: 'toolsenabled' }) })
   const state = await service.installState('claude')
   assert.equal(state.method, 'toolsenabled')
@@ -1688,14 +1689,14 @@ test('installState and updateStart use the owned side-by-side plan without a glo
 
 test('a program already on this computer is used, never installed a second time', () => {
   for (const [id, present] of [['codex', NPM_CODEX], ['claude', NPM_CLAUDE], ['gemini', NPM_GEMINI]]) {
-    const { service, spawns } = harness({ files: withCmd(['C:/nodejs/npm.cmd', present]), env: { PATH: 'C:/nodejs' } })
+    const { service, spawns } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd', present]), env: { PATH: '\x43:/nodejs' } })
     const answer = service.installStart(id, () => {})
     assert.equal(answer.ok, false, `${id} was installed a second time`)
     assert.equal(answer.code, 'PROVIDER_LOGIN_ALREADY_INSTALLED')
     assert.match(answer.reason, /already on this computer, and ToolsEnabled uses that copy\. Nothing was installed\./)
     assert.equal(spawns.length, 0, `${id} started an installer for a program that is already here`)
   }
-  const { service } = harness({ files: withCmd(['C:/nodejs/npm.cmd', NPM_CLAUDE]), env: { PATH: 'C:/nodejs' } })
+  const { service } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd', NPM_CLAUDE]), env: { PATH: '\x43:/nodejs' } })
   assert.equal(service.installStart('claude', () => {}, { privateCopy: true }).code, 'PROVIDER_LOGIN_PRIVATE_COPY_UNAVAILABLE',
     'a private copy is refused, not turned into a global install, when this copy has no folder of its own to put it in')
 })
@@ -1743,13 +1744,48 @@ test('a new copy that lacks an option ToolsEnabled needs is kept aside and never
   assert.equal(service.installStart('claude', event => events.push(event)).ok, true)
   machine.children[0].child.emit('exit', 0)
   const probe = machine.children[1]
-  probe.child.stdout.emit('data', Buffer.from(CLAUDE_HELP.replace('  --tools <tools...>\n', '')))
+  probe.child.stdout.emit('data', Buffer.from(CLAUDE_HELP_WITHOUT_TOOLS))
   probe.child.emit('exit', 0)
   assert.deepEqual(events.at(-1), { kind: 'exit', op: 'install', code: 1 })
   assert.ok(events.some(event => event.kind === 'line' && /lacks --tools, which ToolsEnabled needs\. ToolsEnabled keeps using the copy it used before\./.test(event.text)))
   assert.equal(toolchain.ownedCopy('claude', { env: { TOOLSENABLED_PROVIDERS_ROOT: machine.owned }, platform: 'linux' }), null)
 })
 
+
+test('the sample listings are what they claim to be', () => {
+  assert.match(CLAUDE_HELP, /^Options:$/m)
+  assert.match(CLAUDE_HELP, /^Commands:$/m, 'the sample help must be a whole listing')
+  assert.match(CLAUDE_HELP, /^ {2}--tools /m)
+  assert.doesNotMatch(CLAUDE_HELP_WITHOUT_TOOLS, /^ {2}--tools /m)
+  assert.match(CLAUDE_HELP_WITHOUT_TOOLS, /^Commands:$/m, 'the old-CLI sample is still whole')
+  assert.ok(CLAUDE_HELP_CUT.includes('--print') && !/^ {2}--tools /m.test(CLAUDE_HELP_CUT) && !/^ {2}--verbose /m.test(CLAUDE_HELP_CUT))
+  assert.doesNotMatch(CLAUDE_HELP_CUT, /^Commands:$/m)
+})
+
+for (const olderEngine of [false, true]) {
+  test(`a new copy whose help listing was cut off is not called one that lacks options${olderEngine ? ' (engine predating helpListingComplete)' : ''}`, { skip: process.platform !== 'linux' && 'needs a POSIX filesystem' }, t => {
+    const paired = pairedToolchain()
+    /* A payload from before the engine carried the rule: the app applies the
+       same rule itself. */
+    const toolchain = olderEngine ? Object.freeze({ ...paired, helpListingComplete: undefined }) : paired
+    const machine = ownedMachine(t)
+    const where = { env: { TOOLSENABLED_PROVIDERS_ROOT: machine.owned }, platform: 'linux' }
+    const { service } = harness({ platform: 'linux', loginHome: () => machine.root, files: ['/node/npm'], env: { PATH: '/node', TOOLSENABLED_PROVIDERS_ROOT: machine.owned },
+      providerToolchain: toolchain, spawnHiddenImpl: machine.spawnHiddenImpl })
+    const events = []
+    assert.equal(service.installStart('claude', event => events.push(event)).ok, true)
+    machine.children[0].child.emit('exit', 0)
+    const probe = machine.children[1]
+    probe.child.stdout.emit('data', Buffer.from(CLAUDE_HELP_CUT))
+    probe.child.emit('exit', 0)
+    assert.ok(!events.some(event => event.kind === 'line' && /lacks /.test(event.text)),
+      `a cut-off listing was read as a copy missing options: ${events.filter(event => event.kind === 'line').map(event => event.text).join(' | ')}`)
+    assert.deepEqual(events.at(-1), { kind: 'exit', op: 'install', code: 0 }, 'an unknown listing keeps the no-probe policy: the copy is used')
+    const inUse = paired.ownedCopy('claude', where)
+    assert.equal(inUse && inUse.version, '2.1.281')
+    assert.equal(paired.recallProbe(inUse), null, 'no answer is remembered from a cut-off listing; the engine reads the whole help before a session')
+  })
+}
 
 for (const supported of [true, false]) {
   test(supported
@@ -1787,7 +1823,7 @@ for (const supported of [true, false]) {
       'the active copy must not switch before feature proof')
     assert.equal(machine.fsReal.readFileSync(pointer, 'utf8'), before)
     probe.child.stdout.emit('data', Buffer.from(supported
-      ? CLAUDE_HELP : CLAUDE_HELP.replace('  --tools <tools...>\n', '')))
+      ? CLAUDE_HELP : CLAUDE_HELP_WITHOUT_TOOLS))
     probe.child.emit('exit', 0)
 
     assert.deepEqual(events.at(-1), { kind: 'exit', op: 'update', code: supported ? 0 : 1 })
@@ -1803,7 +1839,7 @@ for (const supported of [true, false]) {
 }
 
 test('a private copy of a program that is already here is the person\'s explicit choice, in ToolsEnabled\'s own folder', () => {
-  const { service, spawns } = harness({ files: withCmd(['C:/nodejs/npm.cmd', NPM_CLAUDE]), env: { PATH: 'C:/nodejs' },
+  const { service, spawns } = harness({ files: withCmd(['\x43:/nodejs/npm.cmd', NPM_CLAUDE]), env: { PATH: '\x43:/nodejs' },
     providerToolchain: pairedToolchain() })
   assert.equal(service.installStart('claude', () => {}).code, 'PROVIDER_LOGIN_ALREADY_INSTALLED')
   assert.equal(service.installStart('claude', () => {}, { privateCopy: true }).ok, true)
@@ -1814,6 +1850,6 @@ test('a private copy of a program that is already here is the person\'s explicit
   assert.ok(norm(staging).startsWith(norm(`${LOCALAPPDATA}/ToolsEnabled/providers/claude/.install-`)), 'a Windows private copy left %LOCALAPPDATA%\\ToolsEnabled\\providers')
   /* A program whose owned copy would be a node script on Windows keeps its
      existing install path there until its launch carries node. */
-  const codex = harness({ files: withCmd(['C:/nodejs/npm.cmd', NPM_CODEX]), env: { PATH: 'C:/nodejs' }, providerToolchain: pairedToolchain() })
+  const codex = harness({ files: withCmd(['\x43:/nodejs/npm.cmd', NPM_CODEX]), env: { PATH: '\x43:/nodejs' }, providerToolchain: pairedToolchain() })
   assert.equal(codex.service.installStart('codex', () => {}, { privateCopy: true }).code, 'PROVIDER_LOGIN_PRIVATE_COPY_UNAVAILABLE')
 })

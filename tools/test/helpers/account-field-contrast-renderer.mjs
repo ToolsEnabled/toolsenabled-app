@@ -2,6 +2,10 @@
    page containers they are drawn in, measured per theme: each empty field's
    border against the background behind the field. */
 import '../../../src/styles.css'
+/* The product loads tokens.css after styles.css from src/main.js; the field
+   edge (--field-border) and the surface tokens come from it, so the fixture
+   measures the edge the product paints rather than a fallback. */
+import '../../../src/tokens.css'
 import '../../../src/settings.css'
 import '../../../src/fleet-profile-settings.css'
 import '../../../src/setup.css'

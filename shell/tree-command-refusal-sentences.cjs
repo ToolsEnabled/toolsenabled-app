@@ -59,9 +59,9 @@ const TREE_COMMAND_ERRANDS = Object.freeze({
 })
 
 const TREE_COMMAND_REFUSAL_SENTENCES = Object.freeze({
-  /* The removal rule: agents spawned by agents that the user has not prompted
-     can be removed by their parent agents; an agent the user has prompted
-     remains, even if another agent created it. */
+  /* The owner's removal rule, 2026-09-03: "agents that were spawned by agents
+     AND who the user hasnt prompted - THEY can be removed by parent agents.
+     AGENTS that a user prompts even if created by another agent can remain". */
   MC_TREE_COMMAND_REMOVE_PERSON_SPOKE:
     'That circle stays: the person has sent it a message, and a circle the person has spoken to can only be removed by the person.',
   MC_TREE_COMMAND_REMOVE_NOT_AGENT_MADE:
@@ -70,8 +70,8 @@ const TREE_COMMAND_REFUSAL_SENTENCES = Object.freeze({
     'A circle is removed by one above it. That circle is not below yours on the tree, so it is not yours to remove.',
   MC_TREE_COMMAND_REMOVE_CALLER_UNKNOWN:
     'This session is not bound to a circle on the open tree, so there is no way to tell whether the circle it named is below it.',
-  /* The same placement question, asked for a stop or a restart (agents start
-     and restart the agents under them). Their own codes, because the
+  /* The same placement question, asked for a stop or a restart (owner:
+     "start and restart agents UNDER them"). Their own codes, because the
      REMOVE_* sentences explain a removal and would explain a stop wrongly. */
   MC_TREE_COMMAND_NOT_BELOW_CALLER:
     'A circle is stopped or restarted by one above it. That circle is not below yours on the tree, so it is not yours to change.',
@@ -92,10 +92,10 @@ const TREE_COMMAND_REFUSAL_SENTENCES = Object.freeze({
    * race. runTreeNodeCommand (src/views/computers.js) awaits bootPromise then
    * the bounded projectionReady wait; a view teardown (navigation, a route
    * change) landing inside that window returns this code with nothing having
-   * been asked of the store at all. MEASURED from the signed
-   * action log: agent.remove refused this way, then the SAME command
-   * succeeded three times in the next 33 seconds; agent.spawn refused it and
-   * succeeded under a minute later on a plain retry. Before this
+   * been asked of the store at all. MEASURED, Builder 3, from the signed
+   * action log: agent.remove refused this way at 06:54:06Z, then the SAME
+   * command succeeded three times in the next 33 seconds; agent.spawn refused
+   * it at 07:03:30Z and succeeded at 07:04:25Z on a plain retry. Before this
    * entry existed the code fell through to the generic line -- "The
    * application could not ... (MC_TREE_COMMAND_VIEW_DESTROYED)" -- which
    * upstream readers rendered as an internal error, not as the transient

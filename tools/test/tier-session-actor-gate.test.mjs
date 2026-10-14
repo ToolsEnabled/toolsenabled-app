@@ -173,7 +173,7 @@ test('the new code reaches a person as a sentence on both surfaces, naming the t
   assert.ok(source.includes(`fail('${code}'`), `${code} is listed as a start refusal but resolveStartTier() no longer raises it`)
 })
 
-/* THE REGISTER THAT WAS ASKED FOR, held as a rule rather than as one string.
+/* THE REGISTER THE OWNER ASKED FOR, held as a rule rather than as one string.
  *
  * "Keep customer-facing wording short and actionable; avoid explaining
  * app-owned session authorities or parts handing out identities in the user

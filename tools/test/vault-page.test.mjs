@@ -1,10 +1,10 @@
 /* THE VAULT IS A PAGE, AND THE PAGE DOES WHAT IT SAYS.
  *
- * WHY THIS SUITE EXISTS. The vault surface had been
+ * WHY THIS SUITE EXISTS, IN THE OWNER'S OWN WORDS. The vault surface had been
  * delivered three times as a ROW inside Settings' "Data & Privacy" category --
- * real, reachable, and not a page. The third time the owner reported that the
- * vault page was still nowhere to be seen, and that it is supposed to have its
- * own page like Settings and Ledger do. A row inside a category inside another page
+ * real, reachable, and not a page. The third time he wrote:
+ * the vault still had no page of its own, and it
+ * should have one, like Settings and Ledger. A row inside a category inside another page
  * is not that, and the gap was never caught because nothing asserted the
  * difference: the row's own tests all passed.
  *
@@ -69,7 +69,7 @@ function bridgeOf({ names = ['stripe_secret_key'], ok = true, policyReadable = t
   return {
     calls,
     names: async () => (ok
-      ? { ok: true, code: 'VAULT_NAMES_READ', names, store: 'C:\\candidate\\vault\\secrets.json' }
+      ? { ok: true, code: 'VAULT_NAMES_READ', names, store: '\x43:\\candidate\\vault\\secrets.json' }
       : { ok: false, code: 'VAULT_UNREADABLE', reason: 'the store could not be read' }),
     policy: async () => ({ readable: policyReadable, records }),
     setNickname: async request => { calls.push(['setNickname', request]); return { ok: true } },
@@ -153,8 +153,8 @@ test('a nicknamed record shows the nickname INSTEAD of its real name', async () 
 
   const heading = view.el.querySelector('[data-vault-shown]')
   assert.equal(heading.textContent, 'the card one')
-  /* THE WHOLE POINT. Nicknames exist so the real names are not visible; a
-     nickname shown BESIDE the real name would leave it visible. */
+  /* THE WHOLE POINT. The owner asked for nicknames "so that they arent
+     visible"; a nickname shown BESIDE the real name would leave it visible. */
   const disclosure = view.el.querySelector('[data-vault-real]')
   assert.ok(disclosure, 'the real name should still be reachable on purpose')
   assert.equal(disclosure.textContent, 'stripe_secret_key')
@@ -195,7 +195,7 @@ test('an unruled role draws as allowed, and a denied one draws as refused', asyn
   assert.ok(builder && reviewer, 'the matrix must draw a cell per role')
   assert.equal(builder.checked, false, 'a role the owner turned off must draw as off')
   /* An unruled role reads as allowed because that is what the policy actually
-     does. Drawing it off would tell the owner they had closed something they had
+     does. Drawing it off would tell the owner he had closed something he had
      not. */
   assert.equal(reviewer.checked, true)
 })

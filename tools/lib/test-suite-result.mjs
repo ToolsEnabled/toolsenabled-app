@@ -18,7 +18,7 @@ export const REQUIRED_APP_CONTROLS = Object.freeze([
 
 // A SKIP IS AN UNEXECUTED TEST, AND AT RELEASE EVERY ONE OF THEM IS NAMED HERE.
 //
-// THE DEFECT THIS EXISTS TO END, measured 2026-09-07 at an earlier app commit. The
+// THE DEFECT THIS EXISTS TO END, measured 2026-09-07 at app 4ba0ceac. The
 // strict path above refuses failures and requires its named controls, but it
 // said nothing at all about skips: `--strict` returned EXIT_PASS on any run
 // whose `# fail` was 0, however many tests had been skipped. Twenty-eight
@@ -57,7 +57,7 @@ export const REQUIRED_APP_CONTROLS = Object.freeze([
 //               checkout, a document kept outside the repository. Absent is
 //               the CORRECT state for a released source tree, so this can
 //               never be "fixed" by adding the file to the repository.
-//   decided     a limitation decided against building, with the
+//   decided     a limitation the owner decided against building, with the
 //               argument recorded in the design documents. Not debt: a
 //               decision. It comes out if the decision is reversed.
 //
@@ -76,6 +76,103 @@ export const REQUIRED_APP_CONTROLS = Object.freeze([
 // because the run that was meant to execute it did would delete the register
 // every time it worked.
 export const RELEASE_SKIP_REGISTER = Object.freeze([
+  // Exact T2050 Linux fixture dispositions; missing native prerequisites still block.
+  Object.freeze({
+    id: "linux-t2050-installed-measurement",
+    testName: "typed measurement executes the actual fixed-root reader and refuses unbound evidence",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-installed-measurement.test.mjs: The owning non-root Linux x64 fixture uses procfs identities, Unix peer credentials and local Python/Node workers for synthetic fixed-root measurement. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-transport-positive-binding",
+    testName: "synthetic transport positive control preserves nonce/profile and unqualified state",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-transport-bindings.test.mjs: The owning non-root Linux x64 fixture exercises procfs process identity and Unix peer credentials through local synthetic sockets and a Python bridge. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-transport-nonce-replay",
+    testName: "synthetic replay control refuses a changed nonce",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-transport-bindings.test.mjs: The owning non-root Linux x64 fixture exercises procfs process identity and Unix peer credentials through local synthetic sockets and a Python bridge. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-transport-response-role",
+    testName: "standard request must refuse a privileged response role",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-transport-bindings.test.mjs: The owning non-root Linux x64 fixture exercises procfs process identity and Unix peer credentials through local synthetic sockets and a Python bridge. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-transport-base-image",
+    testName: "changed base image bytes must refuse before admission",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-transport-bindings.test.mjs: The owning non-root Linux x64 fixture exercises procfs process identity and Unix peer credentials through local synthetic sockets and a Python bridge. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-transport-endpoint-owner",
+    testName: "QMP and RPC endpoints must belong to the declared process",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-transport-bindings.test.mjs: The owning non-root Linux x64 fixture exercises procfs process identity and Unix peer credentials through local synthetic sockets and a Python bridge. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-transport-later-attestation",
+    testName: "a later attestation must retain the initially measured machine identity",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-transport-bindings.test.mjs: The owning non-root Linux x64 fixture exercises procfs process identity and Unix peer credentials through local synthetic sockets and a Python bridge. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-transport-share-boundary",
+    testName: "artifact input share must not resolve outside the dedicated machine root",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-transport-bindings.test.mjs: The owning non-root Linux x64 fixture exercises procfs process identity and Unix peer credentials through local synthetic sockets and a Python bridge. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-transport-process-start",
+    testName: "changed process start refuses the next request",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-transport-bindings.test.mjs: The owning non-root Linux x64 fixture exercises procfs process identity and Unix peer credentials through local synthetic sockets and a Python bridge. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-transport-command-bounds",
+    testName: "invalid command/profile bounds refuse without RPC dispatch",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-transport-bindings.test.mjs: The owning non-root Linux x64 fixture exercises procfs process identity and Unix peer credentials through local synthetic sockets and a Python bridge. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-artifact-staging-boundary",
+    testName: "linked artifact input refuses before creating anything outside the machine root",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-qualification-artifact-staging.test.mjs: The owning non-root Linux x64 fixture checks a linked artifact share through the Linux Unix-peer transport and dedicated machine root. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
+  Object.freeze({
+    id: "linux-t2050-measurement-input-staging",
+    testName: "host-only measurement staging admits exact files and refuses unsafe copy boundaries",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-installed-measurement-staging.test.mjs: The owning non-root Linux x64 fixture checks POSIX ownership/modes and O_PATH descriptor admission with pinned Linux Node bytes. Off-platform skips remain unexecuted; separate Linux execution is required and no guest or Windows qualification is granted.",
+  }),
   Object.freeze({
     id: "linux-qa-private-directory-mode",
     testName: "a QA directory that will hold a launch is created private, whatever the operator umask is",
@@ -88,68 +185,68 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
   // missing Windows prerequisite from being hidden by its Linux disposition.
   // These literal names do not admit future tests by file, pattern or count.
   Object.freeze({
-    id: "windows-accessibility-desktop-blocked-names-1",
+    id: "windows-accessibility-\x64esktop-blocked-names-1",
     testName: "every excluded window class is refused by name, and an ordinary window is still admitted",
     class: "platform",
     requiredPlatform: "win32",
     stages: Object.freeze(["promotion", "release"]),
-    reason: "tools/test/accessibility-desktop-blocked-names.test.mjs: PowerShell window-class matching has no Linux implementation. Registration admits this skip only off Windows, and is not evidence of execution.",
+    reason: "tools/test/accessibility-\x64esktop-blocked-names.test.mjs: PowerShell window-class matching has no Linux implementation. Registration admits this skip only off Windows, and is not evidence of execution.",
   }),
   Object.freeze({
-    id: "windows-accessibility-desktop-streams-1",
+    id: "windows-accessibility-\x64esktop-streams-1",
     testName: "Windows helper preserves UTF-8 across every byte boundary",
     class: "platform",
     requiredPlatform: "win32",
     stages: Object.freeze(["promotion", "release"]),
-    reason: "tools/test/accessibility-desktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
+    reason: "tools/test/accessibility-\x64esktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
   }),
   Object.freeze({
-    id: "windows-accessibility-desktop-streams-2",
+    id: "windows-accessibility-\x64esktop-streams-2",
     testName: "Windows helper waits for pipe closure and accepts output arriving after root exit",
     class: "platform",
     requiredPlatform: "win32",
     stages: Object.freeze(["promotion", "release"]),
-    reason: "tools/test/accessibility-desktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
+    reason: "tools/test/accessibility-\x64esktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
   }),
   Object.freeze({
-    id: "windows-accessibility-desktop-streams-3",
+    id: "windows-accessibility-\x64esktop-streams-3",
     testName: "Windows helper rejects invalid UTF-8 instead of silently changing an observed label",
     class: "platform",
     requiredPlatform: "win32",
     stages: Object.freeze(["promotion", "release"]),
-    reason: "tools/test/accessibility-desktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
+    reason: "tools/test/accessibility-\x64esktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
   }),
   Object.freeze({
-    id: "windows-accessibility-desktop-streams-4",
+    id: "windows-accessibility-\x64esktop-streams-4",
     testName: "Windows helper rejects nonzero and malformed completion without stopping an exited helper",
     class: "platform",
     requiredPlatform: "win32",
     stages: Object.freeze(["promotion", "release"]),
-    reason: "tools/test/accessibility-desktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
+    reason: "tools/test/accessibility-\x64esktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
   }),
   Object.freeze({
-    id: "windows-accessibility-desktop-streams-5",
+    id: "windows-accessibility-\x64esktop-streams-5",
     testName: "Windows helper enforces its output limit in bytes and does not revive after overflow",
     class: "platform",
     requiredPlatform: "win32",
     stages: Object.freeze(["promotion", "release"]),
-    reason: "tools/test/accessibility-desktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
+    reason: "tools/test/accessibility-\x64esktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
   }),
   Object.freeze({
-    id: "windows-accessibility-desktop-streams-6",
+    id: "windows-accessibility-\x64esktop-streams-6",
     testName: "Windows helper cancellation keeps its first failure and only stops a still-running root",
     class: "platform",
     requiredPlatform: "win32",
     stages: Object.freeze(["promotion", "release"]),
-    reason: "tools/test/accessibility-desktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
+    reason: "tools/test/accessibility-\x64esktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
   }),
   Object.freeze({
-    id: "windows-accessibility-desktop-streams-7",
+    id: "windows-accessibility-\x64esktop-streams-7",
     testName: "Windows helper retains its deadline while exited output pipes remain open",
     class: "platform",
     requiredPlatform: "win32",
     stages: Object.freeze(["promotion", "release"]),
-    reason: "tools/test/accessibility-desktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
+    reason: "tools/test/accessibility-\x64esktop-streams.test.mjs: The real Windows adapter's pipe path is platform-selected even when its stream source is scripted; this is not UI Automation proof. Registration admits this skip only off Windows, and is not evidence of execution.",
   }),
   Object.freeze({
     id: "windows-agent-confinement-provider-1",
@@ -773,7 +870,7 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
     class: "nightly",
     stages: Object.freeze(["promotion", "release"]),
     reason:
-      "drives real UI Automation against a real window. Measured 2026-09-07: the same " +
+      "drives real UI Automation against a real window. Measured 2026-09-07 at 4ba0ceac: the same " +
       "commit timed out after 60000ms in one whole-suite run and passed in the next, with three other " +
       "test runs on the machine. Run it with TOOLSENABLED_NIGHTLY=1.",
   }),
@@ -784,7 +881,7 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
     stages: Object.freeze(["promotion", "release"]),
     reason:
       "minimises, maximises, restores and closes a real window and waits on the window manager. " +
-      "Measured 2026-09-07: failed with the product's own 'Windows could not safely " +
+      "Measured 2026-09-07 at 4ba0ceac: failed with the product's own 'Windows could not safely " +
       "complete this request' in one whole-suite run and passed in the next. Run it with " +
       "TOOLSENABLED_NIGHTLY=1.",
   }),
@@ -797,7 +894,7 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
       "measures REAL scheduler behaviour: a 10ms setInterval on the main thread across a 500ms hold on " +
       "the ledger thread. It cannot take an injected clock, because whether the main thread stalls is " +
       "the entire subject. It already refuses to rule on a reading it could not take -- MEASURED " +
-      "2026-09-07 under three concurrent test runs, it reported \"the main thread's timer " +
+      "2026-09-07 at 4ba0ceac under three concurrent test runs, it reported \"the main thread's timer " +
       "did not fire often enough to prove anything (12 ticks)\", needing 20 -- but at release that " +
       "refusal reads as a product defect. Run it on a quiet machine with TOOLSENABLED_NIGHTLY=1.",
   }),
@@ -809,7 +906,7 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
     stages: Object.freeze(["promotion", "release"]),
     reason:
       "src/views/agent.js still builds its direct-line chat from an inline, two-mode object with no " +
-      "named config. MEASURED 2026-09-07, not assumed: the file's '// chat panel' anchor " +
+      "named config. MEASURED 2026-09-07 at 4ba0ceac, not assumed: the file's '// chat panel' anchor " +
       "is present and the mount contains no `const ...chatConfig =`, so the guard is a real gap and " +
       "not an obsolete skip. Owned by the chat surface lane, not by test hardening.",
   }),
@@ -821,7 +918,7 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
     stages: Object.freeze(["promotion", "release"]),
     reason:
       "src/agent-session.js mountSessionControls still hand-picks its buildChat fields. MEASURED " +
-      "2026-09-07, not assumed: the mountSessionControls anchor is present and its " +
+      "2026-09-07 at 4ba0ceac, not assumed: the mountSessionControls anchor is present and its " +
       "buildChat call contains no `...config` spread, so the guard is a real gap and not an obsolete " +
       "skip. Owned by the chat surface lane, not by test hardening.",
   }),
@@ -831,8 +928,8 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
     class: "nightly",
     stages: Object.freeze(["promotion", "release"]),
     reason:
-      "launches a real Electron process and waits for a real renderer to answer. MEASURED 2026-09-07: " +
-      "in a whole-suite run under load the child hit its own 25000ms limit at 27031ms and " +
+      "launches a real Electron process and waits for a real renderer to answer. MEASURED 2026-09-07 " +
+      "at 4ba0ceac: in a whole-suite run under load the child hit its own 25000ms limit at 27031ms and " +
       "reported only \"Command failed\"; run alone on the same commit it passed. Run it on a quiet " +
       "machine with TOOLSENABLED_NIGHTLY=1.",
   }),
@@ -1060,7 +1157,7 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
     reason: "Exercises the native Linux ar inspection used by the .deb cutter; executes on Linux and remains unexecuted on other hosts.",
   }),
   // Named by the .46 release censuses, 2026-09-23 (Linux unit te46-linux-full-dist-21 and the
-  // Windows offline qualification guest on an earlier commit). Each entry says what guards the test and
+  // Windows offline qualification guest on dabd2f51). Each entry says what guards the test and
   // where the behaviour executes instead; a requiredPlatform entry still blocks on its own host.
   Object.freeze({
     id: "check-artifact-private-a-machine-sid-that-could-not",
@@ -1379,6 +1476,14 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
       "decoder.",
   }),
   Object.freeze({
+    id: "linux-artifact-deb-shared-opt-ownership",
+    testName: "Debian packages ship the shared opt record and refuse incomplete or unsafe payloads",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason: "tools/test/linux-artifact-deb.test.mjs: Linux x64 Debian source/stage accounting and POSIX artifact modes.",
+  }),
+  Object.freeze({
     id: "linux-artifact-deb-linux-debian-dispatch-accepts-a-real",
     testName: "Linux Debian dispatch accepts a real XZ Debian envelope instead of selecting Windows NSIS tools",
     class: "platform",
@@ -1679,6 +1784,72 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
       "guarded in tools/test/linux-deb-maintainer.test.mjs (`process.platform !== 'linux'`): the " +
       "Debian maintainer scripts and AppArmor policy lifecycle run under Linux bash and the Linux " +
       "kernel.",
+  }),
+  Object.freeze({
+    id: "linux-deb-maintainer-legacy-deferred-configure",
+    testName: "known legacy parser configures an explicit deferred hold without compiling or loading policy",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "guarded by the existing non-root Linux fixture policy in tools/test/linux-deb-maintainer.test.mjs: " +
+      "runs Linux bash/coreutils on an owned temporary tree with a synthetic parser; it does not qualify " +
+      "real AppArmor grammar or installed kernel behavior.",
+  }),
+  Object.freeze({
+    id: "linux-deb-maintainer-deferred-interruption-removal",
+    testName: "deferred configure re-enters after interruption, survives unrestricted observations and removes cleanly",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "guarded by the existing non-root Linux fixture policy in tools/test/linux-deb-maintainer.test.mjs: " +
+      "runs Linux bash/coreutils on an owned temporary tree with a synthetic parser; it does not qualify " +
+      "real AppArmor grammar or installed kernel behavior.",
+  }),
+  Object.freeze({
+    id: "linux-deb-maintainer-modern-no-deferral",
+    testName: "legacy deferral never follows modern compile failure or replaces a managed profile",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "guarded by the existing non-root Linux fixture policy in tools/test/linux-deb-maintainer.test.mjs: " +
+      "runs Linux bash/coreutils on an owned temporary tree with a synthetic parser; it does not qualify " +
+      "real AppArmor grammar or installed kernel behavior.",
+  }),
+  Object.freeze({
+    id: "linux-deb-maintainer-bounded-version-observation",
+    testName: "parser version eligibility refuses unknown, malformed, excessive and timed-out fixture output",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "guarded by the existing non-root Linux fixture policy in tools/test/linux-deb-maintainer.test.mjs: " +
+      "runs Linux bash/coreutils on an owned temporary tree with a synthetic parser; it does not qualify " +
+      "real AppArmor grammar or installed kernel behavior.",
+  }),
+  Object.freeze({
+    id: "linux-deb-maintainer-admission-record-custody",
+    testName: "admission records reject unsafe or noncanonical data before changing managed policy",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "guarded by the existing non-root Linux fixture policy in tools/test/linux-deb-maintainer.test.mjs: " +
+      "runs Linux bash/coreutils on an owned temporary tree with a synthetic parser; it does not qualify " +
+      "real AppArmor grammar or installed kernel behavior.",
+  }),
+  Object.freeze({
+    id: "linux-deb-maintainer-deferred-modern-reconfigure",
+    testName: "legacy admission clears only through successful modern policy reconfiguration",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "guarded by the existing non-root Linux fixture policy in tools/test/linux-deb-maintainer.test.mjs: " +
+      "runs Linux bash/coreutils on an owned temporary tree with a synthetic parser; it does not qualify " +
+      "real AppArmor grammar or installed kernel behavior.",
   }),
   Object.freeze({
     id: "linux-signing-signed-repository-accepted-by-gpgv-and-apt",
@@ -2063,6 +2234,117 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
       "tools/test/linux-owned-job.test.mjs: real Linux owned-job execution, process-tree reaping " +
       "and shared admission ledger.",
   }),
+  // T2086 inert extraction cases: exact names, never a file/prefix exemption.
+  Object.freeze({
+    id: "linux-owned-job-t2086-annotation",
+    testName: "T2086 inert annotation and closed lease preserve the existing record contract",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
+  Object.freeze({
+    id: "linux-owned-job-t2086-inode-replacement",
+    testName: "T2086 inert same-byte inode replacement cannot be removed by the old lease",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
+  Object.freeze({
+    id: "linux-owned-job-t2086-record-bytes",
+    testName: "T2086 inert changed record bytes cannot be removed by the old lease",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
+  Object.freeze({
+    id: "linux-owned-job-t2086-bigint-inode",
+    testName: "T2086 inert admission distinguishes adjacent inode values beyond Number precision",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
+  Object.freeze({
+    id: "linux-owned-job-t2086-fixture-prefix",
+    testName: "T2086 inert fixture refuses an unrelated temporary directory without creating a ledger",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
+  Object.freeze({
+    id: "linux-owned-job-t2086-files-drift",
+    testName: "T2086 inert facade rejects changed owned-job-files.mjs before production acquisition",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
+  Object.freeze({
+    id: "linux-owned-job-t2086-files-preload-drift",
+    testName: "T2086 inert facade refuses preloaded drift in owned-job-files.mjs",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
+  Object.freeze({
+    id: "linux-owned-job-t2086-admission-drift",
+    testName: "T2086 inert facade rejects changed owned-execution-admission.mjs before production acquisition",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
+  Object.freeze({
+    id: "linux-owned-job-t2086-admission-preload-drift",
+    testName: "T2086 inert facade refuses preloaded drift in owned-execution-admission.mjs",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
+  Object.freeze({
+    id: "linux-owned-job-t2086-component-lists",
+    testName: "T2086 inert extracted modules remain in all fixed implementation component lists",
+    class: "platform",
+    requiredPlatform: "linux",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "tools/test/linux-owned-job.test.mjs: this Linux x64 inert filesystem/module fixture " +
+      "uses the guarded qualification fixture layout and Linux admission semantics. " +
+      "It performs no native job or cleanup qualification; this entry admits only an off-Linux skip.",
+  }),
   Object.freeze({
     id: "owner-administration-process-linux-actual-owned-lifetime-delivers-bounded",
     testName: "Linux actual owned lifetime delivers bounded private input and writes only metadata terminal receipts",
@@ -2277,6 +2559,56 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
       "guarded by `process.platform !== 'linux'` in " +
       "tools/test/refuse-install-while-electron-runs.test.mjs: observes a real Linux executable " +
       "holder through /proc.",
+  }),
+  Object.freeze({
+    id: "research-examples-every-example-names-a-donor-file",
+    testName: "every example names a donor file that is really in the donor tree",
+    class: "owner-data",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "reads the owner's LeanBench donor tree outside the repository " +
+      "(tools/test/research-examples.test.mjs, DONOR_SOURCE); the release census executes it where " +
+      "that tree exists and it skips at RUNTIME via t.skip where it does not.",
+  }),
+  Object.freeze({
+    id: "research-examples-every-example-is-a-byte-for",
+    testName: "every example is a byte-for-byte slice of the donor file it names",
+    class: "owner-data",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "reads the owner's LeanBench donor tree outside the repository " +
+      "(tools/test/research-examples.test.mjs, DONOR_SOURCE); the release census executes it where " +
+      "that tree exists and it skips at RUNTIME via t.skip where it does not.",
+  }),
+  Object.freeze({
+    id: "research-examples-every-donor-occurrence-a-snippet-records",
+    testName: "every donor occurrence a snippet records is really in the prompt it names",
+    class: "owner-data",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "reads the owner's LeanBench donor tree outside the repository " +
+      "(tools/test/research-examples.test.mjs, DONOR_SOURCE); the release census executes it where " +
+      "that tree exists and it skips at RUNTIME via t.skip where it does not.",
+  }),
+  Object.freeze({
+    id: "research-examples-the-t1-and-o1-variants-their",
+    testName: "the T1 and O1 variants their own files list are exactly the ones decomposed",
+    class: "owner-data",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "reads the owner's LeanBench donor tree outside the repository " +
+      "(tools/test/research-examples.test.mjs, DONOR_SOURCE); the release census executes it where " +
+      "that tree exists and it skips at RUNTIME via t.skip where it does not.",
+  }),
+  Object.freeze({
+    id: "research-examples-every-snippet-carries-the-code-that",
+    testName: "every snippet carries the code that implements it, and those bytes are the file they name",
+    class: "owner-data",
+    stages: Object.freeze(["promotion", "release"]),
+    reason:
+      "reads the owner's LeanBench donor tree outside the repository " +
+      "(tools/test/research-examples.test.mjs, DONOR_SOURCE); the release census executes it where " +
+      "that tree exists and it skips at RUNTIME via t.skip where it does not.",
   }),
   Object.freeze({
     id: "sandbox-setup-lease-durable-profile-and-per-user-slot",
@@ -2578,84 +2910,84 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
     reason:
       "drives a real Electron window through the native app-control adapter " +
       "(tools/test/accessibility-ui.test.mjs). Linux executes it in the release census under its " +
-      "private Xvfb display. On Windows it needs an interactive desktop: measured 2026-09-23 " +
-      "in the session-0 qualification guest it only timed out after 30000ms, so there it " +
+      "private Xvfb display. On Windows it needs an interactive desktop: measured 2026-09-23 at " +
+      "dabd2f51 in the session-0 qualification guest it only timed out after 30000ms, so there it " +
       "runs under TOOLSENABLED_NIGHTLY=1 on a real desktop.",
   }),
   Object.freeze({
-    id: "fix-stream-follow-desktop-harness",
+    id: "lanew-fix-stream-follow-\x64esktop-harness",
     testName: "the harness stayed hidden, sandboxed and offline",
     class: "nightly",
     stages: Object.freeze(["promotion", "release"]),
     reason:
-      "tools/test/fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
+      "tools/test/lanew-fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
       "measures reading position in it. Windows clamps that window to the desktop work area, and " +
-      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23), so the " +
+      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23 at dabd2f51), so the " +
       "harness records displayTooSmall and every check here skips instead of judging a layout the " +
       "product never showed anyone. It executes wherever the desktop is at least 1600x1000: the " +
       "1920x1080 census Xvfb on Linux, the Windows qualification host desktop.",
   }),
   Object.freeze({
-    id: "fix-stream-follow-desktop-overflow",
+    id: "lanew-fix-stream-follow-desktop-overflow",
     testName: "the seeded transcript really overflows, so reading position is a real measurement",
     class: "nightly",
     stages: Object.freeze(["promotion", "release"]),
     reason:
-      "tools/test/fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
+      "tools/test/lanew-fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
       "measures reading position in it. Windows clamps that window to the desktop work area, and " +
-      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23), so the " +
+      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23 at dabd2f51), so the " +
       "harness records displayTooSmall and every check here skips instead of judging a layout the " +
       "product never showed anyone. It executes wherever the desktop is at least 1600x1000: the " +
       "1920x1080 census Xvfb on Linux, the Windows qualification host desktop.",
   }),
   Object.freeze({
-    id: "fix-stream-follow-desktop-follow",
+    id: "lanew-fix-stream-follow-desktop-follow",
     testName: "a reader at the bottom is followed by the live stream, in BOTH surfaces",
     class: "nightly",
     stages: Object.freeze(["promotion", "release"]),
     reason:
-      "tools/test/fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
+      "tools/test/lanew-fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
       "measures reading position in it. Windows clamps that window to the desktop work area, and " +
-      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23), so the " +
+      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23 at dabd2f51), so the " +
       "harness records displayTooSmall and every check here skips instead of judging a layout the " +
       "product never showed anyone. It executes wherever the desktop is at least 1600x1000: the " +
       "1920x1080 census Xvfb on Linux, the Windows qualification host desktop.",
   }),
   Object.freeze({
-    id: "fix-stream-follow-desktop-reply",
+    id: "lanew-fix-stream-follow-desktop-reply",
     testName: "a supplied unfinished reply is visible immediately in both surfaces",
     class: "nightly",
     stages: Object.freeze(["promotion", "release"]),
     reason:
-      "tools/test/fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
+      "tools/test/lanew-fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
       "measures reading position in it. Windows clamps that window to the desktop work area, and " +
-      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23), so the " +
+      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23 at dabd2f51), so the " +
       "harness records displayTooSmall and every check here skips instead of judging a layout the " +
       "product never showed anyone. It executes wherever the desktop is at least 1600x1000: the " +
       "1920x1080 census Xvfb on Linux, the Windows qualification host desktop.",
   }),
   Object.freeze({
-    id: "fix-stream-follow-desktop-open",
+    id: "lanew-fix-stream-follow-desktop-open",
     testName: "opening onto a live stream leaves the live turn in view, not below the fold",
     class: "nightly",
     stages: Object.freeze(["promotion", "release"]),
     reason:
-      "tools/test/fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
+      "tools/test/lanew-fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
       "measures reading position in it. Windows clamps that window to the desktop work area, and " +
-      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23), so the " +
+      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23 at dabd2f51), so the " +
       "harness records displayTooSmall and every check here skips instead of judging a layout the " +
       "product never showed anyone. It executes wherever the desktop is at least 1600x1000: the " +
       "1920x1080 census Xvfb on Linux, the Windows qualification host desktop.",
   }),
   Object.freeze({
-    id: "fix-stream-follow-desktop-parked",
+    id: "lanew-fix-stream-follow-desktop-parked",
     testName: "a reader who scrolled up on purpose is left alone, and keeps the pill, in BOTH surfaces",
     class: "nightly",
     stages: Object.freeze(["promotion", "release"]),
     reason:
-      "tools/test/fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
+      "tools/test/lanew-fix-stream-follow.test.mjs drives a hidden 1600x1000 Electron window and " +
       "measures reading position in it. Windows clamps that window to the desktop work area, and " +
-      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23), so the " +
+      "the session-0 qualification guest offers 1024x768 (measured 2026-09-23 at dabd2f51), so the " +
       "harness records displayTooSmall and every check here skips instead of judging a layout the " +
       "product never showed anyone. It executes wherever the desktop is at least 1600x1000: the " +
       "1920x1080 census Xvfb on Linux, the Windows qualification host desktop.",
@@ -2668,7 +3000,7 @@ export const RELEASE_SKIP_REGISTER = Object.freeze([
     reason:
       "tools/test/role-functions-ui.test.mjs opens the real role studio in a 1440x960 Electron window " +
       "and measures its workspace. Windows clamps that window to the desktop work area, and the " +
-      "session-0 qualification guest offers 1024x768 (measured 2026-09-23: the workspace " +
+      "session-0 qualification guest offers 1024x768 (measured 2026-09-23 at dabd2f51: the workspace " +
       "could not escape the narrow rail), so the helper reports the desktop and the test skips. It " +
       "executes wherever the desktop is at least 1440x960: the census Xvfb on Linux, the Windows " +
       "qualification host desktop.",
@@ -2714,7 +3046,7 @@ export function nightlySkipReason(id) {
 // A BARE `# SKIP` IS A SILENT SKIP, AND NODE PRODUCES ONE BY DEFAULT.
 //
 // `{ skip: someBoolean }` renders in TAP as `# SKIP` with no words after it.
-// MEASURED 2026-09-07 at an earlier app commit: 11 of the run's 25 unexecuted tests said
+// MEASURED 2026-09-07 at app 4ba0ceac: 11 of the run's 25 unexecuted tests said
 // nothing at all about why, and a reader of the raw TAP had no way to tell an
 // intended platform guard from a test that had quietly stopped working. The
 // release register names every skip at the GATE; this names it in the TAP line

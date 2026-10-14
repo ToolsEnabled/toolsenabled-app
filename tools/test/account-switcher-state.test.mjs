@@ -13,7 +13,7 @@
  *   separately, because one test covering all of them can be satisfied by one
  *   early return.
  *
- *   ONE NAME PER PROVIDER. The registry allows "team" as both a Codex and a
+ *   ONE NAME PER PROVIDER. The registry allows "school" as both a Codex and a
  *   Claude account; the merge marks a row active by the provider's own answer
  *   (activeByProvider) and falls back to the single legacy name only when it
  *   names exactly one row.
@@ -38,14 +38,8 @@ import { fileURLToPath } from 'node:url'
 
 import {
   COPY,
-  DEFAULT_RESERVE_PERCENT,
-  DEFAULT_SELECTION_MODE,
-  UNRECOGNISED_SELECTION_MODE,
   NOT_INSTALLED_CODE,
   PROVIDER_IDS,
-  RANKED_MODE_IDS,
-  SELECTION_MODE_CHOICES,
-  SELECTION_MODE_IDS,
   USAGE_MEASURED_PROVIDERS,
   accountBars,
   accountSentence,
@@ -59,7 +53,6 @@ import {
   usageIsStale,
   USAGE_STALE_MS,
   groupByProvider,
-  isRankedMode,
   lastSwitchSentence,
   loadAccounts,
   loadUsage,
@@ -68,11 +61,8 @@ import {
   needsSignIn,
   accountKey,
   signInQueue,
-  normalizeSelectionMode,
   onSignInChanged,
   readSignInChange,
-  orderExplanation,
-  orderParagraph,
   providerLabel,
   providerMeasuresUsage,
   readAccountList,
@@ -82,16 +72,10 @@ import {
   resetPhrase,
   rowFlags,
   rowLines,
-  saveSelectionMode,
-  selectionModeChoice,
+  signInRequiredBeforeRun,
   signInAccount,
   switchAccount,
   windowSentence,
-  RANK_WINDOW_IDS,
-  DEFAULT_RANK_WINDOW,
-  normalizeRankWindow,
-  rankWindowChoice,
-  LEGACY_SELECTION_MODES,
 } from '../../src/account-switcher-state.js'
 import { canonicalRootForTests } from '../canonical-root.mjs'
 
@@ -113,9 +97,7 @@ test('a reported billing period keeps its own label and never duplicates a share
 
 /* What every program's rule reads as when none has its own: the rule above,
    flagged as not its own. */
-const inheritedRules = (selectionMode, reservePercent, rankWindow = 'either') => Object.fromEntries(
-  ['codex', 'claude', 'gemini', 'grok'].map(id => [id, { selectionMode, reservePercent, rankWindow, own: { selectionMode: false, reservePercent: false, rankWindow: false } }]),
-)
+
 
 const require_ = createRequire(import.meta.url)
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -130,51 +112,11 @@ const HOUR = 60 * 60 * 1000
 
 /* ------------------------------ the mode table ------------------------------ */
 
-test('the mode ids equal the packaged engine\'s and the shell\'s, in the same order', () => {
-  const engine = require_(path.join(ENGINE_ROOT, 'src', 'lib', 'multi-account', 'selection-modes.js'))
-  const shell = require_(path.join(REPO, 'shell', 'account-registry.cjs'))
-  assert.deepEqual([...SELECTION_MODE_IDS], [...engine.SELECTION_MODE_IDS],
-    'the menu offers a mode the packaged engine does not have (or the reverse); the engine normalises the stranger to manual, so the dropdown would show a choice the computer does not honour')
-  assert.deepEqual([...SELECTION_MODE_IDS], [...shell.SELECTION_MODE_IDS],
-    'the menu offers a mode the shell refuses (or the reverse); setPolicy() would answer ACCOUNT_MODE_UNSUPPORTED for a choice on the dropdown')
-  assert.equal(DEFAULT_SELECTION_MODE, engine.DEFAULT_SELECTION_MODE)
-  assert.equal(DEFAULT_RESERVE_PERCENT, engine.DEFAULT_RESERVE_PERCENT)
-  /* The ranked set is derived from the engine's own table: every automatic
-     mode except priority and Rotate ranks on allowance, and those are the modes under
-     which the switch confirmation has to say the ranking takes over. */
-  const ranked = engine.SELECTION_MODES.filter(mode => mode.automatic === true && !['priority', 'rotate'].includes(mode.id)).map(mode => mode.id)
-  assert.deepEqual([...RANKED_MODE_IDS], ranked)
-  assert.equal(engine.isAutomatic('manual'), false, 'manual must stay non-automatic; the "Never changes account on its own" sentence depends on it')
-})
 
-test('every mode has a label and a help sentence, manual is first, priority is the default, and the unknown falls to manual', () => {
-  assert.equal(SELECTION_MODE_CHOICES[0].id, 'manual')
-  assert.equal(DEFAULT_SELECTION_MODE, 'priority', 'nobody chose: walk the list (added accounts rotate)')
-  assert.equal(UNRECOGNISED_SELECTION_MODE, 'manual')
-  for (const choice of SELECTION_MODE_CHOICES) {
-    assert.ok(choice.label.length > 0 && choice.help.length > 0, `${choice.id} has no words`)
-    assert.equal(selectionModeChoice(choice.id), choice)
-  }
-  assert.equal(selectionModeChoice('nope'), null)
-  for (const value of [undefined, null, '', 'automatic', 42, {}, 'MANUAL']) {
-    assert.equal(normalizeSelectionMode(value), 'manual', `${JSON.stringify(value)} must fall to manual`)
-  }
-  assert.equal(isRankedMode('manual'), false)
-  assert.equal(isRankedMode('priority'), false)
-  assert.equal(isRankedMode('rotate'), false, 'Rotate follows the persisted cursor, not allowance rankings')
-  assert.equal(normalizeSelectionMode('rotate'), 'rotate')
-  assert.equal(selectionModeChoice('rotate').label, 'Rotate')
-  for (const id of ['most-available', 'least-available', 'even', 'dynamic', 'resets-soonest']) assert.equal(isRankedMode(id), true)
-})
 
-test('the manual help promises only what the code does', () => {
-  /* Finding 52: the first draft said this menu would name the ready account
-     when work stopped, and nothing delivered that. The sentence must keep the
-     pinned promise and must not promise the menu says anything on its own. */
-  const help = selectionModeChoice('manual').help
-  assert.ok(help.includes('Never changes account on its own'), 'the pinned promise left the manual help')
-  assert.ok(!/names the account/i.test(help), 'the manual help promises the menu names a ready account; no code path delivers that')
-})
+
+
+
 
 /* ------------------------------ providers ------------------------------ */
 
@@ -301,31 +243,31 @@ for (const [name, value] of [
     assert.equal(list.active, null)
     assert.equal(list.activeByProvider, null)
     assert.equal(list.note, COPY.unavailable)
-    assert.equal(list.policy.selectionMode, 'priority', 'nothing recorded reads as the default, the listed order')
-    assert.equal(list.policy.recorded, false)
-    assert.equal(list.policy.reservePercent, DEFAULT_RESERVE_PERCENT)
+
+
+
   })
 }
 
 // Positive fixtures name explicit opaque identities. Missing/malformed binding
 // tests below pass their raw values through the production readers unchanged.
 const FIXTURE_BINDINGS = Object.freeze({
-  codexTeam: '1'.repeat(64), claudeTeam: '2'.repeat(64), geminiWork: '3'.repeat(64),
+  codexSchool: '1'.repeat(64), claudeSchool: '2'.repeat(64), geminiWork: '3'.repeat(64),
   claudeWork: '4'.repeat(64), antigravity: '5'.repeat(64), grok: '6'.repeat(64),
 })
 
 const LIST_REPLY = Object.freeze({
   ok: true,
   accounts: [
-    { name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, directory: '.codex-team', priority: 1, signedIn: 'yes', command: 'codex login' },
-    { name: 'team', provider: 'claude', allowanceBinding: FIXTURE_BINDINGS.claudeTeam, directory: '.claude-team', priority: 2, signedIn: 'no' },
+    { name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, directory: '.codex-school', priority: 1, signedIn: 'yes', command: 'codex login' },
+    { name: 'school', provider: 'claude', allowanceBinding: FIXTURE_BINDINGS.claudeSchool, directory: '.claude-school', priority: 2, signedIn: 'no' },
     { name: 'work', provider: 'gemini', allowanceBinding: FIXTURE_BINDINGS.geminiWork, priority: 3, signedIn: 'maybe' },
     { name: '', provider: 'codex' },
     { name: 'stranger', provider: 'copilot' },
     'not an account',
   ],
-  active: { name: 'team', provider: 'codex', at: '2026-09-02T11:00:00.000Z' },
-  activeByProvider: { codex: 'team', claude: null, gemini: { name: 'work' } },
+  active: { name: 'school', provider: 'codex', at: '2026-09-02T11:00:00.000Z' },
+  activeByProvider: { codex: 'school', claude: null, gemini: { name: 'work' } },
   policy: { selectionMode: 'dynamic', recorded: true, reservePercent: 40 },
 })
 
@@ -333,47 +275,22 @@ test('a well-formed list is normalised: names, providers, the three-valued sign-
   const list = readAccountList(LIST_REPLY)
   assert.equal(list.available, true)
   assert.equal(list.damaged, false)
-  assert.deepEqual(list.accounts.map(account => `${account.provider}:${account.name}`), ['codex:team', 'claude:team', 'gemini:work'],
+  assert.deepEqual(list.accounts.map(account => `${account.provider}:${account.name}`), ['codex:school', 'claude:school', 'gemini:work'],
     'a nameless row and an unknown provider are dropped; Gemini is kept')
   assert.equal(list.accounts[0].signedIn, true)
   assert.equal(list.accounts[1].signedIn, false)
   assert.equal(list.accounts[2].signedIn, null, 'an answer this build does not recognise is "not said", never "not signed in"')
   assert.equal(list.accounts[0].command, 'codex login')
-  assert.equal(list.active, 'team')
+  assert.equal(list.active, 'school')
   assert.equal(list.activeProvider, 'codex')
   assert.equal(list.activeAt, '2026-09-02T11:00:00.000Z')
-  assert.deepEqual({ ...list.activeByProvider }, { codex: 'team', claude: null, gemini: 'work', grok: null },
+  assert.deepEqual({ ...list.activeByProvider }, { codex: 'school', claude: null, gemini: 'work', grok: null },
     'a per-provider entry may be a name or a record with a name')
-  assert.deepEqual({ ...list.policy }, { autoRecoverOnLimit: true, selectionMode: 'dynamic', recorded: true, reservePercent: 40, rankWindow: 'either', exhaustedAtPercent: 99, exhaustedAtPercentHourly: null, exhaustedAtPercentWeekly: null, byProvider: inheritedRules('dynamic', 40) })
+
   assert.equal(list.note, null)
 })
 
-test('the policy may arrive wrapped, and anything unreadable in it falls to the safe values', () => {
-  const wrapped = readAccountList({ ok: true, accounts: [], policy: { ok: true, policy: { selectionMode: 'even', recorded: true, reservePercent: 10 } } })
-  assert.deepEqual({ ...wrapped.policy }, { autoRecoverOnLimit: true, selectionMode: 'even', recorded: true, reservePercent: 10, rankWindow: 'either', exhaustedAtPercent: 99, exhaustedAtPercentHourly: null, exhaustedAtPercentWeekly: null, byProvider: inheritedRules('even', 10) })
-  const odd = readAccountList({ ok: true, accounts: [], policy: { selectionMode: 'random', recorded: 'yes', reservePercent: 500 } })
-  assert.deepEqual({ ...odd.policy }, { autoRecoverOnLimit: true, selectionMode: 'manual', recorded: false, reservePercent: DEFAULT_RESERVE_PERCENT, rankWindow: 'either', exhaustedAtPercent: 99, exhaustedAtPercentHourly: null, exhaustedAtPercentWeekly: null, byProvider: inheritedRules('manual', DEFAULT_RESERVE_PERCENT) })
 
-  /* THE TWO PER-WINDOW LIMITS SURVIVE THE READ, and an absent one stays null
-     rather than becoming a copy of the single number. The menu draws the
-     difference between a limit somebody chose and one they inherited, so it
-     has to still be able to tell them apart this far down. */
-  const limits = readAccountList({ ok: true, accounts: [], policy: {
-    selectionMode: 'even', recorded: true, reservePercent: 10,
-    exhaustedAtPercent: 90, exhaustedAtPercentWeekly: 95
-  } })
-  assert.equal(limits.policy.exhaustedAtPercent, 90)
-  assert.equal(limits.policy.exhaustedAtPercentWeekly, 95, 'a weekly limit that was chosen is read back')
-  assert.equal(limits.policy.exhaustedAtPercentHourly, null, 'a window with no limit of its own reads as null, not as 90')
-
-  const spoiled = readAccountList({ ok: true, accounts: [], policy: {
-    selectionMode: 'even', exhaustedAtPercent: 'ninety', exhaustedAtPercentWeekly: 500, exhaustedAtPercentHourly: true
-  } })
-  assert.equal(spoiled.policy.exhaustedAtPercent, 99, 'an unreadable single number falls to the engine default')
-  assert.equal(spoiled.policy.exhaustedAtPercentWeekly, null, 'a limit out of range is no limit')
-  assert.equal(spoiled.policy.exhaustedAtPercentHourly, null, 'a boolean is no limit')
-  assert.equal(readAccountList({ ok: true, accounts: [] }).activeByProvider, null, 'an older shell that did not say is null, not an empty table')
-})
 
 /* ------------------------- the last change of account ------------------------- */
 
@@ -480,7 +397,7 @@ for (const [name, value] of [
     assert.equal(usage.ok, false)
     assert.equal(usage.reason, COPY.usageUnavailable)
     assert.deepEqual({ ...usage.readings }, {})
-    assert.deepEqual([...usage.orders], [])
+
   })
 }
 
@@ -489,41 +406,41 @@ test('a refusal with a reason keeps the reason, and a reading is keyed by provid
   const usage = readUsageReply({
     ok: true,
     accounts: [
-      { name: 'Team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'HEALTHY', canServe: true, usedPercent: 18, windows: { hourly: { usedPercent: 18 }, weekly: { usedPercent: 40 } }, planType: 'plus' },
+      { name: 'School', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'HEALTHY', canServe: true, usedPercent: 18, windows: { hourly: { usedPercent: 18 }, weekly: { usedPercent: 40 } }, planType: 'plus' },
       { name: 'work', provider: 'claude', allowanceBinding: FIXTURE_BINDINGS.claudeWork, status: 'EXHAUSTED', canServe: 'yes', usedPercent: 'lots', reason: 'spent' },
       { name: 'x', provider: 'copilot', usedPercent: 1 },
       null,
     ],
-    orders: [{ provider: 'codex', names: ['Team', 7, ''], why: 'Team has the most left.' }, { provider: 'nope' }, 'x'],
+    orders: [{ provider: 'codex', names: ['School', 7, ''], why: 'School has the most left.' }, { provider: 'nope' }, 'x'],
   })
   assert.equal(usage.ok, true)
-  assert.deepEqual(Object.keys(usage.readings).sort(), ['claude:work', 'codex:team'])
-  assert.equal(usage.readings['codex:team'].windows.weekly.kind, 'weekly')
-  assert.equal(usage.readings['codex:team'].canServe, true)
+  assert.deepEqual(Object.keys(usage.readings).sort(), ['claude:work', 'codex:school'])
+  assert.equal(usage.readings['codex:school'].windows.weekly.kind, 'weekly')
+  assert.equal(usage.readings['codex:school'].canServe, true)
   assert.equal(usage.readings['claude:work'].canServe, false, 'canServe is true only for the boolean true')
   assert.equal(usage.readings['claude:work'].usedPercent, null, 'a non-numeric percent is null, never 0')
   assert.deepEqual(usage.readings['claude:work'].windows, { hourly: null, weekly: null, weeklyWindows: [] })
-  assert.deepEqual(usage.orders.map(order => ({ ...order, names: [...order.names] })), [{ provider: 'codex', names: ['Team'], why: 'Team has the most left.' }])
+
 })
 
 /* ------------------------------ the merge ------------------------------ */
 
-test('mergeAccounts marks a row active by its provider\'s own answer, so two "team" rows are not both in use', () => {
+test('mergeAccounts marks a row active by its provider\'s own answer, so two "school" rows are not both in use', () => {
   const rows = mergeAccounts(readAccountList(LIST_REPLY), null)
   assert.deepEqual(rows.map(row => [row.provider, row.name, row.active]), [
-    ['codex', 'team', true],
-    ['claude', 'team', false],
+    ['codex', 'school', true],
+    ['claude', 'school', false],
     ['gemini', 'work', true],
   ])
 })
 
 test('without a per-provider answer, the legacy name marks a row only when it names exactly one', () => {
-  const shared = readAccountList({ ...LIST_REPLY, active: { name: 'team' }, activeByProvider: undefined })
+  const shared = readAccountList({ ...LIST_REPLY, active: { name: 'school' }, activeByProvider: undefined })
   assert.deepEqual(mergeAccounts(shared, null).map(row => row.active), [false, false, false],
     'two rows share the name, so neither is guessed active and both keep their switch button')
   const unique = readAccountList({ ...LIST_REPLY, active: { name: 'WORK' }, activeByProvider: undefined })
   assert.deepEqual(mergeAccounts(unique, null).map(row => row.active), [false, false, true], 'a unique name is honoured, case-insensitively')
-  const withProvider = readAccountList({ ...LIST_REPLY, active: { name: 'team', provider: 'claude' }, activeByProvider: undefined })
+  const withProvider = readAccountList({ ...LIST_REPLY, active: { name: 'school', provider: 'claude' }, activeByProvider: undefined })
   assert.deepEqual(mergeAccounts(withProvider, null).map(row => row.active), [false, true, false], 'a legacy answer that names its provider is exact')
   const none = readAccountList({ ...LIST_REPLY, active: null, activeByProvider: undefined })
   assert.deepEqual(mergeAccounts(none, null).map(row => row.active), [false, false, false])
@@ -548,7 +465,7 @@ test('a measured account carries its readings, binds on the worse window and say
   const usage = readUsageReply({
     ok: true,
     accounts: [{
-      name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'HEALTHY', canServe: true,
+      name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'HEALTHY', canServe: true,
       windows: { hourly: { usedPercent: 18, resetsAt: inMs(4 * HOUR) }, weekly: { usedPercent: 60, resetsAt: inMs(6 * 24 * HOUR) } },
     }],
   })
@@ -560,7 +477,7 @@ test('a measured account carries its readings, binds on the worse window and say
   assert.equal(codex.binding.remainingPercent, 40)
   assert.equal(accountSentence(codex, { now: NOW }), '82% free this 5-hour window · resets in 4h · 40% free this week · resets in 6 days')
   const claude = rows.find(row => row.provider === 'claude')
-  assert.equal(claude.measured, false, 'a reading for the Codex "team" must not measure the Claude "team"')
+  assert.equal(claude.measured, false, 'a reading for the Codex "school" must not measure the Claude "school"')
 })
 
 test('both weekly ceilings reach the row, named apart, while the binding one is unchanged', () => {
@@ -571,7 +488,7 @@ test('both weekly ceilings reach the row, named apart, while the binding one is 
   const usage = readUsageReply({
     ok: true,
     accounts: [{
-      name: 'team', provider: 'claude', allowanceBinding: FIXTURE_BINDINGS.claudeTeam, status: 'HEALTHY', canServe: true,
+      name: 'school', provider: 'claude', allowanceBinding: FIXTURE_BINDINGS.claudeSchool, status: 'HEALTHY', canServe: true,
       windows: {
         hourly: { usedPercent: 21, label: 'session', resetsAt: inMs(4 * HOUR) },
         weekly: { usedPercent: 46, label: 'weekly_scoped · Fable', model: 'Fable', resetsAt: inMs(6 * 24 * HOUR) },
@@ -600,7 +517,7 @@ test('both weekly ceilings reach the row, named apart, while the binding one is 
   const oneWeek = readUsageReply({
     ok: true,
     accounts: [{
-      name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'HEALTHY', canServe: true,
+      name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'HEALTHY', canServe: true,
       windows: { hourly: { usedPercent: 18 }, weekly: { usedPercent: 60 } },
     }],
   })
@@ -618,7 +535,7 @@ test('two weekly ceilings that name no model are told apart by the provider\'s o
   const usage = readUsageReply({
     ok: true,
     accounts: [{
-      name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'HEALTHY', canServe: true,
+      name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'HEALTHY', canServe: true,
       windows: {
         hourly: null,
         weekly: { usedPercent: 70, label: 'secondary · 10080 min' },
@@ -661,7 +578,7 @@ test('no bridge, or a partial one, is unavailable -- and no wrapper ever throws'
   assert.equal(accountsBridge(undefined), null)
   assert.equal((await loadAccounts({})).available, false)
   assert.equal((await loadUsage({})).ok, false)
-  for (const wrapper of [saveSelectionMode, switchAccount, addManagedAccount, signInAccount]) {
+  for (const wrapper of [switchAccount, addManagedAccount, signInAccount]) {
     const answer = await wrapper({}, {})
     assert.equal(answer.ok, false)
     assert.equal(answer.reason, COPY.unavailable)
@@ -669,32 +586,22 @@ test('no bridge, or a partial one, is unavailable -- and no wrapper ever throws'
   /* The list arrow alone does not make the other arrows exist. */
   const listOnly = fakeScope({})
   assert.equal((await loadUsage(listOnly)).ok, false)
-  assert.equal((await saveSelectionMode({ selectionMode: 'even' }, listOnly)).reason, COPY.unavailable)
-  assert.equal((await switchAccount({ name: 'team', provider: 'codex' }, listOnly)).reason, COPY.unavailable)
+
+  assert.equal((await switchAccount({ name: 'school', provider: 'codex' }, listOnly)).reason, COPY.unavailable)
   assert.equal((await addManagedAccount({ provider: 'codex' }, listOnly)).reason, COPY.unavailable)
-  assert.equal((await signInAccount({ name: 'team', provider: 'codex' }, listOnly)).reason, COPY.unavailable)
+  assert.equal((await signInAccount({ name: 'school', provider: 'codex' }, listOnly)).reason, COPY.unavailable)
 })
 
-test('a bridge that throws reads as unavailable or refused, never as a crash', async () => {
-  const boom = async () => { throw new Error('ACCOUNT_STATE_UNAVAILABLE') }
-  const scope = fakeScope({ accounts: boom, accountUsage: boom, accountPolicy: boom, accountSwitch: boom, accountAddManaged: boom, accountSignIn: boom })
-  assert.equal((await loadAccounts(scope)).available, false)
-  assert.equal((await loadUsage(scope)).ok, false)
-  const policy = await saveSelectionMode({ selectionMode: 'even' }, scope)
-  assert.deepEqual({ ...policy }, { ok: false, code: null, reason: COPY.modeRefused })
-  assert.equal((await switchAccount({ name: 'team', provider: 'codex' }, scope)).reason, COPY.switchRefused)
-  assert.equal((await addManagedAccount({ provider: 'codex' }, scope)).reason, COPY.addRefused)
-  assert.equal((await signInAccount({ name: 'team', provider: 'codex' }, scope)).reason, COPY.signInRefused)
-})
+
 
 test('loadAccounts and loadUsage hand back the normalised replies', async () => {
-  const scope = fakeScope({ accountUsage: async () => ({ ok: true, accounts: [{ name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, windows: { hourly: { usedPercent: 5 } } }] }) })
+  const scope = fakeScope({ accountUsage: async () => ({ ok: true, accounts: [{ name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, windows: { hourly: { usedPercent: 5 } } }] }) })
   const list = await loadAccounts(scope)
   assert.equal(list.available, true)
   assert.equal(list.accounts.length, 3)
   const usage = await loadUsage(scope)
   assert.equal(usage.ok, true)
-  assert.equal(usage.readings['codex:team'].windows.hourly.remainingPercent, 95)
+  assert.equal(usage.readings['codex:school'].windows.hourly.remainingPercent, 95)
 })
 
 test('a refusal record from the shell keeps its own sentence and code, on every channel', async () => {
@@ -703,8 +610,8 @@ test('a refusal record from the shell keeps its own sentence and code, on every 
      now answers { ok: false, code, reason } and the wrapper keeps both. */
   const refuse = async () => REFUSAL
   const scope = fakeScope({ accountPolicy: refuse, accountSwitch: refuse, accountAddManaged: refuse, accountSignIn: refuse })
-  for (const wrapper of [saveSelectionMode, switchAccount, addManagedAccount, signInAccount]) {
-    const answer = await wrapper({ name: 'team', provider: 'codex', selectionMode: 'even' }, scope)
+  for (const wrapper of [switchAccount, addManagedAccount, signInAccount]) {
+    const answer = await wrapper({ name: 'school', provider: 'codex', selectionMode: 'even' }, scope)
     assert.equal(answer.ok, false)
     assert.equal(answer.code, 'ACCOUNT_REGISTRY_ABSENT')
     assert.equal(answer.reason, REFUSAL.reason, `${wrapper.name} dropped the shell's own sentence`)
@@ -712,43 +619,31 @@ test('a refusal record from the shell keeps its own sentence and code, on every 
   /* A refusal WITHOUT a sentence falls to the channel's own fallback. */
   const bare = async () => ({ ok: false, code: 'ACCOUNT_UNKNOWN' })
   const bareScope = fakeScope({ accountPolicy: bare, accountSwitch: bare, accountAddManaged: bare, accountSignIn: bare })
-  assert.equal((await saveSelectionMode({}, bareScope)).reason, COPY.modeRefused)
+
   assert.equal((await switchAccount({}, bareScope)).reason, COPY.switchRefused)
   assert.equal((await addManagedAccount({}, bareScope)).reason, COPY.addRefused)
   assert.equal((await signInAccount({}, bareScope)).reason, COPY.signInRefused)
   assert.equal((await switchAccount({}, bareScope)).code, 'ACCOUNT_UNKNOWN')
 })
 
-test('saveSelectionMode forwards the request untouched and reads only ok:true as saved', async () => {
-  const sent = []
-  const scope = fakeScope({ accountPolicy: async request => { sent.push(request); return { ok: true } } })
-  const answer = await saveSelectionMode({ selectionMode: 'dynamic', reservePercent: 30 }, scope)
-  assert.deepEqual({ ...answer }, { ok: true, code: null, reason: null })
-  assert.deepEqual(sent, [{ selectionMode: 'dynamic', reservePercent: 30 }])
-  await saveSelectionMode({ selectionMode: 'even' }, scope)
-  assert.equal('reservePercent' in sent[1], false, 'a request without a reserve must not grow one on the way through')
-  for (const odd of [undefined, null, [], 'ok', { ok: 'true' }, { ok: 1 }]) {
-    const refused = await saveSelectionMode({ selectionMode: 'even' }, fakeScope({ accountPolicy: async () => odd }))
-    assert.equal(refused.ok, false, `${JSON.stringify(odd)} must not read as saved`)
-  }
-})
+
 
 test('switchAccount tells "switched" from "already there" and carries the active record', async () => {
   const sent = []
   const scope = fakeScope({
     accountSwitch: async request => {
       sent.push(request)
-      return { ok: true, switched: request.name !== 'team', active: { name: request.name, provider: request.provider } }
+      return { ok: true, switched: request.name !== 'school', active: { name: request.name, provider: request.provider } }
     },
   })
   const moved = await switchAccount({ name: 'work', provider: 'gemini' }, scope)
   assert.equal(moved.ok, true)
   assert.equal(moved.switched, true)
   assert.deepEqual({ ...moved.active }, { name: 'work', provider: 'gemini' })
-  const same = await switchAccount({ name: 'team', provider: 'codex' }, scope)
+  const same = await switchAccount({ name: 'school', provider: 'codex' }, scope)
   assert.equal(same.ok, true)
   assert.equal(same.switched, false, 'ok:true with switched:false is "already using", not a switch')
-  assert.deepEqual(sent, [{ name: 'work', provider: 'gemini' }, { name: 'team', provider: 'codex' }])
+  assert.deepEqual(sent, [{ name: 'work', provider: 'gemini' }, { name: 'school', provider: 'codex' }])
   const vague = await switchAccount({ name: 'work', provider: 'gemini' }, fakeScope({ accountSwitch: async () => ({ ok: true, switched: 'yes', active: { name: 'work', provider: 'copilot' } }) }))
   assert.equal(vague.switched, false, 'switched is true only for the boolean true')
   assert.equal(vague.active, null, 'an active record with an unknown provider is not carried')
@@ -777,9 +672,9 @@ test('addManagedAccount sends the provider and the optional name, and answers th
 test('signInAccount forwards name and provider and answers ok only for ok:true', async () => {
   const sent = []
   const scope = fakeScope({ accountSignIn: async request => { sent.push(request); return { ok: true } } })
-  const answer = await signInAccount({ name: 'team', provider: 'claude' }, scope)
+  const answer = await signInAccount({ name: 'school', provider: 'claude' }, scope)
   assert.deepEqual({ ...answer }, { ok: true, code: null, title: null, reason: null })
-  assert.deepEqual(sent, [{ name: 'team', provider: 'claude' }])
+  assert.deepEqual(sent, [{ name: 'school', provider: 'claude' }])
 
   /* THE WINDOW'S OWN NAME, CARRIED THROUGH AND BOUNDED. It is the shell that
      decides what a sign-in window is called (shell/provider-login.cjs
@@ -787,13 +682,13 @@ test('signInAccount forwards name and provider and answers ok only for ok:true',
      of the format, so the sentence can never name a window something other than
      what is on it. A shell too old to answer one leaves it null above, which is
      a different answer from a window with no name and reads as one. */
-  const titled = await signInAccount({ name: 'team', provider: 'claude' },
-    fakeScope({ accountSignIn: async () => ({ ok: true, terminal: 'command-prompt', title: 'ToolsEnabled sign-in: team - claude' }) }))
-  assert.equal(titled.title, 'ToolsEnabled sign-in: team - claude')
-  const shouted = await signInAccount({ name: 'team', provider: 'claude' },
+  const titled = await signInAccount({ name: 'school', provider: 'claude' },
+    fakeScope({ accountSignIn: async () => ({ ok: true, terminal: 'command-prompt', title: 'ToolsEnabled sign-in: school - claude' }) }))
+  assert.equal(titled.title, 'ToolsEnabled sign-in: school - claude')
+  const shouted = await signInAccount({ name: 'school', provider: 'claude' },
     fakeScope({ accountSignIn: async () => ({ ok: true, title: 'x'.repeat(400) }) }))
   assert.equal(shouted.title.length, 120, 'a title from the shell is not bounded before it reaches a sentence')
-  const refused = await signInAccount({ name: 'team', provider: 'claude' }, fakeScope({ accountSignIn: async () => ({ ok: false, code: 'PROVIDER_NOT_INSTALLED', reason: 'Claude is not installed on this computer. Install it, then press Sign in again.' }) }))
+  const refused = await signInAccount({ name: 'school', provider: 'claude' }, fakeScope({ accountSignIn: async () => ({ ok: false, code: 'PROVIDER_NOT_INSTALLED', reason: 'Claude is not installed on this computer. Install it, then press Sign in again.' }) }))
   assert.equal(refused.ok, false)
   assert.equal(refused.code, 'PROVIDER_NOT_INSTALLED')
   assert.ok(refused.reason.startsWith('Claude is not installed'))
@@ -804,9 +699,9 @@ test('the bridge module carries no credential field and no way to send one', () 
      shaped like a secret on any of their requests would be the one thing the
      header says never happens. */
   const requests = [
-    { name: 'team', provider: 'codex' },
+    { name: 'school', provider: 'codex' },
     { provider: 'codex', name: 'work' },
-    { selectionMode: 'even', reservePercent: 25 },
+
   ]
   for (const request of requests) {
     for (const key of Object.keys(request)) {
@@ -853,9 +748,7 @@ test('no word on the menu calls the five-hour window an hour', () => {
     assert.ok(!/\bthis hour\b/i.test(text), `COPY.${key} says "this hour": ${text}`)
     assert.ok(!/\bhourly\b/i.test(text), `COPY.${key} says "hourly": ${text}`)
   }
-  for (const choice of SELECTION_MODE_CHOICES) {
-    assert.ok(!/\bhourly\b|\bthis hour\b/i.test(choice.help), `${choice.id} help calls the window an hour: ${choice.help}`)
-  }
+
 })
 
 test('the sentences that point at a button name the button as it is labelled', () => {
@@ -912,19 +805,18 @@ test('the one control for several sign-ins says how many are left and that they 
 
 test('the switch confirmations say what the engine does under each kind of mode', () => {
   assert.equal(COPY.switched('work'), 'Now using “work”. The next run starts on it.')
-  assert.equal(COPY.switchedRanked('work', 'Most room left first'),
-    'Now using “work”. The next run starts on it; after that, “Most room left first” picks.')
+
   assert.equal(COPY.switchedAlready('work'), 'Already using “work”. Nothing changed.')
   assert.equal(COPY.added('work', SIGN_IN_TITLE),
     'Added “work”. A terminal window named “ToolsEnabled sign-in: work - codex” opened. '
     + 'Sign in there and in your browser, then press Check allowances.')
-  assert.equal(COPY.reserveInvalid, 'Type a number from 0 to 100.')
+
 })
 
 test('the words the DOM module used to keep to itself are in COPY now', () => {
   /* Findings 30 and 57: six strings were written inside render code, where
      no gate could see them. Each has a key here. */
-  for (const key of ['notKnown', 'notSignedIn', 'signInUnchecked', 'saving', 'switching', 'adding', 'openingSignIn', 'signIn', 'reserveUnit', 'roomLeft', 'percentFree', 'checked']) {
+  for (const key of ['notKnown', 'notSignedIn', 'signInUnchecked', 'saving', 'switching', 'adding', 'openingSignIn', 'signIn', 'roomLeft', 'percentFree', 'checked']) {
     assert.ok(key in COPY, `COPY.${key} is missing`)
   }
 })
@@ -946,7 +838,7 @@ test('the sign-in run offers the rows that need it, in list order, and never the
      would therefore offer the same account for ever and never reach the second
      one -- which is exactly the two-accounts-to-sign-in case this exists for. */
   const accounts = [
-    { name: 'team', provider: 'codex', signedIn: true, status: 'HEALTHY', canServe: true },
+    { name: 'school', provider: 'codex', signedIn: true, status: 'HEALTHY', canServe: true },
     { name: 'work', provider: 'codex', signedIn: false, status: null, canServe: null },
     { name: 'home', provider: 'claude', signedIn: null, status: 'signed_out', canServe: false },
     { name: 'lab', provider: 'claude', signedIn: null, status: null, canServe: null },
@@ -1017,13 +909,13 @@ test('a row the shell and the engine both call signed out carries one flag, and 
   /* The merge output feeds it directly: a merged, unmeasured, signed-out row. */
   const merged = mergeAccounts(readAccountList(LIST_REPLY), readUsageReply({
     ok: true,
-    accounts: [{ name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'signed_out', canServe: false, reason: 'no sign-in' }],
+    accounts: [{ name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'signed_out', canServe: false, reason: 'no sign-in' }],
     orders: [],
   }))
-  const team = merged.find(account => account.name === 'team' && account.provider === 'codex')
-  assert.deepEqual(rowFlags(team), [{ text: COPY.notSignedIn, tone: 'bad', title: null }])
+  const school = merged.find(account => account.name === 'school' && account.provider === 'codex')
+  assert.deepEqual(rowFlags(school), [{ text: COPY.notSignedIn, tone: 'bad', title: null }])
   // T1463: an active signed-out row keeps its allowance lines and adds the actionable sign-in warning.
-  assert.deepEqual(rowLines(team).map(line => line.text), [COPY.signInBeforeRun, COPY.usageUnknown, COPY.usageUnknownWhy],
+  assert.deepEqual(rowLines(school).map(line => line.text), [COPY.signInBeforeRun, COPY.usageUnknown, COPY.usageUnknownWhy],
     'an active signed-out row must warn before a run while preserving both allowance lines')
 })
 
@@ -1044,15 +936,16 @@ test('a program nobody measures gets one sentence under its row, not "not known"
   /* A measured row says its figures and nothing else. */
   const measured = mergeAccounts(readAccountList(LIST_REPLY), readUsageReply({
     ok: true,
-    accounts: [{ name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'HEALTHY', canServe: true, windows: { hourly: { usedPercent: 18, resetsAt: inMs(4 * HOUR) } } }],
+    accounts: [{ name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'HEALTHY', canServe: true, windows: { hourly: { usedPercent: 18, resetsAt: inMs(4 * HOUR) } } }],
   })).find(row => row.provider === 'codex')
   assert.deepEqual(rowLines(measured, { now: NOW }).map(line => line.text), ['82% free this 5-hour window · resets in 4h'])
-  /* A Gemini row the engine did measure is a measured row, whatever the table says. */
+  /* Older Gemini CLI measurements stay unknown after the credential probe is removed. */
   const measuredGemini = mergeAccounts(readAccountList(LIST_REPLY), readUsageReply({
     ok: true,
     accounts: [{ name: 'work', provider: 'gemini', allowanceBinding: FIXTURE_BINDINGS.geminiWork, status: 'HEALTHY', canServe: true, windows: { weekly: { usedPercent: 50 } } }],
   })).find(row => row.provider === 'gemini')
-  assert.deepEqual(rowLines(measuredGemini).map(line => line.text), ['50% free this week'])
+  assert.equal(measuredGemini.measured, false)
+  assert.deepEqual(rowLines(measuredGemini).map(line => line.text), [COPY.usageNotMeasured])
 })
 
 test('an engine fault other than signed out is read in the tooltip and under the row; a sign-out is not', () => {
@@ -1064,8 +957,8 @@ test('an engine fault other than signed out is read in the tooltip and under the
   const rows = mergeAccounts(readAccountList(LIST_REPLY), readUsageReply({
     ok: true,
     accounts: [
-      { name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'EXHAUSTED', canServe: false, reason: 'Its weekly allowance is used up. It resets on Monday.' },
-      { name: 'team', provider: 'claude', allowanceBinding: FIXTURE_BINDINGS.claudeTeam, status: 'signed_out', canServe: false, reason: 'This Claude home is not signed in. Sign in to it with CLAUDE_CONFIG_DIR set to its directory.' },
+      { name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'EXHAUSTED', canServe: false, reason: 'Its weekly allowance is used up. It resets on Monday.' },
+      { name: 'school', provider: 'claude', allowanceBinding: FIXTURE_BINDINGS.claudeSchool, status: 'signed_out', canServe: false, reason: 'This Claude home is not signed in. Sign in to it with CLAUDE_CONFIG_DIR set to its directory.' },
       { name: 'work', provider: 'gemini', allowanceBinding: FIXTURE_BINDINGS.geminiWork, status: 'NOT_PROVISIONED', canServe: false },
     ],
   }))
@@ -1101,7 +994,7 @@ test('an engine fault other than signed out is read in the tooltip and under the
  *   "The account surface reports a signed-in session, but no request was made,
  *    so it is not proven able to serve one. Re-run with capability checking
  *    enabled to resolve this. 92% of its weekly allowance is used; resets
- *    2026-01-02T17:00:00.123456+00:00."
+ *    2026-09-03T17:00:00.309845+00:00."
  *
  * -- advice written for a probe run from a command line, plus a microsecond
  * ISO timestamp, printed under a row already flagged "exhausted". The engine
@@ -1112,7 +1005,7 @@ test('an exhausted row says why in plain words, and no machine value reaches the
   const spent = mergeAccounts(readAccountList(LIST_REPLY), readUsageReply({
     ok: true,
     accounts: [{
-      name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'exhausted', canServe: false,
+      name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'exhausted', canServe: false,
       reason: 'Signed in, but this account is out of allowance for now, so it is not being started. 92% of its weekly allowance is used.',
       resetsAt: inMs(11 * HOUR),
       windows: { hourly: { usedPercent: 0 }, weekly: { usedPercent: 92, resetsAt: inMs(11 * HOUR) } },
@@ -1141,7 +1034,7 @@ test('a row the engine timed but measured no window for gets its reset clause fr
   const REASON = "The provider reports this account's rate limit reached (weekly)."
   const limited = mergeAccounts(readAccountList(LIST_REPLY), readUsageReply({
     ok: true,
-    accounts: [{ name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'exhausted', canServe: false, reason: REASON, resetsAt: inMs(3 * HOUR) }],
+    accounts: [{ name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'exhausted', canServe: false, reason: REASON, resetsAt: inMs(3 * HOUR) }],
   })).find(row => row.provider === 'codex')
 
   /* This is the case that has nowhere else to say it: no window was measured,
@@ -1166,7 +1059,7 @@ test('a row the engine timed but measured no window for gets its reset clause fr
 /* WHICH ACCOUNT A ROW IS ACTUALLY SIGNED IN AS.
  *
  * WHAT THIS GUARDS. The engine has always reported the address each program
- * answers with, and readUsageReply threw it away, so a row labelled "team"
+ * answers with, and readUsageReply threw it away, so a row labelled "school"
  * over a home signed in as somebody else looked exactly like a row that was
  * right. Nothing in this product sees which account a person picks in the
  * browser after pressing Sign in, so this line is the only thing that can make
@@ -1181,17 +1074,17 @@ test('a row says which sign-in the program answered with, quietly, and says noth
     ok: true,
     accounts: [
       {
-        name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'HEALTHY', canServe: true, email: 'team@example.test',
+        name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'HEALTHY', canServe: true, email: 'school@example.test',
         windows: { hourly: { usedPercent: 18, resetsAt: inMs(4 * HOUR) } },
       },
-      { name: 'team', provider: 'claude', allowanceBinding: FIXTURE_BINDINGS.claudeTeam, status: 'HEALTHY', canServe: true },
+      { name: 'school', provider: 'claude', allowanceBinding: FIXTURE_BINDINGS.claudeSchool, status: 'HEALTHY', canServe: true },
     ],
   }))
   const codex = rows.find(row => row.provider === 'codex')
-  assert.equal(codex.email, 'team@example.test')
+  assert.equal(codex.email, 'school@example.test')
   assert.deepEqual(rowLines(codex, { now: NOW }).map(line => [line.text, line.quiet]), [
     ['82% free this 5-hour window · resets in 4h', false],
-    ['Signed in as team@example.test.', true],
+    ['Signed in as school@example.test.', true],
   ], 'the identity line is missing, loud, or in front of the allowance')
 
   /* Reported nothing: no line, and above all not the row's own name. */
@@ -1199,13 +1092,13 @@ test('a row says which sign-in the program answered with, quietly, and says noth
   assert.equal(claude.email, null)
   assert.ok(!rowLines(claude).some(line => /Signed in as/.test(line.text)),
     'a row nothing reported an address for still claimed to know one')
-  assert.ok(!rowLines(claude).some(line => /team/.test(line.text)),
+  assert.ok(!rowLines(claude).some(line => /school/.test(line.text)),
     'the row filled its identity line in from its own label')
 
   /* A reply this build does not recognise cannot become an address. */
   for (const junk of [42, null, '', {}, ['a@b.test']]) {
     const [row] = mergeAccounts(readAccountList(LIST_REPLY), readUsageReply({
-      ok: true, accounts: [{ name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'HEALTHY', canServe: true, email: junk }],
+      ok: true, accounts: [{ name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'HEALTHY', canServe: true, email: junk }],
     }))
     assert.equal(row.email, null, `${JSON.stringify(junk)} was read as an address`)
   }
@@ -1220,9 +1113,9 @@ test('a refused identity shows the address that is there and the engine\'s sente
   const [row] = mergeAccounts(readAccountList(LIST_REPLY), readUsageReply({
     ok: true,
     accounts: [{
-      name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'account_mismatch', canServe: false,
+      name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'account_mismatch', canServe: false,
       email: 'someone.else@example.test',
-      reason: '"team" is signed in as someone.else@example.test, which is not the account it expects. Sign that row in again as the account it expects, or remove it and add it back.',
+      reason: '"school" is signed in as someone.else@example.test, which is not the account it expects. Sign that row in again as the account it expects, or remove it and add it back.',
     }],
   }))
   assert.deepEqual(rowFlags(row).map(flag => flag.text), ['account mismatch'])
@@ -1236,46 +1129,9 @@ test('a refused identity shows the address that is there and the engine\'s sente
 
 /* ------------------------------ why this order ------------------------------ */
 
-test('the order paragraph says a shared sentence once, and names the program when the sentences differ', () => {
-  /* Measured on the first live drive: with a Claude and a Gemini account and
-     nothing measured, the same sentence was printed twice, once per program. */
-  const unread = 'No account reported how much of its allowance is left, so the listed order was used.'
-  assert.equal(orderExplanation([{ provider: 'claude', names: [], why: unread }, { provider: 'gemini', names: [], why: unread }]), unread)
-  assert.equal(orderExplanation([{ provider: 'codex', names: ['work'], why: '“work” has the most left.' }]), '“work” has the most left.')
-  assert.equal(
-    orderExplanation([{ provider: 'codex', names: ['work'], why: '“work” has the most left.' }, { provider: 'claude', names: [], why: unread }]),
-    `Codex: “work” has the most left. Claude: ${unread}`)
-  /* Two measured programs, two sentences: each is named for its program. The
-     Gemini order beside them is dropped, not named: this copy never measures
-     a Gemini allowance, so "no account reported" is not news about Gemini. */
-  assert.equal(
-    orderExplanation([{ provider: 'codex', names: [], why: unread }, { provider: 'claude', names: ['a'], why: '“a” goes first.' }, { provider: 'gemini', names: [], why: unread }]),
-    `Codex: ${unread} Claude: “a” goes first.`)
-  assert.equal(orderExplanation([{ provider: 'gemini', names: [], why: unread }]), '', 'a Gemini order alone explains nothing')
-  assert.equal(orderExplanation([{ provider: 'gemini', names: [], why: unread }, { provider: 'claude', names: [], why: unread }]), unread,
-    'a sentence shared with a dropped program is not named for a program')
-  assert.equal(orderExplanation([]), '')
-  assert.equal(orderExplanation([{ provider: 'codex', names: [], why: null }, { provider: 'claude' }, 'x', null]), '')
-  assert.equal(orderExplanation(undefined), '')
-  /* The normalised reply feeds it directly. */
-  const usage = readUsageReply({ ok: true, accounts: [], orders: [{ provider: 'codex', names: [], why: unread }, { provider: 'claude', names: [], why: unread }] })
-  assert.equal(orderExplanation(usage.orders), unread)
-})
 
-test('the order paragraph is empty under the two modes whose order is the list, and under a failed read', () => {
-  /* Measured on the second review: the engine answers "In the order the
-     accounts are listed." for manual and priority, and the first draft
-     printed it under the list -- filler under rows that already show it. */
-  const listed = 'In the order the accounts are listed.'
-  const usage = readUsageReply({ ok: true, accounts: [], orders: [{ provider: 'codex', names: ['team'], why: listed }] })
-  assert.equal(orderParagraph('manual', usage), '')
-  assert.equal(orderParagraph('priority', usage), '')
-  for (const mode of RANKED_MODE_IDS) assert.equal(orderParagraph(mode, usage), listed, `${mode} ranks, so its order needs words`)
-  assert.equal(orderParagraph('even', readUsageReply(null)), '', 'a failed read has no order to explain')
-  assert.equal(orderParagraph('even', null), '')
-  assert.equal(orderParagraph('even', undefined), '')
-  assert.equal(orderParagraph(undefined, usage), '', 'an unknown mode is manual, and manual explains nothing')
-})
+
+
 
 /* --------------------- the choice, and what moved off it -------------------- */
 
@@ -1312,8 +1168,9 @@ test('the menu says which account was chosen, that the computer is on another, a
 
   const said = movedOffParagraph(list)
   assert.match(said, /“acct-primary” is the account you chose/)
-  assert.match(said, /on “acct-active” for now/)
-  assert.match(said, /returns to “acct-primary” once it can serve/)
+  assert.match(said, /last reported “acct-active” in use/)
+  assert.match(said, /Choose the account you want before continuing/)
+  assert.doesNotMatch(said, /returns to|automatically/)
   assert.match(said, /92% of its weekly allowance is used; resets 2026-09-03T16:59:59Z\./,
     'the figure and the reset are the two facts a person acts on, and they were dropped')
 
@@ -1421,7 +1278,8 @@ test('readUsageReply carries the read time, and readAccountList hands the shell\
   for (const orders of ['damaged', {}, 1]) {
     const safe = readAccountList({ ok: true, accounts: [], usageCache: { ...cache, orders } })
     assert.equal(safe.available, true)
-    assert.deepEqual(safe.cachedUsage.orders, [])
+    assert.equal(Object.hasOwn(safe.cachedUsage, 'orders'), false)
+
   }
   for (const authGeneration of [undefined, null, {}, { kind: 'file', token: 'invalid' }, { kind: 'unsupported', token: null }, { kind: 'absent', token: null }]) {
     const rejected = readAccountList({ ok: true, accounts: [], usageCache: { ...cache, accounts: [{ ...cache.accounts[0], authGeneration, fresh: true }] } })
@@ -1607,7 +1465,12 @@ test('renameAccount and removeAccount never throw and read a refusal\'s own sent
     accountRemove: async request => { calls.push(['remove', request]); return { ok: true, removed: true } },
   } }
   assert.deepEqual({ ...await renameAccount({ name: 'a', provider: 'codex', newName: 'b' }, scope) }, { ok: true, renamed: true, name: 'b', reason: null })
-  assert.deepEqual({ ...await removeAccount({ name: 'a', provider: 'codex' }, scope) }, { ok: true, removed: true, reason: null })
+  assert.deepEqual({ ...await removeAccount({ name: 'a', provider: 'codex' }, scope) }, { ok: true, removed: true, credentialDestroyed: false, reason: null })
+  /* 1.0.50 review, accounts G: the receipt says when the removal deleted the
+     sign-in saved in a folder Accounts made, so the screen can say so too. */
+  const destroying = { mcProviders: { accounts: async () => ({ ok: true, accounts: [] }),
+    accountRemove: async () => ({ ok: true, removed: true, credentialDestroyed: true }) } }
+  assert.equal((await removeAccount({ name: 'a', provider: 'codex' }, destroying)).credentialDestroyed, true)
   assert.deepEqual(calls, [['rename', { name: 'a', provider: 'codex', newName: 'b' }], ['remove', { name: 'a', provider: 'codex' }]])
   const refusing = { mcProviders: {
     accounts: async () => ({ ok: true, accounts: [] }),
@@ -1627,47 +1490,9 @@ test('renameAccount and removeAccount never throw and read a refusal\'s own sent
 
 /* ------------------------------ the window a ranking reads ------------------------------ */
 
-test('the rank-window ids equal the packaged engine\'s and the shell\'s, and the legacy mode id reads as the current one', () => {
-  const engine = require_(path.join(ENGINE_ROOT, 'src', 'lib', 'multi-account', 'selection-modes.js'))
-  const shell = require_(path.join(REPO, 'shell', 'account-registry.cjs'))
-  assert.deepEqual([...RANK_WINDOW_IDS], [...engine.RANK_WINDOW_IDS],
-    'the menu offers a window the packaged engine does not read (or the reverse)')
-  assert.deepEqual([...RANK_WINDOW_IDS], [...shell.RANK_WINDOW_IDS],
-    'the menu offers a window the shell refuses (or the reverse)')
-  assert.equal(DEFAULT_RANK_WINDOW, engine.DEFAULT_RANK_WINDOW)
-  assert.equal(normalizeRankWindow('weekly'), 'weekly')
-  assert.equal(normalizeRankWindow('WEEKLY'), 'either', 'a window this build does not know reads as the default')
-  assert.equal(normalizeRankWindow(undefined), 'either')
-  assert.equal(rankWindowChoice('hourly').label, '5-hour window')
-  assert.equal(rankWindowChoice('daily'), null)
-  assert.deepEqual({ ...LEGACY_SELECTION_MODES }, { ...engine.LEGACY_SELECTION_MODES }, 'the legacy table mirrors the engine\'s')
-  assert.equal(normalizeSelectionMode('expiring-first'), 'resets-soonest', 'the id the mode shipped under for a few hours still reads')
-  assert.equal(isRankedMode('resets-soonest'), true)
-})
 
-test('a program\'s own rule arrives with own=true and inherits what it does not say', () => {
-  const list = readAccountList({
-    ok: true,
-    accounts: [],
-    policy: {
-      selectionMode: 'even', recorded: true, reservePercent: 30, rankWindow: 'hourly',
-      byProvider: {
-        codex: { selectionMode: 'resets-soonest', reservePercent: 30, rankWindow: 'weekly', own: { selectionMode: true, reservePercent: false, rankWindow: true } },
-        claude: { selectionMode: 'even', reservePercent: 30, rankWindow: 'hourly', own: { selectionMode: false, reservePercent: false, rankWindow: false } },
-        /* An older shell says nothing for a program: it follows the rule above. */
-      },
-    },
-  })
-  assert.equal(list.policy.rankWindow, 'hourly')
-  assert.deepEqual({ ...list.policy.byProvider.codex }, { selectionMode: 'resets-soonest', reservePercent: 30, rankWindow: 'weekly', own: { selectionMode: true, reservePercent: false, rankWindow: true } })
-  assert.deepEqual({ ...list.policy.byProvider.claude }, { selectionMode: 'even', reservePercent: 30, rankWindow: 'hourly', own: { selectionMode: false, reservePercent: false, rankWindow: false } })
-  assert.deepEqual({ ...list.policy.byProvider.gemini }, { selectionMode: 'even', reservePercent: 30, rankWindow: 'hourly', own: { selectionMode: false, reservePercent: false, rankWindow: false } })
-  const odd = readAccountList({ ok: true, accounts: [], policy: { selectionMode: 'even', recorded: true, rankWindow: 'daily', byProvider: { codex: 'weekly' } } })
-  assert.equal(odd.policy.rankWindow, 'either', 'an unreadable window falls to the default')
-  assert.deepEqual({ ...odd.policy.byProvider.codex.own }, { selectionMode: false, reservePercent: false, rankWindow: false }, 'an unreadable per-program entry is no rule')
-  const older = readAccountList({ ok: true, accounts: [], policy: { selectionMode: 'even', recorded: true, byProvider: { codex: { selectionMode: 'dynamic', own: true } } } })
-  assert.deepEqual({ ...older.policy.byProvider.codex.own }, { selectionMode: true, reservePercent: true, rankWindow: true }, 'one boolean for the whole entry reads as all its own')
-})
+
+
 
 /* ------------------------------------------------------------------
    The answer that arrives without a press: one account, three values.
@@ -1744,7 +1569,7 @@ const USAGE_LIST = Object.freeze({
     { name: 'Gemini current OS sign-in', provider: 'gemini', allowanceBinding: FIXTURE_BINDINGS.antigravity, client: 'antigravity', priority: 14, signedIn: 'yes' },
     { name: 'work', provider: 'gemini', allowanceBinding: FIXTURE_BINDINGS.geminiWork, priority: 3, signedIn: 'yes' },
     { name: 'Current Grok CLI', provider: 'grok', allowanceBinding: FIXTURE_BINDINGS.grok, priority: 15, signedIn: 'yes' },
-    { name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, priority: 1, signedIn: 'yes' },
+    { name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, priority: 1, signedIn: 'yes' },
   ],
   activeByProvider: { codex: null, claude: null, gemini: null, grok: null },
 })
@@ -1811,7 +1636,7 @@ test('before a check and beside a fault, Grok and Antigravity rows say not known
 
 test('a reported plan is one quiet line on any program’s row, and no line when the program named none', () => {
   const rows = mergeAccounts(readAccountList(USAGE_LIST), readUsageReply({ ok: true, accounts: [
-    { name: 'team', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexTeam, status: 'healthy', canServe: true, planType: 'pro', windows: { weekly: { usedPercent: 77, resetsAt: inMs(3 * 24 * HOUR) } } },
+    { name: 'school', provider: 'codex', allowanceBinding: FIXTURE_BINDINGS.codexSchool, status: 'healthy', canServe: true, planType: 'pro', windows: { weekly: { usedPercent: 77, resetsAt: inMs(3 * 24 * HOUR) } } },
     AGY_ROW,
   ] }))
   const codex = rows.find(row => row.provider === 'codex')
@@ -1828,38 +1653,33 @@ const scopeFor = { scope: null }
    existed; the first account added here used to arrive with automatic
    switching. A successful add now applies the stored answer; a refused add
    writes nothing. */
-test('adding the first account applies the switching answer setup could not save', async () => {
-  for (const [label, add, bridgeKey] of [
-    ['managed', request => addManagedAccount(request, scopeFor.scope), 'accountAddManaged'],
-    ['registered', request => addRegisteredAccount(request, scopeFor.scope), 'accountAdd'],
-  ]) {
-    const stored = new Map(), writes = []
-    const answers = { autonomy: 'observe', screens: 'real', workspaceRoots: [], approvals: 'stop', attach: 'mirror', ideImport: 'none', failover: 'manual' }
-    stored.set('mc.setup.profile', JSON.stringify({ schemaVersion: 1, status: 'complete', step: 'review', answers, updatedAtMs: 1,
-      accountPolicyDeferred: { reason: 'There are no provider accounts to switch between yet.' } }))
-    let added = false
-    scopeFor.scope = {
-      localStorage: { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value) },
-      mcProviders: {
-        accounts: async () => ({ ok: true, accounts: added ? [{ name: 'work', provider: 'codex' }] : [], policy: { ok: true, policy: { recorded: false, selectionMode: 'priority' } } }),
-        accountPolicy: async request => { writes.push(request); return { ok: true } },
-        [bridgeKey]: async () => { added = true; return { ok: true, name: 'work', provider: 'codex' } },
-      },
-    }
-    const answer = await add({ name: 'work', provider: 'codex', directory: '/work/codex' })
-    assert.equal(answer.ok, true, `${label} add failed in the fixture`)
-    assert.deepEqual(writes, [{ selectionMode: 'manual' }], `${label}: the stored "Stop and let me switch" was not applied to the first account`)
-    assert.equal(JSON.parse(stored.get('mc.setup.profile')).accountPolicyDeferred, null, `${label}: the applied deferral was kept`)
+
+/* 1.0.50 REVIEW, ACCOUNTS C. A Claude folder with no saved sign-in is not a
+   sign-out: Claude Code also runs with an API key, a key helper or a cloud
+   provider. The row says what was found and still offers Sign in; only the
+   engine's own check (Check allowances) calls it signed out. */
+test('a Claude row with no saved sign-in says so without claiming it is signed out', () => {
+  const claude = { provider: 'claude', signedIn: false, status: null, canServe: null, reason: null }
+  assert.deepEqual(rowFlags(claude), [{ text: COPY.noSavedSignIn, tone: 'plain', title: COPY.noSavedSignInWhy }])
+  assert.equal(needsSignIn(claude), true, 'the row still offers Sign in')
+  assert.deepEqual(rowFlags({ ...claude, provider: 'codex' }), [{ text: COPY.notSignedIn, tone: 'plain', title: null }])
+  assert.deepEqual(rowFlags({ ...claude, status: 'signed_out', canServe: false }), [{ text: COPY.notSignedIn, tone: 'bad', title: null }])
+})
+
+/* 1.0.50 REVIEW-1050 #12. Accounts C changed only the flag: the active Claude row with no saved sign-in still told
+   the person to "Choose Sign in on this row before starting a run", beside a flag saying none is needed. Only the
+   engine's own signed-out verdict asks for a sign-in before a run on a Claude row; every other program is unchanged. */
+test('an active Claude row with no saved sign-in is not told to sign in before a run', () => {
+  const claude = { provider: 'claude', active: true, signedIn: false, status: null, canServe: null, reason: null }
+  assert.equal(signInRequiredBeforeRun(claude), false)
+  assert.equal(rowLines(claude).some(line => line.text === COPY.signInBeforeRun), false)
+  assert.equal(needsSignIn(claude), true, 'the row still offers Sign in')
+  const signedOut = { ...claude, status: 'signed_out', canServe: false }
+  assert.equal(signInRequiredBeforeRun(signedOut), true)
+  assert.equal(rowLines(signedOut)[0].text, COPY.signInBeforeRun)
+  for (const provider of ['codex', 'gemini', 'grok']) {
+    assert.equal(signInRequiredBeforeRun({ ...claude, provider }), true, provider)
+    assert.equal(rowLines({ ...claude, provider })[0].text, COPY.signInBeforeRun, provider)
   }
-  const refusedWrites = []
-  const refusedStore = new Map([['mc.setup.profile', JSON.stringify({ schemaVersion: 1, status: 'complete', step: 'review',
-    answers: { autonomy: 'observe', screens: 'real', workspaceRoots: [], failover: 'manual' }, updatedAtMs: 1, accountPolicyDeferred: { reason: 'waiting' } })]])
-  const refused = await addManagedAccount({ provider: 'codex' }, {
-    localStorage: { getItem: key => refusedStore.get(key) ?? null, setItem: (key, value) => refusedStore.set(key, value) },
-    mcProviders: { accounts: async () => ({ ok: true, accounts: [{ name: 'x', provider: 'codex' }], policy: { ok: true, policy: { recorded: false } } }),
-      accountPolicy: async request => { refusedWrites.push(request); return { ok: true } },
-      accountAddManaged: async () => ({ ok: false, code: 'ACCOUNT_LIMIT', reason: 'full' }) },
-  })
-  assert.equal(refused.ok, false)
-  assert.deepEqual(refusedWrites, [], 'a refused add wrote the switching rule')
+  assert.equal(signInRequiredBeforeRun({ ...claude, signedIn: true }), false)
 })

@@ -1,9 +1,10 @@
 /* Shared presentation for the existing Research tools. Scoped to the page so
    other workspaces and the module layout engine keep their own UI.
 
-   Cut back to legibility only; the page is a plain tool for real
-   researchers, not a showpiece. This file arrived from an older branch and
-   was overriding the later rebuild, which sets the shell to full width and the
+   2026-09-19: cut back to legibility only, at the owner's direction ("its not
+   supposed to be fancy, its supposed to be for real researchers"). This file
+   arrived from a 2026-09-08 branch and was overriding the 2026-09-10 rebuild
+   that the owner directed by hand, which sets the shell to full width and the
    reading type to 15px/1.6 in src/research.css. Those two decisions are older
    than this file only by sha, not by intent: do NOT reintroduce a width cap on
    .research-shell and do NOT set a font on .research-page here. Decorative
@@ -16,7 +17,8 @@
 /* Controls: standard size, natural height, one thin border.
 
    Nothing here may set a height or a min-height -- a control that cannot size
-   to its own content is what produced a 250px-tall "Wrap in" row.
+   to its own content is what produced the 250px-tall "Wrap in" row the owner
+   screenshotted.
 
    The control selectors below are deliberately wrapped in :where() so they
    carry (0,0,1) specificity -- a bare type selector. These are DEFAULTS, and

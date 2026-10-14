@@ -4,8 +4,8 @@
 // design (AGENT_TURN_ACTIVE — shell/agent-host.cjs). Before this store the
 // product turned that honest refusal into a dead end: there was nowhere to
 // PUT the next message, so the person either lost their words or sat watching
-// a spinner to earn the right to type. The feature: queue and unqueue for
-// messages.
+// a spinner to earn the right to type. The owner's ask, verbatim: "can we add
+// a que/unque for messages."
 //
 // This is that queue, modeled line for line on src/write-outcomes.js, the
 // established renderer store that outlives views:
@@ -206,7 +206,7 @@ function releaseSeat(session) {
  * how many outstanding deliveries it still owed an answer to. That count
  * cannot tell a delivery taken BEFORE the Stop from one taken AFTER it,
  * because a taken entry had no identity of its own -- and the two are not the
- * same message at all. Measured on live an earlier commit, 2026-09-04: queue one
+ * same message at all. Measured on live 3c5ad80, 2026-09-04: queue one
  * message, let the view take it, press Stop while that delivery is still on
  * the wire, and let the delivery never answer (an answer lost to a window
  * reload is the ordinary case on this machine). The hop stands, owed one
@@ -214,8 +214,8 @@ function releaseSeat(session) {
  * is refused -- and requeueFront() walks that stale hop to null and DROPS the
  * new message. requeueFront() returned false and list() came back empty:
  * words the person typed after the Stop, deleted without a sentence. The
- * report: queue, halt and Send now were still broken, and messages were being
- * deleted.
+ * owner's report of it: "i still dont think my que and halt and send now ever
+ * got fixed ... things get deleted".
  *
  * So each take gets a ticket, and a resume or a Stop answers for exactly the
  * tickets outstanding at that moment. A delivery started afterwards has a
@@ -658,6 +658,41 @@ export function list(sessionId) {
   return Object.freeze([...(queues.get(session) || [])])
 }
 
+/** Explain a session hold without sending, removing, or reordering its words. */
+export function markHeld(sessionId, code) {
+  hydrate()
+  const session = usableSession(sessionId)
+  if (!session || typeof code !== 'string' || !code.trim()) return false
+  const waiting = queues.get(session)
+  if (!waiting?.length) return false
+  queues.set(session, waiting.map(entry => Object.freeze({ ...entry, heldReason: code })))
+  announce(session)
+  return true
+}
+
+/** Take back one named hold explanation (markHeld) once that hold is over. Rows
+ *  held for any other reason keep theirs. */
+export function releaseHeld(sessionId, code) {
+  hydrate()
+  const session = usableSession(sessionId)
+  if (!session || typeof code !== 'string' || !code.trim()) return false
+  const waiting = queues.get(session)
+  if (!waiting?.some(entry => entry.heldReason === code)) return false
+  queues.set(session, waiting.map(entry => {
+    if (entry.heldReason !== code) return entry
+    const { heldReason: released, ...rest } = entry
+    return Object.freeze(rest)
+  }))
+  announce(session)
+  return true
+}
+
+/** End a hold markHeld() explained: the waiting messages with that reason lose it (1.0.50 review CM-2).
+ *  The same operation as releaseHeld (accounts D); both names are kept for their callers. */
+export function clearHeld(sessionId, code) {
+  return releaseHeld(sessionId, code)
+}
+
 /** REWRITE ONE WAITING MESSAGE WITHOUT MOVING IT.
  *
  * The composer's up-arrow recall (src/composer-queue-recall.js) hands a person
@@ -858,9 +893,9 @@ export function takeNext(sessionId) {
    * session, with nothing to clear it and nothing to retry it. Not "queues for
    * an hour" -- queues forever. MEASURED 2026-09-18 on a packaged candidate:
    * reach that state, then send a fresh message, let a real turn run to
-   * `turn_completed`, and the queue does not move. The session
+   * `turn_completed` (22:27:23.870Z), and the queue does not move. The session
    * is idle, the strip still draws Send now on the message behind it, and it
-   * never goes. That is the reported inability to message agents.
+   * never goes. That is the owner's "I cannot message agents".
    *
    * Holding the unconfirmed entry ITSELF is right and stays: the words were
    * handed to the transport and may already have reached the agent, so

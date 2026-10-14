@@ -6,8 +6,8 @@ import { useArithmeticExample } from './lib/benchmark-example.mjs'
 // read is the sentence the page writes. A rehearsal of that protocol measured
 // which of those sentences any test asserts: fourteen were asserted by none, so
 // every one of them could be reworded, softened or deleted and the whole suite
-// would still pass. Four more belong to surfaces merged from three other
-// changes, whose own tests match them only by loose regular expression
+// would still pass. Four more belong to surfaces merged from the RP1, RP6 and
+// RP7 lanes, whose own tests match them only by loose regular expression
 // (/opened/i, /read-only/i), which a rewrite also survives.
 //
 // These tests assert the exact visible text, by equality or by whole-sentence
@@ -127,7 +127,7 @@ afterEach(async () => {
   if (cryptoDescriptor) Object.defineProperty(globalThis, 'crypto', cryptoDescriptor); else delete globalThis.crypto
 })
 
-// ---- HAND-TEST A2.1: the first input of the hand test, a dotted version as the name ----
+// ---- HAND-TEST A2.1: the owner's own first input, "name .44 as the version" ----
 test('A2.1 a dotted identifier is refused with the exact sentence the protocol reads', async () => {
   const view = await mount()
   await importDraft(view, await reviewedLean())
@@ -207,7 +207,7 @@ test('A12.4 an oversized draft file is refused with its limit, before the file i
   assert.equal(read, false, 'the refusal comes before the file is read')
 })
 
-// ---- HAND-TEST A14.3: the report the person reads ----
+// ---- HAND-TEST A14.3: the report the owner reads ----
 test('A14.3 the exported report names both things it was built from', async () => {
   const view = await mount()
   await recordedDiagnostic(view)
@@ -273,7 +273,7 @@ async function feedBytes(view, name, bytes) {
   node.dispatch('change'); await idle(view)
 }
 
-test('A9.3 the frozen inspection says what it reads and what it never shows', async () => {
+test('A9.3 [RP7] the frozen inspection says what it reads and what it never shows', async () => {
   const view = await mount()
   await click(view, 'freeze')
   const text = f(view, 'frozen-inspection').textContent
@@ -283,7 +283,7 @@ test('A9.3 the frozen inspection says what it reads and what it never shows', as
     assert.ok(text.includes(caption), caption)
 })
 
-test('A13.4 the run journal names itself and its disposition table', async () => {
+test('A13.4 [RP7] the run journal names itself and its disposition table', async () => {
   const view = await mount()
   await recordedDiagnostic(view)
   await click(view, 'freeze')
@@ -299,7 +299,7 @@ test('A11 the handoff tells a person exactly how a finished run comes back to th
   // Stops before the ampersand of "Run & export": what a person reads there is
   // decided by HTML entity decoding, which is not what this test is about.
   // Re-pinned for WS2-2. The page never wrote standalone-project.zip; root's
-  // rehearsal caught it, and a later commit names the ZIP that Export
+  // rehearsal caught it, and Worker 20's HT-6 commit names the ZIP that Export
   // runnable ZIP actually downloads. The identifier is read back off the page
   // rather than typed in here, so this also pins that the sentence carries the
   // frozen study's own id and not some other string.
@@ -313,7 +313,7 @@ test('A11 the handoff tells a person exactly how a finished run comes back to th
     assert.ok(reads(handoff).includes(reads(command)), 'the handoff lists ' + command)
 })
 
-test('A17.1 and A17.2 a verified open and a read-only open are told apart in full sentences', async () => {
+test('A17.1 and A17.2 [RP1] a verified open and a read-only open are told apart in full sentences', async () => {
   const archive = await exportedArchive()
   const verified = await mount()
   await feedBytes(verified, 'open-exported', archive.bytes)

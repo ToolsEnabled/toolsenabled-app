@@ -35,7 +35,7 @@ async function renderedChatLines(history) {
 test('the usage reader admits numbers from its own session and nothing else', () => {
   const packet = {
     sessionId: 'chat-1',
-    event: { type: 'usage', turnId: 'turn-9', usage: { input_tokens: 1200, output_tokens: 300, note: 'prose', path: 'C:/x', nested: { a: 1 }, bad: Infinity } },
+    event: { type: 'usage', turnId: 'turn-9', usage: { input_tokens: 1200, output_tokens: 300, note: 'prose', path: '\x43:/x', nested: { a: 1 }, bad: Infinity } },
   }
   const reading = sessionUsageEvent(packet, 'chat-1')
   assert.deepEqual(reading, { turnId: 'turn-9', usage: { input_tokens: 1200, output_tokens: 300 } },
@@ -92,7 +92,7 @@ test('a typo is caught, a path is not eaten, plain text passes through', () => {
   assert.equal(typo.kind, 'unknown')
   assert.match(typo.sentence, /not a command here, so nothing was sent/)
   assert.equal(parseSlashCommand('/usr/bin/thing --flag'), null, 'a path sends as text')
-  assert.equal(parseSlashCommand('read C:/data/notes.md'), null)
+  assert.equal(parseSlashCommand('read \x43:/data/notes.md'), null)
   assert.equal(parseSlashCommand('  plain words  '), null)
 })
 

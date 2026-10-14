@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* WHAT A CUT ACTUALLY BUILDS FROM, CHECKED BEFORE THE CUT.
  *
- * MEASURED 2026-08-20. an earlier commit landed a variable's USES without its
+ * MEASURED 2026-08-20. Commit `ed7a10a` landed a variable's USES without its
  * DECLARATION -- a surgical index-only commit split them while two lanes
  * interleaved hunks in one file. The result:
  *
@@ -106,7 +106,7 @@ try {
     return `exit 0, ${verdict.artifact.assets} renderer asset(s) present`
   })
 
-  /* 3. THE ONE THAT WOULD HAVE CAUGHT an earlier commit. A build cannot see an
+  /* 3. THE ONE THAT WOULD HAVE CAUGHT ed7a10a. A build cannot see an
    *    undeclared identifier; only running the page can. page2-qa serves the
    *    built dist and asserts the fleet board draws its nodes. */
   check('the committed tree RUNS -- page 2 draws its board', () => {
@@ -127,10 +127,10 @@ try {
   /* 3b. THE HALF OF THAT DEFECT A DRIVE CANNOT REACH.
    *     Loading the page finds a symbol missing at module scope. It says
    *     nothing about one missing inside a click handler, which throws only
-   *     when a person presses the control -- and an earlier commit carried BOTH:
+   *     when a person presses the control -- and `ed7a10a` carried BOTH:
    *
-   *       an earlier commit: unbound = restoreRoleLibrary, roleLibraryToRestore
-   *       an earlier commit: unbound = (none)
+   *       ed7a10a: unbound = restoreRoleLibrary, roleLibraryToRestore
+   *       e3833d7: unbound = (none)
    *
    *     Only `roleLibraryToRestore` killed the load and got found. Every lane
    *     that looked at that commit reported one name. `restoreRoleLibrary`

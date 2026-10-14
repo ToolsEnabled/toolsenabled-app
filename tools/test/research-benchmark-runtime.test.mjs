@@ -165,7 +165,7 @@ test('standalone qualification is an explicit portable apparatus check', async t
 })
 
 test('portable paths reject Windows device aliases and CSV protects text formulas without changing numeric scores', () => {
-  for (const path of ['data/CON.txt', 'aux', 'x\n.csv', 'x?.mjs', 'a/../b', 'C:/x', 'a\\b']) assert.equal(safePath(path), false, path)
+  for (const path of ['data/CON.txt', 'aux', 'x\n.csv', 'x?.mjs', 'a/../b', '\x43:/x', 'a\\b']) assert.equal(safePath(path), false, path)
   assert.equal(safePath('adapters/system.mjs'), true)
   const csv = summaryCsv({ execution: { purpose: 'apparatus-development', evidenceClass: 'development-computations', experimentalCollection: 'not-admitted', referenceAncestry: [] }, rows: [{ id: '  =1+1', score: -2 }] })
   assert.match(csv, /"'  =1\+1"/); assert.match(csv, /"-2"/); assert.doesNotMatch(csv, /"'-2"/)

@@ -1,6 +1,6 @@
 /* THE TREE'S OWN ADDRESS BLOCK CANNOT BE CRUSHED TO A HAIRLINE BY A SCROLLING LOG.
  *
- * Reported: text overlapped tool use. This is not that shape -- read on, it says
+ * Owner: "text overlaps tool use." This is not that shape -- read on, it says
  * so below -- but it is the same audit, the same file, the same mechanism
  * already proven once for a different row, and finding it and leaving it
  * fixed nothing would be dishonest.
@@ -38,7 +38,7 @@
  * at its own (collapsed) box edge, so it disappears rather than bleeding
  * into the row above or below. That is a real, separate defect (a person's
  * own tree-start address block silently vanishing in any long conversation),
- * not the one named. It is fixed here because it sits in the exact
+ * not the one the owner named. It is fixed here because it sits in the exact
  * rule this lane's own audit was already reading, not because this lane's
  * mandate has grown.
  */

@@ -10,8 +10,9 @@
  * What did not exist anywhere in shell/ or src/ was a way to READ THEM BACK.
  * The channel was write-only: a person could file a rule, see a one-sentence
  * confirmation, and then had no way to find out what rules this tree carries
- * — while every agent in it was being told. That is statement 4 (a session
- * file that users can edit easily) failing on its second half only.
+ * — while every agent in it was being told. That is the owner's statement 4
+ * ("a session file ... users need to be able to edit them easily") failing on
+ * its second half only.
  *
  * WHY THE REGISTER AND NOT A SECOND FILE. The 2026-08-16 brief left this open
  * (its Q3: is the session file the ledger's editable face, or separate free
@@ -72,7 +73,7 @@ const stubLedger = ({ entries = [], exists = true, throws = null } = {}) => () =
     return {
       scope,
       key,
-      path: 'C:/somewhere/state/r-ledger/tree-node-7.md',
+      path: '\x43:/somewhere/state/r-ledger/tree-node-7.md',
       exists,
       entries: entries.map((entry, at) => ({ ...entry, number: at + 1, stamp: '2026-08-20', line: at * 3 })),
       warnings: [],
@@ -121,7 +122,7 @@ test('the words come back with their ids, and nothing else does', () => {
   /* NO PATH CROSSES THE BRIDGE. The stub hands back the real module's `path`
      and per-entry coordinates; none of it may survive into the answer. */
   const flat = JSON.stringify(answer)
-  assert.equal(flat.includes('C:/somewhere'), false, 'the reply must not carry the ledger path')
+  assert.equal(flat.includes('\x43:/somewhere'), false, 'the reply must not carry the ledger path')
   assert.equal('path' in answer, false)
   for (const entry of answer.entries) assert.deepEqual(Object.keys(entry).sort(), ['id', 'words'])
 })
@@ -161,7 +162,7 @@ test('the real ledger format, when a payload is staged, parses as this reader ex
      has cut one — including the one that cuts releases — it is the real
      drift check between this reader and the owner's ledger format.
 
-     THE FORMAT IS THE CANONICAL LEDGER'S (rule: one ledger). The
+     THE FORMAT IS THE CANONICAL LEDGER'S (owner, 2026-09-02: one ledger). The
      entries are planted through the payload's own adapter rather than written
      as text, because the on-disk shape is the store's business; what this
      proves is that the reader answers ids and words -- and marks a filing
@@ -259,9 +260,9 @@ test('the rail reads the same anchors a start carries', async () => {
   assert.equal(noSession.some(entry => entry.scope === 'session'), false)
 })
 
-/* THE PANEL'S COPY FOR THE PERSON'S HAND (O7 improvements: a hand-edit tool,
-   for the user to edit or delete entries on the ToolsEnabled ledger by hand).
-   The words live in
+/* THE PANEL'S COPY FOR THE PERSON'S HAND (O7 improvements; owner,
+   2026-08-22: "its a hand edit tool. for the user to go in on the
+   toolsenabled ledger and hand edit or delete them"). The words live in
    REQUEST_PANEL; tools/test/rules-panel-edit.test.mjs drives the presses.
    What is pinned here is the copy itself: the armed sentence word for word,
    the refinement hint, the control labels, and that the panel no longer

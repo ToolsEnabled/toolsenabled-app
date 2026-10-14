@@ -1,20 +1,20 @@
 /* WHAT A SETTING GRANTS, WHAT IT RISKS, AND THE STEP WE WALK YOU THROUGH
  * RATHER THAN TAKE FOR YOU.
  *
- * R1529, one instruction in two parts:
+ * The owner, R1529, in two messages that are one instruction:
  *
- *   User settings restrict and computer settings restrict, but users are
- *   prompted and guided through changing settings, told what each step does,
- *   never pushed to take a step, told it is not required, and shown the
- *   additional capabilities against the risks.
+ *   "user settings should restrict and user computer settings should restrict
+ *    but users should be prompted and guided through changing the settings and
+ *    told what each step does and not pushed to take each step but offered that
+ *    its not required and give the additional capabilities vs risks"
  *
- *   If a user changes an agent setting that needs UAC elevation, the product
- *   walks them through how to turn the UAC checks off rather than doing it for
- *   them, gives the pros and cons, and says the setting can be enabled without
- *   it, though it might not work fully.
+ *   "if a user changes a agent setting in our system, and it requires uac
+ *    elevtaion we walk them through the way to disable uac checks, we dont do it
+ *    for trhem and we let them know the pros and cons and that they dont need to
+ *    do it for the setting to be enable but it might not work fully"
  *
- * and then, as an eighth requirement: the capabilities and risks granted by
- * each setting are shown too -- not only the ones
+ * and then, as an eighth requirement: "additionally we also give them the
+ * capabilities and risks granted from each setting of ours" -- not only the ones
  * with an outside step. Every setting.
  *
  * BOTH HALVES ARE BINDING AND NEITHER IS TRADED FOR THE OTHER. The restriction
@@ -81,7 +81,7 @@
  * now the product only ever said one of them.
  *
  * `elevation: true` marks the ones that need an administrator, which is the case
- * named in the rule. This product does not ask Windows for administrator rights,
+ * the owner named. This product does not ask Windows for administrator rights,
  * does not weaken any Windows security setting, and does not do either on your
  * behalf. It prints what you would run and leaves the choice with you.
  *
@@ -92,10 +92,10 @@
  * engine's own catalogue, where they are declared in the same shape. Inventing
  * an app-side one to make this list look complete would be claiming a capability
  * that does not exist. */
-/* HOW OFTEN THIS ASKS SOMETHING OF YOU (R1536).
+/* HOW OFTEN THIS ASKS SOMETHING OF YOU (owner, R1536).
  *
- *   Each is labelled with how often it requires a user step (typically,
- *   sometimes, rarely) so the person knows.
+ *   "It should be labeled as typically requires a user step, rarely, sometimes
+ *    etc so they know."
  *
  * Four words and no fifth, so the label can be a badge rather than another
  * sentence to read, and so the vocabulary cannot drift into "occasionally",
@@ -241,11 +241,11 @@ export function externalCapability(id) {
   return EXTERNAL_CAPABILITIES[id] || null
 }
 
-/* ---------- what will happen on THIS computer (R1536 tier 1) ---------- */
+/* ---------- what will happen on THIS computer (owner, R1536 tier 1) ---------- */
 
-/* R1536: when the product can read the person's settings, it tells them and
- * lets them change the settings right there; when it cannot, it directs them
- * how to.
+/* The owner, R1536: "if we can grab their settings then just tell them and let
+ * them choose to change their settings right there or if we cant grab them then
+ * direct them how to".
  *
  * So there are three tiers and they are in preference order:
  *
@@ -358,7 +358,8 @@ export const RISK_PROFILES = Object.freeze({
  * CLAIMING AN EFFECT FOR THEM. A dead control is a disappointment; a dead
  * control with a reasoned explanation of its effect is a false statement.
  *
- * The wording is kept in the design notes with the rows it described. If one of those features is built, the profile comes
+ * The wording is kept in docs/design/UNBUILT-SETTINGS-ROWS-2026-08-20.md with
+ * the rows it described. If one of those features is built, the profile comes
  * back with it -- after the behaviour exists, not before. */
 
 /* Which family each settings section belongs to. A section that is not here has
@@ -387,6 +388,30 @@ export const SECTION_RISK_PROFILE = Object.freeze({
  * risks, and names the outside capability its full function depends on where
  * there is one. */
 export const SUBJECTS = Object.freeze({
+  'this_computer_programs': Object.freeze({
+    whatItDoes: 'Opens the assistant-program and local-model controls for this computer.',
+    capabilities: Object.freeze(['You can review installed assistant programs, use their own sign-in flows, and choose whether to install programs or download and manage local models.']),
+    risks: Object.freeze(['Installing programs or downloading models changes this computer and uses network and disk space. Provider sign-in uses that provider’s account flow; ToolsEnabled does not collect those sign-ins.']),
+    turnOnAt: 'Settings → This computer → Assistant programs and local models',
+  }),
+  'this_computer_account': Object.freeze({
+    whatItDoes: 'Opens the existing Connect screen; opening this link does not join the computer.',
+    capabilities: Object.freeze(['You can review the account connection and decide on the Connect screen whether to join or disconnect this computer.']),
+    risks: Object.freeze(['Joining on that screen leaves an account credential here. Browser control is a separate choice there and can let a signed-in account operate this computer. Opening this link changes neither choice.']),
+    turnOnAt: 'Settings → This computer → Join this computer to your ToolsEnabled account',
+  }),
+  'this_computer_messaging': Object.freeze({
+    whatItDoes: 'Opens the existing coordinator-reply permission control without enabling it.',
+    capabilities: Object.freeze(['You can review and choose whether to allow replies to a coordinator through the existing reply setting.']),
+    risks: Object.freeze(['Allowing replies lets written messages leave this window for the coordinator. Opening this link does not send a message or change that permission.']),
+    turnOnAt: 'Settings → This computer → Replying to a coordinator',
+  }),
+  'this_computer_feedback': Object.freeze({
+    whatItDoes: 'Opens the feedback composer when this backend makes it available; sending is a separate action.',
+    capabilities: Object.freeze(['You can write feedback and choose whether its Send action includes version and build information.']),
+    risks: Object.freeze(['Sending transmits and stores the message for the people who build ToolsEnabled, including the build information if you choose it. Sending is a separate action in the composer.']),
+    turnOnAt: 'Settings → This computer → Send feedback',
+  }),
   /* --- custom settings rows whose state is owned outside the catalogue --- */
   'connect_computer': Object.freeze({
     whatItDoes: 'Joins the computer you are driving to your ToolsEnabled account, or clears the account connection it holds so it can be joined again.',
@@ -524,7 +549,7 @@ export const SUBJECTS = Object.freeze({
     whatItDoes: 'Decides what happens to your saved sign-ins, your permanent record of what was done, and your settings when you uninstall this program.',
     capabilities: Object.freeze([
       'On "keep my data", reinstalling later picks up exactly where you left off.',
-      'On "remove everything", uninstalling actually removes it, rather than leaving it on the disk after the program is gone.',
+      'On "remove everything", uninstalling on Windows actually removes it, rather than leaving it on the disk after the program is gone. On Linux, removing the package leaves it whatever you choose here.',
     ]),
     risks: Object.freeze([
       'On "keep my data", your saved sign-ins and the permanent record stay on this computer after the program is gone. Anyone else using this computer could find them.',
@@ -646,8 +671,8 @@ export const SUBJECTS = Object.freeze({
      this section decides what an assistant may do; this decides what the
      PERSON may do to what the assistant produced, which makes the risk half
      unusual -- the danger is not that something acts without asking, it is
-     that a save is immediate and nothing takes it back. This is deliberate (it
-     is the person's manual override of the agent), so the
+     that a save is immediate and nothing takes it back. The owner ruled that
+     this is deliberate ("this is their manual override of the agent"), so the
      statement says it plainly instead of hedging it. */
   'compare_files': Object.freeze({
     whatItDoes: 'Opens two files side by side in one window and lets you edit both. Each side has its own save, which replaces that file where it sits.',
@@ -934,7 +959,7 @@ export function validateGuidance() {
        reasoning behind it is required beside it -- a claim nobody has to
        justify is a claim nobody can argue with, which is precisely how the
        wrong finding survived. `elevation: true` is called out separately
-       because that is the case named in the rule, and a future entry that needs
+       because that is the case the owner named, and a future entry that needs
        an administrator must not be able to arrive without one. */
     if (!FREQUENCIES.includes(capability.frequency)) errors.push(`${id}: frequency must be one of ${FREQUENCIES.join(', ')}`)
     if (!text(capability.frequencyBecause)) errors.push(`${id}: must record how its frequency label was derived, so a reader can challenge it`)

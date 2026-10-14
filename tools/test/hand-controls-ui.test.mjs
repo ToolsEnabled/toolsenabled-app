@@ -15,7 +15,7 @@ const { sterileLaunchEnvironment, prepareSterileProfile, sterileProfileDirectori
 /* NIGHTLY, NOT SILENT, AND NOT WEAKENED. This launches a REAL Electron
  * process and waits for a real renderer to answer, so its result depends on an
  * interactive desktop and on what else the machine is doing. MEASURED
- * 2026-09-07 at an earlier app commit: in a whole-suite run with four other test runs on
+ * 2026-09-07 at app 4ba0ceac: in a whole-suite run with four other test runs on
  * the machine the child hit its own 25000ms limit at 27031ms and the case was
  * reported as "Command failed: ...electron.exe ... --check" with no message at
  * all -- a busy machine reported as a camera-permissions defect. Run alone

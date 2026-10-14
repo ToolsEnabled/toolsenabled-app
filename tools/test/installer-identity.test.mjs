@@ -275,12 +275,12 @@ const SIGNING_ENVIRONMENT = [
 ];
 const COMPLETE_SIGNING = Object.freeze({
   TOOLSENABLED_ARTIFACT_SIGNING_ENDPOINT: 'https://wus2.codesigning.azure.net',
-  TOOLSENABLED_ARTIFACT_SIGNING_ACCOUNT: 'example-signing-account',
+  TOOLSENABLED_ARTIFACT_SIGNING_ACCOUNT: 'toolsenabledsigning',
   TOOLSENABLED_ARTIFACT_SIGNING_PROFILE: 'toolsenabled-public-trust',
   TOOLSENABLED_ARTIFACT_SIGNING_PUBLISHER: 'ToolsEnabled, Inc.',
   TOOLSENABLED_ARTIFACT_SIGNING_AUTH: 'azure-cli',
-  TOOLSENABLED_ARTIFACT_SIGNING_SIGNTOOL: 'C:\\SigningTools\\bin\\x64\\signtool.exe',
-  TOOLSENABLED_ARTIFACT_SIGNING_DLIB: 'C:\\SigningTools\\dlib\\x64\\Azure.CodeSigning.Dlib.dll',
+  TOOLSENABLED_ARTIFACT_SIGNING_SIGNTOOL: '\x43:\\SigningTools\\bin\\x64\\signtool.exe',
+  TOOLSENABLED_ARTIFACT_SIGNING_DLIB: '\x43:\\SigningTools\\dlib\\x64\\Azure.CodeSigning.Dlib.dll',
 });
 const CERTIFICATE_KEYS = ['certificateFile', 'certificateSubjectName', 'certificateSha1', 'signtoolOptions', 'azureSignOptions', 'cscLink', 'cscKeyPassword'];
 
@@ -335,7 +335,7 @@ test('code signing is still honestly declared as absent', async () => {
 
   // What electron-builder will actually build, with no signing configuration --
   // and with a stray PFX variable present, which must not be able to sign.
-  for (const stray of [{}, { CSC_LINK: 'C:\\stray\\cert.pfx', WIN_CSC_LINK: 'C:\\stray\\cert.pfx', CSC_KEY_PASSWORD: 'x' }]) {
+  for (const stray of [{}, { CSC_LINK: '\x43:\\stray\\cert.pfx', WIN_CSC_LINK: '\x43:\\stray\\cert.pfx', CSC_KEY_PASSWORD: 'x' }]) {
     const effective = await withSigningEnvironment(stray, effectiveBuildConfig);
     assert.equal(effective.win?.signExecutable, false, `the effective build must not sign (${JSON.stringify(Object.keys(stray))})`);
     for (const key of [...CERTIFICATE_KEYS, 'forceCodeSigning']) {

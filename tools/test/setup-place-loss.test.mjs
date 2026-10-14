@@ -66,7 +66,7 @@ test('a re-mount adopts the walk in progress instead of recomputing backwards', 
   )
   assert.match(VIEW, /function holdWalk\(\) \{\s*\n\s*liveWalk = \{ step, answers, initiallyConfigured \}/, 'holdWalk must retain the walk and whether it began on an existing configuration')
   const inProgressWrites = VIEW.match(/writeStoredProfile\(\{ status: 'in-progress', step, answers \}\)\s*\n\s*holdWalk\(\)/g) || []
-  /* WAS 4 UNTIL T299 (an earlier commit, 2026-09-17), which added confirmWizardFolder --
+  /* WAS 4 UNTIL T299 (8b4bc2a9, 2026-09-17), which added confirmWizardFolder --
      the wizard's "accept the suggested folder" action -- following exactly
      this same rule on its own, without this count being told. Pinned AT the
      total rather than below it, for the reason this file's own header names:
@@ -281,7 +281,7 @@ test('a setup where Undo will not work says so', async () => {
 
 /* T299: THE FRESH-INSTALL DEAD END, AND WHY NOTHING SAID A WORD.
  *
- * Measured on screen: the wizard's Folder step completes with a
+ * Measured on screen by Worker 82: the wizard's Folder step completes with a
  * tick, Finish reports success and enters the product, and the first agent the
  * person starts refuses with "No working folder has been confirmed" -- while
  * Settings reads "Nobody has been asked about this yet", so the tick recorded
@@ -308,7 +308,7 @@ test('finish waits for the working-folder answer instead of reading its absence 
     /* The read the wizard fires on the Folder step, still in flight when
        Finish is pressed. It is what supplies the suggested default. */
     async loadWorkspace() {
-      workspace = { available: true, configured: true, roots: [], suggested: 'C:\People\Work', chosen: false }
+      workspace = { available: true, configured: true, roots: [], suggested: '\x43:\People\Work', chosen: false }
       f.context.workspace = workspace
     },
     workspaceRoots: () => (workspace?.roots?.length ? workspace.roots
@@ -319,7 +319,7 @@ test('finish waits for the working-folder answer instead of reading its absence 
   const completion = f.run()
   f.release()
   await completion
-  assert.deepEqual(recorded, [['C:\People\Work']],
+  assert.deepEqual(recorded, [['\x43:\People\Work']],
     'the suggested folder a fresh install accepts without pressing anything must still be recorded, or the first agent refuses')
   assert.equal(f.context.refusal, null)
   assert.deepEqual(f.navigations, ['#/'])
@@ -329,7 +329,7 @@ test('finish refuses by name when the working-folder check is unavailable, inste
   const recorded = []
   const f = completionFixture('finish', {
     workspace: { available: false, reason: 'The working folder check could not be reached.' },
-    workspaceRoots: () => ['C:\People\Work'],
+    workspaceRoots: () => ['\x43:\People\Work'],
     mcSetup: { async recordWorkspaces(roots) { recorded.push(roots); return { ok: true, roots } } },
     setupRefusalDetail: result => result?.reason || 'no reason given',
   })
@@ -348,9 +348,9 @@ test('finish refuses by name when the working-folder check is unavailable, inste
 test('finish does not re-read the working folder when it already has the answer', async () => {
   let reads = 0
   const f = completionFixture('finish', {
-    workspace: { available: true, roots: ['C:\People\Already'], suggested: null, chosen: true },
+    workspace: { available: true, roots: ['\x43:\People\Already'], suggested: null, chosen: true },
     async loadWorkspace() { reads += 1 },
-    workspaceRoots: () => ['C:\People\Already'],
+    workspaceRoots: () => ['\x43:\People\Already'],
     mcSetup: { async recordWorkspaces(roots) { return { ok: true, roots } } },
     setupRefusalDetail: result => result?.reason || 'no reason given',
   })

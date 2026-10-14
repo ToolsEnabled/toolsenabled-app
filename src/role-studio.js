@@ -2,7 +2,7 @@ import { el } from './components.js'
 import researcherRoleDocument from './data/researcher.role.json' with { type: 'json' }
 import { defaultRoleColor, readRoleColors } from './role-colors.js'
 import { ROLE_FIELDS, roleDraft, sameDraft, roleDocument, parseRoleDocument, directionsPreview,
-  roleConnections, initialRolePositions, functionExample } from './role-studio-model.js'
+  roleConnections, initialRolePositions, functionExample, roleSourceLabel } from './role-studio-model.js'
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -89,7 +89,7 @@ export function buildRoleStudio({ availability, blocked, onCreate, onEdit, onRes
     const query = roleQuery.trim().toLowerCase()
     const matches = roles.filter(role => `${role.name} ${role.id} ${role.summary || ''}`.toLowerCase().includes(query))
     roleList.innerHTML = matches.map(role => `<button type="button" class="rs-role-link" data-select-role="${esc(role.id)}" aria-current="${view === 'editor' && selected === role.id}" style="--rs-role:${color(role.id)}">
-      <span class="rs-role-dot" aria-hidden="true"></span><span><b>${esc(role.name || role.id)}</b><small>${role.custom ? 'Custom role' : 'Default role'}</small></span><span class="rs-unsaved-dot" data-draft-dot="${esc(role.id)}" title="Unsaved draft" aria-label="Unsaved draft" hidden>•</span></button>`).join('') || '<p class="rs-empty">No matching roles.</p>'
+      <span class="rs-role-dot" aria-hidden="true"></span><span><b>${esc(role.name || role.id)}</b><small>${esc(roleSourceLabel(role))}</small></span><span class="rs-unsaved-dot" data-draft-dot="${esc(role.id)}" title="Unsaved draft" aria-label="Unsaved draft" hidden>•</span></button>`).join('') || '<p class="rs-empty">No matching roles.</p>'
     if (drafts.has('new')) roleList.insertAdjacentHTML('beforeend', `<button type="button" class="rs-role-link" data-select-role="new" aria-current="${view === 'editor' && selected === 'new'}"><span aria-hidden="true">＋</span><span><b>${esc(entryFor('new').draft.id || 'New role')}</b><small>Not created yet</small></span></button>`)
     box.querySelector('[data-action="canvas"]').setAttribute('aria-current', String(view === 'canvas'))
     box.querySelector('[data-role-count]').textContent = roles.length

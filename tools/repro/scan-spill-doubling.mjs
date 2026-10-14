@@ -1,5 +1,5 @@
-/* READ ONLY over a local node-transcript store. Writes nothing there.
- * Prints COUNTS AND LENGTHS ONLY -- never a character of stored text.
+/* READ ONLY over the owner's LIVE node-transcripts. Writes nothing there.
+ * Prints COUNTS AND LENGTHS ONLY -- never a character of the owner's text.
  *
  * shell/node-transcript-store.cjs `wholeSpill` repairs a spill file that is its
  * own double ("5151" -> "51"). This asks how many spills on disk are doubled in

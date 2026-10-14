@@ -2,10 +2,10 @@
 
 /* THE CONTEXT WINDOW: MEASURED AT THREE WIDTHS, PHOTOGRAPHED WHERE IT CAN BE.
  *
- * The context windows were still not coming out cleanly enough.
- * That is the chat panel on the fleet board -- the transcript with the agent's
- * tool actions interleaved between the messages -- and the SECOND complaint
- * about it. So the bar is a person's eye, and the evidence has to be
+ * The owner, 2026-08-19: "the context windows were still not coming out nicely
+ * enough." His phrase for the chat panel on the fleet board -- the transcript
+ * with the agent's tool actions interleaved between the messages -- and his
+ * SECOND complaint about it. So the bar is his eye, and the evidence has to be
  * pictures of a real conversation, not a test count.
  *
  * WHAT THIS DRIVE EXISTS TO SETTLE, in the order it settles it:
@@ -46,9 +46,9 @@
  *      actually said rather than against what the picture suggests.
  *
  * ON THE WIDTHS, SAID PLAINLY BECAUSE IT LIMITS WHAT THIS FILE CAN PROVE. The
- * display is a ceiling: on a scaled display a real window clamps at the
- * display's width in CSS px, so a wider window cannot exist on that machine
- * and no honest photograph of one can either. Above the ceiling the drive MEASURES under an
+ * display is a ceiling: at devicePixelRatio 1.375 a real window clamps at 1400
+ * CSS px, so a 1920-CSS-pixel window cannot exist on this machine and no honest
+ * photograph of one can either. Above the ceiling the drive MEASURES under an
  * emulated viewport -- geometry is the one thing emulation genuinely does -- and
  * takes no picture. Every reading prints which mode produced it. See
  * driveAtWidth, and the capture write-up beside openWindow in
@@ -74,7 +74,7 @@
  *   node tools/context-window-drive.mjs --real --label=real-codex
  */
 
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, existsSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -127,22 +127,6 @@ const freshProfile = scratch => {
   const profile = mkdtempSync(path.join(scratch, 'profile-'))
   for (const leaf of ['userdata', 'local', 'home', 'roaming']) mkdirSync(path.join(profile, leaf), { recursive: true })
   return profile
-}
-
-/* SIGN-IN BY JUNCTION, NEVER BY COPY -- the rule tools/inside-agents-drive.mjs
-   states in full: a copy gives one credential two identities and the owner's
-   own sign-in dies when the CLI rotates the token out from under it. Nothing
-   here opens, reads, copies or prints a credential. */
-function junction(from, to, label) {
-  try {
-    if (!existsSync(from)) return `${label}: nothing at ${from}`
-    if (existsSync(to)) return `${label}: already present`
-    mkdirSync(path.dirname(to), { recursive: true })
-    symlinkSync(from, to, 'junction')
-    return `${label}: junction to the real home (no credential was read)`
-  } catch (error) {
-    return `${label}: FAILED ${String(error?.message || error)}`
-  }
 }
 
 /* --------------------------------------------------------------- shots -- */
@@ -412,11 +396,8 @@ async function sendTurn(window, text) {
 
 async function drive(executable, profile, appRoot) {
   seedMachineRecord(profile, appRoot)
-  if (REAL) {
-    note('info', junction(path.join(process.env.USERPROFILE || '', '.codex'), path.join(profile, 'home', '.codex'), 'codex home'))
-  }
   step('opening the window')
-  const window = await openWindow(executable, profile)
+  const window = await openWindow(executable, profile, { provider: REAL ? 'codex' : null })
   livePid = window.child?.pid ?? null
   const record = { label: LABEL, real: REAL, at: new Date().toISOString() }
   try {
@@ -678,9 +659,9 @@ async function drive(executable, profile, appRoot) {
  *
  * The window size in shell-state.json is device-independent pixels and the page
  * reports CSS pixels, and on a display at anything but 100% they are not the
- * same number. MEASURED on a scaled display: asked for a 1024-wide window, the
- * page reported a few pixels more -- small enough that a tolerance would hide
- * it and a hard equality would fail
+ * same number. MEASURED on the owner's own machine, 2026-08-20: asked for a
+ * 1024-wide window, got innerWidth 1029 at devicePixelRatio 1.375. Five pixels
+ * -- small enough that a tolerance would hide it and a hard equality would fail
  * a run that is actually fine.
  *
  * Neither is the honest answer. The drive CORRECTS instead: open, read the page
@@ -705,7 +686,7 @@ async function driveAtWidth(executable, profile, width, record, { pressBare = fa
       path.join(userDataFor(profile), 'shell-state.json'),
       JSON.stringify({ x: 20, y: 20, width: asked.width, height: asked.height, maximized: false }),
     )
-    window = await openWindow(executable, profile)
+    window = await openWindow(executable, profile, { provider: REAL ? 'codex' : null })
     livePid = window.child?.pid ?? null
     await delay(2600)
     /* READ BACK WHAT THE WINDOW REPORTS, BESIDE WHAT WAS ASKED FOR. A resize
@@ -726,10 +707,10 @@ async function driveAtWidth(executable, profile, width, record, { pressBare = fa
     if (!window) { note('FAIL', `${width}px: no window`); return }
     /* THE DISPLAY IS A CEILING, AND ABOVE IT THERE IS NO HONEST PICTURE AT ALL.
      *
-     * MEASURED on a scaled display: innerWidth CLAMPS at the display's width
-     * in CSS px. Asked for wider windows in device-independent pixels, the
-     * page reported the same clamp every time. A window wider than the
-     * display in CSS pixels cannot exist on a scaled display, so no
+     * MEASURED on the owner's own machine, 2026-08-20: devicePixelRatio 1.375,
+     * and innerWidth CLAMPS at 1400 CSS px. Asked for 1480, 1520, 1920, 2440
+     * and 2960 device-independent pixels; the page reported 1400 every time. A
+     * 1920-CSS-pixel window cannot exist on a 137.5%-scaled display, so no
      * photograph of one can either -- not through Emulation (the picture would
      * not match the layout) and not through the real window (it will not open
      * that wide).
@@ -786,8 +767,8 @@ async function driveAtWidth(executable, profile, width, record, { pressBare = fa
       `log ${read.log?.overflowsSideways ? 'SCROLLS SIDEWAYS' : 'no sideways scroll'}; ` +
       `page ${read.pageScrollsSideways ? 'SCROLLS SIDEWAYS' : 'no sideways scroll'}; ` +
       `${read.contextBubbles} context asides`)
-    /* THE NUMBER THE COMPLAINT ACTUALLY TURNS ON. "0 rows wider than the
-       log" does not answer it, because the LOG was the thing that was too
+    /* THE NUMBER THE OWNER'S SENTENCE ACTUALLY TURNS ON. "0 rows wider than the
+       log" does not answer him, because the LOG was the thing that was too
        narrow: a command can sit obediently inside a 343px column and still be
        unreadable. How many rows have their text cut off, at each width, is the
        measurement -- and before this the answer was the same at 1024 and 1920,

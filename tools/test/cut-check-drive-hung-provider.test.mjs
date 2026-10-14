@@ -171,7 +171,7 @@ test('THROUGH THE RUNNER: a declared could-not-measure survives a summary the pa
 })
 
 test('a start the box never admitted is named as such, not blamed on the provider', () => {
-  /* An earlier run measured this on a loaded box: at 100% CPU the product queues the
+  /* Lane A measured this on a loaded box: at 100% CPU the product queues the
      start -- "New starts pause at 97% CPU... This agent is queued" -- and it
      never leaves the queue. Nothing was asked of any provider, so a refusal
      naming the provider would be false. */
@@ -187,7 +187,7 @@ test('a start the box never admitted is named as such, not blamed on the provide
 })
 
 test('the refusal says the budget was one overall deadline, and carries the machine reading', () => {
-  /* An earlier run also measured the opposite shape: a synchronous retry ladder
+  /* Lane A also measured the opposite shape: a synchronous retry ladder
      multiplying a per-probe timeout into a 485-second freeze where the old code
      failed in 5s. Spending our own deadline retrying looks exactly like a hung
      provider from outside, so the refusal states which budget it spent. */

@@ -1,8 +1,8 @@
 /* CONNECTING THIS COMPUTER TO THE ACCOUNT SOMEBODY JUST MADE, AS A STATE
  * MACHINE WITH NO DOM IN IT.
  *
- * THE DEFECT THIS EXISTS TO CLOSE: after signing up, a user could not see how
- * to connect their computer. They signed up
+ * THE DEFECT THIS EXISTS TO CLOSE, in the person's own words: "as a user I dont
+ * even see how after signing up that I now connect my computer". They signed up
  * on the website. The account page there asks them for a code. Nothing in this
  * application has ever shown them one. Every other half of the ceremony was
  * already built -- the account service opens and collects claims, the website
@@ -46,8 +46,9 @@ export const CONNECT_SETTING_COUNT = 1
  * the query against that page's own tables, this section's rows are not in
  * SETTINGS (they are the installed application's business, like the research
  * rows), and the row carried no data-setting-id at all -- so the best any link
- * could do was drop somebody at the top of Settings. The report was that,
- * after signing up, a user could not see how to connect their computer.
+ * could do was drop somebody at the top of Settings. The owner's report was
+ * "as a user I dont even see how after signing up that I now connect my
+ * computer".
  *
  * IT IS EXPORTED, NOT SPELLED TWICE. The row renders it as its data-setting-id
  * and the settings page resolves it; a link that names it is only correct while
@@ -93,7 +94,7 @@ export const DISCONNECT_ARMED_HINT = 'Disconnect? Press again. This clears the c
  * true ONLY for the exact string 'on' -- five fail-closed early returns, none
  * of which this window can reach round. Until this constant existed there was
  * NO writer anywhere in src/: the refusal a browser met pointed at a control
- * that did not exist. The rule is that the question is asked on the
+ * that did not exist. The owner's ruling is that the question is asked on the
  * computer, at the moment it becomes meaningful, which is the moment the
  * connect section sees the claim land; src/connect-computer-settings.js draws
  * that question and the switch, and both spell the control with this label.

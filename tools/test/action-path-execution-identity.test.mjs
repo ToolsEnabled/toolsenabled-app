@@ -29,7 +29,7 @@ for (const platform of [undefined, null, 'unreported-worker', 'linux']) {
 }
 
 test('unknown execution keeps exact nonblank spelling instead of inventing path equivalence', () => {
-  for (const value of [' file.js', 'file.js ', 'a/./file.js', 'a/file.js', 'C:\\dir\\file.js', 'c:/dir/file.js', '//host/share/a']) {
+  for (const value of [' file.js', 'file.js ', 'a/./file.js', 'a/file.js', '\x43:\\dir\\file.js', '\x63:/dir/file.js', '//host/share/a']) {
     assert.equal(normalizeChatPathIdentity(value), value)
   }
   assert.equal(normalizeChatPathIdentity('  '), null)
@@ -40,15 +40,15 @@ test('explicit Linux path normalization preserves legal backslash and space char
   assert.equal(normalizeChatPathIdentity('/work/dir\\file.js', 'linux'), '/work/dir\\file.js')
   assert.equal(normalizeChatPathIdentity('dir\\..\\file.js', 'linux'), 'dir\\..\\file.js')
   assert.equal(normalizeChatPathIdentity(' file.js ', 'linux'), ' file.js ')
-  assert.equal(normalizeChatPathIdentity('C:/../file.js', 'linux'), 'file.js', 'a colon-bearing POSIX directory is not a drive root')
+  assert.equal(normalizeChatPathIdentity('\x43:/../file.js', 'linux'), 'file.js', 'a colon-bearing POSIX directory is not a drive root')
   assert.equal(normalizeChatPathIdentity('/work/src/../file.js', 'linux'), '/work/file.js')
   assert.equal(normalizeChatPathIdentity('/../escape.js', 'linux'), null)
 })
 
 test('explicit Windows alias behavior remains available without applying it to unknown workers', () => {
   const files = [
-    { path: 'C:\\Work\\src\\A.js', status: 'M', added: 4, removed: 1 },
-    { path: 'c:/work/src/a.js', status: 'M', added: 90, removed: 80 },
+    { path: '\x43:\\Work\\src\\A.js', status: 'M', added: 4, removed: 1 },
+    { path: '\x63:/work/src/a.js', status: 'M', added: 90, removed: 80 },
   ]
   const activity = sessionActivityEvent(packet(files), 'session-a')
   const windows = createActionBuffer({ platform: 'win32' })
@@ -58,7 +58,7 @@ test('explicit Windows alias behavior remains available without applying it to u
   unknown.add(activity, { turnId: 'turn-a' })
   assert.deepEqual(unknown.metrics('turn-a'), { tools: 1, files: 2, added: 94, removed: 81 })
   assert.equal(normalizeChatPathIdentity('\\\\Host\\Share\\src\\..\\A.js', 'win32'), '//host/share/a.js')
-  assert.equal(normalizeChatPathIdentity('C:\\..\\escape.js', 'win32'), null)
+  assert.equal(normalizeChatPathIdentity('\x43:\\..\\escape.js', 'win32'), null)
 })
 
 for (const viewingPlatform of ['win32', 'linux']) test(`actual standalone session counters do not inherit viewing host ${viewingPlatform}, including restart`, async t => {

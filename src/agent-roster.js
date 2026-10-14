@@ -5,9 +5,9 @@
  * ------------------------------------------------------------------
  * The drill-in used to draw its agents as a force/tree-simulated bubble graph
  * (FleetGraph) with a separate floating "context box" per agent, positioned by a
- * ~400-line band solver in views/agent.js. A reported screenshot shows what that
- * produced: running clocks printed over the agents' role labels -- names
- * unreadable --
+ * ~400-line band solver in views/agent.js. The owner's screenshot shows what that
+ * produced: `16:27:58 RUNTIME` printed over `COORDINATOR'S HELPER`, `11:45:26`
+ * over `SHADOW MANAGER`, `0:00:34` over `terra-01 MANAGER` -- names unreadable --
  * and the three activity lines floating above the graph with no visual tie to the
  * bubble they described.
  *
@@ -181,14 +181,7 @@ const KEEPS_ITS_ACCOUNT = 'This session keeps the account it started on.'
    saying this session is not going anywhere, because the row it sits in reads
    like a control otherwise. */
 function spentSentence(entry) {
-  if (entry.to) return `${entry.name} has reached a limit. A new session would start on ${entry.to}. ${KEEPS_ITS_ACCOUNT}`
-  if (entry.why === 'HANDOVER_HELD_NOTHING_MEASURED') {
-    return `${entry.name} has reached a limit, and no other account has been checked. ${KEEPS_ITS_ACCOUNT}`
-  }
-  if (entry.why === 'HANDOVER_HELD_NO_TARGET') {
-    return `${entry.name} has reached a limit, and no other account is free to take the work. ${KEEPS_ITS_ACCOUNT}`
-  }
-  return `${entry.name} has reached a limit. ${KEEPS_ITS_ACCOUNT}`
+  return `${entry.name} has reached a limit. Wait for this account to reset, or choose an account with Switch and continue. ${KEEPS_ITS_ACCOUNT}`
 }
 
 export function buildAgentRoster({ agents = [], selectedId = null, onSelect = () => {}, accounts = null, example = false } = {}) {

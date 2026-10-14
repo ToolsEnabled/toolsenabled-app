@@ -10,8 +10,8 @@
 .research-finding-details { margin-top: var(--s2); }
 .research-finding-details > summary { cursor: pointer; color: var(--ink-25); }
 .research-finding-details > summary:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 3px;
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 
 .research-finding-details .research-finding-review-note { margin: var(--s2) 0; }
@@ -21,7 +21,7 @@
 .research-finding-details dd { margin: 2px 0 0; white-space: pre-wrap; }
 .research-finding-details pre {
   margin: 0;
-  font: 12px/1.5 var(--font-mono);
+  font: 12.5px/1.5 var(--font-mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

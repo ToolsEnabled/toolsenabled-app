@@ -8,8 +8,8 @@
  * measured face owned none, because the rule that kept it safe was "never
  * initialise the chart engine in live mode" -- a rule written to stop a
  * SIMULATED series being handed to a panel a person reads as a measurement.
- * That rule worked and it cost the page every chart on it, which is why the
- * charts had disappeared.
+ * That rule worked and it cost the page every chart on it, which is what the
+ * owner asked about: "what happened to all the charts".
  *
  * The rule is replaced here by something a person cannot forget to apply. This
  * module can see the readings in ../local-metrics.js and the design tokens in
@@ -206,6 +206,20 @@ export function providerOfTier(tier) {
   if (typeof tier !== 'string' || tier.length === 0) return null
   const row = LAUNCH_TIERS.find(candidate => candidate.id === tier)
   return row ? row.provider : null
+}
+
+/* THE PROVIDER A "BY MODEL" ROW BELONGS TO (REVIEW-1050 #20). Its key is a
+   model row's id, or, for a model name the person typed (1.0.50 review CM-4,
+   usageModel() in ./orchestration-controls.js), `typed:<provider>:<name>`. A
+   typed name never holds ':' (the record refuses one), so the provider is the
+   segment between the first two. `typed-other` names no provider. */
+export function providerOfModelKey(key) {
+  if (typeof key !== 'string' || key.length === 0) return null
+  if (key.startsWith('typed:')) {
+    const provider = key.slice('typed:'.length, key.indexOf(':', 'typed:'.length))
+    return key.indexOf(':', 'typed:'.length) > 0 && provider ? provider : null
+  }
+  return providerOfTier(key)
 }
 
 const providerLabel = (provider) => (provider ? (PROVIDER_LABELS[provider] || provider) : UNRECORDED)

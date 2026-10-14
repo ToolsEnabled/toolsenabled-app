@@ -1,5 +1,5 @@
-/* READ ONLY over a local node-transcript store. It writes nothing there and
-   prints SHAPE COUNTS only -- never a line of text, never a value.
+/* READ ONLY over the owner's LIVE node-transcripts. It writes nothing there and
+   prints SHAPE COUNTS only -- never a line of the owner's text, never a value.
    Its job is to say what the renderer is actually asked to draw per provider. */
 import fs from 'node:fs'
 import path from 'node:path'

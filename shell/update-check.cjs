@@ -2,10 +2,10 @@
 
 /* THE IN-APP UPDATE CHECK.
  *
- * The rule: when a user launches the software it asks whether to check for
- * updates, with a choice to always check automatically or never check
- * automatically so the window need not appear again, and the same choice is
- * in settings.
+ * The owner's words: "when a user launches the software it should ask if you
+ * want to check for updates and it should have a box for always check
+ * automatically and never check automatically so a user can not see the window
+ * again if they want and then it should be in settings though."
  *
  * So the FIRST question is about CHECKING, not installing. Three remembered
  * answers, kept in renderer-prefs under `mc.update.policy`:
@@ -31,21 +31,50 @@
  * https:, host exactly toolsenabled.ai, no redirect followed (a 3xx is a
  * failure, because a redirect is somebody else choosing where the bytes come
  * from), ten seconds of silence ends the request, the manifest is capped at 64
- * KB, the installer at the byte count the manifest declared. Every failure is
- * SILENT: no prompt, no retry, one log line. A check that could not be made is
- * not an update, and a dialog about it would teach people to dismiss the one
- * that matters.
+ * KB, the installer at the byte count the manifest declared. A failure of a
+ * check nobody asked for -- the remembered "always" at launch -- is SILENT: no
+ * prompt, no retry, one log line. A check that could not be made is not an
+ * update, and a dialog about it would teach people to dismiss the one that
+ * matters.
+ *
+ * A PRESSED "Check now" IS ANSWERED, EVERY TIME. That silence also swallowed
+ * the answer to a question the person had just asked: Check now while up to
+ * date, or offline, showed nothing at all, so the button looked broken
+ * (1.0.50 release review, release-ops F9). After the person presses it they
+ * are told they have the newest version, or that the check could not tell --
+ * which is not a claim that no update exists.
  *
  * NOTHING RUNS WHOSE HASH DID NOT MATCH. The installer is streamed to disk
  * under userData and hashed over a read stream -- NOT the whole-file
  * readFile() tools/seal-artifact.mjs uses, because that tree is 356 MB of small
  * files and this is one file of 100 MB that must not be held in memory twice.
  * SHA-256, byte count, ProductName, FileVersion and ProductVersion are all
- * compared; a mismatch deletes the file, says one sentence, and stops. Only a
- * fully matched file is spawned, and only after the
+ * compared; a mismatch deletes the file, says one sentence, and stops.
+ *
+ * AND NOTHING RUNS THAT ToolsEnabled, Inc. DID NOT SIGN. Everything compared
+ * above comes from the same site as the installer, so it proves the bytes are
+ * the ones the site described, not that we built them. The Authenticode
+ * signature is the one fact the site cannot write: it must be Valid, by
+ * ToolsEnabled, Inc., and timestamped (shell/installer-pe-identity.cjs
+ * compareInstallerSignature). This replaced a dialog sentence telling the
+ * person to "check that the publisher is ToolsEnabled, Inc." on a path that
+ * never showed a publisher (1.0.50 release review, release-ops F4).
+ *
+ * Only a fully matched, signed file is run, and only after the
  * close warning's own sentence has been shown if agents are running -- the
- * promise shell/main.cjs made at an earlier commit is that nothing ends an agent without
+ * promise shell/main.cjs made at 37f8030 is that nothing ends an agent without
  * a word, and an installer quitting the app is exactly that.
+ *
+ * THE INSTALLER STARTS AFTER THE APP HAS QUIT, NOT BEFORE (1.0.50 platform
+ * review, U1). It used to be spawned first and the quit asked for second. A
+ * quit can be refused (an unsaved Settings draft) or take a while (saves,
+ * agent and research cleanup), and the installer's own "ToolsEnabled is
+ * running" check then offered to end the app by force, over the refusal.
+ * Now the verified file is handed to runAfterQuit: the shell arms it on the
+ * app's `quit` event, which comes only once every refusal has had its say,
+ * and starts it there with --updated, the flag electron-builder's own updater
+ * passes. A quit that was refused disarms it (createInstallerAfterQuit
+ * below), so a later, unrelated quit never starts an installer.
  *
  * EVERY DEPENDENCY IS INJECTED (the shell/relay-supervisor.cjs shape): the
  * required ones throw by name, the optional ones default. The pure decisions
@@ -56,8 +85,10 @@
 const { createHash } = require('crypto')
 const nodePath = require('path')
 const {
+  compareInstallerSignature,
   comparePeIdentity,
   peIdentityManifestIsSane,
+  readInstallerSignature,
 } = require('./installer-pe-identity.cjs')
 
 const MANIFEST_URL = 'https://toolsenabled.ai/download/download.json'
@@ -67,6 +98,10 @@ const DOWNLOAD_PAGE = `${DOWNLOAD_HOST}/download`
 
 const POLICY_KEY = 'mc.update.policy'
 const LAST_CHECKED_KEY = 'mc.update.last-checked'
+/* The version last named to a session running as administrator (U6), so that
+   session is told about each new version once, not at every launch (1.0.50
+   review of fixes, 3.11). */
+const ELEVATED_ANNOUNCED_KEY = 'mc.update.elevated-announced'
 const POLICIES = Object.freeze(['ask', 'always', 'never'])
 const DEFAULT_POLICY = 'ask'
 
@@ -79,6 +114,15 @@ const LAUNCH_DELAY_MS = 1500
 /* Where the installer lands: a folder of our own under userData, so a stale
    or refused download is always one known file in one known place. */
 const DOWNLOAD_SUBDIRECTORY = 'updates'
+/* AN INSTALLER THAT HAS DONE ITS JOB IS REMOVED AT THE NEXT LAUNCH.
+   install() only ever deleted a file with the same name before downloading,
+   so every in-app update left its installer behind -- 114,444,952 bytes for
+   1.0.50 -- and they piled up in userData, surviving a "keep my data"
+   uninstall (1.0.50 release review, release-ops F10). At launch, an installer
+   in this folder for the version now running, or an older one, has nothing
+   left to do. Only our own installer names are touched, in our own folder;
+   a newer one (a download whose install never ran) is left alone. */
+const FINISHED_INSTALLER = /^ToolsEnabled[ -]Setup[ -](\d+\.\d+\.\d+)\.exe$/
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/
 const SHA256_HEX = /^[0-9a-f]{64}$/i
@@ -93,17 +137,21 @@ const INSTALLER_FILENAME = /^[A-Za-z0-9](?:[A-Za-z0-9._ -]*[A-Za-z0-9_-])?\.exe$
    that is the moment it is true. */
 const CHECK_TITLE = 'Check for updates?'
 const CHECK_MESSAGE = 'Check for updates?'
-const CHECK_DETAIL = 'ToolsEnabled can ask toolsenabled.ai whether a newer version is out. Nothing is installed without asking you first.\n\nTick the box to keep your answer: Check now means it checks on its own at every launch, and Not now means it never checks. Either can be changed later in Settings, under System.'
+/* "at launch, at most once a day", not "every launch": dueForCheck() below
+   throttles the remembered answer to one check per 24 hours, and the Settings
+   row already says so (src/update-settings.js updateStateSentence). */
+const CHECK_DETAIL = 'ToolsEnabled can ask toolsenabled.ai whether a newer version is out. Nothing is installed without asking you first.\n\nTick the box to keep your answer. With Check now, it then checks on its own at launch, at most once a day. With Not now, it never checks. Either can be changed later in Settings, under System.'
 const CHECK_BUTTONS = Object.freeze(['Check now', 'Not now'])
 const REMEMBER_LABEL = 'Don’t ask me again'
 
 const UPDATE_TITLE = 'Update ToolsEnabled?'
 const UPDATE_BUTTONS = Object.freeze(['Update now', 'Not now'])
-const UPDATE_DETAIL = 'Windows may warn you about the installer while our new signature builds a reputation. Check that the publisher is ToolsEnabled, Inc. The download is checked against what the site says it should be before anything runs.'
+const UPDATE_DETAIL = 'Before it runs, ToolsEnabled checks that the installer is signed by ToolsEnabled, Inc. and matches the size, SHA-256 checksum and version the site lists.'
 
 const AGENTS_BUTTONS = Object.freeze(['Close them and update', 'Keep working'])
 
 const MISMATCH_SENTENCE = 'The download did not match what the site says it should be, so it was not installed.'
+const UNSIGNED_SENTENCE = 'The installer’s signature could not be confirmed as ToolsEnabled, Inc., so it was not installed.'
 const MISMATCH_DETAIL = `Nothing on this computer was changed. Try again later, or get the installer yourself from ${DOWNLOAD_PAGE}.`
 const DOWNLOAD_FAILED_SENTENCE = 'The download did not finish, so nothing was installed.'
 const DOWNLOAD_FAILED_DETAIL = `Nothing on this computer was changed. Try again later, or get the installer yourself from ${DOWNLOAD_PAGE}.`
@@ -111,8 +159,27 @@ const NOT_INSTALLED_TITLE = 'Update not installed'
 const COULD_NOT_TELL_CODE = 'UPDATE_CHECK_COULD_NOT_TELL'
 const COULD_NOT_TELL_SENTENCE = 'The update check could not tell whether an update is available; this does not claim that an update is absent.'
 
+/* The answers to a pressed Check now. */
+const CHECKED_TITLE = 'Checking for updates'
+const COULD_NOT_CHECK_MESSAGE = 'ToolsEnabled could not tell whether a newer version is out.'
+const COULD_NOT_CHECK_DETAIL = `This does not mean there is no update. Try again the next time you open ToolsEnabled, or look at ${DOWNLOAD_PAGE}.`
+function upToDateMessage(current) {
+  return `You have the newest version (${current}).`
+}
+
 function updateMessage(available, current) {
   return `ToolsEnabled ${available} is available (you have ${current}). Download and install it now?`
+}
+
+/* RUN AS ADMINISTRATOR CANNOT INSTALL AN UPDATE (1.0.50 platform review, U6).
+   The installer is per-user and refuses an administrator token (build/
+   installer.nsh preInit, exit 740), and a child of an elevated app inherits
+   that token. Starting it would quit the app for a refusal. So the update is
+   named, the reason is said, and nothing is downloaded, started or quit. */
+const ELEVATED_TITLE = 'Update available'
+const ELEVATED_DETAIL = 'Close ToolsEnabled and open it again the usual way, without Run as administrator. The update check at that launch offers this update again. Nothing was downloaded. You are told once about each new version.'
+function elevatedMessage(available, current) {
+  return `ToolsEnabled ${available} is available (you have ${current}). It cannot be installed while ToolsEnabled is running as administrator.`
 }
 
 /* ---------------------------------------------------------------
@@ -392,14 +459,18 @@ function requireString(value, name) {
  * @param {Function} deps.fetchManifest      () => { ok, manifest } | { ok:false, reason }
  * @param {Function} deps.download           ({ url, destination, maxBytes }) => { ok, bytes } | { ok:false, reason }
  * @param {Function} deps.inspectInstaller   reads ProductName/FileVersion/ProductVersion from the downloaded PE
+ * @param {Function} [deps.inspectSignature] reads the downloaded installer's Authenticode signature; defaults to
+ *                                           the real GLOBALROOT PowerShell reader, so a shell that does not pass
+ *                                           one still gets the check rather than skipping it
  * @param {object}   deps.fs                 createReadStream, promises.mkdir / unlink / stat
  * @param {object}   deps.prefs              renderer-prefs: snapshot(), set(key, value)
  * @param {string}   deps.currentVersion     app.getVersion()
  * @param {Function} deps.showMessageBox     (options) => Promise<{ response, checkboxChecked }>
- * @param {Function} deps.spawn              child_process.spawn, or a stand-in
- * @param {Function} deps.quit               ends the application after the installer is started
+ * @param {Function} deps.runAfterQuit       (file) => arranges for the verified installer to start once the
+ *                                           app has quit, then asks the app to quit (createInstallerAfterQuit)
  * @param {Function} deps.runningAgentCount  how many agent sessions are live right now
  * @param {Function} deps.closeWarning       (running) => { message, detail } -- the close warning's own words
+ * @param {Function} [deps.elevated]         () => true when this process runs as administrator (U6)
  * @param {string}   deps.downloadDirectory  app.getPath('userData')
  * @param {Function} [deps.now]
  * @param {Function} [deps.log]              one identifier-free line per check
@@ -411,15 +482,16 @@ function createUpdateCheck({
   fetchManifest,
   download,
   inspectInstaller,
+  inspectSignature = readInstallerSignature,
   fs,
   prefs,
   currentVersion,
   showMessageBox,
-  spawn,
-  quit,
+  runAfterQuit,
   runningAgentCount,
   closeWarning,
   downloadDirectory,
+  elevated = () => false,
   now = Date.now,
   log = () => {},
   setTimeout: schedule = setTimeout,
@@ -431,18 +503,24 @@ function createUpdateCheck({
   requireFunction(fetchManifest, 'fetchManifest')
   requireFunction(download, 'download')
   requireFunction(inspectInstaller, 'inspectInstaller')
+  requireFunction(inspectSignature, 'inspectSignature')
   requireValue(fs, 'fs')
   requireValue(prefs, 'prefs')
   requireString(currentVersion, 'currentVersion')
   requireFunction(showMessageBox, 'showMessageBox')
-  requireFunction(spawn, 'spawn')
-  requireFunction(quit, 'quit')
+  requireFunction(runAfterQuit, 'runAfterQuit')
   requireFunction(runningAgentCount, 'runningAgentCount')
   requireFunction(closeWarning, 'closeWarning')
   requireString(downloadDirectory, 'downloadDirectory')
+  requireFunction(elevated, 'elevated')
+
+  function runningElevated() {
+    try { return elevated() === true } catch { return false }
+  }
 
   let inFlight = false
   let launchScheduled = false
+  let finishedInstallersRemoved = false
 
   /* The prefs file, read the way shell/main.cjs reads the close warning's
      key: inside a try, and failing CLOSED. A store that throws, or one that
@@ -459,6 +537,7 @@ function createUpdateCheck({
         ok: true,
         policy: readPolicyValue(values[POLICY_KEY]),
         lastChecked: typeof values[LAST_CHECKED_KEY] === 'string' ? values[LAST_CHECKED_KEY] : null,
+        elevatedAnnounced: typeof values[ELEVATED_ANNOUNCED_KEY] === 'string' ? values[ELEVATED_ANNOUNCED_KEY] : null,
       }
     } catch {
       return { ok: false, reason: 'settings unreadable' }
@@ -497,8 +576,10 @@ function createUpdateCheck({
   }
 
   /* The check itself: fetch, compare, and -- only for a newer version -- ask.
-     Every failure before the comparison is silent. */
-  async function check() {
+     Every failure before the comparison is silent. `pressed` says the person
+     asked for this check (Check now), so an answer it would otherwise keep
+     quiet about is given. */
+  async function check({ pressed = false } = {}) {
     // The current manifest and identity verifier describe a Windows PE.
     // A Linux/macOS app must never offer that installer as its own update.
     if (platform !== 'win32') return record('not-checked', { reason: 'platform unsupported' })
@@ -531,11 +612,37 @@ function createUpdateCheck({
           reason: 'manifest unusable',
         })
       }
-      /* Cache only a completed comparison. A busy machine, timeout, unreadable
-         response, or other could-not-tell result must remain due. */
-      writePref(LAST_CHECKED_KEY, new Date(now()).toISOString())
       const seen = manifest.version
-      if (!isNewer(seen, currentVersion)) return record('up-to-date', { seen })
+      const newer = isNewer(seen, currentVersion)
+      const asAdministrator = newer && runningElevated()
+      /* Cache only a completed comparison. A busy machine, timeout, unreadable
+         response, or other could-not-tell result must remain due. So must an
+         update that could not be offered because the app runs as
+         administrator: the next ordinary launch is the one to offer it (U6). */
+      if (!asAdministrator) writePref(LAST_CHECKED_KEY, new Date(now()).toISOString())
+      if (!newer) return record('up-to-date', { seen })
+      if (asAdministrator) {
+        /* Named once per version (1.0.50 review of fixes, 3.11). The box is
+           OK-only and the stamp above is not written, so without this a person
+           who runs elevated on purpose met the same box at every launch under
+           policy 'always'. A pressed Check now is answered every time. */
+        const read = readPrefs()
+        if (!pressed && read.ok && read.elevatedAnnounced === seen) {
+          return record('not-installed-elevated', { seen, announced: false, reason: 'already named while running as administrator' })
+        }
+        await ask({
+          type: 'info',
+          buttons: ['OK'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+          title: ELEVATED_TITLE,
+          message: elevatedMessage(seen, currentVersion),
+          detail: ELEVATED_DETAIL,
+        })
+        writePref(ELEVATED_ANNOUNCED_KEY, seen)
+        return record('not-installed-elevated', { seen, announced: true })
+      }
 
       const answer = await ask({
         type: 'info',
@@ -549,32 +656,38 @@ function createUpdateCheck({
       })
       if (answer.response !== 0) return record('declined-update', { seen })
 
-      /* The promise from an earlier commit, kept here too: an installer ends every
+      /* The promise from 37f8030, kept here too: an installer ends every
          running agent, and nobody is told by silence. The sentence is the
          close warning's own. */
       const running = runningAgentCount()
       if (Number.isInteger(running) && running > 0) {
-        const words = closeWarning(running)
-        const warned = await ask({
-          type: 'warning',
-          buttons: [...AGENTS_BUTTONS],
-          defaultId: 1,
-          cancelId: 1,
-          noLink: true,
-          title: 'Close ToolsEnabled?',
-          message: words.message,
-          detail: words.detail,
-        })
-        if (warned.response !== 0) return record('kept-working', { seen, running })
+        if (!(await approveClosingAgents(running))) return record('kept-working', { seen, running })
       }
 
-      return install(manifest)
+      return install(manifest, Number.isInteger(running) && running > 0 ? running : 0)
     } finally {
       inFlight = false
     }
   }
 
-  async function install(manifest) {
+  /* The close warning's own sentence, with the update's two buttons. True
+     only for "Close them and update". */
+  async function approveClosingAgents(running) {
+    const words = closeWarning(running)
+    const warned = await ask({
+      type: 'warning',
+      buttons: [...AGENTS_BUTTONS],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true,
+      title: 'Close ToolsEnabled?',
+      message: words.message,
+      detail: words.detail,
+    })
+    return warned.response === 0
+  }
+
+  async function install(manifest, approvedAgents = 0) {
     const seen = manifest.version
     const directory = path.join(downloadDirectory, DOWNLOAD_SUBDIRECTORY)
     const destination = path.join(directory, manifest.filename)
@@ -584,18 +697,27 @@ function createUpdateCheck({
       await sayNotInstalled(DOWNLOAD_FAILED_SENTENCE, DOWNLOAD_FAILED_DETAIL)
       return record('download-failed', { seen, reason: 'cannot write' })
     }
-    await removeFile(destination)
-
-    let got
-    try {
-      got = await download({ url: installerUrl(manifest.filename), destination, maxBytes: manifest.bytes })
-    } catch {
-      got = { ok: false, reason: 'network' }
-    }
-    if (!got || got.ok !== true) {
+    /* A file kept from an earlier "Keep working" (U2) is used again when its
+       size and SHA-256 are still the ones the manifest names; every check
+       below still runs on it. Anything else is removed and downloaded anew. */
+    const kept = await hashFile({ fs, file: destination })
+    const reuse = kept.ok
+      && kept.bytes === manifest.bytes
+      && kept.sha256.toLowerCase() === manifest.sha256.toLowerCase()
+    if (!reuse) {
       await removeFile(destination)
-      await sayNotInstalled(DOWNLOAD_FAILED_SENTENCE, DOWNLOAD_FAILED_DETAIL)
-      return record('download-failed', { seen, reason: got && got.reason ? got.reason : 'network' })
+
+      let got
+      try {
+        got = await download({ url: installerUrl(manifest.filename), destination, maxBytes: manifest.bytes })
+      } catch {
+        got = { ok: false, reason: 'network' }
+      }
+      if (!got || got.ok !== true) {
+        await removeFile(destination)
+        await sayNotInstalled(DOWNLOAD_FAILED_SENTENCE, DOWNLOAD_FAILED_DETAIL)
+        return record('download-failed', { seen, reason: got && got.reason ? got.reason : 'network' })
+      }
     }
 
     const hashed = await hashFile({ fs, file: destination })
@@ -621,30 +743,46 @@ function createUpdateCheck({
       return record('mismatch', { seen, reason: identity.reason })
     }
 
-    /* Detached and unreferenced, so the installer outlives this process.
-       windowsHide is about CONSOLE windows (a console-subsystem child gets one
-       otherwise); the NSIS installer is a GUI program and draws its own window
-       either way, so the shell's no-console rule holds here as everywhere. */
+    /* Last, because it is the slowest read and every cheaper refusal above
+       has already had its chance. A reader that throws is a refusal too: a
+       signature nobody could read is not a signature anybody checked. */
+    let measuredSignature
     try {
-      const child = spawn(destination, [], { detached: true, stdio: 'ignore', windowsHide: true })
-      /* child_process.spawn reports launch failures through the child's
-         asynchronous `error` event, not just by throwing. Wait for `spawn`
-         before treating the installer as started; keeping the error listener
-         here also prevents a failed launch from becoming an uncaught event. */
-      if (child && typeof child.once === 'function') {
-        await new Promise((resolve, reject) => {
-          child.once('spawn', resolve)
-          child.once('error', reject)
-        })
+      measuredSignature = await inspectSignature(destination)
+    } catch {
+      measuredSignature = null
+    }
+    const signature = compareInstallerSignature(measuredSignature)
+    if (!signature.ok) {
+      await removeFile(destination)
+      await sayNotInstalled(UNSIGNED_SENTENCE, MISMATCH_DETAIL)
+      return record('mismatch', { seen, reason: signature.reason })
+    }
+
+    /* AGENTS STARTED DURING THE DOWNLOAD ARE ASKED ABOUT TOO (1.0.50 platform
+       review, U2). The count above was read before a download that shows no
+       progress and can take a minute; the quit below skips the window's own
+       close warning. So it is read again here, and more agents than the
+       person agreed to close get the same question. "Keep working" keeps the
+       verified file, and the next Update now uses it instead of downloading
+       it again. */
+    const runningNow = runningAgentCount()
+    if (Number.isInteger(runningNow) && runningNow > approvedAgents) {
+      if (!(await approveClosingAgents(runningNow))) {
+        return record('kept-working', { seen, running: runningNow, kept: destination })
       }
-      if (child && typeof child.unref === 'function') child.unref()
+    }
+
+    /* The installer is NOT started here. runAfterQuit arms it to start once
+       the app has quit, then asks for the quit; see the header (U1). A shell
+       that cannot arm it says so and changes nothing. */
+    try {
+      await runAfterQuit(destination)
     } catch {
       await sayNotInstalled(DOWNLOAD_FAILED_SENTENCE, DOWNLOAD_FAILED_DETAIL)
       return record('install-failed', { seen, reason: 'could not start the installer' })
     }
-    const result = record('installing', { seen, file: destination })
-    quit()
-    return result
+    return record('installing', { seen, file: destination })
   }
 
   async function sayNotInstalled(message, detail) {
@@ -689,13 +827,60 @@ function createUpdateCheck({
        memory, not the check. */
     if (decided.policy !== DEFAULT_POLICY) writePref(POLICY_KEY, decided.policy)
     if (!decided.check) return record('declined-check', { policy: decided.policy })
-    return { policy: decided.policy, ...(await check()) }
+    const checked = await check({ pressed: true })
+    await answerPressedCheck(checked)
+    return { policy: decided.policy, ...checked }
+  }
+
+  /* Only the two outcomes that were otherwise silent get an answer here. A
+     newer version already asked its own question, and every download or
+     install outcome already said its own sentence. */
+  async function answerPressedCheck(result) {
+    if (result.action === 'up-to-date') {
+      await ask({
+        type: 'info', buttons: ['OK'], defaultId: 0, cancelId: 0, noLink: true,
+        title: CHECKED_TITLE, message: upToDateMessage(currentVersion),
+      })
+    } else if (result.action === 'check-failed') {
+      await ask({
+        type: 'info', buttons: ['OK'], defaultId: 0, cancelId: 0, noLink: true,
+        title: CHECKED_TITLE, message: COULD_NOT_CHECK_MESSAGE, detail: COULD_NOT_CHECK_DETAIL,
+      })
+    }
+  }
+
+  /* Once per process, whatever the policy: even "never" leaves the files an
+     earlier "always" downloaded. A file that cannot be removed -- still held
+     by the installer that just ran, or already gone -- is left for the next
+     launch; nothing here can fail the launch or prompt anybody. */
+  async function removeFinishedInstallers() {
+    if (platform !== 'win32' || finishedInstallersRemoved) return { removed: 0 }
+    finishedInstallersRemoved = true
+    const directory = path.join(downloadDirectory, DOWNLOAD_SUBDIRECTORY)
+    let names
+    try {
+      names = await fs.promises.readdir(directory)
+    } catch {
+      return { removed: 0 }
+    }
+    let removed = 0
+    for (const name of names) {
+      const match = FINISHED_INSTALLER.exec(name)
+      if (!match || isNewer(match[1], currentVersion)) continue
+      try {
+        await fs.promises.unlink(path.join(directory, name))
+        removed += 1
+      } catch { /* in use or already gone: the next launch tries again */ }
+    }
+    if (removed > 0) log(`removed ${removed} installer${removed === 1 ? '' : 's'} left by earlier updates`)
+    return { removed }
   }
 
   function scheduleAtLaunch() {
     if (launchScheduled || platform !== 'win32') return
     launchScheduled = true
     return schedule(() => {
+      void removeFinishedInstallers()
       // A route change after setup retries this once. No polling and no
       // remembered-policy change while the person is choosing their folder.
       if (setupActive()) { launchScheduled = false; return }
@@ -707,7 +892,83 @@ function createUpdateCheck({
     runAtLaunch,
     scheduleAtLaunch,
     check,
+    removeFinishedInstallers,
     readPolicy: () => readPrefs(),
+  })
+}
+
+/* THE INSTALLER, STARTED ONLY ONCE THE APP HAS QUIT (U1).
+ *
+ * arm(file) registers one listener on the app's `quit` event. Electron emits
+ * `quit` after before-quit and will-quit have run and nobody prevented them,
+ * so by then every refusal -- an unsaved Settings draft, a conversation still
+ * saving, the agent and research cleanup -- has already had its say. The
+ * installer then finds the app on its way out instead of offering to end it.
+ *
+ * --updated is what electron-builder's own updater passes. It tells the NSIS
+ * installer that the app was closed for it: the "ToolsEnabled is running"
+ * box is skipped, and a process still exiting is given a moment, then ended.
+ * That is safe only here, after the quit; added to the old spawn-then-quit it
+ * would have ended an app whose quit was refused (the review's warning).
+ *
+ * cancel() is for a quit that did not happen: the renderer kept a draft, or
+ * the person chose to keep ToolsEnabled open. Left armed, the next quit of
+ * any kind, hours later, would start an installer nobody was expecting.
+ *
+ * Detached and unreferenced, so the installer outlives this process.
+ * windowsHide is about CONSOLE windows; the NSIS installer is a GUI program
+ * and draws its own window either way. A launch that fails this late cannot
+ * be shown to anybody (the window is gone), so it is logged; nothing was
+ * installed, the app is simply closed, and the next check offers the update
+ * again. */
+const INSTALLER_ARGUMENTS = Object.freeze(['--updated'])
+
+function createInstallerAfterQuit({ onQuit, offQuit, spawn, log = () => {} } = {}) {
+  for (const [value, name] of [[onQuit, 'onQuit'], [offQuit, 'offQuit'], [spawn, 'spawn']]) {
+    if (typeof value !== 'function') throw new TypeError(`createInstallerAfterQuit requires ${name}`)
+  }
+  let armed = null
+
+  function release(entry) {
+    try { offQuit(entry.listener) } catch { /* an emitter that cannot forget is still disarmed below */ }
+  }
+
+  function arm(file) {
+    if (typeof file !== 'string' || !file) throw new TypeError('arm requires the installer file')
+    if (armed) release(armed)
+    const entry = { file, listener: null }
+    entry.listener = () => {
+      /* A listener that was released, or replaced, never runs an installer. */
+      if (armed !== entry) return
+      armed = null
+      try {
+        const child = spawn(file, [...INSTALLER_ARGUMENTS], { detached: true, stdio: 'ignore', windowsHide: true })
+        if (child && typeof child.on === 'function') {
+          child.on('error', () => log('the update installer could not be started after the app quit'))
+        }
+        if (child && typeof child.unref === 'function') child.unref()
+        log('the update installer was started after the app quit')
+      } catch {
+        log('the update installer could not be started after the app quit')
+      }
+    }
+    armed = entry
+    onQuit(entry.listener)
+  }
+
+  function cancel() {
+    if (!armed) return false
+    const entry = armed
+    armed = null
+    release(entry)
+    log('the update installer will not start: the app did not quit')
+    return true
+  }
+
+  return Object.freeze({
+    arm,
+    cancel,
+    get armedFile() { return armed ? armed.file : null },
   })
 }
 
@@ -718,12 +979,18 @@ module.exports = {
   CHECK_INTERVAL_MS,
   CHECK_MESSAGE,
   CHECK_TITLE,
+  CHECKED_TITLE,
+  COULD_NOT_CHECK_DETAIL,
+  COULD_NOT_CHECK_MESSAGE,
   COULD_NOT_TELL_CODE,
   COULD_NOT_TELL_SENTENCE,
   DEFAULT_POLICY,
   DOWNLOAD_FAILED_SENTENCE,
   DOWNLOAD_HOST,
   DOWNLOAD_SUBDIRECTORY,
+  ELEVATED_ANNOUNCED_KEY,
+  ELEVATED_DETAIL,
+  ELEVATED_TITLE,
   LAST_CHECKED_KEY,
   LAUNCH_DELAY_MS,
   MANIFEST_MAX_BYTES,
@@ -733,13 +1000,17 @@ module.exports = {
   POLICY_KEY,
   REMEMBER_LABEL,
   REQUEST_TIMEOUT_MS,
+  UNSIGNED_SENTENCE,
   UPDATE_BUTTONS,
   UPDATE_DETAIL,
+  INSTALLER_ARGUMENTS,
+  createInstallerAfterQuit,
   createInstallerDownloader,
   createManifestFetcher,
   createUpdateCheck,
   decidePolicy,
   dueForCheck,
+  elevatedMessage,
   hashFile,
   installerUrl,
   isNewer,
@@ -747,5 +1018,6 @@ module.exports = {
   pinnedGet,
   pinnedUrl,
   readPolicyValue,
+  upToDateMessage,
   updateMessage,
 }

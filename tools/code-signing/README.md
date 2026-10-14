@@ -159,7 +159,7 @@ Optional: `TOOLSENABLED_LINUX_SIGNING_GNUPGHOME`, and
 `TOOLSENABLED_LINUX_SIGNING_PASSPHRASE_FILE` for unattended signing. A pool
 file that already exists with different bytes is refused. Publishing the
 directory (for example at `https://toolsenabled.ai/apt/`) is a separate,
-separately approved step.
+owner-approved step.
 
 ### What a customer runs (Ubuntu 24.04), once published
 

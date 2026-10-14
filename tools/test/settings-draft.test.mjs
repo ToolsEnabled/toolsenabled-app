@@ -310,7 +310,7 @@ test('a new validation failure clears previous save-result context and result sn
   })
 })
 
-/* AUDIT OFF IS NOT A FAILED RECORD (product rule T782; M10's
+/* AUDIT OFF IS NOT A FAILED RECORD (owner direction 2026-09-20, T782; M10's
    host contract, read through mission-bridge auditReceiptDisposition). An
    intentional audit-off save answers with the EXACT not-required object for
    this setting -- { ok: true, disposition: 'not-required', required: false,
@@ -348,8 +348,8 @@ test('an intentional audit-off save is complete and quiet; a contradictory or ma
     ['recorded', 'a string'],
   ]) assert.equal(settingRecordDisposition(answer, 'first'), 'unconfirmed', why)
 
-  /* THE KEY THE PAGE STAGES IS 'product:<id>' AND THE HOST'S TARGET IS <id>.
-     The classifier is handed the id. */
+  /* THE KEY THE PAGE STAGES IS 'product:<id>' AND THE HOST'S TARGET IS <id>
+     (Controller review of v3, F4). The classifier is handed the id. */
   const { productSettingId } = await import('../../src/settings-draft.js')
   assert.equal(productSettingId('product:audit.activity'), 'audit.activity')
   assert.equal(productSettingId('product:'), null)
@@ -387,7 +387,7 @@ test('an intentional audit-off save is complete and quiet; a contradictory or ma
   assert.match(other.warning, /could not be confirmed/, 'another writer\'s explicit ok: false record still warns')
 })
 
-/* THE ACTUAL BRIDGE → DRAFT PATH. The page
+/* THE ACTUAL BRIDGE → DRAFT PATH (Controller review of v3, F4). The page
    stages product rows through draftSettingsBridge, which keys them
    'product:<id>' and writes them through the shell's set (one row) or setMany
    (a batch), whose answers carry recorded as shell/main.cjs returns it: with

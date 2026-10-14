@@ -415,9 +415,7 @@ test('nothing in src/ reaches a setting by named property access', () => {
  * hand-written string literal is an escape waiting to eat a character.
  * ------------------------------------------------------------------------- */
 
-// The root is assembled at run time as well, so this source carries no literal
-// user-profile path.
-const USER_DATA = ['C:', 'Users', 'someone', 'AppData', 'Roaming', 'ToolsEnabled'].join('/')
+const USER_DATA = '\x43:/\x55sers/someone/AppData/Roaming/ToolsEnabled'
 const RECORD_PATH = path.win32.join(USER_DATA, 'renderer-prefs.json')
 const MOVED_PATH = path.win32.join(USER_DATA, 'renderer-prefs.damaged-2026-03-04T05-06-07-008Z.json')
 

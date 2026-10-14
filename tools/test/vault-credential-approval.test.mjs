@@ -10,7 +10,7 @@
  *   TOO MUCH    a grant that outlives its one use, or satisfies a removal of a
  *               credential the owner never saw. That is worse than the second
  *               prompt it replaces, because the owner's authority is then
- *               spendable on something they did not decide.
+ *               spendable on something he did not decide.
  *
  * So the counts matter more than the outcomes here, and every test below counts
  * mints and dispatches rather than only looking at what came back.
@@ -73,7 +73,7 @@ function harness({ gated = true, alwaysGated = false, dispatchError = null } = {
 
 test('a tool that is not gated is removed with no grant created at all', async () => {
   const { remover, dispatches, mints, audits } = harness({ gated: false })
-  const answer = await remover({ vaultKey: 'vqa_alpha', reason: 'no_longer_needed', ownerPromptId: 'prompt-1' })
+  const answer = await remover({ vaultKey: 'w87_alpha', reason: 'no_longer_needed', ownerPromptId: 'prompt-1' })
   assert.equal(answer.status, 'cleared')
   /* THE COUNT IS THE ASSERTION. Minting a grant for a tool nobody asked one
      for is how a removal that worked becomes APPROVAL_NOT_REQUIRED. */
@@ -85,7 +85,7 @@ test('a tool that is not gated is removed with no grant created at all', async (
 
 test('a gated tool gets exactly one grant, bound to the exact removal', async () => {
   const { remover, dispatches, mints, audits } = harness()
-  const answer = await remover({ vaultKey: 'vqa_alpha', reason: 'provider_revoked', ownerPromptId: 'prompt-7' })
+  const answer = await remover({ vaultKey: 'w87_alpha', reason: 'provider_revoked', ownerPromptId: 'prompt-7' })
   assert.equal(answer.status, 'cleared', 'the removal did not complete after the owner had approved it')
 
   assert.equal(mints.length, 1, 'a gated removal minted a different number of grants than one')
@@ -99,7 +99,7 @@ test('a gated tool gets exactly one grant, bound to the exact removal', async ()
      exact arguments the dispatch will hash after it strips the token, so a
      grant for one key cannot answer for another. */
   assert.equal(mints[0].action, TOOL)
-  assert.equal(mints[0].inputHash, `hash:${TOOL}:${JSON.stringify({ vaultKey: 'vqa_alpha', reason: 'provider_revoked' })}`,
+  assert.equal(mints[0].inputHash, `hash:${TOOL}:${JSON.stringify({ vaultKey: 'w87_alpha', reason: 'provider_revoked' })}`,
     'the grant is bound to arguments other than the removal it authorises')
   assert.equal(mints[0].tokenHash, `tokenhash:${dispatches[1].args.approvalToken}`,
     'the grant was minted for a token other than the one the dispatch carried')
@@ -114,17 +114,17 @@ test('a gated tool gets exactly one grant, bound to the exact removal', async ()
   /* WHY IT EXISTS IS RECORDED, AND THE TOKEN IS NOT PART OF WHY. */
   assert.equal(audits.length, 1, 'the grant was not recorded exactly once')
   assert.equal(audits[0].ownerPromptId, 'prompt-7', 'the record does not name the owner decision that authorised the grant')
-  assert.equal(audits[0].vaultKey, 'vqa_alpha')
+  assert.equal(audits[0].vaultKey, 'w87_alpha')
   assert.ok(!JSON.stringify(audits[0]).includes(dispatches[1].args.approvalToken),
     'the audit record carries the approval token')
 })
 
 test('a gate that refuses twice is reported, never answered with a second grant', async () => {
   /* A LOOP HERE WOULD SPEND THE OWNER'S AUTHORITY REPEATEDLY against a target
-     that keeps moving. One retry, then the refusal is their answer. */
+     that keeps moving. One retry, then the refusal is his answer. */
   const { remover, dispatches, mints } = harness({ alwaysGated: true })
   await assert.rejects(
-    () => remover({ vaultKey: 'vqa_alpha', reason: 'no_longer_needed', ownerPromptId: 'prompt-2' }),
+    () => remover({ vaultKey: 'w87_alpha', reason: 'no_longer_needed', ownerPromptId: 'prompt-2' }),
     error => error.code === 'APPROVAL_REQUIRED')
   assert.equal(mints.length, 1, 'a persistent gate was answered with more than one grant')
   assert.equal(dispatches.length, 2, 'a persistent gate was retried more than once')
@@ -134,7 +134,7 @@ test('a failure that is not about approval mints nothing and is not retried', as
   for (const code of ['SECRET_MANAGER_NOT_INSTALLED', 'PERMISSION_SESSION_REQUIRED', 'SECRET_REMOVAL_DEDICATED_PATH']) {
     const { remover, dispatches, mints } = harness({ dispatchError: Object.assign(new Error('no'), { code }) })
     await assert.rejects(
-      () => remover({ vaultKey: 'vqa_alpha', reason: 'no_longer_needed', ownerPromptId: 'prompt-3' }),
+      () => remover({ vaultKey: 'w87_alpha', reason: 'no_longer_needed', ownerPromptId: 'prompt-3' }),
       error => error.code === code)
     assert.equal(mints.length, 0, `${code} caused a grant to be created`)
     assert.equal(dispatches.length, 1, `${code} was retried`)
@@ -147,7 +147,7 @@ test('a removal that names no owner approval mints nothing and removes nothing',
   const { remover, dispatches, mints } = harness()
   for (const ownerPromptId of [undefined, null, '', 0]) {
     await assert.rejects(
-      () => remover({ vaultKey: 'vqa_alpha', reason: 'no_longer_needed', ownerPromptId }),
+      () => remover({ vaultKey: 'w87_alpha', reason: 'no_longer_needed', ownerPromptId }),
       error => error.code === 'OWNER_APPROVAL_UNATTRIBUTED')
   }
   assert.equal(mints.length, 0, 'an unattributed removal minted a grant')
@@ -165,7 +165,7 @@ test('a remover cannot be built without a stated dispatch ceiling', () => {
 
 test('the removal carries a key and a reason, and never a value', async () => {
   const { remover, dispatches } = harness()
-  await remover({ vaultKey: 'vqa_alpha', reason: 'legacy_cleanup', ownerPromptId: 'prompt-4' })
+  await remover({ vaultKey: 'w87_alpha', reason: 'legacy_cleanup', ownerPromptId: 'prompt-4' })
   for (const dispatch of dispatches) {
     assert.deepEqual(
       Object.keys(dispatch.args).filter(key => key !== 'approvalToken').sort(),
@@ -192,12 +192,12 @@ test('the product refuses a carried grant for another record, and refuses a repl
   try {
     const approvals = require_(path.join(payload, 'src', 'lib', 'approvals.js'))
     const stateStore = require_(path.join(payload, 'src', 'lib', 'state-store.js'))
-    directory = mkdtempSync(path.join(ownedFixtureTempRoot(), 'vqa-grant-'))
+    directory = mkdtempSync(path.join(ownedFixtureTempRoot(), 'w87-grant-'))
     file = path.join(directory, 'state.sqlite3')
     store = stateStore.createStateStore({ file })
 
-    const mine = { vaultKey: 'vqa_alpha', reason: 'no_longer_needed' }
-    const other = { vaultKey: 'vqa_beta', reason: 'no_longer_needed' }
+    const mine = { vaultKey: 'w87_alpha', reason: 'no_longer_needed' }
+    const other = { vaultKey: 'w87_beta', reason: 'no_longer_needed' }
     const token = randomBytes(32).toString('base64url')
     store.createApprovalGrant({
       action: TOOL,

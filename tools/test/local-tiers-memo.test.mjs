@@ -1,9 +1,10 @@
 /* THE READ THAT ASKED TWICE A VISIT FOR AN ANSWER THAT NEVER CHANGES.
  *
- * MEASURED 2026-09-03 against a real audit ledger
- * (capability/logs/actions.jsonl): every call to research.local_tiers_status
- * over several days failed, NOT ONE SUCCESS, every one of them
- * MODEL_NO_GPU_PEER_CONFIGURED. src/views/research.js asks from
+ * MEASURED 2026-09-03 against the owner's own audit ledger
+ * (ToolsEnabled-Live/capability/logs/actions.jsonl and its legacy archive,
+ * 2026-08-29T21:38Z -> 2026-09-03T04:17Z): twenty-one calls to
+ * research.local_tiers_status, TWENTY-ONE FAILURES, NOT ONE SUCCESS, every one
+ * of them MODEL_NO_GPU_PEER_CONFIGURED. src/views/research.js asks from
  * renderLiveWorld(), which runs on mount and again on the data-source event, so
  * a single visit to the page spends two loopback round trips and lands four
  * durable audit records learning a fact that is written in a configuration
@@ -119,8 +120,8 @@ test('both engine codes for "no peer machine" settle', () => {
 })
 
 /* THE ENGINE STOPPED THROWING FOR THIS, SO THE MEMO HAD TO STOP KEYING ON A
-   THROW. research.local_tiers_status was filed as a tool FAILURE on every
-   call in a development ledger for a fact written in a configuration file;
+   THROW. research.local_tiers_status was filed as a tool FAILURE 22 times out
+   of 22 calls in the owner's ledger for a fact written in a configuration file;
    engine research-strong.js status() now answers it. If this suite only
    understood the refusal shape, the fix would silently put the page back to two
    loopback asks a visit. */

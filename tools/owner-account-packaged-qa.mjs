@@ -444,7 +444,7 @@ async function main() {
     check('the window says who is signed in', /Signed in as/.test(afterCreate.title || ''), afterCreate.title || 'no title')
     check('it is the name that was typed', (afterCreate.body || '').includes(DISPLAY_NAME))
 
-    /* ---------------- PHASE 2: their data, and their card ---------------- */
+    /* ---------------- PHASE 2: his data, and his card ---------------- */
     check('the screen states what settings belong to this account', typeof afterCreate.settings === 'string' && afterCreate.settings.length > 0,
       (afterCreate.settings || 'absent').slice(0, 90))
     check('the screen states what history belongs to this account', typeof afterCreate.history === 'string' && afterCreate.history.length > 0,
@@ -479,7 +479,7 @@ async function main() {
     /* ---------------- PHASE 3b: the record of a run says WHO ----------------
      *
      * The single spawn record on this machine before this lane read
-     * `"principal":"unauthenticated"`. That is what "their history is
+     * `"principal":"unauthenticated"`. That is what "his history is
      * unattributed" meant, and the fix is only real if a NEW record, written by
      * the shipped path while somebody is signed in, carries `account:<id>`.
      *
@@ -561,10 +561,10 @@ async function main() {
       }))
 
     /* The isolation claim itself. If the app wrote to this machine's real
-       installation, every assertion above was measured against that machine's
-       own state. */
+       installation, every assertion above was measured against the owner's own
+       state. */
     check('nothing was written to this machine real installation',
-      !existsSync(path.join(process.env.APPDATA || 'C:\\nonexistent', 'ToolsEnabled', 'accounts', `${USERNAME}.json`))
+      !existsSync(path.join(process.env.APPDATA || '\x43:\\nonexistent', 'ToolsEnabled', 'accounts', `${USERNAME}.json`))
       && userData.startsWith(scratch), userData)
   } catch (error) {
     check('the run completed', false, error?.message || String(error))

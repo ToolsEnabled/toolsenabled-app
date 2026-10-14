@@ -1,9 +1,9 @@
 /* THE MAIN PROCESS'S MEMORY HAS TO HAVE A CEILING, AND HERE IS WHERE IT IS SAID.
  *
- * A development install died every ten to twenty minutes with no dump,
+ * The owner's app died every ten to twenty minutes on 2026-09-03 with no dump,
  * no shutdown record, and fifteen seconds of 100% CPU first -- the signature of
  * a heap reaching its limit -- and nobody had ever measured the main process's
- * heap. It was then measured (isolated instance, Electron 43.3.0):
+ * heap. Lane H measured it (2026-09-04, isolated instance, Electron 43.3.0):
  * the limit is 4192 MB and 9 sessions driven through 3,303 turns in twelve
  * minutes left heapUsed flat at 23-34 MB, so the per-turn structures are bound
  * already. What the static pass DID find was one structure in the main process

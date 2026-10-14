@@ -42,11 +42,11 @@ export const PROVIDERS_WITH_A_THINKING_DEPTH = new Set(['codex', 'claude', 'gemi
 
 /* BUT THE CARD IS NOT THE ONLY EVIDENCE, AND IT IS NOT THE BEST EVIDENCE.
  *
- * MEASURED on a development fleet: every circle -- the Controller, its
- * managers, its workers -- read `finished` on the tree while their sessions
- * were heartbeating and their agents were working. Spawns were refused
- * MC_TREE_SPAWN_PARENT_NOT_RUNNING for many minutes, and the Controller
- * reported "delegation is currently impossible".
+ * MEASURED 2026-09-03 on the owner's own fleet: all nine circles -- the
+ * Controller, three managers, five workers -- read `finished` on the tree
+ * while their sessions were heartbeating and their agents were working. Eight
+ * spawns were refused MC_TREE_SPAWN_PARENT_NOT_RUNNING across twenty-three
+ * minutes, and the Controller reported "delegation is currently impossible".
  *
  * The status field is the VIEW's bookkeeping. It is set to `running` when the
  * person's own send resolves and to `finished` on every turn completion, and a
@@ -71,6 +71,40 @@ function parentIsAlive(parent, command) {
     && parent.sessionId === command.parentSessionId
 }
 
+/* A CIRCLE NOTHING HAS STARTED: still a draft, and no session was ever asked
+   for it. startDraftNode writes 'starting' before it requests a session, so a
+   draft here means no provider was asked and nothing is running or spending. */
+function neverStarted(node) {
+  return Boolean(node) && node.status === 'draft'
+    && (node.sessionId === null || node.sessionId === undefined || node.sessionId === '')
+}
+
+/* THIS REQUEST'S OWN CIRCLE, DRAWN BY AN EARLIER DELIVERY OF IT (B38).
+ *
+ * The shell reserves a fresh node id for every create it dispatches
+ * (shell/tree-slot-admission.cjs reserve(), carried as reservedNodeId), and
+ * only this request carries it. When the Computers view that drew the circle
+ * was retired before the start could run, src/main.js hands the same request
+ * to the view that replaced it. Adding again would be refused ("The reserved
+ * name for this agent is invalid or already in use."), and the circle already
+ * drawn would stand "not started yet" for good. So the redelivery takes that
+ * circle over -- but only when it is exactly what this request drew: an
+ * unstarted draft, made by an agent, under the same parent, with the same
+ * role, model and depth. Anything else under that id is not ours, and the
+ * store's own refusal answers as before. */
+function ownReservedDraft(node, parentNodeId, command) {
+  return neverStarted(node)
+    && node.createdByAgent === true
+    && node.parentId === parentNodeId
+    && (node.role || '') === (command.role || '')
+    && (node.tier || '') === (command.tier || '')
+    && (node.effort || '') === (command.effort || '')
+}
+
+/* What the page says when it was rebuilt under a start (B38). The circle is
+   drawn and unstarted; nothing was asked of any provider. */
+const VIEW_REBUILT_REASON = 'The Computers page was rebuilt while this agent was being started, so it was not started. Its circle and brief are saved; nothing is running for it yet.'
+
 export async function executeCreateAndStartNode({
   command,
   treeStore,
@@ -83,13 +117,17 @@ export async function executeCreateAndStartNode({
      spoken back to the assistant that asked for the circle and lands in a
      transcript a person reads, so this default decides what they read when the
      seam is missing. It used to answer `node.id`, which would put
-     node-2-0b5e0c0a-0000-4000-8000-000000000002 into that sentence under the
+     node-2-6c518599-05aa-4c77-a154-cefe49b278ed into that sentence under the
      heading "the name the person sees on the circle" -- a name nobody sees and
      nobody can say. `null` is the field's own word for "not named", the same
      one an empty name already produces one line below. */
   treeNodeName = () => null,
   refreshTree = nothing,
   noteStoreRefusal = nothing,
+  /* Has the view that owns this start been retired (navigation, a second
+     mount of the same page)? The view's own `destroyed`, asked AFTER the
+     start answers: a start that ran is judged by its own answer, not by this. */
+  viewDestroyed = () => false,
 } = {}) {
   /* A REFUSAL CARRIES ITS SENTENCE WHEN IT HAS ONE. The store's placement
      refusal and the start's own refusal were both written for a person, shown
@@ -201,8 +239,12 @@ export async function executeCreateAndStartNode({
      has one owner, and it refuses in a sentence written for a person. Passing
      that sentence through instead of inventing one is what lets the person read
      the same words whether they pressed + or an assistant did. */
-  let added
-  try {
+  /* A redelivered request takes over the circle its first delivery drew
+     (ownReservedDraft, B38); every other create draws one. */
+  const redelivered = command.reservedNodeId ? treeStore.getNode(command.reservedNodeId) : null
+  const adopted = redelivered && ownReservedDraft(redelivered, parentNodeId, command) ? redelivered : null
+  let added = adopted ? { ok: true, node: adopted } : null
+  if (!adopted) try {
     /* MADE BY AN ASSISTANT, recorded here because here is where it is true.
        The owner's removal rule reads it later; nothing on the removal path
        gets to claim it. */
@@ -216,7 +258,7 @@ export async function executeCreateAndStartNode({
       /* THE DEPTH THE ASKING ASSISTANT CHOSE, ON THE NODE. This was a hard
          `''`, so a circle an assistant made could never carry one: the start
          below then read `node.effort` as empty and fell back to the tier
-         default, which is why asking for a worker at max effort produced a worker at
+         default, which is why "spawn me a worker at max" produced a worker at
          medium and said nothing. `''` remains the honest empty when nothing
          was chosen -- it is the field's own word for "not set", and
          draftStartEffort falls through it to the tier default.
@@ -249,6 +291,27 @@ export async function executeCreateAndStartNode({
      person can see coming up. */
   refreshTree()
 
+  /* THE VIEW WAS RETIRED UNDER THIS START, AND NOTHING WAS STARTED (B38).
+   *
+   * startDraftNode returns a bare `{ ok: false, notStarted: true }` when the
+   * view it runs in is destroyed before the session is requested, and that
+   * used to come back as MC_TREE_COMMAND_START_FAILED with no reason -- which
+   * the engine could only call an internal error -- over a circle that then
+   * stood "not started yet". That is not a failed start: it is the page being
+   * rebuilt under one. Answered as the retryable MC_TREE_COMMAND_VIEW_DESTROYED,
+   * src/main.js hands the SAME request to the replacement view, which adopts
+   * this circle by its reserved id (ownReservedDraft above) and starts it.
+   *
+   * Only with a reserved id. Without one, a redelivery could not find this
+   * circle and would draw a second one, so the start's own answer stands and
+   * the reason says what happened. */
+  const rebuiltUnder = () => {
+    if (!viewDestroyed() || !neverStarted(treeStore.getNode(node.id))) return null
+    return command.reservedNodeId
+      ? { ...refused('MC_TREE_COMMAND_VIEW_DESTROYED', node.id, VIEW_REBUILT_REASON), retryable: true, retryAfterMs: 0 }
+      : refused('MC_TREE_COMMAND_START_FAILED', node.id, VIEW_REBUILT_REASON)
+  }
+
   let started
   try {
     started = await startDraftNode(node, { effort: command.effort || null, closePanel: false,
@@ -257,7 +320,7 @@ export async function executeCreateAndStartNode({
       ...(command.delegationToken ? { delegationToken: command.delegationToken } : {}),
       ...(command.research ? { research: command.research } : {}) })
   } catch (error) {
-    return refused('MC_TREE_COMMAND_START_FAILED', node.id, error?.message || String(error))
+    return rebuiltUnder() || refused('MC_TREE_COMMAND_START_FAILED', node.id, error?.message || String(error))
   }
   /* A parent must never be told that it successfully created a circle which is
      unable to become the parent of work of its own. startDraftNode now refuses
@@ -273,6 +336,8 @@ export async function executeCreateAndStartNode({
     )
   }
   if (!started || started.ok !== true) {
+    const rebuilt = rebuiltUnder()
+    if (rebuilt) return rebuilt
     /* startDraftNode has already put the circle into its failed state with the
        reason as its note, and left it on screen. That is the right outcome and
        it is not undone here: the person can read what happened, and an assistant

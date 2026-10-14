@@ -13,8 +13,8 @@
  * src/first-run-needs.js and src/agent-availability-copy.js already work this
  * way for their own screens, and this is the same rule for this flow.
  *
- * THE STANDING COMPLAINT IS THE SPEC: dense wording that is not easy to consume
- * or friendly for users. A person decides inside ten minutes
+ * THE OWNER'S STANDING COMPLAINT IS THE SPEC: "the wording is dense and not
+ * easy to consume or friendly for users." A person decides inside ten minutes
  * whether to trust a program that can reach their files, their mail and their
  * machine, and they decide it from the words. So: short sentences, plain words,
  * one idea per line, and no failure sentence that ends without something to do.
@@ -55,7 +55,7 @@
  * right and the lookup is wrong.
  */
 
-import { CODEX_SETUP_COMMANDS, UNAVAILABLE_TEXT, TRANSCRIPT_SEND_REFUSALS, unavailableReason } from './agent-availability-copy.js'
+import { CODEX_SETUP_COMMANDS, UNAVAILABLE_TEXT, TRANSCRIPT_SEND_REFUSALS, TRANSCRIPT_ACCEPTED_UNSAVED, unavailableReason } from './agent-availability-copy.js'
 import { NODE_REMOVE_REFUSALS, NODE_STATUS_UNREADABLE } from './fleet-trees.js'
 import { GENERIC_REMEDY, isBareIdentifier, refusalCodeOf, refusalRemedy, refusalSentence } from './refusal-copy.js'
 import { LAUNCH_TIERS, tierEffortIds, tierDefaultEffort } from './orchestration-controls.js'
@@ -189,7 +189,7 @@ export const EMPTY_NODE = Object.freeze({
    a person is actually being asked.
 
    IT SAID "TWO ANSWERS AND IT RUNS" UNTIL THE ROLE STOPPED BEING REQUIRED.
-   Users are not forced to choose a role. Exactly one
+   Owner, 2026-08-19: "users shouldnt be forced to choose a role". Exactly one
    question on this panel has no answer until a person gives one, and that is
    the brief; the role, the model, the effort and the folder all arrive
    answered. An intro that goes on claiming two are needed would be the panel
@@ -215,8 +215,8 @@ export const START_PANEL = Object.freeze({
   underNamed: (name) => `This agent will work under ${name}.`,
   underUnnamed: 'This agent joins your tree under the spot you pressed.',
   roleLabel: 'What kind of agent is this?',
-  /* THE ROLE IS OFFERED, NOT DEMANDED (users are not forced to choose a
-     role). The help has to say BOTH halves, because a menu
+  /* THE ROLE IS OFFERED, NOT DEMANDED (owner, 2026-08-19: "users shouldnt be
+     forced to choose a role"). The help has to say BOTH halves, because a menu
      that no longer refuses looks exactly like a menu that still does: what a
      role is for, and what leaving it alone actually means. The second half is
      not a reassurance -- it is the measured behaviour. A start with no role
@@ -226,11 +226,12 @@ export const START_PANEL = Object.freeze({
       The launcher also gives it a declared identity so it can safely delegate,
       but that does not invent a selected canvas role or change this answer. */
   roleHelp: 'Optional. Pick where it sits in your tree, or leave it and this agent just does the job you describe.',
-  /* THE FOLDER, ASKED WHERE IT SHOULD BE ASKED.
+  /* THE FOLDER, ASKED WHERE THE OWNER SAID IT SHOULD BE ASKED.
    *
-   * Starting a tree selects a folder, with a configurable default, where the
-   * agents spawn. It was only ever askable AFTER the fact, on an existing
-   * tree's rail, which is why it was reported missing on 2026-08-19.
+   * Owner, 2026-08-16: "when a user starts a tree they should select a folder,
+   * they can have a default folder, where the agents spawn". It was only ever
+   * askable AFTER the fact, on an existing tree's rail, which is why he came
+   * back on 2026-08-19 asking what had happened to it.
    *
    * ONLY WHEN A TREE IS BEING STARTED. A start under an existing agent joins a
    * tree that already has a folder, and offering the menu there would let one
@@ -300,7 +301,7 @@ export const START_PANEL = Object.freeze({
      product already has an answer to. The Claude rows are offered on purpose
      and refuse by name when picked -- hiding them would make a chosen model
      quietly become Codex, the exact defect the tier channel closed.
-     1.0.48 (owner decision: provider first, then model): the question
+     1.0.48 (owner: "it should be provider, then model choice"): the question
      is asked in two menus on one row, Provider and then Model, named with
      the two words a person already uses for them. Provider is a filter over
      the model rows; the answer that travels is still the one model row. */
@@ -332,8 +333,8 @@ export const START_PANEL = Object.freeze({
   messageHelp: 'Write it the way you would ask a person. One clear job is enough to start.',
   messagePlaceholder: 'Read the notes in my documents folder and list what is unfinished.',
   /* KEPT for whatever still reads the single-button word; nothing in this
-     product writes a panel with one button any more (Set and Start are both
-     offered as options). See submitSet/submitStart below. */
+     product writes a panel with one button any more (owner: "ITS SUPPOSED TO
+     HAVE SET OR START AS OPTIONS"). See submitSet/submitStart below. */
   submit: 'Start this agent',
   /* THE TWO PRESSES, NEVER ONE BUTTON DECIDING FOR THE PERSON. Same job in
      both cases -- write the draft -- and then Set stops there while Start
@@ -346,8 +347,9 @@ export const START_PANEL = Object.freeze({
   cancel: 'Not now',
   /* THE MARK THAT SAYS THERE IS MORE TO READ, AND WHY IT IS A CHARACTER.
    *
-   * The page 2 right panel read as cluttered, so some tips show only on hover.
-   * A tip that is hidden with nothing standing where it
+   * Owner, 2026-08-19, on this panel for the second time: "pg 2 right pnel
+   * STILL reads ugly and messy. Make some of the tips only show on hover ...
+   * so it isnt so messy". A tip that is hidden with nothing standing where it
    * was is not tidier, it is gone -- so each field that HAS one says so, right
    * after the question it belongs to.
    *
@@ -363,8 +365,8 @@ export const START_PANEL = Object.freeze({
      to do, in that order, and it does not scold.
 
      THERE WERE TWO. `needRole` -- "Pick a role first, then press Start." -- was
-     removed: users are not forced to choose a role. It is not
-     moved, softened or hidden behind anything; the
+     removed on 2026-08-19 on the owner's words: "users shouldnt be forced to
+     choose a role". It is not moved, softened or hidden behind anything; the
      refusal it belonged to is gone, so the sentence is gone with it. The role
      menu keeps its place at the top of the form and rolePrompt above says what
      the untouched row means.
@@ -378,6 +380,12 @@ export const START_PANEL = Object.freeze({
   /* A picture pasted into the brief is not attached to anything yet (T1511):
      say where it can go instead of dropping it without a word. */
   pictureInBrief: 'A picture cannot be added to the brief. Set or start this agent, then paste the picture into its chat.',
+  /* THE WAY OUT OF A LOCAL MODEL THAT IS NOT SET UP. Shown when the Local
+     model is picked on a computer where it cannot start yet, and beside a
+     Local start that was refused for that reason; the button opens the popup
+     that shows only the steps still needed (src/local-setup-popup.js). */
+  localSetupButton: 'Set up local models',
+  localNotReady: 'Local models are not set up on this computer yet. Press Set up local models; it shows only the steps still needed.',
 })
 
 /* THE TIER MENU'S ROWS, derived from the one table the dispatch API actually
@@ -391,7 +399,7 @@ const TIER_PROVIDER_WORDS = Object.freeze({ codex: 'Codex', claude: 'Claude', ge
    before the host answers, the New agent chooser's fallback rows. "This computer" is the desk's
    words and "the computer you are driving" a browser reader's; these are true for both. */
 const TIER_LOCAL_ANY_READER = 'the computer that runs your agents'
-/* THE PROVIDER CHOOSER'S WORDS (1.0.48: provider, then model).
+/* THE PROVIDER CHOOSER'S WORDS (1.0.48: "provider, then model choice").
    The same five words the Accounts menu uses (src/account-switcher-state.js).
    `local` reads "Local" here and "the computer you are driving" on a model row,
    because on the row it says where the model runs and here it names a choice. */
@@ -567,8 +575,8 @@ export function startableTierIds(reply) {
  * The same reading, plus WHETHER ANYTHING WAS LEARNED -- and that second half
  * is the whole point of this function existing.
  *
- * THE DEFECT IT CLOSES, from the owner: Claude, Gemini and Grok could not be
- * launched, only Codex. Every launcher was present and every
+ * THE DEFECT IT CLOSES, from the owner: that only Codex could be launched,
+ * not Claude, Gemini or Grok. Every launcher was present and every
  * account was signed in. What had happened is that one `mc-agent:startable-tiers`
  * call threw (code OWNER_HOST_CREDENTIAL_HYGIENE_FAILED, logged twice during a
  * restart), the caller fell to TREE_DEFAULT_STARTABLE_TIERS, and because that
@@ -707,7 +715,7 @@ export function notInstalledProviderIds(reply) {
 
 /* WHAT A NODE'S ENGINE ROW SAYS, DERIVED RATHER THAN DECLARED.
  *
- * THE SENTENCE THIS REPLACES, and the report about it: the tree node
+ * THE SENTENCE THIS REPLACES, and the owner's report about it: the tree node
  * panel's Setup box carried a hardcoded `TREE_ENGINE_LABEL = 'Codex'` and a
  * note reading "Agents you start from this tree run on Codex. You pick the
  * model in the start panel; the Claude choices are listed there and say so
@@ -793,13 +801,13 @@ export const DEFAULT_TIER = 'astra'
    judgment, not a hidden fifth value. */
 /* THE PROVIDER'S OWN DEPTHS, IN THE PROVIDER'S OWN WORDS.
  *
- * Iteration 7: each provider has STANDARD effort names, and these had been
- * invented here. What stood
+ * Owner, iteration 7: "there are STANDARD per provider effort names. Use
+ * those" — and he was right that these had been invented here. What stood
  * in this list was four made-up labels ("Quick — thinks briefly, cheapest")
  * over four of the eight values codex accepts, which meant the product could
  * not even ask for the other four. `ultra` was the costly one to miss: it is
  * not a bigger number, it is the switch for automatic task delegation, and
- * their own ~/.codex/config.toml runs it.
+ * his own ~/.codex/config.toml runs it.
  *
  * Ids and descriptions below are transcribed from `model/list` on
  * codex-cli 0.146.0 (gpt-5.6 line, 2026-08-16), and RE-VERIFIED unchanged
@@ -859,7 +867,7 @@ export const EACH_MODEL_DEFAULT_EFFORT = Object.freeze({ id: '', label: 'Each mo
  * does not know gets "Model default" alone, which sends nothing.
  */
 export function effortChoicesFor(tierId) {
-  const known = LAUNCH_TIERS.some(tier => tier.id === tierId)
+  const known = tierId && typeof tierId === 'object' ? Boolean(tierId.provider) : LAUNCH_TIERS.some(tier => tier.id === tierId)
   const fallback = known ? tierDefaultEffort(tierId) : ''
   const offered = known ? tierEffortIds(tierId) : []
   const rows = [
@@ -967,8 +975,8 @@ export function turnCompletionWords({ succeeded, spoken = '', engineSentence = n
   return said || SAID_PANEL.emptyTurn
 }
 
-/* MOVING AN AGENT, in words. The requirement: a quick way to connect nodes and
-   change hierarchies. The picker offers
+/* MOVING AN AGENT, in words. The owner's ask, verbatim: "there needs to be a
+   way to quickly connect nodes and change hierarchies too". The picker offers
    only what the store's movePoints() would accept, so every sentence here is
    about a legal move or the reason there is none — the menu and the refusal
    can never disagree. */
@@ -992,8 +1000,8 @@ export const MOVE_PANEL = Object.freeze({
   notDraggable: (name) => `${name} is this tree's coordinator and stays at the top. Move its agents instead.`,
 })
 
-/* REMOVING AN AGENT, in words. The finding: there was no way to remove an old
-   node a person wanted to delete. The two refusal
+/* REMOVING AN AGENT, in words. The owner's finding, verbatim: "there was also
+   no way to remove an old node you wanted to delete." The two refusal
    sentences are the STORE's own (src/fleet-trees.js NODE_REMOVE_REFUSALS,
    re-exported here by identity, not copied), so the row's reason and the
    store's refusal are one string. The confirm stage says what goes BEFORE it
@@ -1022,11 +1030,12 @@ export const PROFILE_PANEL = Object.freeze({
   title: 'Works in',
   /* TWO HEADINGS THAT SAY "FOLDER", BECAUSE "WORKS IN" AND "SESSION PROFILES"
      BOTH FAILED TO.
-     Reported: choosing a folder for each tree seemed to be missing,
-     somewhere in the crowded right panel on page 2. It WAS in there: on the
-     overview rail under "Session profiles", 1152px down a 1524px scroll, and on
-     a tree node under "Setup" > "Works in". Neither heading contains the word a
-     person hunts for. These two do. `title` is kept as it was for the select's own
+     Owner, 2026-08-19: "what happened to sessions and choosing a folder for
+     each tree and such? ther right panel on page 2 is still so complicated i
+     think its in there maybe somewhere". It WAS in there: on the overview rail
+     under "Session profiles", 1152px down a 1524px scroll, and on a tree node
+     under "Setup" > "Works in". Neither heading contains the word he was
+     hunting for. These two do. `title` is kept as it was for the select's own
      aria-label, which names the field rather than the panel. */
   overviewTitle: 'Folders your agents work in',
   nodeTitle: 'Folder these agents work in',
@@ -1056,8 +1065,8 @@ export const PROFILE_PANEL = Object.freeze({
   removeFailed: 'That folder was not removed, so it is still here. Try it again in a moment.',
   assigned: (name) => `Agents in this tree now start in ${name}.`,
   cleared: 'Agents in this tree now start in the product’s own workspace.',
-  /* The mid-conversation half of the requirement (session profiles can change
-     halfway through, with a warning because of possible token burn): the
+  /* The mid-conversation half of the owner's ask ("change session profiles
+     halfway through - with a warning because of possible token burn"): the
      assignment itself only touches FUTURE starts, so moving the agent on
      screen is a separate, warned press. */
   switchOffer: 'This agent keeps its current folder until it restarts. Restarting re-sends its saved conversation, which costs tokens.',
@@ -1099,7 +1108,7 @@ export const PROFILE_PANEL = Object.freeze({
  * from this computer" -- so they read better as one group than as four peers of
  * the conversation and the folder.
  *
- * COLLAPSED, NEVER HIDDEN. The rule for this page is that no control
+ * COLLAPSED, NEVER HIDDEN. The owner's rule for this page is that no control
  * hides harder than it has to, so the group is a real <button> with
  * aria-expanded and a chevron, it NAMES all four of its panels on its own line,
  * and the state it was left in is remembered. Nothing is removed and nothing
@@ -1140,8 +1149,8 @@ export const RESUME_PANEL = Object.freeze({
   assignmentNotSent: 'The agent resumed, but the assignment sent with the resume was not delivered. Send it a message to continue.',
   /* STOP IS STILL WORTH TRYING FIRST, BUT IT IS NOT ALWAYS THE WAY OUT, and
      saying only "Press Stop" left people pressing a control that does not
-     always clear this. MEASURED 2026-09-19 on two wedged circles:
-     Stop answered a bare internal error
+     always clear this. MEASURED 2026-09-19 on two wedged circles
+     (node-35-4f5a2c39, node-19-c4a71b16): Stop answered a bare internal error
      on five consecutive calls, and on one of them answered
      MC_TREE_COMMAND_SESSION_ENDED first and the internal error afterwards --
      so Stop did not even agree with itself between calls on one circle.
@@ -1179,13 +1188,13 @@ export const recordRailVerbElsewhere = verb => 'This box describes a record on f
 
 /* A CHAT OVER AN AGENT THAT IS NOT RUNNING, WHICH IS STILL A CHAT.
  *
- * WHAT THIS REPLACED, and why it was reported. Both chat surfaces on
+ * WHAT THIS REPLACED, and why it was the owner's report. Both chat surfaces on
  * the tree -- the compact card on the canvas and the rail's Chat tab -- were
  * gated on the node holding a session id, so a node whose START WAS REFUSED
  * opened nothing at all. That is not a rare state: submitCompose() marks a
  * refused start `failed` and leaves the session id null, so on a build that
  * cannot start the picked engine EVERY node a person makes is one of these, and
- * that the chatboxes do not open is the exact and correct description of it.
+ * "the chatboxes dont open" is the exact and correct description of it.
  *
  * IT DOES NOT BECOME A TEXT BOX THAT SWALLOWS WORDS. src/node-chatbox.js's
  * header states the rule this obeys: a composer must never pretend to reach a
@@ -1211,9 +1220,9 @@ export const CHAT_NOT_RUNNING = Object.freeze({
    has no mid-session knob — depth is bound when the engine process starts —
    so the menu says what really happens: a restart that re-reads the saved
    conversation at the new depth, warned before it fires. */
-/* SWITCH AND CONTINUE (T381: when the account cannot continue, a switch pops
-   up that lets the person change account, model (and provider) and effort so
-   they can continue, as easily as possible).
+/* SWITCH AND CONTINUE (owner T381, 2026-09-18: "if that account cant then pop
+   up a switch accounts, then let them switch account, model (and provider),
+   effort, so that they can continue. like it should be super easy.").
    ONE dialog on the circle, opened by the app when the saved account cannot
    continue and reachable from Actions at any time. The choice decides the
    route, and the route decides the cost line, so the person is told before
@@ -1233,7 +1242,7 @@ export const SWITCH_PANEL = Object.freeze({
      provider, so on another provider "Keep this account" cannot be true; the
      start then takes a signed-in account of the new provider. */
   provider: 'Provider',
-  anyAccount: 'Any signed-in account',
+
   refused: 'refused',
   noAccounts: 'No other signed-in account is registered. Add one on the Accounts page, or pick another model or depth.',
   costResume: 'Same account: the same conversation resumes on this model and depth. Nothing is re-sent.',
@@ -1278,8 +1287,8 @@ export const EFFORT_SWITCH = Object.freeze({
   modelDefaultKept: 'This agent runs at a set depth. Start a new agent to let the model choose its own.',
 })
 
-/* MESSAGING A DEAD AGENT JUST WORKS (iteration 6: the sessionGone refusal kept
-   appearing). The send now recovers by itself: a
+/* MESSAGING A DEAD AGENT JUST WORKS (iteration 6, owner: "We still get this
+   message" — the sessionGone refusal). The send now recovers by itself: a
    fresh agent reads the saved conversation and the typed message waits in
    the queue, visibly, until the reading turn finishes. The sentence says
    all three honest parts: what ended, what it costs, when the words go. */
@@ -1385,7 +1394,7 @@ export const PALETTE_PANEL = Object.freeze({
   mentionFailed: 'A file could not be mentioned. Your message is unchanged. Try Mention a file again.',
   mentionSessionUnavailable: 'This session is not open here. Use an open agent’s chat to mention a file. Your message here is unchanged.',
   clear: 'Start this conversation over',
-  clearHint: 'The agent forgets everything said here. Its place in your tree and its brief stay.',
+  clearHint: 'The agent forgets everything said here. Its brief is not sent again.',
   cleared: 'Started over. It remembers nothing from before — say what you want from the message box or the queue.',
   clearFailed: 'The conversation was not restarted. Check its status before trying Start over again.',
   restartBriefFailed: 'The agent restarted, but its saved brief was not delivered. Send it a message to continue.',
@@ -1430,7 +1439,7 @@ export const PALETTE_PANEL = Object.freeze({
   groupDanger: 'Stop or start over',
   /* WHY A ROW CANNOT BE PRESSED, one sentence each, shown in place of the hint
      on a row that is switched off. A disabled control that will not say why is
-     the exact class of defect reported again and again. Each names the state and
+     the exact class of thing the owner keeps filing. Each names the state and
      none of them says what to do about it, because the way out is the row
      itself becoming pressable once the state changes. */
   whyNotRunning: 'This agent is not running right now.',
@@ -1477,7 +1486,7 @@ export function mentionRefusalSentence(error) {
   return PALETTE_PANEL.mentionFailed
 }
 
-/* THE QUEUE'S WORDS. The feature: queue and unqueue for messages.
+/* THE QUEUE'S WORDS. The owner's ask: "can we add a que/unque for messages."
    A busy agent refuses an overlapping send by design; the queue is where the
    next message waits, visibly, until the turn completes and the view sends
    exactly one.
@@ -1490,10 +1499,19 @@ export function mentionRefusalSentence(error) {
    that sentence (persistence().sentence) and enqueue() hands it back with the
    entry. cardQueued below is what a caller says when it was given no sentence
    at all -- true in every state, and it claims nothing about saving. */
+/* A SEND THAT FAILED ONLY AFTER THE PROVIDER ACCEPTED IT. The model is already
+   working on these words (see TRANSCRIPT_ACCEPTED_UNSAVED), so the message went:
+   it is neither a refusal to hand back as a draft nor an unconfirmed delivery to
+   queue for another try. Every sender treats it as sent. */
+export function sendFailureWasAccepted(code) {
+  return typeof code === 'string' && Object.hasOwn(TRANSCRIPT_ACCEPTED_UNSAVED, code)
+}
+
 // A send rejection can follow a transport write. These preflight refusals
 // prove no turn was accepted; every other code remains delivery-unconfirmed.
 export function sendFailureIsUnconfirmed(code) {
   if (Object.hasOwn(TRANSCRIPT_SEND_REFUSALS, code)) return false
+  if (sendFailureWasAccepted(code)) return false
   /* THE PICTURE REFUSALS ARE PREFLIGHT, AND THAT WAS MEASURED, NOT ASSUMED.
      ClaudeCliAdapter.sendTurn builds every image block BEFORE it installs the
      turn -- its own note says so, "a refused picture leaves no turn behind to
@@ -1516,7 +1534,7 @@ export function sendFailureIsUnconfirmed(code) {
  * may be at most 3000000 bytes" never reaches the window, and every one of
  * these fell through to "Check that this agent is still available, then try
  * again" -- about an agent that was available, advising a retry that does the
- * same thing forever. The report was that sending images did not work.
+ * same thing forever. The owner's report was "sending images doesnt work".
  *
  * Each row below is one adapter refusal code, and each says the ONE thing a
  * person can act on. They are deliberately not one sentence: "too large" and
@@ -1554,7 +1572,7 @@ const PICTURE_REFUSALS = Object.freeze({
      a message that never entered a conversation, and marked the send
      unconfirmed, which pauses automatic sending. Neither half named a picture,
      and retrying restores the same chip and refuses the same way for ever:
-     sending images did not work, in the product's own words.
+     "sending images doesnt work", in the product's own words.
      A row here fixes both halves at once, because sendFailureIsUnconfirmed
      already reads this table to decide what was written. */
   MC_AGENT_ATTACHMENT_UNKNOWN: 'That picture was not attached in this conversation’s current session, so nothing was sent — not your message either. Remove the picture, attach or paste it again here, then send.',
@@ -1566,6 +1584,7 @@ export function pictureSendRefusalSentence(code) {
 
 export function sendRefusalSentence(code) {
   if (Object.hasOwn(TRANSCRIPT_SEND_REFUSALS, code)) return TRANSCRIPT_SEND_REFUSALS[code]
+  if (sendFailureWasAccepted(code)) return TRANSCRIPT_ACCEPTED_UNSAVED[code]
   if (code === 'CODEX_PROTOCOL_INVALID') return 'The agent connection stopped responding correctly. This message’s delivery could not be confirmed. Check the conversation before retrying or resuming the agent.'
   if (code === 'AGENT_TURN_ACTIVE') return 'The agent is still finishing its current turn. Your message remains queued.'
   const picture = pictureSendRefusalSentence(code)
@@ -1587,7 +1606,15 @@ export const QUEUE_PANEL = Object.freeze({
      store carries on the entry, so a row can only claim a hold the store
      actually recorded. */
   heldReasons: Object.freeze({
+    AGENT_AUTOMATIC_TURN_START_UNCONFIRMED: 'The assistant did not confirm starting the continuation. This message is kept. Stop the agent before retrying.',
     SEND_NOW_RELEASE_BUDGET: 'Held: the agent has not released its turn yet. It goes when the turn ends, or press Retry send.',
+    /* 1.0.50 review, accounts D: a New agent tab's queue waits while its
+       account is at a usage limit (src/agent-session.js). */
+    ACCOUNT_LIMIT_HELD: 'Held: this account reached its usage limit. After it resets, send a message and these follow.',
+    PROVIDER_MODEL_REFUSED: 'Held: the provider refused this agent’s model. Choose another model and send a message. Held messages go once it is answered.',
+    /* REVIEW-1050 #10: a New agent tab's running session keeps its model, and Stop drops queued
+       messages, so a held one is taken back first (src/agent-session.js). */
+    PROVIDER_MODEL_REFUSED_TAB: 'Held: the provider refused this agent’s model, and the running session keeps its model. Unqueue this, choose another model, press Stop, then send it again.',
   }),
   blockedUnconfirmed: 'Check the message with unconfirmed delivery, then retry or unqueue it before automatic sending continues.',
   title: 'Waiting to send',
@@ -1616,7 +1643,7 @@ export const QUEUE_PANEL = Object.freeze({
   /* "NOTHING RETRIES IT ON ITS OWN" IS THE PROMISE THAT WAS WRONG, AND IT
      ASKED FOR THE ONE THING THIS STORE REFUSES TO RISK.
      The previous sentence ended "send it again when you are ready". The row
-     carries no plain Send door (removed in W18c), so "send it
+     carries no plain Send door (the owner removed it, W18c), so "send it
      again" reads as: type the words a second time. Meanwhile the refused
      entry is back at the FRONT (session-outbox.js requeueFront, `unshift`)
      and IS taken by the ordinary boundary drain -- takeNext's skip is
@@ -1678,6 +1705,7 @@ export const QUEUE_PANEL = Object.freeze({
    The menu lists the person's own words, which is the only honest way to name
    a point in time they can recognise. */
 export const REWIND_PANEL = Object.freeze({
+  originStorageFailed: 'Rewind could not save the fork’s original sign-in home. This conversation is still on its previous thread.',
   title: 'Rewind',
   help: 'Pick one of your messages. The agent keeps everything up to it and forgets everything after it.',
   button: 'Rewind',
@@ -1686,7 +1714,7 @@ export const REWIND_PANEL = Object.freeze({
   empty: 'Send a message first; your messages appear here to rewind to.',
   failed: 'The rewind did not happen; the conversation is unchanged. Try once more.',
   /* A PERMANENT refusal is not a retry. MEASURED on the shipped build,
-     Rewinding a Claude session always fails -- the host rewinds by
+     2026-08-19: rewinding a Claude session always fails -- the host rewinds by
      forking the thread and that engine cannot fork (CLAUDE_CLI_FORK_UNSUPPORTED,
      shell/agent-host.cjs rewindSession) -- and the sentence above told the
      person to try once more, forever. This one says what is true and names the
@@ -1803,7 +1831,7 @@ export const MODEL_PANEL = Object.freeze({
      state lie in the other direction. The words follow the mechanism. */
   next: model => `Messages run on ${model} until you change it back. The conversation continues.`,
   keep: 'Keep the model it started on',
-  /* REQUEST T137: a model the running thread cannot take in
+  /* OWNER REQUEST T137 (2026-09-16): a model the running thread cannot take in
      place -- every Claude model, every other provider -- is reached by
      continuing the conversation in a fresh session on that tier, from the same
      handoff "Continue on another account" sends. The words say what ends and
@@ -1811,22 +1839,15 @@ export const MODEL_PANEL = Object.freeze({
   continueOn: label => `Continue on ${label}`,
   continueHint: (fromWord, toLabel) => `Starts a fresh session on ${toLabel} from a handoff of this conversation. This agent keeps its name, its place on the tree, its reports and its saved conversation; the ${fromWord} session ends.`,
   continueBusy: 'Wait for this agent to finish its turn, then switch.',
-  /* PROVIDER, THEN MODEL (1.0.48, owner decision: provider first,
-     then model). The first stage lists the providers; each opens a stage of that
+  /* PROVIDER, THEN MODEL (1.0.48, owner: "it should be provider, then model
+     choice"). The first stage lists the providers; each opens a stage of that
      provider's models. The model rows keep "<Model> · <Provider>" because the
      popup is one listbox named "Actions" and a stage title is not announced,
      so the row itself must say which provider it belongs to. */
   providerHint: word => `Shows the ${word} models.`,
   providerCurrent: label => `It runs on ${label} now.`,
   providerTitle: word => `${word} models`,
-  /* A stopped agent moved to another provider loses its saved account (D5):
-     account names belong to one provider. Said beside the model it will use,
-     so the change is not silent (review P15), and by the automatic failover
-     when it moves an agent across providers (follow-up V6). Takes the
-     provider key and says the Provider menu's word for it (follow-up V5:
-     Local read "a signed-in the computer you are driving account"). A local
-     model needs no account, so Local has its own sentence. The words hold
-     for an agent that has started already and one that has not. */
+
   accountCleared: provider => provider === 'local'
     ? 'Its saved account was for another provider. A local model needs no account.'
     : PROVIDER_WORDS[provider]
@@ -1862,13 +1883,13 @@ export const MODEL_PANEL = Object.freeze({
  * the narrow fact: local-node-adapter.js sendTurn() destructures
  * `{ threadId, text, images }`, so no model can be taken in place mid-thread.
  * The cost of the stale sentence was a whole provider missing from the switch
- * menu on a build that ships it, which is request R1238. No provider is
+ * menu on a build that ships it, which is owner request R1238. No provider is
  * named when deciding what can start any more — see sessionModelChoices(). */
 const PROVIDERS_THAT_SWITCH_MID_THREAD = Object.freeze(['codex'])
 
 const MODEL_SWITCH_REFUSAL = Object.freeze({
-  /* The cross-provider and bound-at-start refusals that stood here are
-     gone: request T137 turned both cases into
+  /* The cross-provider and bound-at-start refusals that stood here until
+     2026-09-16 are gone: owner request T137 turned both cases into
      continuation rows (sessionModelChoices below), so the only refusals left
      are the three that are still true. */
   /* WHAT THIS COPY CANNOT START, asked of the shell rather than asserted from a
@@ -1948,9 +1969,9 @@ export function sessionModelChoices(sessionTierId, { startable = null, answered 
     const word = TIER_PROVIDER_WORDS[tier.provider] || tier.provider
     const label = `${tier.label} · ${word}`
     const enabled = canSwitch && tier.provider === session.provider
-     /* T137: a model switch, including across providers, continues in a
-       fresh session with the context handed over.
-       A row the thread cannot switch to in
+    /* OWNER REQUEST T137 (2026-09-16 02:58Z): "switch models still doesnt work.
+       and it should work for even different providers because we can just hand
+       the context to the next agent." A row the thread cannot switch to in
        place is offered as a CONTINUATION instead of a refusal: a fresh session
        on that tier, started from the same handoff an account continuation
        sends (src/manual-account-continuation.js manualModelHandoff). What stays
@@ -1958,8 +1979,9 @@ export function sessionModelChoices(sessionTierId, { startable = null, answered 
        from (nothing says what it was), and the row for the model it already
        runs on is a fact rather than a switch.
 
-       R1238: the switch-model row is always present and works, for Codex,
-       Claude, local, Grok and Gemini. The provider name
+       OWNER REQUEST R1238 (2026-09-19): "why cant i choose to switch models
+       between codex or claude or local or grok or gemini mid session. this was
+       built. why does the button hide now it needs to work." The provider name
        is out of this test. `tier.provider !== 'local'` stood here as the last
        hardcode, and it was wrong in exactly the way the paragraph above this
        function warns about -- it answered "can this tier run" from a name
@@ -2169,7 +2191,7 @@ export function treeContextSummary(text) {
    to 48,000 characters; folded, it reads as one status line, and the whole text
    stays one press away. */
 export const HANDOFF_CONTEXT_LABEL = 'continued on another account'
-/* THE SAME FOLD FOR A MODEL CONTINUATION (request T137), named for what
+/* THE SAME FOLD FOR A MODEL CONTINUATION (owner request T137), named for what
    the person actually did. */
 export const MODEL_HANDOFF_CONTEXT_LABEL = 'continued on another model'
 export function handoffContextLabel({ model = false } = {}) {
@@ -2639,8 +2661,8 @@ export function startRefusalSentence(result, { tier = null, subject = 'this comp
   }
   /* ON LINUX AND MACOS THESE TWO CODES MAY NOT TAKE THE TABLE SHORTCUT.
      REFUSAL_BY_CODE answers both with START_REFUSAL.assistantProgramMissing,
-     which names Windows Terminal and winget; measured on a Linux machine, a
-     person pressing Start was told to run "winget install OpenAI.Codex" in
+     which names Windows Terminal and winget; measured on this machine, a Linux
+     owner pressing Start was told to run "winget install OpenAI.Codex" in
      Windows Terminal. The UNAVAILABLE_TEXT branch immediately below already
      composes a platform-correct sentence for exactly these codes through
      unavailableReason(), so they are allowed to reach it rather than being

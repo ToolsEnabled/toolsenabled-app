@@ -11,15 +11,15 @@
  *
  * It also polices three things the runtime guard structurally cannot:
  *
- *   - NO PAID CAPABILITY IN THE PREVIEW. Paid services get no preview
- *     (2026-08-11). `hosted-relay` is the
+ *   - NO PAID CAPABILITY IN THE PREVIEW. The owner's shape for this surface is
+ *     "no need for preview of paid services" (2026-08-11). `hosted-relay` is the
  *     engine's entire gated set today (src/lib/entitlement.js GATED_CAPABILITIES).
  *     If it ever appears in the preview outside the list that names it as
  *     forbidden, that is a shipped promise nobody decided to make.
  *
  *   - NO EGRESS. The preview must have no backend. Any absolute URL, socket
  *     constructor, or loopback address in this directory contradicts that. This
- *     is also the fix for the finding an R1260 review raised: the product page
+ *     is also the fix for the finding R1260 lane t5a raised: the product page
  *     makes every visitor's browser probe their OWN localhost, which is the one
  *     defect on that list that gets WORSE rather than merely staying broken once
  *     the site is public.

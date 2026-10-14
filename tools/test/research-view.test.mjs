@@ -259,6 +259,19 @@ test('research styling stays theme-native across white, tan, and black', () => {
   }
 })
 
+test('FIX-C 7: the workflow tabs are one segmented control, so Open folder is the only primary in the view', () => {
+  const css = read('src/research.css').replace(/\/\*[\s\S]*?\*\//g, '')
+  const pressed = [...css.matchAll(/\.research-workflow-nav button\[aria-pressed="true"\]\s*\{([^{}]*)\}/g)].map(m => m[1])
+  assert.ok(pressed.length > 0, 'the selected tab has a rule')
+  for (const body of pressed) {
+    assert.doesNotMatch(body, /background:\s*var\(--(?:ink|primary-bg)\)/, 'the selected tab wears the primary button fill (DESIGN section 6: at most one primary per view)')
+  }
+  assert.ok(pressed.some(body => /background:\s*var\(--bg-surface\)/.test(body) && /font-weight:\s*600/.test(body)),
+    'the selected segment is surface + 600 (DESIGN section 4 segmented control)')
+  const track = [...css.matchAll(/\.research-workflow-nav\s*\{([^{}]*)\}/g)].map(m => m[1])
+  assert.ok(track.some(body => /background:\s*var\(--bg-subtle\)/.test(body) && /padding:\s*2px/.test(body)), 'the tabs sit in a --bg-subtle track with a 2px inset')
+})
+
 test('live Sankey empty state preserves the hero slot', () => {
   const view = read('src/views/metrics.js')
   const css = read('src/metrics.css')
@@ -290,7 +303,7 @@ test('live Sankey empty state preserves the hero slot', () => {
   assert.doesNotMatch(view, /measured usage does not say which pool, provider, or role it belongs to/,
     'the empty state still describes a build-time file the reader does not have')
   assert.match(view, /host\.replaceChildren\(panel\)/)
-  /* Design rule: the empty token-routing panel is the same short quiet
+  /* Owner review 2026-09-23: the empty token-routing panel is the same short quiet
      well as every other empty Metrics panel (72px), no longer the diagram's 430px. */
   assert.match(css, /#sankey-chart\.m-sankey-empty-host[\s\S]*?min-height: 72px/)
 })

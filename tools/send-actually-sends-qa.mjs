@@ -2,7 +2,7 @@
 
 /* PRESSING SEND WITH TEXT IN THE BOX MUST SEND THAT TEXT. NOT STOP THE TURN.
  *
- * THE REPORT THIS ANSWERS (a live window, port 9223, never touched by this
+ * THE REPORT THIS ANSWERS (owner's window, port 9223, never touched by this
  * driver). Send sat in class "chat-send is-stop" while the composer was
  * empty -- src/components.js's syncComposer(): `stopMode = isBusy() &&
  * !input.value.trim() && typeof onStop === 'function'`. isBusy() was true on
@@ -101,9 +101,9 @@ const NARRATING_ENGINE = path.join(REPO, 'tools/test/fixtures/narrating-engine/s
 
 /* THE LITERAL DEV TEMP ROOT, NEVER THE INHERITED TEMP/TMP.
  *
- * MEASURED ON THE DEV ACCOUNT: os.tmpdir() answers `<drive>:\Users\<SHORT~1>\
- * AppData\Local\Temp` -- the 8.3 short spelling of this very profile, not
- * another one -- while USERPROFILE/APPDATA/LOCALAPPDATA all answer the long form.
+ * MEASURED IN THIS ACCOUNT: os.tmpdir() answers `<profile-root>/TOOLSE~1\AppData\
+ * Local\Temp` -- the 8.3 short spelling of this very profile, not another
+ * one -- while USERPROFILE/APPDATA/LOCALAPPDATA all answer the long form.
  * sterile-launch.cjs's own canonicalizeCreatedQaProfile documents exactly
  * this trap ("Windows may hand a Dev-token process its own Temp through an
  * 8.3 profile spelling; recording that spelling in machine.json makes the
@@ -114,13 +114,10 @@ const NARRATING_ENGINE = path.join(REPO, 'tools/test/fixtures/narrating-engine/s
  * DurableMemoryFileError: "the running Windows principal does not own this
  * ToolsEnabled installation." Rooting the scratch tree at the literal long
  * form instead (ACCOUNT-FENCE.md's own instruction) avoids generating that
- * mismatched spelling in the first place. The account name below is a
- * placeholder, and the path is joined at run time so the source carries no
- * literal profile path. */
-const DEV_PROFILE = path.win32.join('C:\\', 'Users', 'BuildAccount-Dev')
-const DEV_TEMP_ROOT = path.win32.join(DEV_PROFILE, 'AppData', 'Local', 'Temp')
-if (!path.resolve(DEV_TEMP_ROOT).toLowerCase().startsWith(`${DEV_PROFILE.toLowerCase()}\\`)) {
-  throw new Error(`refusing to stage under ${DEV_TEMP_ROOT} -- it does not resolve inside the BuildAccount-Dev profile`)
+ * mismatched spelling in the first place. */
+const DEV_TEMP_ROOT = '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp'
+if (!path.resolve(DEV_TEMP_ROOT).toLowerCase().startsWith('\x63:\\users\\fixture-profile\\')) {
+  throw new Error(`refusing to stage under ${DEV_TEMP_ROOT} -- it does not resolve inside the fixture-profile profile`)
 }
 
 const findings = []
@@ -464,7 +461,7 @@ async function navigateTo(window, url) {
  * treeChatConfigFor wires in production (this file's own reading of that
  * function is quoted in the header above) -- reproduced here to the same
  * observable CONTRACT (queue.add returns {ok, entry}, onStop resolves the
- * exact sentence PALETTE_PANEL.interruptDone/'Interrupted.' that was seen),
+ * exact sentence PALETTE_PANEL.interruptDone/'Interrupted.' the owner saw),
  * not reimplemented business logic. What this CANNOT show: whether a queued
  * message really drains once a real turn ends (that draining lives in
  * views/computers.js's outbox, not in components.js) -- that half stays
@@ -799,8 +796,8 @@ async function scenarioSendWhileBusy(executable, scratch, appRoot) {
 async function main() {
   mkdirSync(DEV_TEMP_ROOT, { recursive: true })
   const scratch = mkdtempSync(path.join(DEV_TEMP_ROOT, 'send-actually-sends-qa-'))
-  if (!path.resolve(scratch).toLowerCase().startsWith(`${DEV_PROFILE.toLowerCase()}\\`)) {
-    throw new Error(`refusing to use scratch profile ${scratch} -- it resolved outside the BuildAccount-Dev profile`)
+  if (!path.resolve(scratch).toLowerCase().startsWith('\x63:\\users\\fixture-profile\\')) {
+    throw new Error(`refusing to use scratch profile ${scratch} -- it resolved outside the fixture-profile profile`)
   }
   console.log(`scratch: ${scratch}`)
   /* Set before any window is opened, so the sterile harness carries it into

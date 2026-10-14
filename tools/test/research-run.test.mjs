@@ -106,33 +106,32 @@ test('a policy is content, so a parameter reaches into it', async () => {
   assert.deepEqual(run.trace.map(record => record.acted), [[], ['root/inside']])
 })
 
-// ---- the retained library ------------------------------------------------
+// ---- their own material ---------------------------------------------------
 
 test('historically imported nested composition runs, and its trace is the answer key for it', async () => {
-  /* The library's parallel template holding two strategies, built the way its
-     example task builds it. The policies are attached here on the retained
-     imported content: the structure, the wording and the slot order are all
-     the library's. */
+  /* Their parallel template holding two strategies, built the way their donor
+     prompt builds it. The policies are attached here on the historical imported content: the
+     structure, the wording and the slot order are all theirs. */
   const spec = newExperimentDraft(genericStarter(), { initializePopulation: true })
   spec.catalog = importSnippetLibrary(historicalSnippetLibrary(), spec.catalog)
-  /* THE POLICIES HERE ARE THE TEST'S, NOT A READING OF THE LIBRARY. What
-     governs the four strategy parts is an open decision the library leaves,
+  /* THE POLICIES HERE ARE THE TEST'S, NOT A READING OF THEIR MATERIAL. What
+     governs their four strategy parts is an open decision in their own draft,
      so nothing here claims to answer it. Two different policies are used at
      the two levels only to show that different ones nest. */
-  const policies = { 'ex-parallel-template': PARALLEL, 'ex-strategy-slot': SEQUENCE }
+  const policies = { 'lb-parallel-template': PARALLEL, 'lb-strategy-slot': SEQUENCE }
   const catalog = spec.catalog.map(bundle => (policies[bundle.id]
     ? { ...bundle, semantics: { ...(bundle.semantics || { kind: 'prompt' }), policy: policies[bundle.id] } }
     : bundle))
 
-  // The library's own structure, built the way its example task builds it.
+  // Their own structure, built the way their donor prompt builds it.
   const parts = ['reason-to-buy', 'buy-details', 'reason-to-sell', 'sell-details']
   const strategy = (number, name, ticker, tag) => ({
-    use: 'ex-strategy-slot',
+    use: 'lb-strategy-slot',
     params: { slot_number: number, strategy_name: name, ticker },
-    slots: Object.fromEntries(parts.map(part => [part.replace(/-/g, '_'), { use: `ex-${tag}-${part}` }])),
+    slots: Object.fromEntries(parts.map(part => [part.replace(/-/g, '_'), { use: `lb-${tag}-${part}` }])),
   })
   const compiled = await compilePrompt(catalog, {
-    use: 'ex-parallel-template',
+    use: 'lb-parallel-template',
     slots: { slot_1: strategy(1, 'A', 'SPY', 'a'), slot_2: strategy(2, 'B', 'AAPL', 'b') },
   })
   const root = lifecycleFromComposition(compiled.composition)
@@ -159,7 +158,7 @@ test('historically imported nested composition runs, and its trace is the answer
 
 /* ---- the five operators, as library content ------------------------------
  *
- * The five retained templates each carry a policy now. THE POINT OF THE GATE BELOW is
+ * Their five templates each carry a policy now. THE POINT OF THE GATE BELOW is
  * that this changed nothing about the software: the five are ordinary bundle
  * content, and deleting all five leaves every module working and every prompt
  * composing, with a container that used to have one refused BY NAME rather
@@ -178,13 +177,13 @@ const theirPolicy = (catalog, id) => {
   assert.ok(bundle.semantics?.policy, id + ' carries no policy')
   return bundle.semantics.policy
 }
-/* A two-slot container carrying one of the library's reasons. Three of its
-   five templates declare a single `inside` slot, and an order needs two
-   children; the reason is still the library's, read from the bundle. */
+/* A two-slot container carrying one of their reasons. Three of their five
+   templates declare a single `inside` slot, and an order needs two children;
+   the reason is still theirs, read from the bundle. */
 const asTwoSlots = policy => template('pair', ['first', 'second'], { policy })
 
-const FIVE = ['ex-parallel-template', 'ex-state-gated-template', 'ex-event-gated-template',
-  'ex-race-template', 'ex-sequence-template']
+const FIVE = ['lb-parallel-template', 'lb-state-gated-template', 'lb-event-gated-template',
+  'lb-race-template', 'lb-sequence-template']
 
 test('all five historical imported templates carry a policy, and each is an ordinary reason', async () => {
   const catalog = theirLibrary()
@@ -203,13 +202,13 @@ test('all five historical imported templates carry a policy, and each is an ordi
   }
   assert.equal(FIVE.filter(id => theirPolicy(catalog, id).reset).length, 4,
     'the four that put things back say so, and parallel has nothing to put back')
-  assert.equal(theirPolicy(catalog, 'ex-parallel-template').reset, undefined)
+  assert.equal(theirPolicy(catalog, 'lb-parallel-template').reset, undefined)
 })
 
 test('a window written where a template is used beats the one where it was defined', async () => {
   const catalog = theirLibrary()
   const compiled = await compilePrompt([atom('one'), ...catalog],
-    { use: 'ex-event-gated-template', params: { window: '1', window_over: '2' }, slots: { inside: { use: 'one' } } })
+    { use: 'lb-event-gated-template', params: { window: '1', window_over: '2' }, slots: { inside: { use: 'one' } } })
   const run = runComposition(compiled.composition,
     ['false', 'true', 'false', 'false'].map(event => step({ values: { event } })))
   assert.deepEqual(run.trace.map(record => record.mayAct['root/inside']), [false, false, true, false],
@@ -217,11 +216,11 @@ test('a window written where a template is used beats the one where it was defin
 })
 
 test('the event window outlives the event that opened it', async () => {
-  /* The template's sentence: armed "for the next m trading days, starting tomorrow",
+  /* Their sentence: armed "for the next m trading days starting tomorrow",
      while the event is true on one bar only. Written as a duration this shuts
      on the bar after it opened, which is what writing the operator out found. */
   const catalog = [atom('one'), ...theirLibrary()]
-  const compiled = await compilePrompt(catalog, { use: 'ex-event-gated-template', slots: { inside: { use: 'one' } } })
+  const compiled = await compilePrompt(catalog, { use: 'lb-event-gated-template', slots: { inside: { use: 'one' } } })
   const run = runComposition(compiled.composition,
     ['false', 'true', 'false', 'false', 'false', 'false', 'false'].map(event => step({ values: { event } })))
   assert.deepEqual(run.trace.map(record => record.mayAct['root/inside']),
@@ -234,7 +233,7 @@ test('the event window outlives the event that opened it', async () => {
 
 test('a later edge while armed restarts the window', async () => {
   const catalog = [atom('one'), ...theirLibrary()]
-  const compiled = await compilePrompt(catalog, { use: 'ex-event-gated-template', slots: { inside: { use: 'one' } } })
+  const compiled = await compilePrompt(catalog, { use: 'lb-event-gated-template', slots: { inside: { use: 'one' } } })
   const run = runComposition(compiled.composition,
     ['true', 'false', 'true', 'false', 'false', 'false', 'false'].map(event => step({ values: { event } })))
   assert.deepEqual(run.trace.map(record => record.mayAct['root/inside']),
@@ -245,8 +244,8 @@ test('a later edge while armed restarts the window', async () => {
 test('the gate shuts and everything inside goes back, nesting included', async () => {
   const catalog = [atom('one'), atom('two'), ...theirLibrary()]
   const compiled = await compilePrompt(catalog, {
-    use: 'ex-state-gated-template',
-    slots: { inside: { use: 'ex-parallel-template', slots: { slot_1: { use: 'one' }, slot_2: { use: 'two' } } } },
+    use: 'lb-state-gated-template',
+    slots: { inside: { use: 'lb-parallel-template', slots: { slot_1: { use: 'one' }, slot_2: { use: 'two' } } } },
   })
   const run = runComposition(compiled.composition, [
     step({ values: { gate: 'true' } }),
@@ -262,7 +261,7 @@ test('the gate shuts and everything inside goes back, nesting included', async (
 })
 
 test('the first slot whose reason holds claims the race, and the race re-opens after', async () => {
-  const catalog = [atom('one'), atom('two'), asTwoSlots(theirPolicy(theirLibrary(), 'ex-race-template'))]
+  const catalog = [atom('one'), atom('two'), asTwoSlots(theirPolicy(theirLibrary(), 'lb-race-template'))]
   const compiled = await compilePrompt(catalog, { use: 'pair', slots: { first: { use: 'one' }, second: { use: 'two' } } })
   const both = { 'root/first': true, 'root/second': true }
   const run = runComposition(compiled.composition, [
@@ -278,7 +277,7 @@ test('the first slot whose reason holds claims the race, and the race re-opens a
 })
 
 test('one slot at a time, and eligibility returns to slot 1 after the last', async () => {
-  const catalog = [atom('one'), atom('two'), asTwoSlots(theirPolicy(theirLibrary(), 'ex-sequence-template'))]
+  const catalog = [atom('one'), atom('two'), asTwoSlots(theirPolicy(theirLibrary(), 'lb-sequence-template'))]
   const compiled = await compilePrompt(catalog, { use: 'pair', slots: { first: { use: 'one' }, second: { use: 'two' } } })
   const run = runComposition(compiled.composition, [
     step({ finished: { 'root/first': true } }),
@@ -297,7 +296,7 @@ test('the same input twice is the same trace, clocks included', () => {
      place a second run could inherit something from the first. Both are built
      inside runLifecycle, and this is what says so by calling it twice. */
   const catalog = theirLibrary()
-  const policy = theirPolicy(catalog, 'ex-event-gated-template')
+  const policy = theirPolicy(catalog, 'lb-event-gated-template')
   const root = {
     path: 'root',
     policy: JSON.parse(JSON.stringify(policy).replace(/{{window_over}}/g, '4').replace(/{{window}}/g, '3').replace(/{{event_fires}}/g, 'true')),
@@ -329,13 +328,13 @@ test('deleting every operator leaves the software working and refuses by name', 
   assert.equal(stripped.some(bundle => bundle.semantics?.policy), false, 'every operator is gone')
 
   const compiled = await compilePrompt([atom('one'), ...stripped],
-    { use: 'ex-race-template', slots: { inside: { use: 'one' } } })
-  const theirWording = stripped.find(bundle => bundle.id === 'ex-race-template').text.split('{{')[0].trim()
+    { use: 'lb-race-template', slots: { inside: { use: 'one' } } })
+  const theirWording = stripped.find(bundle => bundle.id === 'lb-race-template').text.split('{{')[0].trim()
   assert.ok(theirWording && compiled.text.includes(theirWording),
     'their prompt still composes with no operator anywhere')
 
   assert.throws(() => lifecycleFromComposition(compiled.composition), error => {
-    assert.match(error.message, /The container at root uses ex-race-template/)
+    assert.match(error.message, /The container at root uses lb-race-template/)
     assert.match(error.message, /does not say which of its children may act/)
     return true
   }, 'refused by name, not run as parallel')
@@ -343,7 +342,7 @@ test('deleting every operator leaves the software working and refuses by name', 
   /* And the same composition with their operator put back does run, so the
      refusal above is the missing content and not a broken module. */
   const whole = await compilePrompt([atom('one'), ...theirLibrary()],
-    { use: 'ex-race-template', slots: { inside: { use: 'one' } } })
+    { use: 'lb-race-template', slots: { inside: { use: 'one' } } })
   assert.equal(runComposition(whole.composition, [step({ reasons: { 'root/inside': true } })]).trace[0].acted.length, 1)
 })
 
@@ -352,16 +351,16 @@ test('historically imported templates compose whether or not they carry a policy
   spec.catalog = importSnippetLibrary(historicalSnippetLibrary(), spec.catalog)
   const parts = ['reason-to-buy', 'buy-details', 'reason-to-sell', 'sell-details']
   const strategy = (number, name, ticker, tag) => ({
-    use: 'ex-strategy-slot',
+    use: 'lb-strategy-slot',
     params: { slot_number: number, strategy_name: name, ticker },
-    slots: Object.fromEntries(parts.map(part => [part.replace(/-/g, '_'), { use: `ex-${tag}-${part}` }])),
+    slots: Object.fromEntries(parts.map(part => [part.replace(/-/g, '_'), { use: `lb-${tag}-${part}` }])),
   })
   const compiled = await compilePrompt(spec.catalog, {
-    use: 'ex-parallel-template',
+    use: 'lb-parallel-template',
     slots: { slot_1: strategy(1, 'A', 'SPY', 'a'), slot_2: strategy(2, 'B', 'AAPL', 'b') },
   })
-  // Read from the library rather than spelled out here, so this cannot drift
-  // from what it actually says.
-  const theirs = spec.catalog.find(bundle => bundle.id === 'ex-parallel-template').text.split('{{')[0].trim()
+  // Read from their own library rather than spelled out here, so this cannot
+  // drift from what they actually wrote.
+  const theirs = spec.catalog.find(bundle => bundle.id === 'lb-parallel-template').text.split('{{')[0].trim()
   assert.ok(theirs && compiled.text.includes(theirs), 'their wording survives composition unchanged')
 })

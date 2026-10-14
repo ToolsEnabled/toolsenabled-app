@@ -260,7 +260,7 @@ export function probeDisposableGuest({ product, profile, evidenceRoot, harnessRo
 //
 // The positive path - a guest that actually passes all four - is UNPROVEN
 // here. No qualifying VM and no guest credential exist on this host, so every
-// test below is a refusal test. See the T240 notes.
+// test below is a refusal test. See REPORT-T240.
 const CHALLENGE_BYTES = 32;
 const SHAPE_ONLY = 'DISPOSABLE_GUEST_SHAPE_ONLY';
 const TOOLCHAIN_UNAPPROVED = 'DISPOSABLE_GUEST_TOOLCHAIN_UNAPPROVED';

@@ -23,9 +23,6 @@ import { currentHomeStatusColor, defaultHomeStatusColors } from '../../src/home-
 
 const source = readFileSync(new URL('../../src/quick-settings.js', import.meta.url), 'utf8')
   .replace("from './home-status-quick-settings.js'", `from ${JSON.stringify(new URL('../../src/home-status-quick-settings.js', import.meta.url).href)}`)
-  .replace("from './home-circle-choice.js'", `from ${JSON.stringify(new URL('../../src/home-circle-choice.js', import.meta.url).href)}`)
-  .replace("from './home-circle-clock.js'", `from ${JSON.stringify(new URL('../../src/home-circle-clock.js', import.meta.url).href)}`)
-  .replace("from './home-circle-playful-moment.js'", `from ${JSON.stringify(new URL('../../src/home-circle-playful-moment.js', import.meta.url).href)}`)
   .replace("import './home-status-colors.css'", '')
   .replace("from './agent-api-setting.js'", `from ${JSON.stringify(new URL('../../src/agent-api-setting.js', import.meta.url).href)}`)
   .replace("from './audit-performance-settings.js'", `from ${JSON.stringify(new URL('../../src/audit-performance-settings.js', import.meta.url).href)}`)
@@ -252,16 +249,16 @@ test('Quick Settings applies colors immediately, remembers each theme, resets an
 
 test('the app-wide controls are untouched by the move', async () => {
   const drawer = await render('home', BRIDGE)
-  for (const id of ['theme-seg', 'font-seg', 'text-seg', 'set-glow', 'set-motion']) {
+  for (const id of ['theme-seg', 'font-seg', 'text-seg', 'set-motion']) {
     assert.ok(drawer.includes(id), `the drawer lost ${id}, which the settings page and the harnesses drive by name`)
   }
   assert.match(drawer, /data-quick-example/, 'the drawer lost the example switch')
 })
 
 /* ==================================================================
-   THE 2026-08-27 PASS. The pop-out was outdated from earlier days of the
-   program; it provides useful settings in a way consistent with the current
-   theme.
+   THE 2026-08-27 PASS. The owner: the pop-out "is outdated from earlier days
+   of the program. it needs to provide useful settings in a way more consistent
+   with the theme now."
    ================================================================== */
 
 test('no risk statement is printed twice — one disclosure per family, not one per row', async () => {
@@ -279,13 +276,13 @@ test('no risk statement is printed twice — one disclosure per family, not one 
   const appRows = drawer.slice(drawer.indexOf('function appRows'), drawer.indexOf('async function fillBuildRow'))
   const asked = [...appRows.matchAll(/guidanceMarkup\('([a-z_]+)'|note\('([a-z_]+)'/g)]
     .map(match => match[1] || match[2])
-  assert.deepEqual(asked, ['example_mode', 'theme', 'text_size', 'glow'],
+  assert.deepEqual(asked, ['example_mode', 'theme', 'text_size', 'reduce_motion'],
     'each family is asked once, in row order; a second call for a family already asked is the duplicate this closes')
   /* Font and Reduce motion deliberately have NO call of their own: they share
      the statement of the row above them, and the summary line says so. */
   assert.doesNotMatch(appRows, /guidanceMarkup\('ui_font'/, 'Font would repeat the Appearance body verbatim')
   assert.doesNotMatch(appRows, /guidanceMarkup\('reduce_motion'/, 'Reduce motion would repeat the Motion body verbatim')
-  for (const [id, named] of [['theme', /Theme and Font/], ['text_size', /Text size/], ['glow', /Glow and Reduce motion/]]) {
+  for (const [id, named] of [['theme', /Theme and Font/], ['text_size', /Text size/], ['reduce_motion', /Reduce motion/]]) {
     const call = new RegExp(`note\\('${id}',\\s*'[^']*',\\s*'([^']*)'\\)`).exec(appRows)
     assert.ok(call, `the ${id} disclosure lost its summary`)
     assert.match(call[1], named, `the ${id} summary must name the rows it covers, or a shared note reads as a stray one`)
@@ -304,11 +301,11 @@ test('the two rows that decide something real are the first two, above the cosme
   const example = drawer.indexOf('data-quick-example')
   const door = drawer.indexOf('href="#/tools"')
   const theme = drawer.indexOf('id="theme-seg"')
-  const glow = drawer.indexOf('id="set-glow"')
-  assert.ok(example !== -1 && door !== -1 && theme !== -1 && glow !== -1, 'a named row is missing')
+  const motion = drawer.indexOf('id="set-motion"')
+  assert.ok(example !== -1 && door !== -1 && theme !== -1 && motion !== -1, 'a named row is missing')
   assert.ok(example < door, 'the example switch is the first row')
   assert.ok(door < theme, 'the tools door must sit above the appearance block, not under it')
-  assert.ok(theme < glow, 'the appearance block keeps its order')
+  assert.ok(theme < motion, 'the appearance block keeps its order')
 })
 
 test('the filler line is gone and nothing dresses it any more', async () => {
@@ -341,7 +338,6 @@ test('the three controls measured under the desktop hit floor are raised by the 
   for (const [name, part] of [
     ['the risk disclosures', '.guided-summary'],
     ['the tools door', '.set-row.set-link'],
-    ['the glow slider', 'input[type="range"]'],
   ]) {
     assert.ok(selector.includes(part), `${name} (${part}) is not under the floor`)
   }

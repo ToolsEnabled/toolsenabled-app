@@ -1,8 +1,8 @@
 /* THE EXAMPLE LIBRARY IS NOT PART OF THE APP'S STARTUP.
  *
- * src/research-examples.mjs is example content for one tab of one page, and
- * the chain main.js -> views/research.js -> research-benchmark.js is static
- * all the way down. While research-benchmark.js imported the library
+ * src/research-examples.mjs is ~400 KB of donor material for one tab of one
+ * page, and the chain main.js -> views/research.js -> research-benchmark.js is
+ * static all the way down. While research-benchmark.js imported the library
  * statically, every one of those bytes was fetched and parsed on every app
  * launch, whether or not anybody opened Research.
  *

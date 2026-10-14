@@ -36,7 +36,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { assertRendererMeasurable, assertStagedRendererConsistent } from './lib/staged-renderer.mjs'
 /* The precondition this file used to ASSUME. See tools/lib/fleet-node.mjs: the
-   board opens with an empty tree by the product's own rule, so the node has to be
+   board opens with an empty tree by the owner's own rule, so the node has to be
    made the way a person makes one before a rail can be opened on it. */
 import { createPresser, startFleetNode } from './lib/fleet-node.mjs'
 import {

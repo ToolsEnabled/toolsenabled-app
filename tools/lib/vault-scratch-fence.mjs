@@ -33,8 +33,8 @@
  *      the category a hand list missed
  *   3  OS PROFILE ROOTS          APPDATA (roaming -- what Electron userData
  *      resolves through), LOCALAPPDATA (local -- the services root), USERPROFILE
- *      and HOME
- *   4  PROVIDER ACCOUNT HOMES    CODEX_HOME, CLAUDE_CONFIG_DIR, GEMINI_DIR
+ *      and HOME, plus the person's retained CLAUDE_CONFIG_DIR
+ *   4  PROVIDER ACCOUNT HOMES    CODEX_HOME, GEMINI_DIR
  *
  * If a fifth category exists, it is a category — look for the authority that
  * enumerates it, not for a name to append.
@@ -52,8 +52,8 @@
  *    normalise-then-compare, which has failed open twice in this lane through
  *    sed and through a quoted heredoc. An earlier version here split on [\\/]+
  *    and compared segments EXACTLY, which is narrower than it looks: a path
- *    under `...\ToolsEnabled-Live-old\` yields the segment
- *    `toolsenabled-live-old`, not equal to `toolsenabled-live`, so it was
+ *    under `...\ToolsEnabled-Live-backup\` yields the segment
+ *    `toolsenabled-live-backup`, not equal to `toolsenabled-live`, so it was
  *    ACCEPTED. A scratch directory literally named ToolsEnabled-Live is now
  *    refused too; for a fence that is the correct direction to be wrong in.
  *
@@ -164,13 +164,13 @@ const AUTHORITIES = Object.freeze([
   Object.freeze({
     module: 'shell/install-profile-guard.cjs',
     keys: Object.freeze(['STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES']),
-    floor: 4,
+    floor: 5,
     category: 'OS profile roots',
   }),
   Object.freeze({
     module: 'shell/install-profile-guard.cjs',
     keys: Object.freeze(['PROVIDER_HOME_ENVIRONMENT_NAMES']),
-    floor: 3,
+    floor: 2,
     category: 'provider account homes',
   }),
   /* NODE_OPTIONS and NODE_PATH. Account-identity tier: NODE_PATH decides module
@@ -209,7 +209,7 @@ export const DECLARED_NAMES = Object.freeze(['MC_TEST_STATE_ROOT'])
  * MEASURED PROPERLY: seven files under src/ read `process.env.USERPROFILE` or
  * `process.env.HOME` -- those three plus multi-account/launch.js,
  * multi-account/registry-write.js, multi-account/rotation.js and
- * tool-registry.js. (One count found twelve READERS; another counted seven FILES.
+ * tool-registry.js. (Worker 89 counted twelve READERS; I counted seven FILES.
  * Declared bound: files, not call sites, and either way the three I named was
  * an undercount.)
  *
@@ -298,7 +298,7 @@ export function fenceRequiredNames() {
    * Asking `fencedEnvironment` removes both problems. Whatever it assigns is
    * owned, by construction, and tier (iii) is then everything the authorities
    * name that it does not assign. */
-  const probe = path.join(path.sep, 'vqa-fence-required-probe')
+  const probe = path.join(path.sep, 'w87-fence-required-probe')
   const { environment } = fencedEnvironment(probe, {})
   return Object.freeze(Object.keys(environment).filter(name => name !== FENCE_ENV))
 }

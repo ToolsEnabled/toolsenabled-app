@@ -9,15 +9,12 @@ const data = process.argv[2]
 const check = process.argv.includes('--check')
 const benchmark = process.argv.includes('--benchmark')
 const benchmarkFrames = process.argv.includes('--sustained') ? 400 : 80
-// The Dev account's Windows profile, lower-cased for comparison. The account name is a
-// placeholder, and the path is joined at run time so the source carries no literal profile path.
-const devProfile = path.win32.join('c:\\', 'users', 'buildaccount-dev')
 if (!data || !path.isAbsolute(data) || (process.platform === 'win32'
-  && !data.toLowerCase().startsWith(path.win32.join(devProfile, 'appdata', 'local', 'temp') + '\\'))) throw Error('Practice requires an explicit Dev temp profile')
+  && !data.toLowerCase().startsWith('\x63:\\users\\fixture-profile\\appdata\\local\\temp\\'))) throw Error('Practice requires an explicit Dev temp profile')
 const profileComponents = []
 for (let cursor = path.resolve(data); ; cursor = path.dirname(cursor)) {
   profileComponents.unshift(cursor)
-  if (cursor === path.dirname(cursor) || (process.platform === 'win32' && cursor.toLowerCase() === devProfile)) break
+  if (cursor === path.dirname(cursor) || (process.platform === 'win32' && cursor.toLowerCase() === '\x63:\\users\\fixture-profile')) break
 }
 for (const cursor of profileComponents) {
   if (fs.existsSync(cursor) && fs.lstatSync(cursor).isSymbolicLink()) throw Error('Practice profile contains a link')

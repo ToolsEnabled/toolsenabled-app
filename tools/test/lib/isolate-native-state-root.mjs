@@ -12,7 +12,7 @@
  *     agent-org-record.test.mjs already build their OWN isolated root per
  *     file, but a SHARED inherited value let real custody/audit state leak
  *     across suites that never meant to share it (assistant-config-runtime
- *     itself read the machine's actual permission level -- "ToolsEnabled and
+ *     itself read the owner's actual permission level -- "ToolsEnabled and
  *     native tools" instead of the fixture's "ToolsEnabled only" -- even
  *     though it "passed", which is contamination succeeding quietly rather
  *     than a suite that never needed isolation).
@@ -46,15 +46,27 @@ import { isMainThread } from 'node:worker_threads'
 import { fileURLToPath } from 'node:url'
 import { canonicalRootForTests } from '../../canonical-root.mjs'
 import { parseGateFixtureContract, prepareRetainedGateFixture } from './retained-gate-fixture-root.mjs'
-import { prepareRetainedSourceFixture } from './source-fixture-root.mjs'
+// Keep this import on ONE line: retained-gate-fixture-root.test.mjs sandboxes this
+// module by stripping imports with a per-line regex (/^import[^\n]*\n/gm).
+import { prepareRetainedSourceFixture, removeFixtureOnExit, sourceFixtureParent } from './source-fixture-root.mjs'
 
 if (isMainThread) {
   const gateContract = parseGateFixtureContract(process.env)
   const strictFixture = process.env.TOOLSENABLED_TEST_STRICT === '1'
     ? gateContract
-      ? prepareRetainedGateFixture({ ...gateContract, accountHome: os.userInfo().homedir })
+      // The fixture boundary is the source fixture parent (OS temp, or a
+      // caller-supplied parent), NOT the account home: see the note in
+      // source-fixture-root.mjs. Nothing may be minted in the profile root.
+      ? prepareRetainedGateFixture({ ...gateContract, accountHome: sourceFixtureParent() })
       : prepareRetainedSourceFixture()
     : null
+  // prepareRetainedSourceFixture registers its own removal; a gate slot has no
+  // such owner, so register one the moment it exists. Everything below can
+  // still throw (canonicalRootForTests with no MC_CANONICAL_ROOT, a full disk),
+  // and a slot registered only at the end was left behind on that path. Both
+  // strict branches now clean up on success and on failure - retention is for
+  // the run, not forever.
+  if (strictFixture?.ownership) removeFixtureOnExit(strictFixture.root)
   const root = strictFixture?.root || fs.mkdtempSync(path.join(os.tmpdir(), 'te-test-isolated-root-'))
   if (strictFixture) Object.assign(process.env, strictFixture.environment)
   const localAppData = path.join(root, 'local-app-data')
@@ -98,6 +110,6 @@ if (isMainThread) {
         appRoot: process.env.IMAGE_APP_ROOT, canonicalRoot: engineRoot, node: process.execPath }
     console.log('RETAINED_SOURCE_FIXTURE ' + JSON.stringify(signal))
   } else {
-    process.once('exit', () => { try { fs.rmSync(root, { recursive: true, force: true }) } catch { /* best-effort scratch cleanup */ } })
+    removeFixtureOnExit(root)
   }
 }

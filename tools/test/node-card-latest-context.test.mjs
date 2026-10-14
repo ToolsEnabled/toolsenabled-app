@@ -33,7 +33,7 @@ test('compact output keeps the latest bounded excerpt and marks truncation', () 
 
 test('a truncated excerpt opens on a whole word, not wherever the character budget ran out', () => {
   // Reader-visible behaviour, called with values -- never a spelling of the
-  // slice. The defect this guards was measured on the person's own
+  // slice. Manager 4 measured the defect this guards on the person's own
   // card: a hard character cut opened mid-word ("…ders await the grouped
   // admission path"). Fixed-width "abcd " tokens make the expected cut point
   // arithmetic, not eyeballed: 200 tokens (1000 chars) + a 6-char "LATEST"

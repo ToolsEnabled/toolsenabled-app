@@ -143,17 +143,6 @@ const OUTCOME_REASON_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
 
 /* T393. THE MEASURED REASON, KEPT BESIDE THE CODE.
  *
- * WHY. The agent host raises one code, AGENT_ACCOUNT_RECOVERY_NO_ALTERNATE,
- * from branches that mean opposite things: "Account selection is
- * unavailable; no replacement was started." (the resolver is not wired) and
- * "No other eligible account is available for this program." (the resolver
- * ran and measured a refusal), and a third that forwards the resolver's own
- * sentence. The record kept the code alone, so 45 such rows on the owner's
- * computer cannot say whether account selection was absent or present and
- * correctly refusing -- the one distinction that decides whether there is a
- * bug. The same is true of AGENT_RESOURCE_PRESSURE, whose sentence now names
- * CPU, a loop stall or an unreadable sample and the figures measured.
- *
  * THE SAME GUARANTEE AS `reason`, KEPT STRUCTURALLY. A detail is admitted
  * only if it cannot be a path or an address: no backslash, no slash, no
  * tilde, no at-sign, no control characters, at most OUTCOME_DETAIL_MAX_CHARS.
@@ -257,6 +246,17 @@ const USAGE_STRING_FIELDS = Object.freeze([
      (src/orchestration-controls.js) rather than a fourth copy of that table
      living here. */
   ['tier', /^[a-z][a-z0-9-]{0,63}$/],
+  /* THE MODEL NAME THE PERSON TYPED, when the turn ran on one (1.0.50 review
+     CM-4). A typed name starts on its provider's default row, so `tier` alone
+     signed every such turn under that row's name. The name is kept exactly,
+     under the same rule `account` states below: never a backslash, forward
+     slash or colon, no control or format character, at most 64 characters, so
+     this label still cannot spell a path. A typed name outside that shape is
+     not recorded; `modelChoice` still says a typed name was used, and Metrics
+     reads "Other model" rather than the default row's name. Both are null on
+     every row that ran on a model row, and on every row written before them. */
+  ['model', /^(?=.*[\p{L}\p{N}])(?!\s)[^\\/:\p{C}]{1,64}(?<!\s)$/u],
+  ['modelChoice', /^typed$/],
   /* WHICH SIGN-IN SERVED, by the name the person gave it. A name, never a
      credential -- the same value startSession() already reports back.
      THE SHAPE IS THE REGISTRY'S OWN, NOT A NARROWER COPY OF IT.
@@ -288,9 +288,9 @@ const USAGE_STRING_FIELDS = Object.freeze([
   ['basis', /^(turn|session-total)$/],
   /* WHETHER `inputTokens` ALREADY CONTAINS THE CACHED READING, which the two
      engines answer differently and neither says out loud.
-     MEASURED across a development usage ledger: codex reports
-     `cachedInputTokens` as a SUBSET of `inputTokens` -- every row carrying a
-     total satisfies total === input + output -- while the Claude CLI reports
+     MEASURED 2026-09-03 across the owner's 488-row usage ledger: codex reports
+     `cachedInputTokens` as a SUBSET of `inputTokens` -- all 85 rows carrying a
+     total satisfy total === input + output -- while the Claude CLI reports
      Anthropic's `cache_read_input_tokens` BESIDE `input_tokens`, which counts
      only the uncached remainder: 6 against 64,647 on a real claude-sonnet turn.
      A reader that added the cache to a codex reading would double its input; one
@@ -303,10 +303,10 @@ const USAGE_STRING_FIELDS = Object.freeze([
   /* WHY THE TURN ENDED BADLY, IN THE PROVIDER'S OWN WORDS -- the one field here
      that is a sentence rather than a label, and the reason it had to become a
      recorded fact.
-     MEASURED on a development install: a run of claude-fable turns are rows
-     in this ledger reading status:"error" with inputTokens 0 and outputTokens
-     0, while claude-opus and claude-sonnet recorded successes in the same
-     window on the same install.
+     MEASURED 2026-09-03 on the owner's computer: every claude-fable turn from
+     01:49:05Z on is a row in this ledger reading status:"error" with
+     inputTokens 0 and outputTokens 0, five in a row, while claude-opus recorded
+     160 successes and claude-sonnet 13 in the same window on the same install.
      The engine HAD the reason -- claude-cli-adapter.js#handleResult puts a
      refused turn's one human sentence on `turn_completed.text`, and the CLI's
      own is "There's an issue with the selected model (…). It may not exist or

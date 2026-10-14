@@ -2,7 +2,7 @@
 //
 // WHAT SHIPPED, AND WAS READ OFF THE PACKAGED WINDOW. public/data/purchase-catalog.json
 // is the operator's own shopping list for launching this product -- 37 items, internal
-// repo paths, internal request ids, second-person deliberations addressed to them, and a
+// repo paths, internal request ids, second-person deliberations addressed to him, and a
 // written admission that the installer is unsigned. vite copies public/** into dist/,
 // package.json build.files ships "dist/**", and #/checkout was an unconditional stop on
 // the navigation ring. So every installer carried it and one click back from home opened

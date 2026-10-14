@@ -1,6 +1,6 @@
 /* THE MODEL'S OWN WORKING, SHOWN -- AND NEVER MISTAKEN FOR THE ANSWER.
  *
- * Lane: thinking-visible. The model's thinking is to be shown, and
+ * Lane: thinking-visible. The owner wants the model's thinking shown, and
  * engine/src/lib/agent-engine/claude-cli-adapter.js now forwards it as its
  * own `thinking` event type rather than dropping it or folding it into
  * assistant speech (engine-contract.js's EVENT_TYPES, landed 2026-09-03; the

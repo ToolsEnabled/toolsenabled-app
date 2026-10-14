@@ -37,7 +37,7 @@ for (const file of required) {
 
 test('the existing test:data invocation discovers every required maintenance suite', () => {
   const { scripts } = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
-  /* Since an earlier commit the default leaf is tools/run-data-tests.mjs, which expands
+  /* Since 435db7db the default leaf is tools/run-data-tests.mjs, which expands
      the package glob itself and runs every selected suite in its own process
      under the isolation preload (the T542 source only through its two
      wrappers). The runner's own --print-selection is asked what it would run. */

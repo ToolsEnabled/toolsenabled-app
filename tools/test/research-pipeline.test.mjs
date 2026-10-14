@@ -30,7 +30,7 @@ test('surfaces × models × efforts become conditions the study accepts', () => 
   if (spec.analysisPlan?.contrasts) spec.analysisPlan.contrasts = []
   if (spec.observationPlan?.overrides) spec.observationPlan.overrides = {}
   assert.doesNotThrow(() => validateStudy(spec), 'the frozen study accepts the generated command conditions')
-  assert.deepEqual(normalizePipelineDraft({ rows: [{ surface: 'ghost', model: 'x', efforts: ['max'] }, { surface: 'codex-cli', model: ' m ', efforts: ['max', 'ultra'], noask: 'yes' }] }).rows, [{ surface: 'codex-cli', model: 'm', executable: '', efforts: ['max'], noask: false, tools: '' }])
+  assert.deepEqual(normalizePipelineDraft({ rows: [{ surface: 'ghost', model: 'x', efforts: ['max'] }, { surface: 'codex-cli', model: ' m ', efforts: ['max', 'ultra'], noask: 'yes' }] }).rows, [{ surface: 'codex-cli', model: ' m ', executable: '', efforts: ['max'], noask: false, tools: '' }])
 })
 
 test('the harness uses the schedule timeout and ignores retired instruction settings', () => {
@@ -68,7 +68,7 @@ test('judges: the person sets how many, each model and effort and its prompt; on
   assert.deepEqual(JSON.parse(files['harness/surfaces.json']).judges, config.judges, 'each judge and its full prompt reach the harness')
   assert.match(files['harness/README.md'], /Judges: judge-1 \(codex-cli, gpt-5\.6-sol, high\); judge-2 \(claude-cli, claude-sonnet-5, low\)/)
   const normalized = normalizePipelineDraft({ judges: [{ surface: 'ghost' }, { surface: 'gemini-cli', model: ' m ', effort: 'ultra', prompt: 'p'.repeat(30000) }] }).judges
-  assert.equal(normalized.length, 1); assert.equal(normalized[0].model, 'm'); assert.equal(normalized[0].effort, 'medium'); assert.equal(normalized[0].prompt.length, 20000)
+  assert.equal(normalized.length, 1); assert.equal(normalized[0].model, ' m '); assert.equal(normalized[0].effort, 'medium'); assert.equal(normalized[0].prompt.length, 20000)
   assert.deepEqual(normalizePipelineDraft({ rows: [] }).judges, [], 'a draft saved before judges existed opens with none')
 })
 
@@ -97,7 +97,7 @@ async function project(t) {
   const current = { ...settings(), shapeTest: false, envAllowlist: ['PATH', 'SystemRoot', 'windir', 'FAKE_REPLY_FILE'] }
   const generated = generatePipeline(draft, current)
   for (const [path, contents] of Object.entries(generated.files)) { await mkdir(join(root, 'harness'), { recursive: true }); await writeFile(join(root, path), contents) }
-  const run = (script, args, input, extraEnv = {}) => spawnSync(process.execPath, [resolve(root, script), ...args], { cwd: root, input, encoding: 'utf8', env: { ...process.env, FAKE_REPLY_FILE: reply, ...extraEnv }, timeout: 120000, windowsHide: true })
+  const run = (script, args, input, extraEnv = {}) => spawnSync(process.execPath, [resolve(root, script), ...args], { cwd: root, input, encoding: 'utf8', env: { ...process.env, ANTHROPIC_API_KEY: 'test-only-anthropic-key', OPENAI_API_KEY: 'test-only-openai-key', GEMINI_API_KEY: 'test-only-gemini-key', FAKE_REPLY_FILE: reply, ...extraEnv }, timeout: 120000, windowsHide: true })
   return { root, reply, generated, run }
 }
 const request = { version: 1, projectSha256: 'a'.repeat(64), trial: { id: 't1', taskId: 'task-1', conditionId: 'claude-claude-sonnet-5-low', replicate: 1 }, attempt: 1, prompt: 'Buy SPY when its close crosses above its 100-day SMA.', input: null, model: { provider: 'anthropic', id: 'claude-sonnet-5' } }

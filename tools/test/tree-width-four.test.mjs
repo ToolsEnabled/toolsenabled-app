@@ -99,7 +99,7 @@ test('a parent holds four reusable child slots and refuses a fifth addition or m
   assert.deepEqual({ ...TREE_BOUNDS }, { maxChildren: 4, maxDepth: 3, maxEmptyTrees: 1 })
 })
 
-/* A tree as a live install saved it while the cap was eight:
+/* A tree as the owner's LIVE install saved it while the cap was eight:
    a controller, a manager with `running` live children plus two finished
    ones, and a second manager with room. The children sit at depth two, so
    one more level is still legal under each of them. */
@@ -181,8 +181,8 @@ for (const running of [8, 14]) {
   })
 }
 
-/* THE ONE EXEMPTION, AND HOW NARROW IT IS. Loops and grids do not need to be
-   tied together or to any of this. A research grid
+/* THE ONE EXEMPTION, AND HOW NARROW IT IS. The owner, 2026-09-11: "loops and
+   grids dont even need to be tied together or to any of this". A research grid
    run locally builds its own tree and marks it `kind: 'experiment'` when it
    mints it; that tree seats the engine's eight under one parent, as every tree
    did before the agent-tree width fell to four. The mark is an explicit field,

@@ -23,8 +23,8 @@ import { latestNodeResponse } from '../../src/node-card-context.js'
  * Measured 2026-08-13 on the installed 1.0.7: a tree-started agent ran on a
  * live codex app-server child, the engine answered, and the tree page rendered
  * none of it -- no onEvent subscription, no reply surface, status frozen on
- * "starting". That state was reported as agents not responding, which was
- * right about everything a person can see.
+ * "starting". The owner's words for that state were "the agents dont respond",
+ * and he was right about everything a person can see.
  *
  * These are source-shape guards in the same spirit as the fleet-trees suite:
  * each one pins the specific absence that produced that state, so it cannot
@@ -134,7 +134,7 @@ test('the reply is delivered once per turn, never once per token', () => {
   /* A turn that ends without a
      turn_completed packet still said something, and until 2026-08-18 those
      words were silently carried into the next turn instead of being filed --
-     messages merging into each other. settleTurnBoundary files them once,
+     the owner's "combine into each other". settleTurnBoundary files them once,
      when the engine names a different turn. A child-exit packet is a separate
      terminal path: it files the words plus the honest ended sentence exactly
      once before retiring the dead session. A confirmed Stop can also settle
@@ -231,8 +231,8 @@ test('the rail renders the said panel from the copy module, for sessions only', 
 })
 
 test('the chip is a context window, never a telemetry card, for tree nodes', () => {
-  /* The chip showed nothing useful, and it is a context window.
-     The emptiness was deterministic: chat hardcoded null,
+  /* Owner, 2026-08-13: "I dont see anything just nonsense. Its supposed to be
+     a context window." The nonsense was deterministic: chat hardcoded null,
      statusNote cleared on success, so every successful run printed "nothing
      has run for this agent yet" under "telemetry unavailable". These pin the
      repair's three load-bearing pieces. */

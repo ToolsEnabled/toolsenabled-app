@@ -26,6 +26,7 @@ const ARTIFACT_COMPONENTS = Object.freeze([
   'adapters/artifact-archive.mjs', 'adapters/artifact-deb.mjs',
   'adapters/artifact-layout.mjs', 'adapters/artifact-native-runtime.mjs', 'adapters/artifact-capability.mjs', 'adapters/artifact-dependencies.mjs',
   'adapters/artifact-standalone-policy.mjs', 'adapters/artifact-privacy.mjs', 'transport/owned-job.mjs',
+  'transport/owned-job-files.mjs', 'transport/owned-execution-admission.mjs',
   'transport/registered-toolchain.mjs', 'transport/linux-toolchain.mjs', 'transport/linux-owned-job.mjs', 'transport/linux-git-toolchain.mjs', 'transport/linux-elf-inputs.mjs', 'transport/linux-xz-toolchain.mjs',
 ].sort());
 const HARNESS_COMPONENTS = Object.freeze([...ARTIFACT_COMPONENTS, 'release-readiness.mjs'].sort());
@@ -33,7 +34,7 @@ const EXECUTING_LAYOUTS = new Set(['release-readiness', 'tools/lib', 'software/t
 // Bind the loaded module generation as well as the bytes later seen in Git.
 // A clean commit made after imports cannot silently replace executing code.
 const LOADED_COMPONENTS = Object.fromEntries(HARNESS_COMPONENTS.map(name => [name, measureFile(path.join(BUNDLE, name))]));
-// Independently measured bytes of 7-Zip 24.08 x64. A caller cannot
+// Independently measured on this workspace, 7-Zip 24.08 x64. A caller cannot
 // replace the decoder or turn its own tool hash into an approval. Capture the
 // fixed current-owner cache selection at module load, just like the registered
 // Node selection. A partial or changed cache refuses instead of falling back
@@ -41,18 +42,18 @@ const LOADED_COMPONENTS = Object.fromEntries(HARNESS_COMPONENTS.map(name => [nam
 const OWNER_EXTRACTOR_ROOT = path.join(os.userInfo().homedir, 'AppData', 'Local',
   'ToolsEnabledQualification', 'tools', '7zip-24.08-x64');
 const OWNER_EXTRACTOR_SELECTED = ['7z.exe', '7z.dll'].some(name => fs.existsSync(path.join(OWNER_EXTRACTOR_ROOT, name)));
-const EXTRACTOR_ROOT = OWNER_EXTRACTOR_SELECTED ? OWNER_EXTRACTOR_ROOT : 'C:\\Program Files\\7-Zip';
+const EXTRACTOR_ROOT = OWNER_EXTRACTOR_SELECTED ? OWNER_EXTRACTOR_ROOT : '\x43:\\Program Files\\7-Zip';
 export const APPROVED_EXTRACTOR = Object.freeze({
   executable: path.join(EXTRACTOR_ROOT, '7z.exe'), sha256: '707f415d7d581edd9bce99a0429ad4629d3be0316c329e8b9ebd576f7ab50b71',
   library: path.join(EXTRACTOR_ROOT, '7z.dll'), librarySha256: 'e79ddfb6319dbf9bac6382035d23597dad979db5e71a605d81a61ee817c1e812',
 });
 // Explicit reviewed source bytes, with both ordinary Git LF and CRLF checkout
 // forms registered. Do not derive approval from the candidate's current hash.
-// An earlier owner-data change adds repeated-separator leak detection; a later
-// one excuses identity-profile matches only when they lie wholly inside one exact,
+// Owner-data 6412f58e adds repeated-separator leak detection; owner-data 1fd56f8f
+// excuses identity-profile matches only when they lie wholly inside one exact,
 // case-sensitive shipped help sentence (built-in rules are never excused);
-// an earlier license change checks every resolved production package instance instead
-// of a hoisted copy; an earlier renderer-payload change adds a third classification,
+// license 2b36a900 checks every resolved production package instance instead
+// of a hoisted copy; renderer-payload 2f883204 adds a third classification,
 // `withheld`, enforced exactly like `operator` -- read with the same validator,
 // refused if the group is absent, refused if a path is classified both ways --
 // so a product asset this release does not ship is kept out of public/, dist/
@@ -61,17 +62,20 @@ export const APPROVED_EXTRACTOR = Object.freeze({
 // All four scripts import only Node built-ins. Source/config/license closure,
 // installed dependency notices and the private identity profile are measured
 // separately before/after their actual execution.
-// A later owner-data change includes the reviewed T334 machine-derived workspace
+// Owner-data 02e365fb includes the reviewed T334 machine-derived workspace
 // spellings and self-check, private pattern labels, and whole-word matching
-// for derived names. 1.0.48 candidate 5 adds the seven shape rules, the
-// stock-Electron exemption for those seven only (files byte-identical
+// for derived names. 1.0.48 candidate 5 adds the seven shape rules (security
+// lane), the stock-Electron exemption for those seven only (files byte-identical
 // to node_modules/electron/dist), the id rule's digit-or-capital requirement,
 // and one count per value where a profile hit lies inside a built-in hit.
+// 1.0.50 reviews two retained changes: owner-data d3e1cf07f stops reading the
+// managed profile's role folders as private identities (real identities still
+// match), and payload-boundary 9b08d2559 no longer skips .git or node_modules.
 const CHECKS = Object.freeze([
-  ['tools/check-no-owner-data.mjs', ['4b4332bfc0059876c5945e46e97486c86f71bbd99dae86370b06641abee12faf', 'baa51fdb6d476f9e9a316da7df36128efe0968077a7758a8abd03241d0c66072']],
-  ['tools/check-license-notices.mjs', ['9f1cfb2b8e96a15053a229d75826b9deb10614a609d07fc23eafc733bf4a534a', 'dd43e29796ffba7f069b6faf06d0d2857800f0db4f60d252a26f75b6bb88a885']],
-  ['tools/check-renderer-payload.mjs', ['007646acbf86f69437b38f17d7baef89c353113426ab77e7be28f14984c26b9f', 'cd4a588b9dc3344668659d5d712a8777e95d7a08ada786c63bb8383cc1167d0e']],
-  ['tools/check-payload-boundary.mjs', ['59b8be5985b507d90d4b8ff07617034a8d7b243762cbc883a65c708f96305ed6', '06814413e2054cf1aa3df62e9bca38530a497a43e94133af67d7df7fce433caa']],
+  ['tools/check-no-owner-data.mjs', ['c0171b76d3143c8eda9b3bb2e203e5b46347ca237857756bdca99e57799d16ab', '54b3f23dd03b74a24c952372c83b2e4c6b3e7ceb8378b2826a9f6209f2944fa5']],
+  ['tools/check-license-notices.mjs', ['a8c1ab532a06628df7a8f888ffa594861d0623741ba20857b475425eaaf03e4b', 'cf85d5f9a54c010194640db72260e24b8496fc80950c97df80f9adacf8f02c71']],
+  ['tools/check-renderer-payload.mjs', ['13b06fb1c689afd6882c556675ac4ec9a630f190ee81ced57400602b9286a93c', 'dd230da688f9956713a16c5de40e2ffc3d25be715d47013430f2794330b15565']],
+  ['tools/check-payload-boundary.mjs', ['97c71960d0917e014c352060c5bba4dd516c5f95e0b59b25d240cd565867ef88', '98bfcda54d492619bf9c558f2b3e33c55c9e964a34026e7b22de4bbe9298340b']],
 ]);
 const matches = (left, right) => left?.bytes === right?.bytes && left?.sha256?.toLowerCase() === right?.sha256?.toLowerCase();
 function checkAbort(signal) { if (signal?.aborted) { const error = new Error('artifact qualification cancelled'); error.name = 'AbortError'; throw error; } }

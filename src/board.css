@@ -1,6 +1,6 @@
 @import "./role-studio.css";
 /* ============================================================
-   BOARD — the folded whiteboard page
+   BOARD — the folded whiteboard page (lane C2)
 
    The rail's dblclick target stops being "a second stats panel" and
    becomes the board from the sketch: a role-coloured agent title with a
@@ -19,12 +19,12 @@
 /* ------------------------------------------------------------
    1 · type + contrast floor, board only
 
-   The Runtime Statistics page is deliberately NOT touched here: the
-   site-wide type floor in styles.css has already brought that
-   page up to it. This sheet only lifts the rail chrome that the floor keeps at its
-   11px uppercase micro-label tier, which this board must carry at
+   The Runtime Statistics page is deliberately NOT touched here: lane C4
+   owns the site-wide type floor in styles.css and has already brought that
+   page up to it. This sheet only lifts the rail chrome that C4 keeps at its
+   11px uppercase micro-label tier, which this lane's board must carry at
    12.5px, and pulls the board's rail chrome from --ink-25 to --ink-2 — both
-   scoped to .board-page, so the stats page keeps the floor's calibration exactly.
+   scoped to .board-page, so the stats page keeps C4's calibration exactly.
    ------------------------------------------------------------ */
 .board-page .rail-title { font-size: 12.5px; letter-spacing: 0.15em; color: var(--ink-2); }
 .board-page .rail-back { color: var(--ink-2); }
@@ -85,9 +85,9 @@
    The base rule uppercases and letterspaces `.ar` (styles.css) — right for a
    role word, wrong for anything a person typed, and this override restated
    size, tracking, colour and weight while silently leaving the caps in
-   force. The person's brief was therefore painted as a 60-character
-   letterspaced capital sentence in a 240px column, which alone made it
-   unreadable. */
+   force. The owner's brief was therefore painted as a 60-character
+   letterspaced capital sentence in a 240px column: most of "an ugly
+   unreadable mess" on its own. */
 .board-page .agent-head .ar {
   margin-top: 3px;
   font-size: 12.5px;
@@ -135,7 +135,7 @@
   /* ink-mix, not white-alpha: the old gradient rode --wa, and dark themes
      set --wa to 0.075 — the fill resolved to ~4% white, five stacked boxes
      read as five hairlines around identical grey text (iteration 6:
-     Details was unreadable). Mixing the theme's own ink gives the
+     Details "completely unreadable"). Mixing the theme's own ink gives the
      same quiet lift on every theme: darker-on-light, lighter-on-dark. */
   background: color-mix(in oklab, var(--ink) 4%, transparent);
   box-shadow:
@@ -424,8 +424,8 @@
 }
 
 /* ------------------------------------------------------------
-   10 · the rail chat — the chatbox sits under runtime in that
-   panel again
+   10 · the rail chat — owner: "under runtime in that panel should
+   be the chatbox again"
 
    The shared buildChat component (components.js) drops in unchanged —
    .chat-* classes are shared with the graph chips and the agent page, so
@@ -481,7 +481,7 @@
 
    During the stats ⇄ board crossfade both rail pages paint in the same
    rect, and two half-opacity VALUES landing on the same spot read as one
-   struck-through value (a reported screenshot on Tan: "80%" with another
+   struck-through value (the owner's tan screenshot: "80%" with another
    glyph through it). Labels and structure may blend — that is what a
    crossfade is — but a number that can be misread as data must never
    blend with another number. The instant a page starts leaving, its
@@ -502,8 +502,8 @@
 
    These replace the three "Tuning" sliders. Those sliders were inert — the
    whole click handler wrote a formatted string into the span beside them —
-   and that class of defect is named directly: never claim a control, such
-   as temperature, that cannot actually be set. So this section styles two new kinds of thing that
+   and the owner named that class of defect directly: "dont lie like we cant
+   control temperature". So this section styles two new kinds of thing that
    the rail never had to draw before:
 
      · a control whose real effect is printed under it (.ctl-argv), because a
@@ -617,7 +617,8 @@
 .board-page .team-row span { color: var(--ink-2); overflow-wrap: anywhere; }
 /* Phase is carried in a data attribute, not a colour alone: the roster has to
    be readable when the status colour is the only thing distinguishing rows. */
-.board-page .team-row[data-phase="refused"] b { color: var(--danger, var(--ink)); }
+.board-page .team-row[data-phase="refused"] b,
+.board-page .team-row[data-phase="turn-failed"] b { color: var(--danger, var(--ink)); }
 
 .board-page .ctl-dispatch,
 .computers .stats-page .ctl-dispatch { margin-top: 12px; display: grid; gap: 6px; }
@@ -920,7 +921,7 @@
   font-size: 12.5px; color: var(--ink-2);
   /* A long role name + nowrap claim chip + the kind column overflowed the
      rail sideways, and .rail-scroll's overflow-y:auto silently computes
-     overflow-x to auto — the horizontal scrollbar in a reported screenshot.
+     overflow-x to auto — the horizontal scrollbar in the owner's screenshot.
      Rows WRAP instead; nothing in a rail may scroll sideways. */
   flex-wrap: wrap;
   min-width: 0;
@@ -1014,7 +1015,7 @@ body[data-route="computers"]:has(.computers[data-live-mode="simulated"])
 
 /* AND ON A LIVE BOARD WITH REAL NODES ON IT. The rule above assumed a live
    board could only be showing absent projection data, where the notice earns
-   its place. Measured on a live board: it was full
+   its place. Measured 2026-08-13 (owner screenshot): the live board was full
    of the person's OWN agents — a real session, a real reply — under a banner
    asserting "some screens show example data", which read as the product
    calling its own real work fake. A populated live board is the person's own
@@ -1059,7 +1060,7 @@ body:has([data-agent-compose])
    scroller — hidden scrollbar, edge fades — so the seg keeps its NATURAL
    width and slides. No inner scroller here, ever: a horizontal scrollbar
    inside the seg's fixed 32px box had nowhere to live and rendered as the
-   squashed glitch strip (found in a walkthrough). Buttons keep a
+   squashed glitch strip (owner walkthrough, iteration 5). Buttons keep a
    readable ellipsised slice of their tree's name and snap into view. */
 .graph-bar-trees .graph-tree-switch {
   flex: none;
@@ -1098,8 +1099,7 @@ body:has([data-agent-compose])
    its controls remain reachable without shrinking the message window. */
 .computers .ctl-page.board-page .rail-chat-body { overflow-y: auto; overflow-x: hidden; }
 .computers .ctl-page.board-page .rail-chat-host .chat-log { min-height: 150px; }
-/* Account retries (an earlier commit) sit under the chat as one quiet block that keeps its own height. */
-.account-retry-controls { flex: none; display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--line); }
+/* Account retries (d839fa41) sit under the chat as one quiet block that keeps its own height. */
 /* Saved pages share the rail's height with the live chat. Only the archive
    entries scroll; its toggle and paging controls remain reachable. */
 .node-transcript-history { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; max-height: 45%; overflow: hidden; border-top: 1px solid var(--line-2); }
@@ -1147,3 +1147,32 @@ body:has([data-agent-compose])
 .computers .rail-page .profile-remove {
   margin-left: auto; height: 24px; padding: 0 9px; font-size: 11.5px;
 }
+
+/* Computers rail and conversations share the page's neutral surfaces. */
+.computers:not(.home-agent-workspace) .board-page .board-box {
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg-surface); box-shadow: none;
+}
+.computers:not(.home-agent-workspace) .board-page .rail-group-body > .board-box { border: 0; background: transparent; box-shadow: none; }
+.computers:not(.home-agent-workspace) .board-page .rail-group-body > .board-box + .board-box { border-top: 1px solid var(--line); }
+.computers:not(.home-agent-workspace) .board-page :is(.board-box-h, .rail-group-name .bh-t) { font: 620 13.5px/1.4 var(--font-ui); letter-spacing: 0; text-transform: none; }
+.computers:not(.home-agent-workspace) .board-page .rail-scroll { mask-image: none; -webkit-mask-image: none; }
+.computers:not(.home-agent-workspace) .board-page .agent-head .an { font: 620 17px/1.4 var(--font-ui); color: var(--ink); }
+.computers:not(.home-agent-workspace) .board-page .agent-head .role-dot { background: var(--role); box-shadow: none; }
+.computers:not(.home-agent-workspace) .board-page :is(.ctl-select, .ctl-num) { min-height: 32px; border-color: var(--field-border); border-radius: 6px; background: var(--bg-surface); font: 450 13.5px/1.4 var(--font-ui); }
+.computers:not(.home-agent-workspace) .board-page :is(.ctl-btn, .rail-tabs > button) { min-height: 28px; font: 550 13.5px/1.4 var(--font-ui); box-shadow: none; }
+.computers:not(.home-agent-workspace) .board-page :is(button, select, input, textarea, summary):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* The owner's 3px chat corners apply to actual Computers conversations too. */
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] { --chat-measure: 760px; border-radius: 3px; background: var(--bg-surface); }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] .chat-log .msg { font-size: 14.5px; line-height: 1.7; }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] .chat-log .msg.them { width: 100%; max-width: 760px; }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] .chat-log .msg.me { background: var(--bg-subtle); max-width: min(88%, 760px); border-radius: 3px; }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] .chat-message-body { font-size: inherit; }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] .chat-ai-disclosure { text-align: center; color: var(--ink-3); font: 450 12px/1.4 var(--font-ui); }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] :is(.chat-compose-surface, .chat-action-run, .chat-action, .chat-context, .msg.thinking, .chat-approval, [data-chat-diff-card]) { border-radius: 3px; box-shadow: none; }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] .chat-compose-surface { border: 1px solid var(--field-border); background: var(--bg-surface); }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] .chat-compose-surface:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; box-shadow: none; }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] .chat-input textarea { font: 450 14.5px/1.5 var(--font-ui); border-radius: 3px; }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] .chat-input .chat-send { height: 32px; min-height: 32px; width: 32px; border-radius: 3px; }
+.computers:not(.home-agent-workspace) .chat[data-chat-panel] :is(button, select, textarea, input):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

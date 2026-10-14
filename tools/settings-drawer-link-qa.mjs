@@ -167,7 +167,7 @@ async function main() {
       virginRoute !== null, virginRoute ? `route=${virginRoute}` : 'the notice showed on no ring stop')
     /* WHERE THE OVERLAP IS NOW MEASURED. The two boxes used to be compared on
        the SETTINGS route, and that premise has since been made false on purpose
-       -- see the check below. The reported overlap is a property of
+       -- see the check below. The overlap the owner reported is a property of
        the notice and the drawer's link, not of any one route, so it is measured
        on the route where the notice genuinely paints. */
     const virginNoticeRect = virginRoute
@@ -201,11 +201,11 @@ async function main() {
      * route with the drawer closed" and "the two really do occupy the same
      * corner". Both were PREMISE checks: they established the overlap this file
      * exists to be about, on the route it was first reported from. src/settings.css
-     * now suppresses the notice on that route outright (an earlier commit) --
+     * now suppresses the notice on that route outright (2047fd2) --
      * `body[data-route="settings"] .fleet-profile-notice { display: none }` --
      * for the reason written beside the rule: the notice's own href points at
      * #/settings, so on that route "it is a nag standing on its own destination",
-     * and a screenshot showed it painting semi-transparently over the
+     * and the owner's screenshot showed it painting semi-transparently over the
      * System section's "Your account" row and swallowing that row's clicks.
      *
      * So the premise is now measured where it is still true (the virgin route

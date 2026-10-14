@@ -1,7 +1,7 @@
 /* AN IMAGE FILE COPIED IN EXPLORER IS STILL AN IMAGE THE PERSON PASTED.
  *
- * The second silent path in the paste feature, traced from source: when a
- * person copies
+ * The second silent path in the paste feature, traced by Controller 2 from
+ * source (REPORT-DH-C-paste-image-20260907.md section 0d): when a person copies
  * a picture in File Explorer and presses Ctrl+V in the composer, the clipboard
  * carries a DataTransferItem of kind 'file' whose `type` is NOT `image/...`
  * (Explorer supplies a file descriptor, not a bitmap). The composer's listener
@@ -60,7 +60,7 @@ function mount(onPasteAttachment) {
     onSend: async () => {},
     onPasteAttachment: async (data, mime) => {
       calls.push({ data, mime })
-      return onPasteAttachment ? onPasteAttachment(data, mime) : { ok: true, path: `C:\\scratch\\${calls.length}.png`, size: 3 }
+      return onPasteAttachment ? onPasteAttachment(data, mime) : { ok: true, path: `\x43:\\scratch\\${calls.length}.png`, size: 3 }
     },
   })
   return { root, input: root.querySelector('.chat-input textarea'), calls }

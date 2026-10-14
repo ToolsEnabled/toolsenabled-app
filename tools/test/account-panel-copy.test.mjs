@@ -289,7 +289,7 @@ test('the account calls are on the bridge, and the login arrows are the recorded
      window loginStart() opens, with the listed account's folder set as the
      program's home -- not a second sign-in path. */
   assert.match(body, /accountSwitch: request => ipcRenderer\.invoke\('mc-accounts:switch', request\)/)
-  assert.match(body, /accountPolicy: request => ipcRenderer\.invoke\('mc-accounts:policy', request\)/)
+
   assert.match(body, /accountUsage: \(\) => ipcRenderer\.invoke\('mc-accounts:usage'\)/)
   assert.match(body, /accountAddManaged: request => ipcRenderer\.invoke\('mc-accounts:add-managed', request\)/)
   assert.match(body, /accountSignIn: request => ipcRenderer\.invoke\('mc-accounts:sign-in', request\)/)
@@ -310,7 +310,7 @@ test('every account channel opens with the sender check', () => {
   const source = readFileSync(MAIN, 'utf8')
   for (const channel of [
     'mc-accounts:list', 'mc-accounts:add', 'mc-accounts:remove',
-    'mc-accounts:policy', 'mc-accounts:switch', 'mc-accounts:usage',
+    'mc-accounts:switch', 'mc-accounts:usage',
     'mc-accounts:add-managed', 'mc-accounts:sign-in', 'mc-accounts:add-cloud',
   ]) {
     const at = source.indexOf(`ipcMain.handle('${channel}'`)
@@ -321,7 +321,7 @@ test('every account channel opens with the sender check', () => {
   /* And every one that takes a payload bounds it: the allowed keys are named
      and every string is length-checked before anything reads it. */
   for (const [channel, keys] of [
-    ['mc-accounts:policy', "[\n      'selectionMode', 'reservePercent', 'rankWindow',\n      'autoRecoverOnLimit',\n      'exhaustedAtPercentHourly', 'exhaustedAtPercentWeekly',\n      'provider'\n    ]"],
+
     ['mc-accounts:switch', "['name', 'provider']"],
     ['mc-accounts:add-managed', "['provider', 'name', 'client']"],
     ['mc-accounts:sign-in', "['name', 'provider']"],
@@ -331,7 +331,7 @@ test('every account channel opens with the sender check', () => {
     assert.ok(handler.includes(`agentPayload(value, ${keys})`), `${channel} does not bound its payload to ${keys}`)
     assert.match(handler, /boundedAgentString\(/, `${channel} reads a string without bounding it`)
     if (channel === 'mc-accounts:add-managed') {
-      // an earlier commit: an Antigravity account names its client; that key is bounded like the others.
+      // 9b52925a: an Antigravity account names its client; that key is bounded like the others.
       assert.match(handler, /boundedAgentString\(payload\.client, 'client', 32\)/, `${channel} reads its client without bounding it`)
     }
   }
@@ -341,70 +341,13 @@ test('every account channel opens with the sender check', () => {
    Electron, opening a provider window or writing a real account registry. The
    sender and store seams record admission order; the production allowlist and
    request construction run unchanged. */
-function policyChannelFixture() {
-  const source = readFileSync(MAIN, 'utf8')
-  const from = source.indexOf("ipcMain.handle('mc-accounts:policy'")
-  const until = source.indexOf("ipcMain.handle('mc-accounts:switch'", from)
-  assert.ok(from >= 0 && until > from)
-  const helpers = source.slice(source.indexOf('function agentIpcError('), source.indexOf('function parseAgentStart('))
-  const accountAnswer = source.slice(source.indexOf('function accountAnswer('), source.indexOf('/* WHICH ACCOUNT THIS COMPUTER PICKS'))
-  assert.ok(helpers && accountAnswer)
-  const trusted = {}
-  const calls = []
-  let handler
-  const context = {
-    ipcMain: { handle(channel, callback) {
-      assert.equal(channel, 'mc-accounts:policy')
-      handler = callback
-    } },
-    assertTrustedAgentSender(event) {
-      calls.push({ kind: 'sender' })
-      if (event !== trusted) throw Object.assign(new Error('untrusted sender'), { code: 'TEST_UNTRUSTED_SENDER' })
-    },
-    accountRegistry: { setPolicy(request) {
-      calls.push({ kind: 'store', request: { ...request } })
-      return { ok: true }
-    } },
-    agentHost: { offerPendingAccountRecoveries() { calls.push({ kind: 'offer-recovery' }) } },
-  }
-  vm.runInNewContext(`${helpers}\n${accountAnswer}\n${source.slice(from, until)}`, context, { filename: MAIN })
-  assert.equal(typeof handler, 'function')
-  return { trusted, calls, handler }
-}
 
-test('the policy channel carries the existing explicit recovery option without inventing consent', () => {
-  for (const request of [{ autoRecoverOnLimit: true }, { autoRecoverOnLimit: false }, {}]) {
-    const { handler, trusted, calls } = policyChannelFixture()
-    assert.deepEqual(handler(trusted, request), { ok: true })
-    assert.deepEqual(calls.filter(call => call.kind === 'store').map(call => call.request), [request])
-    assert.equal(calls.filter(call => call.kind === 'offer-recovery').length, request.autoRecoverOnLimit === true ? 1 : 0)
-    assert.equal(calls[0].kind, 'sender')
-  }
-})
 
-test('the policy channel still refuses unknown fields and oversized strings before the store', () => {
-  for (const request of [
-    { autoRecoverOnLimit: true, unrecognized: 'field' },
-    { provider: 'x'.repeat(33) },
-    { selectionMode: 'x'.repeat(33) },
-    { rankWindow: 'x'.repeat(17) },
-    null, [], 'not-an-object',
-  ]) {
-    const { handler, trusted, calls } = policyChannelFixture()
-    assert.throws(() => handler(trusted, request), error =>
-      error.code === 'MC_AGENT_INVALID_PAYLOAD' && error.message === 'MC_AGENT_INVALID_PAYLOAD')
-    assert.deepEqual(calls.map(call => call.kind), ['sender'])
-  }
-})
 
-test('an untrusted policy sender is refused before reading any payload property', () => {
-  const { handler, calls } = policyChannelFixture()
-  let read = false
-  const request = { get autoRecoverOnLimit() { read = true; throw new Error('payload read') } }
-  assert.throws(() => handler({}, request), error => error.code === 'TEST_UNTRUSTED_SENDER')
-  assert.equal(read, false)
-  assert.deepEqual(calls.map(call => call.kind), ['sender'])
-})
+
+
+
+
 
 /* ------------------------------------------------------------------
    5. The sign-in button's words and wiring, added for the first
@@ -466,7 +409,7 @@ test('the guide draws the button from this module, gated and hidden until proven
   for (const program of ['Codex', 'Claude', 'Gemini']) {
     assert.ok(markup.includes(`data-signin-program="${program}" hidden`), `${program}'s sign-in slot no longer starts hidden`)
   }
-  /* ALL THREE, and that is the product rule in one line.
+  /* ALL THREE, and that is the owner's instruction of 2026-08-22 in one line.
      It was codex and claude while the sign-in was a hidden child, because
      gemini has no sign-in subcommand for a hidden child to run. It is a
      terminal window now, and gemini's sign-in is simply running the program --
@@ -489,7 +432,7 @@ test('every login channel opens with the sender check', () => {
      because a hidden sign-in gave them nowhere else to see it. The sign-in has
      a window of its own now: the program prints its line there and opens the
      browser itself. A second route to the same page from this side would be
-     the ruled-out two-paths-for-one-thing, and it would put a
+     the two-paths-for-one-thing the owner ruled out, and it would put a
      shell-captured URL back into a renderer's reach for no gain at all. */
   assert.equal(source.indexOf("ipcMain.handle('mc-provider-login:open-url'"), -1,
     'the open-the-page channel came back; the sign-in window already opens it')
@@ -517,14 +460,14 @@ for (const kind of ['windows-terminal', 'command-prompt']) {
     child.unref = () => {}
     const context = terminalOpenerFixture(() => child)
     const { createProviderLoginService } = require(path.join(REPO, 'shell', 'provider-login.cjs'))
-    const files = new Set(['c:/windows/system32/cmd.exe', 'c:/tools/codex.exe',
-      ...(kind === 'windows-terminal' ? ['c:/local/microsoft/windowsapps/wt.exe'] : [])])
+    const files = new Set(['\x63:/windows/system32/cmd.exe', '\x63:/apps/codex.exe',
+      ...(kind === 'windows-terminal' ? ['\x63:/local/microsoft/windowsapps/wt.exe'] : [])])
     const statSync = file => {
       if (files.has(String(file).replace(/\\/g, '/').toLowerCase())) return { isFile: () => true }
       throw Object.assign(new Error('missing fixture executable'), { code: 'ENOENT' })
     }
     const service = createProviderLoginService({ platform: 'win32',
-      env: { SystemRoot: 'C:/Windows', LOCALAPPDATA: 'C:/local', PATH: 'C:/tools', PATHEXT: '.EXE' },
+      env: { SystemRoot: '\x43:/Windows', LOCALAPPDATA: '\x43:/local', PATH: '\x43:/apps', PATHEXT: '.EXE' },
       statSync, lstatSync: statSync, spawnHidden: () => assert.fail('No provider execution'),
       providerSpawnRefused: () => false, openTerminal: context.openTerminalWindow,
     })
@@ -656,15 +599,15 @@ test('the sign-in terminal keeps provider output private and only GNOME client d
   /* Spread, because an array built in the other context has that context's
      Array prototype and strict deep-equal compares prototypes. */
   const built = (...args) => [...context.consoleWindowArgs(...args)]
-  const CMD = 'C:\\Windows\\System32\\cmd.exe'
+  const CMD = '\x43:\\Windows\\System32\\cmd.exe'
   assert.deepEqual(
-    built(CMD, ['/k', 'echo', 'codex', 'login', '&&', 'set', 'CODEX_HOME=C:\\h\\a&&', 'codex', 'login']),
-    ['/c', 'start', '', CMD, '/k', 'echo', 'codex', 'login', '^&^&', 'set', 'CODEX_HOME=C:\\h\\a^&^&', 'codex', 'login'],
+    built(CMD, ['/k', 'echo', 'codex', 'login', '&&', 'set', 'CODEX_HOME=\x43:\\h\\a&&', 'codex', 'login']),
+    ['/c', 'start', '', CMD, '/k', 'echo', 'codex', 'login', '^&^&', 'set', 'CODEX_HOME=\x43:\\h\\a^&^&', 'codex', 'login'],
     'a bare && was not escaped for the outer cmd',
   )
   assert.deepEqual(
-    built(CMD, ['/k', 'echo', 'codex', 'login', '&&', 'set', 'CODEX_HOME=C:\\a b\\x', '&&', 'codex', 'login']),
-    ['/c', 'start', '', CMD, '/k', 'echo', 'codex', 'login', '^&^&', 'set', 'CODEX_HOME=C:\\a b\\x', '^&^&', 'codex', 'login'],
+    built(CMD, ['/k', 'echo', 'codex', 'login', '&&', 'set', 'CODEX_HOME=\x43:\\a b\\x', '&&', 'codex', 'login']),
+    ['/c', 'start', '', CMD, '/k', 'echo', 'codex', 'login', '^&^&', 'set', 'CODEX_HOME=\x43:\\a b\\x', '^&^&', 'codex', 'login'],
     'a word libuv quotes was touched, or the && beside it was not escaped',
   )
   assert.deepEqual(built(CMD, ['/k', 'a|b', 'c^d', 'e<f>g']), ['/c', 'start', '', CMD, '/k', 'a^|b', 'c^^d', 'e^<f^>g'])
@@ -802,14 +745,14 @@ test('each Remove button says which account it removes', () => {
   assert.equal(typeof ACCOUNT_PANEL.removeAccount, 'function',
     'there is no per-account name for the Remove button, so every row announces the same word')
 
-  const team = ACCOUNT_PANEL.removeAccount('team')
+  const school = ACCOUNT_PANEL.removeAccount('school')
   const personal = ACCOUNT_PANEL.removeAccount('personal')
 
-  assert.match(team, /team/, 'the accessible name does not say which account it removes')
-  assert.notEqual(team, personal,
+  assert.match(school, /school/, 'the accessible name does not say which account it removes')
+  assert.notEqual(school, personal,
     'two accounts produce the same accessible name, which is the defect this guards')
-  assert.ok(team.startsWith(ACCOUNT_PANEL.remove),
-    `the accessible name must begin with the visible label "${ACCOUNT_PANEL.remove}" so voice control still matches it, got ${JSON.stringify(team)}`)
+  assert.ok(school.startsWith(ACCOUNT_PANEL.remove),
+    `the accessible name must begin with the visible label "${ACCOUNT_PANEL.remove}" so voice control still matches it, got ${JSON.stringify(school)}`)
 
   /* WIRED, not merely available. This module has a standing habit of holding
      correct copy that no renderer ever reaches, so the button itself is checked
@@ -823,4 +766,77 @@ test('each Remove button says which account it removes', () => {
     'the remove button does not build its accessible name from the account it removes')
   assert.match(button, /ACCOUNT_PANEL\.remove\b/,
     'the remove button lost its visible label')
+})
+
+/* 1.0.50 REVIEW, ACCOUNTS G. For a folder Accounts made, Remove also deletes the
+   sign-in saved there (credentialDestroyed). Settings used to say the sign-in
+   stays whatever happened; it now follows the receipt. */
+test('a removal that deleted the sign-in Accounts made says so in Settings', async () => {
+  const { ACCOUNT_PANEL } = await import('../../src/account-panel-copy.js')
+  assert.match(ACCOUNT_PANEL.removeDeletedSignIn, /deleted the sign-in saved in the folder Accounts made for it/)
+  assert.doesNotMatch(ACCOUNT_PANEL.removeDeletedSignIn, /sign-in inside it, stay/)
+  const guide = readFileSync(new URL('../../src/this-computer-settings.js', import.meta.url), 'utf8')
+  assert.match(guide, /gone\.credentialDestroyed === true \? ACCOUNT_PANEL\.removeDeletedSignIn : ACCOUNT_PANEL\.removeScope/,
+    'the Settings removal no longer chooses its sentence from the receipt')
+})
+
+/* 1.0.50 REVIEW-1050 #13. Accounts G warns before Remove deletes a sign-in Accounts made, but only in the accounts
+   menu: Settings' Remove deleted it on the first press. Settings' Remove is now armed by one press, which says what
+   a removal can delete, and done by the next, like the accounts menu's. The real paintAccounts runs here against a
+   DOM stand-in. */
+test('Settings Remove is armed by one press and done by the next', async () => {
+  const { installDomStandIn } = await import('./lib/dom-stand-in.mjs')
+  const { declaredFunctionSource } = await import('./lib/declared-function-source.mjs')
+  const { ACCOUNT_PANEL, accountPanelCopy } = await import('../../src/account-panel-copy.js')
+  const dom = installDomStandIn({})
+  const source = readFileSync(new URL('../../src/this-computer-settings.js', import.meta.url), 'utf8')
+  const removals = [], timers = []
+  let refills = 0
+  const bridge = {
+    accountAdd: async () => ({ ok: true }),
+    accountRemove: async request => { removals.push(request); return { ok: true, removed: true, credentialDestroyed: true } },
+  }
+  const controlState = ({ enabled, why }) => Object.freeze({ enabled, disabled: !enabled, why })
+  const esc = value => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const paintAccounts = new Function('window', 'controlState', 'ACCOUNT_PANEL', 'accountPanelCopy', 'currentDataSource', 'esc',
+    'readerSentence', 'machineSentence', 'fillAccounts', 'setTimeout',
+    `${declaredFunctionSource(source, 'accountRowMarkup')}\n${declaredFunctionSource(source, 'paintAccounts')}\nreturn paintAccounts`)(
+    { mcProviders: bridge }, controlState, ACCOUNT_PANEL, accountPanelCopy, () => 'local', esc, s => s, s => s,
+    async () => { refills++ }, (run, ms) => { timers.push({ run, ms }); return timers.length })
+  const settle = async () => { for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve)) }
+  const panel = dom.document.createElement('div')
+  panel.dataset.accountsProvider = 'codex'
+  panel.dataset.accountsProgram = 'Codex'
+  dom.document.body.append(panel)
+  const paint = () => paintAccounts(dom.document.body, panel, { ok: true, active: null,
+    accounts: [{ name: 'work', provider: 'codex', directory: 'fixture-folder', signedIn: 'yes' }] })
+  try {
+    paint()
+    let button = panel.querySelector('[data-account-remove]')
+    const out = panel.querySelector('[data-account-out]')
+    button.click()
+    await settle()
+    assert.equal(removals.length, 0, 'the first press removed the account with no warning')
+    assert.equal(button.textContent, ACCOUNT_PANEL.removeArmed)
+    assert.equal(button.getAttribute('aria-label'), ACCOUNT_PANEL.removeAccountArmed('work'))
+    assert.equal(out.textContent, ACCOUNT_PANEL.removeArmedNote)
+    assert.match(ACCOUNT_PANEL.removeArmedNote, /deletes the sign-in/)
+    // Left armed, it disarms on its own.
+    assert.equal(timers.length, 1)
+    timers[0].run()
+    assert.equal(button.textContent, ACCOUNT_PANEL.remove)
+    assert.equal(button.getAttribute('aria-label'), ACCOUNT_PANEL.removeAccount('work'))
+    button.click()
+    await settle()
+    assert.equal(removals.length, 0, 'a disarmed button needs its first press again')
+    button.click()
+    await settle()
+    assert.deepEqual(removals, [{ name: 'work', provider: 'codex' }])
+    assert.equal(out.textContent, ACCOUNT_PANEL.removeDeletedSignIn)
+    assert.equal(refills, 1)
+    // A redrawn panel starts unarmed.
+    paint()
+    button = panel.querySelector('[data-account-remove]')
+    assert.equal(button.textContent, ACCOUNT_PANEL.remove)
+  } finally { dom.restore() }
 })

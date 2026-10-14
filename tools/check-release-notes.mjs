@@ -429,7 +429,7 @@ export function checkReleaseNotes({ text, expectedVersion, platforms = [], sourc
     }
   }
 
-  /* ToolsEnabled, Inc. is the publisher (confirmed; the Windows
+  /* ToolsEnabled, Inc. is the publisher (owner, 2026-09-25: "its the Inc. one"; the Windows
    * code-signing identity is the validated ToolsEnabled, Inc.). A note that still calls it
    * "in formation" contradicts the signed installer it ships beside. Read over the flattened
    * document so a qualifier wrapped onto the next line is still caught. */

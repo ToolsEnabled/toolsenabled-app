@@ -38,10 +38,12 @@ font choices. Font licenses are included in THIRD-PARTY-LICENSES.md.
 The broader chat regression run exposed two inherited fixture errors:
 `chat-agent-bridge-gated.test.mjs` has no `process` in its preload VM, and
 `chat-pending-start-reason.test.mjs` has no `mockSource` in its extracted-function
-VM. Both reproduce at the original an earlier commit base and after integration.
+VM. Both reproduce at the original `4826597c` base and after integration.
 The full-suite input preflight also requires the gitignored capability payload
 and private build configuration absent from this isolated worktree. No full
 release or packaged-installer qualification is claimed.
 
 Local screenshots, browser assertions, baseline comparisons, and test/build
-logs were retained with the review.
+logs are in `/home/redacted-profile/page1-chat-appearance-20260908/evidence`. Representative
+screenshots are `chat-ember-1440-1.png`, `chat-cobalt-1440-1.png`,
+`chat-cobalt-320-1.png`, `live-chat-cobalt.png`, and `appearance-cobalt.png`.

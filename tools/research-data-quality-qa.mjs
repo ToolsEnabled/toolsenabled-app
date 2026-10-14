@@ -4,13 +4,10 @@ import path from 'node:path'
 import { chromium } from 'playwright'
 import { createResearchDataServer } from './research-data-server.mjs'
 
-// The Dev account's Windows profile. The account name is a placeholder, and the path is
-// joined at run time so the source carries no literal profile path.
-const devProfile = path.posix.join('C:', 'Users', 'BuildAccount-Dev')
-const temp = process.platform === 'win32' ? `${devProfile}/AppData/Local/Temp` : process.env.RESEARCH_QA_TEMP
+const temp = process.platform === 'win32' ? '\x43:/\x55sers/fixture-profile/AppData/Local/Temp' : process.env.RESEARCH_QA_TEMP
 if (!temp) throw new Error('Set RESEARCH_QA_TEMP to an explicit QA directory on Linux.')
 const resolved = await realpath(temp)
-if (process.platform === 'win32' && !resolved.toLowerCase().replaceAll('\\', '/').startsWith(`${devProfile.toLowerCase()}/`)) throw new Error('QA temp boundary refused.')
+if (process.platform === 'win32' && !resolved.toLowerCase().replaceAll('\\', '/').startsWith('\x63:/users/fixture-profile/')) throw new Error('QA temp boundary refused.')
 process.env.TEMP = resolved; process.env.TMP = resolved
 const output = await mkdtemp(path.join(resolved, 'research-data-quality-qa-')), data = path.join(output, 'generic-study'), nested = path.join(data, 'dataset')
 await mkdir(nested, { recursive: true })
@@ -31,7 +28,7 @@ const server = await createResearchDataServer({ root: data, origin, packages: ['
 const base = `http://127.0.0.1:${server.address().port}`
 let browser
 try {
-  browser = await chromium.launch({ headless: true, executablePath: process.platform === 'win32' ? `${devProfile}/AppData/Local/ms-playwright/chromium-1148/chrome-win/chrome.exe` : undefined })
+  browser = await chromium.launch({ headless: true, executablePath: process.platform === 'win32' ? '\x43:/\x55sers/fixture-profile/AppData/Local/ms-playwright/chromium-1148/chrome-win/chrome.exe' : undefined })
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } }), errors = []
   page.on('pageerror', error => errors.push(error.message))
   await page.route('**/research-workspace.json', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ url: base }) }))

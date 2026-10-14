@@ -26,13 +26,33 @@ export function mountAccessibilityControls({ available = () => true } = {}) {
   consent.setAttribute('aria-label', 'Accessibility confirmation')
   consent.innerHTML = `<h2>Confirm accessibility request</h2>
       <p data-accessibility-preview role="status"></p><p data-accessibility-code></p>
-      <button type="button" data-accessibility-confirm>Confirm this exact request</button>
-      <button type="button" data-accessibility-reject>Reject request</button>
+      <div class="accessibility-confirmation-actions">
+        <button type="button" data-accessibility-confirm>Confirm this exact request</button>
+        <button type="button" data-accessibility-reject>Reject request</button>
+        <button type="button" data-accessibility-pending-stop>Stop Accessibility</button>
+      </div>
       <p data-accessibility-error role="alert"></p>`
   const get = name => root.querySelector('[data-accessibility-' + name + ']') || consent.querySelector('[data-accessibility-' + name + ']')
-  let state = null, destroyed = false
+  let state = null, destroyed = false, returnFocus = null, pendingHadFocus = false
+  const canFocus = node => node?.isConnected && !node.disabled && !node.closest('[hidden]') && node.getClientRects().length > 0
+  function restoreFocus() {
+    const destination = [returnFocus, get('stop'), get('summary')].find(canFocus)
+    returnFocus = null
+    if (destination) destination.focus()
+    else {
+      const hadTabindex = document.body.hasAttribute('tabindex')
+      if (!hadTabindex) document.body.setAttribute('tabindex', '-1')
+      document.body.focus()
+      if (!hadTabindex) document.body.removeAttribute('tabindex')
+    }
+  }
   function render(value) {
     if (destroyed) return
+    const wasPending = Boolean(state?.pending)
+    if (consent.contains(document.activeElement)) pendingHadFocus = true
+    else if (document.activeElement !== document.body) pendingHadFocus = false
+    const closingWithFocus = wasPending && !value.pending && (consent.contains(document.activeElement)
+      || (pendingHadFocus && document.activeElement === document.body))
     state = value
     const active = value.enabled === true
     const supported = new Set((value.scopes || [{ id: 'application', supported: true }]).filter(scope => scope.supported === true).map(scope => scope.id))
@@ -57,6 +77,12 @@ export function mountAccessibilityControls({ available = () => true } = {}) {
       get('preview').textContent = value.pending.summary
       get('code').textContent = 'Say “confirm action ' + value.pending.confirmationCode + '”, or “reject action”.'
     } else { get('preview').textContent = ''; get('code').textContent = ''; get('error').textContent = '' }
+    if (!wasPending && value.pending) {
+      returnFocus = document.activeElement
+      get('reject').focus()
+    } else if (closingWithFocus) restoreFocus()
+    else if (!value.pending) returnFocus = null
+    if (!value.pending) pendingHadFocus = false
   }
   async function run(fn) {
     try {
@@ -92,6 +118,7 @@ export function mountAccessibilityControls({ available = () => true } = {}) {
   })
   get('reject').addEventListener('click', () => void run(() => api.reject()))
   get('stop').addEventListener('click', () => void run(() => api.disable()))
+  get('pending-stop').addEventListener('click', () => void run(() => api.disable()))
   root.addEventListener('toggle', () => { if (root.open) void refresh() })
   const detach = api.onEvent(render)
   document.body.append(consent)

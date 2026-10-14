@@ -1,6 +1,6 @@
 /* THE TWO CONTROLS ON THE FIRST SETTINGS PAGE, AND THE BOX THEY GOVERN.
  *
- * Two things are required: choose which agents' context appears in the
+ * The owner asked for two things: choose which agents' context appears in the
  * chat box, and choose whether agent runs appear there too, not at all, or on
  * their own. This file is what stops either of them quietly becoming decoration.
  *
@@ -642,7 +642,7 @@ test('the composer is never enabled by the carrier alone, only by the switch as 
     'and the box says which switch it is waiting on')
 })
 
-test('both controls offer exactly the named states', () => {
+test('both controls offer exactly the states the owner named', () => {
   assert.deepEqual(RUNS_MODES.map(mode => mode.id), ['with', 'hidden', 'only'])
   assert.deepEqual(AGENT_MODES.map(mode => mode.id), ['all', 'chosen'])
   for (const mode of [...RUNS_MODES, ...AGENT_MODES]) {

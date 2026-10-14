@@ -1,7 +1,7 @@
 // Three CSS rules describe ONE card box, and they must not disagree about how
 // tall it is before layout has painted --tree-preview-height.
 //
-// Measured 2026-09-09 at an earlier commit: `.chip-preview`'s max-height fell back to
+// Measured 2026-09-09 at 6909208e: `.chip-preview`'s max-height fell back to
 // 196px while the chip's own height and `.chip-preview`'s own height rule both
 // fell back to 160px -- a 36px disagreement about the same box. Nothing had
 // ever compared them, because each rule reads correctly on its own; the defect

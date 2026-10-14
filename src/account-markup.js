@@ -38,15 +38,17 @@ import {
   accountScopeNotice,
 } from './account-state.js'
 import {
-  BACKUP_NOTICE,
+  backupNotice,
   DELETE_BUTTON,
   DELETE_CANCEL_BUTTON,
   DELETE_CLOSE_BUTTON,
   DELETE_CONFIRM_BUTTON,
   NO_BRIDGE_DETAIL,
   NO_BRIDGE_TITLE,
-  RESET_LEAD,
-  RESET_TITLE,
+  resetComputer,
+  resetLead,
+  resetMeasuring,
+  resetTitle,
   signOutLimits,
   RESET_SUBJECT_HERE,
   outcomeLines,
@@ -63,8 +65,8 @@ export const esc = value => String(value ?? '')
 
 /* A SECTION ON THIS SCREEN IS A HEADING AND ITS OWN LIST.
  *
- * The settings nesting was messy; each section is its own list instead of one
- * long list. MEASURED on a
+ * "the settings nestings are messy and could be nested better. And each section
+ * should be a seperate list instead of one long list" (owner). MEASURED on a
  * real 1002x650 window before this existed: the signed-in screen was ONE
  * `.settings-section-rows` holding ten rows and no heading at all, 962px of it,
  * with "Change password", "Sign out" and "Remove this program's data from this
@@ -308,15 +310,16 @@ export function unavailableMarkup({ state = null, reset = {}, busy = false, noti
   const statusUnavailable = state?.code === 'HOSTED_ACCOUNT_STATUS_UNAVAILABLE'
   /* T1520: A DAMAGED ACCOUNT FILE NAMES ITSELF AND OFFERS A NARROW WAY BACK.
      The only action here used to be removing all of this program's data. */
-  const damagedStore = state?.code === 'ACCOUNT_STORE_CORRUPT' || state?.code === 'ACCOUNT_STORE_UNREADABLE'
+  const conflictingStore = state?.code === 'ACCOUNT_STORE_CONFLICT'
+  const damagedStore = conflictingStore || state?.code === 'ACCOUNT_STORE_CORRUPT' || state?.code === 'ACCOUNT_STORE_UNREADABLE'
   return `<h1 class="setup-title">${esc(ACCOUNT_QUESTION)}</h1>
     ${notice ? statusMarkup({ notice }) : ''}
     <div class="fleet-profile-status is-serious" role="alert">
-      <strong>${statusUnavailable ? 'Account status is temporarily unavailable. Press Retry status to check again.' : damagedStore ? 'The account file on this computer is damaged, so its sign-ins are unavailable.' : 'There is no account on this page to sign in to.'}</strong>
+      <strong>${statusUnavailable ? 'Account status is temporarily unavailable. Press Retry status to check again.' : conflictingStore ? 'The account files conflict, so their sign-ins are unavailable.' : damagedStore ? 'The account file on this computer is damaged, so its sign-ins are unavailable.' : 'There is no account on this page to sign in to.'}</strong>
       <span>${esc(state?.reason || 'The application did not say why.')}</span>
     </div>
-    ${damagedStore ? `<div class="settings-desc" data-account-damaged>Your settings, history and agents are kept. Set the damaged account file aside to create an account or sign in again; it is kept beside the new one, unchanged. Local accounts that were in it are not moved over.</div>
-    <div class="account-notice-actions"><button type="button" class="ctl-btn" data-account-set-aside${busy ? ' disabled' : ''}>${busy ? 'Setting it aside…' : 'Set the damaged account file aside'}</button></div>` : ''}
+    ${damagedStore ? `<div class="settings-desc" data-account-damaged>${conflictingStore ? 'Your settings, history and agents are kept. Set both conflicting account files aside to start fresh. Both lists are kept unchanged; none of their accounts are chosen or transferred to the new list. You can then create an account or sign in again.' : 'Your settings, history and agents are kept. Set the damaged account file aside to create an account or sign in again; it is kept beside the new one, unchanged. Local accounts that were in it are not moved over.'}</div>
+    <div class="account-notice-actions"><button type="button" class="ctl-btn" data-account-set-aside${busy ? ' disabled' : ''}>${busy ? 'Setting aside…' : conflictingStore ? 'Set both conflicting account files aside' : 'Set the damaged account file aside'}</button></div>` : ''}
     ${statusUnavailable ? `<div class="account-notice-actions"><button type="button" class="ctl-btn" data-account-status-retry${busy ? ' disabled' : ''}>${busy ? 'Checking status…' : 'Retry status'}</button></div>` : ''}
     <!-- THE WAY OUT SURVIVES THE WAY IN BEING BROKEN. A copy that cannot open
          its account store is exactly when somebody wants their data off this
@@ -366,7 +369,7 @@ function dateText(atMs) {
  * THE CARD. Three states, never two. "On file", "attached but this
  * installation's vault does not hold it", and "could not check" are different
  * facts and the middle one is REAL on this machine. Collapsing any of them into
- * "no card on file" would be the product making a claim about their money that it
+ * "no card on file" would be the product making a claim about his money that it
  * did not verify.
  *
  * NOTHING RENDERED HERE IS A CARD DETAIL. The only payment value in scope is the
@@ -381,8 +384,8 @@ function dateText(atMs) {
  * tools/test/product-account-surface.test.mjs reads the RENDERED markup and
  * caught it, which is the guard doing its job.
  *
- * THE SUBSCRIPTION ROW IS GONE, not merely unrendered. The app does not
- * advertise subscriptions. A markup function that
+ * THE SUBSCRIPTION ROW IS GONE, not merely unrendered. Owner, 2026-08-26:
+ * "i dont want to advertise subscriptions in the app." A markup function that
  * still returns a ready-made "Subscriptions coming soon" control is what the
  * next surface calls; leaving it here would have made the removal a decision
  * somebody could undo without reading the ruling. See src/views/home.js, which
@@ -423,10 +426,11 @@ export function cartMarkup({ cart = null } = {}) {
    *
    * WHY THE SENTENCE CHANGED. Unqualified, "Nothing is waiting to be bought" is
    * a claim about the reader's affairs, and this screen is not in a position to
-   * make it. Measured on a development install: the app's own store held no
-   * prompts while the engine's store held several, some of them shopping lists
-   * close to their expiry date. The row would have told them their money
-   * decisions were settled before some of them expired -- which is the exact failure the "not asked yet" state above
+   * make it. Measured on this machine while that sentence was being written: the
+   * app's own store held 0 prompts and the engine's store held 10, including 2
+   * shopping lists whose lines are denied by the calendar on 2026-08-18. The row
+   * would have told him his money decisions were settled six days before four of
+   * them expired -- which is the exact failure the "not asked yet" state above
    * exists to prevent, arriving through the other door.
    *
    * IT IS NOT A HEDGE AND IT IS NOT AN APOLOGY. For somebody with one copy it
@@ -453,8 +457,8 @@ export function cartMarkup({ cart = null } = {}) {
     ? `${esc(String(cart.cartCount))} list${cart.cartCount === 1 ? '' : 's'}, priced in more than one currency, so no single total is shown here.`
     : `${esc(String(cart.lineCount))} line${cart.lineCount === 1 ? '' : 's'} across ${esc(String(cart.cartCount))} list${cart.cartCount === 1 ? '' : 's'}, ${esc(cart.totalText)} if you approve every one.`
 
-  /* THE DATE, AND WHAT THE DATE DOES. Things waiting on a queue can be
-     refused by the calendar rather than by the person, and no surface in
+  /* THE DATE, AND WHAT THE DATE DOES. Four of the things waiting on his real
+     queue are refused by the calendar rather than by him, and no surface in
      this product said so until now. */
   const clock = cart.soonest === null ? '' : `<div class="settings-desc" data-account-cart-deadline>
         <strong>${esc(cart.soonest.deadline)}</strong> ${esc(cart.soonest.title)}${cart.soonest.deadlineDate ? ` — ${esc(cart.soonest.deadlineDate)}` : ''}
@@ -560,8 +564,8 @@ export function belongingsMarkup({ data = null, payment = null, history = null, 
   money.push(cartMarkup({ cart }))
 
   /* NO SUBSCRIPTION ROW. It used to sit here, next to the card. See the note in
-     the signed-out section above: by rule the product does not advertise
-     subscriptions, and a row under "Money" is the most advertising
+     the signed-out section above: the owner asked that the product stop
+     advertising subscriptions, and a row under "Money" is the most advertising
      placement there was. */
 
   /* "What is yours" first, because it is the section a person arrives on this
@@ -594,7 +598,7 @@ export function belongingsMarkup({ data = null, payment = null, history = null, 
  */
 export function shownAsMarkup({ state, busy = false } = {}) {
   /* SAID, NOT INFERRED. `displayName` falls back to the username in
-     src/account-state.js, so "Alex" and "alex_p" arrive here as the same kind
+     src/account-state.js, so "Example" and "josh_p" arrive here as the same kind
      of string and a screen that printed only the value would leave a person
      unable to tell whether they had ever chosen one. The two sentences differ
      so that the answer to "did I set this?" is on the screen. */
@@ -633,7 +637,7 @@ export function shownAsMarkup({ state, busy = false } = {}) {
  */
 export function resetMarkup({ reset = {}, busy = false, subject = reset.subject || RESET_SUBJECT_HERE, platform = reset.platform } = {}) {
   const phase = typeof reset.phase === 'string' ? reset.phase : 'idle'
-  const head = `<div class="settings-name">${esc(RESET_TITLE)}</div>`
+  const head = `<div class="settings-name">${esc(resetTitle({ subject }))}</div>`
 
   if (phase === 'unavailable') {
     return `<article class="settings-row" data-reset data-reset-phase="unavailable">
@@ -649,7 +653,7 @@ export function resetMarkup({ reset = {}, busy = false, subject = reset.subject 
       <div class="settings-copy">
         ${head}
         <div class="settings-desc">${phase === 'measuring'
-          ? 'Measuring what is on the computer you are driving right now. Nothing has been deleted.'
+          ? esc(resetMeasuring({ subject }))
           : 'Deleting. Leave this window open until it finishes — it says what was removed and what was not.'}</div>
       </div>
     </article>`
@@ -675,7 +679,7 @@ export function resetMarkup({ reset = {}, busy = false, subject = reset.subject 
        keeps the scanner's job easy, which is the right trade against a scanner
        whose false negatives cost a customer a machine code on their screen. */
     const monospace = value => `<code>${esc(value)}</code>`
-    const measured = planLines(plan).map(line => {
+    const measured = planLines(plan, { subject }).map(line => {
       const where = line.directory ? ` ${monospace(line.directory)}` : ''
       return `<div class="settings-desc" data-reset-line data-reset-tone="${line.tone}">
         <strong>${esc(line.title)}</strong> — ${esc(line.detail)}${where}
@@ -706,7 +710,7 @@ export function resetMarkup({ reset = {}, busy = false, subject = reset.subject 
         <div class="settings-name" data-reset-survives-head>What this does NOT delete</div>
         ${survives}
         ${conflicts}
-        <div class="settings-desc" data-reset-backup><strong>${esc(BACKUP_NOTICE)}</strong></div>
+        <div class="settings-desc" data-reset-backup><strong>${esc(backupNotice({ subject }))}</strong></div>
       </div>
       <div class="settings-control fleet-inline-control">
         <button type="button" class="ctl-btn" data-reset-cancel ${busy ? 'disabled' : ''}>${esc(DELETE_CANCEL_BUTTON)}</button>
@@ -719,7 +723,7 @@ export function resetMarkup({ reset = {}, busy = false, subject = reset.subject 
     const sweep = reset.sweep || { ran: false, complete: false, roots: [] }
     const outcome = outcomeLines(sweep, { subject, platform })
     const kept = (sweep.roots || []).filter(root => root.kept.length > 0).map(root => `<div class="settings-desc" data-reset-kept>
-        <strong>${esc(rootLabel(root.kind))}</strong> — still on the computer you are driving in <code>${esc(root.directory)}</code>: ${esc(root.kept.map(entry => entry.name).join(', '))}.
+        <strong>${esc(rootLabel(root.kind))}</strong> — still on ${esc(resetComputer(subject))} in <code>${esc(root.directory)}</code>: ${esc(root.kept.map(entry => entry.name).join(', '))}.
       </div>`).join('')
     return `<article class="settings-row" data-reset data-reset-phase="done" data-reset-outcome="${outcome.tone}">
       <div class="settings-copy">
@@ -739,7 +743,7 @@ export function resetMarkup({ reset = {}, busy = false, subject = reset.subject 
   return `<article class="settings-row" data-reset data-reset-phase="idle">
     <div class="settings-copy">
       ${head}
-      <div class="settings-desc">${esc(RESET_LEAD)}</div>
+      <div class="settings-desc">${esc(resetLead({ subject }))}</div>
     </div>
     <div class="settings-control fleet-inline-control">
       <button type="button" class="ctl-btn" data-reset-plan ${busy ? 'disabled' : ''}>${esc(DELETE_BUTTON)}</button>
@@ -765,6 +769,12 @@ export function resetMarkup({ reset = {}, busy = false, subject = reset.subject 
  * is the whole reason the rule above it is worth the 24px it costs.
  */
 export function signedInMarkup({ state, busy = false, notice = null, now = Date.now(), data = null, payment = null, history = null, cart = null, reset = {} } = {}) {
+  /* The reader the view worked out (B32): this computer at the desk, the
+     computer being driven over the relay. The Sign out and Change password
+     rows follow it, as the reset card beside them does (release-ops F8). */
+  const subject = reset.subject || RESET_SUBJECT_HERE
+  const computer = resetComputer(subject)
+  const fromComputer = computer === RESET_SUBJECT_HERE ? 'this computer' : 'that computer'
   const accountRow = `<article class="settings-row">
         <div class="settings-copy">
           <div class="settings-name">Account</div>
@@ -798,7 +808,7 @@ export function signedInMarkup({ state, busy = false, notice = null, now = Date.
     : `<article class="settings-row" data-account-signin-method="local">
         <div class="settings-copy">
           <div class="settings-name">Change password</div>
-          <div class="settings-desc">Changing it signs you out on the computer you are driving. Every other sign-in to this account ends too, including any that was copied off that computer.</div>
+          <div class="settings-desc">Changing it signs you out on ${esc(computer)}. Every other sign-in to this account ends too, including any that was copied off ${fromComputer}.</div>
         </div>
         <div class="settings-control fleet-inline-control">
           <button type="button" class="ctl-btn" data-account-mode="change-password" ${busy ? 'disabled' : ''}>Change password</button>
@@ -808,12 +818,12 @@ export function signedInMarkup({ state, busy = false, notice = null, now = Date.
   const signOutRow = `<article class="settings-row">
         <div class="settings-copy">
           <div class="settings-name">Sign out</div>
-          <div class="settings-desc">“Sign out” ends this sign-in on the computer you are driving. “Sign out everywhere” also refuses any saved sign-in taken from that computer earlier — use it if you think a copy of it exists.</div>
+          <div class="settings-desc">“Sign out” ends this sign-in on ${esc(computer)}. “Sign out everywhere” also refuses any saved sign-in taken from ${fromComputer} earlier — use it if you think a copy of it exists.</div>
           <!-- WHAT SIGNING OUT DOES NOT DO. Both buttons above are reversible and
                neither deletes anything, and until this line existed the screen
                left somebody to guess which -- next to a "delete everything" that
                is genuinely permanent, guessing is not acceptable. -->
-          <div class="settings-desc" data-account-sign-out-limits>${esc(signOutLimits(state.signInMethod))}</div>
+          <div class="settings-desc" data-account-sign-out-limits>${esc(signOutLimits(state.signInMethod, { subject }))}</div>
         </div>
         <div class="settings-control fleet-inline-control">
           <button type="button" class="ctl-btn" data-account-sign-out ${busy ? 'disabled' : ''}>${busy ? 'Working…' : 'Sign out'}</button>
@@ -1106,7 +1116,7 @@ export function setupAccountStepMarkup({
   actions = '',
   /* The same three-state Google option the account screen shows, rendered here
      too. A first-time customer meets sign-in in the WALKTHROUGH, so offering
-     only the password form here would leave the option that was asked for
+     only the password form here would leave the option the owner asked for
      invisible on the one run where it matters most. `null` is the honest
      "still checking" state, which is what a caller that has not asked yet
      should see. */

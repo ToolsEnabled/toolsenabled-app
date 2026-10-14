@@ -1,7 +1,7 @@
-// /checkout — the purchase list as a shop they walk through on their own time.
+// /checkout — the purchase list as a shop he walks through on his own time.
 //
-// A complete checkout where a person picks and chooses, inside ToolsEnabled,
-// actually working, following the site's theme.
+// The owner asked for "a complete checkout I can pick and choose", inside
+// ToolsEnabled, actually working, following the site's theme.
 //
 // WHOSE LIST THIS IS, AND WHY THE SCREEN IS NOT ALWAYS THERE.
 //
@@ -20,19 +20,19 @@
 //
 // WHERE "WORKING" ENDS, AND WHY THE SCREEN SAYS SO.
 //
-// Everything up to and including a durable, dated record of their decision is
+// Everything up to and including a durable, dated record of his decision is
 // real: the catalogue is read from the shipped data file, selection and both
 // totals are computed in exact minor units, the choices persist across a
-// relaunch, and confirming writes a record they can come back to. What this
+// relaunch, and confirming writes a record he can come back to. What this
 // screen cannot do is move money. There is no card on file, no merchant
 // integration, and no order anywhere to place. So it never uses the words
 // receipt, order or purchased about anything it has done, the confirm step
-// spells out what it does and does not do BEFORE they press it, and the
+// spells out what it does and does not do BEFORE he presses it, and the
 // button is captioned with its real effect.
 //
 // A shop UI that renders a cart and quietly does nothing would satisfy a
-// screenshot and fail them the first time they believed it. The two lists on the
-// review step exist so that they cannot form the wrong belief in the first
+// screenshot and fail him the first time he believed it. The two lists on the
+// review step exist so that he cannot form the wrong belief in the first
 // place.
 //
 // THE SPEND CAP IS SURFACED AT THE POINT OF CHOICE, NOT AT THE END.
@@ -100,19 +100,19 @@ function money(cents, currency) {
 /**
  * A one-word status marker for the collapsed row.
  *
- * WHY THE ROW COLLAPSED AT ALL. Measured on a long real list in the packaged
- * window: the shop step was about twenty screens tall, with a median row of
- * about 400px. The
- * requirement is to pick and choose from the whole list, cleanly and easily;
- * a page where one item fills the screen is a document with checkboxes
- * on it, not a shop. Every word of the reasoning is still here and none of
+ * WHY THE ROW COLLAPSED AT ALL. Measured on the owner's real 37-item list in
+ * the packaged window: the shop step was 16,106px tall in a 782px viewport --
+ * twenty and a half screens, a median row of 401px, a tallest row of 676px. He
+ * asked to "pick and choose" from "the whole list" and to have it "clean and
+ * easy"; a page where one item fills the screen is a document with checkboxes
+ * on it, not a shop. Every word of his own reasoning is still here and none of
  * it was cut -- it moved behind a per-row disclosure, and the disclosure is
  * open the moment a choice needs it.
  *
  * A CHIP IS NOT A SUBSTITUTE FOR THE REASON. A blocked line keeps its full
- * band, and gets it whether they ask for it or not: choosing a blocked line
+ * band, and gets it whether he asks for it or not: choosing a blocked line
  * opens that row's details, so the sentence explaining why it cannot be bought
- * arrives at the instant of choosing rather than sitting 400px below a fold they
+ * arrives at the instant of choosing rather than sitting 400px below a fold he
  * would have to go looking for.
  */
 function chip(tone, label) {
@@ -151,7 +151,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
   let store = null
   let step = 'shop'
   // per-item live handles, so a toggle repaints three nodes instead of
-  // rebuilding the list under the owner's cursor and losing their scroll
+  // rebuilding the list under the owner's cursor and losing his scroll
   const itemViews = new Map()
   const groupViews = new Map()
   let shopSection = null
@@ -189,7 +189,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
     // explaining where the range came from is reasoning and folds away with the
     // rest of the reasoning. Left inline, the basis on one unpriced line ran to
     // eight lines of type and made that row three times the height of the
-    // priced ones around it -- the tallest row on the page was an item they
+    // priced ones around it -- the tallest row on the page was an item he
     // cannot even choose.
     let estimateBasis = null
     if (item.estimate) {
@@ -201,7 +201,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
       estimateBasis = node('p', 'checkout-item-note', `Where that estimate comes from: ${item.estimate.basis}`)
     }
 
-    // The callout asked for by name: vendors advertise a cheap first
+    // The callout the owner asked for by name: vendors advertise a cheap first
     // year and renew at several times it, so wherever the two differ the
     // difference is stated in figures rather than implied.
     if (item.renewalDiffers) {
@@ -218,7 +218,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
       column.append(renewal)
     } else if (item.cadence === 'monthly' && item.firstYearCents !== null && item.firstYearCents > 0) {
       // Zero times twelve is still zero, and a boxed warning that a free thing
-      // costs nothing over a year is a warning they learn to skip past on the
+      // costs nothing over a year is a warning he learns to skip past on the
       // rows where it says something.
       const yearly = node('div', 'checkout-price-renewal')
       yearly.append(
@@ -303,7 +303,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
     if (chips.childElementCount > 0) title.append(chips)
 
     // The one-line pitch. The full sentence is still in the details below; this
-    // is the line that has to let them tell one shelf item from the next while
+    // is the line that has to let him tell one shelf item from the next while
     // scrolling, so it is clamped by the stylesheet rather than trimmed here --
     // trimming in JavaScript would put an ellipsis into the accessible name too.
     main.append(node('p', 'checkout-item-summary', item.whatItIs))
@@ -337,9 +337,9 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
     }
     // The spend cap, on the line it applies to. Shown on a blocked line too:
     // the cap is a fact about the AMOUNT, and "this will also be refused for
-    // being over the cap" is exactly what they need to know before the blocker
-    // clears and they try to buy it. Only the do-not-buy group is exempt,
-    // because arguing about the spend cap on something they should not buy at
+    // being over the cap" is exactly what he needs to know before the blocker
+    // clears and he tries to buy it. Only the do-not-buy group is exempt,
+    // because arguing about the spend cap on something he should not buy at
     // all is noise on top of a settled answer.
     if (overCap) {
       bands.append(band('warn', 'Over the spend cap', [
@@ -363,7 +363,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
     if (verifiedNote) details.append(verifiedNote)
 
     // The disclosure. It names what is behind it -- "Details" alone would not
-    // tell them that their own words for wanting this are down there -- and it
+    // tell him that his own words for wanting this are down there -- and it
     // says how many warnings are folded away, because a fold that hides a
     // caution without counting it is the absence this screen exists to refuse.
     const disclose = node('button', 'checkout-disclose')
@@ -392,8 +392,8 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
     disclose.addEventListener('click', () => {
       const open = details.hidden
       setExpanded(open)
-      // Once they have taken a look, an automatic re-open on the next repaint
-      // would fight them for control of their own row.
+      // Once he has taken a look, an automatic re-open on the next repaint
+      // would fight him for control of his own row.
       if (!open) row.dataset.autoExpanded = 'false'
     })
 
@@ -429,7 +429,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
 
   function buildShop() {
     const section = node('section', 'checkout-shop')
-    /* THE ORDER FORM'S TWO COLUMNS (2026-09-23). Everything they read and pick
+    /* THE ORDER FORM'S TWO COLUMNS (2026-09-23). Everything he reads and picks
        from is in `main`; the running total is the bar beside it. On a wide page
        the bar is a card that stays in view at the top of its own column; on a
        narrower one it drops under the list and rides the bottom edge, as it
@@ -458,12 +458,12 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
     noticesHost.setAttribute('aria-live', 'polite')
     main.append(noticesHost)
 
-    // WHAT IS ALREADY WAITING ON THEIR DECISION, ABOVE THE SHELVES.
+    // WHAT IS ALREADY WAITING ON HIS DECISION, ABOVE THE SHELVES.
     //
-    // It used to appear only on the review step, which they reach by picking
-    // something first. So the money actually queued against their name -- the
-    // carts an assistant put there -- was behind a choice they had not made yet,
-    // on the one screen they asked for by name to be where the purchase list
+    // It used to appear only on the review step, which he reaches by picking
+    // something first. So the money actually queued against his name -- the
+    // carts an assistant put there -- was behind a choice he had not made yet,
+    // on the one screen he asked for by name to be where the purchase list
     // lives. It is now the first thing under the totals, with every line and
     // every amount, and it still does not decide anything here.
     queueHost = node('section', 'checkout-queue')
@@ -485,7 +485,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
 
       const recommended = items.filter(entry => entry.recommended && entry.selectable)
       const side = node('div', 'checkout-group-side')
-      // How much of this shelf they can actually act on. Without it, a group
+      // How much of this shelf he can actually act on. Without it, a group
       // where most lines are unpriced reads as a broken screen rather than as
       // an honest "nobody has quoted these yet".
       const choosable = items.filter(entry => entry.selectable).length
@@ -512,7 +512,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
 
       // THE DO-NOT-BUY SHELF STARTS FOLDED, AND SAYS SO IN ITS OWN BUTTON.
       // Ten of the thirty-seven lines are there to argue AGAINST a purchase; a
-      // shop that opens with a quarter of its floor space given to things they
+      // shop that opens with a quarter of its floor space given to things he
       // must not buy buries the eight lines that actually gate shipping. The
       // count is on the control, so folded is never the same as gone.
       if (category.id === 'do-not-buy') {
@@ -544,7 +544,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
       main.append(group)
     }
 
-    /* the running total, following them down the list */
+    /* the running total, following him down the list */
     const bar = node('div', 'checkout-bar')
     bar.append(node('p', 'checkout-bar-title', 'Your selection'))
     const figures = node('div', 'checkout-bar-figures')
@@ -596,11 +596,11 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
       view.pick.setAttribute('aria-checked', String(selected))
       // CHOOSING A BLOCKED LINE OPENS ITS REASON, ONCE.
       //
-      // The row is folded so that thirty-seven lines fit on a screen they can
+      // The row is folded so that thirty-seven lines fit on a screen he can
       // read. A line that cannot safely be bought must not be folded at the
-      // moment they pick it, so picking one unfolds it -- and `autoExpanded`
-      // makes that happen exactly once, because a fold they deliberately closed
-      // that springs open again on every repaint is a page arguing with them.
+      // moment he picks it, so picking one unfolds it -- and `autoExpanded`
+      // makes that happen exactly once, because a fold he deliberately closed
+      // that springs open again on every repaint is a page arguing with him.
       if (selected && view.item.blocked && view.row.dataset.autoExpanded === undefined) {
         view.row.dataset.autoExpanded = 'true'
         view.setExpanded(true)
@@ -692,7 +692,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
     section.append(node('p', 'checkout-step-lede',
       'These are the lines you picked, at the prices currently on the list. Read what confirming does before you press it.'))
 
-    // BLOCKED LINES GET THE TOP OF THE PAGE, above the money. They can choose
+    // BLOCKED LINES GET THE TOP OF THE PAGE, above the money. He can choose
     // them, so this is the one place before the record is written where the
     // reasons are read together rather than one card at a time.
     if (state.blockedLines.length > 0) {
@@ -853,7 +853,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
       // button sitting next to an enabled Confirm.
       actions.querySelector('[data-checkout-signin]')?.remove()
       // Signing in is attribution, not an attestation, and the vault half of
-      // their condition is genuinely unverified in this build. Both are said
+      // his condition is genuinely unverified in this build. Both are said
       // here rather than implied away by a green badge.
       identityHost.replaceChildren(band('note', 'Signed in', [
         `Confirming records this decision against ${identity.principal.displayName}.`,
@@ -884,7 +884,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
    * matching them to catalogue entries by name in order to auto-approve them
    * would mean guessing which amounts the owner meant to approve. Approving
    * the wrong line is the one mistake here that cannot be taken back, so the
-   * screen reports the queue truthfully and sends them to the surface that
+   * screen reports the queue truthfully and sends him to the surface that
    * genuinely decides it.
    */
   async function paintApprovalsQueue(host, { detailed = false } = {}) {
@@ -948,10 +948,10 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
 
     // THE WHOLE CART, LINE BY LINE, AT ITS EXACT AMOUNT.
     //
-    // They asked for the whole list where they could see every option and its
+    // He asked for the whole list where he could see every option and its
     // price. A count and a grand total is a summary of somebody else's cart;
     // these are the lines themselves, with the merchant and the reason each
-    // one was put there, so that the screen they open is the screen the
+    // one was put there, so that the screen he opens is the screen the
     // decision is actually about.
     const carts_ = carts.map(cart => {
       const panel = node('article', 'checkout-cart')
@@ -1055,9 +1055,9 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
     ]))
 
     // WHAT THIS RECORD IS WORTH, said on the record itself. It is composed and
-    // stored by this page, so it is a durable note for them and not evidence.
+    // stored by this page, so it is a durable note for him and not evidence.
     // Claiming otherwise is the failure that cannot be walked back, and the
-    // vault half of their sign-in condition is stated rather than left implied.
+    // vault half of his sign-in condition is stated rather than left implied.
     section.append(band('warn', 'What this record is', [
       'This is a note of your decision, kept in this browser. It is not an audit record and it is not proof of anything. This page wrote it, so anyone with developer tools in this browser could alter it.',
       record.vaultVerified === false && record.vaultNote
@@ -1099,7 +1099,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
   function onStoreChange(state) {
     if (destroyed) return
     // Only the shop step repaints live; the review and confirmed steps are
-    // snapshots of a decision and must not shift under them.
+    // snapshots of a decision and must not shift under him.
     if (step === 'shop' && shopSection?.isConnected) paintShop(state)
   }
 
@@ -1145,7 +1145,7 @@ export function checkoutView({ navigate = (hash) => { location.hash = hash } } =
     const generated = new Date(catalog.generatedAt)
     const choosable = catalog.items.filter(item => item.selectable).length
     // TWO LINES, BECAUSE THEY ANSWER TWO DIFFERENT QUESTIONS. The first is what
-    // shop this is and how much of it they can act on -- the count of choosable
+    // shop this is and how much of it he can act on -- the count of choosable
     // lines is on it because "37 items" over a list where 14 are unpriced or
     // ruled out reads as a broken screen. The second is where the spend cap
     // came from, which is a machine fact in a machine's own words; it stays

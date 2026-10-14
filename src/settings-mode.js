@@ -1,9 +1,10 @@
 // Display density only. Modes never write a product setting or grant a permission.
 //
-// BASIC IS THE DEFAULT (T782): most users do not want everything saved
-// forever, audited or verified, so the default is genuinely basic user
-// settings, and the advanced features are enabled and set up in
-// advanced/expert/enterprise rather than switched on automatically. A fresh copy, an unreadable preference or a
+// BASIC IS THE DEFAULT (owner direction, 2026-09-20, T782): "for most users
+// we dont want to save everything forever or audit or verify everything. We
+// should have it default to genuinely basic user settings ... These advanced
+// things should need to be enabled and setup in advanced/expert/enterprise
+// rather than be auto enabled". A fresh copy, an unreadable preference or a
 // value this version does not know all open Basic. A saved Advanced or
 // Enterprise choice is the person's and is kept. Expert is never remembered:
 // it is opened for one visit behind its own confirmation.
@@ -108,7 +109,7 @@ export function createSettingsMode({ root, onChange, storage }) {
       <label for="settings-expert-code">Enter <strong>${challengeCode}</strong> to open Expert for this visit.</label>
       <input id="settings-expert-code" inputmode="numeric" autocomplete="off" pattern="[0-9]{4}" maxlength="4" required autofocus>
       <p data-expert-error role="status"></p>
-      <div class="settings-dialog-actions"><button type="button" class="ctl-btn" data-expert-cancel>Cancel</button><button type="submit" class="ctl-btn armed">Open Expert</button></div>
+      <div class="settings-dialog-actions"><button type="button" class="ctl-btn" data-expert-cancel>Cancel</button><button type="submit" class="ctl-btn primary">Open Expert</button></div>
     </form>`
     const finish = accepted => {
       close()

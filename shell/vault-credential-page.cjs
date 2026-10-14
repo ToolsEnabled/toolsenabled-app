@@ -7,7 +7,7 @@
  *
  *   list    which records are on file, BY NAME
  *   add     ask the owner for a new one, through the form the product already
- *           has, without this file ever seeing what they type
+ *           has, without this file ever seeing what he types
  *   remove  take one away, and ONLY after the owner has approved that exact
  *           removal on the product's own approvals surface
  *
@@ -267,8 +267,8 @@ function requestCredentialAdd(request = {}, options = {}) {
     /* THE REQUEST IS STILL ON FILE, AND THE SENTENCE SAYS SO. `enqueue` proved
        the item is in the queue on disk before it ever tried to launch, so
        telling the owner "nothing was asked for" would be as wrong in the other
-       direction. What they need to know is that no form is coming up right now
-       and that nothing they typed was stored -- because nothing they typed has been
+       direction. What he needs to know is that no form is coming up right now
+       and that nothing he typed was stored -- because nothing he typed has been
        asked for yet. The queue's own code travels as the code; it names the
        launch failure without naming a path. */
     return Object.freeze({
@@ -298,7 +298,7 @@ function requestCredentialAdd(request = {}, options = {}) {
  *
  * Small, bounded and atomic. It exists because the prompt store's settled
  * decision names no subject; see this file's header. Entries expire, so an
- * approval the owner gave an hour ago cannot be replayed against a record they
+ * approval the owner gave an hour ago cannot be replayed against a record he
  * re-created since.
  */
 function approvalsFile(stateRoot) {
@@ -536,7 +536,7 @@ function pendingCredentialRemovals(options = {}) {
  *                     the spend path must read as DENIED, and so does this
  *   wrong kind        a purchase or a notice is not a confirmation of a
  *                     deletion, however it was decided
- *   not approved      they answered, and the answer was not "approve"
+ *   not approved      he answered, and the answer was not "approve"
  *
  * Only after all four does the injected remover run, once, and the binding is
  * consumed either way so an approval cannot be spent twice.
@@ -558,8 +558,8 @@ function pendingCredentialRemovals(options = {}) {
  * And the dispatch itself then rejected with PERMISSION_SESSION_REQUIRED,
  * because `executeTool` refuses a call that states no permission ceiling. Net
  * effect: the page told the person a credential was deleted, spent the owner
- * prompt they had approved, and deleted nothing. That is worse than a removal
- * that plainly fails, because they have no reason to check.
+ * prompt he had approved, and deleted nothing. That is worse than a removal
+ * that plainly fails, because he has no reason to check.
  *
  * THREE RULES FOLLOW, AND THE SUITE DRIVES ALL THREE WITH A REJECTING REMOVER.
  *   1  await. `removed: true` is only ever said after the removal resolved.
@@ -568,7 +568,7 @@ function pendingCredentialRemovals(options = {}) {
  *      IPC boundary that clones, and carrying it is precisely what broke. Every
  *      answer this function can produce survives structuredClone, asserted.
  *   3  A FAILED REMOVAL DOES NOT SPEND THE APPROVAL. The owner said yes and the
- *      product failed; making them approve again would blame them for that.
+ *      product failed; making him approve again would blame him for that.
  *      Only an owner ANSWER (approve-and-removed, deny, wrong kind) consumes
  *      the binding.
  */
@@ -652,7 +652,7 @@ async function completeCredentialRemoval(request = {}, options = {}) {
     await remove({ vaultKey: name, reason, ownerPromptId: promptId })
   } catch (error) {
     /* THE APPROVAL IS NOT SPENT. Rule 3 above: the owner answered yes and the
-       product could not carry it out, so their answer stays on file and pressing
+       product could not carry it out, so his answer stays on file and pressing
        again retries rather than starting over. */
     return Object.freeze({
       ok: false,

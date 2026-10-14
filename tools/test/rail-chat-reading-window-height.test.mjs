@@ -1,6 +1,6 @@
-/* T301 (ground-truth measurement): the reading window is not message loss
- * and not a scroll clamp -- a measurement found every message present and
- * the scroll reaching the oldest one.
+/* T301 (Controller / Worker 82 ground-truth measurement, 2026-09-17): the
+ * reading window is not message loss and not a scroll clamp -- Worker 82
+ * measured every message present and the scroll reaching the oldest one.
  * The real defect is size: on the default desktop Computers rail,
  * `.chat-log` rendered only 339px tall for 5397px of actual conversation,
  * roughly 228px spent on chrome around it -- a six-line porthole.
@@ -14,7 +14,7 @@
  * two selectors already carry the fix inside `.board-page` and
  * `.home-agent-workspace` (src/board.css, src/home-chat.css) -- this file
  * pins the same treatment existing in the PLAIN rail too, the surface
- * actually measured.
+ * Worker 82 actually measured.
  *
  * No automated harness in this tree renders real CSS layout (see
  * tools/test/chat-expand-full.test.mjs's own header: "browser fixtures own

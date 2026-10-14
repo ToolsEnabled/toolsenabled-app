@@ -1,6 +1,6 @@
-/* IT WAS ON. 2026-09-15: an agent reported computer control as off
- * while it was on -- either another agent was using it, or it was broken in
- * that running instance.
+/* "IT'S ON." The owner, 2026-09-15 22:03:39Z, answering an agent that had just
+ * told them computer control was off: "its on. either another agent is using it
+ * maybe, or it could be broken in this running instance."
  *
  * Both were right. Grants are held in memory and keyed by sessionId, so
  * requireGrant answers "does THIS session hold a grant?" and reports the answer
@@ -44,7 +44,7 @@ test('with nothing granted at all, "screen access is off" is the truth and stays
   assert.throws(() => f.host.control(f.principal('a'), { action: 'click', x: 1, y: 1 }), { code: 'SCREEN_ACCESS_OFF' })
 })
 
-/* THE CASE THAT WAS HIT. Another session of the same owner holds a grant, so
+/* THE CASE THE OWNER HIT. Another session of the same owner holds a grant, so
  * the permission is plainly on -- this session simply is not the one it was
  * given to. */
 test('when control is granted to another session, the refusal must not claim it is off', async () => {

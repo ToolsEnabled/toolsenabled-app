@@ -24,7 +24,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 
-const OUT = process.env.CARD_LINES_OUT || path.join(process.cwd(), 'captures-card-lines')
+const OUT = process.env.CARD_LINES_OUT || path.join(process.cwd(), 'captures-w16e')
 const FIXTURE = path.join(__dirname, 'w16e-card-lines-fixture.html')
 const CSS_OVERRIDE = process.env.CARD_LINES_CSS || null
 const SCRATCH_FIXTURE = path.join(__dirname, '.w16e-card-lines-fixture.scratch.html')

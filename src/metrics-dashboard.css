@@ -21,12 +21,12 @@
   --m-control-h: 32px;
   --seg-h: var(--m-control-h);
   --m-card: var(--surface-base, var(--sheet));
-  --m-edge: var(--border-default, var(--line-2));
+  --m-edge: var(--line-strong);
   --m-rule: var(--border-hairline, var(--line));
   --m-well: var(--seg-bg, color-mix(in srgb, var(--ink) 5%, transparent));
-  --m-radius: var(--radius-card, 6px);
-  --m-control-radius: var(--radius-control, 4px);
-  --metric-accent: var(--accent-2);
+  --m-radius: var(--radius-md);
+  --m-control-radius: var(--radius-sm);
+  --metric-accent: var(--ink);
   --metric-track: color-mix(in srgb, var(--ink) 9%, transparent);
   gap: var(--m-gap);
   padding-bottom: var(--s6, 32px);
@@ -38,34 +38,36 @@
 .metrics .m-page-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   flex-wrap: wrap;
   gap: var(--s3) var(--s5);
   padding: var(--s3) 0 var(--s1);
+
+  margin-bottom: 24px;
 }
 .metrics .m-title { min-width: 0; flex: 1 1 24rem; }
 .metrics .m-eyebrow {
   margin: 0 0 var(--s2);
-  color: var(--ink-3);
-  font-size: var(--text-caps, 11px);
-  font-weight: var(--weight-semibold, 600);
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .metrics .m-page-head h1 {
   margin: 0;
-  font-size: 36px;
-  font-weight: 610;
-  line-height: 1.15;
-  letter-spacing: -.035em;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -.012em;
   color: var(--ink);
 }
 .metrics .m-intro {
   max-width: 72ch;
   margin: var(--s2) 0 0;
-  color: var(--ink-2);
-  font-size: var(--text-base, 14px);
-  line-height: 1.6;
+  color: var(--ink-3);
+  font-size: 13.5px;
+  line-height: 1.5;
 }
 .metrics .m-page-actions {
   display: flex;
@@ -110,7 +112,7 @@
   background: var(--control-bg, var(--sheet));
   box-shadow: var(--shadow-control, none);
   color: var(--control-ink, var(--ink));
-  font: var(--weight-semibold, 600) 12.5px/1 var(--font-ui);
+  font: 550 13.5px/1 var(--font-ui);
   white-space: nowrap;
   cursor: pointer;
   transition: background-color var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
@@ -157,8 +159,8 @@
 .metrics :is(.m-action, .m-edit-btn, .m-text-action, .m-table-scroll, .m-histogram-bin):focus-visible,
 .metrics :is(input, select):focus-visible,
 .metrics :is(.m-usage-record, .m-metrics-method, .m-activity-inspector) > summary:focus-visible {
-  outline: var(--focus-outline, 2px solid var(--focus-ring));
-  outline-offset: var(--focus-offset, 2px);
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 .metrics :is(.m-history-tools, .m-controls, .m-activity-picker-row) :is(input, select) {
   box-sizing: border-box;
@@ -210,13 +212,15 @@
 .metrics .mf-control-group:has([data-group="machine"]),
 .metrics .m-filter .mf-sep { display: none; }
 .metrics .m-filter .mf-label {
-  color: var(--ink-3);
-  font-size: var(--text-caps, 11px);
-  font-weight: var(--weight-semibold, 600);
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
-.metrics .m-filter .seg > button { padding: 0 14px; font-size: var(--text-sm, 12.5px); }
+.metrics .m-filter .seg > button { padding: 0 14px; font-size: 13.5px;
+  height: 28px;
+}
 .metrics .mf-scope select { min-width: 10.5rem; }
 .metrics .mf-dates {
   color: var(--ink-2);
@@ -248,8 +252,8 @@
   background: transparent;
   color: var(--ink-2);
   font: var(--weight-semibold, 600) var(--text-caps, 11px)/1.5 var(--font-ui);
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .metrics .m-filter .mf-face:empty { display: none; }
 .metrics[data-face="demonstration"] .mf-face,
@@ -347,12 +351,12 @@
 }
 .metrics .m-strip .tl {
   margin: 0;
-  color: var(--ink-3);
-  font-size: var(--text-caps, 11px);
-  font-weight: var(--weight-semibold, 600);
-  letter-spacing: var(--track-caps);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
   line-height: 1.4;
-  text-transform: uppercase;
+  text-transform: none;
   white-space: normal;
 }
 .metrics .m-strip .tv {
@@ -362,7 +366,7 @@
   gap: 2px 6px;
   color: var(--ink);
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.15;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
@@ -504,9 +508,9 @@
   font-size: var(--text-sm, 12.5px);
   min-height: 0;
 }
-/* The Sankey's empty slot is the same quiet well as every other empty panel:
-   one left-aligned sentence, no diagram-high box, no centred mark or
-   capitals label. The sentence carries the state;
+/* The Sankey's empty slot is the same quiet well as every other empty panel
+   (owner review, 2026-09-23): one left-aligned sentence, no diagram-high
+   box, no centred mark or capitals label. The sentence carries the state;
    the host's aria-label still says it too. */
 .metrics #sankey-chart.m-sankey-empty-host {
   box-sizing: border-box;
@@ -653,13 +657,13 @@
   border: 0;
   border-bottom: 1px solid var(--m-edge);
   background: var(--m-well);
-  color: var(--ink-3);
-  font-size: var(--text-caps, 11px);
-  font-weight: var(--weight-semibold, 600);
-  letter-spacing: var(--track-caps);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
   line-height: 1.4;
   text-align: start;
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
 }
 .metrics :is(.mtable, .m-usage-table) td {
@@ -687,12 +691,18 @@
 .metrics .m-usage-table th:nth-child(3) { text-align: end; }
 .metrics .m-usage-basis { color: var(--ink-3); }
 /* Outcome words carry their colour on a small square mark and the word. */
-.metrics .m-result-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
-.metrics .m-result-badge::before { content: ''; display: inline-block; flex-shrink: 0; width: 7px; height: 7px; border-radius: var(--radius-xs, 2px); background: currentColor; }
+.metrics .m-result-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; border: 0; border-radius: var(--radius-pill); background: var(--status-idle-soft); color: var(--status-idle); font-size: 12px; font-weight: 550; white-space: nowrap;
+  min-height: 22px;
+}
+.metrics .m-result-badge::before { content: ''; display: inline-block; flex-shrink: 0; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .metrics td[data-result="success"] .m-result-badge,
-.metrics td[data-result="started"] .m-result-badge { color: var(--s-good); }
+.metrics td[data-result="started"] .m-result-badge { color: var(--status-working);
+  background: var(--status-working-soft);
+}
 .metrics td[data-result="problem"] .m-result-badge,
-.metrics td[data-result="refused"] .m-result-badge { color: var(--s-serious); }
+.metrics td[data-result="refused"] .m-result-badge { color: var(--status-error);
+  background: var(--status-error-soft);
+}
 .metrics td:is([data-result="unknown"], [data-result="unrecorded"]) .m-result-badge { color: var(--ink-3); }
 .metrics .m-usage-record { min-width: 110px; max-width: 310px; }
 .metrics .m-usage-record summary { width: fit-content; color: var(--ink-2); font-weight: var(--weight-semibold, 600); cursor: pointer; }
@@ -758,9 +768,25 @@
   .metrics .m-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
-  .metrics { --m-pad: 16px; }
-  .metrics .m-page-head { align-items: flex-start; }
-  .metrics .m-page-head h1 { font-size: 30px; }
+  .metrics { --m-pad: 16px;
+  --metric-accent: var(--ink);
+
+  --m-control-radius: var(--radius-sm);
+
+  --m-radius: var(--radius-md);
+
+  --m-edge: var(--line-strong);
+}
+  .metrics .m-page-head { align-items: center;
+  margin-bottom: 24px;
+}
+  .metrics .m-page-head h1 { font-size: 22px;
+  letter-spacing: -.012em;
+
+  line-height: 1.2;
+
+  font-weight: 650;
+}
   .metrics .m-page-actions { justify-content: flex-start; flex-wrap: wrap; }
   /* Refresh leads, its status line follows it, never the other way round. */
   .metrics #m-refresh { order: -1; }
@@ -821,8 +847,8 @@
    layer's weight (see above), placed last so it wins.
    =========================================================================== */
 :root:root body .metrics :is(.m-controls, .m-strip, .m-sec, .m-srow > .m-sec + .m-sec, .m-sec.projection-unavailable, #pools.projection-unavailable) {
-  border-color: transparent;
-  box-shadow: var(--shadow-lift);
+  border-color: var(--line-strong);
+  box-shadow: none;
 }
 :root:root body .metrics .m-strip {
   padding: 0 var(--s3) var(--s3);
@@ -842,18 +868,22 @@
 }
 :root:root body .metrics .m-strip .stat.projection-unavailable { background: var(--craft-well); }
 :root:root body .metrics .m-sec > .m-head {
-  margin: -18px calc(-1 * var(--m-pad)) var(--s4);
-  padding: 12px var(--m-pad) 11px;
-  background: var(--craft-band);
-  border-radius: var(--m-radius) var(--m-radius) 0 0;
+  margin: 0 0 16px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
 }
 :root:root body .metrics .m-filter .mf-face {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 1px 7px 1px 6px;
+  padding: 0 8px;
   border-color: transparent;
-  background: color-mix(in srgb, var(--border-ink) 8%, transparent);
+  background: var(--status-idle-soft);
+
+  border-radius: var(--radius-pill);
+
+  min-height: 22px;
 }
 :root:root body .metrics .m-filter .mf-face::before {
   content: '';
@@ -874,10 +904,12 @@
 /* The source tag is the app's one example chip: sentence case in the interface
    face at the chip size, not spaced mono capitals (caps are for eyebrows). */
 :root:root body .metrics .m-filter .mf-face {
-  padding: 0 7px 0 6px;
-  border-radius: var(--radius-xs);
-  background: color-mix(in srgb, var(--border-ink) 6%, transparent);
-  font: var(--weight-medium) var(--text-xs)/18px var(--font-ui);
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--status-idle-soft);
+  font: 550 12px/1.35 var(--font-ui);
   letter-spacing: 0;
   text-transform: none;
+
+  min-height: 22px;
 }

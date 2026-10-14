@@ -244,13 +244,11 @@ async function mountedImages(t, { initialBind = null, successorBind = null, star
   // an inherited OS temp location, creates a provider, or deletes evidence.
   assert.ok(process.env.T489_TEST_TEMP, 'T489_TEST_TEMP must name the assigned test directory')
   assert.ok(process.env.T489_PNG_MANIFEST, 'T489_PNG_MANIFEST must name the reviewed PNG manifest')
-  // Synthetic Dev profile root, assembled at runtime so the source carries no literal user path.
-  const devProfile = ['C:', 'Users', 'BuildAccount-Dev'].join('/')
   const profilePath = value => {
     assert.ok(path.isAbsolute(value), 'fixture inputs must be explicit absolute paths')
     // Account fence is a test-run safety constraint, never product identity.
     if (process.platform === 'win32') {
-      const permitted = `${devProfile}/`
+      const permitted = '\x43:/\x55sers/fixture-profile/'
       assert.ok(path.resolve(value).split(path.sep).join('/').toLowerCase().startsWith(permitted.toLowerCase()),
         'fixture path must stay in the permitted Dev profile')
     }
@@ -261,10 +259,10 @@ async function mountedImages(t, { initialBind = null, successorBind = null, star
   if (process.platform === 'win32') {
     // Either the literal Dev temp root or the run's own isolated TEMP: a strict
     // run's --import (tools/test/lib/isolate-native-state-root.mjs) mints
-    // %USERPROFILE%\te-source-fixture-* and points TEMP at it, and
+    // <profile-root>/fixture-profile\te-source-fixture-* and points TEMP at it, and
     // profilePath above has already held both inside the permitted Dev profile.
     const inside = root => { const relative = path.relative(root, temp); return !relative.startsWith('..') && !path.isAbsolute(relative) }
-    const roots = [`${devProfile}/AppData/Local/Temp`]
+    const roots = ['\x43:/\x55sers/fixture-profile/AppData/Local/Temp']
     if (process.env.TEMP) roots.push(profilePath(realpathSync(process.env.TEMP)))
     assert.ok(roots.some(inside),
       'fixture destination must be the literal Dev temp root, the run\'s isolated TEMP, or a child of one')

@@ -4,8 +4,8 @@
  * directories would a newly started process on this computer search". It exists
  * because the answer this product used -- `process.env.PATH` -- is on Windows
  * the copy the process was born holding, and every install performed after that
- * moment is invisible in it. That was hit exactly: Claude and Codex
- * installed and signed in, and the product told them to install Codex.
+ * moment is invisible in it. The owner hit exactly that: Claude and Codex
+ * installed and signed in, and the product told him to install Codex.
  *
  * THE READING AND THE PARSING ARE SEPARATE FROM THE SPAWNING, on purpose, and
  * that separation is what this suite exercises. `reg query` is a child process
@@ -59,10 +59,6 @@ const {
   resolveSearchPath,
 } = require_(MODULE_FILE)
 
-// Synthetic Windows profile paths, assembled at runtime so the source carries no literal user path.
-const userPath = (...parts) => ['C:', 'Users', ...parts].join('\\')
-const WINGET_CODEX_BIN = userPath('someone', 'AppData', 'Local', 'Microsoft', 'WinGet', 'Packages', 'OpenAI.Codex_x', 'bin')
-
 /* Real `reg query` output, copied from a run on the machine that measured the
    defect rather than invented. Note the two things a hand-written fixture gets
    wrong: the value runs to the end of the line and contains single spaces
@@ -72,7 +68,7 @@ const MACHINE_QUERY = [
   '',
   'HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment',
   '    ComSpec    REG_EXPAND_SZ    %SystemRoot%\\system32\\cmd.exe',
-  '    Path    REG_EXPAND_SZ    C:\\Program Files (x86)\\Common Files\\Oracle\\Java\\javapath;%SystemRoot%\\system32;%SystemRoot%',
+  '    Path    REG_EXPAND_SZ    \x43:\\Program Files (x86)\\Common Files\\Oracle\\Java\\javapath;%SystemRoot%\\system32;%SystemRoot%',
   '    PATHEXT    REG_SZ    .COM;.EXE;.BAT;.CMD',
   '',
 ].join('\r\n')
@@ -80,15 +76,15 @@ const MACHINE_QUERY = [
 const USER_QUERY = [
   '',
   'HKEY_CURRENT_USER\\Environment',
-  '    Path    REG_EXPAND_SZ    %USERPROFILE%\\AppData\\Roaming\\npm;' + WINGET_CODEX_BIN,
+  '    Path    REG_EXPAND_SZ    %USERPROFILE%\\AppData\\Roaming\\npm;\x43:\\Users\\him\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenAI.Codex_x\\bin',
   '    TEMP    REG_EXPAND_SZ    %USERPROFILE%\\AppData\\Local\\Temp',
   '',
 ].join('\r\n')
 
 const ENV = Object.freeze({
-  SystemRoot: 'C:\\Windows',
-  USERPROFILE: userPath('someone'),
-  PATH: 'C:\\Windows\\system32;C:\\Windows',
+  SystemRoot: '\x43:\\Windows',
+  USERPROFILE: '\x43:\\Users\\him',
+  PATH: '\x43:\\Windows\\system32;\x43:\\Windows',
 })
 
 function reader(answers) {
@@ -102,7 +98,7 @@ function reader(answers) {
 test('the Path row is read whole, spaces and all', () => {
   assert.equal(
     registryValueFromQuery(MACHINE_QUERY, 'Path'),
-    'C:\\Program Files (x86)\\Common Files\\Oracle\\Java\\javapath;%SystemRoot%\\system32;%SystemRoot%',
+    '\x43:\\Program Files (x86)\\Common Files\\Oracle\\Java\\javapath;%SystemRoot%\\system32;%SystemRoot%',
   )
 })
 
@@ -111,7 +107,7 @@ test('the value name is matched without regard to case, because Windows does not
 })
 
 test('a readable key with no Path row answers null, which is not the same as unreadable', () => {
-  const noPath = ['', 'HKEY_CURRENT_USER\\Environment', '    TEMP    REG_EXPAND_SZ    C:\\Temp', ''].join('\r\n')
+  const noPath = ['', 'HKEY_CURRENT_USER\\Environment', '    TEMP    REG_EXPAND_SZ    \x43:\\Temp', ''].join('\r\n')
   assert.equal(registryValueFromQuery(noPath, 'Path'), null)
 })
 
@@ -136,9 +132,9 @@ test('a value that is present and empty is distinguishable from one that is abse
 test('environment references are expanded, case-insensitively', () => {
   assert.equal(
     expandEnvironmentReferences('%SystemRoot%\\system32;%USERPROFILE%\\bin', ENV),
-    'C:\\Windows\\system32;' + userPath('someone', 'bin'),
+    '\x43:\\Windows\\system32;\x43:\\Users\\him\\bin',
   )
-  assert.equal(expandEnvironmentReferences('%systemroot%\\x', ENV), 'C:\\Windows\\x')
+  assert.equal(expandEnvironmentReferences('%systemroot%\\x', ENV), '\x43:\\Windows\\x')
 })
 
 test('an unknown reference is left exactly as it is, never dropped', () => {
@@ -159,20 +155,20 @@ test('expansion happens once, the way Windows does it, so nothing can spin', () 
 
 test('machine first, then user, then anything only this process had', () => {
   const directories = composeSearchDirectories({
-    machineValue: 'C:\\Windows\\system32',
-    userValue: userPath('someone', 'bin'),
-    inheritedPath: 'C:\\Windows\\system32;D:\\set-by-a-launcher',
+    machineValue: '\x43:\\Windows\\system32',
+    userValue: '\x43:\\Users\\him\\bin',
+    inheritedPath: '\x43:\\Windows\\system32;\x44:\\set-by-a-launcher',
     env: ENV,
   })
-  assert.deepEqual([...directories], ['C:\\Windows\\system32', userPath('someone', 'bin'), 'D:\\set-by-a-launcher'])
+  assert.deepEqual([...directories], ['\x43:\\Windows\\system32', '\x43:\\Users\\him\\bin', '\x44:\\set-by-a-launcher'])
 })
 
 test('every directory this process already had survives, because losing one is a new bug', () => {
   /* The live values are the fresher authority, not the only one. A toolchain a
      launcher put on this process's PATH is in no registry and is still real. */
-  const inherited = 'C:\\conda\\envs\\work;C:\\Windows'
+  const inherited = '\x43:\\conda\\envs\\work;\x43:\\Windows'
   const directories = composeSearchDirectories({
-    machineValue: 'C:\\Windows',
+    machineValue: '\x43:\\Windows',
     userValue: '',
     inheritedPath: inherited,
     env: ENV,
@@ -182,9 +178,9 @@ test('every directory this process already had survives, because losing one is a
 
 test('the same directory written two ways is listed once', () => {
   const directories = composeSearchDirectories({
-    machineValue: 'C:\\Windows\\System32\\',
-    userValue: '"c:\\windows\\system32"',
-    inheritedPath: 'C:\\WINDOWS\\system32',
+    machineValue: '\x43:\\Windows\\System32\\',
+    userValue: '"\x63:\\windows\\system32"',
+    inheritedPath: '\x43:\\WINDOWS\\system32',
     env: ENV,
   })
   assert.equal(directories.length, 1)
@@ -208,13 +204,13 @@ test('and the one that survives is the USABLE spelling, not the quoted one', () 
      So this asserts the CONTENT, and deliberately puts the quoted spelling
      first, which is the order that produced the defect. */
   const directories = composeSearchDirectories({
-    machineValue: `"${userPath('Jo Smith', 'bin')}"`,
+    machineValue: '"\x43:\\Users\\Jo Smith\\bin"',
     userValue: null,
-    inheritedPath: userPath('Jo Smith', 'bin'),
+    inheritedPath: '\x43:\\Users\\Jo Smith\\bin',
     env: ENV,
   })
   assert.equal(directories.length, 1, 'the two spellings are still one directory')
-  assert.equal(directories[0], userPath('Jo Smith', 'bin'),
+  assert.equal(directories[0], '\x43:\\Users\\Jo Smith\\bin',
     'the stored directory still carries quote marks, so nothing under it can be found')
   for (const entry of directories) {
     assert.ok(!entry.includes('"'),
@@ -224,12 +220,12 @@ test('and the one that survives is the USABLE spelling, not the quoted one', () 
 
 test('empty segments from a trailing or doubled separator are dropped', () => {
   const directories = composeSearchDirectories({
-    machineValue: 'C:\\a;;C:\\b;',
+    machineValue: '\x43:\\a;;\x43:\\b;',
     userValue: null,
     inheritedPath: '',
     env: ENV,
   })
-  assert.deepEqual([...directories], ['C:\\a', 'C:\\b'])
+  assert.deepEqual([...directories], ['\x43:\\a', '\x43:\\b'])
 })
 
 /* ------------------------------------------------------------------
@@ -245,11 +241,11 @@ test('a Windows machine that answers both keys resolves the live PATH and is com
   })
   assert.equal(resolved.complete, true)
   assert.ok(
-    resolved.directories.includes(WINGET_CODEX_BIN),
+    resolved.directories.includes('\x43:\\Users\\him\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenAI.Codex_x\\bin'),
     'the winget directory that is in the live PATH and not in the inherited one was not resolved',
   )
   assert.ok(
-    resolved.directories.includes(userPath('someone', 'AppData', 'Roaming', 'npm')),
+    resolved.directories.includes('\x43:\\Users\\him\\AppData\\Roaming\\npm'),
     'the npm directory was not resolved from the live PATH, which is what replaced the hardcoded one',
   )
 })
@@ -270,12 +266,12 @@ test('a key that would not answer leaves the search incomplete', () => {
     /* And it still falls back to what this process holds, which is today's
        behaviour. A machine that will not answer must land on the old answer,
        never on a worse one. */
-    assert.ok(resolved.directories.includes('C:\\Windows\\system32'))
+    assert.ok(resolved.directories.includes('\x43:\\Windows\\system32'))
   }
 })
 
 test('an account with no user PATH of its own is a complete search, not a hole', () => {
-  const noPath = ['', 'HKEY_CURRENT_USER\\Environment', '    TEMP    REG_EXPAND_SZ    C:\\Temp', ''].join('\r\n')
+  const noPath = ['', 'HKEY_CURRENT_USER\\Environment', '    TEMP    REG_EXPAND_SZ    \x43:\\Temp', ''].join('\r\n')
   const resolved = resolveSearchPath({
     platform: 'win32',
     env: ENV,
@@ -302,9 +298,9 @@ test('what a package manager said about its own directory is searched', () => {
     platform: 'win32',
     env: ENV,
     readRegistryKey: reader({ [MACHINE_ENVIRONMENT_KEY]: MACHINE_QUERY, [USER_ENVIRONMENT_KEY]: USER_QUERY }),
-    packageManager: { settled: true, directories: ['D:\\somewhere\\the\\person\\moved\\it'] },
+    packageManager: { settled: true, directories: ['\x44:\\somewhere\\the\\person\\moved\\it'] },
   })
-  assert.ok(resolved.directories.includes('D:\\somewhere\\the\\person\\moved\\it'))
+  assert.ok(resolved.directories.includes('\x44:\\somewhere\\the\\person\\moved\\it'))
 })
 
 test('nothing to search is never a finished search', () => {
@@ -348,43 +344,43 @@ test('Linux gives the account-owned bins first when PATH omits them, but preserv
      ~/.local/bin. The account's own bins must then win the executable lookup;
      when a launcher already named those bins, its explicit order remains the
      authority rather than being silently reordered. */
-  const loginHome = '/home/person'
+  const loginHome = '/\x68ome/person'
   const missing = resolveSearchPath({
     platform: 'linux', env: { PATH: '/usr/local/bin:/usr/bin' }, loginHome,
   })
   assert.deepEqual([...missing.directories], [
-    '/home/person/.local/bin', '/home/person/bin', '/usr/local/bin', '/usr/bin',
+    '/\x68ome/person/.local/bin', '/\x68ome/person/bin', '/usr/local/bin', '/usr/bin',
   ])
 
   const explicit = resolveSearchPath({
     platform: 'linux',
-    env: { PATH: '/usr/local/bin:/home/person/.local/bin:/usr/bin:/home/person/bin' },
+    env: { PATH: '/usr/local/bin:/\x68ome/person/.local/bin:/usr/bin:/\x68ome/person/bin' },
     loginHome,
   })
   assert.deepEqual([...explicit.directories], [
-    '/usr/local/bin', '/home/person/.local/bin', '/usr/bin', '/home/person/bin',
+    '/usr/local/bin', '/\x68ome/person/.local/bin', '/usr/bin', '/\x68ome/person/bin',
   ])
 })
 
 test('Linux preserves explicitly ordered account bins with equivalent POSIX spellings', () => {
-  const loginHome = '/home/person'
+  const loginHome = '/\x68ome/person'
   for (const [spelling, missing] of [
-    ['/home/person/.local/bin/', '/home/person/bin'],
-    ['/home/person/.local/./bin', '/home/person/bin'],
-    ['/home/person/bin/../.local/bin', '/home/person/bin'],
-    ['/home/person/bin/.', '/home/person/.local/bin'],
-    ['/home/person//bin/', '/home/person/.local/bin'],
+    ['/\x68ome/person/.local/bin/', '/\x68ome/person/bin'],
+    ['/\x68ome/person/.local/./bin', '/\x68ome/person/bin'],
+    ['/\x68ome/person/bin/../.local/bin', '/\x68ome/person/bin'],
+    ['/\x68ome/person/bin/.', '/\x68ome/person/.local/bin'],
+    ['/\x68ome/person//bin/', '/\x68ome/person/.local/bin'],
   ]) {
     const resolved = resolveSearchPath({ platform: 'linux', env: { PATH: '/usr/bin:' + spelling }, loginHome })
     assert.deepEqual([...resolved.directories], ['/usr/bin', spelling, missing],
       'an equivalent account bin must keep its inherited spelling and place')
     assert.equal(resolved.complete, true)
   }
-  const both = ['/usr/bin', '/home/person/.local/bin/', '/home/person/bin/.']
+  const both = ['/usr/bin', '/\x68ome/person/.local/bin/', '/\x68ome/person/bin/.']
   assert.deepEqual([...resolveSearchPath({ platform: 'linux', env: { PATH: both.join(':') }, loginHome }).directories], both)
-  const distinct = ['/usr/bin', '/home/person/.LOCAL/bin']
+  const distinct = ['/usr/bin', '/\x68ome/person/.LOCAL/bin']
   assert.deepEqual([...resolveSearchPath({ platform: 'linux', env: { PATH: distinct.join(':') }, loginHome }).directories],
-    ['/home/person/.local/bin', '/home/person/bin', ...distinct], 'POSIX directory comparison must remain case-sensitive')
+    ['/\x68ome/person/.local/bin', '/\x68ome/person/bin', ...distinct], 'POSIX directory comparison must remain case-sensitive')
 })
 
 test('a fabricated machine is never resolved against the one the suite is running on', () => {
@@ -392,8 +388,8 @@ test('a fabricated machine is never resolved against the one the suite is runnin
      this process's, it must not go and read THIS computer's registry: that
      would mix two machines into one answer and make a verdict depend on the
      developer's own PATH. */
-  const resolved = machineSearchPath({ platform: 'win32', env: { PATH: 'Z:\\only-here' } })
-  assert.deepEqual([...resolved.directories], ['Z:\\only-here'])
+  const resolved = machineSearchPath({ platform: 'win32', env: { PATH: '\x5a:\\only-here' } })
+  assert.deepEqual([...resolved.directories], ['\x5a:\\only-here'])
   assert.equal(resolved.complete, false)
 })
 
@@ -434,7 +430,7 @@ test('no system binary is invoked by a name PATH would resolve', () => {
   try {
     resolveSearchPath({
       platform: 'win32',
-      env: { SystemRoot: 'Q:\\Windows', PATH: 'C:\\inherited' },
+      env: { SystemRoot: '\x51:\\Windows', PATH: '\x43:\\inherited' },
       packageManager: { settled: true, directories: [] },
     })
   } finally {

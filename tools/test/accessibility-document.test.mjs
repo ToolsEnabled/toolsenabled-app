@@ -41,8 +41,7 @@ function fixture() {
   }
   owner.mainFrame = { get url() { return owner.getURL() } }
   const adapter = createAccessibilityAppAdapter({
-    // A synthetic Windows profile, assembled at run time so the source carries no literal user path.
-    profileRoot: ['C:', 'Users', 'example-user'].join('\\'),
+    profileRoot: '\x43:\\Users\\fixture-profile',
     trustedOrigin: candidate => candidate === owner && current.location.origin === ORIGIN ? ORIGIN : null,
   })
   const principal = { kind: 'agent-session', sessionId: 'document-session', agentId: 'document-agent',
@@ -73,6 +72,7 @@ function fixture() {
     treeNodeCommandBroker: { rendererReloaded: async () => {} },
     handCameraOwners: new Set([owner]), inputOwner: owner,
     voiceHost, accessibilityHost: host, accessibilityApp: adapter, screenControlHost: screenHost,
+    videoBoxHost: { close() {} },
   })
   const consent = () => {
     const pending = host.state(owner).pending

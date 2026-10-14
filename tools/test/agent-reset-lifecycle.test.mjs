@@ -56,7 +56,7 @@ test('local-data reset seals admission and retains cleanup custody until both cl
     'relayFacadeCredentials = null',
     'await agentFacade?.close()',
     'await closeAccountWritersForReset()',
-    // T1630 (an earlier commit): every surviving task's owner-gone decision is
+    // T1630 (2a942239): every surviving task's owner-gone decision is
     // committed before the Ledger writer closes or any root is erased.
     'prepareFullResetOwnerGone()',
     'closeCanonicalLedger()',
@@ -168,7 +168,7 @@ function resetFixture(t, overrides = {}, accountOptions = {}) {
     relaySupervisor: { stop: async () => { calls.push('stop-relay'); return { ok: true, stopped: true } } },
     relayFacadeCredentials: {}, agentFacade: { close: async () => { calls.push('close-facade') } },
     /* The reset's 'Task ownership' phase (main.cjs prepareFullResetOwnerGone,
-       an earlier commit) runs before the Ledger writer closes; its durable receipt is
+       2a942239) runs before the Ledger writer closes; its durable receipt is
        stood in here and its order recorded. */
     prepareFullResetOwnerGone: () => {
       assert.equal(calls.includes('close-ledger'), false, 'task ownership commits before the Ledger writer closes')

@@ -48,7 +48,7 @@ export const ROLE_LIST = Object.freeze(Object.values(ROLES))
 /* The capabilities this preview is allowed to describe. This is a CLOSED list
  * and honesty.js assertUnpaid() refuses anything outside it — including the
  * engine's one gated capability, which honesty.js names in PAID_GATED and which
- * is deliberately absent from this list: the product's shape for this preview is
+ * is deliberately absent from this list: the owner's shape for this preview is
  * the product, not the paid services. */
 export const PREVIEW_CAPABILITIES = Object.freeze([
   Object.freeze({

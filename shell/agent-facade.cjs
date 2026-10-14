@@ -252,18 +252,18 @@ const ROUTES = Object.freeze({
      gated by the owner's web-drive switch like every other write here, so
      with the switch off it refuses MC_AGENT_PRINCIPAL_READ_ONLY.
 
-     THIS ROW IS WHY THE UNION WAS RED. The command arrived with an earlier commit
-     (the resolve bridge verb) inside the ledger-kinds compose, which
+     THIS ROW IS WHY THE UNION WAS RED. The command arrived with 4f9fc94c
+     (the L4e resolve bridge verb) inside the ledger-kinds compose, which
      added it to the command surface and to main.cjs but gave this table no
      decision. The parity check at createAgentFacade then threw "no facade
      decision for agent:request-resolve" for EVERY caller, so the whole
      agent-facade suite and every suite that builds a facade failed -- 100 of
-     the 109 reds measured at an earlier commit -- while neither constituent was red
+     the 109 reds measured at e38b21b7 -- while neither constituent was red
      on its own. */
   '/v1/agent/request-resolve': Object.freeze({ method: 'POST', command: 'agent:request-resolve' }),
   /* THE LEDGER PAGE'S OTHER FIVE WRITE VERBS, on the same rule and for the same
-     reason, and they arrived by the same route: an earlier commit added the four
-     task/ask verbs and a later one added the fifth, all inside the
+     reason, and they arrived by the same route: 1a9985c6 (L4b) added the four
+     task/ask verbs and 38313805 (L4c) added the fifth, all inside the
      ledger-kinds compose, and none of them was given a decision here.
 
      Each is `write: true, dialog: false` in shell/agent-command-surface.cjs and

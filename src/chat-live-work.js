@@ -1,9 +1,10 @@
 /* WHAT THE AGENT IS DOING RIGHT NOW, SHOWN WHERE IT IS HAPPENING, AND ONLY
  * WHILE IT IS.
  *
- * Product rule: show agent thinking when possible, and other context the
- * person does not otherwise get to see, in temporary boxes where possible --
- * held to two things, as polish of what exists and not as add-ons:
+ * Owner, 2026-09-23: "we should show agent thinking when possible, and other
+ * context in temporary boxes where possible (things the user isnt getting to
+ * see right now)", held the same day to two things ("NOT garbage add ons ...
+ * Polish"):
  *
  *   thinking  a reasoning row that is still streaming shows its most recent
  *             lines in a small bounded window: plain text, one text write per

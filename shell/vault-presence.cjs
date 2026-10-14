@@ -11,7 +11,7 @@
  *      refused. The refusal was caught and returned as `false`. Fixed in the
  *      engine tree by a presence-only verb; this file is its shell-side caller.
  *
- *   2. The installed product's vault is NOT the vault the owner entered their
+ *   2. The installed product's vault is NOT the vault the owner entered his
  *      card into. `shell/main.cjs` points the capability layer at
  *      `<userData>/capability`, so the product resolves
  *      `<userData>/capability/vault/secrets.json`, while the record lives in
@@ -80,7 +80,7 @@ const VAULT_KEY_RE = /^[A-Za-z0-9_.-]{1,120}$/
 /* Bounded because this spawns a program -- but the old bound was measured on an
    IDLE machine and was wrong on a busy one.
  *
- * MEASURED on a development install under heavy load: six consecutive
+ * MEASURED on this machine while ~100 agents were running: six consecutive
  * reads of one record took 15031ms (timeout), 13099ms, 15035ms, 15034ms,
  * 15028ms and 5372ms. Every failure was the old 15-second ceiling hit exactly,
  * and it failed more often than it succeeded -- for a read the comment below
@@ -623,7 +623,7 @@ function invalidVaultNames(store) {
 
 /* Key-SHAPED lines only, deduplicated, sorted. The shape is
    tools/secrets.ps1's own key rule, so a line the vault could not have issued
-   as a key is dropped rather than shown to the owner as one of their records. */
+   as a key is dropped rather than shown to the owner as one of his records. */
 function keyNamesFrom(listed) {
   const lines = Array.isArray(listed) ? listed : String(listed ?? '').split(/\r?\n/)
   if (lines.some(line => typeof line !== 'string')) return null

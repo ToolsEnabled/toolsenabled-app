@@ -2,10 +2,10 @@
 /* SEAL THE BUILT ARTIFACT, THEN PROVE THE REST OF THE CHAIN DID NOT TOUCH IT.
  *
  * THE DEFECT THIS EXISTS TO CATCH, measured on this repo on 2026-08-11. The
- * artifact at release/win-unpacked was built first. Its
+ * artifact at release/win-unpacked was built at 02:59. Its
  * resources/capability/state/ directory -- a live mission-bridge BEARER TOKEN,
  * a bootstrap proof, a runtime record, and audit.sqlite3 -- was written at
- * later. Nothing had gone wrong with the packer. The BUILD CHAIN ITSELF wrote
+ * 04:11. Nothing had gone wrong with the packer. The BUILD CHAIN ITSELF wrote
  * those files, because its last two steps start the packaged application
  * against release/win-unpacked, and at the time the layer wrote its runtime
  * state next to itself.
@@ -153,17 +153,17 @@ export function sealPathFor(artifactDirectory) {
 /* THE SEAL NAMES THE ARTIFACT BY BASENAME, NOT BY ABSOLUTE PATH, AND THAT IS A
  * PRIVACY REQUIREMENT RATHER THAN A STYLE CHOICE.
  *
- * This field used to hold `path.resolve(artifactDirectory)`. Measured on the
- * build machine on 2026-08-11, that wrote
+ * This field used to hold `path.resolve(artifactDirectory)`. Measured on this
+ * machine on 2026-08-11, that wrote
  *
- *   "artifact": "C:\\Users\\<account>\\<checkout>\\release\\win-unpacked"
+ *   "artifact": "<profile-root>/<account>\\<checkout>\\release\\win-unpacked"
  *
  * into release/.artifact-seal-win-unpacked.json on EVERY build -- the builder's
  * home directory and account name, in the output folder, written by the very
  * tool whose job is to certify that folder. `node tools/check-no-owner-data.mjs`
- * fails on it (its built-in Windows profile-folder rule, which is never
- * excusable), and it is written by `--record`, which runs AFTER
- * tools/strip-build-diagnostics.mjs has already swept the directory. So the existing sweep could never have caught it
+ * fails on it (built-in rule `<profile-root>/`, which is never excusable), and it is
+ * written by `--record`, which runs AFTER tools/strip-build-diagnostics.mjs has
+ * already swept the directory. So the existing sweep could never have caught it
  * and a green build ended with the leak in place.
  *
  * Deleting the seal afterwards would be the wrong fix twice over: --verify needs

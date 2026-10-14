@@ -2,13 +2,13 @@
  * parser and drawn by the menu's own rows -- on the example only, to read.
  *
  * The example fleet's accounts menu used to hold a sentence and a Sign in
- * link. Rule: the example should show how the product works. So
+ * link. Owner, 2026-09-11: the example should show how the product works. So
  * it now draws the sign-ins the working tree spends, and these tests hold the
  * lines that matter:
  *   - the example is a raw shell reply read by readAccountList, never a
  *     hand-built parsed shape, so the menu's rules reach it;
- *   - it shows a used-up Codex account and the one Keep trying accounts moved
- *     to, Claude's two weeks, Gemini's weekly buckets per model, and Grok's
+ *   - it shows a used-up Codex account and the one the person chose
+ *     next, Claude's two weeks, Antigravity's official-client weekly windows, and Grok's
  *     honest "did not report";
  *   - nothing in it is anyone's: example:// folders, no signed-in address;
  *   - on the example, the menu draws those rows with no press on them and no
@@ -47,8 +47,12 @@ test('the example accounts are read by the menu’s own parser and say what each
 
   const work = byKey.get('codex:Work'), personal = byKey.get('codex:Personal')
   assert.equal(work.active, false)
-  assert.equal(work.chosen, true, 'the used-up Work account is still the one that was chosen')
-  assert.equal(personal.active, true, 'Keep trying accounts moved Codex to Personal')
+  assert.equal(work.chosen, false)
+  assert.equal(personal.chosen, true, 'the example must show the account the person chose')
+  assert.equal(personal.active, true)
+
+
+  assert.equal(sampleAccountsRaw(NOW).lastSwitch.automatic, false)
   assert.match(rowLines(work, { now: NOW }).map(line => line.text).join(' '), /0% free this 5-hour window/)
 
   const claudeBars = accountBars(byKey.get('claude:Work'), { now: NOW }).map(bar => bar.label)
@@ -60,6 +64,9 @@ test('the example accounts are read by the menu’s own parser and say what each
   assert.equal(buckets.length, 2)
   assert.match(buckets[0], /62% free this week \(Gemini 3\.1 Pro\)/)
   assert.match(buckets[1], /88% free this week \(Gemini 3\.8 Flash\)/)
+  assert.equal(sampleAccountsRaw(NOW).usageCache.accounts.find(row => row.provider === 'gemini').client, 'antigravity',
+    'official-client readings must identify their client before the cache may display them')
+  assert.equal(gemini.allowanceBuckets, null, 'the retired quota-probe envelope is never displayed')
 
   assert.deepEqual(rowLines(byKey.get('grok:Grok'), { now: NOW }).map(line => line.text), [COPY.usageNotReportedFor('Grok')],
     'Grok’s row must say its program did not report, not invent a figure')
@@ -75,7 +82,7 @@ test('nothing in the example is anyone’s, and the same moment gives the same a
     assert.equal(reading.allowanceBinding, registered.allowanceBinding, 'the example uses the same identity contract as native replies')
   }
   for (const row of raw.usageCache.accounts) assert.equal(row.email, undefined, 'an example row carries a signed-in address')
-  assert.doesNotMatch(JSON.stringify(raw), /@|\/home\/|\\Users\\|C:\\/)
+  assert.doesNotMatch(JSON.stringify(raw), /@|\/home\/|\\Users\\|\x43:\\/)
   assert.deepEqual(sampleAccountsRaw(NOW), sampleAccountsRaw(NOW))
 })
 

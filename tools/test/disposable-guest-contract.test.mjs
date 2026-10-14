@@ -19,13 +19,10 @@ const scratch = t => {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 };
-// The guest profile is synthetic, and assembled at run time so this source
-// carries no literal user-profile path.
-const GUEST_PROFILE = ['C:', 'Users', 'BuildAccount-Dev'].join('\\');
 const workerConfig = (overrides = {}) => ({ schema: WORKER_CONFIG_SCHEMA, schemaVersion: 1,
   vmId: '11111111-2222-3333-4444-555555555555', vmName: 'ToolsEnabled-Qualification-cut45',
   baselineCheckpointId: '66666666-7777-8888-9999-aaaaaaaaaaaa', machineRoot: TEST_TEMP,
-  guestProfile: GUEST_PROFILE, networkPolicy: 'offline', ...overrides });
+  guestProfile: '\x43:\\Users\\fixture-profile', networkPolicy: 'offline', ...overrides });
 const check = (report, id) => report.checks.find(row => row.id === id);
 function configFile(t, value) {
   const root = scratch(t), file = path.join(root, 'worker.json');
@@ -165,7 +162,7 @@ test('createDisposableGuest refuses rather than returning a partial guest, and n
 //
 // The ADMITTING path is deliberately absent: it needs a qualifying VM and a
 // guest credential, and neither exists on this host, so it is unproven rather
-// than asserted. See the T240 notes.
+// than asserted. See REPORT-T240.
 const HOST_VM = '9f1d4c2b-1111-4a2b-8c3d-000000000001';
 const HOST_BASELINE = '9f1d4c2b-2222-4a2b-8c3d-000000000002';
 const resolvedMachine = { vmId: HOST_VM, vmName: 'ToolsEnabled-Qualification-cut45', baselineId: HOST_BASELINE, state: 'Off' };
@@ -207,9 +204,9 @@ const saw = outcome => `actually got ${outcome.code}: ${outcome.message}`;
 // PREMISE: admission's answer for an unresolvable machine is one of exactly two
 //   codes, MACHINE_UNRESOLVED or TOOLCHAIN_UNAPPROVED.
 // MEASURED: 2026-09-17, by running this suite under both interpreters present
-//   on one Windows 10 x64 host — the pinned Node 22.19.0 node.exe
-//   (sha256 995a3fb3…, the approved identity) and a second node.exe on PATH
-//   (sha256 33b1bc1a…). The two selected DIFFERENT branches and both
+//   on one Windows 10 x64 host — C:\agent-apps\node-v22.19.0\node.exe
+//   (sha256 995a3fb3…, the approved identity) and C:\Program Files\nodejs\
+//   node.exe (sha256 33b1bc1a…). The two selected DIFFERENT branches and both
 //   agreed with what admission returned.
 // WIDTH: TWO INTERPRETERS ON ONE WINDOWS BOX. One OS, one architecture, one
 //   Hyper-V configuration, one account. It is not a cross-platform result and
@@ -217,8 +214,8 @@ const saw = outcome => `actually got ${outcome.code}: ${outcome.message}`;
 //
 // OUTSIDE THAT WIDTH THE PREMISE IS FALSE, and this is derived from the code
 // plus a measurement of the equivalent Windows-reachable path, NOT from a run
-// on Linux — no Linux host was available for this measurement, so "derived"
-// is the honest word:
+// on Linux — no Linux host was available to this lane, so "derived" is the
+// honest word:
 //   createDisposableGuest calls probeDisposableGuest FIRST. The probe's
 //   qualification-host check is satisfied only when
 //   `process.platform === 'win32' && process.arch === 'x64'`, so on Linux it is
@@ -249,9 +246,9 @@ async function expectedMachineRefusal() {
   // would answer TOOLCHAIN_UNAPPROVED for any failure at all — including a
   // broken import — and could then "agree" with an admission that failed for a
   // completely unrelated reason. Only the measurement itself may select the
-  // branch; anything else must throw and fail the test loudly. Caught while
-  // writing this suite, when a probe with the wider catch reported the wrong
-  // branch under the approved interpreter and still looked plausible.
+  // branch; anything else must throw and fail the test loudly. Caught in this
+  // lane when a probe with the wider catch reported the wrong branch under the
+  // approved interpreter and still looked plausible.
   const { measureRegisteredToolchain } = await import('../lib/transport/owned-job.mjs');
   try {
     measureRegisteredToolchain();

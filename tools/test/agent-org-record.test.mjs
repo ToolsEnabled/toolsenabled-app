@@ -221,7 +221,7 @@ function projectionModules(modules) {
   }
 }
 
-function projectedDefinition(definition, { root = 'C:\\installed-payload' } = {}) {
+function projectedDefinition(definition, { root = '\x43:\\installed-payload' } = {}) {
   const roleRecord = Object.freeze({ definition: Object.freeze(definition), revision: 4 })
   const modules = {
     ok: true,
@@ -334,7 +334,7 @@ test('role creation may declare structure, while edits cannot non-atomically cha
   }
   const modules = {
     ok: true,
-    root: 'C:\\installed-payload',
+    root: '\x43:\\installed-payload',
     durableMemory: { resolveServicesRoot: () => os.tmpdir(), createDurableMemoryFile: () => ({}) },
     customRoleStore: { createCustomRoleStore: () => store },
     orgStore: { createAgentOrgStore: () => ({ read: () => ({ org: { revision: 1 } }) }) },
@@ -382,7 +382,7 @@ test('malformed capability packets are refused before role-store mutation', () =
   }
   const modules = {
     ok: true,
-    root: 'C:\\installed-payload',
+    root: '\x43:\\installed-payload',
     durableMemory: { resolveServicesRoot: () => os.tmpdir(), createDurableMemoryFile: () => ({}) },
     customRoleStore: { createCustomRoleStore: () => store },
     orgStore: { createAgentOrgStore: () => ({ read: () => ({ org: { revision: 1 } }) }) },
@@ -680,4 +680,70 @@ test('seatAdoptionAdds is true only for the organisation root under a payload th
   const older = record.createAgentOrgRecord({ modules: { ...f.modules, agentOrg: { ...f.modules.agentOrg, seatProviders: undefined } }, env: f.env })
   assert.deepEqual(older.seatAdoptionAdds({ id: 'controller' }), { ok: true, additive: false },
     'a payload from before provider sets replaces on the root too')
+})
+
+/* A PLUGIN'S ROLE, AT THIS LAYER (1.0.49 plugins walk, 2026-09-27). In the real
+   app an agent given a plugin's role lost the whole saved organisation when the
+   plugin was withdrawn: Home said "Could not read the ledger" and every edit was
+   refused as damaged. The engine now gives that seat the Worker role and says
+   which seat lost which role; this pins that the shell passes that on, and that
+   the role library can name the plugin a role came from instead of calling it
+   "Custom role". The projection is the payload's own module, reset after. */
+test('a plugin role that goes away leaves a Worker and a notice, and a plugin role names its plugin', { skip: !havePayload }, () => {
+  const projection = require(path.join(PAYLOAD, 'src/lib/plugin-role-projection.js'))
+  const rules = {
+    owns: 'The index of field notes and where each came from.',
+    mustNot: 'Never delete a note it did not create.',
+    handoff: 'Hands a finished index on with its folder.',
+  }
+  projection.resetForTests()
+  try {
+    projection.registerProjectedRoles([{ id: 'field-notes-curator', plugin: 'field-notes', pluginId: 'plugin-abc', rules }])
+    const localAppData = fs.mkdtempSync(path.join(os.tmpdir(), 'org-record-'))
+    const modules = record.loadModules({ root: PAYLOAD })
+    const api = () => record.createAgentOrgRecord({ modules, env: { ...process.env, LOCALAPPDATA: localAppData } })
+
+    const before = api().read()
+    assert.equal(before.ok, true, before.reason)
+    const curator = before.roles.find((role) => role.id === 'field-notes-curator')
+    assert.ok(curator, 'the plugin role is in the library')
+    assert.equal(curator.plugin, 'field-notes', 'and it names the plugin it came from')
+    assert.equal(before.roles.find((role) => role.id === 'worker').plugin, null, 'a shipped role names none')
+
+    const assigned = api().assignRole({ agentId: 'astra', role: 'field-notes-curator', expectedRevision: before.org.revision })
+    assert.equal(assigned.ok, true, assigned.reason)
+
+    // The next start, with the plugin withdrawn.
+    projection.resetForTests()
+    projection.registerProjectedRoles([])
+    const after = api().read()
+    assert.equal(after.ok, true, after.reason)
+    assert.equal(after.org.damaged, null, 'the saved organisation still loads')
+    assert.equal(after.org.source, 'overlay')
+    assert.equal(after.org.agents.find((agent) => agent.id === 'astra').role, 'worker')
+    assert.deepEqual(after.org.withdrawnPluginRoles,
+      [{ agentId: 'astra', displayName: after.org.agents.find((agent) => agent.id === 'astra').displayName, role: 'field-notes-curator' }])
+    const edit = api().reparent({ agentId: 'luna', parentId: 'astra', expectedRevision: after.org.revision })
+    assert.equal(edit.ok, true, `an edit is not refused as a damaged organisation: ${edit.reason || ''}`)
+  } finally {
+    projection.resetForTests()
+  }
+})
+
+test('ownRoleIds lists the roles the person wrote, including one that hides a plugin’s, and never a plugin’s', { skip: !havePayload }, () => {
+  const projection = require(path.join(PAYLOAD, 'src/lib/plugin-role-projection.js'))
+  const rules = { owns: 'Mine.', mustNot: 'Nothing of theirs.', handoff: 'To me.' }
+  projection.resetForTests()
+  try {
+    const api = isolated()
+    assert.deepEqual(api.ownRoleIds(), { ok: true, ids: [] })
+    assert.equal(api.createRole({ id: 'field-notes-archivist', baseDefaultRole: 'worker', rules }).ok, true)
+    projection.registerProjectedRoles([
+      { id: 'field-notes-archivist', plugin: 'field-notes', pluginId: 'plugin-abc', rules },
+      { id: 'field-notes-curator', plugin: 'field-notes', pluginId: 'plugin-abc', rules },
+    ])
+    assert.deepEqual(api.ownRoleIds(), { ok: true, ids: ['field-notes-archivist'] })
+  } finally {
+    projection.resetForTests()
+  }
 })

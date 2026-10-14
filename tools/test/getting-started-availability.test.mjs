@@ -31,10 +31,20 @@
  * pointed at the published truth and at the drift that is possible from here:
  * section 1 must name the address, and must not still deny it.
  *
- * THE SOURCE REPOSITORIES ARE STILL PRIVATE, so the README half of this file is
- * unchanged and still meaningful. Publishing a download page and publishing the
- * source are two different events; this file used to treat them as one, which
- * is why the guide could go half-stale without anything noticing.
+ * Publishing a download page and publishing the source are two different
+ * events; this file used to treat them as one, which is why the guide could go
+ * half-stale without anything noticing.
+ *
+ * AND IT CAME FOR THE SOURCE AND FOR SUPPORT, and here the mechanism held the
+ * stale words in place instead of failing. The app and engine repositories went
+ * public on 2026-10-13, support@toolsenabled.ai and toolsenabled.ai/support
+ * exist, and the 1.0.50 candidate still told every reader of Getting help
+ * "There is no support address" and "The source repositories are private",
+ * while the README on the public repository said "This repository is not yet
+ * public" (1.0.50 release review, release-ops F1). The assertions that pinned
+ * those sentences now point at the published truth, and the owner's rule is
+ * asserted directly: the guide and the README must never say the source is
+ * private or that there is no support address.
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -42,25 +52,47 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { DELETE_BUTTON, resetTitle } from '../../src/account-reset-copy.js'
+import { UPDATE_CONTROL_LABEL, UPDATE_SECTION } from '../../src/update-settings.js'
+import updateCheck from '../../shell/update-check.cjs'
+
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const HELP_PAGE = path.join(REPO_ROOT, 'public', 'help', 'getting-started.html')
 const README = path.join(REPO_ROOT, 'README.md')
+const INSTALLER_SCRIPT = path.join(REPO_ROOT, 'build', 'installer.nsh')
+const SETTINGS_VIEW = path.join(REPO_ROOT, 'src', 'views', 'settings.js')
 
 /* The page is hand-wrapped prose, so a claim can straddle a newline. Compare on
    collapsed whitespace or the assertions become tests of the line width. */
 const flatten = (text) => text.replace(/\s+/g, ' ')
 
-test('the guide still describes the product as unpublished, matching README', () => {
+/* The owner's rule, as the shapes the stale sentences actually took. Each is
+   matched within one sentence, so "private" elsewhere on the page (there is
+   none today) cannot be mistaken for a claim about the source. */
+const SAYS_SOURCE_IS_CLOSED = [
+  /\bnot yet public\b/i,
+  /\b(?:source|repositor(?:y|ies))\b[^.]*\b(?:is|are)\s+(?:still\s+)?(?:private|closed)\b/i,
+  /\bholds only the organization/i,
+  /\bno product repository\b/i,
+]
+const SAYS_NO_SUPPORT = [/\bno support address\b/i, /\bthere is no support\b/i]
+
+const SOURCE_ADDRESSES = [
+  'github.com/ToolsEnabled/toolsenabled-app',
+  'github.com/ToolsEnabled/toolsenabled-engine',
+]
+
+test('README says the source is public and where help is, and never that it is private', () => {
   const readme = flatten(readFileSync(README, 'utf8'))
 
-  assert.ok(
-    readme.includes('This repository is not yet public'),
-    'README no longer says the repository is private. If the product has published, the getting-started page must be updated in the same change: it currently tells a stranger there is nothing to find.',
-  )
-  assert.ok(
-    readme.includes('holds only the organization'),
-    'README no longer says the GitHub organization holds only its profile page. Re-check what public/help/getting-started.html promises a reader who goes looking.',
-  )
+  for (const address of [...SOURCE_ADDRESSES, 'support@toolsenabled.ai', 'toolsenabled.ai/security']) {
+    assert.ok(readme.includes(address),
+      `README does not name ${address}. The repository is public; a reader of it must be told where the source and help are.`)
+  }
+  for (const stale of [...SAYS_SOURCE_IS_CLOSED, ...SAYS_NO_SUPPORT]) {
+    assert.doesNotMatch(readme, stale,
+      'README says the source is private or that there is no support. The owner\'s rule: it must never say either.')
+  }
 })
 
 test('the getting-started page points at the download page it has, and does not still deny it', () => {
@@ -86,20 +118,22 @@ test('the getting-started page points at the download page it has, and does not 
     'the guide still tells the reader the product cannot be downloaded publicly',
   )
 
-  assert.ok(
-    !help.includes('the source code is published'),
-    'the page claims the source code is published; README says the GitHub organization holds only its profile page',
-  )
+  /* Getting help is where a stuck reader goes. Everything it names must be
+     real, and everything real must be named: the support address, the support
+     and security pages, and the two public repositories. */
+  const start = help.indexOf('11. Getting help')
+  assert.notEqual(start, -1, 'the Getting help section is missing')
+  const gettingHelp = help.slice(start)
+  for (const address of ['support@toolsenabled.ai', 'toolsenabled.ai/support', 'toolsenabled.ai/security', ...SOURCE_ADDRESSES]) {
+    assert.ok(gettingHelp.includes(address), `Getting help does not name ${address}`)
+  }
 
-  /* A reader who reaches Getting help has already been told there is no support
-     address. Whatever it sends them to next must be real. The source is still
-     private, so the page must still say so rather than sending them to read it. */
-  const gettingHelp = help.slice(help.indexOf('11. Getting help'))
-  assert.ok(gettingHelp.length > 0, 'the Getting help section is missing')
-  assert.ok(
-    gettingHelp.includes('source repositories are private'),
-    'Getting help must say the source is private rather than sending the reader to look for it',
-  )
+  /* The whole page, comments included: the stale sentence once lived in the
+     header comment as the example of a missing answer. */
+  for (const stale of [...SAYS_SOURCE_IS_CLOSED, ...SAYS_NO_SUPPORT]) {
+    assert.doesNotMatch(help, stale,
+      'the guide says the source is private or that there is no support address. The owner\'s rule: it must never say either.')
+  }
 })
 
 test('the starting-over heading promises only what its own paragraph delivers', () => {
@@ -116,4 +150,81 @@ test('the starting-over heading promises only what its own paragraph delivers', 
     !help.includes('<h3>Start the questions again</h3>'),
     'the heading promises restarting the questions, which the paragraph beneath it then refuses',
   )
+})
+
+/* UNINSTALLING ON WINDOWS ASKS, AND THE GUIDE SAID IT NEVER DELETES.
+ *
+ * The note under Uninstall said "Uninstalling does not delete your data ...
+ * reinstalling picks up where you left off" and told the reader to delete two
+ * folders by hand. build/installer.nsh does something else on Windows: with no
+ * recorded choice it asks "Remove your saved ToolsEnabled data from this
+ * computer?", and a recorded "Remove everything" deletes those same two
+ * folders without asking (1.0.50 release review, release-ops F3). A reader who
+ * trusted the guide could lose the vault and the signed record. So the section
+ * is held to the installer's own question and to the Settings row's own
+ * labels, and "by hand" survives only for Linux, where removing the package
+ * really does leave everything. */
+test('the Uninstall section describes the Windows question and the Settings choice, and keeps "by hand" for Linux', () => {
+  const help = flatten(readFileSync(HELP_PAGE, 'utf8'))
+  const start = help.indexOf('<h3>Uninstall</h3>')
+  assert.notEqual(start, -1, 'the Uninstall section is missing')
+  const section = help.slice(start, help.indexOf('<h2', start))
+
+  const installer = flatten(readFileSync(INSTALLER_SCRIPT, 'utf8'))
+  const question = 'Remove your saved ToolsEnabled data from this computer?'
+  assert.ok(installer.includes(`"${question}`), 'build/installer.nsh no longer asks this question; re-read it and update the guide')
+  assert.ok(section.includes(question), 'the guide does not quote the question the Windows uninstaller asks')
+
+  const settings = flatten(readFileSync(SETTINGS_VIEW, 'utf8'))
+  const row = settings.slice(settings.indexOf("id: 'uninstall_data'"), settings.indexOf("def: 'ask'", settings.indexOf("id: 'uninstall_data'")))
+  assert.match(row, /name: 'When I uninstall ToolsEnabled'/)
+  assert.match(row, /section: 'Data & Privacy'/)
+  assert.ok(section.includes('Data &amp; Privacy') && section.includes('When I uninstall ToolsEnabled'),
+    'the guide does not name the Settings row that decides what the uninstaller does')
+  for (const label of ['Ask me then', 'Keep my data', 'Remove everything']) {
+    assert.ok(row.includes(`'${label}'`), `the Settings row no longer offers "${label}"`)
+    assert.ok(section.includes(label), `the guide does not explain the "${label}" answer`)
+  }
+
+  assert.doesNotMatch(section, /Uninstalling does not delete your data/,
+    'on Windows uninstalling can delete the data; the guide may not say it never does')
+  const linux = section.slice(section.indexOf('On Linux, removing the package never deletes it.'))
+  assert.ok(linux.length < section.length, 'the Linux paragraph about deleting data is missing')
+  assert.match(linux, /by hand/, 'Linux, where removal keeps everything, lost its by-hand advice')
+  assert.doesNotMatch(section.slice(0, section.indexOf('On Linux, removing the package never deletes it.')), /by hand/,
+    'by-hand deletion is offered for Windows, whose uninstaller can delete the data itself')
+
+  /* The Linux route names real controls on the Account page. */
+  assert.ok(section.includes(resetTitle().split(' from ')[0]), 'the guide does not name the data-removal card by its title')
+  assert.ok(section.includes(DELETE_BUTTON), 'the guide does not name the button that lists the folders')
+})
+
+/* THE GUIDE NEVER SAID HOW TO UPDATE (1.0.50 release review, release-ops F13).
+ *
+ * The in-app updater is Windows-only (shell/update-check.cjs refuses every other
+ * platform) and Linux Settings says "This copy cannot install updates from
+ * inside the app", so a Linux reader was never told to fetch a new .deb, and a
+ * Windows reader was never told what the launch question is or where its
+ * remembered answer lives. The Updating section is held to the updater's own
+ * dialog words and the Settings row's own label, so renaming either fails here. */
+test('the guide says how to update on each platform, in the words the product uses', () => {
+  const help = flatten(readFileSync(HELP_PAGE, 'utf8'))
+  const start = help.indexOf('<h3>Updating</h3>')
+  assert.notEqual(start, -1, 'the Updating section is missing')
+  const section = help.slice(start, help.indexOf('<h', start + 1))
+
+  assert.ok(section.includes(updateCheck.CHECK_MESSAGE), 'the guide does not quote the launch question')
+  assert.ok(section.includes(updateCheck.REMEMBER_LABEL), 'the guide does not name the box that keeps the answer')
+  for (const button of updateCheck.CHECK_BUTTONS) {
+    assert.ok(section.includes(button), `the guide does not explain the "${button}" answer`)
+  }
+  assert.match(section, /at most once a day/, 'the remembered "check" answer is throttled to once a day; say so')
+  assert.ok(section.includes(UPDATE_SECTION) && section.includes(UPDATE_CONTROL_LABEL),
+    'the guide does not name the Settings row where the answer can be changed')
+
+  const linux = section.slice(section.indexOf('On Linux'))
+  assert.ok(linux.length < section.length, 'the Linux paragraph is missing')
+  assert.match(linux, /does not update itself/)
+  assert.ok(linux.includes('toolsenabled.ai/download') && linux.includes('.deb'),
+    'a Linux reader is not told to fetch the new .deb from the download page')
 })

@@ -1,8 +1,8 @@
 /* ============================================================================
    SETTINGS AND ACCOUNT: THE 2026-09-23 REFINEMENT LAYER.
 
-   The Settings pass was approved, and the refinements since are better use
-   of space, square boxes, and a plain native slider. So
+   The owner approved the Settings pass on 09-10 ("the rest is good") and asked
+   since for better use of space, square boxes, and a plain native slider. So
    this sheet refines; it does not restyle. It is the last settings sheet
    (imported after settings-coherence.css by src/views/settings.js and
    src/views/account.js) and it spends only the foundation tokens.
@@ -27,25 +27,32 @@
    ========================================================================= */
 
 .view-pad.settings-page {
+  /* Keep the owner's square Settings boxes; overlays keep their own radii. */
+  --r-sm: 2px;
+  --r-md: 3px;
+  --r-lg: 3px;
+  --radius-control: var(--r-md);
+  --radius-card: var(--r-lg);
+  --radius-code: var(--r-md);
   --set-ctl-min: 248px;          /* the control column never gets narrower */
   --set-ctl: 34%;                /* ...and otherwise takes a third of the row */
   --set-aux: 76px;               /* the Details column, reserved on every row */
   --set-gap: var(--s5);
-  --set-h: var(--control-h-lg, 36px); /* one control height for the page: the large density */
+  --set-h: var(--control-h); /* one control height for the page: the large density */
 }
 
 /* ---- HEAD AND COMMAND ROW ------------------------------------------------ */
-/* One page-title treatment across the upgraded pages (design rule):
-   36px, 610, -.035em, as on Vault, Ledger, Metrics, Checkout
+/* One page-title treatment across the upgraded pages (owner review,
+   2026-09-23): 36px, 610, -.035em, as on Vault, Ledger, Metrics, Checkout
    and Tools; 30px when the page is narrow. */
 .view-pad.settings-page .settings-shell .settings-header .mt {
-  font-size: 36px;
-  font-weight: 610;
-  line-height: 1.15;
-  letter-spacing: -.035em;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -.012em;
 }
 @container sidebar-page (max-width: 700px) {
-  .view-pad.settings-page .settings-shell .settings-header .mt { font-size: 30px; }
+  .view-pad.settings-page .settings-shell .settings-header .mt { font-size: 22px; }
 }
 .view-pad.settings-page .settings-shell .settings-search input {
   min-height: var(--set-h);
@@ -57,7 +64,7 @@
   font-size: var(--text-base);
 }
 .view-pad.settings-page .settings-shell .settings-search input:hover { border-color: var(--field-border-hover, var(--ink-3)); }
-.view-pad.settings-page .settings-shell .settings-search input:focus { border-color: var(--border-field); box-shadow: none; outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.view-pad.settings-page .settings-shell .settings-search input:focus { border-color: var(--border-field); box-shadow: none; outline: var(--focus-outline); outline-offset: 2px; }
 
 .view-pad.settings-page .settings-shell .settings-command-bar {
   border-bottom-color: var(--border-default);
@@ -73,7 +80,7 @@
   border-radius: var(--radius-control);
 }
 .view-pad.settings-page .settings-shell .settings-mode-seg > button {
-  min-height: calc(var(--set-h) - 6px);
+  min-height: var(--control-h-sm);
   padding: 0 var(--s3);
   border-radius: calc(var(--radius-control) - 1px);
   font-size: var(--text-sm);
@@ -86,7 +93,7 @@
   height: var(--set-h);
   min-height: var(--set-h);
   padding: 0 var(--s4);
-  font-size: var(--text-sm);
+  font-size: 13.5px;
 }
 /* THE PAGE'S ONE PRIMARY. Save settings fills with the theme's primary ink
    once there is something to save; at rest it is the ordinary disabled button
@@ -141,10 +148,10 @@
   padding: 0 0 var(--s3);
   border-bottom: 1px solid var(--border-default);
   color: var(--ink);
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-bold);
+  font-size: 15px;
+  font-weight: 620;
   letter-spacing: var(--tracking-title);
-  line-height: var(--leading-tight);
+  line-height: 1.3;
 }
 /* A section's note is a sentence under its title, not a tinted call-out. */
 .view-pad.settings-page .settings-shell .settings-layout .settings-section-note {
@@ -166,12 +173,12 @@
   margin: 0;
   padding: var(--s5) 0 var(--s2);
   border-bottom: 1px solid var(--border-default);
-  color: var(--ink-3);
-  font-size: var(--text-caps);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--track-caps);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
   line-height: var(--leading-tight);
-  text-transform: uppercase;
+  text-transform: none;
 }
 .view-pad.settings-page .settings-shell .settings-layout .settings-subsection + .settings-subsection { margin-top: 0; }
 
@@ -225,8 +232,8 @@
 
 .view-pad.settings-page .settings-shell .settings-layout .settings-name {
   color: var(--ink);
-  font-size: 15px;
-  font-weight: var(--weight-semibold);
+  font-size: 14px;
+  font-weight: 600;
   line-height: var(--leading-snug);
 }
 .view-pad.settings-page .settings-shell .settings-layout .settings-state { margin-top: 2px; color: var(--ink-2); font-size: var(--text-sm); }
@@ -254,7 +261,7 @@
 .view-pad.settings-page[data-settings-mode]:not([data-settings-mode="simple"]) .settings-shell .settings-layout .settings-row:is([data-settings-min-mode="advanced"], [data-settings-min-mode="expert"]) > .settings-copy { padding-left: var(--s3); }
 .view-pad.settings-page[data-settings-mode]:not([data-settings-mode="simple"]) .settings-shell .settings-layout .settings-row:is([data-settings-min-mode="advanced"], [data-settings-min-mode="expert"]) .settings-name {
   color: var(--ink-2);
-  font-weight: var(--weight-medium);
+  font-weight: 600;
 }
 .view-pad.settings-page[data-settings-mode]:not([data-settings-mode="simple"]) .settings-shell .settings-layout .settings-row:is([data-settings-min-mode="advanced"], [data-settings-min-mode="expert"]) .settings-desc { color: var(--ink-3); }
 /* A staged or invalid row keeps its own left mark over the hairline. The
@@ -264,6 +271,13 @@
 .view-pad.settings-page .settings-shell .settings-layout .settings-row[data-setting-invalid="true"] { box-shadow: inset 3px 0 0 var(--s-serious); }
 .view-pad.settings-page .settings-shell .settings-layout .settings-row:is([data-setting-pending="true"], [data-setting-invalid="true"]) > .settings-copy { padding-left: var(--s3); }
 .view-pad.settings-page .settings-shell .settings-layout .settings-row.is-landed { box-shadow: none; }
+/* THE LANDED ROW KEEPS ITS INSET. settings.css draws the row a link sent
+   somebody to as a 2px rule AND a --s3 inset; the row anatomy above sets
+   `padding: var(--s4) 0` at (0,7,0) -- its :is(*, :has(...)) argument counts
+   -- which zeroed the inset and left the text flush against the rule (#/guide,
+   every "Open Settings" link). Restated here with the same :is() so it
+   outranks the anatomy at (0,8,0) instead of losing to it at (0,6,0). */
+.view-pad.settings-page .settings-shell .settings-layout .settings-row.is-landed:is(*, :has(> .settings-disclosure .guided-summary)) { padding-left: var(--s3); }
 
 /* ---- CONTROLS IN THE CONTROL COLUMN -------------------------------------- */
 .view-pad.settings-page .settings-shell .settings-layout .settings-control .ctl-btn,
@@ -282,11 +296,16 @@
    act now ("Use this default for every tree" with no tree overrides, Save
    with nothing staged) never reads as loose grey words. */
 .view-pad.settings-page .settings-shell :is(.ctl-btn, .guide-account-btn):disabled {
-  opacity: .55;
-  border-color: var(--border-default);
-  background: var(--control-disabled-bg);
+  opacity: .45;
+  border-color: var(--control-border);
+  background: var(--control-bg);
   box-shadow: none;
-  color: var(--control-disabled-ink);
+  color: var(--control-ink);
+}
+.view-pad.settings-page .settings-shell .settings-save-bar .ctl-btn.armed:disabled {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--action-primary-ink);
 }
 /* EVERY BUTTON IN A CATEGORY, WHEREVER ITS PANEL PUT IT. The base .ctl-btn
    has no side padding, so the System panel's Load profile, Export profile,
@@ -331,8 +350,8 @@
   color: var(--selected-ink);
 }
 /* Theme swatches: the same selected tint and edge as every other choice. */
-.view-pad.settings-page .settings-shell .settings-layout [data-setting-id="theme"] .settings-seg { border-radius: var(--radius-control); }
-.view-pad.settings-page .settings-shell .settings-layout [data-setting-id="theme"] .settings-seg > button { min-height: calc(var(--set-h) - 4px); border-radius: calc(var(--radius-control) - 1px); }
+.view-pad.settings-page .settings-shell .settings-layout [data-setting-id="theme"] .settings-seg { padding: 2px; border-radius: var(--radius-control); }
+.view-pad.settings-page .settings-shell .settings-layout [data-setting-id="theme"] .settings-seg > button { min-height: calc(var(--set-h) - 4px); padding: 4px 10px; border-radius: calc(var(--radius-control) - 1px); }
 .view-pad.settings-page .settings-shell .settings-layout [data-setting-id="ui_font"] .settings-seg > button { border-radius: var(--radius-card); }
 /* Fields and dropdowns in a row sit at the control height, on the field edge. */
 .view-pad.settings-page .settings-shell .settings-layout .settings-control select,
@@ -416,9 +435,9 @@
   padding: 0;
   border: 0;
   font-size: 15px;
-  font-weight: var(--weight-semibold);
+  font-weight: 620;
   letter-spacing: 0;
-  line-height: var(--leading-snug);
+  line-height: 1.3;
 }
 .view-pad.settings-page .settings-shell .settings-layout .settings-mode-gate-row {
   display: grid;
@@ -449,11 +468,11 @@
 }
 .view-pad.settings-page .settings-shell .settings-quick-title {
   margin: 0 0 var(--s2);
-  color: var(--ink-3);
-  font-size: var(--text-caps);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .view-pad.settings-page .settings-shell .settings-quick-grid { gap: var(--s3) var(--s5); }
 .view-pad.settings-page .settings-shell .settings-working-profile {
@@ -470,23 +489,23 @@
    bare border, the only buttons on the page that were not the page's button.
    They take the foundation button, at the row height. */
 .view-pad.settings-page .settings-shell .guide-account-btn {
-  min-height: 36px;
+  min-height: var(--control-h);
   padding: 0 var(--s3);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-control);
   background: var(--control-bg);
   box-shadow: var(--shadow-control);
   color: var(--control-ink);
-  font: var(--weight-semibold) var(--text-sm) / 1 var(--font-ui);
+  font: 550 13.5px / 1 var(--font-ui);
 }
 .view-pad.settings-page .settings-shell .guide-account-btn:hover:not(:disabled) { background: var(--control-hover); border-color: var(--control-border-hover); }
 .view-pad.settings-page .settings-shell .guide-account-btn:disabled,
 .view-pad.settings-page .settings-shell .guide-signin-btn[disabled] {
-  opacity: 1;
-  border-color: var(--border-hairline);
-  background: var(--control-disabled-bg);
+  opacity: .45;
+  border-color: var(--control-border);
+  background: var(--control-bg);
   box-shadow: none;
-  color: var(--control-disabled-ink);
+  color: var(--control-ink);
   cursor: not-allowed;
 }
 .view-pad.settings-page .settings-shell .guide-signin-row { gap: var(--s2); align-items: center; }
@@ -522,35 +541,41 @@
    the paint is calmer.
    ========================================================================= */
 .view-pad.setup-page:has([data-account-section]) { align-items: flex-start; }
-.view-pad.setup-page:has([data-account-section]) > .setup-shell {
+body[data-navigation] .view-pad.setup-page:has([data-account-section]) > .setup-shell {
   width: 100%;
-  max-width: 920px;
+  max-width: 720px;
   margin: var(--s6) auto var(--s7);
   padding-block: 0;
+  container: account-shell / inline-size;
 }
 .setup-page [data-account-section].setup-section {
-  padding: var(--s6) clamp(var(--s4), 4vw, var(--s7));
-  border-color: var(--border-default);
-  border-radius: var(--radius-card);
-  background: var(--surface-base);
-  box-shadow: var(--shadow-card);
+  container: account-content / inline-size;
+  padding: 32px;
+  border-color: var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-surface);
+  box-shadow: none;
+  --r-sm: 2px;
+  --r-md: 3px;
+  --r-lg: 3px;
 }
 .setup-page [data-account-section] .setup-title {
   margin: 0 0 var(--s2);
-  font-size: 36px;
-  font-weight: 610;
-  line-height: 1.15;
-  letter-spacing: -.035em;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -.012em;
 }
-.setup-page [data-account-section] .setup-lede { color: var(--ink-25); font-size: var(--text-base); }
+.setup-page [data-account-section] .setup-lede { color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
 .setup-page [data-account-section] .settings-section-title {
   margin: var(--s6) 0 0;
   padding: 0 0 var(--s2);
   border-bottom: 1px solid var(--border-default);
-  color: var(--ink-3);
-  font-size: var(--text-caps);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--track-caps);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
 }
 .setup-page [data-account-section] .settings-section-rows > .settings-row {
   grid-template-columns: minmax(0, 1fr) auto;
@@ -560,23 +585,25 @@
   padding: var(--s4) 0;
   border-bottom: 1px solid var(--border-hairline);
 }
-.setup-page [data-account-section] .settings-name { color: var(--ink); font-size: var(--text-base); font-weight: var(--weight-semibold); line-height: var(--leading-snug); }
-.setup-page [data-account-section] .settings-desc { max-width: 68ch; color: var(--ink-25); font-size: var(--text-md); line-height: var(--leading-normal); }
+.setup-page [data-account-section] .settings-name { color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.5; }
+.setup-page [data-account-section] .settings-desc { max-width: 68ch; color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
 .setup-page [data-account-section] .settings-control { justify-content: flex-end; gap: var(--s2); }
 .setup-page [data-account-section] .fleet-inline-control { width: auto; max-width: 100%; }
 .setup-page [data-account-section] .settings-control:has(.fleet-profile-input) { width: min(100%, 320px); }
 /* Every account button at one height, with room between neighbours. A link
    dressed as a button reads as a button, not as underlined text in a box. */
 .setup-page [data-account-section] .ctl-btn {
-  min-height: 36px;
-  padding: 0 var(--s4);
-  font-size: var(--text-sm);
+  min-height: 32px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  font-weight: 550;
   white-space: nowrap;
+  border-radius: var(--r-sm);
 }
 .setup-page [data-account-section] a.ctl-btn { display: inline-flex; align-items: center; text-decoration: none; }
-.setup-page [data-account-section] .fleet-profile-input { min-height: 36px; border-color: var(--border-field); border-radius: var(--radius-control); background: var(--field-bg, var(--surface-raised)); }
 .setup-page [data-account-section] .setup-actions { margin-top: var(--s5); padding-top: var(--s4); border-top-color: var(--border-default); }
-.setup-page [data-account-section] .setup-actions .ctl-btn { height: var(--control-h-lg, 36px); min-height: var(--control-h-lg, 36px); }
+.setup-page [data-account-section] .setup-actions .ctl-btn { height: 32px; min-height: 32px; }
 /* THE FORM'S ONE PRIMARY: the submit button of a sign-in, create or change
    form. Back and the other ways in stay ordinary buttons. */
 .setup-page [data-account-section] [data-account-form] .setup-actions button[type="submit"]:not(:disabled) {
@@ -591,10 +618,11 @@
 .setup-page [data-account-section] .settings-section-rows > .settings-row:last-child { border-bottom: 0; }
 .setup-page [data-account-section] .ctl-btn:disabled,
 .setup-page [data-account-section] .ctl-btn:disabled:hover {
-  opacity: .55;
-  border-color: var(--border-default);
-  background: var(--control-disabled-bg);
-  color: var(--control-disabled-ink);
+  opacity: .45;
+  border-color: var(--line-strong);
+  background: var(--control-bg);
+  color: var(--ink);
+  cursor: not-allowed;
 }
 /* Buttons that answer a notice (Retry status, Set the damaged file aside)
    sit together under it, at the left, not loose on their own lines. */
@@ -603,19 +631,30 @@
 /* THE CALM NOTICE. A sunken well with a 2px edge in the notice's own tone and
    the headline in ink: the words carry the news, the colour only marks it. */
 .setup-page [data-account-section] .fleet-profile-status {
+  --account-notice-tone: var(--field-border);
+  position: relative;
   margin: var(--s4) 0;
-  padding: var(--s3) var(--s4);
-  border: 1px solid var(--border-hairline);
-  border-left: 2px solid var(--ink-3);
-  border-radius: 0 var(--radius-control) var(--radius-control) 0;
-  background: var(--surface-sunken);
-  color: var(--ink-25);
+  padding: 12px 16px 12px 44px;
+  border: 1px solid var(--account-notice-tone);
+  border-radius: var(--r-lg);
+  background: var(--bg-surface);
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.5;
 }
-.setup-page [data-account-section] .fleet-profile-status strong { color: var(--ink); font-size: var(--text-base); font-weight: var(--weight-semibold); }
-.setup-page [data-account-section] .fleet-profile-status span { font-size: var(--text-md); }
-.setup-page [data-account-section] .fleet-profile-status.is-serious { border-left-color: var(--s-serious); }
-.setup-page [data-account-section] .fleet-profile-status.is-good { border-left-color: var(--s-good); }
-.setup-page [data-account-section] .fleet-profile-status.is-warn { border-left-color: var(--ink-3); }
+.setup-page [data-account-section] .fleet-profile-status::before {
+  content: ''; position: absolute; top: 14px; left: 16px; width: 16px; height: 16px;
+  background: var(--account-notice-tone);
+  mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27black%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Cpath d=%27M12 7v6m0 4h.01%27/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.setup-page [data-account-section] .fleet-profile-status strong { color: var(--ink); font-size: 13.5px; font-weight: 600; }
+.setup-page [data-account-section] .fleet-profile-status span { font-size: 13.5px; }
+.setup-page [data-account-section] .fleet-profile-status.is-serious { --account-notice-tone: var(--status-error); }
+.setup-page [data-account-section] .fleet-profile-status.is-good { --account-notice-tone: var(--status-working); }
+.setup-page [data-account-section] .fleet-profile-status.is-warn { --account-notice-tone: var(--field-border); }
+@media (forced-colors: active) {
+  .setup-page [data-account-section] .fleet-profile-status::before { background: CanvasText; forced-color-adjust: none; }
+}
 
 /* WHO IS SIGNED IN: the name, with a square monogram, heads the page. */
 .setup-page [data-account-section] .account-identity {
@@ -629,10 +668,10 @@
 .setup-page [data-account-section] .account-monogram {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-card);
+  border-radius: var(--r-lg);
   background: var(--surface-sunken);
   color: var(--ink);
   font-size: var(--text-2xl);
@@ -640,15 +679,17 @@
 }
 .setup-page [data-account-section] .account-identity-line { margin: 2px 0 0; color: var(--ink-3); font-size: var(--text-sm); }
 
-@container setup-content (max-width: 560px) {
-  .setup-page [data-account-section] .setup-title { font-size: 30px; }
+@container account-content (max-width: 560px) {
+  .setup-page [data-account-section] .setup-title { font-size: 22px; }
   .setup-page [data-account-section] .settings-section-rows > .settings-row { grid-template-columns: minmax(0, 1fr); row-gap: var(--s2); }
   .setup-page [data-account-section] .settings-control { justify-content: flex-start; flex-wrap: wrap; }
-  .setup-page [data-account-section] .ctl-btn { white-space: normal; }
+  .setup-page [data-account-section] .ctl-btn { white-space: normal; border-radius: var(--r-sm); }
+}
+@container account-shell (max-width: 560px) {
+  .setup-page [data-account-section].setup-section { padding: 20px; }
 }
 @media (max-width: 760px) {
-  .view-pad.setup-page:has([data-account-section]) > .setup-shell { margin-block: var(--s3) var(--s5); }
-  .setup-page [data-account-section].setup-section { padding: var(--s5) var(--s4); }
+  body[data-navigation] .view-pad.setup-page:has([data-account-section]) > .setup-shell { margin-block: var(--s3) var(--s5); max-width: 720px; container: account-shell / inline-size; }
 }
 
 /* ===========================================================================
@@ -671,8 +712,8 @@
   border-bottom: 0;
   border-radius: var(--radius-card) var(--radius-card) 0 0;
   background: var(--craft-band);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
+  font-size: 15px;
+  font-weight: 620;
 }
 @media (forced-colors: active) {
   .view-pad.settings-page .settings-shell .settings-layout .settings-sections > .settings-section { border: 1px solid CanvasText; }

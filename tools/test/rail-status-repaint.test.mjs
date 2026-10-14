@@ -176,13 +176,13 @@ test('actual terminal closure replaces a resumed note with the provider failure 
   assert.ok(start >= 0 && end > start && outcome, 'find terminal painting before the separate queue drain')
   const terminal = [outcome, ...statements.slice(start, end)]
     .map(statement => code.slice(statement.start, statement.end)).join('\n')
-  for (const scenario of ['failure', 'success', 'interrupted', 'other-node', 'inactive']) {
+  for (const scenario of ['failure', 'success', 'interrupted', 'other-node', 'inactive', 'safety']) {
     const oldNote = 'Back. This is the same agent, with everything it already remembered.'
     const hosts = { '[data-tree-status-note]': host(oldNote) }
     const repaint = instantiateRepaint({ hosts, statusWord: n => n.status, activity: new Map(), replies: new Map(), railSaid: null })
     let saved, appliedChoices = 0, cancelledChoices = 0
     const state = {
-      sessionId: 'resumed-session', nodeId: 'controller', said: '',
+      sessionId: 'resumed-session', nodeId: 'controller', said: '', sessionNodeIds: { automaticTurnsHeld: () => scenario === 'safety' },
       status: scenario === 'success' ? 'success' : 'error',
       engineSentence: 'The provider refused this request.',
       userStopped: scenario === 'interrupted', nodeStatusForTurn,
@@ -192,7 +192,7 @@ test('actual terminal closure replaces a resumed note with the provider failure 
       clearSessionApprovals() {}, clearInlineApproval() {}, disposeRailSaid() {},
       nodeReplies: new Map(), recordTurnActions() {}, transcriptAppend() {}, deliverTurnReply() {},
       railChat: null,
-      // The completion writes only while the node still holds this session (an earlier commit), so the
+      // The completion writes only while the node still holds this session (6472e8024), so the
       // store answers a fresh read with the resumed session, and the real ownership check runs.
       stopStillOwnsNode,
       treeStore: { getNode: id => ({ id, sessionId: 'resumed-session' }), setNodeReply() {}, setNodeStatus(id, status, { note }) { saved = { id, status, statusNote: note } } },
@@ -209,8 +209,8 @@ test('actual terminal closure replaces a resumed note with the provider failure 
       repaintRailStatus: repaint,
     }
     await new AsyncFunction(...Object.keys(state), terminal)(...Object.values(state))
-    assert.equal(appliedChoices, scenario === 'interrupted' ? 0 : 1)
-    assert.equal(cancelledChoices, scenario === 'interrupted' ? 1 : 0)
+    assert.equal(appliedChoices, ['interrupted', 'safety'].includes(scenario) ? 0 : 1)
+    assert.equal(cancelledChoices, ['interrupted', 'safety'].includes(scenario) ? 1 : 0)
     const expected = scenario === 'success' ? '' : scenario === 'interrupted' ? 'Stopped by you.' : TURN_FAILED.reply(state.engineSentence)
     assert.equal(saved.statusNote, expected)
     assert.equal(hosts['[data-tree-status-note]'].textContent, ['other-node', 'inactive'].includes(scenario) ? oldNote : expected, scenario)

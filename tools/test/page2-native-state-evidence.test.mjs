@@ -162,7 +162,7 @@ for (const [label, mutate] of [
 })
 
 function profileEvidence(present = true) {
-  const expected = { id: 'picked-id', name: 'Named native QA folder', cwd: 'C:\\owned\\qa-folder' }
+  const expected = { id: 'picked-id', name: 'Named native QA folder', cwd: '\x43:\\owned\\qa-folder' }
   const profiles = present ? [expected] : []
   const bytes = Buffer.from(JSON.stringify({ v: 1, profiles: profiles.map(profile => ({ ...profile, createdAt: '2026-09-08T00:00:00Z' })) }))
   return { value: { ok: true, profiles }, fileBefore: bytes, fileAfter: Buffer.from(bytes), expected, present }
@@ -174,7 +174,7 @@ for (const [label, mutate] of [
   ['changed file during read', v => { v.fileAfter = Buffer.from('{}') }],
   ['stale empty list', v => { v.value.profiles = [] }],
   ['foreign profile ID', v => { v.expected.id = 'foreign-id' }],
-  ['different chosen folder', v => { v.expected.cwd = 'C:\\other' }],
+  ['different chosen folder', v => { v.expected.cwd = '\x43:\\other' }],
   ['removal that retained the target', v => { v.present = false }],
 ]) test(`profile evidence refuses ${label}`, () => {
   const value = profileEvidence(); mutate(value)

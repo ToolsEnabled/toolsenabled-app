@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { createRequire } from 'node:module';
 import { measureFile, digestRecord } from '../lib/adapters/artifact-files.mjs';
 import { inspectDebArchive, captureDebMembers, inspectTarArchive, readVerifiedTarEntry } from '../lib/adapters/artifact-archive.mjs';
 import { inspectDebianPackage } from '../lib/adapters/artifact-deb.mjs';
@@ -16,6 +17,7 @@ import { runOwnedJob } from '../lib/transport/owned-job.mjs';
 import { LINUX_XZ, linuxXzArguments, assertLinuxXzInput, measureLinuxXzToolchain, linuxXzEnvironment } from '../lib/transport/linux-xz-toolchain.mjs';
 
 const linux = { skip: process.platform !== 'linux' || process.arch !== 'x64', timeout: 120000 };
+const require = createRequire(import.meta.url);
 function xz(bytes) {
   const result = spawnSync('/usr/bin/xz', ['--compress', '--stdout'], { input: bytes, env: { PATH: '/usr/bin', LANG: 'C', LC_ALL: 'C' }, timeout: 10000, maxBuffer: 1024 * 1024 });
   assert.equal(result.status, 0); return result.stdout;
@@ -76,14 +78,20 @@ function packageFixture(t) {
     'usr/share/icons/hicolor/256x256/apps/toolsenabled.png': source('shell/icon.png'),
     'usr/share/doc/toolsenabled/changelog.gz': gzipSync(`toolsenabled (0.0.0) ; urgency=medium\n\n  * Package created with FPM.\n\n -- ${pkg.build.deb.maintainer}  Sun, 13 Sep 2026 12:00:00 -0700\n`, { level: 9 }),
   };
-  function archives({ changeData = {}, extraControl = {}, changeControl = {}, modeData = {}, ownerData = {} } = {}) {
+  function archives({ changeData = {}, extraControl = {}, changeControl = {}, modeData = {}, ownerData = {},
+    includeSharedOpt = true, omitDirectories = [], removeData = [], extraDirectories = [], directoryModes = {},
+    vendor = pkg.build.linux.vendor, section = pkg.build.deb.packageCategory, summary = pkg.build.linux.synopsis } = {}) {
     const selected = { ...files, ...changeData };
+    for (const name of removeData) delete selected[name];
     const dirs = new Set(['.']);
     for (const name of Object.keys(selected)) for (let parent = path.posix.dirname(name); parent !== '.'; parent = path.posix.dirname(parent)) dirs.add(parent);
-    const data = tar([...dirs].sort().map(name => tarEntry(name, '', { type: '5', mode: 0o755 }))
+    if (!includeSharedOpt) dirs.delete('opt');
+    for (const name of omitDirectories) dirs.delete(name);
+    for (const name of extraDirectories) dirs.add(name);
+    const data = tar([...dirs].sort().map(name => tarEntry(name, '', { type: '5', mode: directoryModes[name] ?? 0o755 }))
       .concat(Object.entries(selected).map(([name, bytes]) => tarEntry(name, bytes, { mode: modeData[name] || 0o644, uname: ownerData[name] || '' }))));
     const size = Math.floor(Object.values(selected).reduce((sum, bytes) => sum + Buffer.byteLength(bytes), 0) / 1024);
-    const controlText = `Package: toolsenabled\nVersion: 0.0.0\nLicense: ${pkg.license}\nVendor: ${pkg.build.deb.maintainer}\nArchitecture: amd64\nMaintainer: ${pkg.build.deb.maintainer}\nInstalled-Size: ${size}\nDepends: ${pkg.build.deb.depends.join(', ')}\nRecommends: libappindicator3-1\nSection: default\nPriority: optional\nHomepage: ${pkg.homepage}\nDescription: \n  ${pkg.description}\n`;
+    const controlText = `Package: toolsenabled\nVersion: 0.0.0\nLicense: ${pkg.license}\nVendor: ${vendor}\nArchitecture: amd64\nMaintainer: ${pkg.build.deb.maintainer}\nInstalled-Size: ${size}\nDepends: ${pkg.build.deb.depends.join(', ')}\nRecommends: libappindicator3-1\nSection: ${section}\nPriority: optional\nHomepage: ${pkg.homepage}\nDescription: ${summary}\n  ${pkg.description}\n`;
     const md5 = Object.entries(selected).map(([name, bytes]) => `${createHash('md5').update(bytes).digest('hex')}  ${name}\n`).join('');
     const control = tar([tarEntry('.', '', { type: '5', mode: 0o755 }), ...Object.entries({ control: controlText, md5sums: md5,
       postinst: source('build/linux/deb-maintainer.sh'), postrm: source('build/linux/deb-maintainer.sh'), ...changeControl, ...extraControl })
@@ -178,6 +186,27 @@ test('whole Debian accounting binds stage, source scripts, desktop, icon, depend
   assert.equal(actual.allInstallerEntriesAccounted, true);
   assert.equal(actual.controlEntries.filter(entry => entry.type === 'file').length, 4);
   assert.deepEqual(actual.installedEntries.filter(entry => entry.type === 'file').map(entry => entry.name).sort(), Object.keys(f.files).sort());
+});
+
+/* Platform review L1: the package ships the ./opt/ directory record again, as
+   1.0.48 did. Without it dpkg cannot unpack ./opt/ToolsEnabled/ wherever /opt is
+   missing -- including right after removing a package that was the last owner of
+   /opt. dpkg reference-counts shared directories, so owning it is harmless. */
+test('Debian packages ship the shared opt record and refuse incomplete or unsafe payloads', linux, t => {
+  const f = packageFixture(t), actual = f.inspect();
+  assert.equal(actual.installedEntries.some(entry => entry.name === 'opt' && entry.type === 'directory' && entry.mode === 0o755), true);
+  const configured = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url))).build;
+  assert.equal(Object.hasOwn(configured, 'artifactBuildCompleted'), false, 'a build hook still cuts the ./opt/ record');
+  assert.equal(actual.installedEntries.some(entry => entry.name === 'opt/ToolsEnabled' && entry.type === 'directory'), true);
+  for (const options of [
+    { includeSharedOpt: false },
+    { directoryModes: { opt: 0o777 } },
+    { omitDirectories: ['opt/ToolsEnabled'] },
+    { removeData: ['opt/ToolsEnabled/test.txt'] },
+    { directoryModes: { 'opt/ToolsEnabled': 0o777 } },
+    { extraDirectories: ['opt/Unrelated'] },
+    { changeData: { 'opt/ToolsEnabled/unaccounted': Buffer.from('extra') } },
+  ]) assert.throws(() => f.inspect(options), /Artifact qualification blocked/);
 });
 
 test('outside-app changes never qualify merely because the complete app subtree still matches', linux, t => {
@@ -314,3 +343,18 @@ for (const point of ['unchanged', 'source-before-decoder', 'source-after-decoder
     }
   });
 }
+
+/* F11 (1.0.50 release review, release-ops). The builder's defaults -- an empty
+   summary line, "Section: default" and the maintainer address as Vendor --
+   were what this accounting expected. It now expects what package.json
+   declares, and the old defaults are refused rather than waved through. */
+test('Debian control carries the declared summary, section and vendor, and the builder defaults are refused', t => {
+  const f = packageFixture(t);
+  const accounting = f.inspect();
+  assert.equal(accounting.controlFields.Section, 'devel');
+  assert.equal(accounting.controlFields.Vendor, 'ToolsEnabled, Inc.');
+  assert.equal(accounting.controlFields.Description, `${f.pkg.build.linux.synopsis}\n ${f.pkg.description}`);
+  for (const defaults of [{ section: 'default' }, { vendor: f.pkg.build.deb.maintainer }, { summary: '' }]) {
+    assert.throws(() => f.inspect(defaults), /Debian control identity, dependencies or metadata differs from source/, JSON.stringify(defaults));
+  }
+});

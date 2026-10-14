@@ -166,7 +166,7 @@ export function inlineLeanProgram(program, sources) {
 // record. An export still regenerates its attributions from its own pinned
 // bytes, because this file is one of them.
 //
-// The rule: prefer established reference implementations, make
+// The owner's rule: prefer established reference implementations, make
 // adaptations clear, identify authors and link the real source for substantial
 // reuse, retain notices, record a useful revision -- and never claim generated
 // code came from a paper or repository when it did not.
@@ -235,7 +235,7 @@ export const PROVENANCE = Object.freeze([
     },
     references: [
       // Reviewed at upstream master on 2026-09-10 (root's reference review).
-      // refs/heads/master was measured with `git ls-remote` later that
+      // refs/heads/master was measured with `git ls-remote` at 22:35:16Z that
       // day, after the review, so the commit dates the branch; it is not proof
       // of the exact bytes that were read.
       { kind: 'reviewed-source',

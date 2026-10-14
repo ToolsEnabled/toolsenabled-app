@@ -2,7 +2,7 @@
    deletion path. These fixtures are synthetic, retained, and isolated. The
    suite never opens a live profile or asks the product to release a seat. */
 import assert from 'node:assert/strict'
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import Module, { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
@@ -13,15 +13,8 @@ import { randomUUID } from 'node:crypto'
 
 const require_ = createRequire(import.meta.url)
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-// The pinned baseline is a commit from the history that preceded this fix; a
-// checkout without that history skips the comparison by name.
-const PINNED_BASELINE = process.env.T1644_RENDERER_PREFS_BASELINE_REF || '0000000'
-const BASELINE_REQUESTED = process.env.T1644_RENDERER_PREFS_BASELINE === '1'
-const BASELINE_AVAILABLE = BASELINE_REQUESTED
-  && spawnSync('git', ['cat-file', '-e', `${PINNED_BASELINE}^{commit}`], { cwd: ROOT }).status === 0
-const USE_PINNED_BASELINE = BASELINE_REQUESTED && BASELINE_AVAILABLE
-if (BASELINE_REQUESTED && !BASELINE_AVAILABLE)
-  test('the pinned baseline comparison', t => t.skip(`baseline ref ${PINNED_BASELINE} is not in this checkout`))
+const PINNED_BASELINE = '1c38a240'
+const USE_PINNED_BASELINE = process.env.T1644_RENDERER_PREFS_BASELINE === '1'
 
 /* The baseline is opt-in so the normal invocation exercises the checked-out
    product. The comparison invocation extracts exactly the pinned CJS source,

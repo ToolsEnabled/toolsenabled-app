@@ -23,7 +23,7 @@ let chat = null
 let graph = null
 let lastSelected = null
 const at = 1788560000000
-const answer = '## The restart is ready\n\nThe measured result is **unchanged**: the saved tree is available, and the owner can choose when to restart.\n\n### What was checked\n\n- The current tree still has its named controller.\n- Queued messages remain editable and send only once.\n- No provider session was started by this layout check.\n\nA long path stays readable: `C:\\work\\' + 'nested-folder-'.repeat(22) + 'report.md`.\n\n```javascript\nconst message = "' + 'long code '.repeat(25) + '";\nconsole.log(message);\n```\n\n| Check | Result |\n| --- | --- |\n| Controls | Preserved |\n| Layout | Measured in Chromium |\n\nThe final paragraph follows the tool summary without crossing its border.'
+const answer = '## The restart is ready\n\nThe measured result is **unchanged**: the saved tree is available, and the owner can choose when to restart.\n\n### What was checked\n\n- The current tree still has its named controller.\n- Queued messages remain editable and send only once.\n- No provider session was started by this layout check.\n\nA long path stays readable: `\x43:\\work\\' + 'nested-folder-'.repeat(22) + 'report.md`.\n\n```javascript\nconst message = "' + 'long code '.repeat(25) + '";\nconsole.log(message);\n```\n\n| Check | Result |\n| --- | --- |\n| Controls | Preserved |\n| Layout | Measured in Chromium |\n\nThe final paragraph follows the tool summary without crossing its border.'
 const rect = el => { const r = el.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height, right:r.right, bottom:r.bottom } }
 const wait = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 
@@ -35,7 +35,7 @@ async function mount({ theme='black', size=1, short=false, count=12 } = {}) {
   document.body.classList.add('reduce-motion')
   document.querySelector('#fixture').innerHTML = '<section class="computers fixture-canvas"><div class="fixture-title">Agent tree · isolated layout check</div><div class="fixture-graph"></div></section><section class="fixture-chat"></section>'
   chat = buildChat({ title:'Controller', roleKey:'coordinator', seed:0, onSend:()=>{}, subtitle:'Your agent · live session',
-    headerMeta:{ path:{ value:'C:\\work\\ProjectFiles\\workspace', source:'profile-cwd' }, status:{ key:'running', source:'session-node-status' } },
+    headerMeta:{ path:{ value:'\x43:\\work\\ToolsEnabled\\workspace', source:'profile-cwd' }, status:{ key:'running', source:'session-node-status' } },
     history:[{ who:'you', text:'Review the saved tree and explain what changed.', at },markRoleContext({who:'you',text:'TOOLSENABLED ROLE DIRECTIONS (configured in the Role library)\nRole: Controller\nPurpose: Coordinate the requested work.\nOwns: The tree and its final verification.\nMust not: Claim unmeasured success.\nHands off to: Managers for bounded work.\n\nFollow these directions while carrying out the person\'s task. They do not grant tools, permissions, or authority beyond this session\'s enforced limits.',at},'fixture')] })
   document.querySelector('.fixture-chat').append(chat)
   // Reproduces the live order: an initially short stream, tools, then a much

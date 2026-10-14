@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { build } from 'esbuild'
 import { resolve } from 'node:path'
@@ -11,15 +11,7 @@ import {
 } from '../../src/orphaned-node-seat-sweep.js'
 
 const ROOT = resolve(import.meta.dirname, '..', '..')
-// The baseline is a commit from the history that preceded this fix; a checkout
-// without that history skips it by name.
-const BASELINE_REF = process.env.LO5_NULL_STORE_BASELINE_REF || '0000000'
-const BASELINE_REQUESTED = process.env.LO5_NULL_STORE_VARIANT === 'baseline'
-const BASELINE_AVAILABLE = BASELINE_REQUESTED
-  && spawnSync('git', ['-C', ROOT, 'cat-file', '-e', `${BASELINE_REF}^{commit}`]).status === 0
-const BASELINE_MODE = BASELINE_REQUESTED && BASELINE_AVAILABLE
-if (BASELINE_REQUESTED && !BASELINE_AVAILABLE)
-  test('the historical baseline', t => t.skip(`baseline ref ${BASELINE_REF} is not in this checkout`))
+const BASELINE_MODE = process.env.LO5_NULL_STORE_VARIANT === 'baseline'
 const MODULE_SOURCE = Object.freeze({ orphanedNodeSeatSweepProposal, orphanedNodeSeatSweepReadiness })
 
 function extractSweep(source) {
@@ -36,12 +28,12 @@ const SELECTED_SWEEP_SOURCE = extractSweep(readFileSync(
 const BASELINE_SWEEP_SOURCE = BASELINE_MODE
   ? extractSweep(execFileSync(
     'git',
-    ['-C', ROOT, 'show', `${BASELINE_REF}:src/views/computers.js`],
+    ['-C', ROOT, 'show', '9fed7622:src/views/computers.js'],
     { encoding: 'utf8' },
   ))
   : null
 // The baseline is opt-in so the normal suite exercises the selected source,
-// while LO5_NULL_STORE_VARIANT=baseline proves the unpatched an earlier commit path.
+// while LO5_NULL_STORE_VARIANT=baseline proves the unpatched 9fed7622 path.
 const EXTRACTED_SWEEP = BASELINE_SWEEP_SOURCE || SELECTED_SWEEP_SOURCE
 let packedModulePromise
 

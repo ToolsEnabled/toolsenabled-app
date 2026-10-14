@@ -698,7 +698,7 @@ test('every trigger names a settings row this page really draws, under the key t
   }
 })
 
-test('the success words this seam trusts are the renderer\'s own list, not a second opinion', () => {
+test('the success words this seam trusts are the renderer\'s own list, not a second opinion', async () => {
   assert.equal(triggerForEvent({ type: 'turn_completed', status: 'end_turn' }).id, 'agent-finished',
     'an ACP end_turn must notify completion rather than an error')
   const events = read('src/agent-session-events.js')
@@ -710,8 +710,11 @@ test('the success words this seam trusts are the renderer\'s own list, not a sec
 
   /* And the default for a completion that carries no status word, which is the
      other half of the same reading. */
-  assert.match(events, /event\.type !== 'turn_completed'\) return null\s*\n\s*return typeof event\.status === 'string' \? event\.status : 'completed'/,
-    'the renderer no longer defaults a status-less completion to completed')
+  const { sessionTurnStatus } = await import('../../src/agent-session-events.js')
+  assert.equal(sessionTurnStatus({sessionId:'s',event:{type:'turn_completed'}},'s'), 'completed')
+  for (const code of ['misalignmentPolicyViolation','misalignment_policy_violation']) {
+    assert.equal(sessionTurnStatus({sessionId:'s',event:{type:'turn_completed',payload:{failure:{code}}}},'s'), 'failed')
+  }
   assert.equal(MISSING_TURN_STATUS, 'completed', 'the seam defaults a status-less completion differently from the renderer')
 })
 

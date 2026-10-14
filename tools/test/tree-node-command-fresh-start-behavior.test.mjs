@@ -487,7 +487,7 @@ test('reset refusal blocks start and cannot leave a false live binding', async (
   assert.equal(testRig.statuses.at(-1)?.[1], 'failed')
 })
 
-/* MEASURED: agent.restart refused four different
+/* MEASURED, Controller 2026-09-06: agent.restart refused four different
  * circles with MC_TREE_COMMAND_TRANSCRIPT_RESET_FAILED, reproduced both
  * before and after an app restart. The production transcript store
  * (src/node-transcript-client.js, wired in whenever window.mcTranscripts

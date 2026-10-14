@@ -6,12 +6,12 @@
  * renderer of that one list. Nothing here caches a line, invents a line, or
  * totals anything the engine did not already total.
  *
- * WHY IT EXISTS ANYWAY. Four facts a person needs to see were on the wire the
+ * WHY IT EXISTS ANYWAY. Four facts the owner asked to see were on the wire the
  * whole time and were never drawn:
  *
  *   1. WHEN IT DIES. Every request carries `expiresAt`. src/owner-popup.js
- *      validates it -- and then never renders it. No screen in the product
- *      says when a cart expires.
+ *      validates it -- and then never renders it. His two live carts expire on
+ *      2026-08-18 and no screen in the product says so.
  *
  *   2. THAT DYING IS DENIAL. The engine's own live() drops a record the moment
  *      its expiry passes, and settle() files it with the default decision,
@@ -23,7 +23,7 @@
  *      front of `description` -- "[From your words: R1234] " -- and the screen
  *      renders the whole string raw. That prints an internal reference number
  *      on the owner's money surface. The fact is worth keeping; the number is
- *      not theirs to have to read. This splits them.
+ *      not his to have to read. This splits them.
  *
  *   4. WHAT IT COSTS THE SECOND TIME. Several lines renew. See below.
  *
@@ -100,7 +100,7 @@ export function readProvenance(description) {
   const owned = OWNER_STAMP_RE.exec(description)
   if (owned) {
     /* The reference number inside the stamp is deliberately dropped rather than
-       shown. It means something in our records and nothing on their screen, and
+       shown. It means something in our records and nothing on his screen, and
        this product's rule is that a person is owed the label and never the key. */
     return Object.freeze({ provenance: 'owner', label: OWNER_LINE, text: description.slice(owned[0].length) })
   }
@@ -153,7 +153,7 @@ export function deadlineDateText(expiry, locale = undefined) {
 }
 
 /**
- * What happens if they do nothing, which is different for each kind and must
+ * What happens if he does nothing, which is different for each kind and must
  * not be softened into one sentence that covers all three. A shopping list and
  * a yes-or-no question are both refused at the deadline; a notice is only
  * marked as read, and calling that a refusal would be alarming and wrong.
@@ -242,7 +242,7 @@ export function viewPrompt(prompt, nowMs = Date.now()) {
  * `readable` is false whenever the queue could not be read, and then every
  * count is null rather than zero. "Nothing is waiting" and "I could not look"
  * are different sentences, and a summary that reported the second as the first
- * would tell somebody their money decisions were settled when they are not.
+ * would tell somebody his money decisions were settled when they are not.
  */
 export function cartSummary(prompts, nowMs = Date.now()) {
   if (!Array.isArray(prompts)) {

@@ -47,7 +47,7 @@ const BILLING_TRIPWIRE = Object.freeze(['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', '
 // restoring the environment sees the restored values rather than the ones the
 // host was given; and the value it then reads back is a REAL credential off the
 // build machine, which an assertion failure prints in full to the test log.
-// It could print a real credential. Deciding what to
+// Measured: it printed the owner's live ANTHROPIC_API_KEY. Deciding what to
 // record at call time, and recording no values, makes both impossible.
 const calls = []
 

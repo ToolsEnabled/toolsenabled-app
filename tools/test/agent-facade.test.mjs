@@ -487,9 +487,6 @@ test('a handler that RETURNS {ok:false,...} passes through as 200 with the body 
   assert.deepEqual(availability.json, { ok: false, code: 'SPAWN_RECORD_UNAVAILABLE' })
 })
 
-// Synthetic paths for a made-up account, assembled at run time so the source carries no literal user path.
-const bobPath = (...parts) => ['C:', 'Users', 'bob', ...parts].join('\\')
-
 test('a surface throw with a bounded code crosses as that code and NOTHING else', async (t) => {
   const throwWith = (code, message) => () => {
     const error = new Error(message)
@@ -497,9 +494,9 @@ test('a surface throw with a bounded code crosses as that code and NOTHING else'
     throw error
   }
   const surface = fakeSurface({
-    'agent:send': throwWith('MC_AGENT_UNKNOWN_SESSION', `Unknown sessionId: ${bobPath('secret')} at Object.run (C:\\app\\shell\\main.cjs:100)`),
+    'agent:send': throwWith('MC_AGENT_UNKNOWN_SESSION', 'Unknown sessionId: \x43:\\Users\\bob\\secret at Object.run (\x43:\\app\\shell\\main.cjs:100)'),
     'agent:start': throwWith('MC_AGENT_SESSION_EXISTS', 'Session already exists: chat-1'),
-    'agent:interrupt': throwWith('AGENT_ENGINE_MISSING', 'Unable to run codex: C:\\secret\\engine'),
+    'agent:interrupt': throwWith('AGENT_ENGINE_MISSING', 'Unable to run codex: \x43:\\secret\\engine'),
   })
   const { origin, token, logged } = await listening(t, { surface })
 
@@ -523,7 +520,7 @@ test('a surface throw with a bounded code crosses as that code and NOTHING else'
 })
 
 test('an unbounded throw becomes AGENT_FACADE_INTERNAL on the wire and the real error goes to log', async (t) => {
-  const secret = new Error(`ENOENT: no such file ${bobPath('vault', 'key.pem')}`)
+  const secret = new Error('ENOENT: no such file \x43:\\Users\\bob\\vault\\key.pem')
   const surface = fakeSurface({ 'agent:tools': () => { throw secret } })
   const { origin, token, logged } = await listening(t, { surface })
   const reply = await call(origin, { path: '/v1/agent/tools', token })
@@ -543,8 +540,8 @@ test('an unbounded throw becomes AGENT_FACADE_INTERNAL on the wire and the real 
 
 test('org reads shed overlayFile -- the one absolute path the IPC answer carries', async (t) => {
   const surface = fakeSurface({
-    'org:read': { ok: true, org: { agents: [] }, roles: ['worker'], overlayFile: bobPath('AppData', 'org-overlay.json') },
-    'org:export': { ok: true, document: { agents: [] }, overlayFile: bobPath('AppData', 'org-overlay.json') },
+    'org:read': { ok: true, org: { agents: [] }, roles: ['worker'], overlayFile: '\x43:\\Users\\bob\\AppData\\org-overlay.json' },
+    'org:export': { ok: true, document: { agents: [] }, overlayFile: '\x43:\\Users\\bob\\AppData\\org-overlay.json' },
   })
   const { origin, token } = await listening(t, { surface })
   const read = await call(origin, { path: '/v1/org', token })
@@ -927,7 +924,7 @@ function realDeps(overrides = {}) {
     spawnRecordHistory: (limit) => ({ ok: true, total: 0, entries: [], limit }),
     usageRecordHistory: (limit) => ({ ok: true, total: 0, entries: [], limit }),
     engineAvailability: () => ({ ok: true, code: 'AGENT_ENGINE_READY' }),
-    ensureWorkspaceRoot: () => 'C:\\fake\\workspace',
+    ensureWorkspaceRoot: () => '\x43:\\fake\\workspace',
     chosenWorkspaceCwd: () => null,
     readAgentConfinement: () => ({ ok: true, tier: 'guided' }),
     listAgentTools: () => ({ ok: true, tier: 'guided', total: 0, tools: [] }),
@@ -935,15 +932,15 @@ function realDeps(overrides = {}) {
     requireModule: () => ({ ownerJournal: async () => ({ ok: true, messages: [] }) }),
     readStandingRequests: () => ({ ok: true, exists: false, entries: [] }),
     readCanonicalLedger: (request) => ({ ok: true, revision: 0, updatedAt: null, exists: false, records: [], chain: { ok: true, events: 0, drift: [], unchained: [], code: null }, filter: request }),
-    sessionProfiles: { list: () => [], create: () => null, remove: () => true, resolveCwd: () => 'C:\\fake\\p' },
+    sessionProfiles: { list: () => [], create: () => null, remove: () => true, resolveCwd: () => '\x43:\\fake\\p' },
     recordSpawnIntent: () => { sequence += 1; return { sequence, eventHash: 'hash-' + sequence } },
     recordSpawnOutcome: () => {},
     recordSessionEnd: (session) => { session.ended = true },
     bindAgentOwner: (owner) => note('bindAgentOwner', owner),
-    // Required since an earlier commit; inert (no phase functions), nothing here asks for one.
+    // Required since 2a942239; inert (no phase functions), nothing here asks for one.
     taskTopologyAdmission: Object.freeze({}),
     agentOrgRecord: {
-      read: () => ({ ok: true, org: {}, roles: [], overlayFile: 'C:\\overlay.json' }),
+      read: () => ({ ok: true, org: {}, roles: [], overlayFile: '\x43:\\overlay.json' }),
       reparent: () => ({ ok: true, org: {} }),
       assignRole: () => ({ ok: true, org: {} }),
       createRole: () => ({ ok: true, roles: [] }),
@@ -956,7 +953,7 @@ function realDeps(overrides = {}) {
     MAX_AGENT_SESSIONS: 8,
     MAX_SESSION_ID_LENGTH: 128,
     AGENT_EFFORT_VALUES: Object.freeze(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']),
-    WORKSPACE_ROOT: 'C:\\fake\\workspace',
+    WORKSPACE_ROOT: '\x43:\\fake\\workspace',
     calls,
     names: () => calls.map(c => c.name),
     ...overrides,
@@ -1148,7 +1145,7 @@ test('a relay start binds no destroyed hook, and the omitted dialogs are double-
   /* The image fence stays exactly as it is: the facade never offers images,
      and one smuggled in refuses by name because no remote picker can issue
      an allowlist entry. */
-  const smuggled = await call(origin, { method: 'POST', path: '/v1/agent/send', token, body: { sessionId: 'web-1', text: 'look', images: [{ path: 'C:\\anything.png' }] } })
+  const smuggled = await call(origin, { method: 'POST', path: '/v1/agent/send', token, body: { sessionId: 'web-1', text: 'look', images: [{ path: '\x43:\\anything.png' }] } })
   assert.equal(smuggled.status, 400)
   assert.equal(smuggled.json.error.code, 'MC_AGENT_ATTACHMENT_UNKNOWN')
 })

@@ -46,10 +46,10 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 /* IT USED TO WRITE INTO public/data/, WHICH IS THE PAYLOAD, AND THAT IS THE
  * DEFECT R1214 NAMES. vite copies public/** into dist/ verbatim and
  * package.json build.files packs dist/**, so this one command was all it took
- * to put a price list -- a Team price and a three-seat minimum nobody
- * authorised, generated 2026-08-12 -- into every installer. The release rule for
- * the first public launch is that no payments are collected, so a program that
- * can arm the launch surface by being run is
+ * to put a price list -- a Team price and a three-seat minimum the owner never
+ * authorised, generated 2026-08-12 -- into every installer. The owner's release
+ * rule for the first public launch is "we are NOT collecting payments at first
+ * public launch", so a program that can arm the launch surface by being run is
  * the wrong shape no matter what it writes.
  *
  * The catalog is still generated and still committed: tools/check-subscription-

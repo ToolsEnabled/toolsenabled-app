@@ -1,7 +1,7 @@
 // The permission-level question: does it get asked, and does it tell the truth?
 //
-// Signing in, creating a secure user account or setting anything up before the
-// first screen is named as a failure condition, and the permission level is the one thing
+// The owner named "logging in or creating a secure user account or setting up
+// anything" as a failure condition, and the permission level is the one thing
 // docs/design/INSTALLER-EXPERIENCE.md 2.1 says has to be decided first. It was
 // fully specified, fully catalogued, and had never been built: the question
 // existed only in tools/mcsetup.js, an interactive command-line program.
@@ -251,9 +251,9 @@ test('the disclosure separates requested write policy from broader possible read
   assert.doesNotMatch(notice, /does not yet confine/, 'the enforcement is built; the old admission is now false')
 })
 
-/* The one limit that remains, and the instruction about it: restrictive tiers
-   must work, and the user may need a warning when adding outside IDE sessions.
-   The line is who RUNS the process,
+/* The one limit that remains, and the owner's own instruction about it:
+   "restrictive tiers absolutely should work ... maybe we have to hand the user a
+   warning when adding outside ide sessions". The line is who RUNS the process,
    not where the session came from: a session that keeps running in the other
    program is run by that program, and nothing chosen here reaches into it.
    Saying so at the point of choice is the difference between a limit and a

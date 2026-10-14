@@ -140,6 +140,9 @@ async function fixture(options = {}) {
   return { control, chat, calls, sent, legacy, paths, bytes,
     endSession() { event({ sessionId: id, event: { type: 'session_ended', reason: 'exited', exit: { code: 0, signal: null } } }) },
     completeTurn() { event({ sessionId: id, event: { type: 'turn_completed', status: 'completed' } }) },
+    refuseSafety(code) { event({ sessionId: id, event: { type: 'turn_completed', status: 'failed', text: 'Synthetic safety refusal.', payload: { failure: { code, category: 'safety-policy', retryable: false } } } }) },
+    reachLimit() { event({ sessionId: id, event: { type: 'turn_completed', status: 'failed', text: 'This Codex account has reached its usage limit.', payload: { limit: 'usage' } } }) },
+    refuseModel() { event({ sessionId: id, event: { type: 'turn_completed', status: 'failed', text: 'Synthetic model refusal.', payload: { failure: { provider: 'codex', source: 'turn', code: 'other', summary: 'Synthetic model refusal.', category: 'model-refused' } } } }) },
     changeOwner() { context = { ...context, currentEpoch: randomUUID() }; ownerChanged(context) },
     subscriptions: () => ownerSubscriptions,
     async ready() { await control.imageOutbox.refresh(); await control.pause() },
@@ -757,4 +760,83 @@ test('one plain-text composer Send after ended session waits for successor start
     assert.equal(f.legacy.length, 1)
     assert.equal(starts, 2)
   } finally { releaseStart(); releaseBind(); f.dispose() }
+})
+
+
+for (const code of ['misalignmentPolicyViolation', 'misalignment_policy_violation']) test(`standalone safety hold preserves older images and text across explicit new image Send: ${code}`, async () => {
+  const { enqueue, list, clearSession } = await import('../../src/session-outbox.js')
+  const f = await fixture({ busy: true })
+  const id = f.control.snapshot().sessionId
+  try {
+    const old = await f.control.submitImageIntent({ operationId: randomUUID(), text: 'Earlier synthetic picture', images: [{ path: f.paths[0] }] })
+    assert.equal(old.ok, true)
+    enqueue(id, 'Earlier synthetic queued text')
+    const before = structuredClone((await f.control.imageOutbox.refresh()).entries[0])
+    f.refuseSafety(code)
+    await tick(); await f.control.imageOutbox.refresh(); await tick()
+    assert.equal(f.sent.length, 0)
+    assert.equal(f.legacy.length, 1)
+    f.chat.importDraft({ text: 'New synthetic picture', attachments: [{ path: f.paths[1] }] })
+    f.chat.querySelector('.chat-send').click()
+    await until(() => f.sent.length === 1)
+    assert.deepEqual(f.sent[0], { text: 'New synthetic picture', bytes: [f.bytes[1]] })
+    assert.deepEqual((await f.control.imageOutbox.refresh()).entries[0], before)
+    f.completeTurn(); await f.ready(); await tick(); await tick()
+    assert.equal(f.sent.length, 1)
+    assert.equal(f.legacy.length, 1)
+    assert.equal(list(id).length, 1)
+    assert.equal(f.control.snapshot().lastTurnStatus, 'completed')
+  } finally { clearSession(id); f.dispose() }
+})
+
+/* 1.0.50 REVIEW-1050 #9. After a turn ends on an account usage limit, a New
+   agent tab holds its queued text (accounts D), but its queued picture message
+   was still sent at once to the spent account, ahead of the older held text.
+   It now waits with the text and goes once a turn succeeds. */
+test('standalone usage-limit hold keeps a queued picture as well as queued text until a turn succeeds', async () => {
+  const { enqueue, list, clearSession } = await import('../../src/session-outbox.js')
+  const f = await fixture({ busy: true })
+  const id = f.control.snapshot().sessionId
+  try {
+    enqueue(id, 'Earlier synthetic queued text')
+    const queued = await f.control.submitImageIntent({ operationId: randomUUID(), text: 'Synthetic queued picture', images: [{ path: f.paths[0] }] })
+    assert.equal(queued.ok, true)
+    f.reachLimit()
+    await tick(); await f.control.imageOutbox.refresh(); await tick(); await tick()
+    assert.equal(f.sent.length, 0, 'the picture message was sent to the spent account')
+    assert.equal(f.legacy.length, 1, 'the queued text was sent to the spent account')
+    assert.equal(list(id)[0].heldReason, 'ACCOUNT_LIMIT_HELD')
+    // The person's own message after the reset succeeds: the hold lifts and both go.
+    assert.equal((await f.control.send('After the reset.')).ok, true)
+    f.completeTurn()
+    await until(() => f.legacy.length === 3)
+    assert.equal(JSON.stringify(f.legacy.slice(1)).includes('Earlier synthetic queued text'), true, 'the held text goes after the reset')
+    f.completeTurn(); await f.ready()
+    await until(() => f.sent.length === 1)
+    assert.deepEqual(f.sent[0], { text: 'Synthetic queued picture', bytes: [f.bytes[0]] })
+  } finally { clearSession(id); f.dispose() }
+})
+
+/* 1.0.50 REVIEW-1050 #10. When a session the provider refused ends by itself, its held text is handed to the
+   next session (ended-session recovery). That session has not been refused, so the rows stop saying so; they
+   still wait for its first turn, and a refusal there labels them again. */
+test('held text from a model-refused session that ended reaches the next session without the refusal label', async () => {
+  const { enqueue, list, clearSession } = await import('../../src/session-outbox.js')
+  const f = await fixture({ busy: true })
+  const first = f.control.snapshot().sessionId
+  let second = null
+  try {
+    enqueue(first, 'Earlier synthetic queued text')
+    f.refuseModel()
+    await tick(); await tick()
+    assert.equal(list(first)[0]?.heldReason, 'PROVIDER_MODEL_REFUSED_TAB')
+    f.endSession()
+    await tick()
+    assert.equal(f.control.snapshot().sessionId, null)
+    assert.equal((await f.control.send('On another model.')).ok, true)
+    second = f.control.snapshot().sessionId
+    assert.ok(second && second !== first)
+    assert.deepEqual(list(second).map(row => [row.text, row.heldReason ?? null]), [['Earlier synthetic queued text', null]],
+      'the next session showed the ended session\'s refusal on the held row')
+  } finally { clearSession(first); if (second) clearSession(second); f.dispose() }
 })

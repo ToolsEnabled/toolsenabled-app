@@ -52,7 +52,7 @@ const cli = (root, ...args) => spawnSync(process.execPath, [resolve(root, 'cli.m
 const ticking = () => { let clock = 1700000000000; return () => (clock += 250) }
 
 test('the identifier refusal names the dot as the reason and offers the hyphenated form', () => {
-  // HT-2: at an earlier commit every bad identifier produced one sentence, "Give the
+  // HT-2: at 370ac601 every bad identifier produced one sentence, "Give the
   // benchmark a name and a lowercase identifier.", which never said that the
   // dots in lean-bench-1.0.44 were the reason.
   assert.equal(identifierProblem('lean-bench-1-0-44'), null)

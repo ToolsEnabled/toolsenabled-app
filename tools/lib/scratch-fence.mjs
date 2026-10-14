@@ -18,9 +18,9 @@
  *                         (31 today; its own regression test keeps it in step
  *                         with capability/src). Refuses under 20.
  *   account paths         shell/install-profile-guard.cjs
- *                         STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES. Refuses under 4.
+ *                         STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES. Refuses under 5.
  *   provider homes        shell/install-profile-guard.cjs
- *                         PROVIDER_HOME_ENVIRONMENT_NAMES. Refuses under 3.
+ *                         PROVIDER_HOME_ENVIRONMENT_NAMES. Refuses under 2.
  *
  * Plus exactly ONE declared name, with its reason: MC_TEST_STATE_ROOT, a test
  * harness seam that no product authority enumerates because the product never
@@ -55,7 +55,7 @@
  * fall, so there is no per-name write-through sorting -- that is a heuristic.
  *
  * ── PURITY, WHICH IS MEASURED AND NOT ASSERTED ─────────────────────────────
- * An earlier fenced driver resolved the audit database by calling
+ * Worker 87's first fenced driver resolved the audit database by calling
  * getStateStore(), which OPENS the store: the check meant to keep a run off the
  * live database would have opened the live database to find out where it was.
  * A later one required audit-store.js, which CREATES the state-root directory
@@ -65,7 +65,7 @@
  * live environment and asserts zero calls; the name of a function is not the
  * proof.
  *
- * A FUNCTION OF WHAT IT IS HANDED. Nothing here reads process.env. An earlier
+ * A FUNCTION OF WHAT IT IS HANDED. Nothing here reads process.env. Worker 87's
  * fence called a no-argument vaultPath() that read the ambient environment and
  * answered the LIVE vault when handed a safe scratch environment -- and every
  * refusal proof still passed, because refusing a live vault is what they test.
@@ -158,8 +158,8 @@ export const OWNED_NAMES = OWNED_STATE_ROOT_NAMES
 
 const AUTHORITIES = Object.freeze([
   { category: 'capability overrides', module: '../../shell/capability-path-environment.cjs', exportName: 'CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES', floor: 20 },
-  { category: 'account paths', module: '../../shell/install-profile-guard.cjs', exportName: 'STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES', floor: 4 },
-  { category: 'provider homes', module: '../../shell/install-profile-guard.cjs', exportName: 'PROVIDER_HOME_ENVIRONMENT_NAMES', floor: 3 },
+  { category: 'account paths', module: '../../shell/install-profile-guard.cjs', exportName: 'STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES', floor: 5 },
+  { category: 'provider homes', module: '../../shell/install-profile-guard.cjs', exportName: 'PROVIDER_HOME_ENVIRONMENT_NAMES', floor: 2 },
 ])
 
 /* Lazy, so importing this module executes nothing. Each authority refuses in

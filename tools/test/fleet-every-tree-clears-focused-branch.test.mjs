@@ -1,6 +1,6 @@
 /* EVERY TREE MUST CLEAR A FOCUSED BRANCH -- owner bug UI-1.
  *
- * Reproduced by the operator on dev an earlier app commit: focus the controller of the
+ * Reproduced by the operator on dev app 6909208e: focus the controller of the
  * second tree, move its four Claude children onto the first tree with the
  * Reports-to picker, then press Every tree. The canvas kept showing only that
  * one controller while 22 nodes were saved, and the machine breadcrumb -- which

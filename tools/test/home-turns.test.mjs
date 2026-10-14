@@ -1,6 +1,6 @@
 /* WHO SPOKE ON THE FIRST PAGE, AND WHEN ONE TURN IS TOO BIG TO SIT WHOLE.
  *
- * The page 1 full chat needed a full rework.
+ * Owner, 2026-09-03: "the pg1 full chat needs a full rework."
  *
  * src/chat-markdown.js's renderChatVoice() settled which RENDERER a turn's body
  * gets, by taking the turn's class instead of its speaker id, and
@@ -22,7 +22,7 @@
  *     unlabelled agent line and read as more of what the agent above it said.
  *
  *   DOWNSTREAM: A WALL OF TEXT COULD NOT BE PUT AWAY, on the one screen whose
- *     run list folds because that is exactly the rule.
+ *     run list folds because the owner asked for exactly that.
  *
  * RUN IT:
  *   node --test tools/test/home-turns.test.mjs

@@ -48,11 +48,22 @@ function identity(value) {
   return value
 }
 
+function checkpointFields(record) {
+  if (!record || typeof record !== 'object') return record
+  const result = Object.fromEntries(['v', 'handoff', 'sessionId', 'recoveryId', 'kind', 'conversation', 'safetyHold', 'limitWait'].filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]))
+  const safetyHold = record.safetyHold || record.retryPolicy?.safetyHold
+  if (safetyHold && typeof safetyHold.nodeId === 'string' && typeof safetyHold.sessionId === 'string') {
+    result.safetyHold = { nodeId: safetyHold.nodeId, sessionId: safetyHold.sessionId }
+  }
+  return result
+}
+
 function captureRequest(request) {
   const computerId = identity(request?.computerId)
   const nodeId = identity(request?.nodeId)
-  const serialised = JSON.stringify(request?.record)
-  const problem = recordProblem(request?.record, serialised)
+  const record = checkpointFields(request?.record)
+  const serialised = JSON.stringify(record)
+  const problem = recordProblem(record, serialised)
   if (problem) throw Object.assign(new Error(problem), { code: problem })
   return { computerId, nodeId, record: JSON.parse(serialised) }
 }
@@ -177,6 +188,7 @@ function createNodeRecoveryStore({ directory, io = fsPromises } = {}) {
       if (!parsed || parsed.computerId !== computerId || parsed.nodeId !== nodeId || !validRecord(parsed.record)) {
         return { ok: false, error: { code: 'RECOVERY_RECORD_UNREADABLE' } }
       }
+      parsed.record = checkpointFields(parsed.record)
       const problem = recordProblem(parsed.record)
       if (problem) return refusal(problem === 'RECOVERY_RECORD_INVALID' ? 'RECOVERY_RECORD_UNREADABLE' : problem)
       return { ok: true, record: parsed.record,

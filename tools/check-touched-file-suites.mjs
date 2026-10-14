@@ -2,8 +2,8 @@
 
 // A LANDING MUST RUN THE SUITES OF THE FILES IT TOUCHES.
 //
-// MEASURED 2026-09-18, and this file exists because of it: a typing commit
-// landed on the assembly branch with tools/test/chat-composer.test.mjs
+// MEASURED 2026-09-18, and this file exists because of it: Controller's typing
+// commit landed on cut2/app-assembly-20260917 with tools/test/chat-composer.test.mjs
 // red, and nobody owned the red. The commit edited src/components.js. The pin it
 // broke lives in chat-composer.test.mjs, a file the commit did not touch -- so
 // nothing in the landing said that suite was owed. It was found afterwards, by a
@@ -88,7 +88,7 @@ function resolveBase(argv) {
       refuse(`the base ref "${ref}" does not resolve to a commit in this repository.`);
     }
   }
-  for (const candidate of ["origin/main", "main"]) {
+  for (const candidate of ["cut2/app-assembly-20260917", "origin/main", "main"]) {
     try {
       const merge = git(["merge-base", "HEAD", candidate]);
       if (merge !== git(["rev-parse", "HEAD"])) {

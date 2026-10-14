@@ -34,12 +34,6 @@ import { screenMarkup } from '../../src/account-markup.js';
 
 const require = createRequire(import.meta.url);
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-
-// Synthetic Windows paths, assembled at runtime so the source carries no literal user or product path.
-const winPath = (...parts) => parts.join('\\');
-const SOMEBODY_HOME = winPath('C:', 'Users', 'somebody');
-const USER_DATA = winPath('C:', 'p', 'ToolsEnabled');
-const literally = (text) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 // Lexical fixtures only: the guard does not read or remove these paths. Use
 // the host's path syntax so each native suite exercises its actual guard.
 const guardShape = join(REPO, 'reset-guard-shape');
@@ -77,7 +71,7 @@ function withProfile(run) {
   writeFileSync(join(userDataDir, 'Local Storage', 'leveldb.log'), 'l');
   writeFileSync(join(servicesRoot, 'machine.json'), '{"tier":"standard"}');
   writeFileSync(join(servicesRoot, 'settings.json'), '{}');
-  writeFileSync(join(servicesRoot, 'multi-account-state.json'), '{"activeAccount":"team"}');
+  writeFileSync(join(servicesRoot, 'multi-account-state.json'), '{"activeAccount":"school"}');
   const env = { APPDATA: join(root, 'roaming'), LOCALAPPDATA: join(root, 'local'), USERPROFILE: join(root, 'home') };
   mkdirSync(env.USERPROFILE, { recursive: true });
   try {
@@ -93,14 +87,14 @@ function withProfile(run) {
 
 test('guardRoot refuses an absent, empty or non-string directory', () => {
   for (const bad of [undefined, null, '', '   ', 42, {}]) {
-    const verdict = guardRoot(bad, { env: {}, homedir: () => SOMEBODY_HOME });
+    const verdict = guardRoot(bad, { env: {}, homedir: () => '\x43:\\Users\\somebody' });
     assert.equal(verdict.ok, false, `refused: ${JSON.stringify(bad)}`);
     assert.equal(verdict.code, REFUSED_NO_PATH);
   }
 });
 
 test('guardRoot refuses a relative path', () => {
-  const verdict = guardRoot('ToolsEnabled', { env: {}, homedir: () => SOMEBODY_HOME });
+  const verdict = guardRoot('ToolsEnabled', { env: {}, homedir: () => '\x43:\\Users\\somebody' });
   assert.equal(verdict.ok, false);
   assert.equal(verdict.code, REFUSED_RELATIVE);
 });
@@ -154,7 +148,7 @@ test('a refused root deletes NOTHING and says so', () => {
 
 test('planReset measures both roots separately and names what is at stake', () => {
   withProfile(({ userDataDir, servicesRoot, env }) => {
-    const plan = planReset({ userDataDir, servicesRoot, workspaceRoots: [join(env.USERPROFILE, 'ToolsEnabled')], installDir: 'C:\\Program Files\\nope', env, homedir: () => env.USERPROFILE });
+    const plan = planReset({ userDataDir, servicesRoot, workspaceRoots: [join(env.USERPROFILE, 'ToolsEnabled')], installDir: '\x43:\\Program Files\\nope', env, homedir: () => env.USERPROFILE });
     assert.equal(plan.ok, true);
 
     const user = plan.roots.find(entry => entry.kind === 'user-data');
@@ -528,16 +522,16 @@ test('the removal control is on every screen somebody could need it from', () =>
 test('the confirm screen renders the measurement, the survivors and both buttons', () => {
   const plan = readPlan({
     ok: true,
-    roots: [{ kind: 'user-data', directory: USER_DATA, guarded: true, present: true, files: 92, bytes: 12_444_000, named: [{ rel: 'x', what: 'your saved credentials' }] }],
+    roots: [{ kind: 'user-data', directory: '\x43:\\p\\ToolsEnabled', guarded: true, present: true, files: 92, bytes: 12_444_000, named: [{ rel: 'x', what: 'your saved credentials' }] }],
     totals: { files: 92, bytes: 12_444_000 },
-    untouched: [{ kind: 'workspace', directory: winPath(SOMEBODY_HOME, 'ToolsEnabled') }],
+    untouched: [{ kind: 'workspace', directory: '\x43:\\Users\\somebody\\ToolsEnabled' }],
     conflicts: [],
   });
   const html = screenMarkup({ state: { available: true, signedIn: false, accountCount: 1 }, reset: { phase: 'confirm', plan } });
   assert.match(html, /data-reset-phase="confirm"/);
   assert.match(html, /your saved credentials/);
-  assert.match(html, literally(USER_DATA));
-  assert.match(html, literally(winPath(SOMEBODY_HOME, 'ToolsEnabled')));
+  assert.match(html, /\x43:\\p\\ToolsEnabled/);
+  assert.match(html, /\x43:\\Users\\somebody\\ToolsEnabled/);
   assert.match(html, /data-reset-confirm/);
   assert.match(html, /data-reset-cancel/);
   assert.match(html, /There is no undo and no copy anywhere else/);
@@ -546,14 +540,14 @@ test('the confirm screen renders the measurement, the survivors and both buttons
 test('a work folder inside the swept directory is SHOWN, not just recorded', () => {
   const plan = readPlan({
     ok: true,
-    roots: [{ kind: 'user-data', directory: USER_DATA, guarded: true, present: true, files: 3, bytes: 10, named: [] }],
+    roots: [{ kind: 'user-data', directory: '\x43:\\p\\ToolsEnabled', guarded: true, present: true, files: 3, bytes: 10, named: [] }],
     totals: { files: 3, bytes: 10 },
     untouched: [],
-    conflicts: [{ kind: 'workspace', directory: winPath(USER_DATA, 'workspace') }],
+    conflicts: [{ kind: 'workspace', directory: '\x43:\\p\\ToolsEnabled\\workspace' }],
   });
   const html = screenMarkup({ state: { available: true, signedIn: false, accountCount: 1 }, reset: { phase: 'confirm', plan } });
   assert.match(html, /data-reset-conflict/);
-  assert.match(html, literally(winPath(USER_DATA, 'workspace')));
+  assert.match(html, /\x43:\\p\\ToolsEnabled\\workspace/);
 });
 
 test('the result screen never says "It is gone" while it is naming survivors', () => {
@@ -564,7 +558,7 @@ test('the result screen never says "It is gone" while it is naming survivors', (
       ok: true,
       complete: false,
       remainingFiles: 2,
-      results: [{ kind: 'user-data', directory: USER_DATA, removedRoot: false, remaining: { files: 2 }, entries: [{ name: 'Cache', removed: false, reason: 'EBUSY' }, { name: 'capability', removed: true }] }],
+      results: [{ kind: 'user-data', directory: '\x43:\\p\\ToolsEnabled', removedRoot: false, remaining: { files: 2 }, entries: [{ name: 'Cache', removed: false, reason: 'EBUSY' }, { name: 'capability', removed: true }] }],
     },
   });
   const html = screenMarkup({ state: { available: true, signedIn: false, accountCount: 0 }, reset: { phase: 'done', sweep } });
@@ -619,9 +613,9 @@ test('a root that survives its own removal is never reported as removed', () => 
  * rest". That is true only while the rest exists.
  *
  * DRIVEN 2026-08-27, not reasoned: with the environment stripped AND homedir()
- * throwing, guardRoot APPROVED the home directory, and approved the Users
- * folder (%SystemDrive%\Users) -- the parent of every account on the machine.
- * An empty refusal list was being read as "there is nothing here to protect".
+ * throwing, guardRoot APPROVED the home directory, and approved <profile-root>/ -- the
+ * parent of every account on the machine. An empty refusal list was being read
+ * as "there is nothing here to protect".
  *
  * It is reachable rather than theoretical. The environment is every source but
  * one, and this product deliberately strips environments before spawning

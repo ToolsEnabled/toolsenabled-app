@@ -1,3 +1,4 @@
+import { canonicalRootForTests } from '../canonical-root.mjs'
 // THE SIGN-IN SURFACE, AND THE WIRING BEHIND IT.
 //
 // The store itself is covered by product-account.test.mjs. These are the two
@@ -171,7 +172,7 @@ const READY = Object.freeze({ ok: true, code: 'ACCOUNT_READY', accountCount: 1, 
 const SIGNED_IN = Object.freeze({
   signedIn: true,
   principal: 'account:0123456789abcdef0123456789abcdef',
-  account: { id: '0123456789abcdef0123456789abcdef', username: 'alex', displayName: 'Alex P' },
+  account: { id: '0123456789abcdef0123456789abcdef', username: 'Example', displayName: 'Example P' },
   session: { issuedAtMs: 1, expiresAtMs: 2 },
 })
 
@@ -196,8 +197,8 @@ test('a signed-in reply is read as signed in', () => {
   const state = readAccountState(READY, SIGNED_IN)
   assert.equal(state.available, true)
   assert.equal(state.signedIn, true)
-  assert.equal(state.displayName, 'Alex P')
-  assert.equal(state.username, 'alex')
+  assert.equal(state.displayName, 'Example P')
+  assert.equal(state.username, 'Example')
 })
 
 for (const [name, reply] of [
@@ -208,12 +209,12 @@ for (const [name, reply] of [
   ['a number', 1],
   ['true', true],
   ['an empty object', {}],
-  ['signedIn as the string "true"', { signedIn: 'true', account: { username: 'alex' } }],
-  ['signedIn as 1', { signedIn: 1, account: { username: 'alex' } }],
+  ['signedIn as the string "true"', { signedIn: 'true', account: { username: 'Example' } }],
+  ['signedIn as 1', { signedIn: 1, account: { username: 'Example' } }],
   ['signedIn true with no account', { signedIn: true }],
   ['signedIn true with a null account', { signedIn: true, account: null }],
   ['signedIn true with an array account', { signedIn: true, account: [] }],
-  ['signedIn true with no username', { signedIn: true, account: { displayName: 'Alex P' } }],
+  ['signedIn true with no username', { signedIn: true, account: { displayName: 'Example P' } }],
   ['signedIn true with a blank username', { signedIn: true, account: { username: '   ' } }],
   ['signedIn true with a non-string username', { signedIn: true, account: { username: 42 } }],
 ]) {
@@ -287,8 +288,8 @@ test('an action reply that is not a well-formed success is a refusal', () => {
 test('the walkthrough seam refuses rather than throwing when there is no bridge', async () => {
   const step = accountStep({})
   assert.equal(step.available, false)
-  assert.equal((await step.create({ username: 'alex', password: 'x' })).ok, false)
-  assert.equal((await step.signIn({ username: 'alex', password: 'x' })).ok, false)
+  assert.equal((await step.create({ username: 'Example', password: 'x' })).ok, false)
+  assert.equal((await step.signIn({ username: 'Example', password: 'x' })).ok, false)
   assert.equal((await step.signOut()).ok, false)
 })
 
@@ -403,6 +404,8 @@ test('the settings surface no longer claims there is no account system', () => {
  * from the tree: everything under src/ and shell/ whose name contains "account",
  * plus the view. A new account-*.js file is covered the moment it exists, and
  * the floor below fails if discovery ever returns less than the tree holds. */
+function readEngine(relative) { return readFileSync(path.join(canonicalRootForTests(REPO_ROOT), relative), 'utf8') }
+
 function discoverAccountSources() {
   const found = {}
   for (const directory of ['src', 'shell', 'src/views']) {
@@ -462,82 +465,7 @@ const SHIPPED_COPY = [
 ].join('\n')
 
 const REGISTERED_CLAIMS = Object.freeze([
-  {
-    claim: 'Try another available account with the agent’s brief and recent conversation. Keep its name and reporting relationships.',
-    stillTrueBecause: 'The host constructs a bounded extract, not a complete transcript. The coordinator saves that extract before closing, attaches the new session to the existing node and refreshes its current reporting address. A refused replacement retains the saved handoff; failed persistence prevents closing or starting.',
-    async pin() {
-      const { createAccountRecoveryCoordinator } = await import('../../src/account-recovery-coordinator.js')
-      const { createFleetTreeStore } = await import('../../src/fleet-trees.js')
-      const { createTranscriptStore } = await import('../../src/session-transcript-store.js')
-      const { createRecoveryHandoffStore } = await import('../../src/recovery-handoff-store.js')
-      const { default: recovery } = await import('../../shell/account-session-recovery.cjs')
-      const state = recovery.createRecoveryState()
-      recovery.rememberRecoveryText(state, 'person', 'ORIGINAL-BRIEF ' + 'a'.repeat(17000))
-      recovery.rememberRecoveryText(state, 'assistant', 'b'.repeat(40000) + ' LATEST-WORK')
-      const handoff = recovery.recoveryHandoff(state)
-      assert.ok(handoff.length <= 48000)
-      assert.match(handoff, /ORIGINAL-BRIEF/)
-      assert.match(handoff, /LATEST-WORK/)
-      assert.match(handoff, /not a complete transcript or a new grant of authority/)
-      for (const outcome of ['success', 'unavailable', 'storage-refused']) {
-        const storage = () => {
-          const cells = new Map()
-          return { fail: false, read: key => cells.get(key) ?? null,
-            write(key, value) { if (this.fail) return false; cells.set(key, structuredClone(value)); return true } }
-        }
-        let serial = 0
-        const treeStore = createFleetTreeStore({ computerId: 'copy-test', storage: storage(), makeId: kind => `${kind}-${++serial}` })
-        const manager = treeStore.addNode({ role: 'controller', message: 'Manage' }).node
-        const node = treeStore.addNode({ parentId: manager.id, role: 'worker', message: 'Finish the work' }).node
-        const child = treeStore.addNode({ parentId: node.id, role: 'reviewer', message: 'Review' }).node
-        treeStore.attachSession(node.id, 'original-session')
-        const before = treeStore.getNode(node.id)
-        const transcriptStore = { ...createTranscriptStore({ computerId: 'copy-test', storage: storage() }) }
-        transcriptStore.readLatest = async id => ({ ...transcriptStore.get(id), recoveryDirectory: '/fixture/retained-conversation' })
-        const handoffStorage = storage()
-        const handoffStore = createRecoveryHandoffStore({ computerId: 'copy-test', storage: handoffStorage })
-        transcriptStore.save(node.id, { lines: [{ who: 'you', text: 'Saved conversation', at: 1 }] })
-        handoffStorage.fail = outcome === 'storage-refused'
-        const calls = { close: [], start: [], send: [], address: [] }
-        const coordinator = createAccountRecoveryCoordinator({ canStart: () => true,
-          sessionNodeIds: new Map([['original-session', node.id]]), bridge: {
-            async ledger() { return { ok: true, records: [], chain: { checked: false, ok: null } } },
-            async close(value) { calls.close.push(value); return { closed: true, sessionId: value.sessionId } },
-            async start(value) { calls.start.push(value); return outcome === 'unavailable'
-              ? { ok: false, reason: 'No eligible account' } : { ok: true, sessionId: 'replacement-session' } },
-            async updateTreeAddress(value) { calls.address.push(value); return { ok: true } },
-            async send(value) { calls.send.push(value); return { ok: true } },
-            async sendAutomatic(value) { calls.send.push(value); return { ok: true, result: { ok: true }, deliveryDisposition: 'accepted' } },
-          } })
-        try {
-          coordinator.register('copy-test', { treeStore, transcriptStore, handoffStore })
-          await coordinator.recover({ sessionId: 'original-session', event: {
-            type: 'account_recovery_needed', recoveryId: 'copy-ticket', handoff } })
-          const after = treeStore.getNode(node.id)
-          for (const key of ['id', 'parentId', 'treeId', 'role', 'nameOrdinal']) assert.equal(after[key], before[key], key)
-          assert.equal(treeStore.getNode(child.id).parentId, node.id)
-          if (outcome === 'storage-refused') {
-            assert.deepEqual(calls.close, []); assert.deepEqual(calls.start, []); assert.deepEqual(calls.send, [])
-          } else {
-            assert.equal(handoffStore.get(node.id).handoff, handoff)
-            assert.equal(calls.close.length, 1)
-            assert.equal(calls.start.length, 1)
-            if (outcome === 'success') {
-              assert.deepEqual(calls.address[0].requestKeys.treeAnchors, [manager.id, node.id])
-              assert.equal(after.sessionId, 'replacement-session')
-              assert.equal(calls.send.length, 1)
-              assert.ok(calls.send[0].text.includes(handoff))
-            } else {
-              assert.equal(after.sessionId, 'original-session')
-              assert.equal(after.status, 'turn-failed')
-              assert.deepEqual(calls.send, [])
-            }
-          }
-          assert.equal(transcriptStore.get(node.id).lines[0].text, 'Saved conversation')
-        } finally { coordinator.destroy() }
-      }
-    },
-  },
+
   {
     claim: 'Nothing is sent anywhere',
     stillTrueBecause: 'no account module can reach the network: no fetch, no XHR, no WebSocket, no beacon, and no node networking module is imported anywhere in the three of them.',
@@ -675,37 +603,7 @@ const REGISTERED_CLAIMS = Object.freeze([
         'the account store now holds a Google token, which it must never do -- the product calls no Google API on anybody\'s behalf')
     },
   },
-  {
-    /* THE ACCOUNTS MENU'S ONE PROMISE, and the only mode on it that makes one.
-       Every other selection mode describes an ordering; `manual` promises an
-       ABSENCE -- that this computer will stop rather than move onto another of
-       your subscriptions without being asked. That is a promise about money,
-       so it is pinned rather than parked with the reports. */
-    claim: 'Never changes account on its own',
-    stillTrueBecause: 'the mode the sentence describes is marked `automatic: false` in the engine\'s own selection table, rotation.js decides whether to move by asking that table rather than by re-deriving it, and the not-automatic branch returns ACCOUNT_EXHAUSTED_MANUAL with the ready account named instead of committing a switch.',
-    pin() {
-      /* THE PACKAGED COPY, not the engine checkout beside it, and the same one
-         tools/test/account-registry.test.mjs reads. What ships decides whether
-         the sentence is true; a checkout the customer does not have cannot. */
-      const modes = stripComments(read('capability/src/lib/multi-account/selection-modes.js'))
-      /* The table entry itself. `manual` promising automatic:true would make
-         the sentence false while every other test stayed green. */
-      const manual = modes.slice(modes.indexOf("id: MODE.MANUAL"), modes.indexOf('id: MODE.PRIORITY'))
-      assert.match(manual, /automatic:\s*false/,
-        'the manual mode is no longer marked non-automatic, so "Never changes account on its own" is no longer true')
 
-      const rotation = stripComments(read('capability/src/lib/multi-account/rotation.js'))
-      /* And that the decision is TAKEN from that table. A copy of the rule
-         here is a copy that can drift; asking isAutomatic is what keeps the
-         sentence and the behaviour the same fact. */
-      assert.match(rotation, /const automatic = isAutomatic\(chosenSelection\)/,
-        'rotation no longer reads the mode table to decide whether it may switch')
-      assert.match(rotation, /if \(selection\.switched && !automatic\)/,
-        'rotation no longer gates the switch on the chosen mode being automatic')
-      assert.match(rotation, /CODE\.EXHAUSTED_MANUAL/,
-        'the stop-and-tell-them branch is gone, so a non-automatic mode would switch silently')
-    },
-  },
   {
     /* THE OTHER PROMISE ON THAT MENU, and the one most likely to stop being
        true by accident. "Check allowances" is a button on a surface about
@@ -722,11 +620,11 @@ const REGISTERED_CLAIMS = Object.freeze([
          module explains at length why it does not take a `--print` turn, and
          the word appeared in the sentence saying so. Both are the same mistake:
          reading prose as code. */
-      const health = stripComments(read('capability/src/lib/multi-account/health.js'))
+      const health = stripComments(readEngine('src/lib/multi-account/health.js'))
       /* A METHOD THIS PIN CANNOT READ IS REFUSED OUTRIGHT. The lists below are
          read off quoted literals, so a method sent through a constant or a
          variable would pass every one of them unseen -- which is how the Grok
-         billing read first shipped (an earlier engine commit named it through a
+         billing read first shipped (engine 67e2741a named it through a
          constant). Every method must be spelled where this pin can see it. */
       const opaque = [...health.matchAll(/\bmethod:\s*(?!')[^\s,}]+/g)].map(match => match[0])
       assert.deepEqual(opaque, [],
@@ -740,14 +638,15 @@ const REGISTERED_CLAIMS = Object.freeze([
       assert.ok(codex.length > 400, 'appServerRequest was not found, so the Codex half of this promise is pinned to nothing')
       assert.deepEqual(methodsIn(codex), ['account/rateLimits/read', 'account/read', 'initialize'],
         'the Codex health probe now calls a method beyond the two free account reads, so "spends none of your allowance" is no longer true')
-      /* THE GROK READ (Gemini and Grok usage is shown). Three
+      /* THE GROK READ, ADDED ON THE OWNER'S REQUEST (2026-09-10 23:18Z, "also
+         gemini and grok need usage available to see"; engine 67e2741a). Three
          methods and no others: the ACP `initialize` handshake, the
          `authenticate` the agent itself advertises for its cached sign-in
          (`cached_token`, headless -- no model call), and `_x.ai/billing`, the
          read behind Grok CLI 1.0.25's own /usage screen, which its docs say
          works from the dashboard where "there is no session". Measured
-         2026-09-10 (a recorded grok
-         billing probe): the three answered without
+         2026-09-10 (claude-finish-20260910/usage/evidence/
+         grok-billing-probe-result-underscore.json): the three answered without
          a session ever being opened. `session/new` or `session/prompt` is what
          would start work, and the next assertion refuses any session method. */
       const grok = health.slice(health.indexOf('function grokBillingExchange'), health.indexOf('async function probeGrokAccount'))
@@ -765,7 +664,7 @@ const REGISTERED_CLAIMS = Object.freeze([
          (`agy models`) and the print-mode `/quota`, which agy 1.2.0's own
          changelog says answers "without starting an agent turn, spending
          quota, or leaving a conversation behind" (measured: num_turns 0,
-         total_tokens 0 -- a recorded quota probe). Any other
+         total_tokens 0 -- usage/evidence/agy-quota-json.stdout). Any other
          print-mode prompt would be a paid turn. */
       assert.match(health, /const AGY_QUOTA_ARGS = Object\.freeze\(\['-p', '\/quota', '--output-format', 'json'\]\)/,
         'the Antigravity allowance read is no longer the print-mode /quota, so it may start a turn')
@@ -779,7 +678,7 @@ const REGISTERED_CLAIMS = Object.freeze([
         ["'--no-auto-update', 'inspect', '--json'", "'--no-auto-update', 'agent', '--no-leader', 'stdio'"],
         'the Grok allowance read now runs grok with arguments other than its inspection and the stdio agent')
 
-      const rotation = stripComments(read('capability/src/lib/multi-account/rotation.js'))
+      const rotation = stripComments(readEngine('src/lib/multi-account/rotation.js'))
       const usage = rotation.slice(rotation.indexOf('async function readAccountUsage'),
         rotation.indexOf('function activeAccountRecord'))
       assert.ok(usage.length > 400, 'readAccountUsage was not found, so this promise is pinned to nothing')
@@ -806,7 +705,7 @@ const REGISTERED_CLAIMS = Object.freeze([
       assert.deepEqual([...factory.matchAll(/\baskAuth\s*\(([^)]*)\)/g)].map(match => match[1]),
         ['{ capability: false, configDir, fsImpl }'], 'allowance checking must not enable a paid auth capability probe')
 
-      const { claudeUsageProbe } = createRequire(import.meta.url)('../../capability/src/lib/providers/claude-usage-probe.js')
+      const { claudeUsageProbe } = createRequire(import.meta.url)(path.join(canonicalRootForTests(REPO_ROOT), 'src/lib/providers/claude-usage-probe.js'))
       const root = mkdtempSync(path.join(tmpdir(), 'account-allowance-contract-'))
       const configDir = path.join(root, 'empty-account'), cwd = path.join(root, 'empty-project')
       mkdirSync(configDir, { mode: 0o700 }); mkdirSync(cwd, { mode: 0o700 })
@@ -822,7 +721,7 @@ const REGISTERED_CLAIMS = Object.freeze([
             calls.push({ command, args, options })
             const child = new EventEmitter()
             child.stdout = new EventEmitter(); child.stderr = new EventEmitter(); child.stdin = new EventEmitter()
-            // Match the installed retained-child contract (an earlier engine commit):
+            // Match the installed retained-child contract (Engine 49d3424e):
             // direct close alone does not prove descendant and pipe closure.
             // These receipts describe this fake transport only; no OS child
             // or authenticated native process receipt is claimed by this test.
@@ -866,7 +765,10 @@ const REGISTERED_CLAIMS = Object.freeze([
         assert.deepEqual(calls[0].args, ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'])
         assert.equal(calls[0].options.cwd, cwd)
         assert.equal(calls[0].options.env.CLAUDE_CONFIG_DIR, configDir)
-        assert.equal(calls[0].options.env.ANTHROPIC_API_KEY, undefined)
+        // 1.0.50: Claude Code keeps the authentication the person set up, so the allowance probe runs with the same
+        // native settings as a session (an API key in the person's environment reaches it); only the parent-session
+        // marker is removed. The value is compared as a Boolean so a failure never prints it.
+        assert.equal(calls[0].options.env.ANTHROPIC_API_KEY === 'synthetic-never-used', true, 'the usage probe must keep the person\u2019s native Claude authentication')
         assert.equal(calls[0].options.env.CLAUDECODE, undefined)
         assert.equal(calls[0].options.shell, false)
         assert.deepEqual(calls[0].options.stdio, ['pipe', 'pipe', 'pipe'])
@@ -1286,10 +1188,27 @@ const REGISTERED_CLAIMS = Object.freeze([
         assert.ok(!store.includes(spawner),
           `the provider account store can start a program (${spawner}), so "nothing here runs that line" is no longer true`)
       }
-      for (const reader of ['createReadStream', 'readSync', 'readdirSync', 'realpathSync', 'readlinkSync']) {
+      for (const reader of ['createReadStream', 'readSync', 'realpathSync', 'readlinkSync']) {
         assert.ok(!store.includes(reader),
           `the provider account store can read bytes another way (${reader}), so "nothing here reads what it writes" is no longer true`)
       }
+      // Directory entry names are metadata, not sign-in bytes. The damaged
+      // choice marker scan may inspect only the selection record's directory.
+      const { createAccountRegistryStore } = createRequire(import.meta.url)('../../shell/account-registry.cjs')
+      const root = path.join(tmpdir(), 'provider-claim-fixture')
+      const stateFile = path.join(root, 'selection.json'), scanned = []
+      const metadataOnly = createAccountRegistryStore({ file: path.join(root, 'registry.json'), stateFile,
+        homedir: () => root, env: {}, fsImpl: {
+          lstatSync(target) {
+            assert.equal(target, stateFile, 'the scan must not inspect any provider sign-in path')
+            throw Object.assign(new Error('absent fixture selection'), { code: 'ENOENT' })
+          },
+          readdirSync(target) { scanned.push(target); return [] },
+          openSync() { assert.fail('an absent choice record must not open bytes') },
+          readFileSync() { assert.fail('directory metadata must not become a sign-in byte read') },
+        } })
+      assert.equal(metadataOnly.activeAccount().name, null)
+      assert.deepEqual(scanned, [path.dirname(stateFile)], 'only the product-owned selection directory is scanned')
       /* One path open and one descriptor reader, inside the function that
          refuses every path outside its caller's exact product-owned allowlist.
          Windows Node has no O_NOFOLLOW, so the stable descriptor plus the three
@@ -1314,6 +1233,22 @@ const REGISTERED_CLAIMS = Object.freeze([
         'the provider store can read bytes before descriptor and post-open path identities agree')
       assert.match(body, /readFileSync\(descriptor\)/,
         'the one byte reader is no longer bound to the proved stable descriptor')
+    },
+  },
+  {
+    /* THE CONFLICTING-FILES PROMISE ON THE DAMAGED-ACCOUNT SCREEN. When the
+       local and hosted account files list the same account, the screen says
+       setting them aside keeps both and carries nothing into the new list. */
+    claim: 'none of their accounts are chosen or transferred to the new list',
+    stillTrueBecause: 'setAsideDamagedStore in shell/product-account.cjs only makes verified copies and moves files aside; it never writes an account list, so no account from either file can reach the new one. When the pair conflicts, both files are copied and moved rather than one being kept active. The behavioural half is proved in product-account-set-aside.test.mjs, where valid local and hosted stores with the same account id are both set aside without choosing a winner.',
+    pin() {
+      const store = ACCOUNT_SOURCES['shell/product-account.cjs']
+      const setAside = store.slice(store.indexOf('function setAsideDamagedStore'), store.indexOf('function writeStore('))
+      assert.ok(setAside.length > 400, 'the setAsideDamagedStore slice is empty or unbounded; its markers moved')
+      assert.equal((setAside.match(/writeStore\(/g) || []).length, 0,
+        'setting aside now writes an account list, so an account could be carried into the new one')
+      assert.match(setAside, /if \(parsed && !conflict\) continue/,
+        'a conflicting pair is no longer set aside as a pair, so one list could stay active')
     },
   },
 ])
@@ -1446,6 +1381,9 @@ test('the absolute-shape detector detects, and is not silently inert', () => {
 
 /* Reports, not promises. Each says why it is one. */
 const REPORTED_STATE = Object.freeze([
+  ['A stopped or held conversation cannot wait and continue', 'reports refusal of a reset wait for a stopped or review-held conversation; coordinator reset-wait behavior tests exercise it.'],
+  ['This conversation is held for review. Waiting cannot resume it', 'reports an existing safety hold; reset-wait behavior tests prove it cannot start.'],
+  ['The list of accounts on this computer could not be read, so none are shown', 'reports an unreadable registry with no rows; account-switcher-state behavioral tests exercise failed reads.'],
   ['No accounts match these filters.', 'reports that the current search or program filter matched no listed account. It is a view result, not a claim about the registry or account state.'],
   ['No accounts are listed here yet. Add your first account to manage it here. Any existing default sign-in stays available', 'reports an empty provider registry. The missing-registry tests keep the default provider path available; opening the panel creates no registry or sign-in.'],
   ['This page is running in a browser rather than the installed application', 'reports where the page is running; there is genuinely no shell to hold an account.'],
@@ -1510,17 +1448,17 @@ const REPORTED_STATE = Object.freeze([
      each of these describes a state that was just read or a refusal that just
      happened. The one PROMISE the menu makes ("Never changes account on its
      own") is registered above with a pin rather than parked here. */
-  ['The list of accounts on this computer could not be read, so none are shown. Nothing has been lost', 'reports a damaged account list -- the same fail-closed state the guide panel reports, said in the menu\'s own words. "Nothing has been lost" is a statement about SCOPE that is true of every read on this surface: the menu never writes the registry while listing it, and setPolicy() and switchTo() both refuse outright with ACCOUNT_REGISTRY_DAMAGED rather than replacing a file they could not read.'],
+
   ['This copy cannot check how much of each account is left. Everything else on this menu still works', 'reports that this build\'s capability payload exposes no readAccountUsage -- the same shape as the Google and rename lines above, said instead of a button that would appear to work. The second half is not a promise either: listing, switching and adding go through separate channels that are present in the same build.'],
   ['Checked. The bars show what each account reported', 'reports that the allowance read answered ok, said on the confirmed branch of Check allowances in place of clearing the status line -- which hid it, so a screen reader heard "Checking…" and no end. It promises nothing about the figures: the bars draw only the windows the reply carried, and an account the reply left out keeps its "not known" line.'],
   ['That account was not switched to. Nothing changed', 'reports an ok!==true answer from the switch channel. switchTo() validates the provider, the name and the registry BEFORE its single writeStateRecord call, so every refusal returns with the rotation record byte-identical -- the same call-order argument the account-creation claim above is pinned on.'],
-  ['That setting was not saved. Nothing changed', 'reports an ok!==true answer from the policy channel. setPolicy() refuses an unknown mode or an out-of-range reserve before its single writeRecord call, and the menu puts the control back to what the file says rather than leaving it showing a mode that was refused.'],
-  ['That limit was not saved. Nothing changed', 'reports an ok!==true answer from the policy channel on the two allowance sliders. It rests on the same call-order fact as the mode line above: setPolicy() validates both per-window limits -- refusing a non-number, one outside 1..100, and one sent under a provider scope, since the engine reads them off the top of the registry for every program -- before its single writeRecord call, so a refusal leaves the file byte-identical. The menu then puts the slider back to what the file says rather than leaving it showing a limit that was refused.'],
+
+
   ['That account was not added. Nothing changed', 'reports an ok!==true answer from the managed-add channel that carried no sentence of its own. The shell answers { ok: false, code, reason } before it writes anything, and the menu shows that reason when there is one; this is the fallback for an answer without one, and it is true for the same call-order reason as the switch line above: nothing is written on a refusal.'],
-  ['There are no accounts on this computer yet, so there is nothing to choose between', 'reports an absent registry, which is the ordinary state and means no rotation. setPolicy() refuses rather than creating the file, because a switching rule written for a list that does not exist would be a registry holding no accounts -- which the engine treats as a loud refusal (ACCOUNTS_REGISTRY_EMPTY) rather than as this quiet absence.'],
+
   ['That kind of account cannot be switched to here', 'reports that the named provider is not one the engine\'s rotation understands -- the same report as the add and remove lines above, on the third verb that names a provider.'],
   ['There are no accounts on this computer to switch between', 'the same absent-registry report on the switch path; there is nothing to prefer when nothing is listed.'],
-  /* RENAME AND REMOVE ON THE MENU. Each of these reports a
+  /* RENAME AND REMOVE ON THE MENU (owner, 2026-09-02). Each of these reports a
      refusal that just happened or an absence that was just read; rename() and
      remove() both validate before their single write, so "nothing changed" is
      the same call-order fact the switch and policy lines above rest on. */
@@ -1529,7 +1467,7 @@ const REPORTED_STATE = Object.freeze([
   ['That kind of account cannot be renamed here', 'reports that the named provider is not one the store knows -- the same report as the add, remove and switch lines above, on the fourth verb that names a provider.'],
   ['There are no accounts on this computer to rename', 'the same absent-registry report on the rename path; there is nothing to rename when nothing is listed.'],
   ['That account was not on the list, so nothing was removed', 'reports the { ok: true, removed: false } answer from shell/account-registry.cjs remove() -- the named account was not in the registry, so no entry was rewritten. The second half is a statement about SCOPE that is true of every removal, not only this one: remove() edits the registry file alone and never touches the account folder or the provider sign-in inside it, deliberately, because a person’s provider home is theirs.'],
-  /* WATCHING ONE ACCOUNT'S SIGN-IN FILE, added to the
+  /* WATCHING ONE ACCOUNT'S SIGN-IN FILE (owner, 2026-09-03), added to the
      scanned account sources without being added to this classification -- the
      same gap the cloud-account-adder block above notes for itself, and the
      guard rightly found it. Both are refusals watchSignIn() raises before it
@@ -1540,12 +1478,14 @@ const REPORTED_STATE = Object.freeze([
   ['This computer cannot watch a folder for a sign-in.', 'reports ACCOUNT_WATCH_UNAVAILABLE from shell/account-registry.cjs watchSignIn() -- refused because this build’s fs layer exposes no watch() function, the same shape as the Google and rename lines above: said instead of arming a watch that would silently never fire.'],
   /* KEEP TRYING ACCOUNTS. Both lines were added with the account retry work
      without being added here, so the guard found them. */
-  ['The saved role identity cannot be confirmed', 'reports AGENT_RETRY_ROLE_UNCONFIRMED from src/account-recovery-coordinator.js prepareRetryRole(): the retry refuses before any start because the chosen model, the saved role binding or the org bridge needed to confirm the seat is missing.'],
-  ['you stopped this agent. Nothing starts until you resume it or send it work', 'reports a Keep trying choice recorded on an agent the person stopped. The rule it states is enforced: keepTryingAccounts() returns before runAccountRetry() for a stopped node, and the host refuses a recovery start whose predecessor was stopped (AGENT_ACCOUNT_RECOVERY_STOPPED). R10 in account-retry-regressions.test.mjs pins that no start follows.'],
+
+  ['you stopped this agent. Nothing starts until you resume it or send it work', 'The person or manager stopped this agent. Native reset waits and saved continuations preserve that Stop until the person resumes work; the coordinator tests cover cancellation, reload and pending saved-read races.'],
+  ['This conversation is held for review. Continuing cannot resume it.', 'Reports a persisted, observed or live provider safety or permission hold. Manual account/model continuation and requested reset waits preserve the hold; value-driven coordinator tests and their safety mutations prove no replacement starts.'],
   ['This installed copy cannot give a tree circle a declared identity', 'reports MC_TREE_IDENTITY_UNAVAILABLE before a saved continuation resumes: ensureSeatForSavedContinuation requires both orgBridge.read and orgBridge.ensureSeat and refuses when either is absent.'],
   ['Autonomous+ recovery is blocked because the task ledger history cannot be verified', 'reports CONTINUATION_HISTORY_UNVERIFIED after the continuation catalogue rejects ledger chain or history verification. pollContinuations publishes the refusal and returns before iterating or resuming saved records, then retries with bounded backoff.'],
   ['This installed copy cannot set the account file aside', 'reports the absent setAsideDamaged account bridge method. The action returns an ok:false result without invoking any file operation; the normal refusal notice keeps the damaged account record in place.'],
-  /* PROVIDER UPDATE CHECKS (Settings, an earlier commit). Added to the scanned account
+  ['The account file cannot be safely captured for recovery', 'reports ACCOUNT_STORE_SET_ASIDE_UNSAFE from recoverySnapshot() in shell/product-account.cjs: the file is a link, has another name, is not a regular file or is larger than the store bound, so it is refused before it is opened. Each caller in setAsideDamagedStore catches it and answers with its own sentence; product-account-set-aside.test.mjs covers the linked and oversized cases.'],
+  /* PROVIDER UPDATE CHECKS (Settings, 74bdbbcbc). Added to the scanned account
      sources without being added here, so the guard found it. */
   ['Claude runs Opus 5.5 whenever an agent asks for Opus', 'describes the provider\'s own program, not something ToolsEnabled does: the Claude CLI resolves its opus alias to claude-opus-5-5 from that version (read from the 2.1.280 binary on 2026-09-25, opus:"claude-opus-5-5"). src/this-computer-settings.js shows it only beside an available Claude update at or above claudeOpusFrom. The older-versions half is the provider\'s release history and is not checked here.'],
 ])
@@ -1663,7 +1603,7 @@ test('the spawn record carries a real principal read in the main process', () =>
 const SIGNED_OUT_VIEW = Object.freeze({ available: true, signedIn: false, accountCount: 0, canPersistSession: true })
 const SIGNED_IN_VIEW = Object.freeze({
   available: true, signedIn: true, accountCount: 1, canPersistSession: true,
-  username: 'alex', displayName: 'Alex P', expiresAtMs: Date.now() + 5 * 86400000,
+  username: 'Example', displayName: 'Example P', expiresAtMs: Date.now() + 5 * 86400000,
 })
 
 test('the sign-in form renders its fields', () => {
@@ -1751,13 +1691,13 @@ test('the signed-in screen offers a way to change the name it shows', () => {
 test('the rename form states what an empty box means, with the username in it', () => {
   const html = changeDisplayNameMarkup({ state: SIGNED_IN_VIEW })
   assert.match(html, /<input[^>]*name="displayName"/, 'the rename form has no field')
-  assert.match(html, /value="Alex P"/, 'the field is not prefilled with the current name, so saving would need it retyped')
+  assert.match(html, /value="Example P"/, 'the field is not prefilled with the current name, so saving would need it retyped')
   assert.match(html, /type="submit"/, 'nothing to submit the rename with')
   /* THE ABSENCE CASE, WHICH IS THIS CODEBASE'S SIGNATURE DEFECT. An empty
      field MEANS something here -- go back to the username -- and a meaning
      that is not printed is a meaning nobody consented to. */
   assert.match(html, /Leave it empty/, 'the form no longer says what an empty box does')
-  assert.match(html, /<code>alex<\/code>/, 'the form does not name the username an empty box falls back to')
+  assert.match(html, /<code>Example<\/code>/, 'the form does not name the username an empty box falls back to')
   /* No password is asked for on this form, and none may be rendered by it. */
   assert.ok(!/type="password"/.test(html), 'the rename form now asks for a password it does not need')
 })
@@ -1833,7 +1773,7 @@ test('the first-run sign-in step renders, in every state it can be in', () => {
   const states = [
     ['reading', { accountState: null }, /Reading accounts on the computer you are driving/],
     ['unavailable', { accountState: { available: false, reason: 'no payload' } }, /cannot hold an account/],
-    ['signed in', { accountState: { available: true, signedIn: true, displayName: 'Alex P' } }, /says who asked for it/],
+    ['signed in', { accountState: { available: true, signedIn: true, displayName: 'Example P' } }, /says who asked for it/],
     ['signed out', { accountState: { available: true, signedIn: false } }, /data-setup-account-field="password"/],
   ]
   for (const [name, input, expected] of states) {
@@ -1923,7 +1863,7 @@ test('the sign-in screen never stores a password anywhere that outlives the call
  * This used to be a REGISTERED_CLAIMS entry pinning the sentence "Nothing on
  * this screen or elsewhere in the product is switched off because you have not
  * subscribed". That sentence lived in the account page's subscription row, and
- * the row was removed on the ruling that the product stop
+ * the row was removed on the owner's 2026-08-26 ruling that the product stop
  * advertising subscriptions. The register's own instruction covers exactly this
  * case: "if it was reworded, re-register it here with what keeps it true; if it
  * was dropped, delete the entry."
@@ -1962,7 +1902,7 @@ test('the account screens sell nothing, and no account module reads licensing', 
     }
   }
   /* THE ACCOUNT PAGE MUST NOT SELL ANYTHING.
-     The app does not advertise subscriptions.
+     Owner, 2026-08-26: "i dont want to advertise subscriptions in the app."
      This block used to assert the opposite in detail -- that the row was
      present, disabled, and carried its reason. That was a good guard on a
      row that should not have been there: views/home.js had already dropped

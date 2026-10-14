@@ -26,6 +26,10 @@ test('actual desktop input and capture', { skip: process.platform !== 'linux' &&
     : electronArgs
   const { stdout } = await promisify(execFile)(executable, args, {
     cwd: root, env, windowsHide: true, timeout: 25000, maxBuffer: 1024 * 1024,
+  }).catch(error => {
+    // xvfb-run merges the child's stderr into stdout; keep native refusals visible.
+    if (error.stdout) error.message += '\n' + error.stdout
+    throw error
   })
   const result = stdout.split('\n').map(line => { try { return JSON.parse(line) } catch { return null } }).find(value => value?.ok)
   assert.ok(result, 'native input must produce the expected application state and screenshot')

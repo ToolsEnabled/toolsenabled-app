@@ -159,10 +159,8 @@ test('the checker rejects a bad fixture and accepts the real queue', (t) => {
 
 // The no-argument run is the one wired into `dist`. Pin that it checks BOTH
 // files: a version that quietly stopped reading the preserved authored set
-// would still exit 0, and the authored items could then rot away unnoticed.
-test('the default run checks the shipped seed and the preserved authored set',
-  { skip: realQueue === null ? 'private/research-queue.authored.json is per-installation and absent from the public source' : false },
-  () => {
+// would still exit 0, and the 28 items could then rot away unnoticed.
+test('the default run checks the shipped seed and the preserved authored set', () => {
   const result = spawnSync(process.execPath, [fileURLToPath(checkerPath)], {
     cwd: fileURLToPath(root),
     encoding: 'utf8',

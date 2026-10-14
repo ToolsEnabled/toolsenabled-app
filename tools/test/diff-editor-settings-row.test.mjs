@@ -128,5 +128,5 @@ test('the compare row is declared beside the one it was built like, and states i
   assert.match(guidance.risks.join(' '), /nothing here undoes it/i,
     'the statement no longer says that a save cannot be taken back, which is the fact about this row')
   assert.match(guidance.risks.join(' '), /may have moved since an agent produced/i,
-    'the statement no longer carries the staleness point that must be said out loud')
+    'the statement no longer carries the staleness point the owner asked to be said out loud')
 })

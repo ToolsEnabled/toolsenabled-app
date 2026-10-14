@@ -4,7 +4,7 @@
 // WHY THIS EXISTS. That fixture is the byte-identity control for a frozen research
 // study: 3 identity digests, 32 journal events and 130 report-file digests. Four
 // suites read it. Until now it had no writer at all, so every re-recording was a
-// hand-copy of thirty-odd hex strings (twice before). A
+// hand-copy of thirty-odd hex strings (31d02b93, and 6d29f00b before it). A
 // hand-edited digest fixture with no reproducible path is how these rot: nobody can
 // tell afterwards whether a digest was measured or typed.
 //

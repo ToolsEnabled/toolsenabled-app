@@ -1,9 +1,9 @@
-/* Cut gate R1199: Codex launched astra6, and the model is supported before the
- * cut.
+/* Cut gate R1199, the person's words: "also codex launched astra6. make sure we
+ * support that model before you cut".
  *
  * The id, display name and efforts are MEASURED from `model/list` on the
  * installed codex-cli 0.153.4 and recorded in
- * a recorded Codex model catalog
+ * <profile-root>/fixture-profile\Desktop\ToolsEnabled-1.0.41-WorkingFolder\CODEX-MODEL-CATALOG-20260907.json
  * (measuredAt 2026-09-07T13:33:58.032Z): `gpt-6-astra`, `GPT-6-Astra`, efforts
  * low/medium/high/xhigh/max/ultra, catalog default `medium`.
  *
@@ -50,8 +50,9 @@ test('astra is offered as a Codex tier carrying the measured model id', () => {
     'a tier with no seats can be chosen but never allocated')
 })
 
-/* K3 reversal: astra is the DEFAULT for NEW circles at effort medium, which is
-   what Codex does for its own model. Asserted through what a new circle actually GETS, not by pinning the
+/* Owner K3 reversal: astra is the DEFAULT for NEW circles at effort medium --
+   "default should be medium thats what codex does and we are using their
+   model". Asserted through what a new circle actually GETS, not by pinning the
    string 'astra', so a rename that keeps the behaviour still passes. */
 test('a new circle defaults to the astra model at the effort the person runs', () => {
   const chosen = launchTier(DEFAULT_TIER)
@@ -71,11 +72,11 @@ test('the three existing Codex tiers are still selectable and unchanged', () => 
   }
   // nothing was deprecated or removed: six codex tiers since 1.0.48 -- the
   // four above plus GPT-6-Sol and GPT-6-Luna (next test)
-  assert.equal(LAUNCH_TIERS.filter(tier => tier.provider === 'codex').length, 6)
+  assert.equal(LAUNCH_TIERS.filter(tier => tier.provider === 'codex').length, 7)
 })
 
-/* 1.0.48, owner decision: every model a provider offers is
-   selectable. The two gpt-6 models the codex-cli 0.156.0 catalog listed on
+/* 1.0.48, owner: "users need to be able to select all the models from the
+   providers". The two gpt-6 models the codex-cli 0.156.0 catalog listed on
    2026-09-25 (~/.codex/models_cache.json): ids, display names and default
    `medium` as measured, GPT-6-Luna without `ultra`. They are treeOnly -- a
    dispatch row needs its own seat, which a saved org overlay never gains --
@@ -194,7 +195,7 @@ test('the shell start path agrees with the tier table, model for model', () => {
   assert.ok(block.startsWith('const START_TIERS'), 'START_TIERS not found -- this test is checking air')
 
   const shell = new Map()
-  const row = /'?([a-z0-9-]+)'?:\s*\{([^}]*)\}/g
+  const row = /'?([a-z0-9.-]+)'?:\s*\{([^}]*)\}/g
   let match
   while ((match = row.exec(block.slice(0, block.indexOf('\n  })')))) !== null) {
     shell.set(match[1], Object.fromEntries([...match[2].matchAll(/(\w+):\s*'([^']*)'/g)].map(f => [f[1], f[2]])))

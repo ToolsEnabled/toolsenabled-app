@@ -1,9 +1,10 @@
 /* UP-ARROW FROM THE COMPOSER REACHES THE MESSAGES STILL WAITING TO SEND.
  *
- * As in a command prompt, pressing Up in the chat reaches the queued messages
- * so a person can edit them.
+ * Owner, verbatim: "i like how in cmd you can press the up button and edit
+ * your qued messages. it might be a weird feature but ca we let userrs press
+ * up from the chat to get to their qued messages and edit them".
  *
- * It is not a weird feature. It is the direct remedy for four messages a person
+ * It is not a weird feature. It is the direct remedy for four messages he
  * lost: a message written while the agent is busy goes into the session outbox
  * (src/session-outbox.js) and is previewed in the strip above the composer,
  * and until now the ONLY things a person could do to one were send it now or

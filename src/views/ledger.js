@@ -4,8 +4,8 @@
 //
 // ONE RENDER PATH. This page used to keep a second face -- its own markup
 // builders, its own richer data shape, an age ticker -- selected by a
-// per-view flag. The rule collapsed that: every simulated page IS the UI page,
-// with mock data. So the register is drawn by one set of
+// per-view flag. The owner's ruling collapsed that: "all simulated pages ARE
+// the UI pages, just mock data." So the register is drawn by one set of
 // builders whatever the data's origin. src/data-source.js answers where the
 // data comes from ('local', 'relay' or 'mock'), and that answer changes
 // exactly two things here: what feeds the render, and whether the page is
@@ -134,9 +134,9 @@ import { readTaskStalenessHours, writeTaskStalenessHours, deriveTaskStaleness } 
    it and a third derivation here would let one agent wear three names. */
 import { nodeNamesByKey } from '../fleet-trees.js'
 import { roleLabel } from '../fleet-tree-copy.js'
-/* THE P SUBSET IS THE PURCHASES PAGE, MOUNTED, NOT REBUILT (most
-   of it was already built, so it is reused and built the same way).
-   approvals.js already reads the one purchase
+/* THE P SUBSET IS THE PURCHASES PAGE, MOUNTED, NOT REBUILT (owner's ruling,
+   2026-09-07: "Most of this is already built. Respect how its built, build
+   it the same or similar"). approvals.js already reads the one purchase
    queue live, polls it, and gates Approve/Decline on the engine's own
    OWNER_PROMPT_NOT_PRESENTED presentation check -- a plain
    `.ledger-row-actions` button, drawn once and enabled on sight, cannot
@@ -148,8 +148,9 @@ import { renderPurchasesTab } from './ledger-purchases.js'
 import '../ledger.css'
 import { focusKeeper } from '../focus-keep.js'
 
-/* THE FOUR SUBSETS (2026-09-07): R for rules; T for tasks; A for asks, the
-   things agents need from the person; and P for actual purchases. This is the R/Q
+/* THE OWNER'S FOUR SUBSETS (2026-09-07, verbatim): "ledger should have the
+   following subsets: R for rules; T for tasks... Asks for things agents need
+   from the owner; and Purchases for actual purchases". This is the R/Q
    choice's replacement; the Q tab's questions did not get a fifth home, they
    moved into A (see readMode's 'q' -> 'a' migration and renderAsks below). */
 const KINDS = ['r', 't', 'a', 'p', 'all']
@@ -173,8 +174,8 @@ const SCOPES = ['all', 'global', 'tree', 'session', 'thread']
    is the page's one badge rule. */
 const HIDDEN_KEY_LIVE = 'mc.ledger.hidden:live'
 const HIDDEN_KEY_EXAMPLE = 'mc.ledger.hidden:example'
-/* THE TILES READ IN TRIAGE ORDER (rule: blocked and
-   waiting work should be quick to scan): what is stuck, then what waits for the
+/* THE TILES READ IN TRIAGE ORDER (owner, 2026-09-23: "make it easy to look
+   at blocked/waiting etc quickly"): what is stuck, then what waits for the
    owner, then the rest. The same six states as before, only reordered. */
 const SUMMARY_STATES = ['blocked', 'proposed', 'gated', 'in-progress', 'open', 'done']
 /* THE TASKS TAB COUNTS TASKS IN THEIR OWN WORDS (T1551). R's six tiles gave
@@ -229,7 +230,7 @@ const STATE = {
      land a standing rule on this same status; it wears the same mark --
      "replaced by something newer" reads the same whichever kind it is. */
   superseded: { glyph: '»', label: 'Superseded' },
-  /* R's OWN RESOLVE ACTION: four of the six
+  /* R's OWN RESOLVE ACTION (owner's ruling, 2026-09-07): four of the six
      RESOLUTION_STATUSES used to collapse into a neighbour on this rail
      (partial into in-progress, blocked-external and not-possible-as-asked
      both into the one generic 'blocked'; see src/ledger-live.js stateOf).
@@ -333,7 +334,7 @@ const ownerAvailabilityAttr = (item, kind) => {
   return ` data-owner-availability="${item.ownerAvailability}"`
 }
 
-/* THE SIX-TILE STRIP STAYS COARSE: the row
+/* THE SIX-TILE STRIP STAYS COARSE, RULED BY CONTROLLER (2026-09-07): the row
    badge is exact -- 'blocked-external' and 'partial' keep their own glyph
    and label on the row (see STATE above) -- but the summary strip was not
    redrawn for this feature, so for COUNTING PURPOSES ONLY 'blocked-external'
@@ -377,8 +378,8 @@ const ROW_HINT = '<p class="ledger-row-hint" data-row-hint role="status" tabinde
    foot of this page -- and it is optional on the way in, so a rule an agent
    filed, or one filed before labels existed, arrives carrying nothing but its
    key. MEASURED 2026-09-03 against a row with scope 'thread', no label and the
-   store's own id shape: the chip read "circle · …00000002". That is the id of
-   node-2-00000001-0000-4000-8000-000000000002 with eight characters of it
+   store's own id shape: the chip read "circle · …9b278ed". That is the id of
+   node-2-6c518599-05aa-4c77-a154-cefe49b278ed with eight characters of it
    showing, and it answers nothing a person asked.
 
    `names` is nodeNamesByKey's map over this window's saved fleet-tree records,
@@ -417,10 +418,11 @@ function chipMarkup(item, copy, names) {
   return `<span class="ledger-scope" data-scope="${esc(item.scope || 'global')}" title="${esc(text)}">${esc(text)}</span>`
 }
 
-/* R'S OWN STANDING STATUSES (the Resolve action): the status words a rule
-   sits in BEFORE the owner has said what happened to it, matching the
-   engine's rule that a standing R row (open, in-progress, partial,
-   blocked-external) moves to one of RESOLUTION_STATUSES. This is `item.status`, never the rail state --
+/* R'S OWN STANDING STATUSES (owner's Resolve action, 2026-09-07): the
+   status words a rule sits in BEFORE the owner has said what happened to
+   it, matching Worker's engine ruling verbatim ("a standing R row (open,
+   in-progress, partial, blocked-external) moves to one of
+   RESOLUTION_STATUSES"). This is `item.status`, never the rail state --
    'gated' is still 'open' or 'in-progress' underneath, and a gated rule is
    exactly as standing as an ungated one; the gate is a different axis. */
 const STANDING_STATUSES = new Set(['open', 'in-progress', 'partial', 'blocked-external'])
@@ -537,7 +539,7 @@ function kindState(item, kind) {
    a 'proposed' state the way R's are, because neither kind has one. T's verb
    is Complete; A's is Answer. Delete is the one control every kind shares,
    drawn last, in the same `.ledger-row-actions` group R's controls use --
-   the same build, reused, for the one thing that really
+   the owner's "build it the same or similar" for the one thing that really
    is the same across all three. Verbs this copy's bridge lacks are simply
    never drawn, exactly as rowActionsMarkup already does for R. */
 function kindActionsMarkup(item, state, kind, actions) {
@@ -883,8 +885,8 @@ export function ledgerView() {
                    [data-visible-count] -- the queue carries its own. -->
               <section class="ledger-purchases-slot" data-purchases-slot hidden></section>
 
-              <!-- THE ADD BOX SITS ABOVE THE LIST (rule: entries can
-                   be added by hand on the page). It is the first thing in the
+              <!-- THE ADD BOX SITS ABOVE THE LIST (owner, 2026-09-15: "i want to be
+                   able to manually add on the page"). It is the first thing in the
                    list's card, one press from open, and the list it adds to
                    follows. The box hides itself on tabs it cannot file for; the
                    disclosure hides with it (ledger.css). -->
@@ -903,7 +905,7 @@ export function ledgerView() {
           </div>
 
           <aside class="ledger-side" aria-label="More Ledger controls">
-            <!-- Deciding by number is a secondary tool:
+            <!-- Deciding by number is a secondary tool (owner review, 2026-09-23):
                  closed until asked for. The slot and everything moved into it
                  keep their hooks; only the disclosure around them is new. -->
             <details class="ledger-side-block ledger-decide-disclosure">
@@ -1073,7 +1075,7 @@ export function ledgerView() {
     remove: typeof bridge?.requestRemove === 'function',
     decide: typeof bridge?.requestDecide === 'function',
     /* T's Complete and Remove, A's Answer, Decline and Remove: the engine
-       side's own per-kind verbs -- completeTask,
+       lane's own per-kind verbs (Worker 4, own branch) -- completeTask,
        removeTask, answerAsk, declineAsk, removeAsk. Until a bridge actually
        has one these read false and the page draws neither control, the same
        as every other verb here. */
@@ -1082,8 +1084,8 @@ export function ledgerView() {
     answer: typeof bridge?.answerAsk === 'function',
     declineAsk: typeof bridge?.declineAsk === 'function',
     removeAsk: typeof bridge?.removeAsk === 'function',
-    /* R's own Resolve (a later addition): resolveStandingRequest,
-       owner-only, added alongside the verbs above. */
+    /* R's own Resolve (owner's 2026-09-07 addition): resolveStandingRequest,
+       owner-only, Worker 4's own branch alongside the verbs above. */
     resolve: typeof bridge?.resolveStandingRequest === 'function',
   })
   const rowActions = verbs.edit || verbs.remove || verbs.decide || verbs.resolve
@@ -1104,8 +1106,8 @@ export function ledgerView() {
         groupLabel: ROW_ACTIONS.groupLabel,
       })
     : null
-  /* A's own action set: Answer, Decline and its own Remove
-     (LEDGER-KINDS-INTERFACE-20260907.md). */
+  /* A's own action set: Answer, Decline and its own Remove -- the owner's
+     "answer, decline or remove" (LEDGER-KINDS-INTERFACE-20260907.md). */
   const askActions = verbs.answer || verbs.declineAsk || verbs.removeAsk
     ? Object.freeze({
         answer: verbs.answer ? ROW_ACTIONS.answer : null,
@@ -1601,7 +1603,7 @@ export function ledgerView() {
     offerRequestsToForms(requestLists())
   }
 
-  /* THE ASKS TAB: THE RULING SAYS A IS Q'S SUCCESSOR, SO IT KEEPS Q'S
+  /* THE ASKS TAB: THE OWNER'S RULING SAYS A IS Q'S SUCCESSOR, SO IT KEEPS Q'S
      OWN READ, WORD FOR WORD, AND GAINS THE NEW KIND-A LEDGER RECORDS BESIDE
      IT (LEDGER-KINDS-INTERFACE-20260907.md: "the A tab shows the existing
      questions observation (source and never-removed rule unchanged) AND the
@@ -1988,7 +1990,7 @@ export function ledgerView() {
   })
 
   /* R'S OWN RESOLVE CONTROL, entirely in this file (owner-only, R's own
-     verb): resolveStandingRequest lives in a bridge built
+     verb): resolveStandingRequest lives in a bridge Worker 4 builds
      elsewhere, and ledger-row-actions.js's own ACTIONS set does not include
      'resolve' -- it ignores this button's press outright -- so the whole
      interaction (open the picker, choose a status, an optional reason,
@@ -2135,6 +2137,7 @@ export function ledgerView() {
     onStale: ({ id, sentence } = {}) => {
       if (destroyed) return undefined
       hintAfterLoad = typeof id === 'string' && sentence ? { id, sentence } : null
+      focusRowAfterLoad = typeof id === 'string' ? id : null
       return load()
     },
     onOutcome: outcome => {
@@ -2255,7 +2258,10 @@ export function ledgerView() {
     if (typeof id !== 'string' || !/^[A-Za-z0-9._-]+$/.test(id) || typeof register.querySelector !== 'function') return
     const record = register.querySelector(`[data-row-id="${id}"]`)
     record?.scrollIntoView?.({ block: 'nearest' })
-    let target = record ? (record.querySelector('.ledger-ctl') || record.querySelector('[data-row-hint]')) : null
+    // A stale write keeps its editor and words. Return the keyboard there
+    // before choosing a row action so the person can continue their answer.
+    let target = record ? (record.querySelector('[data-row-editor-words]') || record.querySelector('[data-row-reason]')
+      || record.querySelector('.ledger-ctl') || record.querySelector('[data-row-hint]')) : null
     /* The row is gone and the note says where it went: focus goes there, so
        a keyboard or screen reader user hears what the second press did. */
     if (!target && !hiddenNote.hidden && hiddenNote.textContent) {
@@ -2345,7 +2351,7 @@ export function ledgerView() {
       /* THE DISTINCTION IS IN THE ANSWER. A read that answered -- with rows,
          or with none -- is a register; a read that fell over is a fault with
          a different repair, and collapsing the two is why this page once told
-         a person their request list could not be read when it was simply empty.
+         a person his request list could not be read when it was simply empty.
          An answered list with nothing in it is the ordinary state of a fresh
          install, and the render says so with the door to filing -- but only
          when the ledger was never written (`exists` false). A ledger whose

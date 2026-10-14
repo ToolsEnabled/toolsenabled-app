@@ -6,11 +6,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 const out=path.resolve(process.argv[2]||'')
-// The permitted development account's profile, assembled at run time so this
-// source carries no literal user-profile path.
-const devRoot=['C:','Users','BuildAccount-Dev'].join('\\')
-const allowed=devRoot+'\\AppData\\Local\\Temp'
-if(!process.argv[2] || !path.isAbsolute(process.argv[2]) || !out.toLowerCase().startsWith(allowed.toLowerCase()+path.sep)) throw Error('Supply a literal BuildAccount-Dev Temp subfolder')
+const allowed='\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp'
+if(!process.argv[2] || !path.isAbsolute(process.argv[2]) || !out.toLowerCase().startsWith(allowed.toLowerCase()+path.sep)) throw Error('Supply a literal fixture-profile Temp subfolder')
 // Refuse links before creating anything beneath a caller-supplied path.
 for(let part=out;part.toLowerCase().startsWith(allowed.toLowerCase());part=path.dirname(part)){
   if(existsSync(part) && lstatSync(part).isSymbolicLink())throw Error('Output path must not traverse a link')
@@ -27,9 +24,10 @@ try{
   const port=server.httpServer.address().port
   const origin=`http://127.0.0.1:${port}`
   const profile=mkdtempSync(path.join(out,'browser-'))
+  const devRoot='\x43:\\Users\\fixture-profile'
   const env={...process.env,TEMP:allowed,TMP:allowed,USERPROFILE:devRoot,APPDATA:devRoot+'\\AppData\\Roaming',LOCALAPPDATA:devRoot+'\\AppData\\Local'}
   delete env.ELECTRON_RUN_AS_NODE
-  child=spawn('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',[
+  child=spawn('\x43:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',[
     '--headless=new','--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-component-update','--disable-sync','--disable-extensions','--metrics-recording-only','--safebrowsing-disable-auto-update','--password-store=basic','--remote-debugging-port=0',`--user-data-dir=${profile}`,'about:blank',
   ],{cwd:root,windowsHide:true,env,stdio:['ignore','ignore','pipe']})
   const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms))

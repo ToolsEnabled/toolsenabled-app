@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-/* THE FOUR THINGS FOUND BY HAND, CHECKED THE WAY A PERSON CHECKS THEM.
+/* THE FOUR THINGS THE OWNER FOUND BY HAND, ASKED THE WAY HE ASKED THEM.
  *
- * The standard: nothing counts as working until it has been clicked through and
- * used in production, as a real user would, with real keyboard and mouse input
- * rather than DOM elements.
+ * "I REFUSE TO BELIEVE YOU THAT ANYTHING WORKS UNTIL YOU CLICK THROUGH IT AND
+ * USE IT IN PRODUCTION YOURSELF ... IT HAS TO BE DONE AS A REAL USER WOULD, NOT
+ * WITH DOM ELEMENTS, WITH REAL KEYBOARD AND MOUSE CLICKS."
  *
  * So every press in this file is a mouse at a coordinate: move, down, up. There
  * is no el.click(), no dispatchEvent, and nothing is assigned to `.value`.
@@ -70,9 +70,10 @@
  *       not run · 3 nothing failed but something could not be exercised.
  */
 
+import { providerLaunchEnvironment } from './lib/provider-launch-environment.cjs'
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { copyFileSync, existsSync, mkdirSync, rmSync, rmdirSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, rmdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -143,7 +144,7 @@ function baseEnvironment(profile) {
   for (const key of Object.keys(environment)) {
     if (/^(path|mission_control_engine)$/i.test(key)) delete environment[key]
   }
-  const systemRoot = process.env.SystemRoot || 'C:\\Windows'
+  const systemRoot = process.env.SystemRoot || '\x43:\\Windows'
   const systemPath = [
     path.join(systemRoot, 'system32'),
     systemRoot,
@@ -173,14 +174,7 @@ function engineReadyEnvironment(profile) {
   mkdirSync(bin, { recursive: true })
   writeFileSync(path.join(bin, 'codex.cmd'), '@echo codex-cli 0.0.0-presence-stub\r\n', 'utf8')
   environment.PATH = [...systemPath, bin].join(';')
-  /* AND THE SIGN-IN, WHICH IS ALSO ONLY EVER LOOKED FOR. At an isolated
-     permission level the probe refuses unless CODEX_HOME holds an auth.json
-     (confinedSessionIsSignedOut in shell/agent-host.cjs). It checks existence
-     and nothing else, and this run starts no session, so a placeholder file in
-     a scratch directory is enough to put the home screen into the state the
-     link under test lives in. It authenticates nothing and is deleted with the
-     scratch tree. */
-  writeFileSync(path.join(environment.CODEX_HOME, 'auth.json'), '{}\n', 'utf8')
+  // This presence-only stub has no provider sign-in. It never starts an agent.
   return environment
 }
 
@@ -962,12 +956,9 @@ async function driveSettingsLink(open) {
  * scratch folder -- a count taken from the machine's real installation would be
  * a finding about the wrong computer, and an agent running in the repository
  * would be a live process with tools inside the working tree. What is NOT
- * isolated is the ability to resolve and sign in to Codex: the npm global
- * directory is put back on PATH, and auth.json is COPIED into a scratch
- * CODEX_HOME so the real ~/.codex is never written to and the owner's own
- * config.toml -- with its MCP servers and its effort setting -- is not
- * inherited by a test session. The file is copied by path and never read,
- * printed or returned by this file.
+ * isolated is provider sign-in: --codex-home names the existing CLI home in
+ * place, or an API key comes from the environment. No provider configuration
+ * or sign-in file is read or copied by this drive.
  */
 
 /* THE ANSWER MUST NOT BE INSIDE THE QUESTION, and this file got that wrong once.
@@ -993,20 +984,18 @@ const LIVE = process.argv.includes('--live-agent')
  * directory. Node's rmSync unlinks a junction rather than recursing through it
  * -- measured after the first live run: the real directory still held its 28
  * entries and codex still resolved. But that is one implementation detail
- * standing between this file and deleting the machine's global npm install, and
+ * standing between this file and deleting the owner's global npm install, and
  * "it happened to be fine" is not a fence. The link is therefore removed by
  * name, before the tree it lives in is removed at all. */
 let liveNpmLink = null
 
-function liveEnvironment(profile) {
-  /* The homes from the one shared helper (tools/lib/sterile-launch.cjs), exactly
-     as baseEnvironment() above; this run differs only in its PATH and in the
-     sign-in copied below. */
+function liveEnvironment(profile, provider = 'codex') {
+  /* Product state is scratch; the provider home is selected explicitly below. */
   const environment = sterileLaunchEnvironment(prepareSterileProfile(qaProfileDirectories(profile)))
   if (VISIBLE) delete environment.MC_SMOKE_HEADLESS
   else environment.MC_SMOKE_HEADLESS = '1'
 
-  const systemRoot = process.env.SystemRoot || 'C:\\Windows'
+  const systemRoot = process.env.SystemRoot || '\x43:\\Windows'
   /* The npm global directory is where this machine's codex.CMD lives. It is
      named from the REAL APPDATA before APPDATA is redirected, because the
      redirect is what makes codexCommandIsMissing() fall through to PATH. */
@@ -1019,19 +1008,8 @@ function liveEnvironment(profile) {
     npmGlobal,
   ].join(';')
 
-  const realCodexHome = path.join(process.env.USERPROFILE || '', '.codex')
   mkdirSync(path.join(profile, 'userdata'), { recursive: true })
-  /* THE ONLY THING TAKEN FROM THE REAL HOME. Copied rather than pointed at, so
-     nothing this run does can touch the owner's Codex sign-in, and copied ALONE
-     so their config.toml is not inherited. Never opened by this file. */
-  const credential = path.join(realCodexHome, 'auth.json')
-  if (!existsSync(credential)) {
-    throw new HarnessError(
-      `no Codex sign-in at ${credential}, so a live agent cannot start.`
-      + ' Run `codex login` in a terminal, or drop --live-agent.',
-    )
-  }
-  copyFileSync(credential, path.join(environment.CODEX_HOME, 'auth.json'))
+  Object.assign(environment, providerLaunchEnvironment(provider, environment))
 
   /* AND THE NPM GLOBAL LAYOUT, WHICH IS NOT THE SAME QUESTION AS PATH.
    *
@@ -1196,7 +1174,7 @@ async function driveLiveAgents(open) {
     }
   }
   note(`  the main process would resolve codex at: ${JSON.stringify(hits)}`)
-  note(`  CODEX_HOME=${seen.codexHome} auth.json present: ${existsSync(path.join(seen.codexHome, 'auth.json'))}`)
+  note('  the provider CLI receives the explicit sign-in home or API environment')
   note(`  APPDATA the app sees: ${seen.appData}`)
   const availability = await open.page.evaluate(`(async () => {
     try { return await globalThis.mcAgent.availability() } catch (error) { return { threw: String(error && error.message || error) } }
@@ -1350,37 +1328,6 @@ export function claudeProcesses(spawn = spawnSync) {
       'CLAUDE_PROCESS_LOOKUP_COULD_NOT_TELL',
     )
   }
-}
-
-/* The Claude sign-in, copied the same way and for the same reason the Codex one
-   is: the real home is never written to, and the copy dies with the scratch
-   tree. Only under the signed-in flag; nothing here is read or printed. */
-export function fileIsAbsent(file, stat = statSync) {
-  try {
-    stat(file)
-    return false
-  } catch (error) {
-    if (error && error.code === 'ENOENT') return true
-    const cause = error && error.code ? error.code : 'an unclassified error'
-    throw new HarnessError(
-      `could not inspect ${file} (${cause}); this is not claiming that it is absent.`,
-      'CLAUDE_SIGN_IN_LOOKUP_COULD_NOT_TELL',
-    )
-  }
-}
-
-function copyClaudeSignIn(profile) {
-  const realHome = process.env.USERPROFILE || ''
-  const scratchHome = path.join(profile, 'home')
-  const credential = path.join(realHome, '.claude', '.credentials.json')
-  if (fileIsAbsent(credential)) return { ok: false, why: `no Claude sign-in at ${credential}` }
-  mkdirSync(path.join(scratchHome, '.claude'), { recursive: true })
-  copyFileSync(credential, path.join(scratchHome, '.claude', '.credentials.json'))
-  /* The onboarding record too, or the CLI treats this as a first run and stops
-     to ask questions no harness can answer. */
-  const settings = path.join(realHome, '.claude.json')
-  if (!fileIsAbsent(settings)) copyFileSync(settings, path.join(scratchHome, '.claude.json'))
-  return { ok: true }
 }
 
 /** Turn a write action on the way a person does: Settings, its section, its switch. */
@@ -1661,13 +1608,7 @@ async function main() {
       console.log('RUN D  the promise the tree refusal makes about the agent page')
       const profileD = path.join(scratch, 'profile-d')
       mkdirSync(profileD, { recursive: true })
-      const environmentD = liveEnvironment(profileD)
-      if (HANDOVER_SIGNED_IN) {
-        const copied = copyClaudeSignIn(profileD)
-        note(copied.ok
-          ? '  the Claude sign-in was copied into this run\'s scratch home'
-          : `  no Claude sign-in to copy: ${copied.why}`)
-      }
+      const environmentD = liveEnvironment(profileD, HANDOVER_SIGNED_IN ? ['codex', 'claude'] : 'codex')
       seedMachineRecord(profileD, staged.appRoot)
       runD = await openApp(staged.executable, profileD, environmentD)
       if (!(await waitForView(runD))) {

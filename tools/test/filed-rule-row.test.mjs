@@ -152,7 +152,7 @@ test('the rules panel names the agent that filed an entry, and only then', () =>
   assert.ok(body.innerHTML.includes('filed by your agent codex'), 'the panel does not name the agent that filed an entry')
   const stub = () => ({
     readLedger: (scope, key) => ({
-      scope, key, path: 'C:/somewhere/state/r-ledger/thread-node-7.md', exists: true, warnings: [],
+      scope, key, path: '\x43:/somewhere/state/r-ledger/thread-node-7.md', exists: true, warnings: [],
       entries: [
         { id: 'RTH1', words: 'Typed by the person.', filedBy: null, number: 1, stamp: 's', line: 1 },
         { id: 'RTH2', words: 'Filed by an agent.', filedBy: 'codex', number: 2, stamp: 's', line: 4 },
@@ -165,7 +165,7 @@ test('the rules panel names the agent that filed an entry, and only then', () =>
     { id: 'RTH1', words: 'Typed by the person.' },
     { id: 'RTH2', words: 'Filed by an agent.', filedBy: 'codex' },
   ])
-  assert.equal(JSON.stringify(answer).includes('C:/somewhere'), false, 'the reply must not carry the ledger path')
+  assert.equal(JSON.stringify(answer).includes('\x43:/somewhere'), false, 'the reply must not carry the ledger path')
 })
 
 test('the view pairs the actual call and result, draws its receipt and refreshes the mounted rules without losing an edit', () => {

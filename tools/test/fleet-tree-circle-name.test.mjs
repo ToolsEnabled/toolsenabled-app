@@ -5,7 +5,7 @@ import { register } from 'node:module'
 
 /* THE NAME A CIRCLE IS REGISTERED UNDER IS THE NAME IT CAN BE MESSAGED BY.
  *
- * THE DEFECT, measured 2026-09-16 and filed as T138: circles
+ * THE DEFECT, measured 2026-09-16 03:47Z-05:05Z and filed as T138: circles
  * started through `agent.spawn` with surface "tree" all took the bare role word
  * -- four "Manager" and sixteen "Worker" on one computer. Every one of those
  * strings travels straight into the message directory: src/views/computers.js
@@ -21,7 +21,7 @@ import { register } from 'node:module'
  * nodeDisplayName(), whenever the store had a base recorded, which is whenever
  * the role library had resolved at the moment the circle was added. Both halves
  * of the shipped rule were discarded: the per-tree ordinal ("Manager 2") and
- * the cross-tree id suffix ("Manager (00000001)").
+ * the cross-tree id suffix ("Manager (5ef0084f)").
  *
  * THESE TESTS CALL THE REAL RULE WITH REAL STORE RECORDS. They assert that
  * names are DISTINCT and that each one resolves back to the circle it belongs

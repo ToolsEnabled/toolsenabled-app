@@ -68,7 +68,7 @@ function slice(startMarker, endMarker, fromIndex = 0) {
 }
 
 /* THE FUNCTION'S NAME IS THE LANDMARK, NOT ITS PARAMETER LIST. These markers
-   used to carry the arguments verbatim, so an earlier fix (1041) adding
+   used to carry the arguments verbatim, so fix/1041-page2-interactions adding
    an `afterBind` option to freshStartExistingNode made both tests below red
    about a rename that had not happened. The trailing '(' still rules out the
    Unguarded sibling -- the only other identifier either name prefixes -- and

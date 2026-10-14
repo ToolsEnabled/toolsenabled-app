@@ -13,7 +13,7 @@
 // did not use what the menu showed either: startProfileId() passes the dangling
 // id on and the main process refuses it by name. Three answers, one question.
 //
-// Reproduced at an earlier commit by a local repro:
+// Reproduced at 6909208e by W-root/B13-repro-folder-dangling.mjs:
 //
 //   persisted treeProfile after reload = profile-research
 //   option the menu marks selected     = NONE

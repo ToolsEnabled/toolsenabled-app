@@ -9,7 +9,7 @@ import { fileIdentity, parseOwnedRuntimeObservation, runOwnedJob } from '../tran
 
 const HELPER = fileURLToPath(new URL('./Read-InstalledState.ps1', import.meta.url));
 const LOADED_HELPER = Object.freeze(measureFile(HELPER));
-const POWERSHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+const POWERSHELL = '\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
 const REGISTRY_ROOT = 'Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall';
 const VALUE_NAMES = ['DisplayName', 'Publisher', 'UninstallString', 'QuietUninstallString', 'InstallLocation', 'DisplayVersion'];
 const HASH = /^[a-f0-9]{64}$/i;

@@ -32,7 +32,7 @@
  *   "<electron>" "<appDir>" --user-data-dir="<userData>"
  * plus, only with --chromium-log, the three Chromium logging switches that
  * were verified on an isolated instance not to change behaviour
- * (the crash investigation).
+ * (REPORT-crash-20260903/A-REPORT.md).
  */
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -47,7 +47,7 @@ import {
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const HOLDER = path.join(HERE, 'launch-live-job.ps1')
 const WATCHDOG = path.join(HERE, 'watch-live.ps1')
-const POWERSHELL = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+const POWERSHELL = path.join(process.env.SystemRoot || '\x43:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
 
 const say = (line) => process.stdout.write(`launch-live: ${line}\n`)
 
@@ -116,7 +116,7 @@ foreach ($p in $pids) {
     text = powershell(script).trim()
   } catch (error) {
     /* Get-NetTCPConnection needs the NetTCPIP module; netstat is always there. */
-    const netstat = execFileSync(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'netstat.exe'), ['-ano'], { encoding: 'utf8', windowsHide: true, timeout: 60_000 })
+    const netstat = execFileSync(path.join(process.env.SystemRoot || '\x43:\\Windows', 'System32', 'netstat.exe'), ['-ano'], { encoding: 'utf8', windowsHide: true, timeout: 60_000 })
     const listeners = parseNetstatListeners(netstat, port)
     return { listeners, processes: new Map(listeners.map(row => [row.pid, { alive: isAlive(row.pid) }])), via: `netstat (Get-NetTCPConnection failed: ${error.message.split('\n')[0]})` }
   }
@@ -160,7 +160,7 @@ function showRecords(file, count) {
 function main() {
   const args = parseArgs(process.argv.slice(2))
   /* The launcher passes --log-dir (WF\live-control\app-logs). Without it, the
-     nearest ancestor that holds a live-control directory is the workspace folder:
+     nearest ancestor that holds a live-control directory is the WorkingFolder:
      from WF\<app worktree>\tools\live-launch that is three levels up. */
   const logDir = args.logDir || findLogDir()
   fs.mkdirSync(logDir, { recursive: true })
@@ -217,7 +217,7 @@ function main() {
     '-ChromiumLog', chromiumLog, '-Port', String(args.port)]
   if (args.watchdog) holderArgs.push('-Watchdog', WATCHDOG)
   /* HOW THE HOLDER IS STARTED, and why (all MEASURED 2026-09-03/04 on this
-     machine, a recorded spawn-survival matrix and the
+     machine, evidence/A/harness-spawn-survival-matrix.txt and the
      console-close proof):
      - a powershell.exe that node starts directly -- detached, hidden
        (CREATE_NO_WINDOW), or with a log-file stdio -- was reaped after this

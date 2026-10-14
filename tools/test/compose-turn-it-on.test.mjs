@@ -1,14 +1,14 @@
 /* THE SWITCH THAT PUTS START BACK, IN THE PLACE THE QUESTION WAS ASKED.
  *
  * Setup's cautious answer switches off starting an assistant, and it is meant
- * to: the rule is that the person's recorded answer stands until THEY change it.
+ * to: the owner's rule is that his recorded answer stands until HE changes it.
  * What it must not do is leave a person looking at the panel they wanted with a
  * sentence naming a screen they now have to go and find. The panel carries the
  * switch.
  *
  * THE TWO PROPERTIES THAT PULL AGAINST EACH OTHER, and both are pinned here:
- *   nothing is written until the press          (their rule)
- *   the press is enough, with no restart        (their ask)
+ *   nothing is written until the press          (his rule)
+ *   the press is enough, with no restart        (his ask)
  *
  * planNodeChatbox-style: the panel is a real DOM module, so its public seam is
  * mounted into a minimal document and DRIVEN. The view checks below still read
@@ -230,7 +230,7 @@ test('the panel survives the page rebuild its own switch causes', () => {
      src/write-flags.js announced it, src/main.js re-rendered the whole route on
      a microtask, and the panel the person was standing in was destroyed. Start
      "came back" on a page they were no longer on -- a restart in everything but
-     name, and the rule is no restart. */
+     name, and the owner asked for no restart. */
   assert.match(view, /let composeToRestore = null/, 'nothing carries the open panel across the rebuild')
   const run = declaredFunctionSource(view, 'composeUnavailableAction')
   assert.ok(

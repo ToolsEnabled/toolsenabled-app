@@ -350,8 +350,8 @@ test('choosing the folder is what earns the document, through the real modules t
 
 /* ---------- the person's own .mcp.json is merged into, never replaced ----------
  *
- * THE DEFECT (whether setup overwrote files in a user's paths).
- * The chosen folder is the person's, and a .mcp.json
+ * THE DEFECT (owner, 2026-09-22: "right now do we aggressively try to write over
+ * a users paths or such?"). The chosen folder is the person's, and a .mcp.json
  * already in it is usually the person's own file: their agent client keeps its
  * project servers there. Setup and every launch-time refresh wrote the generated
  * document over it wholesale, kept no copy and said nothing, and a failed write

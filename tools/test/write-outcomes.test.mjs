@@ -158,7 +158,7 @@ const ACCOUNTS_REPLY = {
   },
 }
 
-const LAUNCH_REQUEST = { environment: ENVIRONMENT, branch: 'main', prompt: 'read the readme' }
+const LAUNCH_REQUEST = { environment: ENVIRONMENT, repository: 'Owner/repo', branch: 'main', prompt: 'read the readme', account: 'first' }
 
 /* The two-step arm-then-confirm, driven to the point where the launch is in
    flight and nothing has answered yet. */

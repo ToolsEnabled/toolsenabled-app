@@ -1,8 +1,8 @@
 /* SETTINGS, FIRST SECTION: what the chat box on the first page contains.
  *
- * The rule: settings on the first page select which agents' context shows up
- * in the chatbox, and whether agent runs show as well, not at all, or only,
- * controlled by the settings on that page.
+ * The owner's words: "on the first page in setting they should be able to
+ * select which agents context shows up in the chatbox - and if agent runs shows
+ * up too or not or only it should be controlled by the settings on that page".
  *
  * Two controls, because that is two requirements, and they are the first thing
  * on the settings page because the box they govern is the first thing in the

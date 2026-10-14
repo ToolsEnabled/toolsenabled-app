@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { TreeScope } from '../../src/tree-scope.js'
 import { overviewNodeState } from '../../src/fleet-overview.js'
-import { layoutBoxTree, TREE_BOX, TREE_CONTEXT_SIZES } from '../../src/tree-box-layout.js'
+import { boxVideoLane, layoutBoxTree, TREE_BOX, TREE_CONTEXT_SIZES } from '../../src/tree-box-layout.js'
 import { chooseTreeProjection } from '../../src/tree-readability.js'
 
 const fleet = (count, fanout = count, prefix = 'agent') => Array.from({ length: count }, (_, index) => ({
@@ -304,4 +304,52 @@ test('empty, missing, and tiny viewports produce finite answers without inventin
     assert.ok(Number.isFinite(result.fitScale))
     assert.equal(result.folded, false, 'a lone agent has no hidden descendants to fold')
   }
+})
+
+/* 1.0.49 VIDEO BOX. A box with a video is taller by the panel, so a branch
+   whose ranks carry videos reaches the readability floor sooner. The lane is
+   paid only by ranks that hold a video (DESIGN.md section 1, "Row lane"). */
+test('a video under a box lowers the fit of the complete branch, in Boxes only', () => {
+  const agents = fleet(4, 1)
+  for (const contextSize of Object.keys(TREE_CONTEXT_SIZES)) {
+    const plain = chooseTreeProjection({ scope: new TreeScope(agents), contextSize, W: 1200, H: 1000 })
+    const leaf = chooseTreeProjection({ scope: new TreeScope(agents), contextSize, W: 1200, H: 1000, videoIds: ['agent-3'] })
+    const middle = chooseTreeProjection({ scope: new TreeScope(agents), contextSize, W: 1200, H: 1000, videoIds: ['agent-1'] })
+    assert.ok(leaf.fitScale < plain.fitScale, `${contextSize}: the leaf's panel adds height below the tree`)
+    assert.ok(Math.abs(middle.fitScale - leaf.fitScale) < 1e-9, `${contextSize}: one video costs one lane wherever it sits`)
+    const box = TREE_CONTEXT_SIZES[contextSize].box
+    const height = box.height + 3 * (box.height + box.rowGap) + boxVideoLane(box)
+    assert.ok(Math.abs(leaf.fitScale - Math.min((1200 - 20) / box.width, (1000 - 20) / height)) < 1e-9,
+      `${contextSize}: the fit measures the box and its panel`)
+  }
+  for (const videoIds of [null, [], new Set(), ['someone-else']]) {
+    assert.deepEqual(chooseTreeProjection({ scope: new TreeScope(fleet(20, 3)), W: 900, H: 700, videoIds }),
+      chooseTreeProjection({ scope: new TreeScope(fleet(20, 3)), W: 900, H: 700 }), 'no video changes nothing')
+  }
+  const circles = chooseTreeProjection({ scope: new TreeScope(agents), nodeStyle: 'circles', W: 1200, H: 900, videoIds: ['agent-3'] })
+  assert.deepEqual(circles, chooseTreeProjection({ scope: new TreeScope(agents), nodeStyle: 'circles', W: 1200, H: 900 }),
+    'Circles draw no video, so they keep their fit')
+})
+
+test('a Medium four-deep chain folds with a video on every rank but not with one leaf video', () => {
+  // Medium: 196 + 3 x 280 = 1036 tall; a leaf video adds 188 (1224); a video on
+  // every rank adds four lanes (1788). At 1000px the first two stay readable.
+  const scope = () => new TreeScope(fleet(4, 1))
+  const W = 1200, H = 1000
+  const plain = chooseTreeProjection({ scope: scope(), contextSize: 'medium', W, H })
+  const leaf = chooseTreeProjection({ scope: scope(), contextSize: 'medium', W, H, videoIds: ['agent-3'] })
+  const every = chooseTreeProjection({ scope: scope(), contextSize: 'medium', W, H, videoIds: ['agent-0', 'agent-1', 'agent-2', 'agent-3'] })
+  assert.equal(plain.folded, false)
+  assert.equal(leaf.folded, false, 'one leaf video pays one lane and the chain stays whole')
+  assert.equal(leaf.agents.length, 4)
+  assert.equal(every.folded, true, 'four lanes push the chain below the readable scale')
+  assert.ok(every.fitScale < every.minScale)
+  // What it keeps in view is readable with the videos it still shows.
+  const shown = new Set(every.agents.map(agent => agent.id))
+  const videoIds = ['agent-0', 'agent-1', 'agent-2', 'agent-3'].filter(id => shown.has(id))
+  const layout = layoutBoxTree({ nodes: every.agents, contextSize: 'medium', W, H, videoIds })
+  const box = TREE_BOX, lane = boxVideoLane(box)
+  const ys = [...layout.slots].map(([id, point]) => [point.y - box.height / 2, point.y + box.height / 2 + (videoIds.includes(id) ? lane : 0)])
+  const height = Math.max(...ys.map(([, bottom]) => bottom)) - Math.min(...ys.map(([top]) => top))
+  assert.ok((H - 20) / height + 1e-9 >= every.minScale, 'the folded frontier fits with its panels')
 })

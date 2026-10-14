@@ -99,8 +99,8 @@ async function press(window, selector, timeoutMs = 9000) {
  * the popup, and while it is open the first ArrowDown goes to the popup instead
  * of the element. Dismiss it and the arrows land where a keyboard user's do.
  *
- * WHY THE CORRECTION MATTERS MORE THAN THE TECHNIQUE. The standard for this work
- * is that it is driven as a real user would drive it, not through DOM elements.
+ * WHY THE CORRECTION MATTERS MORE THAN THE TECHNIQUE. The owner's standard for
+ * this work is that it is driven "as a real user would, not with DOM elements".
  * One synthetic step inside a run does not weaken that claim a little -- it
  * costs the whole claim, because the person reading it cannot tell which step
  * was the exception. Reading the label back afterwards proved the box held the
@@ -180,71 +180,10 @@ async function main() {
     }
     note('ok', `the staged payload carries the Claude engine: ${ENGINE_MODULES.join(', ')}`)
 
-    /* THE SIGN-IN THIS RUN NEEDS, AND WHY IT IS BORROWED RATHER THAN INVENTED.
-     *
-     * openWindow() isolates USERPROFILE and APPDATA to this scratch profile --
-     * deliberately, because a driver that ran against the real home once
-     * desynced the owner's audit ledger, and that isolation is not negotiable.
-     * The cost is that a Claude child started under it looks for a sign-in in a
-     * home that has never had one and answers "Not logged in", which is the
-     * product working and is also not the proof.
-     *
-     * So the scratch home is given the two files the CLI reads, exactly as
-     * tools/claude-engine-control-probe.mjs already does for the same reason and
-     * with the same lifetime: they live in a temporary directory that is removed
-     * in the `finally` below. Nothing in the product path reads them -- the
-     * child authenticates itself, as it does in the person's own terminal.
-     *
-     * And the npm layout is linked rather than copied, because
-     * resolveInvocation() prefers the NATIVE claude.exe under %APPDATA%/npm and a
-     * redirected APPDATA empties it. A junction keeps the run on the same
-     * invocation a customer gets instead of falling back to a shell lookup. */
-    const realHome = process.env.USERPROFILE || ''
-    const scratchClaude = path.join(scratch, 'home', '.claude')
-    mkdirSync(scratchClaude, { recursive: true })
-    const credential = path.join(realHome, '.claude', '.credentials.json')
-    if (!existsSync(credential)) {
-      note('FAIL', 'HARNESS STATE: this computer has no Claude sign-in to lend the scratch profile, so nothing below could be a measurement of the Claude path.')
-      return
-    }
-    cpSync(credential, path.join(scratchClaude, '.credentials.json'))
-    const settings = path.join(realHome, '.claude.json')
-    if (existsSync(settings)) cpSync(settings, path.join(scratch, 'home', '.claude.json'))
-    const realNpm = path.join(process.env.APPDATA || '', 'npm')
-    if (existsSync(realNpm)) {
-      mkdirSync(path.join(scratch, 'roaming'), { recursive: true })
-      try { symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* already linked */ }
-    }
-    note('info', 'lent the scratch profile this computer\'s Claude sign-in and npm layout; both live only in the temporary profile this run deletes.')
-
-    /* NO CODEX CREDENTIAL IS SEEDED, AND THAT IS NOW THE POINT OF THE RUN.
-     *
-     * WHAT STOOD HERE. This file used to write a throwaway ~/.codex/auth.json
-     * into the scratch profile, because with no such file
-     * mc-agent:availability answered {ok:false, AGENT_CONFINEMENT_SIGNED_OUT}
-     * and the page offered no start FOR ANY TIER, Claude included. It recorded
-     * that as a real defect and stepped around it so the Claude path could be
-     * measured at all.
-     *
-     * THE DEFECT IS FIXED, so the step-around comes out. confinedSessionPlan()
-     * is Codex-shaped -- every permission level is isolated, and an isolated
-     * level prepares a Codex home by LINKING the user's Codex credential, which
-     * refuses when there is nothing to link. shell/agent-host.cjs now asks for
-     * the plan PER PROVIDER (confinementPlanFor): a Claude tier is planned from
-     * resolveAgentConfinement() alone, which reads the recorded level and opens
-     * no credential. The ceiling is unchanged -- the same sandbox word reaches
-     * claudeArgs() as --permission-mode -- and the Codex path, including its
-     * refusal on a missing credential, is untouched.
-     *
-     * SO THE ABSENCE OF THIS FILE IS AN ASSERTION. The profile below has a
-     * Claude sign-in and NO Codex sign-in anywhere: it is the requirement that a
-     * user adds their CLI subscriptions and uses them, as a
-     * measurable state. If a Codex precondition ever creeps back in front of a
-     * Claude start, this run stops at the panel and says so. */
-    note('info', 'this profile has NO ~/.codex/auth.json: a Claude start that needs one would fail here, which is the point.')
+    // The caller names the existing Claude home on the command line, or supplies an API key.
 
     seedMachineRecord(scratch, staged.appRoot, 'standard')
-    window = await openWindow(staged.executable, scratch)
+    window = await openWindow(staged.executable, scratch, { provider: 'claude' })
 
     console.log('\n[1] getting to somewhere an agent can be started')
     /* THE WRITE SWITCH IS SEEDED, NOT CLICKED, AND HERE IS WHY THAT IS HONEST.

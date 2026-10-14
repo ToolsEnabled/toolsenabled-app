@@ -223,7 +223,7 @@ test('the production account adapter forwards the startup signal and preserves c
   assert.equal(calls.length, 1)
   assert.strictEqual(calls[0].signal, controller.signal, 'the main adapter dropped startup cancellation before rotation')
   assert.equal(calls[0].preferred, 'work')
-  assert.equal(calls[0].selectionMode, 'manual')
+
   controller.abort()
   assert.strictEqual((await selecting).error, controller.signal.reason, 'the adapter converted cancellation into the default-account fallback')
 })

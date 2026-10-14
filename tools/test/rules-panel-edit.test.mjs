@@ -1,7 +1,8 @@
 /* THE PERSON'S HAND ON THE RULES PANEL -- Edit and a two-press Delete per entry.
  *
- * O7 improvements, the application half: a hand-edit tool, for the user to
- * edit or delete entries on the ToolsEnabled ledger by hand, in line. The engine's r-ledger.js gained
+ * O7 improvements, the application half. Owner, 2026-08-22: "its a hand edit
+ * tool. for the user to go in on the toolsenabled ledger and hand edit or
+ * delete them. its literally exactly in line". The engine's r-ledger.js gained
  * PERSON-ONLY editRequest/removeRequest (one entry in place, a .bak beside the
  * file, a dated history line); the product reaches them through two
  * command-surface verbs and draws the controls in the rules panel.

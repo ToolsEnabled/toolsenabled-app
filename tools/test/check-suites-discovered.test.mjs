@@ -120,7 +120,7 @@ test("a glob cannot select a test directory outside its own repository", async (
 // conventions (.test.js, test_*.py) this guard's SUITE_SUFFIX never matches.
 // Neither is Git-nested and neither is in SKIP_DIRECTORIES, so findEverySuite
 // still walks into them -- confirmed by census in
-// an earlier census. This pins that a stray
+// evidence/controller5-m4-20260908/census.md. This pins that a stray
 // .test.mjs dropped into exactly that shape is still caught, so that shape
 // can never become a silent blind spot.
 test("a foreign sub-package directory with its own package.json does not shield a stray .test.mjs from discovery", async () => {

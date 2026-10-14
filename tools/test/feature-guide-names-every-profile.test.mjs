@@ -1,5 +1,6 @@
-/* THE GUIDE MUST NAME EVERY CHOICE THE SLIDER OFFERS. T9: the settings slider
- * for Autonomous and Autonomous+ seemed to be missing. Nothing happened to it — WORKING_PROFILES has offered all six
+/* THE GUIDE MUST NAME EVERY CHOICE THE SLIDER OFFERS. T9, owner's question:
+ * "what happened to my settings slider for things like autonomous and
+ * autonomous+". Nothing happened to it — WORKING_PROFILES has offered all six
  * the whole time. What is missing is any mention of three of them in the guide
  * whose entire job is to introduce the control, so the two most autonomous
  * settings are invisible to someone who reads the guide and does not drag the

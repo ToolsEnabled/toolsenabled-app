@@ -122,7 +122,7 @@ test('service declarations retain literal paths, all runtime pins and supported 
   const spec = genericStarter()
   spec.conditions[0].adapter.env = ['BENCHMARK_TEST_SETTING', 'BENCHMARK_TEST_OTHER', 'BENCHMARK_TEST_SETTING']
   const fixture = await exported(t, spec)
-  for (const directory of ['/tmp/benchmark with spaces', 'C:\\Benchmarks\\Study One']) {
+  for (const directory of ['/tmp/benchmark with spaces', '\x43:\\Benchmarks\\Study One']) {
     const result = await exportedBenchmarkExperiment({ ...fixture, directory, command: 'node', projectId: 'rp-abcd' })
     assert.deepEqual(result.runner.envKeys, ['BENCHMARK_TEST_OTHER', 'BENCHMARK_TEST_SETTING'])
     assert.equal(result.runner.pinnedFiles.length, RUNTIME_FILES.length + 2)
@@ -134,7 +134,7 @@ test('service declarations retain literal paths, all runtime pins and supported 
       assert.equal(pin.sha256, await sha256(fixture.files[file]))
     }
   }
-  for (const directory of ['relative', '/tmp/../study', '/tmp/{benchmark}', 'C:\\Study\\..\\Other']) {
+  for (const directory of ['relative', '/tmp/../study', '/tmp/{benchmark}', '\x43:\\Study\\..\\Other']) {
     await assert.rejects(exportedBenchmarkExperiment({ ...fixture, directory, command: 'node', projectId: 'rp-abcd' }))
   }
   await assert.rejects(exportedBenchmarkExperiment({ ...fixture, directory: fixture.root, command: 'node' }), /Choose a saved/)
@@ -272,7 +272,7 @@ test('saved declaration registers and deduplicates through the engine, then exec
     assert.equal(evidence.summary.execution.purpose, 'apparatus-development')
     assert.equal(evidence.summary.execution.experimentalCollection, 'not-admitted')
     // paper/ and trials/ are the complete prompt, layer, request and per-trial response copies the
-    // venue-format report writes since an earlier commit; the list stays exact.
+    // venue-format report writes since 33b92a1d; the list stays exact.
     const expectedArtifacts = ['analysis.json', 'attempts.jsonl', 'conventions.json', 'evidence.json', 'execution-manifest.json', 'execution.json', 'figures', 'paper', 'report.html', 'report.md', 'responses', 'results.csv', 'summary.json', 'tables', 'trials']
     assert.deepEqual((await readdir(artifactDir)).sort(), expectedArtifacts)
 

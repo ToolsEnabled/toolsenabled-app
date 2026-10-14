@@ -1,8 +1,8 @@
 /* THE METRICS PAGE MUST READ THIS COMPUTER, NOT THE COMPUTER IT WAS BUILT ON.
  *
- * THE DEFECT, MEASURED ON AN INSTALLED COPY. Every tile on #/metrics read
- * "unavailable · No local agent fleet host detected on this machine.", which
- * raised the question of whether the account was at fault. It was not, and no amount of use would ever
+ * THE DEFECT, MEASURED ON THE OWNER'S OWN INSTALL. Every tile on #/metrics read
+ * "unavailable · No local agent fleet host detected on this machine.", and he
+ * asked whether it was his account. It was not, and no amount of use would ever
  * have changed it: dist/data/metrics.json is written by tools/gen-metrics.mjs at
  * BUILD time out of the builder's own checkout, ships with ok:false and a 1970
  * timestamp, and no process on a customer's machine rewrites it. The page was
@@ -23,7 +23,7 @@
  *      perfect and unreferenced; the original defect was a page reading the
  *      wrong source, so what the page reads is the thing to pin.
  *
- * PROVEN TO FAIL ON THE OLD CODE in a detached worktree at an earlier commit: half 1
+ * PROVEN TO FAIL ON THE OLD CODE in a detached worktree at 8efbaa3: half 1
  * cannot resolve the module at all, and half 2's clauses match the projection
  * wiring that shipped.
  */
@@ -105,8 +105,8 @@ function ledger(runs, { verified = true, total = null, outcomes = null } = {}) {
 const sessionsFrom = (runs, options) => readLocalSessions(ledger(runs, options))
 
 /* Nineteen runs across five days, four of them refused with two distinct codes
-   and one refusal with no code at all -- the shape of a real record, which is
-   what this page has to be able to draw. */
+   and one refusal with no code at all -- the shape of the owner's own record on
+   2026-08-18, which is what this page has to be able to draw. */
 const REAL_SHAPE = [
   { atMs: NOW - 5 * DAY - 2 * HOUR, result: 'refused', reason: 'AGENT_TIER_NO_LAUNCHER' },
   { atMs: NOW - 5 * DAY - 1 * HOUR, result: 'started' },
@@ -193,12 +193,12 @@ test('the stat strip counts this computer, and every slot keeps its DOM identity
 /* THREE FIGURES IN A STRIP OF SIX COUNTED A DIFFERENT SET OF RUNS FROM THE
  * OTHER THREE, AND NOTHING ON SCREEN SAID SO.
  *
- * MEASURED on a development record: more runs were written than the 200-line
- * window this page may read could hold -- and every one of them was started
- * inside the last seven days. The strip read a larger "Agent runs" three tiles
- * above a smaller "Last 7 days", a "Days used" and a "since" date for less
- * than the record covered. The sentence under it promised "the totals cover
- * all of them".
+ * MEASURED on the owner's own record 2026-09-03: 158 runs written, 411 ledger
+ * lines, so the 200-line window this page may read held 82 of those runs -- and
+ * every one of the 158 was started inside the last seven days. The strip read
+ * "Agent runs 158" three tiles above "Last 7 days 82", "Days used 3" for a
+ * record covering five days, and "since 2 Sep" for a record beginning 29 Aug.
+ * The sentence under it promised "the totals cover all of them".
  *
  * The fixture below is that shape in miniature: a writer's tally of thirty runs
  * over a window carrying nine, every one of the nine inside seven days. */
@@ -341,7 +341,7 @@ test('a refusal reaches a person as the sentence this product already gives, nev
     assert.ok(row.share > 0 && row.share <= 1)
   }
   /* The one the SHORT table has no entry for. Before this module read the agent
-     page's fuller table too, a run a person could have fixed in one click read
+     page's fuller table too, a run the owner could have fixed in one click read
      "the record does not say why" -- about a record that said exactly why. */
   assert.match(refusalSentenceFor('AGENT_TOOLS_ALL_DISABLED'), /every tool is switched off/i)
   assert.doesNotMatch(refusalSentenceFor('AGENT_TOOLS_ALL_DISABLED'), CODE_SHAPED)
@@ -396,9 +396,9 @@ test('nothing refused is a result, not an absence', () => {
 })
 
 test('the refusal breakdown reports the same whole-chain count the outcomes panel does, and says its groups only cover the window', () => {
-  /* MEASURED on a development install: outcomeBreakdown() said "N did not
-     start" (the writer's whole-chain tally) while refusalBreakdown(), reading
-     only sessions.runs, said a smaller "M runs did not start" -- two different
+  /* MEASURED against the live ledger 2026-09-03: outcomeBreakdown() said "17
+     did not start" (the writer's whole-chain tally) while refusalBreakdown(),
+     reading only sessions.runs, said "5 runs did not start" -- two different
      answers to one question on one page. This fixture reproduces that shape:
      a whole-chain refused count (40) larger than what the window can name a
      reason for (REAL_SHAPE's 3). */
@@ -457,12 +457,12 @@ test('the run list carries what happened and why, and stays silent about what it
 /* THE RUN TABLE'S OWN HEADLINE COUNTED THE WINDOW AND WORE THE RECORD'S LABEL --
  * THE SAME DEFECT ALREADY REPAIRED THREE TILES OVER, MISSED HERE.
  *
- * MEASURED on a development install: the writer's whole-chain tally was more
- * than twice the count inside the 200-line window this page can read. The
- * Agents section read "M runs recorded on the computer you are driving"
- * directly under the Review verdicts panel, whose own caption -- built from
- * the identical "${n} runs recorded on ..." sentence, over
- * outcomeBreakdown()'s corrected total -- said "N" two sections above it.
+ * MEASURED against the live ledger 2026-09-03: 194 runs in the writer's
+ * whole-chain tally, 84 of them inside the 200-line window this page can
+ * read. The Agents section read "84 runs recorded on the computer you are
+ * driving" directly under the Review verdicts panel, whose own caption --
+ * built from the identical "${n} runs recorded on ..." sentence, over
+ * outcomeBreakdown()'s corrected total -- said "194" two sections above it.
  * One page, one record, two counts for "how many runs has this computer
  * recorded", the same shape sourceLine()'s and refusalBreakdown()'s own
  * `sampled` repairs exist to prevent.
@@ -580,8 +580,8 @@ test('the demonstration engine is gone from the page: one render, fed by the sou
   const view = read('src/views/metrics.js')
   /* This clause used to slice the live boot branch and assert the
      demonstration's chart engine stayed out of it. There is no branch left to
-     slice: the rule -- every simulated page IS the UI page, with mock data --
-     removed the second render, so what is pinned now is
+     slice: the owner's ruling -- "all simulated pages ARE the UI pages, just
+     mock data" -- removed the second render, so what is pinned now is
      stronger than the old guard. The demonstration's option builders and the
      simulation itself are not imported AT ALL; the only engine on the page is
      the measured one, whose import graph tools/test/metrics-live-charts.test.mjs

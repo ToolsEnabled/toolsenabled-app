@@ -33,7 +33,11 @@ function refusalRules(css) {
 function hasRefusalDress(css) {
   const rules = refusalRules(css)
   if (rules.length !== 1) return false
-  return Object.entries({ color: 'var(--ink-3)', 'border-style': 'dashed', cursor: 'default' }).every(([prop, value]) => {
+  /* 1.0.50 FIX-C 9: the dress is DESIGN section 4's disabled face (45%
+     opacity, no pointer), not the dashed --ink-3 edge section 1 named as
+     wrong. A visible disabled face is still the point of this pin. */
+  if (rules[0].nodes.some(node => node.type === 'decl' && node.prop === 'border-style' && /dashed/.test(node.value))) return false
+  return Object.entries({ opacity: '.45', cursor: 'default' }).every(([prop, value]) => {
     const declaration = rules[0].nodes.findLast(node => node.type === 'decl' && node.prop === prop)
     return declaration?.value === value && !declaration.important
   })
@@ -138,11 +142,14 @@ test('the refusal-style pin rejects a missing target, changed values and conditi
     assert.equal(hasRefusalDress(GRAPH_CSS.replace(original,
       original.replace(selector, '.unrelated-control'))), false, selector)
   }
-  for (const [prop, value] of Object.entries({ color: 'var(--ink)', 'border-style': 'solid', cursor: 'pointer' })) {
+  for (const [prop, value] of Object.entries({ opacity: '1', cursor: 'pointer' })) {
     const changed = rules[0].clone()
     changed.nodes.findLast(node => node.type === 'decl' && node.prop === prop).value = value
     assert.equal(hasRefusalDress(GRAPH_CSS.replace(original, changed.toString())), false, prop)
   }
+  const dashed = rules[0].clone()
+  dashed.append({ prop: 'border-style', value: 'dashed' })
+  assert.equal(hasRefusalDress(GRAPH_CSS.replace(original, dashed.toString())), false, 'the dashed edge DESIGN section 1 named as wrong came back')
   assert.equal(hasRefusalDress(GRAPH_CSS.replace(original, `@media (max-width: 1px) { ${original} }`)), false)
 })
 

@@ -38,7 +38,7 @@ import './owner-popup.css'
 import './ledger-prompt-queue.css'
 
 // The modal polled at 750ms because it had to appear promptly over whatever
-// the owner was doing. A screen they are already looking at does not, and this
+// the owner was doing. A screen he is already looking at does not, and this
 // call crosses the audited bridge, so it asks less often.
 const POLL_MS = 2_000
 const THEME_NAMES = new Set(['white', 'tan', 'black'])
@@ -178,7 +178,7 @@ export function ledgerPromptQueue() {
     /* NOTHING IS FILED AS A CHANGE HERE, and that is the important half. A read
        that failed is not a queue that emptied. Comparing an unreadable answer
        against the last good one would print "no longer waiting for you" against
-       every list they have, which is the one wrong thing this strip could say. */
+       every list he has, which is the one wrong thing this strip could say. */
   }
 
   function setCardStatus(card, text, kind = 'status') {
@@ -246,7 +246,7 @@ export function ledgerPromptQueue() {
        to; it says nothing whatever about whether the owner's decision landed,
        and reading it first is what made a refusal indistinguishable from a
        success. Filing first means the next mount of this screen — and home in
-       the meantime — can still tell them. */
+       the meantime — can still tell him. */
     if (result?.ok !== true) {
       card.failed = true
       const entry = recordUndeliveredDecision(card.prompt.id, result?.reason, Date.now(), outcome)
@@ -254,7 +254,7 @@ export function ledgerPromptQueue() {
       if (!entry) { void poll(); return }
       card.wrapper.dataset.decisionUndelivered = 'true'
       // Nothing was recorded, so nothing was approved. Say that plainly and
-      // let them try again rather than leaving a dead card behind.
+      // let him try again rather than leaving a dead card behind.
       setCardStatus(card, notRecordedText(result?.reason), 'unavailable')
       setCardEnabled(card, true)
       return
@@ -285,7 +285,7 @@ export function ledgerPromptQueue() {
     setCardEnabled(card, true)
     /* A restated refusal is not overwritten with "Ready for review". Both
        sentences are true; only one of them is news, and the ready-text would
-       quietly bury the fact that a decision they already made did not land. */
+       quietly bury the fact that a decision he already made did not land. */
     const earlier = undeliveredDecision(card.prompt.id)
     if (earlier) markUndelivered(card, earlier)
     else setCardStatus(card, readyText(card.prompt))
@@ -309,7 +309,7 @@ export function ledgerPromptQueue() {
     cards.set(prompt.id, card)
     /* A refusal a previous instance of this screen received and never got to
        say, because the owner had already navigated away. This is the moment it
-       reaches them. Stated at mount rather than after presentation is
+       reaches him. Stated at mount rather than after presentation is
        re-confirmed, so it is on the glass even if the presentation handshake
        is slow or fails. */
     const earlier = undeliveredDecision(prompt.id)
@@ -405,7 +405,7 @@ export function ledgerPromptQueue() {
   }
 
   /* WHAT CHANGED, drawn from the record in src/purchase-cart-changes.js so it
-     survives this view being destroyed and rebuilt while they walk the ring. */
+     survives this view being destroyed and rebuilt while he walks the ring. */
   function paintChanges(reading) {
     const entries = cartChanges()
     if (entries.length === 0) {

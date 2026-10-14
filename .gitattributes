@@ -12,7 +12,7 @@
 # because it stops anyone looking.
 #
 # Scoped deliberately to .githooks only. The engine repo
-# solves this with a repo-wide `* -text`, which it
+# (Desktop/private-checkout) solves this with a repo-wide `* -text`, which it
 # needs for FRA byte-fidelity hashing. This repo has no such requirement, and a
 # repo-wide rule here would change the checkout bytes of every file for all
 # worktrees sharing this repository — a far larger change than the problem.

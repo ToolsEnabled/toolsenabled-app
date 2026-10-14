@@ -1,7 +1,7 @@
 /* WHAT A TREE-STARTED AGENT IS TOLD ABOUT ITS MANAGER.
  *
- * The defect: an agent did not realize it had a manager and could not contact
- * it. A child node answered that it had no manager and asked
+ * The owner's defect, verbatim: "This one is not realizing and not able to
+ * contact its manager." A child node answered that it had no manager and asked
  * for the manager's identifier, on a tree that drew the relationship.
  *
  * Two properties are pinned here and they pull against each other, which is
@@ -114,7 +114,7 @@ test('briefs offer only the local messenger and its roster, including user-linke
   /* A draft of this module named the builder's own coordination namespace as a
      place to leave a note for a manager. tools/test/chat-agent-bridge-gated.test.mjs
      forbids that name anywhere under src/ or shell/ -- it is classed with the
-     builder's private account aliases, because it is an internal arrangement and
+     owner's private account aliases, because it is an internal arrangement and
      not something a customer was sold. The honest brief has exactly one
      reporting sentence, and this pins that it stays that way. */
   for (const options of [
@@ -139,8 +139,8 @@ test('a missing name never puts an internal id in front of an agent', () => {
 
 // --- AN AGENT IS TOLD ITS REPORTS AT SPAWN, NOT BY BEING MESSAGED ----------
 //
-// Agents took a while to realize they had subagents or
-// coordinators, and to use agent comms.
+// Owner, 2026-08-24: "agents seem to take a little while to realize they have
+// subagents or coordinators and to use agent comms and such."
 //
 // A survey of both repos found three separate causes, and this file owns one of
 // them: a manager was NEVER told it had children -- not at spawn, not later --

@@ -44,7 +44,7 @@ function fixture({ raw = null, unavailable = false, writeError = 'fixture quota 
     const { authoritativeTreeSnapshot, authoritativeTreeComputer, createDesktopTreeViewStore } = authorityBindings
     let treeStore = null, treeStoreId = null, treeStoreProblem = '', treeStoreUnsub = null, treeStoreLiveRelease = null
     let transcriptStore = null, diffHistoryStore = null, orgStatusTimer = 0, treePersistenceProblem = '', treePersistenceUnsub = null, orgStatusPrimary = null
-    /* renderOrgStatus also reads the transcript refusal (an earlier commit); the view's own declaration is injected. */
+    /* renderOrgStatus also reads the transcript refusal (e7a52e8d); the view's own declaration is injected. */
     ${source.match(/^  let transcriptPersistenceProblem = .+$/m)[0]}
     const nodeDiffHistories = new Map(), nodeReplies = new Map()
     const RUN_TREE_RUNTIME_STORES = new Map(), RUN_SESSION_CLEANUPS = new Map(), sessionNodeIds = new Map()
@@ -80,6 +80,9 @@ function fixture({ raw = null, unavailable = false, writeError = 'fixture quota 
     const cancelAnimationFrame = id => timers.delete(id)
     const setTimeout = callback => { const id = nextTimer(); timers.set(id, callback); return id }
     const markRefusalCode = (element, refusal) => { element.dataset.refusalCode = refusal?.code || '' }
+    /* renderOrgStatus offers "Set up local models" beside a Local refusal
+       (src/local-setup-popup.js); none of the refusals here is one. */
+    const offersLocalSetup = () => false
     const orgReady = () => false
     const roleLabel = role => role
     const roleDisplayFor = role => role
@@ -88,7 +91,7 @@ function fixture({ raw = null, unavailable = false, writeError = 'fixture quota 
     const createChatDiffHistoryStore = () => null
     const markTreeStoreLive = () => () => {}
     const syncTreeBranchAddresses = () => {}
-    /* T138 (an earlier commit) gave openTreeStore a watch on the store's own publish:
+    /* T138 (1c8f6d84) gave openTreeStore a watch on the store's own publish:
        syncRenamedCircles() re-registers circles whose CROSS-TREE name is computed
        rather than stored. It reads names and writes nothing this file asserts, but it
        is real product code on the path these tests open, so it is injected here rather

@@ -59,7 +59,7 @@ export function measureLicenseDependencyInputs(sourceRoot) {
     }
     dependencies(pkg, directory);
   }
-  // check-license-notices.mjs retains each resolved directory (an earlier commit), so
+  // check-license-notices.mjs retains each resolved directory (2b36a900), so
   // nested production versions keep their own notices. Re-resolving names from
   // the root would instead select unrelated hoisted development copies.
   const sorted = Object.fromEntries(Object.entries(inputs).sort(([a], [b]) => a.localeCompare(b)));

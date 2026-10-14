@@ -437,7 +437,7 @@ test('the rebind asks the shared rule and re-reads the node from the store', () 
      standing in for, said directly. */
   assert.match(body, /deferRailRebuildWhileTyping\(/,
     'the rebind remounts immediately, so a landing start, refusal or ended session '
-    + 'disposes the composer a person is typing in -- the typing surface disappears')
+    + 'disposes the composer a person is typing in -- the owner\'s "my typing surface disappears"')
   assert.equal((body.match(/railRebindDecision\(/g) || []).length, 2,
     'the deferred rebuild does not re-read the rule when it finally runs, so a blur seconds later '
     + 'remounts on a decision taken before the rail may have moved, the node may have gone, '

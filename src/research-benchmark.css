@@ -7,11 +7,11 @@
 .bench-start-sections .bench-file { flex-basis: 200px; }
 .benchmark-builder [hidden] { display: none !important; }
 .benchmark-builder label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; }
-.benchmark-builder input, .benchmark-builder select, .benchmark-builder textarea { box-sizing: border-box; min-width: 0; max-width: 100%; border: 1px solid var(--ink-3); border-radius: 4px; padding: 9px; color: var(--ink); background: var(--sheet); font: inherit; }
+.benchmark-builder input, .benchmark-builder select, .benchmark-builder textarea { box-sizing: border-box; min-width: 0; max-width: 100%; border: 1px solid var(--ink-3); border-radius: var(--radius-sm); padding: 9px; color: var(--ink); background: var(--sheet); font: inherit; }
 .benchmark-builder textarea { width: 100%; font-family: var(--font-mono, monospace); font-size: 12.5px; line-height: 1.5; resize: vertical; }
-.benchmark-builder button { min-height: 36px; padding: 7px 12px; border: 1px solid var(--ink-3); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; cursor: pointer; }
+.benchmark-builder button { min-height: 36px; padding: 7px 12px; border: 1px solid var(--ink-3); border-radius: var(--radius-sm); background: var(--sheet); color: var(--ink); font: inherit; cursor: pointer; }
 .benchmark-builder button:disabled { opacity: .5; cursor: default; }
-.benchmark-builder :is(button,input,select,textarea,pre,summary):focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.benchmark-builder :is(button,input,select,textarea,pre,summary):focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .bench-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 16px 0; }
 .bench-toolbar label { flex: 1 1 160px; }
 .bench-toolbar .bench-file { flex: 0 1 200px; }
@@ -60,19 +60,19 @@
 @media (max-width: 800px) { .bench-compose-grid { grid-template-columns: minmax(0, 1fr); } .bench-node .bench-node { margin-left: 0; } .benchmark-builder button { min-height: 44px; } }
 @media (forced-colors: active) { .bench-steps [aria-pressed=true] { border: 2px solid Highlight; text-decoration-thickness: 2px; } }
 
-/* ---- 2026-09-10 rebuild, by hand ----
+/* ---- 2026-09-10 rebuild, by hand with the owner directing ----
    One plain single column, nothing down the side. Reading type; the eleven
    steps as one simple row of plain buttons above the current step's fields.
    Nothing about the builder's data, hooks or step switching changes. */
 .bench-steps { display: flex; flex-wrap: wrap; gap: 6px 8px; padding: 0 0 14px; margin: 20px 0 24px; border-bottom: 1px solid var(--line-2); counter-reset: bench-step; }
-.bench-steps button { counter-increment: bench-step; min-height: 38px; padding: 6px 12px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); color: var(--ink-2); font-size: 15px; }
+.bench-steps button { counter-increment: bench-step; min-height: 36px; padding: 6px 12px; border: 1px solid var(--line-2); border-radius: var(--radius-sm); background: var(--sheet); color: var(--ink-2); font-size: 15px; }
 .bench-steps button::before { content: counter(bench-step) ". "; color: var(--ink-3); }
 .bench-steps [aria-pressed=true] { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; text-decoration: none; }
 .bench-steps [aria-pressed=true]::before { color: var(--sheet); }
 .benchmark-builder label { font-size: 15px; font-weight: 600; color: var(--ink); gap: 6px; }
-.benchmark-builder input, .benchmark-builder select, .benchmark-builder textarea { min-height: 39px; padding: 8px 10px; border-color: var(--ink-4); border-radius: 3px; font-size: 15px; font-weight: 400; }
+.benchmark-builder input, .benchmark-builder select, .benchmark-builder textarea { min-height: 36px; padding: 8px 10px; border-color: var(--ink-4); border-radius: var(--radius-sm); font-size: 15px; font-weight: 400; }
 .benchmark-builder textarea { font-size: 14px; line-height: 1.55; }
-.benchmark-builder button { min-height: 38px; padding: 8px 14px; border-color: var(--ink-4); border-radius: 3px; font-size: 15px; font-weight: 500; color: var(--ink); }
+.benchmark-builder button { min-height: 36px; padding: 8px 14px; border-color: var(--ink-4); border-radius: var(--radius-sm); font-size: 15px; font-weight: 500; color: var(--ink); }
 .benchmark-builder button:hover:not(:disabled) { border-color: var(--ink-2); }
 .bench-toolbar { gap: 16px 20px; margin: 20px 0; }
 .bench-muted { color: var(--ink-2); font-size: 15px; }
@@ -120,7 +120,7 @@
 .bench-review .bench-review-intro { margin: 0 0 10px; color: var(--ink-2); font-size: 13.5px; }
 .bench-review-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 0 24px; margin: 0; border-top: 1px solid var(--line); }
 .bench-review-grid > div { padding: 10px 0; border-bottom: 1px solid var(--line); }
-.bench-review-grid dt { margin: 0 0 3px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
+.bench-review-grid dt { margin: 0 0 3px; font-size: 12.5px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--ink-2); }
 .bench-review-grid dd { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
 .bench-review-grid dd ul { margin: 2px 0 0; padding-left: 18px; }
 .bench-review-grid dd code { font-size: 12.5px; }

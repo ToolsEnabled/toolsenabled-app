@@ -4,10 +4,10 @@ import test from 'node:test'
 import { createDocument } from './lib/dom-stand-in.mjs'
 import { mountTranscriptHistory } from '../../src/node-transcript-history.js'
 
-// Regression coverage for the saved-conversation browser rendering defect: the
-// archive browser showed markdown source as literal text and put the speaker
-// label on the same line as the message, with no separation between turns.
-// This exercises the hard cases: a heading, a fenced code block, a list.
+// Item 10 C1+C2: closes "browse saved conversation never got updated" -- the
+// archive browser drew raw markdown as literal text, with the speaker label
+// and the words crammed onto one line with no turn separation. This exercises
+// the hard cases named in the brief: a heading, a fenced code block, a list.
 const HARD_CASE = [
   '## Findings',
   '',

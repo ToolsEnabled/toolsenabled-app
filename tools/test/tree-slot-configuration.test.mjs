@@ -47,15 +47,19 @@ test('unsupported authority or malformed configuration is a named refusal', () =
 /* THE HOST'S REAL PARENT SHAPE. shell/agent-host.cjs readTreeParent names the
    tree by its FIRST STANDING-REQUEST ANCHOR, the top circle's node id
    (`treeId: treeRequestIdentity.treeAnchors[0]`), never by the saved tree
-   record id. Measured live: a controller's own
-   agent.set_account on its direct child was refused
+   record id. Measured live 2026-09-23 14:46 PDT: Controller 2b93's own
+   agent.set_account on its direct child Builder 4 was refused
    TREE_CONFIGURATION_REFUSED, because this check compared that anchor with
    the saved node's tree record id and so could never pass on a real tree. */
+/* The live refusal above came from agent.set_account. Since 1.0.50 an agent
+   may not change another agent's account at all (the test below), so the
+   ancestry rule is exercised here through agent.set_model, which still uses
+   this same admission. */
 function hostShapedFixture(anchors = ['root', 'manager']) {
   const parent = { nodeId: 'manager', treeId: anchors[0], treeAnchors: anchors, owner: 'owner', permissionSession: { origin: 'local', tier: 'full' } }
   const authority = createTreeSlotConfigurationAuthority({ readParent: id => id === 'manager-session' ? parent : null,
     readForest: () => ({ nodes: rows }), readSessionOwner: () => 'owner' })
-  return extra => authority.admit({ action: 'set-node-account', choice: 'fresh-account', computerId: 'fixture', parentSessionId: 'manager-session', nodeId: 'child', ...extra })
+  return extra => authority.admit({ action: 'set-node-model', choice: 'chosen-model', computerId: 'fixture', parentSessionId: 'manager-session', nodeId: 'child', ...extra })
 }
 test('a managing session identified the way the host identifies it may configure its descendants', () => {
   const run = hostShapedFixture()
@@ -67,4 +71,24 @@ test('a managing session whose host ancestry disagrees with the saved tree is re
   for (const anchors of [['other-root', 'manager'], ['manager'], ['root', 'sibling'], ['root', 'manager', 'child'], []]) {
     assert.throws(() => hostShapedFixture(anchors)({}), { code: 'TREE_CONFIGURATION_REFUSED' }, JSON.stringify(anchors))
   }
+})
+
+/* 1.0.50 REVIEW, ACCOUNTS A. Automatic account switching is gone: an agent runs
+   only on the account the person chose for it. A Manager, Controller or Builder
+   used to be able to move a worker that hit a usage limit onto another of the
+   person's accounts with agent.set_account (or onto another provider, and so
+   another account, with agent.set_provider). Every request this authority
+   admits comes from an agent, so both are refused for every target, including a
+   correctly placed descendant. Model, effort and role are unchanged. */
+test('an agent cannot move another agent to a different account or provider', () => {
+  const run = hostShapedFixture()
+  for (const [action, choice] of [['set-node-account', 'registered-backup'], ['set-node-provider', 'codex']]) {
+    for (const nodeId of ['child', 'stopped']) {
+      assert.throws(() => run({ action, choice, nodeId }),
+        { code: 'TREE_CONFIGURATION_REFUSED', message: /^Only the person can move an agent to another account or provider\./ },
+        `${action} on ${nodeId}`)
+    }
+  }
+  assert.equal(run({ action: 'set-node-model', choice: 'chosen-model' }).nodeId, 'child', 'a model choice is still admitted')
+  assert.equal(run({ action: 'set-node-effort', choice: 'high' }).nodeId, 'child', 'an effort choice is still admitted')
 })

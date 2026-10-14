@@ -1,6 +1,7 @@
 /* THE NODE CHATBOX — the right-hand rail's chat, opened by clicking a node.
  *
- * On the right, clicking a node shows a chatbox along with the other buttons.
+ * Owner, verbatim: "On the right when you click a node there should be a
+ * chatbox along with the other buttons."
  *
  * Two things had to be true before this could be honest.
  *

@@ -2,8 +2,8 @@
 
 /* CAN THIS AGENT'S PROVIDER ACTUALLY RECEIVE A PICTURE?
  *
- * The reported defect: images pasted into chat were not sent to the agent and
- * caused an error. The measured cause was not in this app -- it
+ * The owner's report, 2026-09-15: "images paste into chat but DONT get sent to
+ * the agent and cause an error." The measured cause was not in this app -- it
  * saved the file, allowlisted it and forwarded it, and the provider adapter
  * refused the whole turn. Before that fix, exactly ONE of five providers could
  * carry a pasted picture.
@@ -33,7 +33,7 @@
  * two can be compared by a reader rather than trusted.
  */
 
-/* Measured at an earlier engine commit plus the T18 delivery fix, by reading each
+/* Measured at engine 16462165 plus the T18 delivery fix, by reading each
    adapter's sendTurn: see src/lib/agent-engine/{claude-cli,codex,acp,
    local-node,antigravity-cli}-adapter.js. */
 const PROVIDER_IMAGE_SUPPORT = Object.freeze({

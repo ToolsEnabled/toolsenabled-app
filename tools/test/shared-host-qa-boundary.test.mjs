@@ -58,8 +58,8 @@ test('the ordinary mixed launch still composes its explicit account identity and
 const {providerAuthenticatedLaunchEnvironment}=require(process.argv[1]);
 const owner=path.join(process.argv[2],'synthetic-account');
 const scratchRoot=path.join(process.argv[2],'synthetic-scratch');
-const env=providerAuthenticatedLaunchEnvironment({accountHome:owner,scratchRoot},{PATH:'/usr/bin:/bin'}, {platform:'linux'});
-if(env.USERPROFILE!==owner || env.CODEX_HOME!==path.join(owner,'.codex') || env.APPDATA!==path.join(scratchRoot,'appdata'))process.exit(1);
+const env=providerAuthenticatedLaunchEnvironment({accountHome:owner,scratchRoot},{PATH:'/usr/bin:/bin'}, {platform:'linux',argv:['--codex-home',path.join(owner,'selected-provider')]});
+if(env.USERPROFILE!==owner || env.CODEX_HOME!==path.join(owner,'selected-provider') || env.APPDATA!==path.join(scratchRoot,'appdata'))process.exit(1);
 if(fs.existsSync(owner)||!fs.existsSync(env.APPDATA))process.exit(2);`
   const result = spawnSync(process.execPath, ['-e', script, helperFile, root], { env: environment, encoding: 'utf8', timeout: 10000, windowsHide: true })
   assert.equal(result.status, 0, result.stderr)

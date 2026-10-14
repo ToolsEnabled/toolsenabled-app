@@ -3,7 +3,7 @@
 /* SESSION PROFILES — the main process's own record of the working folders a
  * person has chosen for their agents.
  *
- * The ask (iteration 5, W6): different trees run agents under
+ * The owner's ask (iteration 5, W6): different trees run agents under
  * different "profiles" — at minimum a working folder — because one
  * onboarding polluting non-ToolsEnabled work is a real, daily pain. Codex
  * discovers its instructions from the directory it runs in, so per-tree cwd

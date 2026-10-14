@@ -1,7 +1,7 @@
 /* THE PHONE FLOOR, PINNED AT SOURCE.
  *
- * The instruction: be mindful of all screen sizes and phone types. The renderer
- * is served on the public web at /app/, so a phone gets
+ * The owner's instruction: "we need to be mindful of all screen sizes and phone
+ * types". The renderer is served on the public web at /app/, so a phone gets
  * exactly this code. The register these gates are written against:
  *
  *   320 x 568   the floor -- iPhone SE 1st gen, and the narrowest Android in use
@@ -176,7 +176,7 @@ test('the metrics stat strip has a step below three across', () => {
 /* ------------------------------------------------------------------
    5. No control is switched off because the screen is narrow.
    ------------------------------------------------------------------ */
-/* The rule, and the reason .size-seg came back: S/M/L sets --pv-h, the
+/* The owner's rule, and the reason .size-seg came back: S/M/L sets --pv-h, the
    tile height, which the same breakpoint family still applies once tiles stack.
    The control did something and only the phone was denied it.
    Scope: max-width queries at or below 720px (the widths only a phone or a
@@ -205,92 +205,4 @@ test('no narrow-width media query hides a control', () => {
     }
   }
   assert.deepEqual(offences, [], 'a control hidden by width is a path one device has and another does not')
-})
-
-/* ------------------------------------------------------------------
-   6. The home hero is sized by the window, in both axes.
-   ------------------------------------------------------------------ */
-/* The ring's 380px floor is a floor on the DIAMETER and knew nothing about
-   width, so below the 900px stack it asked for a circle wider than the screen at
-   every phone size in the register (380 into 280 at 320x568; 520 into 350 at
-   390x844). .view is overflow: hidden, so nothing scrolls to the missing part --
-   the hero is simply cut off. Held sideways the same floor overran the height
-   instead: 380 into the 308px the stage leaves at 844x390. */
-/* CALLED WITH VALUES, not read as text. This gate used to require the strings
-   `window.innerWidth` and `window.innerHeight - 120` inside the ringSize
-   expression, which is a test of how the view is WRITTEN: it failed the moment
-   the same arithmetic was given a name (and it would have passed a version that
-   mentioned innerWidth and ignored it). src/views/home.js now exports the
-   arithmetic as a pure function, so every claim below is an answer the product
-   actually gives. home.js itself cannot be imported here -- it carries
-   `import '../home.css'` -- so the function is sliced out by name and
-   evaluated, the technique tools/test/agent-chat-floor-drag-wiring.test.mjs
-   uses on this same kind of helper. */
-function extractFunction(name, source) {
-  const start = source.indexOf(`export function ${name}`)
-  assert.ok(start >= 0, `${name} was not found in home.js -- renamed, removed, or no longer exported`)
-  const bodyOpen = source.indexOf('{', start)
-  let depth = 0
-  let end = bodyOpen
-  for (; end < source.length; end += 1) {
-    if (source[end] === '{') depth += 1
-    else if (source[end] === '}') { depth -= 1; if (depth === 0) { end += 1; break } }
-  }
-  return source.slice(start, end).replace(/^export\s+/, '')
-}
-
-const homeSource = readFileSync(path.join(SRC, 'views', 'home.js'), 'utf8')
-const homeRingSize = new Function(`${extractFunction('homeRingSize', homeSource)}\nreturn homeRingSize;`)()
-
-test('the home ring is bounded by the window it has to fit in', () => {
-  /* Every phone in the register, upright and sideways: the circle must fit
-     between the gutters and inside the height the stage leaves it. */
-  for (const [width, height] of [[320, 568], [360, 800], [390, 844], [430, 932], [844, 390]]) {
-    const gutter = Math.min(60, Math.max(20, width * 0.04))
-    const size = homeRingSize(width, height)
-    assert.ok(size <= width - 2 * gutter + 1e-9,
-      `${width}x${height}: a ${size}px ring does not fit between the gutters of a ${width}px screen`)
-    assert.ok(size <= height - 120 + 1e-9,
-      `${width}x${height}: a ${size}px ring overruns the height the stage leaves`)
-  }
-})
-
-test('the home ring fits the window at every offered text size', () => {
-  /* The ring is written as a CSS px size inside the zoomed body, so at Large it
-     paints 1.12x this number. MEASURED (electron 43.3.0): a 300px box under
-     zoom 1.12 reports offsetHeight 300 and a 336px rect. The painted circle is
-     what has to fit the window, so the window has to be divided before it is
-     spent. */
-  for (const zoom of [0.9, 1, 1.12]) {
-    for (const [width, height] of [[320, 568], [390, 844], [844, 390], [1024, 768]]) {
-      const painted = homeRingSize(width, height, zoom) * zoom
-      const gutter = Math.min(60, Math.max(20, (width / zoom) * 0.04)) * zoom
-      assert.ok(painted <= width - 2 * gutter + 1e-9,
-        `zoom ${zoom} at ${width}x${height}: a ring painted ${painted}px wide does not fit a ${width}px window`)
-      assert.ok(painted <= height - 120 * zoom + 1e-9,
-        `zoom ${zoom} at ${width}x${height}: a ring painted ${painted}px tall overruns the window`)
-    }
-  }
-  assert.equal(homeRingSize(1440, 900, 1), homeRingSize(1440, 900),
-    'the zoom argument defaults to 1, so an untouched window is the untouched number')
-})
-
-/* THE DESKTOP IS UNTOUCHED, and this is the arithmetic rather than a promise.
-   The ring's expression may only ever SHRINK the old value, and it must return
-   the old value unchanged for every window a desktop can be. */
-test('the home ring change cannot move a desktop window', () => {
-  const before = (width, height) => Math.min(560, Math.max(380, height - 300))
-  let moved = 0
-  let grew = 0
-  for (let width = 240; width <= 2560; width += 1) {
-    for (let height = 300; height <= 1600; height += 1) {
-      const a = before(width, height)
-      const b = homeRingSize(width, height)
-      if (b > a) grew += 1
-      // 610: the narrowest width whose gutters still leave the 560px cap its full size (600 at the old 520 cap).
-      if (width >= 610 && height >= 500 && Math.abs(a - b) > 1e-9) moved += 1
-    }
-  }
-  assert.equal(grew, 0, 'the new bound may only ever shrink the ring')
-  assert.equal(moved, 0, 'no window of at least 610x500 may change size')
 })

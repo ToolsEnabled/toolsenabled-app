@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { homeFixture, until, settle } from './helpers/home-additions-world.mjs'
 import { createHomeComposerDraftStore } from '../../src/home-chat-composer-draft.js'
+import { OTHER_MODEL_VALUE } from '../../src/model-picker.js'
 
 // The DOM stand-in matches one simple selector per step, so find the active pane first.
 const form = view => [...view.el.querySelectorAll('.home-chat-pane')]
@@ -201,3 +202,31 @@ test('after Not now or Set, the Open picker offers no leftover New chat entry', 
   assert.ok([...picker.querySelectorAll('option')].some(option => option.value === picker.value), 'the picker shows the window in front')
   assert.deepEqual(f.effects, { start: 0, send: 0 })
 })
+
+for (const leave of ['Escape', 'route']) {
+  test('Home New chat retains its exact typed model through ' + leave, async t => {
+    const f = await homeFixture(t)
+    const first = await newDraft(f, 'Keep the requested custom model')
+    const provider = first.panel.querySelector('[data-compose-field="provider"]')
+    provider.value = 'claude'; provider.dispatch('change')
+    const tier = first.panel.querySelector('[data-compose-field="tier"]')
+    tier.value = OTHER_MODEL_VALUE; tier.dispatch('change')
+    const model = first.panel.querySelector('[data-compose-field="model"]')
+    const exact = '  provider/custom-v2  '
+    model.value = exact; model.dispatch('input')
+    const before = fields(first.panel)
+    let view = first.view
+    if (leave === 'Escape') {
+      first.message.dispatch('keydown', { key: 'Escape' })
+      await settle(8)
+    } else {
+      await f.close(view)
+      view = await f.mount()
+    }
+    const returned = await reopened(f, view)
+    assert.deepEqual(fields(returned), before)
+    assert.equal(fields(returned).tier, OTHER_MODEL_VALUE)
+    assert.equal(fields(returned).model, exact, 'whitespace in the requested native model is preserved')
+    assert.deepEqual(f.effects, { start: 0, send: 0 })
+  })
+}

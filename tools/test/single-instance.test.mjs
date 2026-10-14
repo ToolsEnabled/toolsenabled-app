@@ -140,7 +140,7 @@ test('second-instance data reaches its handler before any focus work', () => {
     onStartFailure: (error) => assert.fail(error),
   })
 
-  secondInstanceHandler({}, [], 'C:\\work', data)
+  secondInstanceHandler({}, [], '\x43:\\work', data)
   assert.deepEqual(order, [['command', data], ['focus']])
 })
 
@@ -162,7 +162,7 @@ test('a handled opaque command suppresses focus and works before a window exists
   })
 
   const data = { treeNodeCommandRequestId: 'tnc-00000000-0000-4000-8000-000000000000' }
-  assert.doesNotThrow(() => secondInstanceHandler({}, [], 'C:\\work', data))
+  assert.doesNotThrow(() => secondInstanceHandler({}, [], '\x43:\\work', data))
   assert.equal(handled, data)
 })
 
@@ -195,7 +195,7 @@ test('a handleSecondInstance that throws is reported, not left to crash the runn
     onStartFailure: (error) => assert.fail(error),
   })
 
-  assert.doesNotThrow(() => secondInstanceHandler({}, [], 'C:\\work', {}))
+  assert.doesNotThrow(() => secondInstanceHandler({}, [], '\x43:\\work', {}))
   assert.equal(reported, failure)
 })
 
@@ -212,7 +212,7 @@ test('a handleSecondInstance that throws with no onSecondInstanceFailure supplie
     onStartFailure: (error) => assert.fail(error),
   })
 
-  assert.doesNotThrow(() => secondInstanceHandler({}, [], 'C:\\work', {}), 'must fall back to its own reporting, never propagate')
+  assert.doesNotThrow(() => secondInstanceHandler({}, [], '\x43:\\work', {}), 'must fall back to its own reporting, never propagate')
 })
 
 test('a rejected readiness promise is reported', async () => {

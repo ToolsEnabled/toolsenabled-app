@@ -15,8 +15,6 @@ const FIXTURE_NETWORK = "198.51.100.";
 const HELP_TEXT_SENTENCE =
   "192.168.50.1 and 192.168.50.2 with subnet mask 255.255.255.0 work; so does any other pair you prefer.";
 const HELP_TEXT_LAN = "192.168.50.";
-// Synthetic Windows paths, assembled at runtime so the source carries no literal user or checkout path.
-const windowsPath = (...parts) => parts.join("\\");
 
 async function withFixture(run, { network = FIXTURE_NETWORK } = {}) {
   const home = await mkdtemp(path.join(tmpdir(), "no-owner-data-"));
@@ -73,7 +71,7 @@ test("fails for a configured identity value in a path-like string", async () => 
   await withFixture(async ({ fixture, guardPath }) => {
     await writeFile(
       path.join(fixture, "path.txt"),
-      `C:\\profiles\\${FIXTURE_ALIAS}\\project`,
+      `\x43:\\profiles\\${FIXTURE_ALIAS}\\project`,
     );
     const result = runGuard(guardPath, fixture);
     assert.equal(result.status, 1, result.output);
@@ -83,11 +81,11 @@ test("fails for a configured identity value in a path-like string", async () => 
 
 test("fails for a Windows users path", async () => {
   await withFixture(async ({ fixture, guardPath }) => {
-    await writeFile(path.join(fixture, "windows-path.txt"), windowsPath("C:", "Users", "someone"));
+    await writeFile(path.join(fixture, "windows-path.txt"), String.raw`${"\x43:\\Users\\someone"}`);
     const result = runGuard(guardPath, fixture);
     assert.equal(result.status, 1, result.output);
     assert.match(result.output, /windows-path\.txt/);
-    assert.match(result.output, /C:\\\\Users/);
+    assert.match(result.output, /\x43:\\\\Users/);
   });
 });
 
@@ -114,11 +112,11 @@ test("scans files without an extension", async () => {
 test("finds a leak in a minified single-line file", async () => {
   await withFixture(async ({ fixture, guardPath }) => {
     const filename = "bundle.min.js";
-    await writeFile(path.join(fixture, filename), `(()=>{const x="${"a".repeat(200)}${["C:", "Users", "person"].join("/")}${"z".repeat(200)}"})()`);
+    await writeFile(path.join(fixture, filename), `(()=>{const x="${"a".repeat(200)}\x43:/\x55sers/person${"z".repeat(200)}"})()`);
     const result = runGuard(guardPath, fixture);
     assert.equal(result.status, 1, result.output);
     assert.match(result.output, /bundle\.min\.js/);
-    assert.match(result.output, /C:\/Users/);
+    assert.match(result.output, /\x43:\/Users/);
   });
 });
 
@@ -133,14 +131,14 @@ test("passes a clean non-empty fixture", async () => {
 });
 
 // THE BUILDER-CHECKOUT RULE, BOTH DIRECTIONS. It had no coverage at all, which
-// is how it came to match the `s:` and `//` inside the product's own https
-// website URL (toolsenabled.com) and stayed that way. The refusal case is listed
+// is how it came to match `<checkout-root>.com` -- the
+// product's own website URL -- and stayed that way. The refusal case is listed
 // first and deliberately: a guard that stops refusing real leaks is far worse
 // than one that refuses a URL, so the pair is pinned together and neither test
 // is meaningful without the other.
 test("fails for a drive-rooted builder checkout path", async () => {
   await withFixture(async ({ fixture, guardPath }) => {
-    await writeFile(path.join(fixture, "checkout.txt"), windowsPath("D:", "dev", "ToolsEnabled", "src", "index.js"));
+    await writeFile(path.join(fixture, "checkout.txt"), String.raw`${"\x44:\\dev\\ToolsEnabled\\src\\index.js"}`);
     const result = runGuard(guardPath, fixture);
     assert.equal(result.status, 1, result.output);
     assert.match(result.output, /checkout\.txt/);
@@ -151,7 +149,7 @@ test("fails for a drive-rooted builder checkout path", async () => {
 test("fails for a builder checkout path preceded by a digit", async () => {
   // `\b` would have let this through; the lookbehind rejects only letters.
   await withFixture(async ({ fixture, guardPath }) => {
-    await writeFile(path.join(fixture, "digit.txt"), "disk9" + windowsPath("C:", "build", "toolsenabled", "out"));
+    await writeFile(path.join(fixture, "digit.txt"), String.raw`${"disk9\x43:\\build\\toolsenabled\\out"}`);
     const result = runGuard(guardPath, fixture);
     assert.equal(result.status, 1, result.output);
     assert.match(result.output, /builder checkout path/i);

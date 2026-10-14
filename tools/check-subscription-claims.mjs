@@ -12,8 +12,8 @@
  *   rule re-derives the catalog and compares. Drift is exit 1, not a warning,
  *   because the drifted value is a PRICE.
  *
- * RULE 2 -- EVERY STATED INCLUSION MUST ACTUALLY BE GRANTED.
- *   config/subscription-promises.json records what the product has said a paid
+ * RULE 2 -- EVERY OWNER-STATED INCLUSION MUST ACTUALLY BE GRANTED.
+ *   config/subscription-promises.json records what the owner has said a paid
  *   tier includes. Each entry must correspond to a declared capability in
  *   GATED_CAPABILITIES whose requiredTiers admit every tier the register says
  *   it ships with. A promise nothing grants is the exact defect this lane was
@@ -151,7 +151,7 @@ export function unbackedPromises(promises, catalog) {
     const capability = catalog.capabilities[promise.capability]
     if (!capability) {
       violations.push(
-        `the promise register states that "${promise.capability}" is included with ${promise.includedWithTiers.join(' and ')}, ` +
+        `the owner stated that "${promise.capability}" is included with ${promise.includedWithTiers.join(' and ')}, ` +
         `but GATED_CAPABILITIES declares no such capability -- so no tier grants it, no gate enforces it, and the ` +
         `page has nothing true to render. Declare it in the engine's src/lib/entitlement.js (it is a CLOSED set: ` +
         `decide() throws on an id that is not in it) before any plan card can say so. Provenance: ${promise.provenance}`
@@ -288,7 +288,7 @@ function main() {
     problems.push(
       `${path.relative(REPO_ROOT, PAYLOAD_CATALOG_FILE)} exists. Everything under public/ is copied into ` +
       'dist/ by vite and packed into app.asar by electron-builder, so this file is a price list in the ' +
-      'installer. The rule for the first public launch is that payments are not collected, and ' +
+      'installer. The owner\'s rule for the first public launch is that payments are not collected, and ' +
       'R1214 records that the catalog reaching #/subscribe and #/pricing was never authorised. Delete it; ' +
       'the generated catalog belongs at config/subscription-catalog.json, where this guard reads it.'
     )

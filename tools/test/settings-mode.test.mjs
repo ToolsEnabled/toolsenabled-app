@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { DEFAULT_SETTINGS_MODE, SETTINGS_MODES, SETTINGS_MODE_KEY, createSettingsMode, readSettingsMode, settingsModePanel } from '../../src/settings-mode.js'
 
-/* BASIC IS THE DEFAULT (T782: the default is genuinely basic user settings).
-   Nothing saved, an unreadable store, an
+/* BASIC IS THE DEFAULT (owner direction 2026-09-20, T782: "it should default
+   to genuinely basic user settings"). Nothing saved, an unreadable store, an
    old or unknown value, and Expert (never remembered) all open Basic. A saved
    Advanced or Enterprise choice is the person's and is kept. */
 test('Basic is the default, including old, invalid, unreadable or Expert preferences', () => {
@@ -21,7 +21,7 @@ test('Basic is the default, including old, invalid, unreadable or Expert prefere
   assert.equal(SETTINGS_MODES[0].label, 'Basic', 'the person-facing name is Basic; the stored id stays simple for older saved choices')
 })
 
-/* THE STORAGE ITSELF CAN REFUSE TO BE REACHED:
+/* THE STORAGE ITSELF CAN REFUSE TO BE REACHED (Controller review of T782 v1):
    a document with storage disabled answers its localStorage getter with a
    SecurityError. The default used to be a parameter default, which runs
    before the function body's try, so the throw escaped and the Settings view

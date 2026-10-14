@@ -11,12 +11,12 @@ const source = readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'u
 const bindingA = 'a'.repeat(64), bindingB = 'b'.repeat(64)
 const generation = token => ({ kind: 'file', token: token.repeat(64) })
 const accountA = { name: 'work', provider: 'claude', directory: '/fictional/work', allowanceBinding: bindingA, authGeneration: generation('c') }
-const accountB = { name: 'team', provider: 'codex', directory: '/fictional/team', allowanceBinding: bindingB, authGeneration: generation('d') }
+const accountB = { name: 'school', provider: 'codex', directory: '/fictional/school', allowanceBinding: bindingB, authGeneration: generation('d') }
 const reading = (account, overrides = {}) => ({ ...account, status: 'healthy', canServe: true,
   readAt: '2031-01-01T00:00:00.000Z', usageStatus: 'measured', email: `${account.name}@example.test`,
   windows: { hourly: { usedPercent: 40, remainingPercent: 60 }, weekly: null, weeklyWindows: [] }, ...overrides })
-const answer = accounts => ({ ok: true, readAt: '2031-01-01T00:00:00.000Z', accounts,
-  orders: accounts.map(account => ({ provider: account.provider, names: [account.name], why: 'Fictional order' })), policy: {} })
+// Since 1.0.50 the engine ranks no accounts: usage replies carry readings only, never a provider order.
+const answer = accounts => ({ ok: true, readAt: '2031-01-01T00:00:00.000Z', accounts, policy: {} })
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done }); return { promise, resolve } }
 const closedReading = (account, overrides = {}) => Object.defineProperty(reading(account, overrides),
   'probeLifecycle', { value: 'closed' })
@@ -106,7 +106,7 @@ test('a sign-in change removes the prior native cache identity before a fresh pa
   await fixture.changed()
   const cached = await fixture.cached()
   assert.deepEqual(cached.accounts.map(row => row.allowanceBinding), [bindingB], 'a new panel received the old sign-in result from disk')
-  assert.deepEqual(cached.orders.map(row => row.provider), ['codex'], 'the changed account kept a stale provider ordering')
+  assert.equal(cached.orders, undefined, 'a usage reply carries no provider ranking')
   const list = readAccountList({ ok: true, accounts: [accountA, accountB].map(row => ({ ...row, signedIn: 'yes' })) })
   const rows = mergeAccounts(list, readUsageReply(cached))
   assert.equal(rows[0].status, null)
@@ -171,7 +171,7 @@ test('durable generation rejects an unwatched replacement after restart even whe
   restarted.setGeneration(bindingA, generation('e'))
   const cached = await restarted.cached()
   assert.deepEqual(cached.accounts.map(row => row.allowanceBinding), [bindingB])
-  assert.deepEqual(cached.orders.map(row => row.provider), ['codex'])
+  assert.equal(cached.orders, undefined)
   const list = readAccountList({ ok: true, accounts: restarted.accounts(), usageCache: cached })
   const rows = mergeAccounts(list, list.cachedUsage)
   assert.equal(rows[0].email, null)
@@ -298,8 +298,8 @@ test('a closed first check crossing one unwatched refresh rechecks only that bin
   assert.equal(updated.windows.hourly.usedPercent, 17)
   assert.deepEqual(updated.authGeneration, generation('e'))
   assert.equal(updated.readAt, '2031-01-01T00:01:00.000Z')
-  assert.equal(result.accounts.find(row => row.allowanceBinding === bindingB).email, 'team@example.test')
-  assert.deepEqual(result.orders.map(row => row.provider), ['codex'], 'a subset retry cannot supply a full provider ranking')
+  assert.equal(result.accounts.find(row => row.allowanceBinding === bindingB).email, 'school@example.test')
+  assert.equal(result.orders, undefined, 'a usage reply carries no provider ranking')
   assert.equal((await fixture.cached()).accounts.find(row => row.allowanceBinding === bindingA).email, 'fresh@example.test')
   assert.equal(JSON.stringify(fixture.disk()).includes('probeLifecycle'), false, 'closure receipt must not become durable proof')
 })
@@ -318,7 +318,7 @@ test('all changed bindings share one filtered retry batch with one fresh measure
   assert.deepEqual(calls[1].accountBindings.sort(), [bindingA, bindingB])
   assert.equal(result.accounts.length, 2)
   assert.ok(result.accounts.every(row => row.status === 'healthy'))
-  assert.deepEqual(result.orders, [])
+  assert.equal(result.orders, undefined)
 })
 
 test('missing, unproven, not-started, durable-looking receipts and an older Engine never authorize automatic refresh recovery', async () => {
@@ -355,7 +355,7 @@ test('a second credential mutation or watched sign-in during recovery rejects th
     assert.equal(refused.email, null)
     assert.equal(refused.readAt, null)
     assert.equal(refused.windows.hourly, null)
-    assert.equal(result.accounts.find(row => row.allowanceBinding === bindingB).email, 'team@example.test')
+    assert.equal(result.accounts.find(row => row.allowanceBinding === bindingB).email, 'school@example.test')
   }
 })
 
@@ -387,7 +387,7 @@ test('a filtered recovery must return one matching, closed row; unrelated and du
     const result = await pending
     assert.equal(calls, 2)
     assert.equal(result.accounts.find(row => row.allowanceBinding === bindingA).email, null, mode)
-    assert.equal(result.accounts.find(row => row.allowanceBinding === bindingB).email, 'team@example.test', mode)
+    assert.equal(result.accounts.find(row => row.allowanceBinding === bindingB).email, 'school@example.test', mode)
   }
 })
 
@@ -418,5 +418,5 @@ test('a failed filtered recovery preserves unrelated measurements and cannot aut
   assert.equal(calls, 2)
   assert.equal(result.ok, true)
   assert.equal(result.accounts.find(row => row.allowanceBinding === bindingA).email, null)
-  assert.equal(result.accounts.find(row => row.allowanceBinding === bindingB).email, 'team@example.test')
+  assert.equal(result.accounts.find(row => row.allowanceBinding === bindingB).email, 'school@example.test')
 })

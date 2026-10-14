@@ -53,7 +53,7 @@ test('canonical capture binds native identity before first output and ignores an
   await capture.shutdown(); await store.shutdown()
 })
 
-// Since an earlier commit a refused metadata save holds later output until an explicit retry, which
+// Since 721b56f1f a refused metadata save holds later output until an explicit retry, which
 // replays it with the binding current at retry time (transcript-capture-retention covers the hold).
 test('a failed host metadata save is replayed by retry, releases the held output and clears its flush failure', async t => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'te-capture-retry-'))
@@ -361,7 +361,7 @@ test('a late host acceptance after session end is recorded, while late assistant
 })
 
 /* T406: AN IDENTITY THAT CANNOT BE RESOLVED IS A NAMED REFUSAL, NOT A TypeError.
-   Measured 2026-09-18 on the earlier candidate: mcTranscripts.list() with no
+   Measured 2026-09-18 on the 3e1cd3a9 candidate: mcTranscripts.list() with no
    request answered "Cannot destructure property 'computerId' of 'undefined'",
    which shell/main.cjs dressed as MC_TRANSCRIPT_STORAGE_FAILED. Storage had
    not failed; nobody had said whose transcript was wanted. */
@@ -409,15 +409,14 @@ test('every per-node operation refuses an unresolvable identity by name, naming 
 })
 
 /* T1509. A USAGE LIMIT IN THE SAVED CONVERSATION SAYS SO, AND WHEN IT ENDS.
-   The recorded ending: thirty-seven Codex turns
-   stopped on a weekly limit whose reset the provider named as a local clock
-   time. Every saved conversation said only
+   The recorded ending: on 2026-09-22 at 12:01Z thirty-seven Codex turns
+   stopped on a weekly limit whose reset the provider named as Sep 29 2:13 AM
+   (the owner's clock, America/Los_Angeles). Every saved conversation said only
    "Turn did not finish. No safe failure detail was recorded." The events below
    are the shape the engine emits for that ending (engine test
    codex-turn-failure-details: the recorded usage-limit ending), with and
-   without a reset it could read. The instants are synthetic and are read on a
-   local clock (America/Los_Angeles). */
-const RECORDED_AT = Date.parse('2026-09-22T12:00:00Z')
+   without a reset it could read. */
+const RECORDED_AT = Date.parse('2026-09-22T12:01:16Z')
 async function clockedHarness(t, nowMs = RECORDED_AT) {
   const previousTz = process.env.TZ
   process.env.TZ = 'America/Los_Angeles'
@@ -439,50 +438,50 @@ async function clockedHarness(t, nowMs = RECORDED_AT) {
   }
 }
 
-test('a recorded usage-limit ending is saved with the limit, its reset time and where to choose another account', async t => {
+test('a recorded usage-limit ending is saved with the limit, its reset time and how to move this agent', async t => {
   const h = await clockedHarness(t)
   h.packet({ type: 'assistant_text', turnId: 'limited', text: 'Partial answer before the limit.' })
   h.packet({ type: 'turn_completed', threadId: 'thread-1', turnId: 'limited', status: 'failed',
-    text: 'This Codex account has reached its usage limit. The limit resets Sep 29, 3:00 AM. Until then, choose another account in the Accounts menu.',
-    payload: { limit: 'usage', resetsAt: '2026-09-29T10:00:00.000Z' } })
+    text: 'This Codex account has reached its usage limit. The limit resets Sep 29, 2:13 AM. Until then, use Switch and continue to move this agent to another account.',
+    payload: { limit: 'usage', resetsAt: '2026-09-29T09:13:00.000Z' } })
   const lines = await h.reopen()
   assert.deepEqual(lines.map(line => line.who), ['agent', 'action'])
   assert.equal(lines[0].text, 'Partial answer before the limit.')
   assert.equal(lines[1].tool, 'Turn')
   assert.equal(lines[1].state, 'undone')
-  assert.equal(lines[1].text, 'Account usage limit reached. It resets Sep 29, 3:00 AM. Until then, choose another account in the Accounts menu.')
+  assert.equal(lines[1].text, 'Account usage limit reached. It resets Sep 29, 2:13 AM. Until then, use Switch and continue to move this agent to another account.')
   assert.doesNotMatch(JSON.stringify(lines), /No safe failure detail/)
   /* The chat draws this as one row cut to the rail's width under "Turn · did not
      finish": the limit leads, so it is what stays in view. */
   assert.ok(lines[1].text.indexOf('usage limit') >= 0 && lines[1].text.indexOf('usage limit') < 16, 'the usage limit leads the line')
 })
 
-test('a usage-limit ending whose reset could not be read still names the limit and the Accounts menu', async t => {
+test('a usage-limit ending whose reset could not be read still names the limit and Switch and continue', async t => {
   const h = await clockedHarness(t)
   h.packet({ type: 'turn_completed', turnId: 'limited', status: 'failed',
     text: 'This Codex account has reached its usage limit. Wait for its allowance to reset or choose another account.',
     payload: { limit: 'usage' } })
   const [line] = await h.reopen()
-  assert.equal(line.text, 'Account usage limit reached. Wait for it to reset or choose another account in the Accounts menu.')
+  assert.equal(line.text, 'Account usage limit reached. Wait for it to reset, or use Switch and continue to move this agent to another account.')
 })
 
 test('a reset instant that is malformed, long past or years away is not written as a time', async t => {
   const h = await clockedHarness(t)
-  const forged = ['Sep 29th, 2026 3:00 AM', 'https://chatgpt.com/codex/settings/usage', '2026-09-29T10:00:00.000Z sk-private',
-    '2020-09-29T10:00:00.000Z', '2031-09-29T10:00:00.000Z', 1790000000000, { at: '2026-09-29T10:00:00.000Z' }]
+  const forged = ['Sep 29th, 2026 2:13 AM', 'https://chatgpt.com/codex/settings/usage', '2026-09-29T09:13:00.000Z sk-private',
+    '2020-09-29T09:13:00.000Z', '2031-09-29T09:13:00.000Z', 1790000000000, { at: '2026-09-29T09:13:00.000Z' }]
   forged.forEach((resetsAt, i) => h.packet({ type: 'turn_completed', turnId: `forged-${i}`, status: 'failed',
     payload: { limit: 'usage', resetsAt } }))
   const lines = await h.reopen()
   assert.equal(lines.length, forged.length)
   for (const line of lines) {
-    assert.equal(line.text, 'Account usage limit reached. Wait for it to reset or choose another account in the Accounts menu.')
+    assert.equal(line.text, 'Account usage limit reached. Wait for it to reset, or use Switch and continue to move this agent to another account.')
   }
   assert.doesNotMatch(JSON.stringify(lines), /chatgpt|sk-private|2031|2020|Sep 29/)
 })
 
 test('a usage-limit payload on a turn that succeeded or was stopped writes no limit line, and another payload is not a limit', async t => {
   const h = await clockedHarness(t)
-  const payload = { limit: 'usage', resetsAt: '2026-09-29T10:00:00.000Z' }
+  const payload = { limit: 'usage', resetsAt: '2026-09-29T09:13:00.000Z' }
   h.packet({ type: 'turn_completed', turnId: 'done', status: 'completed', payload })
   h.packet({ type: 'turn_completed', turnId: 'stopped', status: 'interrupted', payload })
   h.packet({ type: 'turn_completed', turnId: 'other', status: 'failed', payload: { limit: 'context', resetsAt: payload.resetsAt } })
@@ -495,8 +494,8 @@ test('a usage-limit payload on a turn that succeeded or was stopped writes no li
 /* T1552. THE SAVED CONVERSATION THAT NAMED NOTHING.
  *
  * MEASURED 2026-09-25 on 1.0.46, shipping day. A Codex refresh token was
- * revoked while the account itself stayed healthy -- right email, an active
- * plan, an access token days from expiry -- and `codex login status` went
+ * revoked while the account itself stayed healthy -- right email, active pro
+ * plan, an access token six days from expiry -- and `codex login status` went
  * on answering "Logged in using ChatGPT". Every Codex turn on the machine
  * died, and every saved conversation recorded the same nine words: "Turn did
  * not finish. No safe failure detail was recorded."
@@ -526,7 +525,7 @@ test('a provider failure the engine vouches for reaches the saved conversation',
   // And the transport dying, which is where the child's own stderr lives.
   const exited = 'The Codex program stopped before this turn finished. Check its sign-in with "codex login status".'
   h.packet({ type: 'turn_completed', turnId: 'exited', status: 'failed',
-    text: 'Codex app-server exited before the session was ready (exit code 1): refresh token revoked at /home/redacted-profile/.codex/auth.json',
+    text: 'Codex app-server exited before the session was ready (exit code 1): refresh token revoked at /\x68ome/redacted-profile/.codex/auth.json',
     payload: { failure: { provider: 'codex', source: 'transport', code: 'CODEX_APP_SERVER_EXITED', summary: exited } } })
   const lines = await h.reopen()
   assert.deepEqual(lines.map(line => line.who), ['agent', 'action', 'action', 'action'])
@@ -547,7 +546,7 @@ test('a provider failure the engine vouches for reaches the saved conversation',
 test('a vouched summary that is not one bounded line of product copy is refused whole', async t => {
   const h = await harness(t)
   const summaries = [
-    'Codex could not reach /home/redacted-profile/.codex/auth.json.',
+    'Codex could not reach /\x68ome/redacted-profile/.codex/auth.json.',
     'Codex could not authenticate. See https://chatgpt.com/codex/settings.',
     'Codex refused the request: Authorization: Bearer synthetic-private',
     'Codex refused the request with api_key=synthetic-private',
@@ -564,4 +563,28 @@ test('a vouched summary that is not one bounded line of product copy is refused 
   assert.equal(lines.length, summaries.length + 2)
   for (const line of lines) assert.equal(line.text, 'Turn did not finish. No safe failure detail was recorded.')
   assert.doesNotMatch(JSON.stringify(lines), /synthetic-private|Bearer|chatgpt|auth\.json|redacted-profile/)
+})
+
+/* 1.0.50 REVIEW, ACCOUNTS E. The line said "choose another account in the
+   Accounts menu", which changes the account NEW agents use and cannot move this
+   one. A circle is told to use Switch and continue (above); a New agent tab,
+   which offers Switch and continue only after Add to tree, is told that. */
+test('a usage-limit ending on a New agent tab says to add it to a tree first', async t => {
+  const previousTz = process.env.TZ
+  process.env.TZ = 'America/Los_Angeles'
+  t.after(() => { if (previousTz === undefined) delete process.env.TZ; else process.env.TZ = previousTz })
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'te-usage-limit-tab-'))
+  t.after(() => fs.rm(directory, { recursive: true, force: true }))
+  const tab = { ...binding, nodeId: 'standalone-11111111-1111-4111-8111-111111111111' }
+  const store = createNodeTranscriptStore({ directory })
+  const capture = createNodeTranscriptCapture({ store, now: () => RECORDED_AT })
+  capture.bind(tab)
+  capture.packet({ sessionId: tab.sessionId, event: { type: 'turn_completed', turnId: 'limited', status: 'failed',
+    payload: { limit: 'usage', resetsAt: '2026-09-29T09:13:00.000Z' } } })
+  await capture.shutdown(); await store.shutdown()
+  const reopened = createNodeTranscriptStore({ directory }); t.after(() => reopened.shutdown())
+  const client = createNodeTranscriptClient({ computerId: tab.computerId, bridge: reopened })
+  await client.ready; t.after(() => client.dispose())
+  const lines = (await client.readLatest(tab.nodeId))?.lines || []
+  assert.equal(lines.at(-1)?.text, 'Account usage limit reached. It resets Sep 29, 2:13 AM. Until then, use Add to tree and then Switch and continue to move this agent to another account. New agents use the account chosen in Accounts.')
 })

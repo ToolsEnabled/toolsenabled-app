@@ -3,7 +3,7 @@
  *
  * The unit tests cannot answer this: a fake DOM has no layout, so it can prove
  * the button EXISTS and never that a person can SEE it. That gap is why the
- * complaint survived a commit called "Start is reachable" -- the button
+ * owner's complaint survived a commit called "Start is reachable" -- the button
  * was in the scroller, ~100px below the fold, present and invisible.
  *
  * This measures the real stylesheet against the real panel structure inside a

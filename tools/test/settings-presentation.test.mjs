@@ -67,7 +67,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
    nothing under them. This list is edited here deliberately, not to make a red
    go green: the source assertions further down cross-check it against
    src/views/settings.js, so a list that disagreed with the page would fail
-   either way. The removed rows are kept verbatim in the design notes.
+   either way. The removed rows are kept verbatim in
+   docs/design/UNBUILT-SETTINGS-ROWS-2026-08-20.md.
 
    'Research' became 'Research & Agents' in the same edit: it draws every
    setting the installed application enforces, which stopped being only the
@@ -83,8 +84,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
    installed here, the Install and Sign in buttons, the account lists, the
    local-model panel and the feedback composer -- is a section of this page now,
    first in the 'start' group, and the page is one section shorter of prose for
-   it. The "What this copy needs" page moved into Settings, simpler and more
-   useful. */
+   it. The owner's words: "can we get rid of the what this copy needs page and
+   put it nicely into settings and make it more simple and useful". */
 const SECTIONS = [
   'This computer',
   'Connect this computer', 'Home screen', 'System', 'Setup', 'Data & Privacy',

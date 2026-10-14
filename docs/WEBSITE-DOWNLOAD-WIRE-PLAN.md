@@ -1,16 +1,16 @@
 # Website: verification by use, and the download wire plan
 
-R1260 T5.1
-App tree base: an earlier commit
+R1260 T5.1 · Machine A · 2026-08-11
+App tree base SHA `9723d2e9fe2f62e651e2a66c917cb6b386853b72` (branch `packaging/capability-layer`)
 
 **Scope fence honoured: nothing was published, no DNS or hosting was touched, and no
 candidate was declared. This document plans a wire; it does not connect one.**
 
 ---
 
-## 1. The headline
+## 1. The headline, in the owner's terms
 
-R1113 reports the website as functionally ready for review. Driven as a
+R1113 says *"The website is functionally ready you can take a look."* Driven as a
 stranger, that is **true of the demo and false of the website**.
 
 The software renders and behaves honestly in a browser. But there is **no download
@@ -85,7 +85,7 @@ Two environment hazards were hit and are recorded so the next lane does not lose
 | # | Finding | Severity | Evidence |
 |---|---|---|---|
 | W1 | **No download surface exists anywhere.** 0 download controls across 12 routes. Confirmed at artifact level: the only `download` token in the built bundle is `a.download` in a JSON-blob export helper, and all 13 `.exe` hits are `.exec(` regex false positives. | **Blocking for launch** | `dist/assets/index-*.js` |
-| W2 | **No landing page.** The site drops a stranger straight into the product dashboard — no statement of what ToolsEnabled is, no features, no pricing, no download. R1090 (a website with a demo): the demo exists, the website around it does not. | **Blocking for launch** | route `#/` innerText is 280 chars, all of it browser-mode copy |
+| W2 | **No landing page.** The site drops a stranger straight into the product dashboard — no statement of what ToolsEnabled is, no features, no pricing, no download. R1090 asked for "a website with a demo"; the demo exists, the website around it does not. | **Blocking for launch** | route `#/` innerText is 280 chars, all of it browser-mode copy |
 | W3 | **Every visitor's browser is made to probe its own localhost.** The page fetches `http://127.0.0.1:4610/v1/runtime`; on a public deployment that resolves to *the visitor's* machine. Blocked by CORS here, producing a console error on `#/` and `#/approvals`. Published as-is this is a per-visitor console error, a fingerprinting-adjacent behaviour, and an AV/proxy flag risk. | **Serious** | CORS errors captured on 2 routes |
 | W4 | **Approvals takes 18–20 s to fail closed.** Sampled every 2 s: `LOADING` at t+2 s through t+18 s, `RESOLVED` by t+20 s. The end state is correct and honest; the wait before it is not. | **Serious** | `artifacts/website-stranger/approvals-dwell.json` |
 | W5 | **No Content-Security-Policy.** Chromium raised the insecure-CSP warning. Acceptable in a local shell, a real hardening gap on a public origin. | **Moderate** | console warning on `#/` |
@@ -96,8 +96,9 @@ Two environment hazards were hit and are recorded so the next lane does not lose
 
 ## 4. Why the download cannot be wired today
 
-**There is no declared candidate.** This is not an inference — it is the build
-coordinator's own record in the installer-candidate folder:
+**There is no declared candidate.** This is not my inference — it is Machine A's own
+coordinator record, `MACHINE-A-INSTALLER-CANDIDATE\DO-NOT-DECLARE-THESE-README.md`
+(2026-08-11 20:20Z):
 
 > **No file in this folder is a candidate.** Not the newest, not the largest.
 
@@ -105,10 +106,10 @@ Measured state of every binary a wire could plausibly point at:
 
 | Location | Why it is not wireable |
 |---|---|
-| candidate folders `1.0.2`, `1.0.4` | Have declarations, but carry the **pre-rename** identity `Mission Control`, which `check-product-naming.mjs` now refuses |
-| candidate folders `1.0.3`, `1.0.5` | **No declaration file at all** — no recorded byte count, no SHA-256 on a frozen copy, no build ref |
-| the earlier installer declaration | Declares `Mission Control Setup 1.0.1.exe`, appId `com.toolsenabled.missioncontrol` — superseded by the rename |
-| `example-worktree\release\ToolsEnabled Setup 1.0.6.exe` | Built from a **dirty tree**; asar stamped `dirty:true, overridden:true`; `cut-release-candidate.mjs:356` refuses it. That refusal is the gate working |
+| `MACHINE-A-INSTALLER-CANDIDATE\1.0.2`, `1.0.4` | Have declarations, but carry the **pre-rename** identity `Mission Control`, which `check-product-naming.mjs` now refuses |
+| `MACHINE-A-INSTALLER-CANDIDATE\1.0.3`, `1.0.5` | **No declaration file at all** — no recorded byte count, no SHA-256 on a frozen copy, no build ref |
+| `MACHINE-A-INSTALLER-DECLARATION.md` | Declares `Mission Control Setup 1.0.1.exe`, appId `com.toolsenabled.missioncontrol` — superseded by the rename |
+| `wt-capability\release\ToolsEnabled Setup 1.0.6.exe` | Built from a **dirty tree**; asar stamped `dirty:true, overridden:true`; `cut-release-candidate.mjs:356` refuses it. That refusal is the gate working |
 
 Pointing a public download at any of these would hand strangers a build nobody can
 reproduce from git history. **The correct action today is the one the site already

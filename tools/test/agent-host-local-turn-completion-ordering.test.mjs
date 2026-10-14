@@ -1,6 +1,7 @@
 /* THE FALSE BUSY STATE AFTER A FAST, EMPTY LOCAL TURN.
  *
- * THE DEFECT (found in a hand test of a local Observer node): a local turn that fails before it ever says a word --
+ * THE DEFECT (owner, Local Observer node16-8a2ff6c3, session cedebfeb-0079,
+ * 2026-09-12): a local turn that fails before it ever says a word --
  * LOCAL_NODE_RESPONSE_INVALID, "the local model finished without returning
  * an answer" -- left the composer showing Stop and a Halt chip beside a
  * transcript that already read "The last turn failed...". Pressing Stop

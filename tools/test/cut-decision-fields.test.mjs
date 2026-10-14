@@ -32,7 +32,7 @@ import {
 } from '../release-packager/cut-release-candidate.mjs'
 import { CONTAINMENT_EXEMPT_REASONS } from '../lib/scratch-fence.mjs'
 
-const ENGINE = '1111111111111111111111111111111111111111'
+const ENGINE = 'bafd25a5b72466a8ed33f44e1419981a438fedd4'
 const PAYLOAD = path.join('C:', 'build', 'capability')
 
 test('an engine ref named only in a $comment is not a declaration', () => {
@@ -50,7 +50,7 @@ test('an engine ref named only in a $comment is not a declaration', () => {
   // And the mirror: prose that names the WRONG ref must not rescue a right one,
   // nor the reverse. Only the field decides.
   const decidedButContradicted = {
-    $comment: 'this engine input is 2222222222222222222222222222222222222222, honestly',
+    $comment: 'this engine input is e2d443c5be89f5e851f4b4b5d9262c8fa6aeb011, honestly',
     path: path.join('C:', 'engine'),
     ref: ENGINE,
   }

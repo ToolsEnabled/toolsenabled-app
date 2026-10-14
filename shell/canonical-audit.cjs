@@ -174,11 +174,11 @@ function resetForTests() {
  * writes the head anchor with execFileSync('powershell.exe', ...
  * tools/secrets.ps1 ...): a whole interpreter start, synchronous, per anchored
  * admission. Idle on this machine that is 145-153 ms. The shipped code's own
- * measurement under a real working load
- * (shell/vault-presence.cjs, about 100 agents running) records consecutive vault
+ * measurement under the load the owner actually runs
+ * (shell/vault-presence.cjs, "~100 agents running") records consecutive vault
  * reads at 5,372 to 15,035 ms. One of those on this thread is a window that
  * stops answering Windows for fifteen seconds, which the machine recorded as
- * AppHangB1 and was reported as the application crashing.
+ * AppHangB1 and the owner reported as the application crashing.
  *
  * So recordCanonical() no longer calls requireRecord here. It posts the record
  * to shell/canonical-audit-worker.cjs -- the same module, the same state root,

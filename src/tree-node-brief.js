@@ -1,8 +1,8 @@
 /* WHAT AN AGENT STARTED FROM THE TREE IS TOLD ABOUT ITS PLACE IN IT.
  *
- * THE DEFECT THIS EXISTS FOR: an agent did not realize it had a manager and
- * could not contact it. A node called Default hung under one called Manager,
- * and the agent inside it answered: "I don't
+ * THE DEFECT THIS EXISTS FOR, in the owner's words: "This one is not realizing
+ * and not able to contact its manager." He had a node called Default hanging
+ * under one called Manager, and the agent inside it answered: "I don't
  * currently have a manager agent or report content specified -- send me the
  * manager's identifier." It was right. The tree held the relationship and the
  * session was never told.
@@ -22,9 +22,9 @@
  *
  *     'There is no direct message channel to another agent on this computer.'
  *
- * That was TRUE when it was written and it is the second half of a later
- * finding: the comms page could not be verified because the agents could not be
- * made to communicate. The product shipped a messenger that refuses
+ * That was TRUE when it was written and it is the second half of the owner's
+ * later finding: "i couldnt verify if the comms page is wired because i couldnt
+ * get the agents to communicate". The product shipped a messenger that refuses
  * a local recipient BY DESIGN, on an installation whose service registry
  * declares exactly one machine -- so the only recipient the tool could name was
  * the one it refused. A child told to message its manager was calling a number
@@ -168,8 +168,8 @@ export function nodeManagerContext({ selfName, parentName = null, childNames = [
     /* NAMED WHEN THEY EXIST, PROMISED WHEN THEY DO NOT. The second sentence
        used to be the only one, and it is written in the conditional -- "if
        agents are started under you". An agent handed that has to discover its
-       own reports by being messaged first, which is exactly the delay that was
-       reported: agents took a while to realize they had subagents. */
+       own reports by being messaged first, which is exactly the delay the owner
+       reported: agents "take a little while to realize they have subagents". */
     /* THE ROSTER GOES HERE, NOT AT THE END, and the reason is grammatical
        rather than cosmetic. The sentences that follow this branch begin
        "Messages from them arrive..." -- so whichever sentence introduces the

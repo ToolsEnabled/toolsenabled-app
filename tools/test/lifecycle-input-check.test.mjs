@@ -11,8 +11,6 @@ import { executeInstallerLifecycle, INSTALLER_IDENTITIES } from '../lib/drivers/
 import { ownedFixtureTempRoot } from './lib/owned-fixture-temp.mjs'
 
 const CLI = fileURLToPath(new URL('../release-packager/check-lifecycle-inputs.mjs', import.meta.url))
-// Synthetic Windows profile paths, assembled at runtime so the source carries no literal user path.
-const userPath = (separator, ...parts) => ['C:', 'Users', ...parts].join(separator)
 const TEMP = ownedFixtureTempRoot()
 const RETAIN_FIXTURES = process.env.TOOLSENABLED_RETAIN_LIFECYCLE_FIXTURES === '1'
 if (![undefined, '0', '1'].includes(process.env.TOOLSENABLED_RETAIN_LIFECYCLE_FIXTURES)) {
@@ -22,11 +20,11 @@ function releaseFixture(t, root) {
   if (RETAIN_FIXTURES) t.after(() => t.diagnostic(`Retained lifecycle fixture: ${root}`))
   else t.after(() => rm(root, { recursive: true, force: true }))
 }
-const GIT = process.platform === 'win32' ? 'C:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git'
+const GIT = process.platform === 'win32' ? '\x43:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git'
 const NULL_FILE = process.platform === 'win32' ? 'NUL' : '/dev/null'
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
 const environment = {
-  ...(process.platform === 'win32' ? { SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows', PATH: 'C:\\Windows\\System32;C:\\Windows', TEMP, TMP: TEMP }
+  ...(process.platform === 'win32' ? { SystemRoot: '\x43:\\Windows', WINDIR: '\x43:\\Windows', PATH: '\x43:\\Windows\\System32;\x43:\\Windows', TEMP, TMP: TEMP }
     : { PATH: '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C' }),
   GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: NULL_FILE, GIT_CONFIG_SYSTEM: NULL_FILE,
 }
@@ -201,7 +199,7 @@ test('linked worktree pointers refuse wrong backlinks and foreign profiles befor
   await writeFile(backlink, path.join(item.repo, '.git') + '\n')
   assert.throws(() => checkLifecycleInputs({ inventoryPath: path.join(linked, 'inventory.json'), repositoryRoot: item.repo }), /explicit repository metadata authority/)
   await writeFile(backlink, path.join(linked, '.git') + '\n')
-  await writeFile(path.join(metadata, 'commondir'), userPath('\\', 'Forbidden-Fixture', 'do-not-follow') + '\n')
+  await writeFile(path.join(metadata, 'commondir'), '\x43:\\Users\\Forbidden-Fixture\\do-not-follow\n')
   const result = invoke(['--inventory', path.join(linked, 'inventory.json'), '--repository-root', item.repo], {}, ['--permission', '--allow-fs-read=*'])
   assert.equal(result.status, 1, result.stderr)
   assert.match(result.stderr, /foreign-profile input refused before probing/)
@@ -228,7 +226,7 @@ test('linked worktrees retain common-object and worktree-config refusal checks',
 test('metadata pointer authority accepts reciprocal Linux and Windows targets and rejects lexical escapes without I/O', () => {
   for (const [platform, paths, base] of [
     ['linux', path.posix, '/synthetic-owner/source'],
-    ['win32', path.win32, userPath('\\', 'Synthetic-Owner', 'source')],
+    ['win32', path.win32, '\x43:\\Users\\Synthetic-Owner\\source'],
   ]) {
     const file = paths.join(base, 'linked', '.git')
     const allowed = paths.join(base, 'primary', '.git', 'worktrees')
@@ -328,7 +326,7 @@ test('selected hard links, parent links and linked Git metadata refuse before Gi
 test('Git includes, object alternates and partial clones cannot redirect preparation outside the selected source', async t => {
   const included = await fixture(t)
   const config = path.join(included.repo, '.git', 'config')
-  await writeFile(config, `${await readFile(config, 'utf8')}\n[include]\n\tpath = ${userPath('\\', 'Forbidden-Fixture', 'do-not-open')}\n`)
+  await writeFile(config, `${await readFile(config, 'utf8')}\n[include]\n\tpath = \x43:\\Users\\Forbidden-Fixture\\do-not-open\n`)
   assert.throws(() => checkLifecycleInputs({ inventoryPath: included.file }), /configuration includes/)
   const alternate = await fixture(t)
   await writeFile(path.join(alternate.repo, '.git', 'objects', 'info', 'alternates'), '/synthetic-do-not-open\n')
@@ -406,7 +404,7 @@ test('an input outside a repository terminates its ancestor search without nativ
   const file = path.join(directory, 'inventory.json')
   await writeFile(file, '{}')
   assert.throws(() => checkLifecycleInputs({ inventoryPath: file }), /bounded ancestor search/)
-  for (const spelling of [userPath('\\', 'Forbidden-Fixture', 'inventory.json'), userPath('/', 'Forbidden-Fixture', 'inventory.json')]) {
+  for (const spelling of ['\x43:\\Users\\Forbidden-Fixture\\inventory.json', '\x43:/\x55sers/Forbidden-Fixture/inventory.json']) {
     assert.throws(() => checkLifecycleInputs({ inventoryPath: spelling }), /foreign-profile input refused before probing/)
   }
   assert.throws(() => checkLifecycleInputs({ inventoryPath: file, guest: {} }), /authority overrides are not accepted/)

@@ -35,7 +35,7 @@
 //    invisible. Two of the invisible ones -- provider-login-drive and
 //    provider-guide-drive -- are the only drivers that exercise getting an
 //    assistant program and signing in to it, which is the first thing a
-//    customer does, so no cut had ever checked it. It was found the way
+//    customer does, so no cut had ever checked it. The owner found out the way
 //    customers do: a machine with Codex and Claude installed and signed in,
 //    told by the product that they were not installed and to go and install
 //    them. The pattern now reads both suffixes, and
@@ -252,7 +252,7 @@ const SETTINGS = new Map([
    *
    * These two drivers existed and were in no chain, so the surface a person
    * meets FIRST -- get the assistant program, sign in to it -- was the one
-   * surface no cut ever exercised. It was found the way customers do:
+   * surface no cut ever exercised. The owner found out the way customers do:
    * a machine with Codex and Claude installed and signed in, told by the
    * product that they were not installed and to go and install them.
    *
@@ -453,30 +453,15 @@ const SETTINGS = new Map([
    * --list and in the closing table with the reason attached, because an
    * excluded driver that is merely absent is the defect at the top of this file
    * wearing a different hat. */
-  /* These fifteen probes entered with the retained hot-reload development work.
+  /* These fifteen probes entered with the retained 2f3c5d57 hotload work.
      Their subjects are externally served source pages, source-injected rigs,
      or an operator's configured data, not a selected packaged application.
      Keep them discovered and named; neither this declaration nor a separate
      source-browser run supplies candidate execution or readiness coverage. */
-  ['home-circle-agent-qa.mjs', {
-    excluded: 'manual source-browser agent-following probe using the labelled example fleet and renderer stats; '
+  ['home-following-qa.mjs', {
+    excluded: 'manual source-browser agent-following probe using the labelled example fleet and its real Following card; '
       + 'requires an output directory and an independently served loopback origin (default port 4623), and never stages a candidate. '
       + 'This declaration supplies no execution or release-readiness proof',
-  }],
-  ['home-circle-form-qa.mjs', {
-    excluded: 'retained source-renderer form investigation: imports /src/home-circle-fluid.js into a synthetic review rig, '
-      + 'whereas current Home uses the classic renderer; requires an output directory, local source origin and real WebGL. '
-      + 'This declaration supplies no execution or release-readiness proof',
-  }],
-  ['home-circle-motion-qa.mjs', {
-    excluded: 'retained source-renderer motion investigation: mounts /src/home-circle-fluid.js with simulated action controls, '
-      + 'rather than current Home or a packaged candidate; requires an output directory, local source origin and real WebGL. '
-      + 'This declaration supplies no execution or release-readiness proof',
-  }],
-  ['home-circle-style-qa.mjs', {
-    excluded: 'retained dev-browser preference probe expects the former Standard/Simple labels and instruments home-circle-fluid.js; '
-      + 'current Home has Classic/Blob and the classic renderer. Its standalone inputs are an output directory and source origin; '
-      + 'its assertions need review before use as current proof. This declaration supplies no execution or release-readiness proof',
   }],
   ['home-hotload-qa.mjs', {
     excluded: 'manual source-browser Home layout and example-fleet interaction walk; requires an output directory and an '
@@ -562,8 +547,8 @@ const SETTINGS = new Map([
   ['page2-qa.cjs', { runner: 'electron', timeoutMs: 300_000, artifactProof: 'instrumented-copy' }],
   /* Electron, because it measures LAYOUT: whether the panel's Start button and
      brief box are on screen when it opens. node --test cannot answer that -- a
-     fake DOM has no layout, which is how a panel with no reachable Start
-     button survived two fixes and shipped twice. Even with --release, only the CSS
+     fake DOM has no layout, which is how 'there is no way to start an agent'
+     survived two fixes and shipped twice. Even with --release, only the CSS
      comes from the candidate: it runs in handmade PANEL_HTML with fixture
      rail styles, not the packaged renderer. Without --release the CSS comes
      from checkout dist. Neither mode proves untouched-candidate UI behavior. */
@@ -695,7 +680,7 @@ const SETTINGS = new Map([
      provider budget, real network. Never in the default set. */
   ['cloud-launch-packaged-qa.mjs', { runner: 'node', timeoutMs: 1_500_000, costly: true }],
   /* DRIVES ONE REAL CODEX `luna` TURN THROUGH THE PACKAGED SHELL and then asks
-     the metrics page what it shows. It spends the operator's own quota, and it
+     the metrics page what it shows. It spends the owner's own quota, and it
      REFUSES without an engine path: "This driver measures a REAL agent turn and
      needs a real engine to run one. Pass --engine <path…>" -- exit 2, nothing
      measured.
@@ -777,7 +762,7 @@ export const HELD_OUT_OF_DISCOVERY = new Map([
      need an overlaid payload, or produce a report rather than a verdict. */
   ['claude-mcp-isolation-proof.mjs', 'a before/after proof of two Claude-session leaks against an OVERLAID engine payload; it starts real Claude sessions and spends real budget'],
   ['claude-tree-start-proof.mjs', 'it presses Start on a Claude tier and requires a real answer from a paid model, against an overlaid engine payload'],
-  ['decision-record-crossaccount-probe.mjs', 'a one-off cross-account visibility investigation whose finding is recorded in an internal report'],
+  ['decision-record-crossaccount-probe.mjs', 'a one-off cross-account visibility investigation whose finding is recorded in reports/lanes/test-account.md'],
   ['dom-retention-probe.mjs', 'a diagnostic that names WHICH retainers hold detached nodes; the pass/fail budget is tools/performance-budget-qa.mjs, which is in the cut'],
   ['signin-reach-probe.mjs', 'a one-off measurement of why one control read zero-size; it reports four possible causes rather than a verdict'],
   ['standing-request-probe.mjs', 'a 103-line probe that prints what one bridge call actually says; it asserts nothing'],
@@ -1065,7 +1050,7 @@ export function verdictFor({ timedOut, code, output = '' }) {
 
   /* THE SECOND WAY A DRIVER CAN HONESTLY FAIL TO MEASURE, and it is the
      driver's own declaration rather than the machine's. agent-start-flow-qa
-     was born naming the checks it cannot exercise (an earlier commit, "including what it
+     was born naming the checks it cannot exercise (0c049ac, "including what it
      cannot prove"): two of them need window.mcAgent's start reply substituted
      from the page, and that object is a non-configurable contextBridge
      property -- a deliberate guarantee of the shell. It refuses to fake them,

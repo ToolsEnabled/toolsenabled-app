@@ -54,7 +54,7 @@ export function verdictProblems(draft) {
   if (current.verdicts.format !== 'text' && !current.judges.length) problems.push({ kind: 'no-judges', text: 'A scored judge arm needs at least one judge.' })
   return problems
 }
-export function emptyPipelineDraft() { return { version: 1, root: 'C:/cleanroom', rows: [], judges: [], verdicts: emptyVerdicts(), tools: { servers: [], profiles: [] }, models: [], record: emptyRecordPolicy() } }
+export function emptyPipelineDraft() { return { version: 1, root: '\x43:/lbres', rows: [], judges: [], verdicts: emptyVerdicts(), tools: { servers: [], profiles: [] }, models: [], record: emptyRecordPolicy() } }
 // A row's tools name a tool profile (Tools and custom tool servers); empty means tools off, LeanBench's default.
 export function emptyPipelineRow() { return { surface: 'claude-cli', model: '', executable: '', efforts: ['max'], noask: false, tools: '' } }
 // A judge is a model that reads a contestant's response with its own prompt.
@@ -62,7 +62,7 @@ export function emptyPipelineRow() { return { surface: 'claude-cli', model: '', 
 export function emptyJudge() { return { surface: 'claude-cli', model: '', effort: 'medium', executable: '', prompt: '' } }
 function normalizeJudge(raw) {
   if (!raw || typeof raw !== 'object' || !PIPELINE_SURFACES[raw.surface]) return null
-  return { surface: raw.surface, model: text(raw.model).slice(0, 80), effort: PIPELINE_EFFORTS.includes(raw.effort) ? raw.effort : 'medium',
+  return { surface: raw.surface, model: String(raw.model ?? ''), effort: PIPELINE_EFFORTS.includes(raw.effort) ? raw.effort : 'medium',
     executable: text(raw.executable).slice(0, 400), prompt: String(raw.prompt ?? '').slice(0, JUDGE_PROMPT_LIMIT) }
 }
 export function normalizePipelineDraft(raw) {
@@ -71,7 +71,7 @@ export function normalizePipelineDraft(raw) {
   draft.root = text(raw.root).slice(0, 200) || draft.root
   for (const row of Array.isArray(raw.rows) ? raw.rows.slice(0, 16) : []) {
     if (!row || typeof row !== 'object' || !PIPELINE_SURFACES[row.surface]) continue
-    draft.rows.push({ surface: row.surface, model: text(row.model).slice(0, 80), executable: text(row.executable).slice(0, 400),
+    draft.rows.push({ surface: row.surface, model: String(row.model ?? ''), executable: text(row.executable).slice(0, 400),
       efforts: (Array.isArray(row.efforts) ? row.efforts : []).filter(effort => PIPELINE_EFFORTS.includes(effort)), noask: row.noask === true, tools: text(row.tools).slice(0, 40) })
   }
   draft.judges = (Array.isArray(raw.judges) ? raw.judges.slice(0, JUDGE_LIMIT) : []).map(normalizeJudge).filter(Boolean)
@@ -103,9 +103,9 @@ export function resizeJudges(judges, count) {
 // a judge that is also a contestant grades its own family's work.
 export function judgeProblems(draft) {
   const current = normalizePipelineDraft(draft), problems = []
-  const contestants = new Set(current.rows.map(row => text(row.model)).filter(Boolean))
+  const contestants = new Set(current.rows.map(row => row.model).filter(model => model.trim()))
   current.judges.forEach((judge, index) => {
-    const missing = [!judge.model && 'an exact model id', !judge.prompt.trim() && 'a judge prompt'].filter(Boolean)
+    const missing = [!judge.model.trim() && 'an exact model id', !judge.prompt.trim() && 'a judge prompt'].filter(Boolean)
     if (missing.length) problems.push({ index, kind: 'incomplete', text: `Judge ${index + 1} needs ${missing.join(' and ')}.` })
     if (judge.model && contestants.has(judge.model)) problems.push({ index, kind: 'contestant', text: `Judge ${index + 1} (${judge.model}) is also a contestant, so it would grade its own responses.` })
     if (judge.surface === 'http' && judge.model && !current.models.some(model => model.id === judge.model)) problems.push({ index, kind: 'model', text: `Judge ${index + 1} names a custom model that is not registered: ${judge.model}.` })
@@ -114,7 +114,7 @@ export function judgeProblems(draft) {
 }
 // Only complete judges are written; the editor names every one left out.
 export function pipelineJudges(draft) {
-  return normalizePipelineDraft(draft).judges.flatMap((judge, index) => judge.model && judge.prompt.trim()
+  return normalizePipelineDraft(draft).judges.flatMap((judge, index) => judge.model.trim() && judge.prompt.trim()
     ? [{ id: `judge-${index + 1}`, provider: PIPELINE_SURFACES[judge.surface].provider, surface: judge.surface, model: judge.model, effort: judge.effort, executable: judge.executable || null, prompt: judge.prompt }]
     : [])
 }
@@ -140,8 +140,8 @@ export function pipelineSettings(state, { timeoutMs = 2400000 } = {}) {
 export function pipelineConditions(draft, settings) {
   const current = normalizePipelineDraft(draft), conditions = [], seen = new Set()
   for (const row of current.rows) {
-    const surface = PIPELINE_SURFACES[row.surface], model = text(row.model)
-    if (!surface || !model || !row.efforts.length) continue
+    const surface = PIPELINE_SURFACES[row.surface], model = row.model
+    if (!surface || !model.trim() || !row.efforts.length) continue
     const custom = row.surface === 'http' ? current.models.find(item => item.id === model) : null
     if (row.surface === 'http' && !custom) continue
     const profile = row.tools && current.tools.profiles.some(item => item.id === row.tools) ? row.tools : ''
@@ -182,11 +182,13 @@ export function pipelineConfig(draft, settings) {
 const CLEAN_ROOM = [
   '// Generated by the Research page (Protocol → Decisions & pipeline). Shared by draw.mjs and canary.mjs.',
   '// The clean room: a root with blank homes, a temp directory and per-draw working directories; an allowlisted',
-  '// environment; credentials copied into the room homes; a same-day per-surface canary certificate; provider-notice',
+  '// environment; API keys by name, never copied sign-ins; a same-day per-surface canary certificate; provider-notice',
   '// and truncation detection; one runner for each vendor CLI. Node built-ins only.',
   "import { spawnSync } from 'node:child_process'",
   "import { createHash } from 'node:crypto'",
-  "import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'",
+  "import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'",
+  "import { request as httpRequest } from 'node:http'",
+  "import { request as httpsRequest } from 'node:https'",
   "import { dirname, join } from 'node:path'",
   "import { fileURLToPath } from 'node:url'",
   '',
@@ -217,7 +219,7 @@ const CLEAN_ROOM = [
   '  if (!existsSync(file)) return []',
   "  try { const record = JSON.parse(readFileSync(file, 'utf8')); return Array.isArray(record.certified) ? record.certified : [] } catch (error) { return [] }",
   '}',
-  '// Generation requires a same-day passed canary for this surface.',
+  '// LeanBench, rule forever: no generation without a same-day passed canary. Per surface since 2026-08-26.',
   'export function requireCertified(config, surface) {',
   '  if (!config.canary || !config.canary.required) return null',
   '  const certified = certifiedSurfaces(config)',
@@ -236,15 +238,19 @@ const CLEAN_ROOM = [
   '  }',
   '  return { cwd, cwdEmpty: readdirSync(cwd).length === 0, ancestorProfiles: found }',
   '}',
-  '// A provider notice (quota, sign-in, rate limit) is never an observation. Wording for every surface; the shape test',
-  '// (short and fast, no program) only where a real answer takes minutes.',
+  '// A provider notice (quota, sign-in, rate limit) is never an observation. Wording for every vendor CLI, which prints',
+  '// such a notice as its answer text; the shape test (short and fast, no program) only where a real answer takes',
+  '// minutes. A custom endpoint reports a notice as an HTTP status, never inside a 200 answer, so its answer text is',
+  '// not read for wording: an answer that mentions a limit or a quota is still an answer.',
   'export function providerBlocked(config, surface, rawText, wallMs) {',
-  "  if (!rawText) return false",
+  "  if (!rawText || surface === 'http') return false",
   '  const t = String(rawText).trim(), notices = config.providerNotices || {}',
   "  if (notices.shapeTest && (notices.shapeSurfaces || []).includes(surface) && t.length < (notices.shapeChars || 400) && wallMs < (notices.shapeMs || 60000)) return true",
   "  return t.length < 600 && new RegExp(notices.wording || 'quota|limit', 'i').test(t)",
   '}',
-  "export const truncated = (config, rawText) => !!rawText && new RegExp(config.truncation || 'max_tokens', 'i').test(String(rawText))",
+  "// A vendor CLI prints a cut-off as its answer text. A custom endpoint's cut-off is its stop reason (providerTruncated),",
+  "// so an endpoint answer that mentions max_tokens is not read as one.",
+  "export const truncated = (config, rawText, surface) => surface !== 'http' && !!rawText && new RegExp(config.truncation || 'max_tokens', 'i').test(String(rawText))",
   '// Embedded from the Research page (research-record.mjs, research-models.mjs): one implementation for the page and the harness.',
   'export ' + applyRecordPolicy.toString(),
   'export ' + modelRequest.toString(),
@@ -265,13 +271,21 @@ const CLEAN_ROOM = [
   "  if (surface === 'gemini-cli') { const js = npmGlobal(['@google', 'gemini-cli', 'bundle', 'gemini.js']); return js && existsSync(js) ? { command: process.execPath, prefix: [js] } : { command: 'gemini', prefix: [] } }",
   "  throw new Error('unknown surface ' + surface)",
   '}',
-  '// Credentials are copied into the room homes from the real profile; nothing else comes along.',
+  '// Sign-ins are never copied into the room. Automated draws use the provider\'s API key, read by name from this',
+  '// process\'s environment; a subscription sign-in stays in the person\'s own profile, where the vendor CLI keeps it.',
+  "export const API_KEY_ENV = { 'claude-cli': ['ANTHROPIC_API_KEY'], 'codex-cli': ['CODEX_API_KEY', 'OPENAI_API_KEY'], 'gemini-cli': ['GEMINI_API_KEY'] }",
+  'export function missingApiKey(surface) {',
+  '  const names = API_KEY_ENV[surface] || []',
+  "  if (!names.length || names.some(name => process.env[name])) return null",
+  "  return 'set ' + names.join(' or ') + ' in the environment of this run; ' + surface + ' draws use the provider API key, and sign-ins are not copied into the room'",
+  '}',
   'export function ensureAuth(config, surface) {',
-  "  const r = room(config), real = process.env.USERPROFILE || process.env.HOME || ''",
+  '  const r = room(config), keys = {}',
   "  if (surface === 'http') return {}",
-  "  if (surface === 'claude-cli') { const home = join(r.homes, 'claude-config'); mkdirSync(home, { recursive: true }); const cred = join(real, '.claude', '.credentials.json'); if (existsSync(cred)) copyFileSync(cred, join(home, '.credentials.json')); return { CLAUDE_CONFIG_DIR: home } }",
-  "  if (surface === 'codex-cli') { const home = join(r.homes, 'codex'); mkdirSync(home, { recursive: true }); const auth = join(real, '.codex', 'auth.json'); if (existsSync(auth)) copyFileSync(auth, join(home, 'auth.json')); return { CODEX_HOME: home } }",
-  "  if (surface === 'gemini-cli') { const home = join(r.homes, 'gemini'); mkdirSync(join(home, '.gemini'), { recursive: true }); const creds = join(real, '.gemini', 'oauth_creds.json'); if (existsSync(creds)) copyFileSync(creds, join(home, '.gemini', 'oauth_creds.json')); writeFileSync(join(home, '.gemini', 'settings.json'), JSON.stringify({ security: { auth: { selectedType: 'oauth-personal' } } })); return { USERPROFILE: home, HOME: home } }",
+  '  for (const name of API_KEY_ENV[surface] || []) if (process.env[name]) keys[name] = process.env[name]',
+  "  if (surface === 'claude-cli') { const home = join(r.homes, 'claude-config'); mkdirSync(home, { recursive: true }); return Object.assign({ CLAUDE_CONFIG_DIR: home }, keys) }",
+  "  if (surface === 'codex-cli') { const home = join(r.homes, 'codex'); mkdirSync(home, { recursive: true }); return Object.assign({ CODEX_HOME: home }, keys) }",
+  "  if (surface === 'gemini-cli') { const home = join(r.homes, 'gemini'); mkdirSync(join(home, '.gemini'), { recursive: true }); writeFileSync(join(home, '.gemini', 'settings.json'), JSON.stringify({ security: { auth: { selectedType: 'gemini-api-key' } } })); return Object.assign({ USERPROFILE: home, HOME: home }, keys) }",
   '  return {}',
   '}',
   'function version(command, prefix) {',
@@ -284,7 +298,9 @@ const CLEAN_ROOM = [
   "  const timeoutMs = (options && options.timeoutMs) || Math.round((config.timeoutMinutes || 40) * 60000)",
   "  if (surface === 'http') return runHttp(config, model, effort, prompt, timeoutMs)",
   "  const policy = (options && options.tools) || null",
-  "  const exe = resolveExecutable(config, surface), auth = ensureAuth(config, surface), started = Date.now()",
+  "  const exe = resolveExecutable(config, surface), missingKey = missingApiKey(surface)",
+  "  if (missingKey) return { surface, model, effort, argv: [exe.command, ...exe.prefix], cliVersion: null, wallMs: 0, evidence: { exit: null, signal: null, spawnError: missingKey, stderrTail: '', stdoutTail: '' }, rawText: null, served: null, usage: {}, isError: true, providerTruncated: false, providerRefusal: null }",
+  "  const auth = ensureAuth(config, surface), started = Date.now()",
   "  const extra = {}",
   "  for (const name of (policy && policy.env) || []) if (process.env[name] !== undefined) extra[name] = process.env[name]",
   "  let args, env, stdin = prompt, r",
@@ -295,7 +311,7 @@ const CLEAN_ROOM = [
   "    args = [...exe.prefix, 'exec', '--skip-git-repo-check', '--ignore-user-config', '--ephemeral', '-s', (policy && policy.sandbox) || 'read-only', '--json', '-o', join(cwd, 'last.txt'), '-m', model, '-c', 'model_reasoning_effort=' + effort].concat(policy ? policy.args : []).concat(['-'])",
   "    env = cleanEnv(config, Object.assign({}, auth, extra))",
   "  } else if (surface === 'gemini-cli') {",
-  "    const settings = { security: { auth: { selectedType: 'oauth-personal' } } }",
+  "    const settings = { security: { auth: { selectedType: 'gemini-api-key' } } }",
   "    if (config.judging) settings.modelConfigs = { customOverrides: [{ match: { model }, modelConfig: { generateContentConfig: { thinkingConfig: { thinkingLevel: effort.toUpperCase() } } } }] }",
   "    if (policy && policy.settings) Object.assign(settings, policy.settings)",
   "    writeFileSync(join(auth.HOME, '.gemini', 'settings.json'), JSON.stringify(settings))",
@@ -305,12 +321,13 @@ const CLEAN_ROOM = [
   "  r = spawnSync(exe.command, args, { input: stdin, encoding: 'utf8', cwd, env, shell: false, timeout: timeoutMs, maxBuffer: 256 * 1024 * 1024, windowsHide: true })",
   "  const wallMs = Date.now() - started",
   "  const evidence = { exit: r.status, signal: r.signal || null, spawnError: r.error ? String(r.error.code || r.error.message) : null, stderrTail: tail(r.stderr), stdoutTail: tail(r.stdout) }",
-  "  const base = { surface, model, effort, argv: [exe.command, ...args.map(arg => arg === prompt ? '<prompt>' : arg)], cliVersion: version(exe.command, exe.prefix), wallMs, evidence, rawText: null, served: null, usage: {}, isError: false, providerTruncated: false }",
+  "  const base = { surface, model, effort, argv: [exe.command, ...args.map(arg => arg === prompt ? '<prompt>' : arg)], cliVersion: version(exe.command, exe.prefix), wallMs, evidence, rawText: null, served: null, usage: {}, isError: false, providerTruncated: false, providerRefusal: null }",
   "  if (surface === 'claude-cli') {",
   "    try {",
   "      const j = JSON.parse(r.stdout)",
   "      const usage = j.usage || {}, served = j.modelUsage ? Object.keys(j.modelUsage) : null",
-  "      return Object.assign(base, { rawText: j.result == null ? null : String(j.result), isError: j.is_error === true, served: served && served.length === 1 ? served[0] : (served ? served.join('+') : null),",
+  "      // A Claude refusal (stop_reason refusal) is an error result whose text is the CLI's own notice, never an answer.",
+  "      return Object.assign(base, { rawText: j.result == null ? null : String(j.result), isError: j.is_error === true, providerRefusal: j.stop_reason === 'refusal' ? 'refusal' : null, served: served && served.length === 1 ? served[0] : (served ? served.join('+') : null),",
   "        usage: { inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, cachedInputTokens: usage.cache_read_input_tokens, generationMs: j.duration_api_ms, turns: j.num_turns } })",
   "    } catch (error) { return base }",
   "  }",
@@ -332,26 +349,55 @@ const CLEAN_ROOM = [
   "  if (m) { try { const j = JSON.parse(m[0]); return Object.assign(base, { rawText: j.response == null ? null : String(j.response), served: j.stats && j.stats.models ? Object.keys(j.stats.models).join('+') : null }) } catch (error) { /* fall through */ } }",
   "  return base",
   "}",
+  "// One HTTP POST under the draw's own deadline. Node's global fetch gives up on any reply whose headers take longer",
+  "// than 300 s (undici's headersTimeout; measured on Node 22.19: UND_ERR_HEADERS_TIMEOUT at 300.7 s under a 425 s",
+  "// AbortSignal), and a non-streaming model reply sends its headers only once the whole answer is written, so every",
+  "// draw longer than five minutes failed whatever its timeout said. node:http has no such limit: the deadline below is",
+  "// the only one. Redirects are not followed; a 3xx is a failed draw, as redirect: 'error' made it before.",
+  "function postJson(url, headers, body, timeoutMs) {",
+  "  return new Promise((resolve, reject) => {",
+  "    let target",
+  "    try { target = new URL(url) } catch (error) { reject(error); return }",
+  "    const send = target.protocol === 'https:' ? httpsRequest : target.protocol === 'http:' ? httpRequest : null",
+  "    if (!send) { reject(new Error('unsupported endpoint protocol ' + target.protocol)); return }",
+  "    const payload = Buffer.from(body, 'utf8'), chunks = []",
+  "    let settled = false, timer = null",
+  "    const finish = (error, value) => { if (settled) return; settled = true; clearTimeout(timer); if (error) reject(error); else resolve(value) }",
+  "    const req = send(target, { method: 'POST', headers: Object.assign({}, headers, { 'content-length': payload.length }) }, res => {",
+  "      res.on('data', chunk => chunks.push(chunk))",
+  "      res.on('end', () => finish(null, { status: res.statusCode, body: Buffer.concat(chunks).toString('utf8') }))",
+  "      res.on('error', error => finish(error))",
+  "      res.on('close', () => { if (!res.complete) finish(Object.assign(new Error('the endpoint closed its reply before the end'), { code: 'ECONNRESET' })) })",
+  "    })",
+  "    timer = setTimeout(() => { const error = Object.assign(new Error('the draw exceeded its ' + timeoutMs + ' ms deadline'), { code: 'TIMEOUT' }); finish(error); req.destroy(error) }, timeoutMs)",
+  "    req.on('error', error => finish(error))",
+  "    req.end(payload)",
+  "  })",
+  "}",
   "// One draw against a custom-named model. The key is read from this process's environment under the credential name",
-  "// registered in surfaces.json and goes into one request header: never a file, a child process or the envelope.",
+  "// registered in surfaces.json and goes into one request header: never a file, a child process or the envelope. An",
+  "// endpoint, or a proxy in front of it, can echo the request's headers back, so the key value itself is masked in",
+  "// everything this draw keeps, whatever its shape.",
   "async function runHttp(config, modelId, effort, prompt, timeoutMs) {",
   "  const spec = (config.models || []).find(item => item.id === modelId), started = Date.now()",
-  "  const base = { surface: 'http', model: modelId, effort, argv: ['fetch', spec ? spec.url : '<unregistered model>'], cliVersion: 'node ' + process.version, wallMs: 0, evidence: { exit: null, signal: null, spawnError: null, stderrTail: null, stdoutTail: null }, rawText: null, served: null, usage: {}, isError: false, providerTruncated: false }",
+  "  const base = { surface: 'http', model: modelId, effort, argv: ['fetch', spec ? spec.url : '<unregistered model>'], cliVersion: 'node ' + process.version, wallMs: 0, evidence: { exit: null, signal: null, spawnError: null, stderrTail: null, stdoutTail: null }, rawText: null, served: null, usage: {}, isError: false, providerTruncated: false, providerRefusal: null }",
   "  if (!spec) { base.isError = true; base.evidence.spawnError = 'unregistered custom model ' + modelId; return base }",
   "  const key = process.env[spec.credential]",
   "  if (!key) { base.isError = true; base.evidence.spawnError = 'the credential named ' + spec.credential + ' is not set in the environment of this run'; return base }",
+  "  const masked = value => value == null ? null : String(value).split(key).join('<KEY>')",
   "  const request = modelRequest(spec, prompt, effort, key, config.outputTokenCap)",
   "  let body = ''",
   "  try {",
-  "    const response = await fetch(request.url, { method: 'POST', headers: request.headers, body: JSON.stringify(request.body), redirect: 'error', signal: AbortSignal.timeout(timeoutMs) })",
-  "    body = await response.text()",
+  "    const response = await postJson(request.url, request.headers, JSON.stringify(request.body), timeoutMs)",
+  "    body = response.body",
   "    base.wallMs = Date.now() - started; base.evidence.exit = response.status",
-  "    if (!response.ok) { base.isError = true; base.evidence.stderrTail = tail(body); return base }",
+  "    if (!(response.status >= 200 && response.status < 300)) { base.isError = true; base.evidence.stderrTail = tail(masked(body)); return base }",
   "    const result = modelResult(spec, JSON.parse(body))",
-  "    base.rawText = result.rawText; base.served = result.served; base.usage = Object.assign({}, result.usage, { generationMs: base.wallMs }); base.providerTruncated = result.truncated === true",
-  "    if (base.rawText === null) { base.isError = true; base.evidence.stdoutTail = tail(body) }",
+  "    base.rawText = result.rawText; base.served = result.served; base.usage = Object.assign({}, result.usage, { generationMs: base.wallMs }); base.providerTruncated = result.truncated === true; base.providerRefusal = result.refused || null",
+  "    if (base.rawText === null) base.isError = true",
+  "    if (base.rawText === null || base.providerRefusal) base.evidence.stdoutTail = tail(masked(body))",
   "    return base",
-  "  } catch (error) { base.wallMs = Date.now() - started; base.isError = true; base.evidence.spawnError = String(error.code || error.name || error.message); base.evidence.stdoutTail = tail(body); return base }",
+  "  } catch (error) { base.wallMs = Date.now() - started; base.isError = true; base.evidence.spawnError = masked(String(error.code || error.name || error.message)); base.evidence.stdoutTail = tail(masked(body)); return base }",
   "}",
   '',
 ].join('\n')
@@ -362,7 +408,7 @@ const DRAW = [
   "// Reads the frozen request JSON on stdin, refuses without a same-day canary pass for the surface, runs one draw in a",
   "// fresh clean-room directory under the named tool profile (none: tools off), and prints one JSON envelope: output,",
   "// identity, completion, usage, harness record, reduced to what the registered recording policy keeps.",
-  "// A provider notice, a truncated reply or a transport failure exits non-zero, so the runner records a failed attempt",
+  "// A provider notice or refusal, a truncated reply or a transport failure exits non-zero, so the runner records a failed attempt",
   "// (never a model observation) and retries within the frozen attempt budget.",
   "import { readFileSync, rmSync } from 'node:fs'",
   "import { applyRecordPolicy, cleanEnv, freshCwd, isolationRecord, loadConfig, providerBlocked, requireCertified, runSurface, sha256, truncated } from './clean-room.mjs'",
@@ -383,8 +429,12 @@ const DRAW = [
   "const result = await runSurface(config, surface, model, effort, prompt, cwd, { tools: policy })",
   "if (!(config.record && config.record.keepDraws)) try { rmSync(cwd, { recursive: true, force: true }) } catch (error) { /* a locked temp dir costs a folder, never the draw */ }",
   "const blocked = result.rawText !== null && providerBlocked(config, surface, result.rawText, result.wallMs)",
-  "const cut = result.rawText !== null && (truncated(config, result.rawText) || result.providerTruncated === true)",
-  "const failure = result.rawText === null || result.isError ? 'harness-error' : cut ? 'harness-truncation' : blocked ? 'provider-blocked' : null",
+  "const cut = result.rawText !== null && (truncated(config, result.rawText, surface) || result.providerTruncated === true)",
+  "// A provider refusal (the provider's safety system stopped or withheld the reply) is never an observation, even",
+  "// with partial text; like a provider notice it is a failed attempt with the provider's own stop reason as evidence.",
+  "const refused = result.providerRefusal ? String(result.providerRefusal) : null",
+  "if (refused) result.evidence.providerRefusal = refused",
+  "const failure = refused ? 'provider-refusal' : result.rawText === null || result.isError ? 'harness-error' : cut ? 'harness-truncation' : blocked ? 'provider-blocked' : null",
   "const record = config.record || {}",
   "const envelope = {",
   "  output: result.rawText == null ? '' : result.rawText,",
@@ -394,7 +444,7 @@ const DRAW = [
   "  harness: { surface, model, effort, tools: profile, requestedModel: model, servedModel: result.served, argv: result.argv, wallMs: result.wallMs, canary: certificate, isolation, promptSha256: sha256(request.prompt || ''), sentSha256: sha256(prompt), outputSha256: result.rawText == null ? null : sha256(result.rawText), appended: !!append, trial: request.trial || null, attempt: request.attempt || null, evidence: failure || record.evidence === 'always' ? result.evidence : undefined },",
   "}",
   "process.stdout.write(JSON.stringify(applyRecordPolicy(record, envelope)) + '\\n')",
-  "if (failure) { console.error(failure + ': ' + (result.rawText == null ? (result.evidence.spawnError || result.evidence.stderrTail || 'no text') : String(result.rawText).trim().slice(0, 160))); process.exit(failure === 'provider-blocked' ? 3 : 4) }",
+  "if (failure) { console.error(failure + ': ' + (refused || (result.rawText == null ? (result.evidence.spawnError || result.evidence.stderrTail || 'no text') : String(result.rawText).trim().slice(0, 160)))); process.exit(failure === 'provider-blocked' || failure === 'provider-refusal' ? 3 : 4) }",
   '',
 ].join('\n')
 
@@ -458,7 +508,7 @@ export function harnessFiles(draft, settings) {
     '2. `node harness/canary.mjs` (same UTC day as the draws; the day rolls at 00:00 UTC).',
     '3. `node cli.mjs run` in the project directory, or let the run board do it.', '',
     '4. If judges are configured, run `node harness/judge.mjs` after collection. Use `--results DIRECTORY` if collection used a different result directory. Run the canary again if the UTC day has changed.', '',
-    'Credentials are copied into the room homes from the real profile (claude `.credentials.json`, codex `auth.json`, gemini `oauth_creds.json`); the vendor CLIs are found in the npm global install or on PATH, or at the executable named per surface in `surfaces.json`.', '',
+    'Sign-ins are never copied into the room. Each CLI draw uses the provider API key named in its environment (claude `ANTHROPIC_API_KEY`, codex `CODEX_API_KEY` or `OPENAI_API_KEY`, gemini `GEMINI_API_KEY`); a draw without one fails and names the variable to set. The vendor CLIs are found in the npm global install or on PATH, or at the executable named per surface in `surfaces.json`.', '',
     `Room: \`${config.root}\`. Per-draw timeout ${config.timeoutMinutes} minutes (the runner's attempt timeout is the ceiling that kills the tree). Output token cap ${config.outputTokenCap}.`, '',
     'Conditions: ' + (config.conditions.map(c => c.id).join(', ') || 'none yet') + '.', '',
     'Judges: ' + (config.judges.map(j => j.id + ' (' + j.surface + ', ' + j.model + ', ' + j.effort + ')').join('; ') || 'none') + '. Each judge\'s prompt is written in full in `surfaces.json`.', '',

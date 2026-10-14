@@ -792,79 +792,47 @@ test('the sign-in the probe looks for is declared the way the host declares ever
   )
 })
 
-test('the payload, when one is staged, still links the credential the probe expects', () => {
-  /* THE OTHER HALF, and it is CONDITIONAL rather than skipped-in-disguise: the
-     assertions below are the real drift check, and they run on every machine
-     that has cut a payload -- which is every machine that can build an
-     installer, including the one that cuts releases. On a bare checkout there
-     is nothing to compare against and this reports that in its name rather than
-     pretending to have checked. The unconditional test above is what holds when
-     this cannot run. */
+test('a staged Codex planner leaves the selected sign-in in place and carries confinement argv', t => {
   const payloadPath = resolve(ROOT, 'capability/src/lib/agent-session-confinement.js')
   if (!existsSync(payloadPath)) {
-    assert.ok(true, 'no payload is staged in this checkout, so there is nothing to compare')
+    t.skip('no capability payload is staged in this checkout')
     return
   }
-  const payload = readFileSync(payloadPath, 'utf8')
-  assert.match(payload, /const accountProfileBoundary = require\('\.\/account-profile-boundary'\);/,
-    'the payload must load the shared account boundary that derives the installation owner')
-  assert.match(payload, /const \{[\s\S]*?installationProfileRoot,[\s\S]*?assertAccountProfilePath,[\s\S]*?\} = accountProfileBoundary;/,
-    'the confinement planner must use the shared installation-owner and path checks')
-  assert.match(payload, /userCodexHome \|\| path\.join\(boundaryHome, '\.codex'\)/,
-    'the payload must still source the ordinary Codex sign-in below the installation-owned profile; the probe copies that construction')
-  assert.doesNotMatch(payload.slice(payload.indexOf('function prepareConfinedCodexHome'), payload.indexOf('function prepareConfinedClaudeHome')), /process\.env\.CODEX_HOME|os\.homedir\(\)/,
-    'the confined Codex plan must not recover an ambient account through CODEX_HOME or os.homedir')
-  /* THE CREDENTIAL NAME MOVED, AND THE INVARIANT DID NOT. This used to match
-     `path.join(userHome, 'auth.json')` in the payload, because that is the
-     construction shell/agent-host.cjs copies at line 726 to decide whether a
-     person is signed out. The payload stopped hardcoding it: linkCredential()
-     now takes `signInFile` as a REQUIRED parameter so one function serves both
-     providers, from the single table multi-account/registry.js keeps.
-
-     So this drift check fired correctly and pointed at a change that is not a
-     defect -- for a Codex home the resolved name is still auth.json, which is
-     what the host probe assumes. Matching the old literal again would just be
-     re-pinning a construction that legitimately moved. Pin the thing the probe
-     actually depends on instead: the registry's name for codex. That is
-     strictly stronger, because the old regex would have stayed green if the
-     registry had started naming something else while a stale literal survived
-     somewhere in the file. */
-  // Execute the staged helper with synthetic sign-in bytes. Its optional
-  // no-copy policy can evolve without weakening the credential-name contract.
-  const linkStart = payload.indexOf('function linkCredential(')
-  const linkEnd = payload.indexOf('\n}\n', linkStart) + 2
-  assert.ok(linkStart >= 0 && linkEnd > linkStart, 'the credential linking helper must remain identifiable')
   const require = createRequire(import.meta.url)
+  const planner = require(payloadPath)
   const fs = require('node:fs')
-  const linkCredential = runInNewContext(`(${payload.slice(linkStart, linkEnd)})`, {
-    fs, path: require('node:path'),
-    AgentConfinementRefusal: class extends Error {
-      constructor(code, message) { super(message); this.code = code }
-    },
-  })
-  const scratch = testScratch('mc-credential-name-')
+  const scratch = testScratch('mc-signin-custody-')
+  const source = join(scratch, 'named-account'), servicesRoot = join(scratch, 'services')
+  mkdirSync(source)
+  writeFileSync(join(source, 'auth.json'), '{"fixture":"inert native account"}')
+  const original = Object.fromEntries(['linkSync', 'copyFileSync', 'readFileSync', 'writeFileSync'].map(name => [name, fs[name]]))
   try {
-    const source = join(scratch, 'named-account'), target = join(scratch, 'generated-account')
-    mkdirSync(source)
-    mkdirSync(target)
-    writeFileSync(join(source, 'auth.json'), 'synthetic credential')
-    assert.equal(linkCredential(source, target, 'auth.json', { allowCopy: false }), 'hardlink')
-    const before = fs.statSync(join(source, 'auth.json'), { bigint: true })
-    const linked = fs.statSync(join(target, 'auth.json'), { bigint: true })
-    assert.equal(linked.dev, before.dev)
-    assert.equal(linked.ino, before.ino, 'the selected credential must remain one refreshable file')
-    writeFileSync(join(source, 'auth.json'), 'synthetic refreshed credential')
-    assert.equal(readFileSync(join(target, 'auth.json'), 'utf8'), 'synthetic refreshed credential')
-    assert.throws(() => linkCredential(source, target, 'absent-sign-in.json'), { code: 'AGENT_CONFINEMENT_SIGNED_OUT' })
+    for (const name of Object.keys(original)) fs[name] = (...args) => {
+      if (args.slice(0, name === 'linkSync' || name === 'copyFileSync' ? 2 : 1)
+        .some(file => typeof file === 'string' && file.endsWith('/auth.json') || typeof file === 'string' && file.endsWith('\\\\auth.json'))) {
+        assert.fail(name + ' touched a Codex sign-in')
+      }
+      return original[name](...args)
+    }
+    const built = planner.prepareConfinedCodexHome(planner.agentConfinement('guided'), {
+      userCodexHome: source, accountHome: scratch, accountName: 'chosen', servicesRoot, record: null
+    })
+    assert.equal(fs.realpathSync(built.codexHome), fs.realpathSync(source))
+    assert.equal(built.env.CODEX_HOME, built.codexHome)
+    assert.equal(existsSync(join(built.agentHome, 'auth.json')), false)
+    assert.equal(existsSync(join(built.agentHome, 'config.toml')), false)
+    assert.equal(built.codexConfig.sandbox_mode, 'read-only')
+    assert.equal(built.codexConfig.approval_policy, 'never')
+    assert.deepEqual(built.codexConfig.mcp_servers, {})
+    assert.ok(built.codexArgs.some(value => value.startsWith('mcp_servers=')))
+    rmSync(join(source, 'auth.json'))
+    assert.throws(() => planner.prepareConfinedCodexHome(planner.agentConfinement('guided'), {
+      userCodexHome: source, accountHome: scratch, servicesRoot, record: null
+    }), { code: 'AGENT_CONFINEMENT_SIGNED_OUT' })
   } finally {
+    for (const [name, method] of Object.entries(original)) fs[name] = method
     rmSync(scratch, { recursive: true, force: true })
   }
-  const registry = readFileSync(resolve(ROOT, 'capability/src/lib/multi-account/registry.js'), 'utf8')
-  assert.match(registry, /codex: Object\.freeze\(\{[^}]*signInFile: 'auth\.json'[^}]*\}\)/,
-    "the registry still names auth.json for a Codex home; shell/agent-host.cjs hardcodes that name to answer"
-    + ' AGENT_CONFINEMENT_SIGNED_OUT, so if this moves the probe reports the wrong sign-in state')
-  assert.match(payload, /'AGENT_CONFINEMENT_SIGNED_OUT'/, 'the payload still raises the code the probe reports')
-  assert.match(payload, /confinement\.isolated !== true/, 'the payload still builds a confined home only for an isolated level')
 })
 
 test('a bad working directory outranks a missing planner, because construction does', () => {
@@ -1204,10 +1172,10 @@ test('every refusal the start CHANNEL raises reaches the person as a reason, not
   }
   /* A REFUSAL THAT IS RETURNED, NEVER THROWN, AND SO NEVER CROSSES AS A CODE.
    *
-   * MEASURED, 2026-09-16: the T18 an earlier commit added
+   * MEASURED, 2026-09-16: the T18 commit 9623a4bc added
    * MC_AGENT_IMAGE_TOO_LARGE_TO_DELIVER to this surface and left it
    * unclassified here, which turned this census RED -- and that red is in the
-   * cut (an earlier commit), in the generation that was running. The census was
+   * cut (dc51d324), in the generation the owner is running. The census was
    * right and the commit was wrong to leave it out; its own note says "New
    * codes remain in the census until their actual consumer is reviewed".
    *
@@ -1223,7 +1191,7 @@ test('every refusal the start CHANNEL raises reaches the person as a reason, not
    * property that MAKES it true, so the day one of these codes is thrown
    * instead of returned, or loses the sentence it travels with, this fails
    * rather than sitting here as a stale exemption. */
-  /* THE SECOND RETURNED REFUSAL, 2026-09-23. The shared-role guard (an earlier commit)
+  /* THE SECOND RETURNED REFUSAL, 2026-09-23. The shared-role guard (7113fe33f)
    * answers org:ensure-seat with `{ ok: false, code, reason }` when another
    * live conversation already holds this role on a different provider. The
    * surface RETURNS it on purpose -- its own comment says why: custom
@@ -1421,6 +1389,20 @@ test('every refusal code in the agent host is classified as reachable from the p
     // placement only; neither is a readiness condition for starting an agent.
     'AGENT_TREE_ALREADY_ASSIGNED',
     'AGENT_TREE_NODE_OCCUPIED',
+    // Stopped placement verifies one saved source and transfers its durable
+    // owner; a readiness probe has no source selector or placement target.
+    // Mounted stopped-native-adoption tests assert this operation's sentence.
+    'AGENT_STOPPED_ADOPTION_REFUSED',
+    // Rewind has already received a native fork when saving its origin fails;
+    // only that live operation can reach this code. Its mounted rewind tests
+    // assert the original thread survives and the control names the refusal.
+    'AGENT_REWIND_ORIGIN_STORAGE_FAILED',
+    /* What sendTurn() answers when that boundary fails AFTER the provider
+       accepted the turn (acceptedSendError): the message went and only saving
+       it did not. An operation on a running session like the entry above,
+       never a readiness condition; its own copy is TRANSCRIPT_ACCEPTED_UNSAVED,
+       kept apart from the "not sent" rows on purpose. */
+    'MC_TRANSCRIPT_SENT_UNSAVED',
     // treeLinks() and setTreeLink() ask for directory methods only when the
     // person reads or changes direct links. An older engine can still start
     // agents without those methods, so this operation refusal cannot come
@@ -1437,6 +1419,9 @@ test('every refusal code in the agent host is classified as reachable from the p
     'AGENT_RESUME_INVALID_THREAD',
     'AGENT_RESUME_UNSUPPORTED',
     'AGENT_RESUME_ACCOUNT_UNAVAILABLE',
+    // Comparing a saved origin with its named account's current folder needs
+    // that conversation selector; a provider readiness probe has none.
+    'AGENT_RESUME_HOME_CHANGED',
     // startSession's exactResumeAccount branch classifies the saved owner's
     // resolver attempt. A readiness probe has no requested saved account or
     // provider thread, so it cannot reach either specific refusal.
@@ -1494,7 +1479,7 @@ test('every refusal code in the agent host is classified as reachable from the p
     'AGENT_REQUEST_DIFFICULTY_INVALID',
     /* Raised only when a RULE filing arrives naming the chat as its door while
        the person's "Who adds standing rules" is "Ledger page only"
-       (rules.filing_from). A readiness probe holds no
+       (rules.filing_from, owner 2026-09-15). A readiness probe holds no
        request and names no door, so it cannot reach this; and the refusal is
        answered in the chat that attempted it, with the sentence the host
        returns, rather than through availability copy on a start surface. The
@@ -1543,19 +1528,22 @@ test('every refusal code in the agent host is classified as reachable from the p
        the host's own backstop for a caller that skipped that parse, so a
        readiness probe -- which holds no objective -- cannot reach it. */
     'AGENT_GOAL_INVALID',
-    /* Raised by sendTurn's accepted-prompt boundary (an earlier commit, T1628) when the
+    /* Raised by sendTurn's accepted-prompt boundary (04e47f58, T1628) when the
        transcript reservation for a turn that was ALREADY accepted cannot be
        released into durable storage. It answers that one send, after
        dispatch; a readiness probe holds no turn and no reservation, so it
        cannot reach it. Storage refusals BEFORE a send are the capture's own
        MC_TRANSCRIPT_* answers, with their copy in agent-availability-copy.js. */
     'MC_TRANSCRIPT_STORAGE_FAILED',
-    /* Raised by heldSessionIds() (an earlier commit) for a presence batch that is not
+    /* Raised by heldSessionIds() (c8d7b27b) for a presence batch that is not
        an array or holds more than 4096 saved session IDs. Local reconnect
        builds that batch from ids it already holds, so only renderer/host
        drift or a hand-built payload can shape it wrong -- the
        MC_AGENT_INVALID_PAYLOAD family, like AGENT_REQUEST_KEYS_INVALID. */
     'AGENT_SESSION_PRESENCE_INVALID',
+    /* sendTurn refuses a per-turn model change the agent's program cannot make mid-conversation (1.0.50 exact
+       models). It answers that one send; a readiness probe holds no turn. Its page copy is in agent-availability-copy.js. */
+    'AGENT_MODEL_TURN_UNSUPPORTED',
   ])
   const source = read('shell/agent-host.cjs')
   const plannerSource = engineFile('src/lib/agent-session-confinement.js')
@@ -1595,7 +1583,15 @@ test('every refusal code in the agent host is classified as reachable from the p
 
 test('every staged confinement-planner refusal that can reach the host has local and remote plain-language copy', () => {
   const plannerSource = engineFile('src/lib/agent-session-confinement.js')
-  const plannerCodes = new Set(plannerSource.match(/AGENT_CONFINEMENT_[A-Z0-9_]+/g) || [])
+  /* Every code the planner returns or raises, not only the AGENT_CONFINEMENT_
+     prefix: its Agent API mode refusals (AGENT_API_MODE_UNAVAILABLE and its
+     siblings) are spelled differently and were never walked, so an unreadable
+     saved mode reached the person as the generic reinstall sentence. */
+  const plannerCodes = new Set([
+    ...(plannerSource.match(/AGENT_CONFINEMENT_[A-Z0-9_]+/g) || []),
+    ...[...plannerSource.matchAll(/\brefusal\(\s*'([A-Z][A-Z0-9_]+)'/g)].map(match => match[1]),
+    ...[...plannerSource.matchAll(/AgentConfinementRefusal\(\s*'([A-Z][A-Z0-9_]+)'/g)].map(match => match[1]),
+  ])
   /* These are successful/fail-closed reading statuses, not rejected starts.
      They may ride a successful plan as diagnostic state, while every other
      planner code can be returned as plan.ok=false or raised by the final
@@ -1619,6 +1615,10 @@ test('every staged confinement-planner refusal that can reach the host has local
     const remote = readerRemedy(desk, { viaRelay: true })
     assert.doesNotMatch(desk, /AGENT_CONFINEMENT_[A-Z0-9_]+/, `${code} is rendered as an identifier instead of plain language`)
     assert.doesNotMatch(remote, /AGENT_CONFINEMENT_[A-Z0-9_]+/, `${code} is rendered remotely as an identifier instead of plain language`)
+    for (const sentence of [desk, remote, unavailableReason(code), readAgentEngine({ ok: false, code }).why]) {
+      assert.ok(!sentence.includes(code), `${code} is rendered as its own identifier instead of plain language`)
+      assert.doesNotMatch(sentence, /could not work out why|not set up to run agents/, `${code} falls back to generic copy`)
+    }
     assert.doesNotMatch(remote, /\bthis Windows account\b|\bthis computer\b/,
       `${code} gives a relay reader an instruction written for the other computer's desk: ${remote}`)
   }
@@ -1629,7 +1629,8 @@ test('account selection failures from the paired engine survive start IPC and ev
   const engineRoot = process.env.MC_CANONICAL_ROOT || join(ROOT, 'capability')
   const { CODE } = require(join(engineRoot, 'src/lib/multi-account/rotation.js'))
   for (const code of [CODE.NONE_USABLE, CODE.EXHAUSTED_MANUAL, CODE.UNREADABLE, CODE.STATE_UNREADABLE,
-    'ACCOUNT_RECOVERY_INVALID', 'ACCOUNT_RECOVERY_NO_ALTERNATE', 'ACCOUNT_CLIENT_INVALID', 'AGENT_ACCOUNT_UNAVAILABLE']) {
+    // (ACCOUNT_RECOVERY_INVALID and ACCOUNT_RECOVERY_NO_ALTERNATE left with automatic account recovery in 1.0.50.)
+    'ACCOUNT_CLIENT_INVALID', 'AGENT_ACCOUNT_UNAVAILABLE']) {
     assert.ok(START_REFUSAL_CODES.includes(code), `${code} must remain classified as a start refusal`)
     const recovered = refusalCode(new Error(`Error invoking remote method 'mc-agent:start': Error: ${code}`))
     assert.equal(recovered, code)
@@ -1741,10 +1742,9 @@ test('rules send refusals keep a running session and deliver no message until re
   }
 })
 
-test('recovery and provider refusals survive IPC with actionable local and remote copy', () => {
+test('provider refusals survive IPC with actionable local and remote copy', () => {
+  /* The two account-recovery codes left with automatic account recovery in 1.0.50. */
   for (const code of [
-    'AGENT_ACCOUNT_RECOVERY_UNAVAILABLE',
-    'AGENT_ACCOUNT_RECOVERY_NO_ALTERNATE',
     'AGENT_CONFINEMENT_PROVIDER_INVALID',
   ]) {
     assert.ok(START_REFUSAL_CODES.includes(code))
@@ -1880,8 +1880,26 @@ test('the agent session cwd is a real directory, not a path inside the app bundl
   // a checkout and a virtual one inside the asar, so this can only be caught by
   // reading what the shell actually passes.
   const main = read('shell/main.cjs')
-  const call = main.match(/createAgentHost\(\{[^}]*\}\)/)
-  assert.ok(call, 'main.cjs must construct the agent host with an explicit default cwd')
+  // The whole createAgentHost({ ... }) call, brackets balanced and quoted text skipped: its options hold nested
+  // objects, so a pattern that stops at the first closing brace reads a different, shorter text.
+  const callText = (() => {
+    const start = main.indexOf('createAgentHost({')
+    if (start < 0) return null
+    let depth = 0, quote = null
+    for (let i = start + 'createAgentHost'.length; i < main.length; i++) {
+      const ch = main[i]
+      if (quote) { if (ch === '\\') i++; else if (ch === quote) quote = null; continue }
+      if (ch === "'" || ch === '"' || ch === '`') { quote = ch; continue }
+      if (ch === '(' || ch === '{' || ch === '[') depth++
+      else if ((ch === ')' || ch === '}' || ch === ']') && --depth === 0) return main.slice(start, i + 1)
+    }
+    return null
+  })()
+  assert.ok(callText, 'main.cjs must construct the agent host with an explicit default cwd')
+  // Only the default cwd's own value is judged; other options may name files beside the shell.
+  const defaultCwd = /\bdefaultCwd:\s*([^,\n]+)/.exec(callText)
+  assert.ok(defaultCwd, 'main.cjs must construct the agent host with an explicit default cwd')
+  const call = [defaultCwd[0]]
   assert.doesNotMatch(
     call[0],
     /__dirname/,

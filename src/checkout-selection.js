@@ -1,4 +1,4 @@
-// What they chose, what it costs, and what the engine's spend cap would do to it.
+// What he chose, what it costs, and what the engine's spend cap would do to it.
 //
 // This module holds no DOM and imports nothing, so every rule below is
 // exercised by tools/test/checkout-selection.test.mjs in plain node rather
@@ -6,9 +6,9 @@
 //
 // TWO TOTALS, BECAUSE THEY ARE TWO DIFFERENT COMMITMENTS.
 //
-// "Cash today" is what leaves the account if they buy the selection now.
-// "Every year after" is what they are signed up for annually once the first year
-// is behind them. Adding those together, or showing only one, is how somebody
+// "Cash today" is what leaves the account if he buys the selection now.
+// "Every year after" is what he is signed up for annually once the first year
+// is behind him. Adding those together, or showing only one, is how somebody
 // agrees to a $9.99 charge and finds out later it was $9.99 a month. They are
 // computed separately from the same lines and never summed.
 //
@@ -85,9 +85,9 @@ function plainObject(value) {
  * Reconciliation is not tidying. Between two launches an item can vanish from
  * the catalogue, acquire a blocker, lose its price, or change price. The first
  * three mean the line is no longer choosable and is dropped -- carrying it
- * would put an amount in their total that the catalogue no longer stands behind.
+ * would put an amount in his total that the catalogue no longer stands behind.
  * The fourth is NOT dropped: it is kept and reported, because a price that
- * moved under a choice they already made is the single thing on this screen they
+ * moved under a choice he already made is the single thing on this screen he
  * would most want to be told about, and silently re-totalling is how the
  * cheap-first-year trap works.
  */
@@ -159,8 +159,8 @@ export function createSelectionStore({ catalog, storage, now = () => new Date().
   const selections = reconciled.selections
   let confirmed = plainObject(stored) && plainObject(stored.confirmed) ? stored.confirmed : null
   // Reported once, on the visit that discovers them, then cleared by the
-  // acknowledge below. A permanent banner about a change they have already read
-  // is noise that trains them to ignore the banner that matters.
+  // acknowledge below. A permanent banner about a change he has already read
+  // is noise that trains him to ignore the banner that matters.
   let priceChanges = reconciled.priceChanges
   let dropped = reconciled.dropped
   // Persist immediately when reconciliation actually changed the stored set,
@@ -234,7 +234,7 @@ export function createSelectionStore({ catalog, storage, now = () => new Date().
       if (selected) selections.set(id, selections.get(id) || 1)
       else selections.delete(id)
       // Any change to the basket invalidates a previous confirmation: a record
-      // that says they approved four lines must not survive them adding a fifth.
+      // that says he approved four lines must not survive him adding a fifth.
       confirmed = null
       announce()
       return summary()
@@ -282,15 +282,15 @@ export function createSelectionStore({ catalog, storage, now = () => new Date().
      * could later be mistaken for evidence that money moved.
      *
      * IT REFUSES WITHOUT A NAMED PRINCIPAL, and that check lives here rather
-     * than only in the view. The owner's condition is that a decision they did
-     * not make must never be recorded in their name, and a disabled button is a
+     * than only in the view. The owner's condition is that a decision he did
+     * not make must never be recorded in his name, and a disabled button is a
      * presentation fact -- this is the rule. A caller that skips the UI gets
      * the same refusal: the record stays null and nothing is written.
      *
      * WHAT THIS RECORD IS NOT. It is composed and stored in the renderer, so
-     * it is a durable note of what they chose, for them. It is not an audit
+     * it is a durable note of what he chose, for him. It is not an audit
      * record and nothing here calls it one; an identity a page can choose is
-     * not an identity. The vault half of their condition is carried explicitly
+     * not an identity. The vault half of his condition is carried explicitly
      * as unverified rather than omitted, so the record cannot read as though
      * both halves passed.
      */

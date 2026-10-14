@@ -1,6 +1,7 @@
 /* THE RAIL CHATBOX'S DECISIONS — especially the empty ones.
  *
- * On the right, clicking a node shows a chatbox along with the other buttons.
+ * Owner, verbatim: "On the right when you click a node there should be a
+ * chatbox along with the other buttons."
  *
  * The failure this suite exists to prevent is not a blank screen. It is a box
  * that looks like a working chat and is not one. Two ways that happens:
@@ -92,7 +93,7 @@ test('the simulated fleet never claims to reach a process', () => {
    (mcAgent.interrupt() already exists) or a read-only simulated fleet. Either
    adds a kind with a conversation and canSend:false, at which point the caller
    that meant "a conversation exists" starts reporting "no channel to this
-   agent" — reviving the defect an earlier commit fixed, without a test going red.
+   agent" — reviving the defect commit f4b4433 fixed, without a test going red.
    --------------------------------------------------------------- */
 
 test('a conversation that cannot be written to is still a conversation', () => {
@@ -153,7 +154,7 @@ test('the use site asks by name, which no behavioural test can yet prove', () =>
     assert.ok(expression.includes('channelHasConversation(channel)'),
       `${site.field} stopped asking ${site.why}`)
     assert.ok(!expression.includes('canSend'),
-      `${site.field} is asking about sendability again; the first non-writable conversation revives an earlier defect`)
+      `${site.field} is asking about sendability again; the first non-writable conversation revives f4b4433`)
   }
 })
 

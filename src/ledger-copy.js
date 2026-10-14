@@ -5,8 +5,8 @@ import { HANDOFF_VISIBILITY_TEXT } from './ledger-handoff-visibility.js'
  * WHY THESE STRINGS LEFT THE VIEW. src/views/ledger.js imports a stylesheet, so
  * a plain `node` run cannot load it, and every sentence this page shows when it
  * has no rows was composed inside a closure in there. That matters because the
- * defect on this page is not any one sentence. It was not human-friendly, and
- * what the page showed was one state told
+ * defect on this page is not any one sentence. The owner's word for it was "a
+ * mess (not human friendly)", and what he was looking at was one state told
  * three different ways at once: a red "could not be read" in the register's
  * accessible name and in its counter, a calm "this copy does not keep one, so
  * there is nothing here to show" in the paragraph between them, and below that
@@ -59,7 +59,7 @@ export const LEDGER_EMPTY = Object.freeze({
   tone: 'note',
   label: 'Your requests, of which there are none',
   className: 'projection-empty',
-  /* The box sits ABOVE the list, so the sentence points
+  /* The box sits ABOVE the list (owner, 2026-09-15), so the sentence points
      up at it (T1262). */
   body: 'There is nothing on file yet. File a request above, or type /Request in any chat.',
   count: 'nothing to show',
@@ -76,7 +76,7 @@ export const EMPTY_LIST = Object.freeze({
   /* All has no filing box of its own; it says where filing is (T1262). */
   all: 'There are no records in this list. Choose Rules or Tasks to file one, or type /Request or /Task in any chat.',
   q: 'There are no questions waiting on a decision.',
-  /* THE FOUR LEDGER SUBSETS: T tasks, A asks, P purchases.
+  /* THE OWNER'S FOUR SUBSETS (2026-09-07): T tasks, A asks, P purchases.
      A keeps q's sentence too -- it is drawn beside the questions half of that
      tab, which q's wording already describes, and gains its own for the
      kind-A ledger records beside it. */
@@ -123,7 +123,7 @@ export const QUESTIONS_UNREADABLE = Object.freeze({
   door: true,
 })
 
-/* THE FOUR LEDGER SUBSETS: T, the kind-A half of A, P and all
+/* THE OWNER'S FOUR SUBSETS (2026-09-07): T, the kind-A half of A, P and all
    share ONE read -- the same live ledger feed the R tab already reads, only
    filtered to a different letter -- so a read that fell over says so in the
    same two words on every one of those tabs, unlike R's and Q's, which each
@@ -266,7 +266,7 @@ export const QUEUE_FORM = Object.freeze({
  * off." followed by whatever the layer said -- which, until the engine's
  * typedError() stopped replacing every message with a constant, was always the
  * same six words: "The audited dependency refused the action." That is the red
- * line the page showed, and it is why it read differently from every
+ * line the owner was looking at, and it is why it read differently from every
  * other refusal in the product.
  *
  * The check on the current list is stated here rather than asked for in a box.
@@ -319,8 +319,8 @@ export function queueSnapshotLine(snapshot, context = {}) {
  * install. So the forms, the Approve and Decline buttons and the queue controls
  * were simply ABSENT, and nothing on the page accounted for them.
  *
- * The question of why the R items could not be seen or edited is the evidence
- * this needed saying. The feature was built and working the whole
+ * The owner's own question is the evidence this needed saying: "why cant i see
+ * or edit what the R items are?" The feature was built and working the whole
  * time. It was two switches away and the page never mentioned them.
  *
  * The tone is 'note', deliberately, and DECISION_OFF's own header says why: a
@@ -424,15 +424,15 @@ export const EXAMPLE_WRITE_NOTE = 'Nothing was sent. These are example records, 
    way to act on real records is that switch, named where it lives. */
 export const EXAMPLE_WRITE_NOTE_CHOSEN = 'Nothing was sent. These are example records, not yours, so there is nothing real here to act on. Turn off “Show the example fleet” in Settings, under What the screens show, to act on your own records.'
 
-/* THE R/T/A/P CHOICE (2026-09-07): the ledger has four subsets: R for rules;
-   T for tasks; A for asks, the things agents need from the person; and P for
-   actual purchases. These replace the old
+/* THE R/T/A/P CHOICE (owner's ruling, 2026-09-07): "ledger should have the
+   following subsets: R for rules; T for tasks... Asks for things agents need
+   from the owner; and Purchases for actual purchases". These replace the old
    R/Q toggle; a copy with 'q' remembered from before this shipped reads it as
    'a' (see readMode in ledger.js), which is where the Q tab's questions moved
    -- A is Q's successor, not a fifth thing beside it. */
 export const KIND_FILTER = Object.freeze({
   label: 'Ledger kind',
-  /* THE NAMES, SPELLED OUT (T1363): "R items" was a letter a
+  /* THE OWNER'S OWN NAMES, SPELLED OUT (T1363): "R items" was a letter a
      person had to decode, and the list and counter repeated it ("801 t
      items"). The letters stay the ids' first letters (R12, T4, A7, P3). */
   r: 'Rules',
@@ -493,9 +493,9 @@ export const SCOPE_CHIP = Object.freeze({
 /* THE PERSON'S HAND ON A ROW. Edit turns the words into a box with Save and
    Cancel; Delete takes two presses; Approve counts a rule an agent filed;
    Decline takes two presses with room for a reason between them. Complete
-   (T) and Answer (A) are later additions: a task is
+   (T) and Answer (A) are the owner's 2026-09-07 additions: a task is
    completed rather than approved, and an ask is answered rather than
-   decided. Resolve (R's own addition) is the person's way to move
+   decided. Resolve (R's own 2026-09-07 addition) is the owner's way to move
    a standing rule to one of RESOLUTION_STATUSES without deleting it. Every
    one draws a control in this same style, never a second one. */
 export const ROW_ACTIONS = Object.freeze({
@@ -515,7 +515,7 @@ export const ROW_ACTIONS = Object.freeze({
   groupLabel: id => `What you can do with ${id}`,
 })
 
-/* THE SIX RESOLUTION STATUSES (the Resolve action). The
+/* THE SIX RESOLUTION STATUSES (owner's Resolve action, 2026-09-07). The
    engine's own store export, RESOLUTION_STATUSES
    (src/lib/owner-request-store.js, carried onto the app pair as an engine
    follow-on), stays the authority for which six exist and their order; this
@@ -532,7 +532,7 @@ export const RESOLVE_STATUSES = Object.freeze([
 
 /* RESOLVE, REFUSED, IN THE SAME SHAPE COMPLETE_ROW AND ANSWER_ROW ALREADY
    ARE: what is off, and what to do about it. The bridge verb is
-   resolveStandingRequest (engine side, owner-only --
+   resolveStandingRequest (Worker 4, engine lane, own branch, owner-only --
    assertPerson exactly as decide); until a bridge actually has it the
    control that would trigger it is simply never drawn (see
    src/views/ledger.js verbs). `gone` matches DECIDE_ROW's own sentence for
@@ -556,10 +556,10 @@ export const RESOLVE_NOTE = Object.freeze({
   text: id => `Resolve ${id} to move it off the open list without deleting it. Choose what happened, and say why if you want to. Done, Not possible as asked and Superseded are final.`,
 })
 
-/* T's Complete and A's Answer (a later addition), refused in the
+/* T's Complete and A's Answer (owner's 2026-09-07 addition), refused in the
    same shape R's edit and delete already are: what is off, and what to do
-   about it. The bridge verbs are completeTask and answerAsk (engine
-   side); until a bridge actually has them the controls
+   about it. The bridge verbs are completeTask and answerAsk (Worker 4,
+   engine lane, own branch); until a bridge actually has them the controls
    that would trigger them are simply never drawn (see src/views/ledger.js
    verbs). */
 export const COMPLETE_ROW = Object.freeze({

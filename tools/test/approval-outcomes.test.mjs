@@ -1,7 +1,7 @@
 /* The record that outlives the screen.
  *
  * WHAT THIS IS GUARDING. src/ledger-prompt-queue.js submit() used to read
- * `if (destroyed) return` BEFORE it read `result.ok`, so when a person pressed
+ * `if (destroyed) return` BEFORE it read `result.ok`, so when the owner pressed
  * "Submit decisions" and then pressed the arrow -- which destroys the view
  * instance immediately -- a REFUSED decision was dropped in silence and became
  * indistinguishable from a recorded one. The end-to-end proof of the fix is

@@ -115,16 +115,20 @@ test('Research selected tabs retain their contrast and any quiet-chip override e
   assert.ok(selected.length > 0, 'the actual workflow has selected-tab styling')
   const colouredSelected = selected.filter(([, , body]) => /(?:background|color)\s*:/.test(body))
   assert.ok(colouredSelected.length > 0, 'selected tabs pair their background and text colours')
+  /* FIX-C 7: the selected tab is the DESIGN section 4 segmented control's
+     selected segment (surface + ink), not a second --ink fill beside the
+     view's one primary button. The pairing is still the point: a fill
+     without its own text colour is the regression this test exists for. */
   for (const [, , body] of colouredSelected) {
-    assert.match(body, /background:\s*var\(--ink\)/)
-    assert.match(body, /color:\s*var\(--bg\)/)
+    assert.match(body, /background:\s*var\(--bg-surface\)/)
+    assert.match(body, /color:\s*var\(--ink\)/)
+    assert.doesNotMatch(body, /background:\s*var\(--(?:ink|primary-bg)\)/, 'the selected tab is filled like the primary button again')
   }
   const colouring = rules.filter(([, , body]) => /(?:^|;)\s*color\s*:/.test(body))
   for (const [, selector] of colouring) {
     assert.match(selector, /:not\(\s*\[aria-pressed="true"\]\s*\)/,
-      'mutation `let the quiet chip colour apply while it is pressed` survived: the pressed recipe fills with --ink '
-      + 'and this rule follows it at equal specificity, so an unscoped colour here put --ink-2 text on an --ink fill '
-      + '(2.32:1 white, 1.63:1 black, 1.27:1 tan)')
+      'mutation `let the quiet chip colour apply while it is pressed` survived: the pressed recipe fills the segment '
+      + 'and this rule follows it at equal specificity, so an unscoped colour here would recolour the selected segment')
   }
 })
 
@@ -134,7 +138,7 @@ test('the pressed workflow tab still supplies its own text colour', () => {
   const css = withoutComments(read('research.css'))
   const pressed = [...css.matchAll(/\.research-workflow-nav button\[aria-pressed="true"\]\s*\{([^{}]*)\}/g)]
   assert.ok(pressed.length > 0, 'expected the pressed workflow tab rule to exist')
-  assert.ok(pressed.some(([, body]) => /background\s*:\s*var\(--ink\)/.test(body) && /color\s*:\s*var\(--bg\)/.test(body)),
+  assert.ok(pressed.some(([, body]) => /background\s*:\s*var\(--bg-surface\)/.test(body) && /color\s*:\s*var\(--ink\)/.test(body)),
     'mutation `drop the pressed tab\'s own text colour` survived: the quiet chip now defers to this rule, '
     + 'so a pressed tab with a fill and no colour of its own would inherit the quiet one again')
 })
@@ -152,4 +156,21 @@ test('the vault credentials panel colours its text from tokens the themes declar
   assert.ok(used.length >= 3, 'the panel still colours its text from tokens')
   const undeclared = [...new Set(used)].filter(token => !new RegExp(`(?:^|[;{\\s])${token}\\s*:`).test(declared))
   assert.deepEqual(undeclared, [], `text colour tokens no sheet declares: ${undeclared.join(', ')}`)
+})
+
+/* FIX-C 6 (DESIGN.md section 3 and section 6): section labels are sentence
+   case, 12.5px/600, never tracked upper case. The text stays; only the CSS
+   changed, so a label still reads the same to a test or a screen reader. */
+function sentenceCaseRule(css, selector) {
+  const at = css.indexOf(selector + ' {')
+  assert.notEqual(at, -1, `${selector} has no rule`)
+  const body = css.slice(at, css.indexOf('}', at))
+  assert.doesNotMatch(body, /text-transform:\s*uppercase/, `${selector} is still an upper-case micro-label`)
+  assert.match(body, /(?:font:[^;]*\b|font-size:\s*)12\.5px/, `${selector} is not the 12.5px section-label size`)
+  assert.match(body, /(?:font:\s*600\b|font-weight:\s*600\b)/, `${selector} is not weight 600`)
+  return body
+}
+
+test('FIX-C 6: the new-agent popover section label is sentence case', () => {
+  sentenceCaseRule(read('tree-workspace.css'), '.tree-picker-label')
 })

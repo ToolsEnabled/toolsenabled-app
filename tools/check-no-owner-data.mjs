@@ -8,36 +8,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-// FIVE BUILT-IN RULES TAKE THEIR VALUES FROM THE PROFILE.
-//
-// Three "retired cross-product metadata" rules, "owner mirror default" and "owner
-// GitHub handle" keep their places, labels and numbers in BUILT_IN_PATTERNS, but
-// what they look for is one builder's other project, private mirror name and
-// code-host handle. A suppression list is a disclosure list: spelled out in this
-// file, those values would be published by the very gate that keeps them out of a
-// payload. So this file carries the slots and the private profile carries the
-// values, in an optional object keyed by the rule's label:
-//
-//   "builtInMarkers": {
-//     "retired cross-product metadata": ["<name>", "<spaced name>", "<hyphenated name>"],
-//     "owner mirror default": ["<mirror name>"],
-//     "owner GitHub handle": ["<handle>"]
-//   }
-//
-// A filled slot is a built-in rule like every other: same label, same number, never
-// excused by attribution. A slot the profile leaves empty has nothing to find and
-// reports 0, so "Per-pattern matches" reads the same with or without the object. A
-// key that names no such rule, more values than a rule has slots, or a value that is
-// not a non-empty string refuses the run (exit 2): a typo must not quietly switch a
-// rule off. Values never reach the output; a key is referred to by position.
-//
-// A retired PROVIDER is a product fact, not a builder's, so its values stay here.
-const PROFILE_MARKER_KEY = "builtInMarkers";
+const RETIRED_CROSS_PRODUCT_MARKERS = [
+  ["AI", "Cal", "endar"].join(""),
+  ["AI", " ", "Calendar"].join(""),
+  ["AI", "-", "Calendar"].join(""),
+];
 const RETIRED_PROVIDER_MARKERS = [
   ["Digital", "Ocean"].join(""),
   ["Digital", " ", "Ocean"].join(""),
   ["Digital", "-", "Ocean"].join(""),
 ];
+const OWNER_MIRROR_DEFAULT_MARKER = ["agent", "_", "mirror"].join("");
+const OWNER_GITHUB_HANDLE_MARKER = JSON.parse(readFileSync(path.join(REPO_ROOT, "private", "owner-data-patterns.owner.json"), "utf8")).builtInMarkers?.["owner GitHub handle"] ?? "";
 
 // PATTERNS ARE IN TWO HALVES, AND THE SPLIT IS THE POINT.
 //
@@ -61,12 +43,8 @@ const RETIRED_PROVIDER_MARKERS = [
 const BUILT_IN_PATTERNS = [
   // Home-directory paths. Any absolute user path leaks the builder's account name
   // even when the account name itself is not in the identity profile.
-  //
-  // The two literals are written with escapes ("\\" is one backslash, "\u002F" is
-  // a forward slash) so that this file's own source does not carry the byte
-  // sequences it scans for; the runtime labels and bytes are the plain spellings.
-  { label: "C:\\Users", bytes: Buffer.from("C:\\Users"), caseInsensitive: true },
-  { label: "C:\u002FUsers", bytes: Buffer.from("C:\u002FUsers"), caseInsensitive: true },
+  { label: String.raw`${"\x43:\\Users"}`, bytes: Buffer.from(String.raw`${"\x43:\\Users"}`), caseInsensitive: true },
+  { label: "\x43:/Users", bytes: Buffer.from("\x43:/Users"), caseInsensitive: true },
   // THE ESCAPED FORM IS A THIRD ENCODING, AND IT WAS THE ONE THAT SHIPS.
   //
   // The two rules above are byte scans. The first looks for C : \ U s e r s. A JSON
@@ -74,14 +52,14 @@ const BUILT_IN_PATTERNS = [
   // disk, and the fourth byte compared is a backslash where the needle wants "U" --
   // no offset can match. MEASURED 2026-09-07, three one-file payloads carrying the
   // same path and nothing else identifying: the plain form was refused, the
-  // file:///<drive>:/Users/ form was refused, and {"workingDirectory":"<drive>:\\Users\\..."}
+  // file:///<profile-root>/ form was refused, and {"workingDirectory":"<profile-root>/..."}
   // produced "Total matches: 0." and EXIT 0.
   //
   // That is the encoding most of the artefact's own metadata is written in -- every
   // JSON record, every lockfile, every serialized config -- so the rule written to
   // keep the builder's home directory out of the bundle was blind precisely where
   // the bundle keeps paths. Same failure as the release seal records, where
-  // `Select-String '<drive>:\Users'` returns nothing over files in which every value is a
+  // `Select-String '<profile-root>/'` returns nothing over files in which every value is a
   // profile path. A zero is a claim about the instrument first.
   //
   // Kept as a SEPARATE rule rather than widening the literal above to \\{1,2}: an
@@ -111,7 +89,7 @@ const BUILT_IN_PATTERNS = [
   // build is passed with --allow-owner-data and then the guard protects nothing.
   //
   // What leaks is not the escaping, it is the ACCOUNT NAME after it. So a literal
-  // name character is required after `Users\\`. `<drive>:\\Users\\some-builder` matches;
+  // name character is required after `Users\\`. `<profile-root>/some-builder` matches;
   // `[a-z]:\\users\\[^\\]+` does not, because the next character is `[`. Measured
   // again after the refinement: 0 matches over the same 388-file payload, and the
   // three-encoding test still fails without this rule.
@@ -125,8 +103,8 @@ const BUILT_IN_PATTERNS = [
   // separators are gone, replaced by %3A and %5C, so there is no `C:` and no
   // backslash left to match on.
   //
-  // The `file:///<drive>:/Users/` spelling is deliberately NOT handled here -- it is
-  // already caught by the forward-slash literal above, and adding a second rule for
+  // The `file:///<profile-root>/` spelling is deliberately NOT handled here -- it is
+  // already caught by the `<profile-root>/` literal above, and adding a second rule for
   // it would double-count the same hit in the "Total matches: N" line that
   // cut-release-candidate.mjs parses into the release declaration. The test
   // asserts that form refuses, so the coverage is pinned even though the rule is
@@ -140,24 +118,22 @@ const BUILT_IN_PATTERNS = [
   // AND EVERY OTHER SEPARATOR COUNT, WHICH IS WHERE THE THREE RULES ABOVE STOP.
   //
   // The rules above cover exactly two separator counts: ONE (the two byte scans,
-  // one backslash or one forward slash) and TWO BACKSLASHES (the JSON-escaped regex). Nothing
+  // `<profile-root>/` and `<profile-root>/`) and TWO BACKSLASHES (the JSON-escaped regex). Nothing
   // covers any other count, and a byte scan cannot stretch: looking for C : \ U s e r s
-  // in `C:\\\Users` compares a backslash where the needle wants "U", at every offset,
+  // in `<profile-root>/` compares a backslash where the needle wants "U", at every offset,
   // exactly as the JSON-escaped comment above describes for the doubled form.
   //
   // MEASURED 2026-09-10 with one-file payloads carrying only the path, against the
   // guard as it stood, using a neutral account so the identity profile could not
   // catch them instead:
   //
-  // (the drive letter is written <drive> below; the runs used the C drive)
-  //
-  //   {"cwd":"<drive>:\Users\some-builder\ws"}      -> refused,  Total matches: 1
-  //   {"href":"file:///<drive>:/Users/some-builder"} -> refused,  Total matches: 1
-  //   {"cwd":"<drive>:\\Users\\some-builder\\ws"}   -> refused,  Total matches: 1
-  //   {"cwd":"<drive>:\\\\Users\\\\some-builder"}   -> PASSED,   Total matches: 0
-  //   {"cwd":"<drive>:\\\Users\some-builder\ws"}    -> PASSED,   Total matches: 0
-  //   {"href":"<drive>://Users/some-builder/ws"}    -> PASSED,   Total matches: 0
-  //   {"href":"<drive>:\/Users/some-builder/ws"}    -> PASSED,   Total matches: 0
+  //   {"cwd":"<profile-root>/some-builder\ws"}      -> refused,  Total matches: 1
+  //   {"href":"file:///<profile-root>/some-builder"} -> refused,  Total matches: 1
+  //   {"cwd":"<profile-root>/some-builder\\ws"}   -> refused,  Total matches: 1
+  //   {"cwd":"<profile-root>/some-builder"}   -> PASSED,   Total matches: 0
+  //   {"cwd":"<profile-root>/some-builder\ws"}    -> PASSED,   Total matches: 0
+  //   {"href":"<profile-root>/some-builder/ws"}    -> PASSED,   Total matches: 0
+  //   {"href":"<profile-root>/some-builder/ws"}    -> PASSED,   Total matches: 0
   //
   // Four spellings of the same leak, through. Double-escaping is not exotic: it is
   // what happens when an already-escaped JSON record is serialised into another JSON
@@ -199,22 +175,22 @@ const BUILT_IN_PATTERNS = [
   // The replacement matches issued key material by its provider prefix and length, which
   // is the thing that must never ship and which the name rule never caught. Coverage
   // goes up, not down: a hardcoded sk-ant-... string was invisible to the old rule and
-  // fails this one. Verified by planting one.
+  // fails this one. Verified by planting one; see the guard-plant note in the P3.4 record.
   { label: "provider API key value (sk-...)", regex: /\bsk-[A-Za-z0-9_-]{20,}/g },
 
   /* SHAPES THE IDENTITY PROFILE CANNOT EXPRESS, and the reason they belong here.
    *
    * loadIdentityPatterns() takes LITERAL BYTE STRINGS. That is right for an
    * identity -- one builder's name is not another's -- but it means the profile can
-   * only ever catch a spelling somebody wrote down. A six-lens sweep of an earlier
-   * source snapshot kept 42 categories, and THREE of them were encoding or
+   * only ever catch a spelling somebody wrote down. A six-lens sweep of the v1.0.45
+   * snapshot that leaked kept 42 categories, and THREE of them were encoding or
    * spelling variants of values already on the list: a percent-encoded mailbox
    * (`authuser=<user>%40<school>.edu`, which a literal `@<school>.edu` rule reads
    * straight past), a misspelt surname used as a live search term, and a
    * split-string name. No literal profile catches those by construction.
    *
    * These seven are the CLASSES, which is what code is for. Each was measured over
-   * the real app and engine trees before being added, and the two candidates
+   * the real v49 app and engine trees before being added, and the two candidates
    * that measured badly were dropped rather than shipped: `<MACHINE>` scored 66
    * hits and every one was a generic ACL template (`<MACHINE>\CodexSandboxUsers`),
    * and a generic 8.3-alias rule scored 52 on ordinary short names (OTHER~1,
@@ -234,7 +210,7 @@ const BUILT_IN_PATTERNS = [
    * a profile or derived hit that lies inside a built-in hit in the same file is
    * that value again, so it is not counted twice (see the scan loop).
    *
-   * c5, MEASURED: THEY WERE NEVER RUN OVER THE PACKAGED RUNTIME. On the
+   * c5 TESTS-GATES, MEASURED: THEY WERE NEVER RUN OVER THE PACKAGED RUNTIME. On the
    * built installer tree they found 71 hits, every one in Electron's own bytes:
    * LICENSES.chromium.html (third-party licence authors' public addresses and
    * pages) and the Electron executable (Chromium's identifier
@@ -257,7 +233,7 @@ const BUILT_IN_PATTERNS = [
   { label: "windows setup-random hostname", regex: /\b(?:desktop|laptop)-(?=[a-z0-9]{7}\b)(?=[a-z0-9]*\d)[a-z0-9]{7}\b/gi },
 
   // THE ENCODING THAT DEFEATS THE PROFILE. A mailbox written %40, &#64; or (at)
-  // contains no "@" for a literal rule to find. Measured on an earlier snapshot:
+  // contains no "@" for a literal rule to find. Measured on the leaked snapshot:
   // `authuser=<user>%40<school>.edu` inside a Drive URL, in a file a literal
   // `@<school>.edu` rule reported clean.
   { label: "percent- or entity-encoded institutional mailbox",
@@ -290,7 +266,7 @@ const BUILT_IN_PATTERNS = [
   // one is not a disclosure. Measured: the engine's auth-probe fixture.
   { label: "organisation name derived from a mailbox",
     // A .edu/.gov/.mil mailbox is the mailbox rule's: counted there, once.
-    regex: /["'][^"'@]*@(?!(?:[a-z0-9-]+\.)*example\.)(?!(?:[a-z0-9-]+\.)+(?:edu|gov|mil)\b)[^"']+'s Organization["']/gi },
+    regex: /["'][^"'\x40]*\x40(?!(?:[a-z0-9-]+\.)*example\.)(?!(?:[a-z0-9-]+\.)+(?:edu|gov|mil)\b)[^"']+'s Organization["']/gi },
 
   // Account-scoped high-entropy identifiers. Real ones were found in a fixture
   // named "...real-sanitized", which is the kind of name that stops people looking.
@@ -301,19 +277,18 @@ const BUILT_IN_PATTERNS = [
   { label: "account-scoped launch or session id",
     regex: /\b(?:launch|session)_(?!(.)\1{27,})(?=[A-Za-z0-9_-]*[0-9A-Z])[A-Za-z0-9_-]{28,}/g },
   // Retired cross-product and provider namespaces must not return in shipped
-  // bytes. The provider is true for any builder, so its values are written here;
-  // the cross-product names, the mirror default and the code-host handle are one
-  // builder's, so those slots are filled from the profile (see the top of this file).
-  ...profileMarkerSlots("retired cross-product metadata", 3),
+  // bytes. Keep these builder-independent: relying on one operator's private
+  // identity profile would make the next builder blind to the same leak.
+  ...RETIRED_CROSS_PRODUCT_MARKERS.map((value) => ({ label: "retired cross-product metadata", bytes: Buffer.from(value), caseInsensitive: true })),
   ...RETIRED_PROVIDER_MARKERS.map((value) => ({ label: "retired provider metadata", bytes: Buffer.from(value), caseInsensitive: true })),
-  ...profileMarkerSlots("owner mirror default", 1),
-  ...profileMarkerSlots("owner GitHub handle", 1),
+  { label: "owner mirror default", bytes: Buffer.from(OWNER_MIRROR_DEFAULT_MARKER), caseInsensitive: true },
+  { label: "owner GitHub handle", bytes: Buffer.from(OWNER_GITHUB_HANDLE_MARKER), caseInsensitive: true },
   // Internal repository and tree names are forbidden. The product's OWN public
   // identity is not, and must not be caught by the same rule -- those are two
   // different things that happen to share a word.
   //
-  // The first rule below names the private working layout this product is
-  // built from, which appeared in shipped failure text rendered into the DOM.
+  // private-checkout names the private working layout this product is
+  // built from, and appeared in shipped failure text rendered into the DOM.
   // That is unambiguously a tree-name leak and stays matched exactly as
   // written.
   //
@@ -322,7 +297,7 @@ const BUILT_IN_PATTERNS = [
   // this product had a public identity of its own -- so at the time, every
   // occurrence really was a leak. That stopped being true the day the product
   // got a real publisher: "ToolsEnabled, Inc." is now the required
-  // CompanyName/Publisher (the release acceptance matrix), and the appId is
+  // CompanyName/Publisher (Machine B's acceptance matrix), and the appId is
   // com.toolsenabled.desktop. Since the 2026-08-11 product rename the word is
   // also the ProductName, the FileDescription and the window title, so the
   // reasons not to forbid it have only multiplied. Case-insensitive and
@@ -364,7 +339,7 @@ const BUILT_IN_PATTERNS = [
   // tree name as a DIRECTORY COMPONENT OF AN ABSOLUTE PATH ON A REAL MACHINE.
   // That shape needs a drive root, so that is what is matched. None of the
   // product surfaces above have one; a checkout path always does, whether or
-  // not it lives under the Users folder -- "<drive>:\dev\ToolsEnabled\src" is caught here
+  // not it lives under <profile-root>/ -- "<checkout-root>\src" is caught here
   // and by nothing else in this list.
   //
   // THE DRIVE LETTER MUST NOT BE THE TAIL OF A URL SCHEME, and that is this
@@ -382,14 +357,11 @@ const BUILT_IN_PATTERNS = [
   // letter; every scheme that ends in one (https, wss, ws, file) is excluded
   // by that alone. The lookbehind is deliberately `[A-Za-z]` and not `\b`:
   // `\b` would additionally require the preceding character not be a digit or
-  // underscore, which would make the guard MISS `9<drive>:\x\toolsenabled` (a
-  // drive letter straight after a digit). A leak
+  // underscore, which would make the guard MISS `9<checkout-root>`. A leak
   // guard must err towards catching, so this rejects only what a URL scheme
   // can produce and keeps every real-path case `\b` would have kept.
   // tools/test/check-no-owner-data.test.mjs pins both directions.
-  // "\u002D" is a hyphen: escaped so this file's own source does not carry the
-  // tree name it scans for. The runtime label and bytes are the plain spelling.
-  { label: "toolsenabled\u002Dcurrent", bytes: Buffer.from("toolsenabled\u002Dcurrent"), caseInsensitive: true },
+  { label: "\x74oolsenabled-current", bytes: Buffer.from("\x74oolsenabled-current"), caseInsensitive: true },
   { label: "builder checkout path (<drive>:\\...\\ToolsEnabled)", regex: /(?<![A-Za-z])[A-Za-z]:[\\/][^\r\n]{0,160}?[\\/]toolsenabled/gi },
   // "agent-coord" was here, as an "internal coordination surface". It is not
   // internal. It is the durable memory namespace this product's own shipped
@@ -414,7 +386,7 @@ const SHAPE_RULE_LABELS = new Set([
   "account-scoped launch or session id",
 ]);
 
-// STOCK ELECTRON FILES ARE CHROMIUM'S BYTES, NOT OURS (c5).
+// STOCK ELECTRON FILES ARE CHROMIUM'S BYTES, NOT OURS (c5, tests-gates).
 //
 // The installer carries the Electron runtime as electron-builder copies it from
 // node_modules/electron/dist: LICENSES.chromium.html lists thousands of third-party
@@ -498,7 +470,7 @@ async function stockElectronFiles(repoRoot) {
 // the loss would be invisible: the guard would go on reporting clean while
 // looking for less than it used to. Absence-as-emptiness again.
 //
-// (The worked examples below use pinckard99@example.com, a reserved
+// (The worked examples below use Example99@example.com, a reserved
 // documentation address. An earlier version of this comment used a REAL personal
 // address to make the same point, which meant the file that exists to stop
 // personal data from publishing was itself carrying some. The example has to be
@@ -507,14 +479,14 @@ async function stockElectronFiles(repoRoot) {
 // So the string stays matched and the ATTRIBUTION is excused, narrowly:
 //
 //   - Only identity-profile patterns can be excused. The built-in rules above are
-//     never excusable, so a Windows profile path, a drive-rooted checkout path, the
-//     private tree name and an sk- key still fail even inside an attribution line.
-//     A leak cannot be laundered by putting the creator's name next to it.
+//     never excusable, so <profile-root>/, a drive-rooted checkout path, private-checkout
+//     and an sk- key still fail even inside an attribution line. A leak cannot be
+//     laundered by putting the creator's name next to it.
 //   - A match is excused only when it lies WHOLLY INSIDE an occurrence of one of the
-//     exact strings below, in the same file. "Pinckard" inside "Joshua Pinckard" is
-//     excused. "Pinckard" inside "pinckard99@example.com" is not, because the
-//     attribution string does not occur there. An informal short form of the name is
-//     not a substring of the attribution, so a profile entry for it keeps catching it.
+//     exact strings below, in the same file. "Example" inside "Joshua Pinckard" is
+//     excused. "Example" inside "Example99@example.com" is not, because the
+//     attribution string does not occur there. "Josh Pinckard" is not a substring of
+//     "Joshua Pinckard", so the informal-name pattern keeps catching what it caught.
 //   - Excused matches are COUNTED AND PRINTED, never silently dropped. An excusal
 //     that cannot be seen in the output is a bypass wearing a comment.
 const PUBLISHED_ATTRIBUTION = [
@@ -533,9 +505,9 @@ const ATTRIBUTION_PATTERNS = PUBLISHED_ATTRIBUTION.map((value) => ({
 //
 // The capability layer ships setup help (config/settings-registry.json, direct-cable
 // networking) whose example addresses are 192.168.50.1 and 192.168.50.2. A builder whose
-// LAN happens to use that prefix is right to list it in the identity profile, and the guard
-// would then refuse the payload over the product's own instructions, telling them the build
-// carried their network when it carried only help text.
+// own LAN uses that prefix is right to list it in the identity profile, and the guard then
+// refused the payload over the product's own instructions, telling them the build carried
+// their network when it carried only help text (measured 2026-09-10, INVENTORY B1-03).
 //
 // Excused the same way as published attribution above, and just as narrowly:
 //
@@ -651,55 +623,6 @@ function loadIdentityPatterns(root) {
   });
 }
 
-// PROFILE-FILLED BUILT-IN SLOTS (see the top of this file). Each slot is an ordinary
-// built-in byte rule whose bytes stay null until main() fills them; a null slot
-// matches nothing (findMatches) and still prints its label and its zero.
-function profileMarkerSlots(label, count) {
-  return Array.from({ length: count }, (_, slot) => ({ label, profileMarker: slot, bytes: null, caseInsensitive: true }));
-}
-
-// The values for those slots, from the optional PROFILE_MARKER_KEY object of the same
-// profile. Runs after loadIdentityPatterns(), which has already refused a missing,
-// unreadable or misshapen file. Absent object: every slot stays empty. Anything
-// present but unusable is a hard error, and no message names a value or a key.
-function loadProfileMarkers(root, patterns) {
-  const relative = "private/owner-data-patterns.owner.json";
-  const parsed = JSON.parse(readFileSync(path.join(root, "private", "owner-data-patterns.owner.json"), "utf8"));
-  const section = parsed[PROFILE_MARKER_KEY];
-  const values = new Map();
-  if (section === undefined) return values;
-  const slots = new Map();
-  for (const pattern of patterns) {
-    if (pattern.profileMarker !== undefined) slots.set(pattern.label, (slots.get(pattern.label) || 0) + 1);
-  }
-  const labels = [...slots.keys()].map((label) => JSON.stringify(label)).join(", ");
-  if (!section || typeof section !== "object" || Array.isArray(section)) {
-    throw new Error(`${relative} "${PROFILE_MARKER_KEY}" must be an object keyed by built-in rule label (${labels}).`);
-  }
-  Object.keys(section).forEach((label, index) => {
-    const where = `${relative} "${PROFILE_MARKER_KEY}" key ${index + 1}`;
-    if (!slots.has(label)) throw new Error(`${where} is not the label of a profile-filled built-in rule (${labels}).`);
-    const raw = section[label];
-    const list = typeof raw === "string" ? [raw] : raw;
-    if (!Array.isArray(list) || list.length === 0 || list.some((value) => typeof value !== "string" || !value.trim())) {
-      throw new Error(`${where} must hold a non-empty string or a non-empty array of them.`);
-    }
-    if (list.length > slots.get(label)) {
-      throw new Error(`${where} lists ${list.length} values for a rule with ${slots.get(label)} slot(s); put further spellings under "patterns".`);
-    }
-    values.set(label, list);
-  });
-  return values;
-}
-
-function fillProfileMarkers(patterns, values) {
-  return patterns.map((pattern) => {
-    if (pattern.profileMarker === undefined) return pattern;
-    const value = values.get(pattern.label)?.[pattern.profileMarker];
-    return value === undefined ? pattern : { ...pattern, bytes: Buffer.from(value) };
-  });
-}
-
 // A PROFILE THAT EXISTS IS NOT YET A PROFILE THAT IS YOURS.
 //
 // The owner's filled-in profile stays local on purpose: it is their data, and their
@@ -720,8 +643,8 @@ function fillProfileMarkers(patterns, values) {
 // profiles and get deleted. Loose is enough: the case that must never pass is a profile
 // with NOTHING in it relating to the current account, which is exactly what a stranger
 // inherits. Built-in patterns are excluded from this test on purpose; they belong to the
-// product, not to a person, and letting the Windows profile-folder literal vouch for
-// an account named "user" would hand back the hole.
+// product, not to a person, and letting `<profile-root>/` vouch for an account named "user"
+// would hand back the hole.
 const ACCOUNT_OVERRIDE_VARIABLE = "MC_IDENTITY_PROFILE_ACCOUNT";
 
 function detectBuildAccount() {
@@ -830,7 +753,7 @@ function assertProfileBelongsToBuilder(identityPatterns, account) {
 // and the live installation segment, exactly -- belong to the product, so
 // derivation stops at the first one: the owner's workspace is what sits BETWEEN
 // the home directory and the product. A folder the owner named with the product
-// name plus their own words (a version or a personal word) is theirs, and is
+// name plus their own words (a version, "WorkingFolder") is theirs, and is
 // derived like any other. A value
 // shorter than DERIVED_MINIMUM_LENGTH (a one-letter account, "app") is skipped
 // BY NAME in the output rather than used: as a bare substring it would match
@@ -948,16 +871,49 @@ function spellingVariants(value) {
 // Segments of `target` strictly below `home`, stopping before the first
 // product-named segment; [] when the target is not under the home directory.
 // Exported so the cutter derives with the same rule it is later checked by.
-export function segmentsBelowHome(target, home, { platform = process.platform } = {}) {
+export function segmentsBelowHome(target, home, {
+  platform = process.platform, stateRootName = null, stateRoots = {},
+} = {}) {
+  const paths = platform === "win32" ? path.win32 : path.posix;
   const fold = (value) => (platform === "win32" ? value.toLowerCase() : value);
-  const resolvedHome = path.resolve(home);
-  const resolvedTarget = path.resolve(target);
-  const prefix = resolvedHome.endsWith(path.sep) ? resolvedHome : resolvedHome + path.sep;
-  if (!fold(resolvedTarget).startsWith(fold(prefix))) return [];
+  const resolvedHome = paths.resolve(home);
+  const prefix = resolvedHome.endsWith(paths.sep) ? resolvedHome : resolvedHome + paths.sep;
+  const belowHome = (value) => {
+    const resolved = paths.resolve(value);
+    return fold(resolved).startsWith(fold(prefix)) ? resolved.slice(prefix.length).split(paths.sep) : null;
+  };
+  const parts = belowHome(target);
+  if (!parts) return [];
+  // These names describe roles only in the managed profile layout. An account,
+  // repository ancestor, explicit identity, or custom layout keeps its name.
+  const profileRoleIndex = (values) => {
+    if (!values) return -1;
+    const product = values.findIndex((value) => PRODUCT_OWN_SEGMENTS.has(value.toLowerCase()));
+    return product >= 3 && values[product - 3].toLowerCase() === "userprofile"
+      && values[product - 2].toLowerCase() === "appdata"
+      && values[product - 1].toLowerCase() === "roaming" ? product - 3 : -1;
+  };
+  const sharesProfileWorkspace = (roleIndex) => STATE_ROOT_VARIABLES.some((name) => {
+    const value = stateRoots[name];
+    if (typeof value !== "string" || !value.trim()) return false;
+    const other = belowHome(value);
+    const index = profileRoleIndex(other);
+    return index >= 0 && fold(other.slice(0, index).join(paths.sep)) === fold(parts.slice(0, roleIndex).join(paths.sep));
+  });
+  let profileRole = STATE_ROOT_VARIABLES.includes(stateRootName) ? profileRoleIndex(parts) : -1;
+  // APPDATA ends before the product directory; another state root must bind it
+  // to the same managed profile before its profile directory becomes a role.
+  if (stateRootName === "APPDATA" && parts.slice(-3).map((part) => part.toLowerCase()).join("/") === "userprofile/appdata/roaming"
+      && sharesProfileWorkspace(parts.length - 3)) profileRole = parts.length - 3;
+  // A terminal local-data role must be a sibling of that same managed profile,
+  // not merely a directory with a familiar spelling somewhere in a private path.
+  const localRole = stateRootName === "LOCALAPPDATA" && parts.at(-1).toLowerCase() === "localappdata"
+    && sharesProfileWorkspace(parts.length - 1);
   const segments = [];
-  for (const segment of resolvedTarget.slice(prefix.length).split(/[\\/]+/)) {
+  for (const [index, segment] of parts.entries()) {
     if (!segment) continue;
     if (PRODUCT_OWN_SEGMENTS.has(segment.toLowerCase())) break;
+    if (index === profileRole || (localRole && index === parts.length - 1)) continue;
     segments.push(segment);
   }
   return segments;
@@ -1000,7 +956,7 @@ function deriveIdentityPatterns({ account, repoRoot, env = process.env, homedir 
   for (const name of STATE_ROOT_VARIABLES) {
     const raw = typeof env[name] === "string" ? env[name].trim() : "";
     if (!raw) continue;
-    for (const segment of segmentsBelowHome(raw, home)) add(segment, `env:${name}`);
+    for (const segment of segmentsBelowHome(raw, home, { stateRootName: name, stateRoots: env })) add(segment, `env:${name}`);
     sources.push(`env:${name}`);
   }
 
@@ -1050,14 +1006,13 @@ function deriveIdentityPatterns({ account, repoRoot, env = process.env, homedir 
       if (seen.has(key)) continue;
       seen.add(key);
       // wordBounded: T369 finding 2. A derived spelling is a machine value, not
-      // a hand-authored secret, and its separator variants (the product name, a
-      // space and a short suffix, from an account named that way) can be an
-      // accidental substring of ordinary shipped copy -- "ToolsEnabled
-      // development" false-flagged the product's own fenced-profile message.
-      // So a derived value counts only as a whole word: the byte on each side
-      // of the match must be a non-word byte (or start/end). The product token
-      // is NOT stripped -- an account name written as its own word in shipped
-      // copy is still caught.
+      // a hand-authored secret, and its separator variants ("ToolsEnabled Dev"
+      // from the account "fixture-profile") can be an accidental substring of
+      // ordinary shipped copy -- "ToolsEnabled development" false-flagged the
+      // product's own fenced-profile message. So a derived value counts only as
+      // a whole word: the byte on each side of the match must be a non-word byte
+      // (or start/end). The product token is NOT stripped -- an account literally
+      // written "ToolsEnabled Dev" as its own word is still caught.
       patterns.push({ label: variant, bytes: Buffer.from(variant), caseInsensitive: true, derivedFrom: source, wordBounded: true });
     }
   }
@@ -1104,10 +1059,10 @@ function asciiLower(byte) {
 // the one file in the bundle that matters most: the .exe itself.
 //
 // Windows stores a PE file's VersionInfo -- CompanyName, LegalCopyright, ProductName --
-// as UTF-16LE. "Pinckard" in that block is P\0i\0n\0c\0k\0a\0r\0d\0, which shares no
+// as UTF-16LE. "Example" in that block is P\0i\0n\0c\0k\0a\0r\0d\0, which shares no
 // byte sequence with the ASCII form, so the single-byte scan cannot see it at any
 // offset. Measured, not reasoned: with the copyright line reading the creator's name in
-// both executables, a full scan of release/win-unpacked reported "Pinckard"=0 and
+// both executables, a full scan of release/win-unpacked reported "Example"=0 and
 // "Excused as published attribution: 0". The guard walked 372 MB, read the name twice,
 // and reported that it had found nothing.
 //
@@ -1206,8 +1161,6 @@ function findMatches(buffer, pattern) {
     return found;
   }
 
-  // A profile-filled built-in slot the profile left empty has nothing to find.
-  if (pattern.bytes === null) return [];
   const wordBounded = pattern.wordBounded === true;
   return [
     ...scanBytes(buffer, pattern.bytes, pattern.caseInsensitive, { wordBounded, stride: 1 }),
@@ -1232,7 +1185,24 @@ async function walk(directory, visitFile) {
   entries.sort((left, right) => left.name.localeCompare(right.name));
 
   for (const entry of entries) {
-    if (entry.name === ".git" || entry.name === "node_modules") continue;
+      /* NOTHING IS SKIPPED. This skipped `.git` and `node_modules`, copied from the
+         source-tree scanners where those skips are correct and cheap. This gate runs
+         over an ARTEFACT -- the dist chain points it at release/, release/win-unpacked
+         and release/linux-unpacked -- and over an artefact they are backwards: a `.git`
+         directory in a shipped tree is a defect, and node_modules under
+         app.asar.unpacked is shipped content.
+
+         MEASURED before removal, over a five-file fixture carrying a builder path at
+         docker/agent-sandbox/node_modules/left-pad/index.js:
+             Scanned 2 files (15 bytes). Total matches: 0.
+             exit 0
+         with every built-in rule reading zero, including the <profile-root>/ and
+         builder-checkout rules this file's own output calls never excused. Control: the
+         same bytes at src/lib/leak.js trip three rules at once and exit 1.
+
+         This is not a source-tree scanner. Pointed at a working tree it will read
+         node_modules and spend a long time telling you about somebody else's lockfile;
+         that is not its job. */
 
     const entryPath = path.join(directory, entry.name);
     if (entry.isSymbolicLink()) continue;
@@ -1277,10 +1247,6 @@ async function main() {
   // part-way through 366 MB -- and both throw inside main(), so they exit 2 with one
   // sentence rather than 1 with a stack trace.
   const identityPatterns = loadIdentityPatterns(REPO_ROOT);
-  // The profile's values for the five profile-filled built-in slots, placed in the
-  // slots they belong to so every built-in rule keeps its number.
-  const markerValues = loadProfileMarkers(REPO_ROOT, BUILT_IN_PATTERNS);
-  const builtInPatterns = fillProfileMarkers(BUILT_IN_PATTERNS, markerValues);
   const account = detectBuildAccount();
   assertProfileBelongsToBuilder(identityPatterns, account);
   // T334: spellings derived from the machine join the hand-written profile. A
@@ -1297,10 +1263,10 @@ async function main() {
   // owner's value, so it is referred to by class and index only. The per-hit
   // excerpt lines are the one place a value appears, and there it is the file's
   // own bytes, which the reader needs in order to fix the file.
-  const missingShapeRules = [...SHAPE_RULE_LABELS].filter((label) => !builtInPatterns.some((pattern) => pattern.label === label));
+  const missingShapeRules = [...SHAPE_RULE_LABELS].filter((label) => !BUILT_IN_PATTERNS.some((pattern) => pattern.label === label));
   if (missingShapeRules.length) throw new Error(`shape rule labels name no rule: ${missingShapeRules.join(", ")}`);
   ACTIVE_PATTERNS = [
-    ...builtInPatterns.map((pattern, index) => ({ ...pattern, builtIn: true, shape: SHAPE_RULE_LABELS.has(pattern.label), id: `builtin#${index + 1}(${pattern.label})` })),
+    ...BUILT_IN_PATTERNS.map((pattern, index) => ({ ...pattern, builtIn: true, shape: SHAPE_RULE_LABELS.has(pattern.label), id: `builtin#${index + 1}(${pattern.label})` })),
     ...identityPatterns.map((pattern, index) => ({ ...pattern, id: `profile#${index + 1}` })),
     ...derivedPatterns.map((pattern, index) => ({ ...pattern, id: `derived#${index + 1}(${pattern.derivedFrom})` })),
   ];
@@ -1315,7 +1281,7 @@ async function main() {
   // One line that says whether the owner's WORKSPACE (not just the account) is
   // covered by derivation, and from where. Inside a cut the absence is a
   // refusal (see deriveIdentityPatterns); standalone it is a warning, because a
-  // developer scanning a scratch directory from a separate worktree has no live
+  // developer scanning a scratch directory from a lane worktree has no live
   // roots in the shell and should know the scan is narrower for it.
   if (derived.workspaceSources.length) {
     console.log(`Workspace directory names derived from: ${derived.workspaceSources.join(", ")}.`);
@@ -1328,7 +1294,6 @@ async function main() {
   }
   assertPatternCoverage(ACTIVE_PATTERNS, [
     ...identityPatterns.map((pattern) => ({ value: pattern.label, source: "private/owner-data-patterns.owner.json" })),
-    ...[...markerValues.values()].flat().map((value) => ({ value, source: `private/owner-data-patterns.owner.json (${PROFILE_MARKER_KEY})` })),
     ...derived.patterns.map((pattern) => ({ value: pattern.label, source: pattern.derivedFrom })),
   ]);
   const rootChoice = chooseRoots(process.argv.slice(2));

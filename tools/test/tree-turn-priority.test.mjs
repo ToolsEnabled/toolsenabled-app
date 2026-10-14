@@ -10,8 +10,8 @@ const require_ = createRequire(import.meta.url)
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const { TREE_TURN_REASONS, treeTurnDecision } = require_(path.join(ROOT, 'shell', 'tree-turn-priority.cjs'))
 
-/* THE DEFECT THESE PIN. Several messages a person typed over a quarter of an
-   hour reached neither the Controller's
+/* THE DEFECT THESE PIN, MEASURED 2026-09-03. Four messages the owner typed at
+   03:53:21, 03:57:17, 03:58:34 and 04:08:35 reached neither the Controller's
    engine transcript nor the owner-capture spool. Nothing refused them: the
    shell's tree courier, offering one of ~95 agent_comms messages every 1200 ms,
    took every turn boundary before the renderer's queued-message drain could,
@@ -221,14 +221,14 @@ test('a person waiting behind 95 tree messages is answered, not outranked foreve
   const tree = Array.from({ length: 95 }, (unused, index) => `tree-${index}`)
   const { sent, personQueue } = playTheRace({
     treeMessages: tree,
-    personMessages: ['what the person typed first'],
+    personMessages: ['what the owner typed at 03:53:21'],
     boundaries: 95,
   })
 
   const personSent = sent.filter(turn => turn.origin === 'person')
   assert.equal(personQueue.length, 0, 'the person\'s message is still sitting in the renderer queue')
   assert.equal(personSent.length, 1, 'the person\'s one message must be sent exactly once')
-  assert.equal(personSent[0].text, 'what the person typed first')
+  assert.equal(personSent[0].text, 'what the owner typed at 03:53:21')
 
   /* HOW LATE IS IT ALLOWED TO BE. Two machine messages may precede it and no
      more. The first was already running when the person typed -- that is WHY
@@ -324,7 +324,7 @@ test('a message queued while the circle worked, never refused, still takes the v
      renderer's busy door does -- so it is the shape this rule exists for. */
   const { sent, personQueue } = playTheRace({
     treeMessages: Array.from({ length: 95 }, (unused, index) => `tree-${index}`),
-    personMessages: ['what the person typed while the worker was busy'],
+    personMessages: ['what the owner typed while the worker was busy'],
     boundaries: 95,
   })
   assert.equal(personQueue.length, 0)
@@ -354,8 +354,10 @@ test('the renderer\'s busy door queues without asking the host, which is why the
     const node = { id: 'priority-node', sessionId: 'priority-session' }
     const queued = [], replies = []
     const values = {
+      sessionNodeIds: new Map(),
       notePersonSpokeTo() {}, treeStore: { getNode: () => node },
       parseSlashCommand: () => null, nodeBusy: () => state.busy,
+      nodeReplacementFlight: { busy: () => false },
       pendingModelChoice: () => state.pending,
       QUEUE_PANEL: { cardQueued: 'Queued' },
       outboxEnqueue(sessionId, text) {
@@ -379,6 +381,24 @@ test('the renderer\'s busy door queues without asking the host, which is why the
     assert.deepEqual(replies, ['Queued'])
     assert.deepEqual(result, { ok: true, entry: queued[1], sentence: 'Queued' })
   }
+})
+
+/* Retired automatic recovery offers carry no scheduling authority. The
+   ordinary bounded person-first window and one-turn rule still apply. */
+test('legacy account recovery fields cannot extend or bypass the bounded turn decision', () => {
+  const ordinary = { queuedTreeTurns: 1, turnActive: false, personWaitingSince: null,
+    boundaryAt: 10_000, personYieldMs: POLL_MS, queuedSince: 10_000 }
+  for (const now of [10_001, 10_000 + POLL_MS, 39_999, 40_000]) {
+    for (const recoveryHoldMs of [undefined, 30_000, Infinity]) {
+      const legacy = { recoveryOfferedAt: 10_000, recoveryHoldMs }
+      assert.deepEqual(treeTurnDecision({ ...ordinary, ...legacy, now }),
+        treeTurnDecision({ ...ordinary, now }))
+      assert.deepEqual(treeTurnDecision({ ...ordinary, ...legacy, now, turnActive: true }),
+        { take: false, reason: TREE_TURN_REASONS.TURN_ACTIVE })
+    }
+  }
+  assert.equal(treeTurnDecision({ ...ordinary, now: 10_001 }).reason, TREE_TURN_REASONS.PERSON_FIRST)
+  assert.equal(treeTurnDecision({ ...ordinary, now: 10_000 + POLL_MS }).take, true)
 })
 
 test('the host consults the rule, records the reservation, and stamps the boundary', () => {

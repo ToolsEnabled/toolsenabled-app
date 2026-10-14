@@ -7,7 +7,7 @@
  * screen branched on mcAgent.availability(), which answers "can this
  * installation start ANY agent", and rendered that answer as a fact about one
  * named program. With Claude installed and Codex absent, availability says yes
- * -- correctly, deliberately (an earlier commit) -- and the sentence flipped on whether
+ * -- correctly, deliberately (d1eb2a5) -- and the sentence flipped on whether
  * CLAUDE was there.
  *
  * The cost was not only a false sentence. It made the not-installed branch --
@@ -74,12 +74,13 @@ export function codexReadiness({ engine = null, codex = null, platform = globalT
   }
   /* THE UNCERTAIN STATE MAY NOT CARRY AN INSTALL COMMAND, AND IT USED TO.
    *
-   * THE REPORT THIS CLOSES, from a second machine: Claude and Codex were
-   * installed and signed in, yet launching agents said nothing was started and
-   * to run a winget install. The person had done exactly what the product said,
-   * and the product said to do it again. The probe's half of that is fixed in
+   * THE REPORT THIS CLOSES, from the owner's own second machine: "i have claude
+   * and codex downloaded and installed and signed it but when i try to launch
+   * agents it says nothing was started and to run winget install openAI". He had
+   * done exactly what the product told him to do, and the product told him to do
+   * it again. The probe's half of that is fixed in
    * shell/machine-search-path.cjs; this is the other half, and it is the half
-   * their report is actually about -- an install command in front of a person who
+   * his report is actually about -- an install command in front of a person who
    * has already installed the thing is what makes a product look broken.
    *
    * "WE COULD NOT FIND IT" IS NOT "YOU HAVE NOT INSTALLED IT", and these two
@@ -212,16 +213,16 @@ export function codexReadiness({ engine = null, codex = null, platform = globalT
 /* A MODEL ON THIS COMPUTER'S OWN HARDWARE, the same shape as codexReadiness()
  * above and DELIBERATELY A DIFFERENT TONE. Codex's absence is `is-warn`
  * because nothing else in setup guarantees an agent CAN start without it;
- * local's absence is plain by design (provider-neutral production: local is a
- * first-class peer, never demoted, but it is also never required -- depth is
- * enabled, not required). A person who never
+ * local's absence is plain by design (owner ruling, "provider-neutral
+ * production": local is a first-class peer, never demoted, but it is also
+ * never required -- "enable depth, don't require it"). A person who never
  * touches this is not missing a step.
  *
  * READ-ONLY, LIKE THE REST OF THIS SCREEN. Setup does not install anything
  * and does not gate Finish on the answer (same rule setup.js states for
  * codexReadinessMarkup() at its own call site) -- Settings, under "This
- * computer", is where the actual install/download actions live (product rule:
- * extending PROVIDER_SETUP, never a second install path in setup
+ * computer", is where the actual install/download actions live (owner ruling
+ * via fleet-B: extending PROVIDER_SETUP, never a second install path in setup
  * or anywhere else).
  */
 export const LOCAL_MODEL_READINESS_HEADING = 'A model on this computer'

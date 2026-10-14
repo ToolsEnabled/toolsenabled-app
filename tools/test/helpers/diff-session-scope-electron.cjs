@@ -25,7 +25,7 @@ app.disableHardwareAcceleration()
 const report = { pageErrors: [], deniedRequests: [], reads: [], pickCount: 0, hand: [] }
 assert.equal(app.commandLine.getSwitchValue('user-data-dir'),path.join(data,'userData'))
 if(process.platform==='win32') {
-  const identity=JSON.parse(execFileSync('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+  const identity=JSON.parse(execFileSync('\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
     ['-NoProfile','-NonInteractive','-Command',`Get-CimInstance Win32_Process -Filter "ProcessId = ${process.pid}" | Select-Object ProcessId,CreationDate,CommandLine | ConvertTo-Json -Compress`],
     {windowsHide:true,encoding:'utf8',timeout:10000,env:{...process.env,PSModulePath:''}}))
   assert.equal(identity.ProcessId,process.pid);assert(identity.CreationDate)
@@ -107,7 +107,7 @@ app.whenReady().then(async () => {
     await click('[data-chat-open-diff]')
     await waitFor(`Boolean(document.querySelector('[data-diff-pane="proposed"]')&&!document.querySelector('[data-diff-pane="proposed"]').disabled)`)
     const side=sample.id==='chosen-deleted'?'original':'proposed'
-    // The Changes door opens on the side-by-side diff; Edit shows the two editable boxes.
+    // The Changes door opens on the side-by-side diff (owner-approved 2026-09-23); Edit shows the two editable boxes.
     await click('[data-diff-action="view"][data-diff-view="edit"]')
     await waitFor(`document.querySelector('[data-diff-edit-body]')?.hidden===false`)
     await click(`[data-diff-action="edit-line"][data-diff-side="${side}"]`)

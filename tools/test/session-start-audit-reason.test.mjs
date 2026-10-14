@@ -1,7 +1,7 @@
 /* A REFUSED START MUST SAY WHICH SINK REFUSED IT.
  *
  * MEASURED, 2026-09-07, on this installation's own signed action log: two
- * agent.restart calls were refused a minute and a half apart with
+ * agent.restart calls were refused at 05:53:08.379Z and 05:54:31.530Z with
  *
  *   "The application could not restart that circle (AGENT_SESSION_FAILED).
  *    Error invoking remote method 'mc-agent:start': Error: The agent session

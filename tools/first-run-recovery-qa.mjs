@@ -156,7 +156,7 @@ async function stage(scratch) {
    filtered out of the real one: filtering fails OPEN — one unfamiliar directory
    carrying a shim and the run silently measures a machine that has Codex. */
 function systemOnlyPath() {
-  const root = process.env.SystemRoot || 'C:\\Windows'
+  const root = process.env.SystemRoot || '\x43:\\Windows'
   return [
     path.join(root, 'system32'),
     root,
@@ -375,7 +375,7 @@ async function walkSetup({ evaluate, until, clickVisible, clickLastVisible }, ch
   /* A CLICK WHOSE ANSWER IS THROWN AWAY turns "the control was not there" into
    * twenty seconds of silence blamed on whatever we polled for NEXT.
    *
-   * Every red driver in the release-cut traps list reports the
+   * Every red driver in RELEASE-CUT-TRAPS-2026-08-15 section 12 reports the
    * same sentence -- "gave up waiting for the review" -- and not one of them
    * can say whether the review failed to draw or the click before it never
    * landed. That is not a small difference: the first is a product defect and
@@ -462,7 +462,7 @@ const MECHANISM_ONLY = /fleet projection unavailable|ops projection unavailable/
  * host-absent notice and this suite was green against it. The re-cut's
  * payload carries the reader, the board went quiet-and-doorless, and both
  * comms checks went red with src/views/comms.js UNCHANGED in the commit
- * window (an earlier commit touches neither comms.js nor first-run-needs.js;
+ * window (a3e9f85..0485034 touches neither comms.js nor first-run-needs.js;
  * capability/ is not even tracked). The product now says why it is quiet in
  * the module's words below and keeps the door; this suite accepts EITHER
  * intended state and still fails a board that explains in neither. */
@@ -522,7 +522,7 @@ async function main() {
      * It required the envelope explanation -- "a program that watches the agents
      * running on a group of computers" -- on this screen, because when it was
      * written the fleet graph's whole answer to a fresh install was the
-     * unavailable state, and an unexplained refusal was the defect. an earlier commit
+     * unavailable state, and an unexplained refusal was the defect. 6f0a34a
      * ("Page 2: put THIS computer on the fleet page, so a fresh install has an
      * agent") changed what the screen IS: it now draws this computer from the
      * organisation this copy declares, so the person is looking at their own
@@ -552,7 +552,7 @@ async function main() {
        The finding named four screens. The directive says EVERY unavailable-host
        state, and these three reach the same one on the same install, so they are
        walked and read rather than assumed. Metrics is reported rather than
-       asserted: see the note at the bottom of an internal report. */
+       asserted: see the note at the bottom of reports/lanes/team2-b5.md. */
     const onTheWay = {}
     for (const step of ['metrics', 'research', 'comms']) {
       await clickVisible('#nav-next')
@@ -567,7 +567,7 @@ async function main() {
        paragraph is on it. */
     check('the metrics page offers the guide',
       onTheWay.metrics.guideLinks > 0, JSON.stringify(onTheWay.metrics.exits))
-    /* an earlier commit: "The research page said its report library 'could not be read'.
+    /* 61262ac: "The research page said its report library 'could not be read'.
        It was never shipped." The envelope explanation belonged to the old
        sentence, which described a read that failed. There was no failed read:
        this copy ships with no report library at all, and the page now says that
@@ -605,7 +605,7 @@ async function main() {
     await delay(1600)
     const ledger = await evaluate(SCREEN)
     note(`ledger: ${ledger.screen.slice(0, 260)}`)
-    /* an earlier commit: "The ledger promised it would fill in, and it never will." The
+    /* 1bdcce7: "The ledger promised it would fill in, and it never will." The
        envelope explanation carried an implicit promise -- that this is a view
        onto a fleet which, once connected, would populate this register. It will
        not: this register lists requests recorded while ToolsEnabled itself is

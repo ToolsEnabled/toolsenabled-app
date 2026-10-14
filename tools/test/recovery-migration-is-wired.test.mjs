@@ -94,7 +94,8 @@ test('startup migrates 23 records before the first window; actual preload and IP
 test('actual recovery IPC refuses an untrusted sender, erased data, and an oversized replacement', async t => {
   const f = fixture(t)
   await f.start()
-  const request = { computerId: 'c', nodeId: 'n0', record: { v: 1, handoff: 'ok', junk: 'x'.repeat(2_000_000) } }
+  // Unknown fields are dropped before the size check (node-recovery-store checkpointFields), so pad a kept one.
+  const request = { computerId: 'c', nodeId: 'n0', record: { v: 1, handoff: 'ok', conversation: 'x'.repeat(2_000_000) } }
   const save = f.handlers.get('mc-recovery:save')
   assert.equal((await save({ trusted: false }, request)).error.code, 'MC_PREFS_SENDER_REFUSED')
   f.scope.localDataErased = true

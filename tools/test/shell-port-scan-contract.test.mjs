@@ -186,7 +186,7 @@ async function borrowBlock(t, size) {
 test('contract #1: the declared scan range is the inclusive 4601-4699 set', () => {
   assert.equal(SHELL_HOST, '127.0.0.1')
   assert.equal(SHELL_PORT_MIN, 4601)
-  // Widened from 4609 on purpose (an earlier commit): nine ports ran out under ordinary concurrent use.
+  // Widened from 4609 on purpose (2318d7239): nine ports ran out under ordinary concurrent use.
   assert.equal(SHELL_PORT_MAX, 4699)
   assert.deepEqual(SHELL_PORTS, Array.from({ length: 99 }, (_, index) => 4601 + index))
 
@@ -378,7 +378,8 @@ test('contract #6: a request to bind a host other than 127.0.0.1 is rejected, no
 // written and was carried in tools/test-baseline.json as a known failure.
 //
 // It was adjudicated by a lane that wrote neither side -- ruling with full
-// measurements in an internal report, cited by an earlier commit -- and the verdict was that THE TEST WAS
+// measurements at reports/lanes/portscan-adjudication.md in the engine
+// checkout, cited by commit ab07f25 -- and the verdict was that THE TEST WAS
 // WRONG AND THE CODE IS RIGHT. On Windows an EACCES from a plain listen() on
 // an unprivileged loopback port is, in practice, a per-port OS exclusion
 // (Hyper-V/WinNAT reserves shifting blocks; `netsh interface ipv4 show
@@ -386,7 +387,7 @@ test('contract #6: a request to bind a host other than 127.0.0.1 is rejected, no
 // signal as EADDRINUSE: this one candidate is not available, take the next.
 // Propagating it raw would strand a person whose 4601 happens to land in a
 // reserved block while eight other candidates sit free -- the exact class of
-// failure an earlier commit replaced the fixed-port bind to end. The clause had picked
+// failure cef9da1 replaced the fixed-port bind to end. The clause had picked
 // the one code on this platform for which "never retry" is backwards.
 //
 // So the clause is NOT deleted and NOT weakened. It is re-pointed at what it

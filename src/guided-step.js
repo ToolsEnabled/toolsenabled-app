@@ -72,7 +72,7 @@ function group(label, items) {
  * argument: what it would do, what it gains against what it costs, that you do
  * not have to, and only then how. A list of commands above the sentence saying
  * they are optional is a list of commands a person feels they have to run. */
-/* THE LINE THAT SAYS WHETHER THIS WILL WANT ANYTHING FROM YOU (R1536).
+/* THE LINE THAT SAYS WHETHER THIS WILL WANT ANYTHING FROM YOU (owner, R1536).
  *
  * It sits above everything else in the block, because "is this going to ask me
  * for something" is the question a person has before any of the others, and
@@ -107,8 +107,8 @@ function frequencyMarkup(frequency) {
  * pair of modules written to prevent it.
  *
  * It reads `capability.gains` now, the field is declared on every capability,
- * and `capability.costs` is printed beside it -- because the product's shape
- * for a permission control is three things and the third is what it COSTS. A gain
+ * and `capability.costs` is printed beside it -- because the owner's shape for a
+ * permission control is three things and the third is what it COSTS. A gain
  * printed without its cost is an advertisement. validateGuidance() requires
  * both, so the next capability cannot arrive with only the good half. */
 function stepMarkup(step) {

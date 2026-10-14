@@ -62,27 +62,17 @@ async function main() {
     await sleep(400)
 
     const ready = await win.webContents.executeJavaScript(
-      `(() => { const ring = document.querySelector('.uring.crescent')
-                const gl = document.querySelector('.cres-gl')
-                const cpu = document.querySelector('.cres-layers')
-                const probe = document.querySelector('.cres-probe')
-                const cs = ring ? getComputedStyle(ring) : null
+      `(() => { const following = document.querySelector('[data-home-following]')
+                const activity = document.querySelector('.home-feed-wrap')
                 return { theme: document.documentElement.dataset.theme || null,
-                         mode: ring ? ring.crescentMode : null,
-                         canvas: !!gl,
-                         cpuReady: cpu ? cpu.dataset.ready === '1' : false,
-                         probe: !!probe,
-                         blend: gl ? getComputedStyle(gl).mixBlendMode : null,
-                         colour: probe ? getComputedStyle(probe).backgroundColor : null,
-                         glow: cs ? cs.getPropertyValue('--glow').trim() : null,
-                         dose: cs ? cs.getPropertyValue('--cres-halo-o').trim() : null,
-                         load: ring ? ring.dataset.load : null } })()`
+                         following: !!following && following.getBoundingClientRect().width > 0,
+                         activity: !!activity && activity.getBoundingClientRect().width > 0,
+                         voice: !!document.querySelector('.voice-contact'),
+                         ledger: document.querySelector('[data-home-ledger-status]')?.textContent || null } })()`
     )
     trace(`${theme}: ${JSON.stringify(ready)}`)
-
-    const rendered = ready.mode === 'gl' ? ready.canvas : ready.mode === 'cpu' && ready.cpuReady
-    if (ready.theme !== theme || !ready.probe || !rendered) {
-      throw new Error(`home crescent was not ready for ${theme}: ${JSON.stringify(ready)}`)
+    if (ready.theme !== theme || !ready.following || !ready.activity || !ready.voice || !ready.ledger) {
+      throw new Error(`Home was not ready for ${theme}: ${JSON.stringify(ready)}`)
     }
 
     const image = await win.webContents.capturePage()

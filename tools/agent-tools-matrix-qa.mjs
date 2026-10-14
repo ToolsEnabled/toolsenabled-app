@@ -4,7 +4,7 @@
  * MEASURED FROM REAL SESSIONS AGAINST THE STAGED PAYLOAD, NOT READ FROM SOURCE.
  *
  * WHY THIS DRIVER EXISTS. The first outside user reported that their agents
- * could not use the credential manager or the vault. Whether that is a defect,
+ * "weren't able to use credential manager or vault". Whether that is a defect,
  * a deliberate limit, or a broken tool cannot be answered by reading the
  * registry, because the surface an agent sees is decided at spawn time by the
  * generated configuration -- and this repository has already shipped three
@@ -348,41 +348,6 @@ export function playwrightAttemptLevel(attempt) {
 
 /* Reads exactly the shapes confinedCodexConfig() writes: literal single-quoted
  * strings, one server table and one optional env table per server. */
-function parseConfinedToml(text) {
-  const servers = {}
-  let current = null
-  let target = null
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim()
-    if (line === '' || line.startsWith('#')) continue
-    const envHeader = /^\[mcp_servers\.([A-Za-z0-9_-]+)\.env\]$/.exec(line)
-    if (envHeader) {
-      current = servers[envHeader[1]] = servers[envHeader[1]] || {}
-      current.env = current.env || {}
-      target = 'env'
-      continue
-    }
-    const header = /^\[mcp_servers\.([A-Za-z0-9_-]+)\]$/.exec(line)
-    if (header) {
-      current = servers[header[1]] = servers[header[1]] || {}
-      target = 'entry'
-      continue
-    }
-    const pair = /^([A-Za-z0-9_-]+)\s*=\s*(.+)$/.exec(line)
-    if (!pair || !current) continue
-    const [, key, value] = pair
-    const literal = /^'([^']*)'$/.exec(value)
-    const list = /^\[(.*)\]$/.exec(value)
-    const parsed = literal
-      ? literal[1]
-      : list
-        ? [...list[1].matchAll(/'([^']*)'/g)].map(match => match[1])
-        : value
-    if (target === 'env') current.env[key] = parsed
-    else current[key] = parsed
-  }
-  return servers
-}
 
 /* -------------------------------------------------------------- cells -- */
 
@@ -489,14 +454,12 @@ async function main() {
     /* --- codex: the confined home's config.toml ----------------------- */
     const fakeCodexHome = path.join(SCRATCH, 'codex-user-home')
     mkdirSync(fakeCodexHome, { recursive: true })
-    writeFileSync(path.join(fakeCodexHome, 'auth.json'), '{}\n', 'utf8')
     const plan = confinement.confinedSessionPlan({ userCodexHome: fakeCodexHome })
     if (plan.ok !== true) {
       note('FAIL', `${tier} codex: confinedSessionPlan refused: ${plan.code}`)
       results.push({ tier, provider: 'codex', server: null, ok: false, reason: plan.code })
     } else {
-      const toml = readFileSync(path.join(plan.codexHome, 'config.toml'), 'utf8')
-      const servers = parseConfinedToml(toml)
+      const servers = plan.codexConfig.mcp_servers
       await measureDocument({ mcpServers: servers }, { providerLabel: 'codex', tier, results })
       /* Kept for the credential drive below. */
       keepServers[tier] = { servers }

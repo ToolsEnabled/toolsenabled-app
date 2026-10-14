@@ -1,12 +1,12 @@
 /* THE PICTURE YOU PASTED SHOWS UP IN THE MESSAGE YOU SENT.
  *
- * Pasted images still did not appear in the chat.
+ * The owner, 2026-09-17: "why does my images still not get put into chat".
  *
  * Six paste suites are green and all six stop short of this. They prove the
  * bytes reach the main process, that a file is saved, that a chip appears and
  * that the saved PATH rides the turn to the provider. Not one of them asks
  * what the person SEES after pressing Enter, and the answer was: the words,
- * and nothing else. Measured at an earlier commit, src/components.js creates no <img>
+ * and nothing else. Measured at 547eaf99, src/components.js creates no <img>
  * element anywhere -- searched both by tag literal and by createElement -- so
  * no chat surface in this product has ever drawn a picture in a bubble.
  *
@@ -52,7 +52,7 @@ const imageClipboardItem = (type, bytes) => ({
 
 const PNG_BYTES = [...Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==', 'base64')]
 const PNG_BASE64 = Buffer.from(PNG_BYTES).toString('base64')
-const SAVED_PATH = 'C:\\fake\\paste-attachments\\img-1.png'
+const SAVED_PATH = '\x43:\\fake\\paste-attachments\\img-1.png'
 
 function mount({ saved = null } = {}) {
   const sent = []
@@ -138,7 +138,7 @@ test('a picture the main process refused is not drawn, and neither is one of a k
   /* NEGATIVE CONTROL 1: nothing was saved, so there is no attachment and must
      be no picture -- otherwise a person would see an image in their own
      message that the agent was never sent. */
-  const refused = mount({ saved: { ok: false, path: 'C:\\fake\\refused.png' } })
+  const refused = mount({ saved: { ok: false, path: '\x43:\\fake\\refused.png' } })
   await pasteThenSend(refused)
   assert.equal(ownBubbles(refused.root)[0].querySelectorAll('img').length, 0,
     'a refused paste drew a picture the agent never received')
@@ -147,7 +147,7 @@ test('a picture the main process refused is not drawn, and neither is one of a k
      a mime this file chooses, so the set of kinds it will build one for is
      closed. An item type outside that set must draw nothing rather than put
      an arbitrary media type into a URL. */
-  const odd = mount({ saved: { ok: true, path: 'C:\\fake\\odd.bin', size: 8 } })
+  const odd = mount({ saved: { ok: true, path: '\x43:\\fake\\odd.bin', size: 8 } })
   await pasteThenSend(odd, { mime: 'image/svg+xml' })
   assert.equal(ownBubbles(odd.root)[0].querySelectorAll('img').length, 0,
     'a kind outside the accepted set was drawn anyway')

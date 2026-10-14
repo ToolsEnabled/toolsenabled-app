@@ -42,7 +42,7 @@ function fixture() {
   const context = {
     slotAccountStartOptions, refusalAttribution,
     treeStore: store, transcriptStore: transcripts, window: { mcAgent: bridge }, destroyed: false,
-    sessionNodeIds, sessionTranscripts, sessionEfforts, sessionThreadIds: new Map(), sessionAccountNames: new Map(),
+    sessionNodeIds, sessionTranscripts, sessionEfforts, sessionThreadIds: new Map(), sessionAccountNames: new Map(), sessionAccountRecords: new Map(),
     sessionTranscripts, sessionTurnLog: new Map(), sessionUsage: new Map(), sessionModelOverride: new Map(),
     sessionPendingImages: new Map(), sessionProfileIds: new Map(), nodeActivity: new Map(),
     START_CONTROL_FLAG: 'agent-session', isWriteEnabled: () => true, nodeCleanupPending: () => false,
@@ -62,7 +62,7 @@ function fixture() {
     SWITCH_OPEN_REASON, // B26: the refusal routes say why the dialog would open.
     setOrgStatus: () => {}, refreshTree: () => {}, rebindRailToSession: () => {},
     outboxMoveSession: () => {}, resetSessionMetrics: () => {}, notifyNodeStatusListeners: () => {},
-    sessionThreadIds: new Map(), sessionAccountNames: new Map(), sessionEfforts, sessionProfileIds: new Map(),
+    sessionThreadIds: new Map(), sessionAccountNames: new Map(), sessionAccountRecords: new Map(), sessionEfforts, sessionProfileIds: new Map(),
     sessionTranscripts, sessionTurnLog: new Map(), sessionUsage: new Map(), sessionModelOverride: new Map(), sessionPendingImages: new Map(),
     nodeActivity: new Map(), resumedTranscriptLines: () => [], persistTranscript: () => {},
     endedAgentStartOutcome: value => ({ ok: false, ...value }), nodeReplacementFlight: { busy: () => false },

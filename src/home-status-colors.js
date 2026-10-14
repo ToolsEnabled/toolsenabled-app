@@ -2,21 +2,21 @@
 import { normalizeThemeId } from './theme-choice.js'
 export const HOME_STATUS_COLORS_EVENT = 'mc:home-status-colors-changed'
 export const HOME_STATUS_COLOR_SETTINGS = Object.freeze([
-  Object.freeze({ id: 'home_circle_clear_color', status: 'clear', name: 'Home circle: clear', desc: 'No owner asks, proposals or blockers are waiting. The default color complements your theme.' }),
-  Object.freeze({ id: 'home_circle_attention_color', status: 'attention', name: 'Home circle: owner requests', desc: 'An unanswered ask, proposal or purchase decision needs review. Yellow by default.' }),
-  Object.freeze({ id: 'home_circle_blocked_color', status: 'blocked', name: 'Home circle: blocked', desc: 'The ledger explicitly marks work blocked, waiting for help. Red by default; takes priority over requests.' }),
+  Object.freeze({ id: 'home_circle_clear_color', status: 'clear', name: 'Home: nothing waiting', desc: 'No owner asks, proposals or blockers are waiting. The default color complements your theme.' }),
+  Object.freeze({ id: 'home_circle_attention_color', status: 'attention', name: 'Ledger: owner requests', desc: 'An unanswered ask, proposal or purchase decision needs review. Yellow by default.' }),
+  Object.freeze({ id: 'home_circle_blocked_color', status: 'blocked', name: 'Ledger: blocked', desc: 'The ledger explicitly marks work blocked, waiting for help. Red by default; takes priority over requests.' }),
 ])
-// A clean, bright yellow on every sheet (rule: a clean yellow,
-// never a gold, mustard or brown one). The light sheets used to darken it
+// A clean, bright yellow on every sheet (owner, 2026-09-23: yellow is fine,
+// a gold, mustard or brown yellow is not). The light sheets used to darken it
 // to ochre so the Ledger's ask glyph could pass as text; the glyph is now ink
 // on a chip of this colour on White and Tan (src/ledger.css), so the colour
 // itself is only ever a mark, a fill or the circle, and can stay yellow.
 const PALETTES = Object.freeze({
-  white: Object.freeze({ clear: '#176c85', attention: '#f4c81c', blocked: '#b44355' }),
-  tan: Object.freeze({ clear: '#356f69', attention: '#f2c50e', blocked: '#9f493d' }),
-  black: Object.freeze({ clear: '#d6bea3', attention: '#f2c247', blocked: '#f08c87' }),
-  ember: Object.freeze({ clear: '#86c8b5', attention: '#f0ce65', blocked: '#ff6b7f' }),
-  cobalt: Object.freeze({ clear: '#b7b3ed', attention: '#e4cc75', blocked: '#f08da8' }),
+  white: Object.freeze({ clear: '#6a6a6f', attention: '#f4c81c', blocked: '#c9172a' }),
+  tan: Object.freeze({ clear: '#6a6a6f', attention: '#f2c50e', blocked: '#c31629' }),
+  black: Object.freeze({ clear: '#b1b1b8', attention: '#e3b341', blocked: '#ff908c' }),
+  ember: Object.freeze({ clear: '#afafb5', attention: '#e3b341', blocked: '#ff8e8d' }),
+  cobalt: Object.freeze({ clear: '#b2b2b8', attention: '#e3b341', blocked: '#ff918f' }),
 })
 const keyFor = status => {
   const setting = HOME_STATUS_COLOR_SETTINGS.find(item => item.status === status)

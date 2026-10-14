@@ -1,5 +1,5 @@
-/* THE PALETTE IS ALSO THE COMMAND LINE (a person can add on the page by hand
- * as well as direct by hand).
+/* THE PALETTE IS ALSO THE COMMAND LINE (owner, 2026-09-15: "i want to be able to
+ * manually add on the page as well as manually direct").
  *
  * MEASURED before this change: the slash key on an empty composer opened the
  * Actions palette and swallowed the slash (components.js onInputKeydown, since

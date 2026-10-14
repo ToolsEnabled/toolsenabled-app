@@ -229,7 +229,7 @@ test('a loop skips a still-active turn and never overlaps a new child', async ()
   await f.tick()
   assert.equal(f.starts.length, 1)
   assert.equal(f.closes.length, 0)
-  // A skip is not a run. Before the T48 correction (an earlier commit, "Count started
+  // A skip is not a run. Before the T48 correction (fc8a445b, "Count started
   // loop runs without spending the bound on busy skips") the skipped interval
   // consumed one of the selected iterations, so selecting three runs could
   // start two. This assertion used to read `attempts, 2`, pinning that

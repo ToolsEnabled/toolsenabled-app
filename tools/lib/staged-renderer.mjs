@@ -4,8 +4,8 @@
 //
 // A packaged harness stages this tree's dist/ into a copy of the build and
 // drives it. On 2026-08-12 a lane fixed a real defect in src/views/computers.js
-// eight minutes after dist/index.html had been built. The harness staged the
-// older bundle, ran the fix's own acceptance test against a renderer compiled
+// at 13:01; dist/index.html had been built at 12:53. The harness staged the
+// 12:53 bundle, ran the fix's own acceptance test against a renderer compiled
 // EIGHT MINUTES BEFORE THE FIX EXISTED, found the defect still there, and
 // reported that the fix did not work.
 //

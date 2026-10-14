@@ -1,8 +1,8 @@
 import { webcrypto } from 'node:crypto'
 /* THE CONVERSATION A TREE NODE SHOWS, AND THE WAYS IT USED TO LOSE ONE.
  *
- * On a preview build, messages in history sometimes disappeared or merged into
- * each other.
+ * Owner, on tonight's preview build: "Sometimes the messages in history
+ * disappear or combine into each other."
  *
  * WHAT THIS FILE CAN AND CANNOT MEASURE, said plainly. src/views/computers.js
  * imports three stylesheets and reaches echarts, a canvas and a ResizeObserver
@@ -93,9 +93,9 @@ test('the brief a person types is persisted by the actual opening callback, incl
     const context = vm.createContext({
       crypto: webcrypto,
       Date, Array, sessionNodeIds: new Map(), sessionEfforts: new Map(), sessionThreadIds: new Map(),
-      sessionAccountNames: new Map(), sessionTranscripts: new Map(), TRANSCRIPT_MAX_ENTRIES: 100,
+      sessionAccountNames: new Map(), sessionAccountRecords: new Map(), sessionTranscripts: new Map(), TRANSCRIPT_MAX_ENTRIES: 100,
       transcriptStore: destroyed ? null : transcripts, treeStore: destroyed ? null : store,
-      startTranscripts: transcripts, store, node, draft, destroyed, attachProblem: null,
+      startTranscripts: transcripts, store, node, draft, destroyed, attachProblem: null, research: null,
       briefContext: {}, nodeManagerContext: () => 'Separate tree context.',
       editorCopy: { ok: true, receipt: null }, standaloneSettledTurns: new Map(),
       capturedProfileId: null, LAUNCH_TIERS: [{ id: node.tier, provider: 'codex' }],
@@ -277,7 +277,7 @@ test('a delta naming a new turn settles the old one before it adds a word', () =
   /* The accumulator and the open bubble were released ONLY by turn_completed.
      A turn that ended any other way left both standing, and the next turn's
      first delta appended to the last turn's answer inside the same bubble --
-     two turns merged into one. */
+     "combine into each other". */
   const delta = view.slice(view.indexOf('const speech = sessionTextReader.read(packet, sessionId)'))
   const settleAt = delta.indexOf('settleTurnBoundary(sessionId, sessionEventTurnId(packet, sessionId))')
   const accumulateAt = delta.indexOf("sessionTurnText.set(sessionId, (sessionTurnText.get(sessionId) || '') + text)")
@@ -401,7 +401,7 @@ test('the dead-session recovery matches the whole line, not a prefix of it', () 
    --------------------------------------------------------------- */
 
 test('a message boundary is read off the wire, and only from the events that mark one', () => {
-  /* The home card showed "Said back: ...now.I couldn't". Words arrive as
+  /* Owner, off the home card: "Said back: ...now.I couldn't". Words arrive as
      deltas and were joined bare; the engine marks where a message ends. */
   for (const type of ['assistant_text', 'tool_call', 'tool_result', 'approval_request']) {
     assert.equal(sessionMessageBoundary({ sessionId: 's1', event: { type } }, 's1'), true, `${type} marks a message end`)

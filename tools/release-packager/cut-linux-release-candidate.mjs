@@ -644,7 +644,7 @@ export function planSteps(ctx) {
   /* --receipts is what makes this a gate. Without it the guard only checks that
      every run-*.mjs is DECLARED and returns green ("discovered is not
      executed"), so a required proof with a red, stale or missing receipt could
-     not redden the cut (2026-09-18, T396). With it, every required
+     not redden the cut (Lane B, 2026-09-18, T396). With it, every required
      proof must carry an attributable passing receipt from one real execution
      against this tree, and a missing one is a failure, never a skip (R1228). */
   child('check-browser-proofs-discovered', 'release-cut-wrapper', [node, 'tools/check-browser-proofs-discovered.mjs', '--receipts', 'private/browser-proof-receipts'])
@@ -1023,7 +1023,7 @@ export async function writeFacts(ctx, record) {
     installedManifest: ctx.manifest ?? null,
     buildInfo: ctx.buildInfo ?? null,
     history: ctx.history ?? null,
-    // Rule D3: the PUBLISHED declaration facts carry
+    // Owner rule D3, Controller ruling: the PUBLISHED declaration facts carry
     // the private inputs' names and sizes, never their digests -- a digest of
     // a guessable file is a confirmation oracle. The digests stay in the
     // private gates record (writeGates), which never leaves the evidence dir.

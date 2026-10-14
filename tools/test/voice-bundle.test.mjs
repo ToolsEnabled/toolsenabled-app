@@ -69,7 +69,7 @@ test('manifest traversal and declared-root escapes are refused', async t => {
 
 test('recomputed records cannot introduce machine Python search paths', async t => {
   const f = fixture(t)
-  f.write('python/python313._pth', 'C:\\Python313\\Lib\nimport site\n'); f.seal()
+  f.write('python/python313._pth', '\x43:\\Python313\\Lib\nimport site\n'); f.seal()
   await assert.rejects(verifyVoiceBundle(f.bundle, f.source), /not portable and isolated/)
 })
 
@@ -84,9 +84,9 @@ test('artifact packaging requires the exact notices and locked distribution vers
 
 /* THE INSTALLER SHIPS WITHOUT LOCAL SPEECH, AND THAT IS THE APPROVED DESIGN.
  *
- * Decision OD7, and B23c: a SEPARATE hash-manifested speech pack is an opt-in
- * download, a second public unit beside the installer, and 1.0.42 may ship
- * without the pack if unmeasured. So a build with no bundle
+ * Owner decision OD7, and B23c: "the person approved a SEPARATE hash-manifested
+ * speech pack as an opt-in download, a second public unit beside the installer,
+ * and 1.0.42 may ship without the pack if unmeasured". So a build with no bundle
  * and no owner config is the DEFAULT, not a failure -- this hook's old message,
  * "Local speech must be included in the Windows installer", encoded the previous
  * design and blocked every cut once the bundle stopped being staged in-tree.

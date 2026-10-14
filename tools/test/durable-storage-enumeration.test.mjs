@@ -1,11 +1,11 @@
 /* WHAT THE REPLACED `localStorage` SAYS WHEN SOMETHING ASKS WHAT IS IN IT.
  *
  * public/durable-storage.js used to answer `Object.keys(localStorage)` with its
- * own five method names and `length`. A probe read that as a backup of a
- * development install's settings, cleared the store, and wrote the six pairs
- * back; every tree, agent node and preference went, and the record was left
- * holding keys called `getItem`, `clear` and `length` -- so every case below
- * is a case a real record can be in.
+ * own five method names and `length`. On 2026-09-20 a probe read that as a
+ * backup of the owner's settings, cleared the store, and wrote the six pairs
+ * back; six trees, 82 agent nodes and every preference went, and the record was
+ * left holding keys called `getItem`, `clear` and `length` -- which it still
+ * holds today, so every case below is a case the owner's record is in.
  *
  * The rule under test is the platform's, not an invention: Storage is a legacy
  * platform object without [LegacyOverrideBuiltIns], so a stored key whose name
@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SOURCE = fs.readFileSync(path.join(REPO_ROOT, 'public', 'durable-storage.js'), 'utf8')
 
-/* The six names the bad restore left in that record, with the text it
+/* The six names the bad restore left in the owner's record, with the text it
    wrote under them, plus the settings a person would actually have. */
 const JUNK = {
   getItem: 'function getItem(key) { [native code] }',

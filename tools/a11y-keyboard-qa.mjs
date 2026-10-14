@@ -60,11 +60,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { assertRendererMeasurable, assertStagedRendererConsistent } from './lib/staged-renderer.mjs'
-import {
-  copyPreparedCodexCredential,
-  prepareCurrentCodexCredentialStage,
-  removeStagedCodexCredential,
-} from './lib/a11y-codex-auth.mjs'
+import { providerLaunchEnvironment } from './lib/provider-launch-environment.cjs'
 import { prepareSterileProfile, qaProfileDirectories, sterileLaunchEnvironment } from './lib/sterile-launch.cjs'
 import { createSession } from './test-account-harness.mjs'
 import { appExecutable, defaultReleaseDirectory, packagedLauncherName } from './lib/packaged-platform.mjs'
@@ -82,22 +78,9 @@ function argument(name, fallback = null) {
 
 const RELEASE = path.resolve(argument('--release', defaultReleaseDirectory(REPO_ROOT)))
 const KEEP = process.argv.includes('--keep')
-/* THE ENABLED START CONTROL, WITH A SHORT-LIVED COPY IN THE LIVE LANE ONLY.
- *
- * The isolation above redirects USERPROFILE, so os.homedir()/.codex is empty in
- * the scratch profile and shell/agent-host.cjs correctly reports the machine as
- * signed out -- which DISABLES Start, and a disabled button is not in the tab
- * order, so its enabled interaction cannot be measured there. The
- * provider-free run leaves that home empty and never presses Start. A live
- * opt-in may point at the CURRENT user's Codex home; the harness carries only
- * its auth.json into the scratch profile with a kernel copy, never
- * reads its contents, and never places a credential value in this process.
- *
- *   --codex-home <dir>   measure the enabled control
- *   --press-start        also press Enter on it, which starts a REAL session
- *                        (off by default: a keyboard audit must not spawn a
- *                        child process on somebody's machine as a side effect) */
-const CODEX_HOME = argument('--codex-home', null)
+/* The enabled Start audit uses --codex-home in place or an API key from the environment.
+ * --press-start explicitly opts into a real session and provider budget. */
+const LIVE_PROVIDER = process.argv.some(arg => arg === '--codex-home' || arg.startsWith('--codex-home=')) || process.argv.includes('--press-start')
 const PRESS_START = process.argv.includes('--press-start')
 /* Product phrases that unambiguously say the door represented by the section
    is shut. Keep this list deliberately small. Broad words such as "cannot"
@@ -247,27 +230,17 @@ async function main() {
   const scratch = mkdtempSync(path.join(tmpdir(), 'a11y-kbd-'))
   let child = null
   let session = null
-  let stagedCredential = null
   const started = Date.now()
   try {
     const executable = await stage(scratch)
     const port = await freePort()
     const profile = path.join(scratch, 'profile')
     mkdirSync(path.join(profile, 'userdata'), { recursive: true })
-    /* Every home the launched copy could read this machine's state through is
-       inside the scratch profile (tools/lib/sterile-launch.cjs). The explicit
-       live lane carries only the current account's sign-in into that profile;
-       the provider-free default leaves it empty. */
+    /* Product state remains in scratch. A live provider uses the explicit
+       home in place or the environment API key; no sign-in is staged. */
     const profileDirectories = prepareSterileProfile(qaProfileDirectories(profile))
-    if (CODEX_HOME) {
-      /* Assign the opaque guard before the exclusive copy. Even a copy failure
-         therefore reaches guarded exact/identity-recovery cleanup in finally. */
-      stagedCredential = prepareCurrentCodexCredentialStage(CODEX_HOME, profileDirectories.codexHome, {
-        recoveryRoot: profileDirectories.userProfile,
-      })
-      copyPreparedCodexCredential(stagedCredential)
-    }
-    const environment = sterileLaunchEnvironment(profileDirectories)
+    const sterileEnvironment = sterileLaunchEnvironment(profileDirectories)
+    const environment = LIVE_PROVIDER ? providerLaunchEnvironment('codex', sterileEnvironment) : sterileEnvironment
 
     child = spawn(executable, [
       `--user-data-dir=${path.join(profile, 'userdata')}`,
@@ -1112,20 +1085,9 @@ async function main() {
       try { execFileSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* already gone */ }
     }
     await delay(500)
-    /* A costly run may keep screenshots and non-secret scratch evidence, but
-       never the copied sign-in. Guarded exact cleanup and bounded identity
-       recovery run before honoring --keep. Recursive non-secret scratch
-       cleanup runs only after that secret cleanup is proved safe. */
-    let credentialCleanupError = null
-    if (stagedCredential) {
-      try { await removeStagedCodexCredential(stagedCredential) }
-      catch (error) { credentialCleanupError = error }
-    }
-    if (!KEEP && !credentialCleanupError && !(CODEX_HOME && !stagedCredential)) {
+    if (!KEEP) {
       try { rmSync(scratch, { recursive: true, force: true }) } catch { /* windows holds a handle briefly */ }
-    }
-    else console.log(`  scratch kept at ${scratch}`)
-    if (credentialCleanupError) throw credentialCleanupError
+    } else console.log(`  scratch kept at ${scratch}`)
   }
 }
 

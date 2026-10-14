@@ -150,7 +150,7 @@ test('the branches this probe copies are still the branches the payload takes', 
   const here = path.dirname(fileURLToPath(import.meta.url))
   const engineFile = [
     path.join(here, '..', '..', 'capability', 'src', 'lib', 'agent-engine', 'codex-process.js'),
-    path.join(here, '..', '..', '..', 'engine', 'src', 'lib', 'agent-engine', 'codex-process.js'),
+    path.join(here, '..', '..', '..', 'wt-engine-1.0.41-next', 'src', 'lib', 'agent-engine', 'codex-process.js'),
   ].find(candidate => existsSync(candidate))
   if (!engineFile) {
     t.skip('no copy of the payload engine is present in this checkout to read')

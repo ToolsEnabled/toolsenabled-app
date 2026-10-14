@@ -1,8 +1,8 @@
 /* A RESUME LANDING AFTER AN AWAIT MUST NOT REBUILD THE RAIL OUT FROM UNDER A
  * PERSON STILL TYPING TO THAT SAME NODE.
  *
- * THE DEFECT (measured at an earlier commit): resumeNodeSessionUnguarded's
- * tail --
+ * THE DEFECT (t5-LANE-W12-keystrokes-moved.md, measured by Manager at
+ * 8e1e5c4): resumeNodeSessionUnguarded's tail --
  *
  *   if (controlsPage.classList.contains('is-active') && currentRailTreeNode
  *       && currentRailTreeNode.id === node.id) {
@@ -102,13 +102,13 @@ const { installDomStandIn } = await import(moduleUrl)
    beside it. That is a real trap rather than a style choice: this file has a
    top-level `await import(...)` above, and a module-scope after() registered
    below a top-level await is not attached to the file's own root test on every
-   runner. Measured on a development machine: 3 of 6 red on the pinned
-   Node 22.19.0 runner (the stand-in was restored before the
+   runner. Measured on this machine: 3 of 6 red on the pinned runner
+   C:\agent-apps\node-v22.19.0\node.exe (the stand-in was restored before the
    tests that needed it ran, so `document` was gone) and 6 of 6 green on PATH
    node v22.14.0 -- the same source, the same assertions, two answers. A gate
    whose colour depends on which node started it cannot tell anybody whether
    the product works, and this one guards a defect the person reported in their
-   own words (keystrokes being moved at random). A per-test hook is attached
+   own words ("keystrokes getting moved randomly"). A per-test hook is attached
    to a test that certainly exists, so both runners agree. */
 let document = null
 function useDom(t) {

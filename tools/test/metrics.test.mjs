@@ -202,8 +202,17 @@ function send(node, type, value) {
   for (const listener of node.listeners.get(type) || []) listener({ target: node })
 }
 
+/* The example fleet is built at a fixed instant, and the view picks its window
+   from its own Date.now(). Both must read the same clock, or every run ages out of
+   "last 30 days" a month after this instant was chosen. pinSampleClock(t) mocks Date
+   for one test (restored when it ends), so the view and the sample agree forever. */
+const SAMPLE_NOW = Date.UTC(2026, 8, 8, 5, 55)
+function pinSampleClock(t) {
+  t.mock.timers.enable({ apis: ['Date'], now: SAMPLE_NOW })
+}
+
 function sampleAgent() {
-  const now = Date.UTC(2026, 8, 8, 5, 55)
+  const now = SAMPLE_NOW
   const principal = 'unauthenticated'
   return Object.fromEntries(['history', 'usage'].map(channel => [channel, async ({ limit, metrics }) => ({ ok: true, verified: true, ...selectMetricsRecords((channel === 'history' ? sampleSessionsRaw(now) : sampleUsageRaw(now)).entries.map(entry => ({ ...entry, principal, sessionId: entry.sessionId || sampleSessionsRaw(now).entries.find(start => start.sequence === entry.outcome?.resolves)?.sessionId })), { ...metrics, principal }, limit, channel === 'usage') })]))
 }
@@ -278,7 +287,8 @@ test('run history explains its selected period and returned account scope withou
   }
 })
 
-test('run history paginates loaded rows and filters unknown outcomes without changing whole-record totals', async () => {
+test('run history paginates loaded rows and filters unknown outcomes without changing whole-record totals', async (t) => {
+  pinSampleClock(t)
   globalThis.mcAgent = sampleAgent()
   const view = metricsView(); await settle()
   click(view, view.el.querySelector('[data-v="30d"]'))
@@ -298,7 +308,8 @@ test('run history paginates loaded rows and filters unknown outcomes without cha
   } finally { view.destroy() }
 })
 
-test('search with no matches offers a recovery and disables pagination and export', async () => {
+test('search with no matches offers a recovery and disables pagination and export', async (t) => {
+  pinSampleClock(t)
   globalThis.mcAgent = sampleAgent()
   const view = metricsView(); await settle()
   click(view, view.el.querySelector('[data-v="30d"]'))
@@ -315,7 +326,8 @@ test('search with no matches offers a recovery and disables pagination and expor
   } finally { view.destroy() }
 })
 
-test('refresh reports progress, keeps filters, and replaces unreadable data without asserting zero runs', async () => {
+test('refresh reports progress, keeps filters, and replaces unreadable data without asserting zero runs', async (t) => {
+  pinSampleClock(t)
   globalThis.mcAgent = sampleAgent()
   const view = metricsView(); await settle()
   click(view, view.el.querySelector('[data-v="30d"]'))

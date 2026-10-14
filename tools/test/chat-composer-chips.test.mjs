@@ -81,8 +81,8 @@ test('the EFFORT chip is gated on onOpenEffort alone, with a fixed label', () =>
 })
 
 test('one door under the arrow, and it is Send now -- no second Send and no Queue chip', () => {
-   /* W18c: under the arrow there were a send and a queue button; the arrow
-     sends, and the button below is for Send now. The old SEND chip
+  /* W18c, the owner: "under the arrow is a send and a que button. The arrow
+     should send, the button below should be for send now." The old SEND chip
      called the same send() the arrow calls, and the old QUEUE chip called
      send() too, because send()'s busy branch IS the queue -- so both were the
      arrow, spelled twice. */
@@ -151,7 +151,7 @@ test('chips.subscribe follows the exact status/queue.subscribe shape, and is tor
     'a chips.subscribe firing no longer repaints the chips')
   /* The WHOLE dispose body, located by its own closing brace. A fixed character
      window silently stopped covering the later teardown lines as dispose grew:
-     measured 2026-09-09 at an earlier app commit, statusUnsub sat at offset 1385 but
+     measured 2026-09-09 at app 6909208e, statusUnsub sat at offset 1385 but
      queueUnsub at 1467 and chipsUnsub at 1519, so a 1400 window reported
      "dispose leaks the queue subscription" while dispose unsubscribes on the
      very next line. A pin that silently stops measuring is worse than no pin. */
@@ -210,8 +210,8 @@ test('the Send now chip never becomes a second HALT button when the box is empty
 })
 
 test('the Send now chip interrupts the running turn and then delivers the words -- once', async () => {
-   /* R17: the user can send a Send now that actually interrupts the agent, and
-     W18c puts that act under the arrow. The point
+  /* Owner R17: "the user needs to be able to send a send now that actually
+     interrrupts the agent", and W18c puts that act under the arrow. The point
      of this test is the ORDER and the COUNT: the turn is stopped, the words
      are delivered, and a second press of the same button cannot deliver them
      twice or fall through to the bare stop. */

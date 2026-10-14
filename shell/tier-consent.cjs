@@ -13,7 +13,7 @@
  * the canonical chain (shell/canonical-audit.cjs). This is the same recorder
  * asked to hold the one decision the Terms are most concerned with.
  *
- * RULE X4 in four clauses, and where each lands:
+ * THE OWNER'S RULING (X4, 2026-08-15) in four clauses, and where each lands:
  *   default OFF                -> src/setup-state.js DEFAULT_TIER; not this file
  *   the risk stated in words   -> src/unrestricted-consent.js; the words arrive
  *                                 here INSIDE the consent and are recorded

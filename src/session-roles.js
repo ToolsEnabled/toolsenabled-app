@@ -21,7 +21,7 @@
  * own. The two were byte-identical and home was never switched over, so from
  * that hour on there were two readers of one record and a widening of either
  * one silently missed the other. Home now calls THIS, and the fields below are
- * the widening that was asked for: the activity list is to show what
+ * the widening the owner asked for: he wanted the activity list to show what
  * each agent SAID, and `reply` was sitting on the node the whole time while
  * both readers took `role` and `message` and dropped the rest on the floor.
  *
@@ -129,8 +129,8 @@ export function readSessionRoles(storage = (typeof window === 'undefined' ? null
         said: saved ? lastAgentLine(saved[node.id]) : '',
         /* THE LINES BETWEEN, for the one card that draws them. The home
            activity card now folds each run open to show what was said in it,
-           not only the first ask and the last answer; the informative part of
-           the transcript belongs inside the live list. An
+           not only the first ask and the last answer; the owner asked for "the
+           informative aspect" of the transcript inside the live list. An
            absent or damaged transcript reads as no lines, which costs a row
            its fold and nothing else. `[]` when transcripts were not asked for,
            so every existing reader of role/asked/reply/said is unchanged. */

@@ -1,8 +1,8 @@
 /* REDRAW PATH 4: A TRANSCRIPT APPEND AND A STATUS TICK MUST NOT COST THE PERSON
  * WHAT THEY HAVE TYPED.
  *
- * An earlier pass covered the takeover re-render paths and named this one as
- * not driven: these are
+ * Builder 4 covered the takeover re-render paths and named this one as not
+ * driven (HANDOFF-B4-composer-redraw-retention-20260909.md, path 4): these are
  * buildChat-INTERNAL repaints that never rebuild the input element, so they can
  * only lose typing if something writes `input.value`. That has to be proved
  * against the real component rather than argued from a reading, and it needs
@@ -14,7 +14,7 @@
  * The shared DOM stand-in models no browser selection. buildChat's exportDraft
  * reads `input.selectionStart`/`selectionEnd`, so without one those read
  * undefined, an assertion comparing undefined to undefined passes, and the test
- * measures nothing while looking green -- an earlier pass hit exactly this.
+ * measures nothing while looking green -- Builder 4 hit exactly this and said so.
  *
  * Defining the two properties is not enough on its own either. A real input
  * MOVES THE CARET TO THE END WHEN `.value` IS ASSIGNED. If this stand-in ignored
@@ -98,7 +98,7 @@ function mount({ busy = false } = {}) {
       subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
     },
     chips: {},
-    onAttach: async () => ({ ok: true, path: 'C:/pictures/diagram.png' }),
+    onAttach: async () => ({ ok: true, path: '\x43:/pictures/diagram.png' }),
     onSend: text => { state.sent.push(text); },
     onReady: instance => { ready = instance },
   })

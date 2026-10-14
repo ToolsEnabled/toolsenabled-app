@@ -112,7 +112,7 @@ export function accountView({ navigate = hash => { location.hash = hash } } = {}
      dead code still matches a text search. Builders that a test can CALL are
      the only thing that catches it. This view now owns state and events; it
      owns no HTML. */
-  /* WHAT IS THEIRS, read separately from WHO THEY ARE.
+  /* WHAT IS HIS, read separately from WHO HE IS.
    *
    * Two reads rather than one because they fail differently and the screen has
    * to say which failed. A damaged settings partition must not stop the page
@@ -222,7 +222,7 @@ export function accountView({ navigate = hash => { location.hash = hash } } = {}
    * shell/product-account.cjs's partition note) and what a person wants to see
    * is their own slice of it. The principal is compared to `account:<id>` --
    * the SAME string the main process writes into the record, produced there and
-   * never here, so the page cannot decide that a record is theirs.
+   * never here, so the page cannot decide that a record is his.
    *
    * Never throws and never blocks the rest of the screen: a ledger this build
    * cannot read leaves `history` null and the row simply does not appear. */
@@ -242,16 +242,16 @@ export function accountView({ navigate = hash => { location.hash = hash } } = {}
 
   /* WHAT IS WAITING TO BE BOUGHT, READ FROM THE ONE LIST THAT HOLDS IT.
    *
-   * The purchase list is to be in front of its owner inside their
+   * The owner asked for his purchase list to be in front of him inside his
    * signed-in account, so this screen reads the same queue #/approvals reads,
    * over the same audited connection, and hands it to the same counting code.
-   * NOTHING is stored here and nothing is totalled here: a second copy of their
+   * NOTHING is stored here and nothing is totalled here: a second copy of his
    * buy list, held by a screen, is precisely the drift this design forbids.
    *
    * IT NEVER THROWS AND NEVER BLOCKS THE REST OF THE SCREEN. A queue this build
    * cannot reach comes back readable:false and the row says so in a sentence,
    * because "I could not look" and "nothing is waiting" are different facts and
-   * only one of them would let them relax. It also DECIDES NOTHING and cannot:
+   * only one of them would let him relax. It also DECIDES NOTHING and cannot:
    * this is the read route, and a decision needs measured evidence that a card
    * was on the glass, which this screen does not draw. */
   async function loadCart() {
@@ -427,7 +427,10 @@ export function accountView({ navigate = hash => { location.hash = hash } } = {}
        somebody may walk away from. */
     clearPasswords()
     if (!result.ok) {
-      notice = { tone: 'bad', title: 'That did not work.', detail: result.reason }
+      const locations = result.keptAs?.length
+        ? ` Reported recovery locations: ${result.keptAs.join(' and ')}.`
+        : ''
+      notice = { tone: 'bad', title: 'That did not work.', detail: result.reason + locations }
       await refresh()
       paint()
       return
@@ -744,19 +747,21 @@ export function accountView({ navigate = hash => { location.hash = hash } } = {}
 
   function onClick(event) {
     if (event.target.closest('[data-account-set-aside]')) {
-      /* T1520: moves only the account file that will not read; see
+      /* T1520: keeps unreadable files or both conflicting account lists; see
          shell/product-account.cjs setAsideDamagedStore(). */
       run(bridge => typeof bridge.setAsideDamaged === 'function'
         ? bridge.setAsideDamaged()
         : { ok: false, reason: 'This installed copy cannot set the account file aside. Update the app, then try again.' },
       async result => {
         await refresh()
+        if (destroyed) return
         notice = {
           tone: 'good',
-          title: 'The damaged account file was set aside.',
-          detail: `It is kept as ${(Array.isArray(result.keptAs) ? result.keptAs : []).join(' and ') || 'a copy beside the new one'}. Create an account or sign in below.`,
+          title: result.keptAs?.length > 1 ? 'The account files were set aside.' : 'The damaged account file was set aside.',
+          detail: `Recovery copies are kept as ${(Array.isArray(result.keptAs) ? result.keptAs : []).join(' and ') || 'a copy beside the new one'}. Create an account or sign in below.`,
         }
         paint()
+        section.querySelector('form[data-account-form]')?.querySelector('[name="username"]')?.focus?.()
       })
       return
     }

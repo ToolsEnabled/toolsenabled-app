@@ -2,9 +2,9 @@
 
 /* THE GATE FOR DEFECTS THAT ARE NOT IN ANY ONE STRING.
  *
- * Two screens failed a reader: the Codex Cloud panel was nearly impossible for a
- * person to make sense of, and the R-ledger panel was not human-friendly.
- * tools/check-plain-language.mjs exits 0 on both, and it is not
+ * The owner, on two screens: the Codex Cloud panel is "almost impossible for a
+ * human to make any meaning of", and the R-ledger panel "is a mess (not human
+ * friendly)". tools/check-plain-language.mjs exits 0 on both, and it is not
  * broken: it measures string literals, one at a time, per file, and neither
  * defect is a property of a string.
  *

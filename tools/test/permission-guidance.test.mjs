@@ -1,4 +1,4 @@
-/* THE GUIDED-STEP MECHANISM (R1529).
+/* THE GUIDED-STEP MECHANISM (owner, R1529).
  *
  * Ordered ABSENCE FIRST, deliberately. This codebase's recurring defect is
  * absence read as consent -- a missing key that meant enabled, a skipped
@@ -17,6 +17,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { parseAst } from 'rollup/parseAst'
+import { HOME_STATUS_COLOR_SETTINGS } from '../../src/home-status-colors.js'
 import { fileURLToPath } from 'node:url'
 
 import {
@@ -52,6 +54,13 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8')
+const computerConstants = parseAst(read('src/this-computer-settings.js')).body
+  .filter(node => node.type === 'ExportNamedDeclaration').flatMap(node => node.declaration?.declarations || [])
+  .filter(item => ['THIS_COMPUTER_SECTION', 'THIS_COMPUTER_PROGRAMS_ROW'].includes(item.id.name))
+const { THIS_COMPUTER_SECTION, THIS_COMPUTER_PROGRAMS_ROW } = Object.fromEntries(computerConstants.map(item => {
+  assert.equal(item.init.type, 'Literal', `${item.id.name} must resolve to literal metadata`)
+  return [item.id.name, item.init.value]
+}))
 
 test('desk guidance keeps its local subject and gives relay readers the driven-computer twin', async () => {
   const localAudited = EXTERNAL_CAPABILITIES['audited-connection'].whatItDoes
@@ -73,73 +82,58 @@ test('desk guidance keeps its local subject and gives relay readers the driven-c
   assert.doesNotMatch(retentionRelay, /stay on this computer.*using this computer/)
 })
 
-/* THE SETTINGS CATALOGUE IS READ AS SOURCE, NOT IMPORTED, and that is the house
- * pattern rather than a shortcut: src/views/settings.js imports four
- * stylesheets, which `node --test` cannot load, so tools/test/chatbox-feed and
- * tools/test/ledger-archive-ui read the same file the same way.
- *
- * The extractor tolerates the multi-line literals (uninstall_data is written
- * across six lines) and the one GENERATED family left -- the write-action rows
- * are spread from their own register, which IS importable, so they are added
- * from the real list rather than parsed out of a template string. (The
- * live-view family this used to add is gone: the seven per-view rows became
- * the one literal `example_mode` row, which the regex walk sees directly.)
- * Under-counting here would silently narrow the coverage test below into one
- * that proves nothing, which is why it asserts a floor. */
+/* Read the actual exported catalogue metadata, without executing Settings or
+ * its delegated actions. Every object/spread is visited; unsupported metadata
+ * fails by name instead of disappearing from a regex subset. Rollup's parser
+ * is the installed renderer compiler's parser, not a new dependency. */
 function settingsCatalogue() {
-  const source = read('src/views/settings.js')
-  const declaration = source.indexOf('export const SETTINGS = [')
-  assert.notEqual(declaration, -1, 'the settings catalogue declaration was not found')
-  const openingBracket = source.indexOf('[', declaration)
-  let depth = 0
-  let quote = null
-  let escaped = false
-  let lineComment = false
-  let blockComment = false
-  let closingBracket = -1
-  for (let index = openingBracket; index < source.length; index += 1) {
-    const character = source[index]
-    const next = source[index + 1]
-    if (lineComment) {
-      if (character === '\n') lineComment = false
-      continue
+  const tree = parseAst(read('src/views/settings.js'))
+  const array = tree.body.find(node => node.type === 'ExportNamedDeclaration'
+    && node.declaration?.declarations?.some(item => item.id.name === 'SETTINGS'))
+    ?.declaration.declarations.find(item => item.id.name === 'SETTINGS')?.init
+  assert.equal(array?.type, 'ArrayExpression', 'the exported SETTINGS array was not found')
+  const bindings = { THIS_COMPUTER_SECTION, THIS_COMPUTER_PROGRAMS_ROW }
+  const families = { HOME_STATUS_COLOR_SETTINGS, WRITE_ACTION_FLAGS }
+  function value(node, env) {
+    if (node.type === 'Literal') return node.value
+    if (node.type === 'Identifier') {
+      assert.ok(Object.hasOwn(env, node.name), `unsupported settings metadata binding: ${node.name}`)
+      return env[node.name]
     }
-    if (blockComment) {
-      if (character === '*' && next === '/') { blockComment = false; index += 1 }
-      continue
-    }
-    if (quote) {
-      if (escaped) escaped = false
-      else if (character === '\\') escaped = true
-      else if (character === quote) quote = null
-      continue
-    }
-    if (character === '/' && next === '/') { lineComment = true; index += 1; continue }
-    if (character === '/' && next === '*') { blockComment = true; index += 1; continue }
-    if (character === "'" || character === '"' || character === '`') { quote = character; continue }
-    if (character === '[') depth += 1
-    if (character === ']') {
-      depth -= 1
-      if (depth === 0) { closingBracket = index; break }
-    }
+    if (node.type === 'MemberExpression' && !node.computed) return value(node.object, env)[node.property.name]
+    if (node.type === 'TemplateLiteral') return node.quasis.map((part, i) => part.value.cooked
+      + (i < node.expressions.length ? value(node.expressions[i], env) : '')).join('')
+    assert.fail(`unsupported settings metadata expression: ${node.type}`)
   }
-  assert.notEqual(closingBracket, -1, 'the settings catalogue array is not closed')
-  const body = source.slice(declaration, closingBracket + 1)
-  const rows = []
-  for (const match of body.matchAll(/id: '([a-z0-9_]+)'/g)) {
-    const after = body.slice(match.index, match.index + 400)
-    const section = after.match(/section: '([^']+)'/)
-    if (section) rows.push({ id: match[1], section: section[1] })
+  function row(node, env) {
+    assert.equal(node.type, 'ObjectExpression', 'each settings row must expose object metadata')
+    const result = {}
+    for (const property of node.properties) {
+      if (property.type === 'SpreadElement') {
+        const inherited = value(property.argument, env)
+        for (const key of ['id', 'section']) if (Object.hasOwn(inherited, key)) result[key] = inherited[key]
+      } else {
+        const key = property.key.name ?? property.key.value
+        if (['id', 'section'].includes(key)) result[key] = value(property.value, env)
+      }
+    }
+    assert.ok(typeof result.id === 'string' && result.id.trim(), 'a settings row has no id')
+    assert.ok(typeof result.section === 'string' && result.section.trim(), `${result.id} has no section`)
+    return result
   }
-  const writeSection = body.match(/\.\.\.WRITE_ACTION_FLAGS\.map\([\s\S]*?section: '([^']+)'/)
-  assert.ok(writeSection, 'the generated write-action section was not found')
-  for (const flag of WRITE_ACTION_FLAGS) rows.push({ id: `write_${flag.id}`, section: writeSection[1] })
-  /* These controls are section controllers rather than catalogue entries, but
-     they are still settings-page rows and owe the same disclosure. */
-  rows.push(
-    { id: CONNECT_SETTING_ID, section: CONNECT_SECTION },
-    { id: UPDATE_SETTING_ID, section: UPDATE_SECTION },
-  )
+  const rows = array.elements.flatMap(node => {
+    if (node.type !== 'SpreadElement') return [row(node, bindings)]
+    const call = node.argument
+    assert.equal(call.type, 'CallExpression', 'unsupported settings catalogue spread')
+    assert.equal(call.callee.property?.name, 'map', 'unsupported settings family expansion')
+    const family = call.callee.object.name
+    assert.ok(Object.hasOwn(families, family), `unsupported settings family: ${family}`)
+    const callback = call.arguments[0]
+    assert.equal(callback.type, 'ArrowFunctionExpression', `${family} has no metadata mapping`)
+    return families[family].map(item => row(callback.body, { ...bindings, [callback.params[0].name]: item }))
+  })
+  rows.push({ id: CONNECT_SETTING_ID, section: CONNECT_SECTION }, { id: UPDATE_SETTING_ID, section: UPDATE_SECTION })
+  assert.equal(new Set(rows.map(item => item.id)).size, rows.length, 'settings identities must be unique')
   return rows
 }
 
@@ -271,38 +265,18 @@ test('every outside step says what still works without it, and how you would kno
 /* ---------- 3. COVERAGE: EVERY SETTING, NOT ONLY THE INTERESTING ONES ---------- */
 
 test('every settings-page row states what it grants and what it risks', () => {
-   /* R1529 gate 8: the capabilities and risks granted by each setting are
-     shown. Not the write flags. Each. */
+  /* Owner, R1529 gate 8: "we also give them the capabilities and risks granted
+     from each setting of ours". Not the write flags. Each. */
   const catalogue = settingsCatalogue()
   assert.deepEqual(unexplainedSettingIds(catalogue), [])
-  /* THE FLOOR WAS 22 UNTIL THE ONE-TOGGLE CHANGE AND IS NOW 15, WHICH IS THE
-     WHOLE CATALOGUE, NOT A LOWERED BAR. It exists to catch the extraction
-     silently returning nothing, so it has to track the real count: the seven
-     live-view rows collapsed into the one `example_mode` row and the
-     demonstration-speed slider died with the simulation engine, leaving 8
-     declared rows plus 7 write-action flags, and 9 declared rows since the
-     cloud mirror setup row was added 2026-08-24. Pinning it AT the total rather
-     than below it means this fails on the next removal too, which is correct
-     -- a floor that drifts under the truth is how "the extraction broke"
-     stops being detectable. */
-  /* 16 UNTIL 2026-08-27, AND 19 SINCE. THREE SURFACES LANDED TOGETHER AND EACH
-     ARRIVED WITH ITS OWN ARITHMETIC, so this merge had to re-derive rather than
-     pick one. The notification lane counted 9 declared rows + 7 write-action
-     flags + its 2 rows = 18. The compare-window lane counted a tenth declared
-     row + the same 7 = 17. Both were right about their own branch and neither
-     is right about the tree that holds both. Twelve declared rows -- the nine,
-     plus the two notification rows, plus `compare_files` -- and the same seven
-     write-action flags is NINETEEN.
-     Pinned AT the total rather than below it, for the reason given above: a
-     floor that drifts under the truth is how "the extraction broke" stops being
-     detectable. The connect and update controllers add two custom control rows,
-     bringing the page-wide contract to twenty-one. */
-  // The merged tree adds tree style, circle cards, Home style and Home motion.
-  // T254 (an earlier commit, 2026-09-17) added the vault_credentials row and its
-  // settings.js entry without updating this floor or writing its SUBJECTS
-  // statement -- the second half of the gap this comment's own rule exists to
-  // catch. Pinned AT 26 for the same reason as every count above it.
-  assert.equal(catalogue.length, 26, `${catalogue.length} rows were walked, not the 26 this page declares; either the extraction broke or a row arrived without a statement`)
+  // Complete SETTINGS metadata28 plus the existing Connect/Update controllers.
+  // The old literal regex omitted four constant-section delegates and three
+  // generated saved-color rows even at c9 (33 actual versus26 extracted).
+  assert.equal(catalogue.length, 30, `${catalogue.length} rows were walked, not the complete30; investigate catalogue drift`)
+  for (const id of [THIS_COMPUTER_PROGRAMS_ROW, 'this_computer_account', 'this_computer_messaging', 'this_computer_feedback',
+    ...HOME_STATUS_COLOR_SETTINGS.map(item => item.id)]) {
+    assert.equal(catalogue.filter(item => item.id === id).length, 1, `${id} must be checked once`)
+  }
 
   let checked = 0
   for (const setting of catalogue) {
@@ -370,7 +344,9 @@ test('every section named by the settings page resolves to a statement', () => {
      so a family statement over it would never be consulted -- the same reason
      'Ledger' and the example row's section are absent from that table. The
      custom Connect and System rows bring the represented sections to ten. */
-  assert.equal(sections.size, 10, `${sections.size} sections were found, not the 10 this catalogue declares; re-derive this, do not nudge it`)
+  // The complete metadata walk also includes This computer, previously hidden
+  // from the literal-section regex. Its four delegates have explicit statements.
+  assert.equal(sections.size, 11, `${sections.size} sections were found, not the complete11; re-derive this, do not nudge it`)
   for (const section of sections) {
     const covered = catalogue
       .filter(setting => setting.section === section)
@@ -454,7 +430,7 @@ const PINNED_ABSOLUTE_CLAIMS = Object.freeze([
      failure mode this file is supposed to catch and could not, because a pin
      justifies a claim and nothing was checking that the claim had a subject.
      The rows, the sections and the three profiles are gone; the pins go with
-     them. The wording is kept in the design notes.
+     them. The wording is kept in docs/design/UNBUILT-SETTINGS-ROWS-2026-08-20.md.
      A profile restored with a built feature brings its pin back. */
   {
     /* TWO PINS BECAME THIS ONE when the seven per-view rows and the
@@ -573,7 +549,7 @@ const PINNED_ABSOLUTE_CLAIMS = Object.freeze([
   },
   {
     /* THE COMPARE WINDOW'S SAVE. Registered rather than softened because the
-       absoluteness is the POINT: the rule is that this surface is a person's
+       absoluteness is the POINT: the owner ruled this surface is a person's
        manual override of an agent, so the one thing the statement must not do
        is imply a safety net that is not there. */
     match: /A save replaces the file straight away and nothing here undoes it\./,
@@ -666,4 +642,44 @@ test('the drawer disclosure is a sibling of its row, never inside the label', ()
     'the example row or its disclosure is gone from the drawer’s app rows')
   assert.ok(label < disclosure,
     'the drawer disclosure sits inside the label, so reading it would change the setting')
+})
+
+/* "REMOVE EVERYTHING" DID NOTHING ON LINUX, AND THE ROW DID NOT SAY SO.
+ *
+ * Only build/installer.nsh (Windows) reads the recorded answer; the Linux
+ * package's maintainer script never looks at it and apt does not remove
+ * per-user data. The row and its guidance promised removal on every platform
+ * (1.0.50 release review, release-ops F2). Both now say which uninstaller the
+ * answer is for, what Linux does instead, and where to delete the data first. */
+test('the uninstall row and its guidance say the answer is for Windows, and what Linux does instead', () => {
+  const source = read('src/views/settings.js')
+  const start = source.indexOf("id: 'uninstall_data'")
+  assert.notEqual(start, -1, 'the uninstall row was not found')
+  const row = source.slice(start, source.indexOf("def: 'ask'", start))
+  const desc = [...row.slice(row.indexOf('desc:'), row.indexOf('depth:')).matchAll(/'([^'\\]*)'/g)]
+    .map(match => match[1]).join('').replace(/\s+/g, ' ')
+  assert.match(desc, /the Windows uninstaller/, 'the row does not say which uninstaller reads the answer')
+  assert.match(desc, /On Linux, removing the package always keeps them/, 'the row does not say what Linux does')
+  assert.match(desc, /Remove this program’s data on the Account page before you uninstall/,
+    'a Linux reader is not told where to delete the data first')
+
+  const removeEverything = SUBJECTS.uninstall_data.capabilities.find(line => /remove everything/.test(line))
+  assert.ok(removeEverything, 'the guidance lost its "remove everything" line')
+  assert.match(removeEverything, /uninstalling on Windows actually removes it/,
+    'the guidance promises removal without saying it is the Windows uninstaller that removes')
+  assert.match(removeEverything, /On Linux, removing the package leaves it/)
+})
+
+/* 1.0.50 REVIEW-1050 #8. F3 took "uninstalling never removes your data" out of Getting started, but the Settings
+   row still opened with it ("It does not remove your saved credentials ... those stay on this computer") while
+   offering Remove everything, which the Windows uninstaller carries out. The opening is now conditional. */
+test('the uninstall row does not open by saying uninstalling never removes the data', () => {
+  const source = read('src/views/settings.js')
+  const start = source.indexOf("id: 'uninstall_data'")
+  const row = source.slice(start, source.indexOf("def: 'ask'", start))
+  const desc = [...row.slice(row.indexOf('desc:'), row.indexOf('depth:')).matchAll(/'([^'\\]*)'/g)]
+    .map(match => match[1]).join('').replace(/\s+/g, ' ')
+  assert.doesNotMatch(desc, /does not remove your saved credentials/, 'the row still says uninstalling keeps the data')
+  assert.doesNotMatch(desc, /those stay on this computer/)
+  assert.match(desc, /^Uninstalling removes the program\. On Windows, the uninstaller then keeps or deletes your saved credentials/)
 })

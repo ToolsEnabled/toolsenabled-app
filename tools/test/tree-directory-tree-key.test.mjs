@@ -1,7 +1,7 @@
 /* A CIRCLE REGISTERS THE TOP OF ITS TREE, so the directory can tell two trees
  * apart when they use the same role names.
  *
- * MEASURED on a development install: two trees, each
+ * MEASURED 2026-09-03 19:12 local on the owner's own machine: two trees, each
  * holding one circle named "Worker" (src/fleet-trees.js numbers a role per
  * tree, so the second tree's first Worker is plain "Worker" too). The engine's
  * tree directory keyed on names alone, held two live rows named "Worker", and

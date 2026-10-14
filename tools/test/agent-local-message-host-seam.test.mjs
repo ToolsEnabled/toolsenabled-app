@@ -118,7 +118,7 @@ test('a durable local arrival becomes the addressed running session\'s next turn
 
 /* SEND-TO-SURFACE, FOR A RECIPIENT WHO IS ALREADY IDLE.
  *
- * MEASURED 2026-09-03 by the second tree (internal report addendum A1):
+ * MEASURED 2026-09-03 by the second tree (m2-REPORT-ready.md addendum A1):
  * three worker-ready messages returned accepted / BROKER_DELIVERED at once
  * but each surfaced in the manager's own conversation minutes later. This
  * pins the bound that matters for an idle recipient -- one that holds no
@@ -225,9 +225,9 @@ function handOffsOf(engine, pattern) {
 
 /* A READ THAT NEVER ANSWERS MUST NOT STOP THE COURIER.
  *
- * MEASURED on a development tree: every circle's heartbeat stopped within
- * milliseconds of the others and never resumed; half an hour later every
- * send on the tree was refused TREE_SENDER_NOT_RUNNING for
+ * MEASURED 2026-09-04 on the owner's fourth tree: all seven circles' heartbeats
+ * stopped within 132 ms of each other at 00:12:31Z and never resumed; half an
+ * hour later every send on the tree was refused TREE_SENDER_NOT_RUNNING for
  * agents that were demonstrably still working, and the tree was abandoned.
  * The heartbeat is written inside the per-circle pass, which runs only after
  * the round's one shared inbox read, so a read the engine never answers is a
@@ -292,7 +292,7 @@ test('a read that never answers does not stop the courier: heartbeats continue a
  * skips a latched circle, so from the hand-off until the model's first words
  * the circle was neither read nor heartbeated: a message arriving for it was
  * not shown to the person until the whole turn was over (the "minutes late"
- * the second tree measured, internal report, on managers mid-spawn), and
+ * the second tree measured, m2-REPORT-ready.md A1, on managers mid-spawn), and
  * a circle that thought for longer than the directory's live window was
  * called stopped while working. This holds the acknowledgement of the first
  * hand-off and asserts the second arrival is shown within a poll or two, with

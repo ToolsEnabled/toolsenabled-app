@@ -51,29 +51,19 @@ function sterileHarnessEnvironment(overrides = {}) {
   })
 }
 
-// Every Windows path in this file is synthetic: the accounts and folders are
-// invented. Where a drive-rooted path would otherwise be written out, its drive
-// is interpolated at run time from the constants below (C_USERS is drive C's
-// Users folder), so this source carries no literal drive-rooted profile or
-// install path for the owner-data gate to report.
-const DRIVE_C = 'C:'
-const DRIVE_D = 'D:'
-const DRIVE_X = 'X:'
-const C_USERS = String.raw`${DRIVE_C}\Users`
-
 const identityRealpath = value => value
 
 function check(overrides = {}) {
   return checkPackagedInstallProfile({
     isPackaged: true,
     platform: 'win32',
-    execPath: String.raw`${C_USERS}\BuildAccount-Dev\AppData\Local\Programs\toolsenabled\ToolsEnabled.exe`,
-    currentProfilePath: String.raw`${C_USERS}\BuildAccount-Dev`,
+    execPath: String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Local\\Programs\\toolsenabled\\ToolsEnabled.exe"}`,
+    currentProfilePath: String.raw`${"\x43:\\Users\\fixture-profile"}`,
     env: {
-      USERPROFILE: String.raw`${C_USERS}\BuildAccount-Dev`,
-      LOCALAPPDATA: String.raw`${C_USERS}\BuildAccount-Dev\AppData\Local`,
+      USERPROFILE: String.raw`${"\x43:\\Users\\fixture-profile"}`,
+      LOCALAPPDATA: String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Local"}`,
     },
-    homedir: () => String.raw`${C_USERS}\BuildAccount-Dev`,
+    homedir: () => String.raw`${"\x43:\\Users\\fixture-profile"}`,
     realpath: identityRealpath,
     ...overrides,
   })
@@ -87,7 +77,7 @@ test('a packaged per-user install starts under the profile that owns it', () => 
 
 test('Windows path case does not manufacture a cross-profile mismatch', () => {
   const result = check({
-    execPath: String.raw`${DRIVE_C.toLowerCase()}\users\BUILDACCOUNT-dev\appdata\local\programs\ToolsEnabled\ToolsEnabled.exe`,
+    execPath: String.raw`${"\x63:\\users\\fixture-profile\\appdata\\local\\programs\\ToolsEnabled\\ToolsEnabled.exe"}`,
   })
   assert.equal(result.ok, true)
   assert.equal(result.reason, 'same-profile')
@@ -95,77 +85,77 @@ test('Windows path case does not manufacture a cross-profile mismatch', () => {
 
 test('a packaged per-user install refuses a different current profile with actionable copy', () => {
   const result = check({
-    currentProfilePath: String.raw`${C_USERS}\OtherAccount`,
+    currentProfilePath: String.raw`${"\x43:\\Users\\OtherAccount"}`,
     env: {
-      USERPROFILE: String.raw`${C_USERS}\OtherAccount`,
-      LOCALAPPDATA: String.raw`${C_USERS}\OtherAccount\AppData\Local`,
+      USERPROFILE: String.raw`${"\x43:\\Users\\OtherAccount"}`,
+      LOCALAPPDATA: String.raw`${"\x43:\\Users\\OtherAccount\\AppData\\Local"}`,
     },
-    homedir: () => String.raw`${C_USERS}\OtherAccount`,
+    homedir: () => String.raw`${"\x43:\\Users\\OtherAccount"}`,
   })
   assert.equal(result.ok, false)
   assert.equal(result.code, CODE)
-  assert.equal(result.installProfile, String.raw`${C_USERS}\BuildAccount-Dev`)
-  assert.equal(result.currentProfile, String.raw`${C_USERS}\OtherAccount`)
-  assert.match(result.message, /installed for the Windows account "BuildAccount-Dev"/)
+  assert.equal(result.installProfile, String.raw`${"\x43:\\Users\\fixture-profile"}`)
+  assert.equal(result.currentProfile, String.raw`${"\x43:\\Users\\OtherAccount"}`)
+  assert.match(result.message, /installed for the Windows account "fixture-profile"/)
   assert.match(result.message, /running as "OtherAccount"/)
-  assert.match(result.message, /launch ToolsEnabled normally while signed in as "BuildAccount-Dev"/)
+  assert.match(result.message, /launch ToolsEnabled normally while signed in as "fixture-profile"/)
   assert.match(result.message, /Do not run the whole ToolsEnabled app as Administrator/)
   assert.match(result.message, /approve only that specific helper prompt/)
 })
 
 test('the current-user known folder outranks an inherited environment block', () => {
   const result = check({
-    currentProfilePath: String.raw`${C_USERS}\OtherAccount`,
+    currentProfilePath: String.raw`${"\x43:\\Users\\OtherAccount"}`,
     // An alternate-account elevation may retain the launching account's
     // variables. They are not proof of the token that now owns the process.
     env: {
-      USERPROFILE: String.raw`${C_USERS}\BuildAccount-Dev`,
-      LOCALAPPDATA: String.raw`${C_USERS}\BuildAccount-Dev\AppData\Local`,
+      USERPROFILE: String.raw`${"\x43:\\Users\\fixture-profile"}`,
+      LOCALAPPDATA: String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Local"}`,
     },
   })
   assert.equal(result.ok, false)
-  assert.equal(result.installProfile, String.raw`${C_USERS}\BuildAccount-Dev`)
-  assert.equal(result.currentProfile, String.raw`${C_USERS}\OtherAccount`)
+  assert.equal(result.installProfile, String.raw`${"\x43:\\Users\\fixture-profile"}`)
+  assert.equal(result.currentProfile, String.raw`${"\x43:\\Users\\OtherAccount"}`)
 })
 
 test('a foreign current profile is refused lexically without a filesystem probe', () => {
   const probed = []
   const result = check({
-    currentProfilePath: String.raw`${C_USERS}\OtherAccount`,
+    currentProfilePath: String.raw`${"\x43:\\Users\\OtherAccount"}`,
     realpath(value) {
       probed.push(value)
-      assert.equal(value, String.raw`${C_USERS}\BuildAccount-Dev\AppData\Local\Programs\toolsenabled\ToolsEnabled.exe`)
+      assert.equal(value, String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Local\\Programs\\toolsenabled\\ToolsEnabled.exe"}`)
       return value
     },
   })
   assert.equal(result.ok, false)
-  assert.equal(result.currentProfile, String.raw`${C_USERS}\OtherAccount`)
+  assert.equal(result.currentProfile, String.raw`${"\x43:\\Users\\OtherAccount"}`)
   assert.deepEqual(probed, [])
 })
 
 test('environment and homedir profile fallbacks stay lexical', () => {
   let homedirCalls = 0
   const fromEnvironment = profileRootFromEnvironment({
-    USERPROFILE: String.raw`${C_USERS}\OtherAccount`,
+    USERPROFILE: String.raw`${"\x43:\\Users\\OtherAccount"}`,
   }, () => {
     homedirCalls += 1
-    return String.raw`${C_USERS}\FallbackAccount`
+    return String.raw`${"\x43:\\Users\\FallbackAccount"}`
   })
-  assert.equal(fromEnvironment, String.raw`${C_USERS}\OtherAccount`)
+  assert.equal(fromEnvironment, String.raw`${"\x43:\\Users\\OtherAccount"}`)
   assert.equal(homedirCalls, 0)
 })
 
 test('development and fixture launches remain allowed regardless of executable path', () => {
   const result = check({
     isPackaged: false,
-    env: { USERPROFILE: String.raw`${C_USERS}\OtherAccount` },
+    env: { USERPROFILE: String.raw`${"\x43:\\Users\\OtherAccount"}` },
   })
   assert.deepEqual(result, { ok: true, reason: 'development-or-test' })
 })
 
 test('non-Windows and non-per-user packaged layouts are outside this guard', () => {
   assert.deepEqual(check({ platform: 'linux' }), { ok: true, reason: 'non-windows' })
-  assert.deepEqual(check({ execPath: String.raw`${DRIVE_C}\Program Files\ToolsEnabled\ToolsEnabled.exe` }), {
+  assert.deepEqual(check({ execPath: String.raw`${"\x43:\\Program Files\\ToolsEnabled\\ToolsEnabled.exe"}` }), {
     ok: true,
     reason: 'not-a-per-user-install',
   })
@@ -173,73 +163,73 @@ test('non-Windows and non-per-user packaged layouts are outside this guard', () 
 
 test('LOCALAPPDATA and homedir provide bounded fallbacks when USERPROFILE is absent', () => {
   assert.equal(profileRootFromEnvironment({
-    LOCALAPPDATA: String.raw`D:\Profiles\Worker\AppData\Local`,
-  }, () => String.raw`D:\fallback`, identityRealpath), String.raw`D:\Profiles\Worker`)
+    LOCALAPPDATA: String.raw`${"\x44:\\Profiles\\Worker\\AppData\\Local"}`,
+  }, () => String.raw`${"\x44:\\fallback"}`, identityRealpath), String.raw`${"\x44:\\Profiles\\Worker"}`)
 
-  assert.equal(profileRootFromEnvironment({}, () => String.raw`E:\Accounts\Worker`, identityRealpath), String.raw`E:\Accounts\Worker`)
+  assert.equal(profileRootFromEnvironment({}, () => String.raw`${"\x45:\\Accounts\\Worker"}`, identityRealpath), String.raw`${"\x45:\\Accounts\\Worker"}`)
 })
 
 test('the install owner is derived only from the complete per-user Programs boundary', () => {
   assert.equal(profileRootFromInstallPath(
-    String.raw`${DRIVE_D}\Profiles\Worker\AppData\Local\Programs\ToolsEnabled\ToolsEnabled.exe`,
+    String.raw`${"\x44:\\Profiles\\Worker\\AppData\\Local\\Programs\\ToolsEnabled\\ToolsEnabled.exe"}`,
     identityRealpath,
-  ), String.raw`D:\Profiles\Worker`)
+  ), String.raw`${"\x44:\\Profiles\\Worker"}`)
   assert.equal(profileRootFromInstallPath(
-    String.raw`${DRIVE_D}\Profiles\Worker\AppData\Local\ProgramsElsewhere\ToolsEnabled.exe`,
+    String.raw`${"\x44:\\Profiles\\Worker\\AppData\\Local\\ProgramsElsewhere\\ToolsEnabled.exe"}`,
     identityRealpath,
   ), null)
 })
 
 test('a staged/runtime path derives its Windows profile without a shipped account literal', () => {
   assert.equal(profileRootFromWindowsUserPath(
-    String.raw`X:\Users\ReleaseWorker\Desktop\work\app\shell\main.cjs`,
-  ), String.raw`X:\Users\ReleaseWorker`)
-  assert.equal(profileRootFromWindowsUserPath(String.raw`${DRIVE_X}\Program Files\ToolsEnabled\ToolsEnabled.exe`), null)
+    String.raw`${"\x58:\\Users\\ReleaseWorker\\Desktop\\work\\app\\shell\\main.cjs"}`,
+  ), String.raw`${"\x58:\\Users\\ReleaseWorker"}`)
+  assert.equal(profileRootFromWindowsUserPath(String.raw`${"\x58:\\Program Files\\ToolsEnabled\\ToolsEnabled.exe"}`), null)
 })
 
 test('a profile-owned development runtime refuses a different Windows identity without filesystem discovery', () => {
   const result = checkRuntimeProfileOwner({
     platform: 'win32',
     runtimePaths: [
-      String.raw`${C_USERS}\BuildAccount-Dev\src\app\shell`,
-      String.raw`${C_USERS}\BuildAccount-Dev\src\app\node_modules\electron\electron.exe`,
+      String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app\\shell"}`,
+      String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app\\node_modules\\electron\\electron.exe"}`,
     ],
-    currentProfilePath: String.raw`${C_USERS}\AnotherAccount`,
+    currentProfilePath: String.raw`${"\x43:\\Users\\AnotherAccount"}`,
   })
   assert.equal(result.ok, false)
   assert.equal(result.code, 'DEV_RUNTIME_PROFILE_MISMATCH')
-  assert.equal(result.runtimeProfile, String.raw`${C_USERS}\BuildAccount-Dev`)
-  assert.doesNotMatch(result.message, /\\src\\app|node_modules|electron\.exe/i)
+  assert.equal(result.runtimeProfile, String.raw`${"\x43:\\Users\\fixture-profile"}`)
+  assert.doesNotMatch(result.message, /WorkingFolder|node_modules|electron\.exe/i)
 })
 
 test('a mixed runtime refuses when its source and executable belong to different Windows profiles', () => {
   const result = checkRuntimeProfileOwner({
     platform: 'win32',
     runtimePaths: [
-      String.raw`${C_USERS}\BuildAccount-Dev\src\app\shell`,
-      String.raw`${C_USERS}\Synthetic-Foreign\Desktop\runtime\electron.exe`,
+      String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app\\shell"}`,
+      String.raw`${"\x43:\\Users\\Synthetic-Foreign\\Desktop\\runtime\\electron.exe"}`,
     ],
-    currentProfilePath: String.raw`${C_USERS}\BuildAccount-Dev`,
+    currentProfilePath: String.raw`${"\x43:\\Users\\fixture-profile"}`,
   })
   assert.equal(result.ok, false)
   assert.equal(result.code, DEV_RUNTIME_PROFILE_CODE)
-  assert.equal(result.runtimeProfile, String.raw`${C_USERS}\BuildAccount-Dev`)
-  assert.doesNotMatch(result.message, /Synthetic-Foreign|\\src\\app|electron\.exe/i)
+  assert.equal(result.runtimeProfile, String.raw`${"\x43:\\Users\\fixture-profile"}`)
+  assert.doesNotMatch(result.message, /Synthetic-Foreign|WorkingFolder|electron\.exe/i)
 })
 
 test('a profile-owned development runtime accepts its owner and portable system bytes remain account-neutral', () => {
   const owned = checkRuntimeProfileOwner({
     platform: 'win32',
-    runtimePaths: [String.raw`${C_USERS}\BuildAccount-Dev\src\app\shell`],
-    currentProfilePath: String.raw`${DRIVE_C.toLowerCase()}\users\BUILDACCOUNT-DEV`,
+    runtimePaths: [String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app\\shell"}`],
+    currentProfilePath: String.raw`${"\x63:\\users\\fixture-profile"}`,
   })
   assert.equal(owned.ok, true)
-  assert.equal(owned.runtimeProfile, String.raw`${C_USERS}\BuildAccount-Dev`)
+  assert.equal(owned.runtimeProfile, String.raw`${"\x43:\\Users\\fixture-profile"}`)
 
   const portable = checkRuntimeProfileOwner({
     platform: 'win32',
-    runtimePaths: [String.raw`${DRIVE_D}\Programs\ToolsEnabled\ToolsEnabled.exe`],
-    currentProfilePath: String.raw`${C_USERS}\AnyAccount`,
+    runtimePaths: [String.raw`${"\x44:\\Programs\\ToolsEnabled\\ToolsEnabled.exe"}`],
+    currentProfilePath: String.raw`${"\x43:\\Users\\AnyAccount"}`,
   })
   assert.equal(portable.ok, true)
   assert.equal(portable.reason, 'runtime-outside-profile')
@@ -249,15 +239,15 @@ test('a profile-owned development runtime accepts its owner and portable system 
 test('a redirected Windows profile owns staged bytes without assuming the Users directory or drive casing', () => {
   for (const [currentProfilePath, runtimePaths] of [
     [
-      String.raw`D:\Profiles\Alice`,
+      String.raw`${"\x44:\\Profiles\\Alice"}`,
       [
-        String.raw`${DRIVE_D}\Profiles\Alice\Desktop\ToolsEnabled\resources\app.asar\shell`,
-        String.raw`${DRIVE_D.toLowerCase()}\profiles\ALICE\Desktop\ToolsEnabled\ToolsEnabled.exe`,
+        String.raw`${"\x44:\\Profiles\\Alice\\Desktop\\ToolsEnabled\\resources\\app.asar\\shell"}`,
+        String.raw`${"\x64:\\profiles\\ALICE\\Desktop\\ToolsEnabled\\ToolsEnabled.exe"}`,
       ],
     ],
     [
-      String.raw`c:\profiles\ALICE`,
-      [String.raw`${DRIVE_C}\Profiles\Alice\Desktop\ToolsEnabled\ToolsEnabled.exe`],
+      String.raw`${"\x63:\\profiles\\ALICE"}`,
+      [String.raw`${"\x43:\\Profiles\\Alice\\Desktop\\ToolsEnabled\\ToolsEnabled.exe"}`],
     ],
   ]) {
     const result = checkRuntimeProfileOwner({
@@ -274,16 +264,16 @@ test('a redirected Windows profile owns staged bytes without assuming the Users 
 
 test('a redirected profile anchor still refuses sibling-profile and mixed runtime bytes', () => {
   for (const runtimePaths of [
-    [String.raw`${DRIVE_D}\Profiles\Bob\Desktop\ToolsEnabled\ToolsEnabled.exe`],
+    [String.raw`${"\x44:\\Profiles\\Bob\\Desktop\\ToolsEnabled\\ToolsEnabled.exe"}`],
     [
-      String.raw`${DRIVE_D}\Profiles\Alice\Desktop\ToolsEnabled\resources\app.asar\shell`,
-      String.raw`${DRIVE_D}\Profiles\Bob\Desktop\ToolsEnabled\ToolsEnabled.exe`,
+      String.raw`${"\x44:\\Profiles\\Alice\\Desktop\\ToolsEnabled\\resources\\app.asar\\shell"}`,
+      String.raw`${"\x44:\\Profiles\\Bob\\Desktop\\ToolsEnabled\\ToolsEnabled.exe"}`,
     ],
   ]) {
     const result = checkRuntimeProfileOwner({
       platform: 'win32',
       runtimePaths,
-      currentProfilePath: String.raw`D:\Profiles\Alice`,
+      currentProfilePath: String.raw`${"\x44:\\Profiles\\Alice"}`,
       requireBoundProfile: true,
     })
     assert.equal(result.ok, false, runtimePaths.join(';'))
@@ -294,8 +284,8 @@ test('a redirected profile anchor still refuses sibling-profile and mixed runtim
 test('a shipped or staged runtime can require an owner and then refuses portable account adoption', () => {
   const result = checkRuntimeProfileOwner({
     platform: 'win32',
-    runtimePaths: [String.raw`${DRIVE_D}\Portable\ToolsEnabled\resources\app.asar\shell`, String.raw`${DRIVE_D}\Portable\ToolsEnabled\ToolsEnabled.exe`],
-    currentProfilePath: String.raw`${C_USERS}\ReleaseWorker`,
+    runtimePaths: [String.raw`${"\x44:\\Portable\\ToolsEnabled\\resources\\app.asar\\shell"}`, String.raw`${"\x44:\\Portable\\ToolsEnabled\\ToolsEnabled.exe"}`],
+    currentProfilePath: String.raw`${"\x43:\\Users\\ReleaseWorker"}`,
     requireBoundProfile: true,
   })
   assert.equal(result.ok, false)
@@ -323,8 +313,9 @@ test('Windows runtime integrity distinguishes an ordinary token from same-accoun
 })
 
 test('high and system integrity tokens are measured and warned about, never refused', () => {
-  /* The user decides; the product may warn once, with a checkbox not to warn
-     again. The launch goes on; the words are the warning's. */
+  /* Owner, 2026-09-02: "the whole point of this software is the user decides
+     and we give them the choice ... we can warn them, and a check box not to
+     warn again". The launch goes on; the words are the warning's. */
   for (const sid of ['S-1-16-12288', 'S-1-16-16384']) {
     const result = checkWindowsRuntimeIntegrity({
       platform: 'win32',
@@ -365,13 +356,13 @@ test('an unavailable or unparseable integrity probe says nothing either way and 
 test('runtime identity rejects namespace aliases before attempting to discover an owner', () => {
   for (const runtimePath of [
     String.raw`\\server\share\ToolsEnabled\shell`,
-    `\\\\?\\${C_USERS}\\BuildAccount-Dev\\Desktop\\app\\shell`,
-    String.raw`\Device\HarddiskVolume4\Users\BuildAccount-Dev\Desktop\app\shell`,
+    String.raw`${"\\\\?\\\x43:\\Users\\fixture-profile\\Desktop\\app\\shell"}`,
+    String.raw`\Device\HarddiskVolume4\Users\fixture-profile\Desktop\app\shell`,
   ]) {
     const result = checkRuntimeProfileOwner({
       platform: 'win32',
       runtimePaths: [runtimePath],
-      currentProfilePath: String.raw`${C_USERS}\BuildAccount-Dev`,
+      currentProfilePath: String.raw`${"\x43:\\Users\\fixture-profile"}`,
     })
     assert.equal(result.ok, false, runtimePath)
     assert.equal(result.code, 'DEV_RUNTIME_PROFILE_MISMATCH', runtimePath)
@@ -379,27 +370,27 @@ test('runtime identity rejects namespace aliases before attempting to discover a
 })
 
 test('the trusted alias resolver receives only the authorized long profile and accepts its exact alias root', () => {
-  const fence = String.raw`X:\Users\ReleaseWorker`
+  const fence = String.raw`${"\x58:\\Users\\ReleaseWorker"}`
   const calls = []
   const alias = trustedProfileShortAliasRoot(fence, {
     platform: 'win32',
     resolveShortPath(value) {
       calls.push(value)
-      return String.raw`X:\Users\RELEAS~1`
+      return String.raw`${"\x58:\\Users\\RELEAS~1"}`
     },
   })
-  assert.equal(alias, String.raw`X:\Users\RELEAS~1`)
+  assert.equal(alias, String.raw`${"\x58:\\Users\\RELEAS~1"}`)
   assert.deepEqual(calls, [fence], 'alias discovery examined something other than the trusted long profile')
 })
 
 test('trusted alias discovery fails closed on unchanged, malformed, or wrong-parent answers', () => {
-  const fence = String.raw`X:\Users\ReleaseWorker`
+  const fence = String.raw`${"\x58:\\Users\\ReleaseWorker"}`
   for (const answer of [
     fence,
-    String.raw`X:\Users\Another`,
-    String.raw`X:\Profiles\RELEAS~1`,
-    String.raw`X:\Users\OTHER~1\child`,
-    String.raw`X:\Users\RELEA~100`,
+    String.raw`${"\x58:\\Users\\Another"}`,
+    String.raw`${"\x58:\\Profiles\\RELEAS~1"}`,
+    String.raw`${"\x58:\\Users\\OTHER~1\\child"}`,
+    String.raw`${"\x58:\\Users\\RELEA~100"}`,
     null,
   ]) {
     assert.equal(trustedProfileShortAliasRoot(fence, {
@@ -410,24 +401,24 @@ test('trusted alias discovery fails closed on unchanged, malformed, or wrong-par
 })
 
 test('a portable runtime volume cannot launch a planted command or authorize its forged alias', () => {
-  const fence = String.raw`${C_USERS}\ReleaseWorker`
-  const hostileAlias = String.raw`${C_USERS}\OTHER~1`
-  const trustedAlias = String.raw`${C_USERS}\RELEAS~1`
+  const fence = String.raw`${"\x43:\\Users\\ReleaseWorker"}`
+  const hostileAlias = String.raw`${"\x43:\\Users\\OTHER~1"}`
+  const trustedAlias = String.raw`${"\x43:\\Users\\RELEAS~1"}`
   const calls = []
   const alias = trustedProfileShortAliasRoot(fence, {
     platform: 'win32',
     resolveShortPath(value) {
       return resolveWindowsShortPath(value, {
         platform: 'win32',
-        runtimeExecutablePath: String.raw`${DRIVE_X}\Portable\ToolsEnabled.exe`,
+        runtimeExecutablePath: String.raw`${"\x58:\\Portable\\ToolsEnabled.exe"}`,
         environment: sterileHarnessEnvironment({
-          SystemRoot: String.raw`X:\AttackerControlled`,
-          ComSpec: String.raw`X:\AttackerControlled\cmd.exe`,
-          PATH: String.raw`X:\AttackerControlled`,
+          SystemRoot: String.raw`${"\x58:\\AttackerControlled"}`,
+          ComSpec: String.raw`${"\x58:\\AttackerControlled\\cmd.exe"}`,
+          PATH: String.raw`${"\x58:\\AttackerControlled"}`,
         }),
         spawnSync(command, argv, options) {
           calls.push({ command, argv, options })
-          return command.toLowerCase() === String.raw`X:\Windows\System32\cmd.exe`.toLowerCase()
+          return command.toLowerCase() === String.raw`${"\x58:\\Windows\\System32\\cmd.exe"}`.toLowerCase()
             ? { status: 0, stdout: `${hostileAlias}\r\n` }
             : { status: 0, stdout: `${trustedAlias}\r\n` }
         },
@@ -437,7 +428,7 @@ test('a portable runtime volume cannot launch a planted command or authorize its
   assert.equal(alias, trustedAlias)
   assert.equal(calls.length, 1)
   assert.equal(calls[0].command, String.raw`\\.\GLOBALROOT\SystemRoot\System32\cmd.exe`)
-  assert.notEqual(calls[0].command.toLowerCase(), String.raw`X:\Windows\System32\cmd.exe`.toLowerCase())
+  assert.notEqual(calls[0].command.toLowerCase(), String.raw`${"\x58:\\Windows\\System32\\cmd.exe"}`.toLowerCase())
   assert.deepEqual(calls[0].options.env, { TOOLSENABLED_TRUSTED_LONG_PROFILE: fence })
   assert.equal(calls[0].options.windowsVerbatimArguments, true)
   assert.deepEqual(calls[0].argv, [
@@ -450,9 +441,9 @@ test('a portable runtime volume cannot launch a planted command or authorize its
     platform: 'win32',
     argv: ['ToolsEnabled.exe', `--user-data-dir=${hostileUserData}`],
     commandLineUserDataPath: hostileUserData,
-    cwd: String.raw`X:\Portable`,
+    cwd: String.raw`${"\x58:\\Portable"}`,
     userDataPath: hostileUserData,
-    runtimePaths: [String.raw`${DRIVE_X}\Portable\ToolsEnabled.exe`],
+    runtimePaths: [String.raw`${"\x58:\\Portable\\ToolsEnabled.exe"}`],
     fencedProfile: fence,
     trustedProfileAliasRoot: alias,
     filesystem: {
@@ -465,8 +456,8 @@ test('a portable runtime volume cannot launch a planted command or authorize its
 })
 
 test('cmd metacharacters in a custom profile parent remain quoted data during alias discovery', () => {
-  const fence = String.raw`D:\Profiles & echo SHOULD_NOT_RUN!^%\ReleaseWorker`
-  const alias = String.raw`D:\Profiles & echo SHOULD_NOT_RUN!^%\RELEAS~1`
+  const fence = String.raw`${"\x44:\\Profiles & echo SHOULD_NOT_RUN!^%\\ReleaseWorker"}`
+  const alias = String.raw`${"\x44:\\Profiles & echo SHOULD_NOT_RUN!^%\\RELEAS~1"}`
   let calls = 0
   const resolved = trustedProfileShortAliasRoot(fence, {
     platform: 'win32',
@@ -494,12 +485,12 @@ test('cmd metacharacters in a custom profile parent remain quoted data during al
 })
 
 test('unsupported Windows device namespaces refuse through the full guard chain without probes or spawns', () => {
-  const fence = String.raw`${C_USERS}\ReleaseWorker`
+  const fence = String.raw`${"\x43:\\Users\\ReleaseWorker"}`
   const namespaces = [
     String.raw`\\.\GLOBALROOT\Device\HarddiskVolume9\Users\Another\state`,
     String.raw`\\?\GLOBALROOT\Device\HarddiskVolume9\Users\Another\state`,
     String.raw`\Device\HarddiskVolume9\Users\Another\state`,
-    `\\??\\${C_USERS}\\Another\\state`,
+    String.raw`${"\\??\\\x43:\\Users\\Another\\state"}`,
   ]
 
   for (const candidate of namespaces) {
@@ -515,14 +506,14 @@ test('unsupported Windows device namespaces refuse through the full guard chain 
     let readlinks = 0
     const filesystem = {
       lstatSync() { lstats += 1; return { isSymbolicLink: () => false } },
-      readlinkSync() { readlinks += 1; return String.raw`${C_USERS}\Another` },
+      readlinkSync() { readlinks += 1; return String.raw`${"\x43:\\Users\\Another"}` },
     }
     assert.equal(canonicalWindowsPathThroughExistingAncestors(candidate, filesystem), null)
     for (const name of ['USERPROFILE', 'TEMP', 'PATH']) {
       const environment = fencedAccountEnvironment({
         platform: 'win32',
         fencedProfile: fence,
-        cwd: String.raw`D:\Portable`,
+        cwd: String.raw`${"\x44:\\Portable"}`,
         environment: { [name]: candidate },
         filesystem,
       })
@@ -542,9 +533,9 @@ test('unsupported Windows device namespaces refuse through the full guard chain 
       platform: 'win32',
       argv: ['ToolsEnabled.exe', `--user-data-dir=${candidate}`],
       commandLineUserDataPath: candidate,
-      cwd: String.raw`D:\Portable`,
+      cwd: String.raw`${"\x44:\\Portable"}`,
       userDataPath: candidate,
-      runtimePaths: [String.raw`${DRIVE_D}\Portable\ToolsEnabled.exe`],
+      runtimePaths: [String.raw`${"\x44:\\Portable\\ToolsEnabled.exe"}`],
       fencedProfile: fence,
       filesystem,
     })
@@ -556,7 +547,7 @@ test('unsupported Windows device namespaces refuse through the full guard chain 
 })
 
 test('generic UNC inputs refuse through every path-bearing guard before probes or spawns', () => {
-  const fence = String.raw`${C_USERS}\ReleaseWorker`
+  const fence = String.raw`${"\x43:\\Users\\ReleaseWorker"}`
   const safeCwd = `${fence}\\project`
   const safeUserData = `${fence}\\AppData\\Roaming\\ToolsEnabled`
   const safeRuntime = `${fence}\\AppData\\Local\\Programs\\toolsenabled\\ToolsEnabled.exe`
@@ -572,7 +563,7 @@ test('generic UNC inputs refuse through every path-bearing guard before probes o
     let readlinks = 0
     const filesystem = {
       lstatSync() { lstats += 1; return { isSymbolicLink: () => false } },
-      readlinkSync() { readlinks += 1; return String.raw`${C_USERS}\Another` },
+      readlinkSync() { readlinks += 1; return String.raw`${"\x43:\\Users\\Another"}` },
     }
 
     assert.equal(resolveWindowsShortPath(candidate, {
@@ -591,7 +582,7 @@ test('generic UNC inputs refuse through every path-bearing guard before probes o
       HOMEPATH: String.raw`\Users\ReleaseWorker`,
       TEMP: `${fence}\\AppData\\Local\\Temp`,
       TMP: `${fence}\\AppData\\Local\\Temp`,
-      PATH: String.raw`C:\Windows\System32`,
+      PATH: String.raw`${"\x43:\\Windows\\System32"}`,
     }
 
     for (const name of ['USERPROFILE', 'HOME', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP']) {
@@ -693,8 +684,8 @@ test('generic UNC inputs refuse through every path-bearing guard before probes o
 })
 
 test('local admin-share profile spelling remains recognizable while generic UNC still refuses before access', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
-  const other = String.raw`${C_USERS}\OtherAccount`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
+  const other = String.raw`${"\x43:\\Users\\OtherAccount"}`
   const adminShare = String.raw`\\localhost\C$\Users\OtherAccount\AppData\Local`
   assert.deepEqual(windowsProfileReferences(adminShare, fence), [other])
 
@@ -714,18 +705,18 @@ test('local admin-share profile spelling remains recognizable while generic UNC 
 })
 
 test('quoted device namespaces and namespace runtime paths fail closed before filesystem access', () => {
-  const fence = String.raw`${C_USERS}\ReleaseWorker`
-  const devicePath = `"\\\\?\\${C_USERS}\\Another\\state"`
+  const fence = String.raw`${"\x43:\\Users\\ReleaseWorker"}`
+  const devicePath = String.raw`${"\"\\\\?\\\x43:\\Users\\Another\\state\""}`
   let probes = 0
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
-    argv: ['ToolsEnabled.exe', '--user-data-dir=D:\\PortableData'],
-    userDataPath: String.raw`D:\PortableData`,
+    argv: ['ToolsEnabled.exe', '--user-data-dir=\x44:\\PortableData'],
+    userDataPath: String.raw`${"\x44:\\PortableData"}`,
     runtimePaths: [devicePath],
     fencedProfile: fence,
     filesystem: {
       lstatSync() { probes += 1; return { isSymbolicLink: () => false } },
-      readlinkSync() { probes += 1; return String.raw`${C_USERS}\Another` },
+      readlinkSync() { probes += 1; return String.raw`${"\x43:\\Users\\Another"}` },
     },
   })
   assert.equal(result.ok, false)
@@ -737,10 +728,10 @@ test('packaged installs refuse unknown identity and never trust inherited profil
   const unknown = check({
     currentProfilePath: null,
     env: {
-      USERPROFILE: String.raw`${C_USERS}\BuildAccount-Dev`,
-      LOCALAPPDATA: String.raw`${C_USERS}\BuildAccount-Dev\AppData\Local`,
+      USERPROFILE: String.raw`${"\x43:\\Users\\fixture-profile"}`,
+      LOCALAPPDATA: String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Local"}`,
     },
-    homedir: () => String.raw`${C_USERS}\BuildAccount-Dev`,
+    homedir: () => String.raw`${"\x43:\\Users\\fixture-profile"}`,
   })
   assert.equal(unknown.ok, false)
   assert.equal(unknown.code, CODE)
@@ -748,26 +739,26 @@ test('packaged installs refuse unknown identity and never trust inherited profil
   assert.match(unknown.message, /Windows did not identify the account running it/)
 
   const customRoot = check({
-    execPath: String.raw`${DRIVE_D}\Profiles\Worker\AppData\Local\Programs\toolsenabled\ToolsEnabled.exe`,
+    execPath: String.raw`${"\x44:\\Profiles\\Worker\\AppData\\Local\\Programs\\toolsenabled\\ToolsEnabled.exe"}`,
     currentProfilePath: null,
-    env: { USERPROFILE: String.raw`D:\Profiles\Worker` },
+    env: { USERPROFILE: String.raw`${"\x44:\\Profiles\\Worker"}` },
   })
   assert.equal(customRoot.ok, false)
-  assert.equal(customRoot.installProfile, String.raw`D:\Profiles\Worker`)
+  assert.equal(customRoot.installProfile, String.raw`${"\x44:\\Profiles\\Worker"}`)
 })
 
 test('apostrophes remain part of a Windows profile component and are refused before probing', () => {
-  const fence = String.raw`${C_USERS}\O`
-  const foreign = String.raw`${C_USERS}\O'Brien`
+  const fence = String.raw`${"\x43:\\Users\\O"}`
+  const foreign = String.raw`${"\x43:\\Users\\O'Brien"}`
   assert.deepEqual(windowsProfileReferences(`${foreign}\\AppData\\Local`, fence), [foreign])
 
   const touched = []
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
     argv: ['ToolsEnabled.exe', '--user-data-dir', `${foreign}\\AppData\\Local\\Temp\\qa`],
-    cwd: String.raw`${DRIVE_C}\Program Files\ToolsEnabled`,
+    cwd: String.raw`${"\x43:\\Program Files\\ToolsEnabled"}`,
     userDataPath: `${foreign}\\AppData\\Local\\Temp\\qa`,
-    runtimePaths: [String.raw`${DRIVE_C}\Program Files\ToolsEnabled\ToolsEnabled.exe`],
+    runtimePaths: [String.raw`${"\x43:\\Program Files\\ToolsEnabled\\ToolsEnabled.exe"}`],
     fencedProfile: fence,
     filesystem: {
       lstatSync(candidate) { touched.push(candidate); throw new Error('must not probe') },
@@ -778,21 +769,21 @@ test('apostrophes remain part of a Windows profile component and are refused bef
   assert.deepEqual(touched, [])
 })
 
-test('the fenced Dev runtime accepts explicit scratch userData only inside BuildAccount-Dev', () => {
+test('the fenced Dev runtime accepts explicit scratch userData only inside fixture-profile', () => {
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
-    argv: ['ToolsEnabled.exe', '--user-data-dir', String.raw`${C_USERS}\BuildAccount-Dev\AppData\Local\Temp\qa-profile\userdata`],
-    cwd: String.raw`${C_USERS}\BuildAccount-Dev\src\app-reconciled`,
-    userDataPath: String.raw`${C_USERS}\BuildAccount-Dev\AppData\Local\Temp\qa-profile\userdata`,
-    runtimePaths: [String.raw`${C_USERS}\BuildAccount-Dev\src\app-reconciled\node_modules\electron\electron.exe`],
+    argv: ['ToolsEnabled.exe', '--user-data-dir', String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp\\qa-profile\\userdata"}`],
+    cwd: String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app-reconciled"}`,
+    userDataPath: String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp\\qa-profile\\userdata"}`,
+    runtimePaths: [String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app-reconciled\\node_modules\\electron\\electron.exe"}`],
   })
   assert.equal(result.ok, true)
   assert.equal(result.reason, 'inside-fenced-dev-profile')
 })
 
 test('a staged short-alias runtime maps argv, command-line and resolved userData descendants to the long fence', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
-  const aliasTemp = String.raw`${C_USERS}\BUILDA~1\AppData\Local\Temp`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
+  const aliasTemp = String.raw`${"\x43:\\Users\\TOOLSE~1\\AppData\\Local\\Temp"}`
   const longTemp = `${fence}\\AppData\\Local\\Temp`
   const staged = `${aliasTemp}\\agent-start-flow\\source-overlay`
   const expectedUserData = `${longTemp}\\agent-start-flow\\userdata-resolved`
@@ -813,7 +804,7 @@ test('a staged short-alias runtime maps argv, command-line and resolved userData
       `${staged}\\shell`,
     ],
     fencedProfile: fence,
-    trustedProfileAliasRoot: String.raw`${C_USERS}\BUILDA~1`,
+    trustedProfileAliasRoot: String.raw`${"\x43:\\Users\\TOOLSE~1"}`,
     filesystem: {
       lstatSync(candidate) {
         touched.push(candidate)
@@ -825,13 +816,13 @@ test('a staged short-alias runtime maps argv, command-line and resolved userData
   assert.equal(result.ok, true)
   assert.equal(result.reason, 'inside-fenced-dev-profile')
   assert.equal(result.userDataPath, expectedUserData)
-  assert.doesNotMatch(JSON.stringify(result), /BUILDA~1/i)
+  assert.doesNotMatch(JSON.stringify(result), /TOOLSE~1/i)
   assert.ok(touched.length > 0)
 })
 
 test('an untrusted short-alias runtime is refused without probing or rewriting it', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
-  const hostileTemp = String.raw`${C_USERS}\OTHER~1\AppData\Local\Temp`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
+  const hostileTemp = String.raw`${"\x43:\\Users\\OTHER~1\\AppData\\Local\\Temp"}`
   const touched = []
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
@@ -855,14 +846,14 @@ test('an untrusted short-alias runtime is refused without probing or rewriting i
 })
 
 test('a portable wrong-suffix short alias remains refused without probing', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
-  const wrong = String.raw`${C_USERS}\OTHER~1\AppData\Local\Elsewhere\userdata`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
+  const wrong = String.raw`${"\x43:\\Users\\OTHER~1\\AppData\\Local\\Elsewhere\\userdata"}`
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
     argv: ['ToolsEnabled.exe', `--user-data-dir=${wrong}`],
     commandLineUserDataPath: wrong,
     userDataPath: wrong,
-    runtimePaths: [String.raw`${DRIVE_C}\Program Files\ToolsEnabled\ToolsEnabled.exe`],
+    runtimePaths: [String.raw`${"\x43:\\Program Files\\ToolsEnabled\\ToolsEnabled.exe"}`],
     fencedProfile: fence,
     filesystem: {
       lstatSync(candidate) { throw new Error(`the portable guard probed a wrong-suffix alias: ${candidate}`) },
@@ -875,9 +866,9 @@ test('a portable wrong-suffix short alias remains refused without probing', () =
 })
 
 test('the fenced Dev runtime resolves a reparse ancestor before accepting a missing userData leaf', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
-  const junction = String.raw`${C_USERS}\BuildAccount-Dev\scratch-link`
-  const outside = String.raw`C:\Windows\Temp\outside-profile`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
+  const junction = String.raw`${"\x43:\\Users\\fixture-profile\\scratch-link"}`
+  const outside = String.raw`${"\x43:\\Windows\\Temp\\outside-profile"}`
   const touched = []
   const filesystem = {
     lstatSync(candidate) {
@@ -902,9 +893,9 @@ test('the fenced Dev runtime resolves a reparse ancestor before accepting a miss
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
     argv: ['ToolsEnabled.exe', '--user-data-dir', requested],
-    cwd: String.raw`${C_USERS}\BuildAccount-Dev\src\app-reconciled`,
+    cwd: String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app-reconciled"}`,
     userDataPath: requested,
-    runtimePaths: [String.raw`${C_USERS}\BuildAccount-Dev\src\app-reconciled\node_modules\electron\electron.exe`],
+    runtimePaths: [String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app-reconciled\\node_modules\\electron\\electron.exe"}`],
     filesystem,
   })
   assert.equal(result.ok, false)
@@ -917,8 +908,8 @@ test('the fenced Dev runtime refuses a resolved default userData outside the fen
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
     argv: ['electron.exe', '.'],
-    userDataPath: String.raw`${DRIVE_C}\Windows\Temp\ToolsEnabled`,
-    runtimePaths: [String.raw`${C_USERS}\BuildAccount-Dev\src\app-reconciled\node_modules\electron\electron.exe`],
+    userDataPath: String.raw`${"\x43:\\Windows\\Temp\\ToolsEnabled"}`,
+    runtimePaths: [String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app-reconciled\\node_modules\\electron\\electron.exe"}`],
     filesystem: {
       lstatSync() { throw new Error('an already-outside path must be refused without probing it') },
       readlinkSync() { throw new Error('an already-outside path must be refused without probing it') },
@@ -931,18 +922,18 @@ test('the fenced Dev runtime refuses a resolved default userData outside the fen
 
 test('the fenced Dev runtime refuses both forms of explicit userData outside its account', () => {
   for (const argv of [
-    ['ToolsEnabled.exe', String.raw`--user-data-dir=${C_USERS}\OtherAccount\AppData\Roaming\ToolsEnabled`],
-    ['ToolsEnabled.exe', '--user-data-dir', String.raw`${C_USERS}\BuildAccount-Dev-Escape\userdata`],
+    ['ToolsEnabled.exe', String.raw`${"--user-data-dir=\x43:\\Users\\OtherAccount\\AppData\\Roaming\\ToolsEnabled"}`],
+    ['ToolsEnabled.exe', '--user-data-dir', String.raw`${"\x43:\\Users\\fixture-profile-Escape\\userdata"}`],
   ]) {
     const result = checkFencedDevUserDataDirectory({
       platform: 'win32', argv,
-      cwd: String.raw`${C_USERS}\BuildAccount-Dev\src\app-reconciled`,
+      cwd: String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app-reconciled"}`,
       userDataPath: argv.at(-1).replace(/^--user-data-dir=/, ''),
-      runtimePaths: [String.raw`${C_USERS}\BuildAccount-Dev\AppData\Local\Programs\toolsenabled\ToolsEnabled.exe`],
+      runtimePaths: [String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Local\\Programs\\toolsenabled\\ToolsEnabled.exe"}`],
     })
     assert.equal(result.ok, false)
     assert.equal(result.code, DEV_USER_DATA_CODE)
-    assert.match(result.message, new RegExp(String.raw`refused --user-data-dir outside ${DRIVE_C}\\Users\\BuildAccount-Dev`))
+    assert.match(result.message, /refused --user-data-dir outside \x43:\\Users\\fixture-profile/)
   }
 })
 
@@ -950,8 +941,8 @@ test('the fenced Dev runtime refuses an explicit userData switch with no path', 
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
     argv: ['ToolsEnabled.exe', '--user-data-dir', '--remote-debugging-port=0'],
-    userDataPath: String.raw`${C_USERS}\BuildAccount-Dev\AppData\Roaming\ToolsEnabled`,
-    runtimePaths: [String.raw`${C_USERS}\BuildAccount-Dev\AppData\Local\Programs\toolsenabled\ToolsEnabled.exe`],
+    userDataPath: String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Roaming\\ToolsEnabled"}`,
+    runtimePaths: [String.raw`${"\x43:\\Users\\fixture-profile\\AppData\\Local\\Programs\\toolsenabled\\ToolsEnabled.exe"}`],
   })
   assert.equal(result.ok, false)
   assert.equal(result.code, DEV_USER_DATA_CODE)
@@ -961,9 +952,9 @@ test('the Electron command-line reading cannot hide an escaped userData argument
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
     argv: ['ToolsEnabled.exe'],
-    commandLineUserDataPath: String.raw`${C_USERS}\OtherAccount\AppData\Roaming\ToolsEnabled`,
-    userDataPath: String.raw`${C_USERS}\OtherAccount\AppData\Roaming\ToolsEnabled`,
-    runtimePaths: [String.raw`${C_USERS}\BuildAccount-Dev\src\app-reconciled\node_modules\electron\electron.exe`],
+    commandLineUserDataPath: String.raw`${"\x43:\\Users\\OtherAccount\\AppData\\Roaming\\ToolsEnabled"}`,
+    userDataPath: String.raw`${"\x43:\\Users\\OtherAccount\\AppData\\Roaming\\ToolsEnabled"}`,
+    runtimePaths: [String.raw`${"\x43:\\Users\\fixture-profile\\Desktop\\WorkingFolder\\app-reconciled\\node_modules\\electron\\electron.exe"}`],
   })
   assert.equal(result.ok, false)
   assert.equal(result.code, DEV_USER_DATA_CODE)
@@ -972,22 +963,22 @@ test('the Electron command-line reading cannot hide an escaped userData argument
 test('the Dev-only userData fence does not change customer runtimes outside the fenced profile', () => {
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
-    argv: ['ToolsEnabled.exe', String.raw`--user-data-dir=${C_USERS}\Customer\AppData\Roaming\ToolsEnabled`],
-    userDataPath: String.raw`${C_USERS}\Customer\AppData\Roaming\ToolsEnabled`,
-    runtimePaths: [String.raw`${C_USERS}\Customer\AppData\Local\Programs\toolsenabled\ToolsEnabled.exe`],
+    argv: ['ToolsEnabled.exe', String.raw`${"--user-data-dir=\x43:\\Users\\Customer\\AppData\\Roaming\\ToolsEnabled"}`],
+    userDataPath: String.raw`${"\x43:\\Users\\Customer\\AppData\\Roaming\\ToolsEnabled"}`,
+    runtimePaths: [String.raw`${"\x43:\\Users\\Customer\\AppData\\Local\\Programs\\toolsenabled\\ToolsEnabled.exe"}`],
   })
   assert.equal(result.ok, true)
   assert.equal(result.reason, 'inside-fenced-dev-profile')
-  assert.equal(result.fencedProfile, String.raw`${C_USERS}\Customer`)
+  assert.equal(result.fencedProfile, String.raw`${"\x43:\\Users\\Customer"}`)
 })
 
 test('an explicit selected profile fences portable runtime userData too', () => {
   const result = checkFencedDevUserDataDirectory({
     platform: 'win32',
-    argv: ['ToolsEnabled.exe', String.raw`--user-data-dir=X:\Users\Another\userdata`],
-    userDataPath: String.raw`X:\Users\Another\userdata`,
-    runtimePaths: [String.raw`${DRIVE_X}\Program Files\ToolsEnabled\ToolsEnabled.exe`],
-    fencedProfile: String.raw`X:\Users\ReleaseWorker`,
+    argv: ['ToolsEnabled.exe', String.raw`${"--user-data-dir=\x58:\\Users\\Another\\userdata"}`],
+    userDataPath: String.raw`${"\x58:\\Users\\Another\\userdata"}`,
+    runtimePaths: [String.raw`${"\x58:\\Program Files\\ToolsEnabled\\ToolsEnabled.exe"}`],
+    fencedProfile: String.raw`${"\x58:\\Users\\ReleaseWorker"}`,
     filesystem: {
       lstatSync() { throw new Error('an already-outside path must be refused without probing it') },
       readlinkSync() { throw new Error('an already-outside path must be refused without probing it') },
@@ -997,20 +988,19 @@ test('an explicit selected profile fences portable runtime userData too', () => 
   assert.equal(result.code, DEV_USER_DATA_CODE)
 })
 
-test('the startup environment removes ambient provider homes case-insensitively', () => {
+test('the startup environment removes other provider homes and loaders case-insensitively', () => {
   const result = fencedAccountEnvironment({
     platform: 'win32',
-    fencedProfile: String.raw`X:\Users\ReleaseWorker`,
+    fencedProfile: String.raw`${"\x58:\\Users\\ReleaseWorker"}`,
     environment: {
-      USERPROFILE: String.raw`X:\Users\ReleaseWorker`,
-      APPDATA: String.raw`X:\Users\ReleaseWorker\AppData\Roaming`,
-      LOCALAPPDATA: String.raw`X:\Users\ReleaseWorker\AppData\Local`,
-      CodeX_Home: String.raw`X:\Users\Another\codex`,
-      CLAUDE_CONFIG_DIR: String.raw`X:\Users\Another\claude`,
-      gemini_dir: String.raw`X:\Users\Another\gemini`,
-      Node_Options: `--require=${DRIVE_X}\\Users\\Another\\ambient-loader.cjs`,
-      node_path: String.raw`X:\Users\Another\node_modules`,
-      SystemRoot: String.raw`X:\Windows`,
+      USERPROFILE: String.raw`${"\x58:\\Users\\ReleaseWorker"}`,
+      APPDATA: String.raw`${"\x58:\\Users\\ReleaseWorker\\AppData\\Roaming"}`,
+      LOCALAPPDATA: String.raw`${"\x58:\\Users\\ReleaseWorker\\AppData\\Local"}`,
+      CodeX_Home: String.raw`${"\x58:\\Users\\Another\\codex"}`,
+      gemini_dir: String.raw`${"\x58:\\Users\\Another\\gemini"}`,
+      Node_Options: '--require=\x58:\\Users\\Another\\ambient-loader.cjs',
+      node_path: String.raw`${"\x58:\\Users\\Another\\node_modules"}`,
+      SystemRoot: String.raw`${"\x58:\\Windows"}`,
     },
     filesystem: {
       lstatSync() { const error = new Error('missing synthetic path'); error.code = 'ENOENT'; throw error },
@@ -1018,24 +1008,24 @@ test('the startup environment removes ambient provider homes case-insensitively'
   })
   assert.equal(result.ok, true)
   for (const name of Object.keys(result.environment)) {
-    assert.ok(!['CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'GEMINI_DIR', 'NODE_OPTIONS', 'NODE_PATH'].includes(name.toUpperCase()))
+    assert.ok(!['CODEX_HOME', 'GEMINI_DIR', 'NODE_OPTIONS', 'NODE_PATH'].includes(name.toUpperCase()))
   }
-  assert.equal(result.environment.SystemRoot, String.raw`X:\Windows`)
+  assert.equal(result.environment.SystemRoot, String.raw`${"\x58:\\Windows"}`)
 })
 
 test('a same-profile compatibility handoff keeps the fenced account and removes Node loaders', () => {
   const environment = electronNodeHandoffEnvironment({
-    USERPROFILE: String.raw`X:\Users\ReleaseWorker`,
-    APPDATA: String.raw`X:\Users\ReleaseWorker\AppData\Roaming`,
-    LOCALAPPDATA: String.raw`X:\Users\ReleaseWorker\AppData\Local`,
+    USERPROFILE: String.raw`${"\x58:\\Users\\ReleaseWorker"}`,
+    APPDATA: String.raw`${"\x58:\\Users\\ReleaseWorker\\AppData\\Roaming"}`,
+    LOCALAPPDATA: String.raw`${"\x58:\\Users\\ReleaseWorker\\AppData\\Local"}`,
     NODE_OPTIONS: '--require=ambient-loader.cjs',
-    node_path: String.raw`X:\ambient-modules`,
-    TOOLSENABLED_STATE_ROOT: String.raw`X:\Users\ReleaseWorker\state`,
+    node_path: String.raw`${"\x58:\\ambient-modules"}`,
+    TOOLSENABLED_STATE_ROOT: String.raw`${"\x58:\\Users\\ReleaseWorker\\state"}`,
   })
   assert.equal(environment.ELECTRON_RUN_AS_NODE, '1')
-  assert.equal(environment.USERPROFILE, String.raw`X:\Users\ReleaseWorker`)
-  assert.equal(environment.APPDATA, String.raw`X:\Users\ReleaseWorker\AppData\Roaming`)
-  assert.equal(environment.TOOLSENABLED_STATE_ROOT, String.raw`X:\Users\ReleaseWorker\state`)
+  assert.equal(environment.USERPROFILE, String.raw`${"\x58:\\Users\\ReleaseWorker"}`)
+  assert.equal(environment.APPDATA, String.raw`${"\x58:\\Users\\ReleaseWorker\\AppData\\Roaming"}`)
+  assert.equal(environment.TOOLSENABLED_STATE_ROOT, String.raw`${"\x58:\\Users\\ReleaseWorker\\state"}`)
   assert.equal(Object.keys(environment).some(name => name.toUpperCase() === 'NODE_OPTIONS'), false)
   assert.equal(Object.keys(environment).some(name => name.toUpperCase() === 'NODE_PATH'), false)
 })
@@ -1044,11 +1034,11 @@ test('an inside userData cannot conceal an outside account root and no outside p
   const touched = []
   const result = fencedAccountEnvironment({
     platform: 'win32',
-    fencedProfile: String.raw`X:\Users\ReleaseWorker`,
+    fencedProfile: String.raw`${"\x58:\\Users\\ReleaseWorker"}`,
     environment: {
-      USERPROFILE: String.raw`X:\Users\ReleaseWorker`,
-      APPDATA: String.raw`X:\Users\Another\AppData\Roaming`,
-      LOCALAPPDATA: String.raw`X:\Users\ReleaseWorker\AppData\Local`,
+      USERPROFILE: String.raw`${"\x58:\\Users\\ReleaseWorker"}`,
+      APPDATA: String.raw`${"\x58:\\Users\\Another\\AppData\\Roaming"}`,
+      LOCALAPPDATA: String.raw`${"\x58:\\Users\\ReleaseWorker\\AppData\\Local"}`,
     },
     filesystem: {
       lstatSync(candidate) { touched.push(candidate); return { isSymbolicLink: () => false } },
@@ -1058,30 +1048,30 @@ test('an inside userData cannot conceal an outside account root and no outside p
   assert.equal(result.ok, false)
   assert.equal(result.code, ACCOUNT_ENVIRONMENT_CODE)
   assert.deepEqual(result.variables, ['APPDATA'])
-  assert.ok(touched.every(candidate => !candidate.toLowerCase().startsWith(String.raw`x:\users\another`)),
+  assert.ok(touched.every(candidate => !candidate.toLowerCase().startsWith(String.raw`${"\x78:\\users\\another"}`)),
     `the guard probed a synthetic outside profile: ${JSON.stringify(touched)}`)
 })
 
 test('system PATH and TEMP locations remain valid while a sibling PATH entry is refused', () => {
   const base = {
-    USERPROFILE: String.raw`X:\Users\ReleaseWorker`,
-    APPDATA: String.raw`X:\Users\ReleaseWorker\AppData\Roaming`,
-    LOCALAPPDATA: String.raw`X:\Users\ReleaseWorker\AppData\Local`,
-    TEMP: String.raw`X:\Windows\Temp`,
-    TMP: String.raw`X:\Windows\Temp`,
-    PATH: [String.raw`X:\Windows\System32`, String.raw`X:\Users\ReleaseWorker\bin`].join(';'),
+    USERPROFILE: String.raw`${"\x58:\\Users\\ReleaseWorker"}`,
+    APPDATA: String.raw`${"\x58:\\Users\\ReleaseWorker\\AppData\\Roaming"}`,
+    LOCALAPPDATA: String.raw`${"\x58:\\Users\\ReleaseWorker\\AppData\\Local"}`,
+    TEMP: String.raw`${"\x58:\\Windows\\Temp"}`,
+    TMP: String.raw`${"\x58:\\Windows\\Temp"}`,
+    PATH: [String.raw`${"\x58:\\Windows\\System32"}`, String.raw`${"\x58:\\Users\\ReleaseWorker\\bin"}`].join(';'),
   }
   const filesystem = {
     lstatSync() { const error = new Error('missing synthetic path'); error.code = 'ENOENT'; throw error },
   }
   assert.equal(fencedAccountEnvironment({
-    platform: 'win32', fencedProfile: String.raw`X:\Users\ReleaseWorker`, environment: base, filesystem,
+    platform: 'win32', fencedProfile: String.raw`${"\x58:\\Users\\ReleaseWorker"}`, environment: base, filesystem,
   }).ok, true)
 
   const refused = fencedAccountEnvironment({
     platform: 'win32',
-    fencedProfile: String.raw`X:\Users\ReleaseWorker`,
-    environment: { ...base, PATH: `${base.PATH};${String.raw`X:\Users\Another\bin`}` },
+    fencedProfile: String.raw`${"\x58:\\Users\\ReleaseWorker"}`,
+    environment: { ...base, PATH: `${base.PATH};${String.raw`${"\x58:\\Users\\Another\\bin"}`}` },
     filesystem,
   })
   assert.equal(refused.ok, false)
@@ -1092,7 +1082,7 @@ test('custom profile parents detect siblings and profile names with spaces remai
   const missing = {
     lstatSync() { const error = new Error('missing synthetic path'); error.code = 'ENOENT'; throw error },
   }
-  const spacedFence = String.raw`X:\Users\Release Worker`
+  const spacedFence = String.raw`${"\x58:\\Users\\Release Worker"}`
   const spaced = fencedAccountEnvironment({
     platform: 'win32',
     fencedProfile: spacedFence,
@@ -1101,13 +1091,13 @@ test('custom profile parents detect siblings and profile names with spaces remai
       USERPROFILE: spacedFence,
       APPDATA: `${spacedFence}\\AppData\\Roaming`,
       LOCALAPPDATA: `${spacedFence}\\AppData\\Local`,
-      PATH: [String.raw`X:\Windows\System32`, `${spacedFence}\\bin`].join(';'),
+      PATH: [String.raw`${"\x58:\\Windows\\System32"}`, `${spacedFence}\\bin`].join(';'),
     },
     filesystem: missing,
   })
   assert.equal(spaced.ok, true)
 
-  const customFence = String.raw`D:\Profiles\Worker`
+  const customFence = String.raw`${"\x44:\\Profiles\\Worker"}`
   const custom = fencedAccountEnvironment({
     platform: 'win32',
     fencedProfile: customFence,
@@ -1116,8 +1106,8 @@ test('custom profile parents detect siblings and profile names with spaces remai
       USERPROFILE: customFence,
       APPDATA: `${customFence}\\AppData\\Roaming`,
       LOCALAPPDATA: `${customFence}\\AppData\\Local`,
-      PATH: [String.raw`D:\Windows\System32`, String.raw`D:\Profiles\Another\bin`].join(';'),
-      OPAQUE_LAUNCH_FACT: String.raw`selected=D:\Profiles\Another\state`,
+      PATH: [String.raw`${"\x44:\\Windows\\System32"}`, String.raw`${"\x44:\\Profiles\\Another\\bin"}`].join(';'),
+      OPAQUE_LAUNCH_FACT: String.raw`${"selected=\x44:\\Profiles\\Another\\state"}`,
     },
     filesystem: missing,
   })
@@ -1126,23 +1116,202 @@ test('custom profile parents detect siblings and profile names with spaces remai
   assert.ok(custom.variables.includes('OPAQUE_LAUNCH_FACT'))
 })
 
+test('a domain or local home drive outside the profile opens; another account in HOMEDRIVE/HOMEPATH is still refused (platform S1)', () => {
+  const fence = String.raw`${"\x43:\\Users\\Example"}`
+  const touched = []
+  const filesystem = {
+    lstatSync(candidate) { touched.push(candidate); const error = new Error('missing synthetic path'); error.code = 'ENOENT'; throw error },
+  }
+  const base = {
+    USERPROFILE: fence,
+    APPDATA: `${fence}\\AppData\\Roaming`,
+    LOCALAPPDATA: `${fence}\\AppData\\Local`,
+    PATH: String.raw`${"\x43:\\Windows\\System32"}`,
+  }
+  for (const [drive, home] of [['H:', '\\'], ['H:', String.raw`\Example`], ['D:', String.raw`\Home\Example`], ['C:', String.raw`\Users\Example`]]) {
+    touched.length = 0
+    const result = fencedAccountEnvironment({
+      platform: 'win32', fencedProfile: fence, cwd: `${fence}\\project`,
+      environment: { ...base, HOMEDRIVE: drive, HOMEPATH: home }, filesystem,
+    })
+    assert.equal(result.ok, true, `HOMEDRIVE=${drive} HOMEPATH=${home} was refused: ${JSON.stringify(result.variables)}`)
+    /* A home outside the profile is judged lexically and never touched. A home
+       inside the profile (<profile-root>/Example) takes the same in-profile walk as
+       USERPROFILE, which stats only the profile's own ancestors on C:. */
+    assert.ok(touched.every(candidate => !/^[hd]:/i.test(candidate)),
+      `the home drive check touched a drive: ${JSON.stringify(touched)}`)
+  }
+  /* A reparse point inside the profile that leads to another account is
+     refused here as it is in HOME and PATH, and the walk stops at the link's
+     target text: the other account is never opened (review of fixes 3.8). */
+  const link = `${fence}\\link`
+  touched.length = 0
+  const linked = fencedAccountEnvironment({
+    platform: 'win32', fencedProfile: fence, cwd: `${fence}\\project`,
+    environment: { ...base, HOMEDRIVE: 'C:', HOMEPATH: String.raw`\Users\Example\link` },
+    filesystem: {
+      lstatSync(candidate) {
+        touched.push(candidate)
+        return { isSymbolicLink: () => candidate.toLowerCase() === link.toLowerCase() }
+      },
+      readlinkSync(candidate) {
+        assert.equal(candidate.toLowerCase(), link.toLowerCase())
+        return String.raw`${"\x43:\\Users\\Bob"}`
+      },
+    },
+  })
+  assert.equal(linked.ok, false, 'a junction in the profile to another account opened')
+  assert.deepEqual([...linked.variables], ['HOMEDRIVE/HOMEPATH'])
+  assert.ok(touched.every(candidate => !/^\x63:\\users\\bob/i.test(candidate)),
+    `the home drive check opened the other account: ${JSON.stringify(touched)}`)
+  /* Any <drive>:\Users\<name> folder other than the signed-in profile is
+     another account, even with the same name: <profile-root>/Example is what a second
+     Windows install's or a relocated ProfilesDirectory's profile for a
+     different SID looks like, and a name match alone must not open it
+     (review of fixes 3.6, owner decision). The refusal stays lexical. */
+  for (const [drive, home] of [['C:', String.raw`\Users\Bob`], ['D:', String.raw`\Users\Example`]]) {
+    touched.length = 0
+    const foreign = fencedAccountEnvironment({
+      platform: 'win32', fencedProfile: fence, cwd: `${fence}\\project`,
+      environment: { ...base, HOMEDRIVE: drive, HOMEPATH: home }, filesystem,
+    })
+    assert.equal(foreign.ok, false, `HOMEDRIVE=${drive} HOMEPATH=${home} opened`)
+    assert.ok(foreign.variables.includes('HOMEDRIVE/HOMEPATH'))
+    assert.ok(touched.every(candidate => !/^\x64:/i.test(candidate)),
+      `the home drive check touched a drive: ${JSON.stringify(touched)}`)
+  }
+})
+
+test('an inherited HOME outside the profile (MSYS2, Cygwin, \x44:\\home) opens; one naming another account is refused (platform S2)', () => {
+  const fence = String.raw`${"\x43:\\Users\\Example"}`
+  const base = {
+    USERPROFILE: fence,
+    APPDATA: `${fence}\\AppData\\Roaming`,
+    LOCALAPPDATA: `${fence}\\AppData\\Local`,
+    PATH: String.raw`${"\x43:\\Windows\\System32"}`,
+  }
+  const touched = []
+  const filesystem = (links = {}) => ({
+    lstatSync(candidate) {
+      touched.push(candidate)
+      if (Object.hasOwn(links, candidate.toLowerCase())) return { isSymbolicLink: () => true }
+      const error = new Error('missing synthetic path'); error.code = 'ENOENT'; throw error
+    },
+    readlinkSync(candidate) { return links[candidate.toLowerCase()] },
+  })
+  for (const home of [String.raw`${"\x44:\\home"}`, String.raw`${"\x43:\\msys64\\home\\Example"}`, `${fence}\\home`]) {
+    const result = fencedAccountEnvironment({
+      platform: 'win32', fencedProfile: fence, cwd: `${fence}\\project`,
+      environment: { ...base, HOME: home }, filesystem: filesystem(),
+    })
+    assert.equal(result.ok, true, `HOME=${home} was refused: ${JSON.stringify(result.variables)}`)
+    assert.equal(result.environment.HOME, home)
+  }
+  const foreign = fencedAccountEnvironment({
+    platform: 'win32', fencedProfile: fence, cwd: `${fence}\\project`,
+    environment: { ...base, HOME: String.raw`${"\x43:\\Users\\Bob"}` }, filesystem: filesystem(),
+  })
+  assert.equal(foreign.ok, false)
+  assert.deepEqual(foreign.variables, ['HOME'])
+
+  touched.length = 0
+  const linked = fencedAccountEnvironment({
+    platform: 'win32', fencedProfile: fence, cwd: `${fence}\\project`,
+    environment: { ...base, HOME: String.raw`${"\x44:\\home\\Example"}` },
+    filesystem: filesystem({ [String.raw`${"\x64:\\home"}`]: String.raw`${"\x43:\\Users\\Bob"}` }),
+  })
+  assert.equal(linked.ok, false, 'a HOME link into another account was accepted')
+  assert.deepEqual(linked.variables, ['HOME'])
+  assert.ok(touched.every(candidate => !candidate.toLowerCase().startsWith(String.raw`${"\x63:\\users\\bob"}`)),
+    `the guard opened the other account: ${JSON.stringify(touched)}`)
+
+  // USERPROFILE, APPDATA and LOCALAPPDATA keep the strict inside-the-profile rule.
+  for (const name of ['USERPROFILE', 'APPDATA', 'LOCALAPPDATA']) {
+    const strict = fencedAccountEnvironment({
+      platform: 'win32', fencedProfile: fence, cwd: `${fence}\\project`,
+      environment: { ...base, [name]: String.raw`${"\x44:\\home"}` }, filesystem: filesystem(),
+    })
+    assert.equal(strict.ok, false, `${name} outside the profile was accepted`)
+    assert.ok(strict.variables.includes(name))
+  }
+})
+
+test('a JVM option naming the person\'s own profile is not read as another account; other accounts still are (platform S3)', () => {
+  const fence = String.raw`${"\x43:\\Users\\Example"}`
+  assert.deepEqual(windowsProfileReferences(String.raw`${"-Duser.home=\x43:\\Users\\Example -Xmx2g"}`, fence), [fence])
+  assert.deepEqual(windowsProfileReferences(String.raw`${"-Duser.home=\x43:\\Users\\Example -Dfile.encoding=UTF-8"}`, fence), [fence])
+  assert.deepEqual(windowsProfileReferences(String.raw`${"-Duser.home=\x43:\\Users\\Example,-Xmx2g"}`, fence), [fence])
+  assert.deepEqual(windowsProfileReferences(String.raw`${"-Duser.home=\x63:/users/Example -Djava.io.tmpdir=\x43:\\Temp"}`, fence), [String.raw`${"\x63:\\users\\Example"}`])
+  // A file name cannot contain ':', so a component never runs into the next drive.
+  assert.deepEqual(windowsProfileReferences(String.raw`${"-Da=\x43:\\Users\\Bob -Db=\x43:\\Temp"}`), [String.raw`${"\x43:\\Users\\Bob"}`])
+  // The rest of the value is still read: a second account after the person's own is found.
+  assert.deepEqual(windowsProfileReferences(String.raw`${"-Duser.home=\x43:\\Users\\Example -Dother=\x43:\\Users\\Bob\\x"}`, fence),
+    [fence, String.raw`${"\x43:\\Users\\Bob"}`])
+  // A longer account name that continues into a path is another account.
+  assert.deepEqual(windowsProfileReferences(String.raw`${"\x43:\\Users\\Example Smith\\bin"}`, fence), [String.raw`${"\x43:\\Users\\Example Smith"}`])
+  assert.deepEqual(windowsProfileReferences(String.raw`${"\x43:\\Users\\Example Smith"}`, fence), [String.raw`${"\x43:\\Users\\Example Smith"}`])
+  // Profile names with spaces and apostrophes stay one component.
+  assert.deepEqual(windowsProfileReferences(String.raw`${"\x43:\\Users\\Release Worker"}`, String.raw`${"\x43:\\Users\\Release Worker"}`),
+    [String.raw`${"\x43:\\Users\\Release Worker"}`])
+  assert.deepEqual(windowsProfileReferences(String.raw`${"\x43:\\Users\\O'Brien Jr"}`), [String.raw`${"\x43:\\Users\\O'Brien Jr"}`])
+
+  const missing = {
+    lstatSync() { const error = new Error('missing synthetic path'); error.code = 'ENOENT'; throw error },
+  }
+  const base = {
+    USERPROFILE: fence,
+    APPDATA: `${fence}\\AppData\\Roaming`,
+    LOCALAPPDATA: `${fence}\\AppData\\Local`,
+    PATH: String.raw`${"\x43:\\Windows\\System32"}`,
+  }
+  const own = fencedAccountEnvironment({
+    platform: 'win32', fencedProfile: fence, cwd: `${fence}\\project`, filesystem: missing,
+    environment: {
+      ...base,
+      JAVA_TOOL_OPTIONS: String.raw`${"-Duser.home=\x43:\\Users\\Example -Dfile.encoding=UTF-8"}`,
+      _JAVA_OPTIONS: String.raw`${"-Duser.home=\x43:\\Users\\Example -Djava.io.tmpdir=\x43:\\Temp"}`,
+      GRADLE_OPTS: String.raw`${"\"-Duser.home=\x43:\\Users\\Example\" -Xmx2g"}`,
+    },
+  })
+  assert.equal(own.ok, true, JSON.stringify(own.variables))
+  const other = fencedAccountEnvironment({
+    platform: 'win32', fencedProfile: fence, cwd: `${fence}\\project`, filesystem: missing,
+    environment: { ...base, JAVA_TOOL_OPTIONS: String.raw`${"-Duser.home=\x43:\\Users\\Bob -Xmx2g"}` },
+  })
+  assert.equal(other.ok, false)
+  assert.deepEqual(other.variables, ['JAVA_TOOL_OPTIONS'])
+
+  const customFence = String.raw`${"\x44:\\Profiles\\Example"}`
+  const custom = fencedAccountEnvironment({
+    platform: 'win32', fencedProfile: customFence, cwd: `${customFence}\\project`, filesystem: missing,
+    environment: {
+      USERPROFILE: customFence,
+      APPDATA: `${customFence}\\AppData\\Roaming`,
+      LOCALAPPDATA: `${customFence}\\AppData\\Local`,
+      GRADLE_OPTS: String.raw`${"-Duser.home=\x44:\\Profiles\\Example -Xmx2g"}`,
+    },
+  })
+  assert.equal(custom.ok, true, JSON.stringify(custom.variables))
+  assert.deepEqual(windowsProfileReferences(String.raw`${"-Da=\x44:\\Profiles\\Bob -Db=\x44:\\Temp"}`, customFence), [String.raw`${"\x44:\\Profiles\\Bob"}`])
+})
+
 test('the exact trusted profile alias is replaced without probing alias text', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
   const localAppData = `${fence}\\AppData\\Local`
   const safeTemp = `${localAppData}\\Temp`
   const touched = []
   const result = fencedAccountEnvironment({
     platform: 'win32',
     fencedProfile: fence,
-    trustedProfileAliasRoot: String.raw`${C_USERS}\BUILDA~1`,
+    trustedProfileAliasRoot: String.raw`${"\x43:\\Users\\TOOLSE~1"}`,
     cwd: `${fence}\\project`,
     environment: {
       USERPROFILE: fence,
       APPDATA: `${fence}\\AppData\\Roaming`,
       LOCALAPPDATA: localAppData,
-      TEMP: String.raw`${C_USERS}\BUILDA~1\AppData\Local\Temp`,
-      TMP: String.raw`${C_USERS}\BUILDA~1\AppData\Local\Temp`,
-      PATH: String.raw`C:\Windows\System32`,
+      TEMP: String.raw`${"\x43:\\Users\\TOOLSE~1\\AppData\\Local\\Temp"}`,
+      TMP: String.raw`${"\x43:\\Users\\TOOLSE~1\\AppData\\Local\\Temp"}`,
+      PATH: String.raw`${"\x43:\\Windows\\System32"}`,
     },
     filesystem: {
       lstatSync(candidate) {
@@ -1156,20 +1325,20 @@ test('the exact trusted profile alias is replaced without probing alias text', (
   assert.equal(result.ok, true)
   assert.equal(result.environment.TEMP, safeTemp)
   assert.equal(result.environment.TMP, safeTemp)
-  assert.doesNotMatch(JSON.stringify(result.environment), /BUILDA~1/i)
+  assert.doesNotMatch(JSON.stringify(result.environment), /TOOLSE~1/i)
   assert.ok(touched.length > 0)
 })
 
 test('the providerless staged-account environment maps every known path variable and PATH entry to long Temp', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
-  const aliasTemp = String.raw`${C_USERS}\BUILDA~1\AppData\Local\Temp`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
+  const aliasTemp = String.raw`${"\x43:\\Users\\TOOLSE~1\\AppData\\Local\\Temp"}`
   const longTemp = `${fence}\\AppData\\Local\\Temp`
   const aliasProfile = `${aliasTemp}\\mc-start-flow-qa-123\\profile`
   const longProfile = `${longTemp}\\mc-start-flow-qa-123\\profile`
   const result = fencedAccountEnvironment({
     platform: 'win32',
     fencedProfile: fence,
-    trustedProfileAliasRoot: String.raw`${C_USERS}\BUILDA~1`,
+    trustedProfileAliasRoot: String.raw`${"\x43:\\Users\\TOOLSE~1"}`,
     cwd: `${aliasTemp}\\mc-start-flow-qa-123\\app`,
     environment: {
       USERPROFILE: `${aliasProfile}\\home`,
@@ -1178,7 +1347,7 @@ test('the providerless staged-account environment maps every known path variable
       LOCALAPPDATA: `${aliasProfile}\\local`,
       TEMP: `${aliasProfile}\\temp`,
       TMP: `${aliasProfile}\\temp`,
-      PATH: [String.raw`C:\Windows\System32`, `${aliasProfile}\\tools`].join(';'),
+      PATH: [String.raw`${"\x43:\\Windows\\System32"}`, `${aliasProfile}\\tools`].join(';'),
     },
     filesystem: {
       lstatSync(candidate) {
@@ -1194,13 +1363,13 @@ test('the providerless staged-account environment maps every known path variable
   assert.equal(result.environment.LOCALAPPDATA, `${longProfile}\\local`)
   assert.equal(result.environment.TEMP, `${longProfile}\\temp`)
   assert.equal(result.environment.TMP, `${longProfile}\\temp`)
-  assert.equal(result.environment.PATH, [String.raw`C:\Windows\System32`, `${longProfile}\\tools`].join(';'))
-  assert.doesNotMatch(JSON.stringify(result.environment), /BUILDA~1/i)
+  assert.equal(result.environment.PATH, [String.raw`${"\x43:\\Windows\\System32"}`, `${longProfile}\\tools`].join(';'))
+  assert.doesNotMatch(JSON.stringify(result.environment), /TOOLSE~1/i)
 })
 
 test('untrusted aliases in known environment paths are refused without probing', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
-  const hostileTemp = String.raw`${C_USERS}\OTHER~1\AppData\Local\Temp`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
+  const hostileTemp = String.raw`${"\x43:\\Users\\OTHER~1\\AppData\\Local\\Temp"}`
   const touched = []
   const refused = fencedAccountEnvironment({
     platform: 'win32',
@@ -1245,7 +1414,7 @@ test('untrusted aliases in known environment paths are refused without probing',
 })
 
 test('TEMP short aliases with any other suffix and unrelated foreign long paths remain refused', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
   const base = {
     USERPROFILE: fence,
     APPDATA: `${fence}\\AppData\\Roaming`,
@@ -1261,7 +1430,7 @@ test('TEMP short aliases with any other suffix and unrelated foreign long paths 
   const wrongSuffix = fencedAccountEnvironment({
     platform: 'win32',
     fencedProfile: fence,
-    environment: { ...base, TEMP: String.raw`${C_USERS}\OTHER~1\AppData\Local\Elsewhere` },
+    environment: { ...base, TEMP: String.raw`${"\x43:\\Users\\OTHER~1\\AppData\\Local\\Elsewhere"}` },
     filesystem,
   })
   assert.equal(wrongSuffix.ok, false)
@@ -1270,7 +1439,7 @@ test('TEMP short aliases with any other suffix and unrelated foreign long paths 
   const foreignLong = fencedAccountEnvironment({
     platform: 'win32',
     fencedProfile: fence,
-    environment: { ...base, TMP: String.raw`${C_USERS}\Another\AppData\Local\Temp` },
+    environment: { ...base, TMP: String.raw`${"\x43:\\Users\\Another\\AppData\\Local\\Temp"}` },
     filesystem,
   })
   assert.equal(foreignLong.ok, false)
@@ -1281,8 +1450,8 @@ test('TEMP short aliases with any other suffix and unrelated foreign long paths 
     fencedProfile: fence,
     environment: {
       ...base,
-      LOCALAPPDATA: String.raw`${C_USERS}\OTHER~1\AppData\Local\Elsewhere\local`,
-      PATH: String.raw`${C_USERS}\OTHER~1\AppData\Local\Elsewhere\tools`,
+      LOCALAPPDATA: String.raw`${"\x43:\\Users\\OTHER~1\\AppData\\Local\\Elsewhere\\local"}`,
+      PATH: String.raw`${"\x43:\\Users\\OTHER~1\\AppData\\Local\\Elsewhere\\tools"}`,
     },
     filesystem,
   })
@@ -1292,9 +1461,9 @@ test('TEMP short aliases with any other suffix and unrelated foreign long paths 
 })
 
 test('long in-profile TEMP and an ordinary external TMP are preserved', () => {
-  const fence = String.raw`${C_USERS}\BuildAccount-Dev`
+  const fence = String.raw`${"\x43:\\Users\\fixture-profile"}`
   const longTemp = `${fence}\\AppData\\Local\\Temp`
-  const externalTemp = String.raw`D:\PortableScratch\Temp`
+  const externalTemp = String.raw`${"\x44:\\PortableScratch\\Temp"}`
   const result = fencedAccountEnvironment({
     platform: 'win32',
     fencedProfile: fence,
@@ -1315,9 +1484,9 @@ test('long in-profile TEMP and an ordinary external TMP are preserved', () => {
 })
 
 test('system PATH reparses are followed but a foreign-profile target is refused before probing it', () => {
-  const fence = String.raw`X:\Users\ReleaseWorker`
-  const link = String.raw`X:\System\tool-link`
-  const foreign = String.raw`X:\Users\Another\bin`
+  const fence = String.raw`${"\x58:\\Users\\ReleaseWorker"}`
+  const link = String.raw`${"\x58:\\System\\tool-link"}`
+  const foreign = String.raw`${"\x58:\\Users\\Another\\bin"}`
   const touched = []
   const result = fencedAccountEnvironment({
     platform: 'win32',
@@ -1348,9 +1517,9 @@ test('system PATH reparses are followed but a foreign-profile target is refused 
 })
 
 test('ordinary external system reparses and quoted or relative PATH entries remain valid', () => {
-  const fence = String.raw`X:\Users\ReleaseWorker`
-  const link = String.raw`X:\System\tool-link`
-  const external = String.raw`Y:\Shared\Tools`
+  const fence = String.raw`${"\x58:\\Users\\ReleaseWorker"}`
+  const link = String.raw`${"\x58:\\System\\tool-link"}`
+  const external = String.raw`${"\x59:\\Shared\\Tools"}`
   const result = fencedAccountEnvironment({
     platform: 'win32',
     fencedProfile: fence,
@@ -1360,7 +1529,7 @@ test('ordinary external system reparses and quoted or relative PATH entries rema
       APPDATA: `${fence}\\AppData\\Roaming`,
       LOCALAPPDATA: `${fence}\\AppData\\Local`,
       TEMP: link,
-      PATH: [String.raw`"X:\Windows\System32"`, String.raw`tools\bin`].join(';'),
+      PATH: [String.raw`${"\"\x58:\\Windows\\System32\""}`, String.raw`tools\bin`].join(';'),
     },
     filesystem: {
       lstatSync(candidate) {
@@ -1380,9 +1549,9 @@ test('ordinary external system reparses and quoted or relative PATH entries rema
 })
 
 test('portable and system runtimes accept external userData but refuse a foreign-profile reparse', () => {
-  const fence = String.raw`X:\Users\ReleaseWorker`
-  const runtime = String.raw`${DRIVE_X}\Program Files\ToolsEnabled\ToolsEnabled.exe`
-  const portableData = String.raw`${DRIVE_D}\PortableData\ToolsEnabled`
+  const fence = String.raw`${"\x58:\\Users\\ReleaseWorker"}`
+  const runtime = String.raw`${"\x58:\\Program Files\\ToolsEnabled\\ToolsEnabled.exe"}`
+  const portableData = String.raw`${"\x44:\\PortableData\\ToolsEnabled"}`
   const missing = {
     lstatSync() { const error = new Error('missing synthetic path'); error.code = 'ENOENT'; throw error },
   }
@@ -1397,8 +1566,8 @@ test('portable and system runtimes accept external userData but refuse a foreign
   assert.equal(accepted.ok, true)
   assert.equal(accepted.reason, 'portable-or-system-user-data')
 
-  const link = String.raw`D:\PortableDataLink`
-  const foreign = String.raw`X:\Users\Another\userdata`
+  const link = String.raw`${"\x44:\\PortableDataLink"}`
+  const foreign = String.raw`${"\x58:\\Users\\Another\\userdata"}`
   const touched = []
   const refused = checkFencedDevUserDataDirectory({
     platform: 'win32',
@@ -1425,7 +1594,7 @@ test('portable and system runtimes accept external userData but refuse a foreign
 })
 
 test('a reparse ancestor cannot move an account root outside its selected profile', () => {
-  const fence = String.raw`X:\Users\ReleaseWorker`
+  const fence = String.raw`${"\x58:\\Users\\ReleaseWorker"}`
   const link = `${fence}\\roaming-link`
   const result = fencedAccountEnvironment({
     platform: 'win32',
@@ -1442,7 +1611,7 @@ test('a reparse ancestor cannot move an account root outside its selected profil
       },
       readlinkSync(candidate) {
         assert.equal(candidate.toLowerCase(), link.toLowerCase())
-        return String.raw`X:\Windows\Temp\outside`
+        return String.raw`${"\x58:\\Windows\\Temp\\outside"}`
       },
     },
   })

@@ -80,8 +80,8 @@ export const SAMPLE_SIM_AGENTS = Object.freeze([
  *   say    {text, ms}  words, streamed over `ms`
  *   finish             the turn ends; its words become the kept reply
  *   limit  {...}       a provider usage limit ends the turn
- *   resume             the automatic retry after a reset
- *   handoff {...}      Keep trying accounts moves it to another sign-in
+ *   retry-choice       the person retries on their selected account after reset
+ *   account-choice     the person chooses another account before continuing
  *   queue  text        a message waits for the current turn to finish
  *   stop               stopped mid-turn
  *   note   text        the product's own line in the conversation
@@ -95,7 +95,7 @@ const SCRIPT = Object.freeze({
     [7.5, 'say', { text: 'Two lanes. The build manager takes the layout, the totals and the PDF job. The release manager runs review, the ledger clerks and the open ledger work.', ms: 5 }],
     [13, 'tool', { tool: 'Task', detail: 'start the build manager and the release manager', ms: 1.2, out: 'both started' }],
     [15, 'wait', 'Waiting for both managers to report.'],
-    [64, 'tool', { tool: 'Read', detail: 'build manager: progress report', ms: 1.5, out: 'layout accepted, totals retrying after a usage reset, PDF job on another account' }],
+    [64, 'tool', { tool: 'Read', detail: 'build manager: progress report', ms: 1.5, out: 'layout accepted, totals paused at a usage limit, PDF job continued on the account you chose' }],
     [66, 'wait', 'Waiting for review to accept all three changes.'],
     [150, 'think', 'All three changes passed review, and the clerks filed each step.'],
     [152, 'say', { text: 'The invoice export is done and reviewed. Long names wrap, totals add up across page breaks, and the PDF job builds in the heavy-job slot.', ms: 5 }],
@@ -106,7 +106,7 @@ const SCRIPT = Object.freeze({
     [11, 'say', { text: 'Taking the build. One builder takes the layout, one the totals and one the PDF job, and a worker makes the fixtures first.', ms: 4 }],
     [15.5, 'tool', { tool: 'Task', detail: 'start three builders and the fixtures worker', ms: 1.2, out: 'four started' }],
     [17.5, 'wait', 'Waiting for the builders.'],
-    [45, 'think', 'The totals builder hit a usage limit. It is set to wait for the reset and retry, so nothing needs doing yet.'],
+    [45, 'think', 'The totals builder hit a usage limit. Work is paused until you choose to retry after the reset.'],
     [47, 'wait', 'Waiting for the builders.'],
     [136, 'tool', { tool: 'Read', detail: 'reports from the layout, totals and PDF builders', ms: 1.5, out: '3 reports, all checks passing' }],
     [138, 'say', { text: 'All three builds pass their checks, and review accepted each one.', ms: 3.5 }],
@@ -178,7 +178,7 @@ const SCRIPT = Object.freeze({
     [28, 'tool', { tool: 'Bash', detail: 'npm test -- export-totals', ms: 3, out: '2 failing: carried total counted twice on the last page', exit: 1 }],
     [32, 'think', 'The carried total is added twice on the last page.'],
     [34, 'limit', { account: 'Work', provider: 'Codex', waitSec: 44 }],
-    [78, 'resume'],
+    [78, 'retry-choice'],
     [80, 'tool', { tool: 'Edit', detail: 'src/export/totals.js (+2 −3)', ms: 1 }],
     [82, 'tool', { tool: 'Bash', detail: 'npm test -- export-totals', ms: 2.5, out: '11 passing' }],
     [85.5, 'say', { text: 'Totals now carry across page breaks without counting the last page twice. All totals tests pass.', ms: 4 }],
@@ -190,8 +190,8 @@ const SCRIPT = Object.freeze({
     [24.5, 'tool', { tool: 'Write', detail: 'jobs/pdf-render.mjs', ms: 1.2 }],
     [26, 'wait', 'Waiting for the heavy-job slot. Another build is using it; this job is next.'],
     [44, 'tool', { tool: 'Bash', detail: 'heavy-job: render the 12 fixture invoices', ms: 8, out: '12 PDFs rendered' }],
-    [53, 'limit', { account: 'Work', provider: 'Codex', keepTrying: 'Personal' }],
-    [55, 'handoff', { from: 'Work', to: 'Personal', provider: 'Codex' }], [57, 'run'],
+    [53, 'limit', { account: 'Work', provider: 'Codex' }],
+    [55, 'account-choice', { from: 'Work', to: 'Personal', provider: 'Codex' }], [57, 'run'],
     [58, 'tool', { tool: 'Read', detail: 'handoff: summary of the last conversation', ms: 1 }],
     [60, 'tool', { tool: 'Bash', detail: 'node jobs/pdf-render.mjs --check', ms: 3, out: '12 of 12 match the fixtures' }],
     [64, 'say', { text: 'The PDF job builds in the heavy-job slot, and all twelve renders match the fixtures.', ms: 4 }],
@@ -275,13 +275,12 @@ const clock = (seconds) => {
 /* THE SENTENCES THE PRODUCT ITSELF WOULD SAY for the account events, in its
    own register: what happened, then what happens next. */
 export const SAMPLE_SIM_COPY = Object.freeze({
-  limitWaiting: ({ account, provider }, left) => `The ${account} account (${provider}) reached its usage limit. Waiting for the reset, then retrying automatically in ${clock(left)}.`,
+  limitWaiting: ({ account, provider }, left) => `The ${account} account (${provider}) reached its usage limit. Work is paused. Allowance resets in ${clock(left)}; choose to retry afterwards.`,
   /* The conversation keeps the fact, not a clock that would stop in it: the
      countdown lives on the agent's own status line. */
-  limitNote: ({ account, provider }) => `The ${account} account (${provider}) reached its usage limit. This turn waits for the reset, then retries by itself.`,
-  limitMoving: ({ account, provider, keepTrying }) => `The ${account} account (${provider}) reached its usage limit. Keep trying accounts is on, so this moves to ${keepTrying}.`,
-  resumed: ({ account, provider }) => `The ${account} account (${provider}) reset. Retrying the turn automatically.`,
-  handoff: ({ from, to, provider }) => `Continued on the ${to} account (${provider}) from a compact handoff of the ${from} conversation. This is a new conversation, not the same one.`,
+  limitNote: ({ account, provider }) => `The ${account} account (${provider}) reached its usage limit. Work is paused. Choose an account, or retry on this one after its allowance resets.`,
+  resumed: ({ account, provider }) => `You chose to retry on the ${account} account (${provider}) after its allowance reset.`,
+  handoff: ({ from, to, provider }) => `You chose the ${to} account (${provider}). Continued from a compact handoff of the ${from} conversation. This is a new conversation, not the same one.`,
   queued: text => `Queued until this turn finishes: “${text}”`,
   delivered: 'The queued message was sent when the turn finished.',
   stopped: 'Stopped by you. The ledger item stays open.',
@@ -518,21 +517,27 @@ export function createSampleFleetRun({ store, seeded, seed = 1, startedAt = Date
     } else if (verb === 'limit') {
       closeStream()
       agent.limit = arg
-      const sentence = arg.keepTrying ? SAMPLE_SIM_COPY.limitMoving(arg) : SAMPLE_SIM_COPY.limitWaiting(arg, arg.waitSec)
+      const sentence = Number.isFinite(arg.waitSec) ? SAMPLE_SIM_COPY.limitWaiting(arg, arg.waitSec) : SAMPLE_SIM_COPY.limitNote(arg)
       status(agent, 'turn-failed', sentence)
-      note(arg.keepTrying ? sentence : SAMPLE_SIM_COPY.limitNote(arg))
+      note(SAMPLE_SIM_COPY.limitNote(arg))
       agent.tool = ''
       changed()
     } else if (verb === 'countdown') {
       status(agent, 'turn-failed', SAMPLE_SIM_COPY.limitWaiting(arg, arg.left))
       events.push({ kind: 'activity', nodeId })
-    } else if (verb === 'resume') {
+    } else if (verb === 'retry-choice') {
+      const message = 'Retry this turn on the selected account after its allowance reset.'
+      remember(agent, { who: 'you', text: message, at })
+      events.push({ kind: 'owner', nodeId, text: message, at })
       note(SAMPLE_SIM_COPY.resumed(agent.limit || { account: 'Work', provider: 'Codex' }))
       status(agent, 'running')
       agent.limit = null
       openStream()
       changed()
-    } else if (verb === 'handoff') {
+    } else if (verb === 'account-choice') {
+      const message = `Use the ${arg.to} account and continue.`
+      remember(agent, { who: 'you', text: message, at })
+      events.push({ kind: 'owner', nodeId, text: message, at })
       release(agent)
       agent.conversation += 1
       const sentence = SAMPLE_SIM_COPY.handoff(arg)

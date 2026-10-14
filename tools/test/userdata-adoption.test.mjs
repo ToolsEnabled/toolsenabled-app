@@ -442,7 +442,7 @@ test('an unusable evidence list never counts as evidence', () => {
      empty list, a list of the wrong shape, an entry that states nothing about
      the directory it names -- and not one of them is a finding that the prior
      install was absent. */
-  for (const searched of [undefined, [], 'nope', {}, [null], [{ holdsProductState: false }], [{ directory: 'Z:\\gone', holdsProductState: false }], [{ directory: null, holdsProductState: false }]]) {
+  for (const searched of [undefined, [], 'nope', {}, [null], [{ holdsProductState: false }], [{ directory: '\x5a:\\gone', holdsProductState: false }], [{ directory: null, holdsProductState: false }]]) {
     const paths = makeAppData()
     seedLegacyInstall(paths.legacy, { theme: 'black' })
     writeRecord(paths, { version: 2, status: 'complete', adopted: false, reason: 'NO_PRIOR_INSTALL', searched, at: '2026-08-11T12:11:04.287Z' })
@@ -567,7 +567,7 @@ test('an existing file is never replaced by the one being adopted', () => {
    THE ADOPTED KEY THAT COULD NOT BE OPENED, AND THE START CONTROL IT
    PERMANENTLY DISABLED.
 
-   MEASURED on the build machine, against two real directories,
+   MEASURED on the build machine, against the owner's two real directories,
    before any of this was written:
 
      %APPDATA%\Mission Control\agent-spawn-key.enc  -> first bytes "v10"

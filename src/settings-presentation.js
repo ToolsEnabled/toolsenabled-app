@@ -33,7 +33,7 @@ export const CATEGORY_DETAILS = Object.freeze({
   Notifications: 'When this computer tells you about an agent',
   Appearance: 'Theme, lettering and agent colours',
   'Text & Reading': 'Text size and readability',
-  'Motion & Effects': 'Animation, glow and hand controls',
+  'Motion & Effects': 'Animation and hand controls',
   Accessibility: 'Voice and hands-free controls',
   Resources: 'CPU, memory and the pace of agent starts',
   'Rules & approvals': 'Standing instructions, purchases and the Ledger',

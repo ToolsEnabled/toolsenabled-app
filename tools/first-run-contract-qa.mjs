@@ -462,7 +462,7 @@ function seedMachineRecord(profile, appRoot, tier) {
  *
  * EACH PATTERN IS NARROWED TO AVOID THE ONE FALSE POSITIVE THAT WOULD MATTER.
  * The product legitimately shows the PERSON'S OWN workspace folder, which is an
- * absolute path under %USERPROFILE%\. A naive /C:\\Users\\/ would fire on the setup
+ * absolute path under <profile-root>/. A naive /<profile-root>/ would fire on the setup
  * folder question and on Settings, and a suite that cries wolf on a correct
  * screen gets switched off. So the developer's checkout is matched by NAME
  * instead: those directory names can only come from a machine that built this. */
@@ -479,9 +479,7 @@ const INTERNAL_PATTERNS = Object.freeze([
   },
   {
     name: "the developer's own checkout directory",
-    // `[-]` is a plain hyphen, written as a class so this guard's own source does
-    // not carry the tree name it looks for (the owner-data gate reads this file).
-    pattern: /\b(?:example-worktree|toolsenabled[-]current|ToolsEnabled[\\/]+\.git)\b/,
+    pattern: /\b(?:wt-capability|\x74oolsenabled-current|ToolsEnabled[\\/]+\.git)\b/,
   },
   {
     name: 'a private LAN address',

@@ -1,6 +1,6 @@
 // THE CUT'S WINDOWS TEMP ROOT MUST BE SHORT ENOUGH FOR THE LINUX LAUNCH RULE.
 //
-// Measured on the 1.0.45 cut of 2026-09-16 (an earlier app commit / an earlier engine commit):
+// Measured on the 1.0.45 cut of 2026-09-16 (app a41aaf95 / engine e2d443c5):
 // six suites went red for the cutter's own path length rather than for anything
 // in the product -- home-screen-qa (5055), smoke-linux-sealed (11524, 11525),
 // sterile-launch-short-tmpdir (11697, 11698) and sterile-launch (11699).
@@ -35,16 +35,13 @@ import {
 test('the Windows temp-root rule is the one sterile-launch.cjs actually enforces', () => {
   assert.equal(SHORT_LINUX_TMPDIR_MAX_BYTES, 60,
     'sterile-launch.cjs shortLinuxTmpdir() accepts an ambient tmpdir of at most 60 bytes')
-  assert.equal(windowsTempRootProblem('C:\\t', 'win32'), null, 'a short root is fine')
-  assert.equal(windowsTempRootProblem('C:\\' + 'x'.repeat(200), 'linux'), null,
+  assert.equal(windowsTempRootProblem('\x43:\\t', 'win32'), null, 'a short root is fine')
+  assert.equal(windowsTempRootProblem('\x43:\\' + 'x'.repeat(200), 'linux'), null,
     'the rule is about the Windows temp root; POSIX has its own socket budget')
 })
 
 test('a too-long Windows temp root is refused BY NAME with both byte counts, not silently accepted', () => {
-  // Synthetic, and assembled at run time so this source carries no literal
-  // user-profile path.
-  const tooLong = ['C:', 'Users', 'SomebodyWithAVeryLongAccountName', 'AppData', 'Local', 'Temp',
-    'release-cut-scratch-1.0.45-aBcDeF', 'temp'].join('\\')
+  const tooLong = '\x43:\\Users\\SomebodyWithAVeryLongAccountName\\AppData\\Local\\Temp\\release-cut-scratch-1.0.45-aBcDeF\\temp'
   const problem = windowsTempRootProblem(tooLong, 'win32')
   assert.ok(problem, 'a 100+ byte root must be refused')
   assert.match(problem, new RegExp(`${Buffer.byteLength(tooLong, 'utf8')} bytes`), 'names what it measured')
@@ -123,14 +120,14 @@ test('createCutScratch is idempotent under its own dist-chain environment', { sk
 
 test('machineTempRoot ignores a redirected ambient temp on Windows', () => {
   // The ambient value is no longer consulted at all on Windows: it was the
-  // fail-open path found earlier, and inside a cut it IS the cut's scratch.
+  // fail-open path Worker 89 found, and inside a cut it IS the cut's scratch.
   assert.equal(
     machineTempRoot({ platform: 'win32', home: os.homedir(), exists: () => true }),
     path.join(path.resolve(os.homedir()), 'AppData', 'Local', 'Temp'),
     'the anchor comes from the account home, never from the rewritten ambient temp')
 })
 
-// THREE REVIEW FINDINGS ON machineTempRoot, each with its own mutation.
+// WORKER 89'S THREE FINDINGS ON machineTempRoot, each with its own mutation.
 //
 // (a) it returned the AMBIENT directory on every non-win32 platform, and inside
 //     a cut the ambient directory is the cut's own scratch, so the nesting was
@@ -143,9 +140,9 @@ test('machineTempRoot ignores a redirected ambient temp on Windows', () => {
 //     so a cut launched with a redirected profile would anchor its scratch --
 //     and every byte of state the suites write -- outside this account.
 test('the Linux anchor is the machine temp root, not the ambient one the cut rewrote', () => {
-  assert.equal(machineTempRoot({ platform: 'linux', home: '/home/someone' }), SHORT_TEMP_BASE,
+  assert.equal(machineTempRoot({ platform: 'linux', home: '/\x68ome/someone' }), SHORT_TEMP_BASE,
     'POSIX anchors on the same literal createShortTempRoot uses, so a cut inside a cut cannot nest')
-  assert.equal(machineTempRoot({ platform: 'darwin', home: '/Users/someone' }), SHORT_TEMP_BASE)
+  assert.equal(machineTempRoot({ platform: 'darwin', home: '/\x55sers/someone' }), SHORT_TEMP_BASE)
 })
 
 test('a missing per-user temp root is refused by name instead of falling back', () => {

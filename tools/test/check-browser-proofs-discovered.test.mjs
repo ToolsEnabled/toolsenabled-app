@@ -63,7 +63,7 @@ test('the real tree declares every run-*.mjs driver and the T35 styled-buttons p
   assert.ok(audit.discovered.length >= 40, `census shrank to ${audit.discovered.length}`)
   for (const name of audit.discovered) assert.match(name, PROOF_SHAPED_NAME)
   assert.deepEqual({ unregistered: audit.unregistered, stale: audit.stale, invalid: audit.invalid, linked: audit.linked }, { unregistered: [], stale: [], invalid: [], linked: [] })
-  /* T360/T365 were removed from the ledger. Their
+  /* T360/T365 were removed from the owner ledger on 2026-09-22. Their
      historical jelly renderer is not selected by the current Home styles. */
   assert.deepEqual(audit.entries.filter(entry => entry.coverage === 'required').map(entry => entry.name),
     ['run-buttons-carry-app-style.mjs'])

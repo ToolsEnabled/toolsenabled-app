@@ -2,53 +2,64 @@
    Surfaces, actions, focus and statuses have separate jobs from role colors. */
 :root {
   --control-bg: var(--sheet);
-  --control-hover: color-mix(in oklab, var(--ink) 7%, var(--sheet));
+  --control-hover: var(--bg-hover);
   --control-border: var(--line-2);
   /* Editable fields need a clearer boundary than panel dividers. Keep the
      existing palette; give text, controls and decoration their own contrast. */
-  --field-border: color-mix(in srgb, var(--ink-3) 85%, var(--sheet));
-  --theme-selected-bg: color-mix(in srgb, var(--ui-accent) 9%, var(--sheet));
-  --theme-selected-border: color-mix(in srgb, var(--ui-accent) 65%, var(--sheet));
+  --theme-selected-bg: var(--bg-surface);
+  --theme-selected-border: var(--ink);
   --seg-bg: var(--bg-2);
   --lane-green: var(--s-good);
   --lane-gold: var(--s-warn);
   --lane-red: var(--s-serious);
-  /* WARN IS A CLEAN YELLOW ON EVERY SHEET, never a gold, mustard or brown one.
-     --s-warn is the mark: dots, bars, edges, fills.
+  /* WARN IS A CLEAN YELLOW ON EVERY SHEET, never a gold, mustard or brown one
+     (owner, 2026-09-23). --s-warn is the mark: dots, bars, edges, fills.
      Words in the warn role read --s-warn-text: the yellow itself on the dark
      sheets, ink on White and Tan, where yellow text cannot be read and a
-     darkened yellow is the rejected brown. There the yellow goes
+     darkened yellow is the brown the owner rejected. There the yellow goes
      beside or behind the words instead: --s-warn-wash is the chip ground. */
   --s-warn-text: var(--s-warn);
   --s-warn-wash: color-mix(in oklab, var(--s-warn) 14%, transparent);
   /* A pressed-on or hovered warn chip: a stronger yellow than its wash, but
      never so strong that the chip's ink falls under 4.5:1 (T1602). */
   --s-warn-wash-hover: color-mix(in oklab, var(--s-warn) 30%, transparent);
-  --message-voice-1: #397589;
-  --message-voice-2: #9d5d43;
-  --message-voice-3: #3e786a;
-  --message-voice-4: #6a65ac;
-  --message-voice-5: #796596;
-  --message-voice-6: #676d77;
+  --message-voice-1: #377185;
+  --message-voice-2: #975940;
+  --message-voice-3: #3c7366;
+  --message-voice-4: #6661a5;
+  --message-voice-5: #746190;
+  --message-voice-6: #646a73;
 }
 :root[data-theme="white"] {
   color-scheme: light;
   --surface: #ffffff;
-  --ink-2: #465465;
-  --ink-25: #526172;
-  --ink-3: #5c6b7b;
-  --line: rgba(31, 45, 61, 0.10);
-  --line-2: rgba(31, 45, 61, 0.19);
-  --accent-2: #28647c;
-  --focus-ring: #39788f;
-  --s-good: #236b47;
+  --ink-2: #48484d;
+  --ink-25: #48484d;
+  --ink-3: #6a6a6f;
+  --line: #e5e5ea;
+  --line-2: var(--line);
+  --accent-2: #0a65d4;
+  --focus-ring: var(--ink);
+  --s-good: #177934;
   --s-warn: #f4c81c;
-  --s-warn-text: var(--ink);
-  --s-warn-wash: color-mix(in oklab, var(--s-warn) 34%, transparent);
-  --s-warn-wash-hover: color-mix(in oklab, var(--s-warn) 46%, transparent);
-  --s-serious: #b53a49;
-  --s-critical: #97345d;
+  --s-warn-text: #1d1d1f;
+  --s-warn-wash: #fbecb2;
+  --s-warn-wash-hover: #fbecb2;
+  --s-serious: #c9172a;
+  --s-critical: #c9172a;
   --seg-border: var(--line-2);
+  --bg: #f5f5f7;
+  --bg-2: #fafafc;
+  --sheet: #ffffff;
+  --ink: #1d1d1f;
+  --ink-4: #8d8d92;
+  --ui-accent: #0a65d4;
+  --ui-accent-fill: var(--ink);
+  --bub-me-1: #fafafc;
+  --bub-me-2: #fafafc;
+  --toggle-track: var(--field-border);
+  --theme-selected-bg: var(--bg-surface);
+  --theme-selected-border: var(--ink);
 }
 :root[data-theme="tan"] {
   --message-voice-1: #326678;
@@ -58,42 +69,72 @@
   --message-voice-5: #695984;
   --message-voice-6: #5c616a;
   color-scheme: light;
-  --surface: #f6ebcb;
-  --ink-3: #62584e;
-  --line: rgba(65, 51, 33, 0.13);
-  --line-2: rgba(65, 51, 33, 0.22);
-  --accent-2: #4c625b;
-  --focus-ring: #61795d;
-  --s-good: #315f43;
+  --surface: #fbf1c7;
+  --ink-3: #665c54;
+  --line: #e7e1d6;
+  --line-2: var(--line);
+  --accent-2: #095fc7;
+  --focus-ring: var(--ink);
+  --s-good: #167131;
   --s-warn: #f2c50e;
-  --s-warn-text: var(--ink);
-  --s-warn-wash: color-mix(in oklab, var(--s-warn) 40%, transparent);
-  --s-warn-wash-hover: color-mix(in oklab, var(--s-warn) 46%, transparent);
-  --s-serious: #a3363d;
-  --s-critical: #8b3458;
+  --s-warn-text: #282828;
+  --s-warn-wash: #f9e9a9;
+  --s-warn-wash-hover: #f9e9a9;
+  --s-serious: #c31629;
+  --s-critical: #c31629;
   --seg-border: var(--line-2);
+  --bg: #f2e5bc;
+  --bg-2: #f6ebc3;
+  --sheet: #fbf1c7;
+  --ink: #282828;
+  --ink-2: #504945;
+  --ink-25: #504945;
+  --ink-4: #918261;
+  --ui-accent: #095fc7;
+  --ui-accent-fill: var(--ink);
+  --bub-me-1: #f6ebc3;
+  --bub-me-2: #f6ebc3;
+  --toggle-track: var(--field-border);
+  --theme-selected-bg: var(--bg-surface);
+  --theme-selected-border: var(--ink);
 }
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) {
-  --message-voice-1: #6ba0b2;
-  --message-voice-2: #c58c74;
-  --message-voice-3: #71a396;
-  --message-voice-4: #9692cf;
-  --message-voice-5: #a290bd;
-  --message-voice-6: #9398a1;
-  --surface: #292b30;
-  --ink-3: #b3a39a;
-  --line: rgba(245, 231, 219, 0.12);
-  --line-2: rgba(245, 231, 219, 0.22);
-  --accent-2: #a8c8c0;
-  --focus-ring: #9cbfb4;
-  --s-good: #8ac6a3;
-  --s-warn: #f2c247;
-  --s-serious: #f19fa2;
-  --s-critical: #eaaac7;
+  --message-voice-1: #77a8b8;
+  --message-voice-2: #c9947e;
+  --message-voice-3: #7ba99d;
+  --message-voice-4: #9e9bd3;
+  --message-voice-5: #a999c2;
+  --message-voice-6: #9ca0a9;
+  --surface: #232326;
+  --ink-3: #9d9da4;
+  --line: #26262a;
+  --line-2: var(--line);
+  --accent-2: #81b5ff;
+  --focus-ring: var(--ink);
+  --s-good: #54cb73;
+  --s-warn: #e3b341;
+  --s-serious: #ff908c;
+  --s-critical: #ff908c;
   --seg-border: var(--line-2);
-  --toggle-track: #7e7c7a;
+  --toggle-track: var(--field-border);
   --scrollbar-thumb: rgba(245, 231, 219, 0.40);
   --scrollbar-thumb-hover: rgba(245, 231, 219, 0.54);
+  --bg: #1c1c1e;
+  --bg-2: #29292c;
+  --sheet: #232326;
+  --ink: #f5f5f7;
+  --ink-2: #c7c7cc;
+  --ink-25: #c7c7cc;
+  --ink-4: #737378;
+  --ui-accent: #81b5ff;
+  --ui-accent-fill: var(--ink);
+  --bub-me-1: #29292c;
+  --bub-me-2: #29292c;
+  --s-warn-text: #e3b341;
+  --s-warn-wash: rgba(227,179,65,.14);
+  --s-warn-wash-hover: rgba(227,179,65,.14);
+  --theme-selected-bg: var(--bg-surface);
+  --theme-selected-border: var(--ink);
 }
 
 /* Neutral control chrome stays legible even when the owner picks a very light
@@ -147,100 +188,149 @@
   --sheen: 0;
   --shadow-rgb: 0, 0, 0;
   --shadow-k: 1.8;
-  --s-good: #94d3b0;
-  --s-warn: #f0ce65;
-  --s-serious: #ffadb5;
-  --s-critical: #f7b0d4;
-  --toggle-track: color-mix(in srgb, var(--ink-3) 65%, var(--sheet));
-  --ui-accent: var(--theme-accent);
-  --ui-accent-fill: color-mix(in srgb, var(--theme-accent) 64%, var(--bg));
-  --control-hover: color-mix(in srgb, var(--theme-accent) 8%, var(--sheet));
+  --s-good: #4ac26b;
+  --s-warn: #e3b341;
+  --s-serious: #ff7977;
+  --s-critical: #ff7977;
+  --toggle-track: var(--field-border);
+  --ui-accent: var(--status-info);
+  --ui-accent-fill: var(--ink);
+  --control-hover: var(--bg-hover);
   --seg-bg: var(--bg-2);
-  --theme-selected-bg: color-mix(in srgb, var(--theme-accent) 12%, var(--sheet));
-  --theme-selected-border: color-mix(in srgb, var(--theme-accent) 60%, var(--sheet));
-  --theme-ambient: clamp(0, var(--glow), 1);
+  --theme-selected-bg: var(--bg-surface);
+  --theme-selected-border: var(--ink);
+  --theme-ambient: 0;
   --brace: color-mix(in srgb, var(--theme-accent) 48%, transparent);
   --ring-track: color-mix(in srgb, var(--theme-accent) 15%, transparent);
-  --line: color-mix(in srgb, var(--theme-accent) 17%, transparent);
-  --line-2: color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  --line: #2e2023;
+  --line-2: var(--line);
   --scrollbar-thumb: color-mix(in srgb, var(--theme-accent) 45%, transparent);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--theme-accent) 65%, transparent);
   --seg-border: var(--line-2);
-  --accent-2: var(--theme-accent);
-  --focus-ring: var(--theme-accent);
+  --accent-2: #6ba8ff;
+  --focus-ring: var(--ink);
   --pulse: var(--theme-accent);
   --pulse-dim: var(--theme-accent);
   --theme-glow:
-    0 0 calc(10px * var(--glow)) rgba(var(--theme-glow-rgb), calc(.07 * var(--glow))),
-    0 0 calc(22px * var(--glow)) rgba(var(--theme-glow-rgb), calc(.07 * var(--glow)));
+    none;
+  --bg: #201a1b;
+  --bg-2: #302528;
+  --surface: #292022;
+  --sheet: #292022;
+  --ink: #f7f1f1;
+  --ink-2: #d4c4c5;
+  --ink-25: #d4c4c5;
+  --ink-3: #a8979a;
+  --ink-4: #725d5b;
+  --bub-me-1: #302528;
+  --bub-me-2: #302528;
+  --s-warn-text: #e3b341;
+  --s-warn-wash: rgba(227,179,65,.14);
+  --s-warn-wash-hover: rgba(227,179,65,.14);
 }
 :root[data-theme="ember"] {
-  --bg: #170d13;
-  --bg-2: #25141d;
-  --surface: #25141d;
-  --sheet: #301b25;
-  --ink: #fff1f3;
-  --ink-2: #e5d0d5;
-  --ink-25: #d9bac3;
-  --ink-3: #cbabb5;
-  --ink-4: #a78290;
+  --bg: #201a1b;
+  --bg-2: #302528;
+  --surface: #292022;
+  --sheet: #292022;
+  --ink: #f7f1f1;
+  --ink-2: #d4c4c5;
+  --ink-25: #d4c4c5;
+  --ink-3: #a9989b;
+  --ink-4: #826f6d;
   --theme-accent: #ff8099;
   --theme-glow-rgb: 224, 38, 77;
-  --bub-me-1: #542b3b;
-  --bub-me-2: #3d2130;
+  --bub-me-1: #302528;
+  --bub-me-2: #302528;
   --heat-0: #321823;
   --heat-1: #512435;
   --heat-2: #793046;
   --heat-3: #a93f59;
   --heat-4: #df5975;
   --heat-5: #ff94ac;
+  --line: #2e2023;
+  --line-2: var(--line);
+  --focus-ring: var(--ink);
+  --accent-2: #7eb3ff;
+  --ui-accent: #7eb3ff;
+  --ui-accent-fill: var(--ink);
+  --s-good: #58c777;
+  --s-warn: #e3b341;
+  --s-warn-text: #e3b341;
+  --s-warn-wash: rgba(227,179,65,.14);
+  --s-warn-wash-hover: rgba(227,179,65,.14);
+  --s-serious: #ff8e8d;
+  --s-critical: #ff8e8d;
+  --toggle-track: var(--field-border);
+  --theme-selected-bg: var(--bg-surface);
+  --theme-selected-border: var(--ink);
 }
 :root[data-theme="cobalt"] {
-  --bg: #0b1223;
-  --bg-2: #131e35;
-  --surface: #131e35;
-  --sheet: #1b2943;
-  --ink: #eff5ff;
-  --ink-2: #d2dced;
-  --ink-25: #bccbdf;
-  --ink-3: #acbcd2;
-  --ink-4: #8299b8;
+  --bg: #191c22;
+  --bg-2: #262e3b;
+  --surface: #202530;
+  --sheet: #202530;
+  --ink: #f1f4fa;
+  --ink-2: #c3cbd9;
+  --ink-25: #c3cbd9;
+  --ink-3: #93a0b5;
+  --ink-4: #6b7890;
   --theme-accent: #7cb4ff;
   --theme-glow-rgb: 49, 112, 244;
-  --bub-me-1: #2b4168;
-  --bub-me-2: #223351;
+  --bub-me-1: #262e3b;
+  --bub-me-2: #262e3b;
   --heat-0: #162a46;
   --heat-1: #203f69;
   --heat-2: #2c5795;
   --heat-3: #3c77c5;
   --heat-4: #589bec;
   --heat-5: #91caff;
+  --line: #212b3a;
+  --line-2: var(--line);
+  --focus-ring: var(--ink);
+  --accent-2: #84b7ff;
+  --ui-accent: #84b7ff;
+  --ui-accent-fill: var(--ink);
+  --s-good: #62ca7e;
+  --s-warn: #e3b341;
+  --s-warn-text: #e3b341;
+  --s-warn-wash: rgba(227,179,65,.14);
+  --s-warn-wash-hover: rgba(227,179,65,.14);
+  --s-serious: #ff918f;
+  --s-critical: #ff918f;
+  --toggle-track: var(--field-border);
+  --theme-selected-bg: var(--bg-surface);
+  --theme-selected-border: var(--ink);
 }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) :is(body, .home-takeover) {
   background:
-    radial-gradient(ellipse 100% 75% at 50% -12%, rgba(var(--theme-glow-rgb), calc(.18 * var(--theme-ambient))), transparent 70%),
-    radial-gradient(ellipse 55% 65% at 100% 100%, rgba(var(--theme-glow-rgb), calc(.045 * var(--theme-ambient))), transparent 75%),
-    var(--bg);
+    var(--bg-app);
 }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) :is(.glass, .home-takeover-stage > .chat, .home-takeover-stage > .home-feed) {
-  box-shadow: var(--elev-3), 0 0 calc(24px * var(--glow)) -8px rgba(var(--theme-glow-rgb), calc(.08 * var(--glow)));
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 /* Light follows the panel's rim. A moving white reflection across a reading
    surface muddied both palettes, especially at higher glow settings. */
 :root:is([data-theme="ember"], [data-theme="cobalt"]) .glass {
   border-color: var(--line);
-  backdrop-filter: blur(12px) saturate(1.1);
-  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
 }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) .glass::before {
   inset: 0 12px auto;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(var(--theme-glow-rgb), calc(.4 * var(--glow))), transparent);
+  content: none;
 }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) .glass::after { content: none; }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) .glass:hover {
   border-color: var(--line-2);
-  box-shadow: var(--elev-3), var(--theme-glow);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) .drawer {
   border-color: var(--line-2);
@@ -256,10 +346,6 @@
   box-shadow: 0 0 calc(8px * var(--glow)) rgba(var(--theme-glow-rgb), calc(.45 * var(--glow)));
 }
 /* Tighten the home corona's haze while keeping its status-colored core. */
-:root:is([data-theme="ember"], [data-theme="cobalt"]) .home .uring.crescent { --cres-halo-o: .35; }
-:root:is([data-theme="ember"], [data-theme="cobalt"]) .home .uring.crescent .uring-rim {
-  stroke: color-mix(in srgb, var(--ink-3) 62%, var(--bg));
-}
 
 /* A tinted inset marks selection even with glow off. The moving segment
    indicator owns its fill; the button keeps its keyboard focus ring. */
@@ -277,20 +363,22 @@
 
 /* Scope the send treatment to send mode so Stop retains its status color.
    Resting and pointer shadows must leave the shared focus ring intact. */
-:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send { color: var(--bg); }
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send { color: var(--primary-ink); }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:not(.is-stop) {
-  background: linear-gradient(160deg, color-mix(in srgb, var(--theme-accent) 80%, white), var(--theme-accent));
+  background: var(--primary-bg);
+  color: var(--primary-ink);
 }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:not(.is-stop, :focus-visible) {
   box-shadow: var(--elev-1), var(--theme-glow);
 }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:not(.is-stop):hover:not(:disabled) {
-  background: linear-gradient(160deg, color-mix(in srgb, var(--theme-accent) 66%, white), var(--theme-accent));
+  background: var(--primary-bg);
+  color: var(--primary-ink);
 }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:not(.is-stop, :focus-visible):active:not(:disabled) {
   box-shadow: var(--theme-glow);
 }
-:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:disabled { box-shadow: none; }
+:root:is([data-theme="ember"], [data-theme="cobalt"]) .chat-send:disabled { box-shadow: none; color: var(--primary-ink); }
 :root[data-theme="black"] .chat-send { color: var(--bg); }
 :root .chat-send:disabled { box-shadow: none; }
 :root:is([data-theme="ember"], [data-theme="cobalt"]) :is(.theme-seg button, .seg > button, .tab, .chat-send):focus-visible {
@@ -305,11 +393,11 @@
 
 /* The same surface-and-accent swatch identifies every theme in both pickers.
    A bordered square remains visible on a matching light or dark surface. */
-[data-theme-choice="white"] { --swatch-base: #ffffff; --swatch-accent: #d4dee8; }
-[data-theme-choice="tan"] { --swatch-base: #f2e5bc; --swatch-accent: #bca882; }
-[data-theme-choice="black"] { --swatch-base: #292b30; --swatch-accent: #80726b; }
-[data-theme-choice="ember"] { --swatch-base: #301b25; --swatch-accent: #ff8099; }
-[data-theme-choice="cobalt"] { --swatch-base: #1b2943; --swatch-accent: #7cb4ff; }
+[data-theme-choice="white"] { --swatch-base: #ffffff; --swatch-accent: #e11d2e; }
+[data-theme-choice="tan"] { --swatch-base: #fbf1c7; --swatch-accent: #d0172a; }
+[data-theme-choice="black"] { --swatch-base: #232326; --swatch-accent: #ff4554; }
+[data-theme-choice="ember"] { --swatch-base: #292022; --swatch-accent: #ff5a66; }
+[data-theme-choice="cobalt"] { --swatch-base: #202530; --swatch-accent: #ff4f5e; }
 :root [data-theme-choice] {
   display: inline-flex;
   align-items: center;
@@ -370,6 +458,7 @@
   inset: 0 12px auto;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,calc(.55 * var(--wa))), transparent);
+  content: none;
 }
 :root:not([data-theme="ember"], [data-theme="cobalt"]) .glass::after {
   inset: 0 12px auto;
@@ -377,11 +466,13 @@
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ui-accent) 40%, transparent), transparent);
   background-size: 100% 100%;
   transition: opacity var(--dur-2) var(--ease);
+  content: none;
 }
 :root:not([data-theme="ember"], [data-theme="cobalt"]) .glass:hover::after {
   opacity: clamp(0, var(--glow), 1);
   background-position: 0 0;
   transition: opacity var(--dur-2) var(--ease);
+  content: none;
 }
 
 @media (forced-colors: active) {
@@ -397,10 +488,11 @@
     color: HighlightText !important;
     background: Highlight !important;
     border-color: Highlight !important;
+    forced-color-adjust: none;
   }
   :root :is(.theme-seg button, .seg > button, .tab, .chat-send):focus-visible {
     outline: 3px solid Highlight;
     outline-offset: 3px;
   }
-  :root .glass::before, :root .glass::after { display: none; }
+  :root .glass::before, :root .glass::after { display: none; content: none; }
 }

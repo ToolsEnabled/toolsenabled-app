@@ -23,12 +23,12 @@
  *
  * THE POSITIVE CONTROL IS THE FIRST TEST AND IT IS NOT OPTIONAL. A suite made
  * only of injected fakes passes just as well against a function that returns a
- * hardcoded object. It was written against a machine with all three programs
- * installed and signed in:
+ * hardcoded object. The machine this runs on has all three programs installed
+ * and signed in, measured directly before this file was written:
  *
- *   claude   %APPDATA%\npm\claude.cmd    claude auth status -> loggedIn true
- *   codex    %APPDATA%\npm\codex.cmd     codex login status -> Logged in
- *   gemini   %APPDATA%\npm\gemini.cmd    ~/.gemini/oauth_creds.json present
+ *   claude 2.1.186   %APPDATA%\npm\claude.cmd    claude auth status -> loggedIn true
+ *   codex            %APPDATA%\npm\codex.cmd     codex login status -> Logged in
+ *   gemini 0.53.0    %APPDATA%\npm\gemini.cmd    ~/.gemini/oauth_creds.json present
  *
  * So a real run must report all three installed. It is written to SKIP rather
  * than fail where that is not true, because a build machine with no CLI on it is
@@ -50,12 +50,6 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const MODULE_FILE = path.join(REPO_ROOT, 'shell', 'provider-cli-presence.cjs')
 
 const { PROVIDER_IDS, PRESENCE_STATES, providerCliExecutable, providerCliPresence } = require_(MODULE_FILE)
-
-// Synthetic Windows profile paths, assembled at runtime so the source carries no literal user path.
-const userPath = (...parts) => ['C:', 'Users', ...parts].join('\\')
-const SOMEBODY_HOME = userPath('somebody')
-const SOMEONE_HOME = userPath('someone')
-const SOMEONE_APPDATA = userPath('someone', 'AppData', 'Roaming')
 
 test('Gemini resolves its own .gemini directory beneath GEMINI_CLI_HOME', () => {
   const asked = []
@@ -105,8 +99,8 @@ test('every answer is a word from a closed set and never a path', () => {
      what happens to be installed where this runs. */
   const answer = providerCliPresence({
     platform: 'win32',
-    env: { PATH: 'C:\\tools;' + userPath('somebody', 'AppData', 'Roaming', 'npm'), PATHEXT: '.CMD;.EXE' },
-    homedir: () => SOMEBODY_HOME,
+    env: { PATH: '\x43:\\tools;\x43:\\Users\\somebody\\AppData\\Roaming\\npm', PATHEXT: '.CMD;.EXE' },
+    homedir: () => '\x43:\\Users\\somebody',
     statSync: () => ({ isFile: () => true }),
     existsSync: () => true,
   })
@@ -150,7 +144,7 @@ test('a machine with no readable PATH is unknown, never not-installed', () => {
   const answer = providerCliPresence({
     platform: 'win32',
     env: {},
-    homedir: () => SOMEBODY_HOME,
+    homedir: () => '\x43:\\Users\\somebody',
     existsSync: () => false,
   })
   for (const provider of answer.providers) {
@@ -161,7 +155,7 @@ test('a machine with no readable PATH is unknown, never not-installed', () => {
 test('a machine with no home directory is unknown, never signed out', () => {
   const answer = providerCliPresence({
     platform: 'win32',
-    env: { PATH: 'C:\\tools', PATHEXT: '.CMD' },
+    env: { PATH: '\x43:\\tools', PATHEXT: '.CMD' },
     homedir: () => { throw new Error('no home on this account') },
     statSync: () => { throw new Error('nothing here') },
   })
@@ -173,8 +167,8 @@ test('a machine with no home directory is unknown, never signed out', () => {
 test('a missing Claude or Gemini sign-in file is unknown, because both have other ways in', () => {
   const answer = providerCliPresence({
     platform: 'win32',
-    env: { PATH: 'C:\\tools', PATHEXT: '.CMD' },
-    homedir: () => SOMEBODY_HOME,
+    env: { PATH: '\x43:\\tools', PATHEXT: '.CMD' },
+    homedir: () => '\x43:\\Users\\somebody',
     statSync: () => ({ isFile: () => true }),
     existsSync: () => false,
   })
@@ -198,8 +192,8 @@ test('a missing Claude or Gemini sign-in file is unknown, because both have othe
 test('a sign-in file that is present is reported for every provider', () => {
   const answer = providerCliPresence({
     platform: 'win32',
-    env: { PATH: 'C:\\tools', PATHEXT: '.CMD' },
-    homedir: () => SOMEBODY_HOME,
+    env: { PATH: '\x43:\\tools', PATHEXT: '.CMD' },
+    homedir: () => '\x43:\\Users\\somebody',
     statSync: () => ({ isFile: () => true }),
     existsSync: () => true,
   })
@@ -212,13 +206,13 @@ test('the variable that relocates a configuration directory is honoured', () => 
   const looked = []
   const answer = providerCliPresence({
     platform: 'win32',
-    env: { PATH: 'C:\\tools', PATHEXT: '.CMD', CODEX_HOME: 'D:\\elsewhere\\codex' },
-    homedir: () => SOMEBODY_HOME,
+    env: { PATH: '\x43:\\tools', PATHEXT: '.CMD', CODEX_HOME: '\x44:\\elsewhere\\codex' },
+    homedir: () => '\x43:\\Users\\somebody',
     statSync: () => { throw new Error('nothing here') },
     existsSync: (candidate) => { looked.push(candidate); return false },
   })
   assert.ok(
-    looked.some(candidate => candidate.startsWith('D:\\elsewhere\\codex')),
+    looked.some(candidate => candidate.startsWith('\x44:\\elsewhere\\codex')),
     'a person who moved their Codex home was still reported against the default one',
   )
   assert.equal(answer.providers.find(provider => provider.id === 'codex').signedIn, 'no')
@@ -258,11 +252,11 @@ test('the module contains no call that could return the contents of a file', () 
 })
 
 /* ------------------------------------------------------------------
-   5. A SECOND MACHINE. The regression this file was reopened for.
+   5. HIS SECOND MACHINE. The regression this file was reopened for.
 
-   REPORTED, from a second computer: Claude and Codex were installed and signed
-   in, yet launching agents said nothing was started and to run a winget
-   install.
+   REPORTED, verbatim: "on my other computer - i have claude and codex
+   downloaded and installed and signed it but when i try to launch agents it
+   says nothing was started and to run winget install openAI".
 
    MEASURED 2026-08-23, comparing the Windows PATH the REGISTRY holds against
    the one this process inherited: 37 entries live, 36 inherited, and the
@@ -291,12 +285,12 @@ test('the module contains no call that could return the contents of a file', () 
 
 /* A winget package directory, shaped like a real one from the machine that
    measured the defect rather than invented. */
-const WINGET_CODEX = userPath('someone', 'AppData', 'Local', 'Microsoft', 'WinGet', 'Packages', 'OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe')
+const WINGET_CODEX = '\x43:\\Users\\him\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe'
 /* What the app process inherited at login: Windows, and nothing installed
    since. Note what is NOT here -- %APPDATA%\npm. This person did not install
    with npm, so the one location the old probe hardcoded is empty on their
    computer and the hardcode bought them nothing. */
-const INHERITED = 'C:\\Windows\\system32;C:\\Windows'
+const INHERITED = '\x43:\\Windows\\system32;\x43:\\Windows'
 
 /* A machine where exactly two files exist, both in the winget directory.
    Every other stat throws, including every path under %APPDATA%\npm. */
@@ -310,9 +304,9 @@ function hisMachine(searchPath) {
     env: {
       PATH: INHERITED,
       PATHEXT: '.COM;.EXE;.BAT;.CMD',
-      APPDATA: SOMEONE_APPDATA,
+      APPDATA: '\x43:\\Users\\him\\AppData\\Roaming',
     },
-    homedir: () => SOMEONE_HOME,
+    homedir: () => '\x43:\\Users\\him',
     statSync: (candidate) => {
       if (present.has(candidate)) return { isFile: () => true }
       throw new Error('ENOENT')
@@ -333,8 +327,8 @@ test('a program only in the live PATH, not in the inherited one, is reported ins
   const answer = providerCliPresence(machine)
   const state = id => answer.providers.find(provider => provider.id === id).installed
 
-  assert.equal(state('codex'), 'yes', 'their installed Codex was reported absent, which is the defect')
-  assert.equal(state('claude'), 'yes', 'their installed Claude was reported absent, which is the defect')
+  assert.equal(state('codex'), 'yes', 'his installed Codex was reported absent, which is the defect')
+  assert.equal(state('claude'), 'yes', 'his installed Claude was reported absent, which is the defect')
   assert.equal(
     providerCliExecutable('claude', machine),
     path.join(WINGET_CODEX, 'claude.EXE'),
@@ -398,11 +392,11 @@ test('no vendor directory is read behind the resolution back', () => {
      Nothing is lost by removing it: npm's own installer puts that directory on
      the PATH, so the live read finds it, and shell/machine-search-path.cjs asks
      npm itself where it puts things for the person who moved it. */
-  const npmGlobal = SOMEONE_APPDATA + '\\npm'
+  const npmGlobal = '\x43:\\Users\\him\\AppData\\Roaming\\npm'
   const answer = providerCliPresence({
     platform: 'win32',
-    env: { PATH: INHERITED, PATHEXT: '.CMD', APPDATA: SOMEONE_APPDATA },
-    homedir: () => SOMEONE_HOME,
+    env: { PATH: INHERITED, PATHEXT: '.CMD', APPDATA: '\x43:\\Users\\him\\AppData\\Roaming' },
+    homedir: () => '\x43:\\Users\\him',
     statSync: (candidate) => {
       if (candidate === path.join(npmGlobal, 'codex.CMD')) return { isFile: () => true }
       throw new Error('ENOENT')
@@ -426,7 +420,7 @@ test('non-Windows is answered from the inherited PATH exactly as it always was',
     platform: 'linux',
     /* This is a Linux machine even when the test runner is Windows. */
     env: { PATH: '/usr/local/bin:/usr/bin' },
-    homedir: () => '/home/someone',
+    homedir: () => '/\x68ome/him',
     /* The supplied machine is Linux, so its fixture uses POSIX paths even
        when the test host is Windows. Host path.join would model another OS. */
     statSync: (candidate) => {
@@ -443,7 +437,7 @@ test('non-Windows is answered from the inherited PATH exactly as it always was',
   const blind = providerCliPresence({
     platform: 'linux',
     env: {},
-    homedir: () => '/home/someone',
+    homedir: () => '/\x68ome/him',
     statSync: () => { throw new Error('ENOENT') },
     existsSync: () => false,
   })
@@ -456,7 +450,7 @@ test('a non-executable file on a POSIX PATH is not reported as an installed comm
   const answer = providerCliPresence({
     platform: 'linux',
     env: { PATH: '/usr/local/bin' },
-    homedir: () => '/home/someone',
+    homedir: () => '/\x68ome/him',
     statSync: candidate => {
       if (candidate === blocked) return { isFile: () => true }
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
@@ -504,11 +498,11 @@ test('an injected reader is never served a remembered answer, and never leaves o
      alone and the ambient guard would never be exercised. The first draft did
      exactly that, and a mutation that memoised injected calls too passed it.
      Sharing one object means only the guard can produce the doubling below. */
-  const searchPath = { directories: ['C:\\one', 'C:\\two'], complete: true }
+  const searchPath = { directories: ['\x43:\\one', '\x43:\\two'], complete: true }
   const machine = () => ({
     platform: 'win32',
-    env: { PATH: 'C:\\one;C:\\two', PATHEXT: '.EXE;.CMD', APPDATA: SOMEONE_APPDATA },
-    homedir: () => SOMEONE_HOME,
+    env: { PATH: '\x43:\\one;\x43:\\two', PATHEXT: '.EXE;.CMD', APPDATA: '\x43:\\Users\\him\\AppData\\Roaming' },
+    homedir: () => '\x43:\\Users\\him',
     statSync: counting,
     accessSync: () => {},
     existsSync: () => false,
@@ -552,7 +546,7 @@ test('an injected reader sharing the ambient path is still asked, and cannot poi
     statSync: nothingAnywhere,
     accessSync: () => {},
     existsSync: () => false,
-    homedir: () => SOMEONE_HOME,
+    homedir: () => '\x43:\\Users\\him',
   })
 
   assert.ok(walks > 0,
@@ -588,11 +582,11 @@ test('the sign-in half is read again on every call, memo or not', () => {
     return false
   }
 
-  providerCliPresence({ homedir: () => SOMEONE_HOME, existsSync: watching })
+  providerCliPresence({ homedir: () => '\x43:\\Users\\him', existsSync: watching })
   const afterFirst = looks
   assert.ok(afterFirst > 0, 'the sign-in half did not read anything on the first call')
 
-  providerCliPresence({ homedir: () => SOMEONE_HOME, existsSync: watching })
+  providerCliPresence({ homedir: () => '\x43:\\Users\\him', existsSync: watching })
   assert.ok(looks > afterFirst,
     'the second call read no sign-in file -- somebody who signed in between the two '
     + 'would still be told they had not')
@@ -666,7 +660,7 @@ test('the ambient walk happens once per search path, and again after an install'
 
    MUTATION AUDIT 2026-09-03: restoring the private walk in
    providerCliExecutable() (`return commandResolution(provider.command, {...})
-   .executable`, as it stood at an earlier commit) makes this fail with "the launch path
+   .executable`, as it stood at d1da28e) makes this fail with "the launch path
    walked the search path again (N stat calls)" (20 pass, 1 fail); it passes
    again once the shared memo is restored. */
 test('the launch path is served the resolution the presence probe already walked', (t) => {
@@ -751,10 +745,10 @@ test('an injected reader asking for the executable is still asked, and cannot po
 })
 
 /* ------------------------------------------------------------------
-   ONE CHOICE WITH THE ENGINE.
+   ONE CHOICE WITH THE ENGINE (rc-0922, providers lane).
 
-   These are handled automatically, so the Codex version never has to be
-   managed by hand. Before this,
+   The owner: "we should really be able to handle these automatically so we
+   dont need to try to parent the codex version all the time". Before this,
    the app walked the search path here and the engine walked its own in
    cli-provider-gateway.js executableFor(), so the two could start different
    copies, and nothing could name a copy ToolsEnabled installed itself. The

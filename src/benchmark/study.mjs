@@ -28,7 +28,7 @@ export { STUDY_VERSION, SUPPORTED_SCHEMA_VERSIONS, modernSchema, LEGACY_RUNTIME_
 // verbatim into every export and runs with no application beside it;
 // tools/test/research-benchmark-generator-identity.test.mjs holds the constant
 // equal to the shipped version so the two cannot drift apart.
-export const GENERATOR = Object.freeze({ name: 'ToolsEnabled', version: '1.0.48' })
+export const GENERATOR = Object.freeze({ name: 'ToolsEnabled', version: '1.0.50' })
 // Historical manifests retain their actual source inventory. Adding a new
 // compiler module must not add a missing file to an already frozen project.
 export function runtimeFilesFor(value) {
@@ -53,7 +53,7 @@ export function runtimeFilesFor(value) {
 // not his, so the two layers stay apart in the citation files and in the report.
 const TEMPLATE_TITLE = 'ToolsEnabled Research Benchmark Template'
 const TEMPLATE_VERSION = '2.0.0'
-const TEMPLATE_GENERATOR = Object.freeze({ name: 'ToolsEnabled', version: '1.0.48' })
+const TEMPLATE_GENERATOR = Object.freeze({ name: 'ToolsEnabled', version: '1.0.50' })
 // docs/ATTRIBUTION.md, "## The academic form", verbatim: the blockquote markers are stripped
 // and the wrapped lines joined, and nothing else is changed.
 const TEMPLATE_AI_STATEMENT = 'Joshua Pinckard conceived the project, defined its objectives and requirements, directed the autonomous agent workflows, selected and evaluated outputs, and assumes responsibility for the research methodology and conclusions. AI agents generated substantial portions of the implementation and written drafts.'
@@ -120,15 +120,15 @@ const author = (family, given) => ({ family, given })
 export const METHOD_REFERENCES = Object.freeze([
   { id: 'wilson-1927', type: 'article', authors: [author('Wilson', 'Edwin B.')], year: 1927, title: 'Probable inference, the law of succession, and statistical inference',
     container: 'Journal of the American Statistical Association', volume: '22', issue: '158', pages: '209-212', doi: '10.1080/01621459.1927.10502953', url: null,
-    verification: 'Crossref API record confirmed by the citation verification log of 2026-09-10 (row 1): title, author, year, journal, volume 22, issue 158, pages 209-212 and the DOI.',
+    verification: 'Crossref API record confirmed by the citation verification log of 2026-09-10 (research-44/sub/stats/logs/citations-verified.md, row 1): title, author, year, journal, volume 22, issue 158, pages 209-212 and the DOI.',
     note: 'The score interval printed beside every proportion in this report.' },
   { id: 'brown-cai-dasgupta-2001', type: 'article', authors: [author('Brown', 'Lawrence D.'), author('Cai', 'T. Tony'), author('DasGupta', 'Anirban')], year: 2001, title: 'Interval estimation for a binomial proportion',
     container: 'Statistical Science', volume: '16', issue: '2', pages: '101-133', doi: '10.1214/ss/1009213286', url: null,
-    verification: 'Crossref API record confirmed by the citation verification log of 2026-09-10 (row 2): title, three authors, year, journal, volume 16, issue 2, pages 101-133 and the DOI; that log records the page range separately confirmed against the Project Euclid article page.',
+    verification: 'Crossref API record confirmed by the citation verification log of 2026-09-10 (research-44/sub/stats/logs/citations-verified.md, row 2): title, three authors, year, journal, volume 16, issue 2, pages 101-133 and the DOI; that log records the page range separately confirmed against the Project Euclid article page.',
     note: 'Recommends the Wilson score interval over the Wald interval; the reason no Wald interval is printed here.' },
   { id: 'efron-1979', type: 'article', authors: [author('Efron', 'Bradley')], year: 1979, title: 'Bootstrap methods: another look at the jackknife',
     container: 'The Annals of Statistics', volume: '7', issue: '1', pages: '1-26', doi: '10.1214/aos/1176344552', url: null,
-    verification: 'Crossref record and the doi.org resolution to Project Euclid verified by the citation audit of 2026-09-11.',
+    verification: 'Crossref record and the doi.org resolution to Project Euclid verified by the citation audit of 2026-09-11 (research-44/sub/cite/references.bib).',
     note: 'Origin of the bootstrap. The interval procedure here is this method applied to whole clusters.' },
   { id: 'efron-tibshirani-1993', type: 'book', authors: [author('Efron', 'Bradley'), author('Tibshirani', 'Robert J.')], year: 1993, title: 'An Introduction to the Bootstrap',
     container: 'Chapman and Hall', volume: null, issue: null, pages: null, doi: null, isbn: '0412042312', url: null,
@@ -136,23 +136,23 @@ export const METHOD_REFERENCES = Object.freeze([
     note: 'Percentile interval construction (chapter 13); the interpolated quantile rule is Hyndman and Fan definition 7.' },
   { id: 'diciccio-efron-1996', type: 'article', authors: [author('DiCiccio', 'Thomas J.'), author('Efron', 'Bradley')], year: 1996, title: 'Bootstrap confidence intervals',
     container: 'Statistical Science', volume: '11', issue: '3', pages: '189-228', doi: '10.1214/ss/1032280214', url: null,
-    verification: 'DOI resolved online from the template author on 2026-09-11 through the research fetch layer (redirect to projecteuclid.org observed).',
+    verification: 'DOI resolved online from this lane on 2026-09-11 through the research fetch layer (redirect to projecteuclid.org observed).',
     note: 'Coverage properties and limitations of percentile intervals; cited for the limitations section.' },
   { id: 'field-welsh-2007', type: 'article', authors: [author('Field', 'Christopher A.'), author('Welsh', 'Alan H.')], year: 2007, title: 'Bootstrapping clustered data',
     container: 'Journal of the Royal Statistical Society: Series B (Statistical Methodology)', volume: '69', issue: '3', pages: '369-390', doi: '10.1111/j.1467-9868.2007.00593.x', url: null,
-    verification: 'Crossref record verified by the citation audit of 2026-09-11; the publisher refused an automated fetch from the template author on 2026-09-11.',
+    verification: 'Crossref record verified by the citation audit of 2026-09-11; the publisher refused an automated fetch from this lane on 2026-09-11.',
     note: 'Resampling whole clusters with replacement, the cluster bootstrap, as implemented for task families and declared factors.' },
   { id: 'davison-hinkley-1997', type: 'book', authors: [author('Davison', 'Anthony C.'), author('Hinkley', 'David V.')], year: 1997, title: 'Bootstrap Methods and their Application',
     container: 'Cambridge University Press', volume: null, issue: null, pages: null, doi: '10.1017/CBO9780511802843', isbn: '9780521574716', url: null,
-    verification: 'DOI resolved online from the template author on 2026-09-11 through the research fetch layer to the Cambridge Core book page (content sha256 db11bd8a66827833ef78562e05deb04ea6501e5b44de6e4b6b46e759087b3466); Crossref record also verified by the citation audit of 2026-09-11.',
+    verification: 'DOI resolved online from this lane on 2026-09-11 through the research fetch layer to the Cambridge Core book page (content sha256 db11bd8a66827833ef78562e05deb04ea6501e5b44de6e4b6b46e759087b3466); Crossref record also verified by the citation audit of 2026-09-11.',
     note: 'Resampling for hierarchical (clustered) data (section 3.8) and the percentile interval.' },
   { id: 'cameron-2008', type: 'article', authors: [author('Cameron', 'A. Colin'), author('Gelbach', 'Jonah B.'), author('Miller', 'Douglas L.')], year: 2008, title: 'Bootstrap-based improvements for inference with clustered errors',
     container: 'The Review of Economics and Statistics', volume: '90', issue: '3', pages: '414-427', doi: '10.1162/rest.90.3.414', url: null,
-    verification: 'Crossref record verified by the citation audit of 2026-09-11; a doi.org resolution attempt from the template author on 2026-09-11 returned a non-success status.',
+    verification: 'Crossref record verified by the citation audit of 2026-09-11 (references.bib); a doi.org resolution attempt from this lane on 2026-09-11 returned a non-success status.',
     note: 'Under-coverage of cluster bootstrap inference with few clusters; cited for the limitations section.' },
   { id: 'dunn-1961', type: 'article', authors: [author('Dunn', 'Olive Jean')], year: 1961, title: 'Multiple comparisons among means',
     container: 'Journal of the American Statistical Association', volume: '56', issue: '293', pages: '52-64', doi: '10.1080/01621459.1961.10482090', url: null,
-    verification: 'Crossref record verified by the citation audit of 2026-09-11; the publisher answered the template author over plain HTTP on 2026-09-11, which the fetch layer refuses.',
+    verification: 'Crossref record verified by the citation audit of 2026-09-11; the publisher answered this lane over plain HTTP on 2026-09-11, which the fetch layer refuses.',
     note: 'Bonferroni-corrected simultaneous intervals, applied when multiplicity is bonferroni. Bonferroni (1936) itself could not be verified on a primary or library record and is therefore not cited.' },
   { id: 'hyndman-fan-1996', type: 'article', authors: [author('Hyndman', 'Rob J.'), author('Fan', 'Yanan')], year: 1996, title: 'Sample quantiles in statistical packages',
     container: 'The American Statistician', volume: '50', issue: '4', pages: '361-365', doi: '10.1080/00031305.1996.10473566', url: null,
@@ -164,23 +164,23 @@ export const METHOD_REFERENCES = Object.freeze([
     note: 'The in-place shuffle that orders the frozen schedule from the protocol seed.' },
   { id: 'mulberry32', type: 'software', authors: [author('Ettinger', 'Tommy')], year: 2017, title: 'mulberry32 (mulberry32.c), a 32-bit seeded pseudorandom generator',
     container: 'GitHub Gist, CC0 1.0', volume: null, issue: null, pages: null, doi: null, url: 'https://gist.github.com/tommyettinger/46a874533244883189143505d203312c',
-    verification: 'Gist fetched online from the template author on 2026-09-11 through the research fetch layer (content sha256 185bf23d7fca09847a5b1ff054155843ea9b514964944131f8f32ca78cb957a1); the citation audit of 2026-09-11 read it: CC0 1.0 dedication, constant 0x6D2B79F5. Not peer reviewed; the notes published with it record statistical limitations.',
+    verification: 'Gist fetched online from this lane on 2026-09-11 through the research fetch layer (content sha256 185bf23d7fca09847a5b1ff054155843ea9b514964944131f8f32ca78cb957a1); the citation audit of 2026-09-11 read it: CC0 1.0 dedication, constant 0x6D2B79F5. Not peer reviewed; the notes published with it record statistical limitations.',
     note: 'The seeded generator behind the schedule shuffle and the bootstrap draws. Cited so the generator is named and the seed reproducible, not as a statistical-quality claim.' },
   { id: 'nosek-2018', type: 'article', authors: [author('Nosek', 'Brian A.'), author('Ebersole', 'Charles R.'), author('DeHaven', 'Alexander C.'), author('Mellor', 'David T.')], year: 2018, title: 'The preregistration revolution',
     container: 'Proceedings of the National Academy of Sciences', volume: '115', issue: '11', pages: '2600-2606', doi: '10.1073/pnas.1708274114', url: null,
-    verification: 'Crossref record verified by the citation audit of 2026-09-11; the publisher refused an automated fetch from the template author.',
+    verification: 'Crossref record verified by the citation audit of 2026-09-11; the publisher refused an automated fetch from this lane.',
     note: 'What pre-registration fixes and why; the freeze plays that role here, self-attested.' },
   { id: 'dodge-2019', type: 'conference-paper', authors: [author('Dodge', 'Jesse'), author('Gururangan', 'Suchin'), author('Card', 'Dallas'), author('Schwartz', 'Roy'), author('Smith', 'Noah A.')], year: 2019, title: 'Show your work: Improved reporting of experimental results',
     container: 'Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)', volume: null, issue: null, pages: '2185-2194', doi: '10.18653/v1/D19-1224', url: null,
-    verification: 'DOI resolved online from the template author on 2026-09-11 to the ACL Anthology page D19-1224 (content sha256 3a69cfaa5ac2a6196fb494c42b56ecbb0837bf8c7476366f619a48d54663428b).',
+    verification: 'DOI resolved online from this lane on 2026-09-11 to the ACL Anthology page D19-1224 (content sha256 3a69cfaa5ac2a6196fb494c42b56ecbb0837bf8c7476366f619a48d54663428b).',
     note: 'Reporting results as distributions over repeated runs rather than a single best number.' },
   { id: 'reimers-gurevych-2017', type: 'conference-paper', authors: [author('Reimers', 'Nils'), author('Gurevych', 'Iryna')], year: 2017, title: 'Reporting score distributions makes a difference: Performance study of LSTM-networks for sequence tagging',
     container: 'Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing (EMNLP)', volume: null, issue: null, pages: '338-348', doi: '10.18653/v1/D17-1035', url: null,
-    verification: 'ACL Anthology page D17-1035 fetched online from the template author on 2026-09-11 (content sha256 12eb7c6565fab6ae5cd81f9e412eb056d02427c0830f9e94fd33f566e5a7cc9c); the doi.org redirect answered over plain HTTP, which the fetch layer refuses.',
+    verification: 'ACL Anthology page D17-1035 fetched online from this lane on 2026-09-11 (content sha256 12eb7c6565fab6ae5cd81f9e412eb056d02427c0830f9e94fd33f566e5a7cc9c); the doi.org redirect answered over plain HTTP, which the fetch layer refuses.',
     note: 'Why dispersion across repeated runs belongs in the report.' },
   { id: 'bouthillier-2021', type: 'conference-paper', authors: [author('Bouthillier', 'Xavier'), author('Delaunay', 'Pierre'), author('Bronzi', 'Mirko'), author('Trofimov', 'Assya'), author('Nichyporuk', 'Brennan'), author('Szeto', 'Justin'), author('Sepah', 'Nazanin'), author('Raff', 'Edward'), author('Madan', 'Kanika'), author('Voleti', 'Vikram'), author('Kahou', 'Samira Ebrahimi'), author('Michalski', 'Vincent'), author('Arbel', 'Tal'), author('Pal', 'Christopher'), author('Varoquaux', 'Gaël'), author('Vincent', 'Pascal')], year: 2021, title: 'Accounting for variance in machine learning benchmarks',
     container: 'Proceedings of Machine Learning and Systems 3 (MLSys 2021)', volume: null, issue: null, pages: null, doi: null, url: 'https://arxiv.org/abs/2103.03098',
-    verification: 'arXiv abstract page fetched online from the template author on 2026-09-11 through the research fetch layer (content sha256 6e3e82e7d03b2c24a740dab88566f583f3c84297b4d5cb6f7a0114dcacc50567).',
+    verification: 'arXiv abstract page fetched online from this lane on 2026-09-11 through the research fetch layer (content sha256 6e3e82e7d03b2c24a740dab88566f583f3c84297b4d5cb6f7a0114dcacc50567).',
     note: 'Sources of variance in benchmark results and the case for repeated measurements.' },
   { id: 'miller-2024', type: 'article', authors: [author('Miller', 'Evan')], year: 2024, title: 'Adding error bars to evals: A statistical approach to language model evaluations',
     container: 'arXiv', volume: null, issue: null, pages: null, doi: null, url: 'https://arxiv.org/abs/2411.00640',
@@ -188,11 +188,11 @@ export const METHOD_REFERENCES = Object.freeze([
     note: 'Clustered standard errors by question and paired comparisons for language-model evaluations; the whole-cluster resampling here addresses the same dependence.' },
   { id: 'sainz-2023', type: 'conference-paper', authors: [author('Sainz', 'Oscar'), author('Campos', 'Jon Ander'), author('García-Ferrero', 'Iker'), author('Etxaniz', 'Julen'), author('de Lacalle', 'Oier Lopez'), author('Agirre', 'Eneko')], year: 2023, title: 'NLP evaluation in trouble: On the need to measure LLM data contamination for each benchmark',
     container: 'Findings of the Association for Computational Linguistics: EMNLP 2023', volume: null, issue: null, pages: null, doi: '10.18653/v1/2023.findings-emnlp.722', url: null,
-    verification: 'DOI resolved online from the template author on 2026-09-11 to the ACL Anthology page 2023.findings-emnlp.722 (content sha256 4983fc693e6034abaf2cb1b558a70c345ee701c672843e6b65d1fcf6ffc7ea0c).',
+    verification: 'DOI resolved online from this lane on 2026-09-11 to the ACL Anthology page 2023.findings-emnlp.722 (content sha256 4983fc693e6034abaf2cb1b558a70c345ee701c672843e6b65d1fcf6ffc7ea0c).',
     note: 'Why contamination must be measured per benchmark; the template records what such a measurement needs and does not perform it.' },
   { id: 'jacovi-2023', type: 'conference-paper', authors: [author('Jacovi', 'Alon'), author('Caciularu', 'Avi'), author('Goldman', 'Omer'), author('Goldberg', 'Yoav')], year: 2023, title: 'Stop uploading test data in plain text: Practical strategies for mitigating data contamination by evaluation benchmarks',
     container: 'Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP)', volume: null, issue: null, pages: null, doi: '10.18653/v1/2023.emnlp-main.308', url: null,
-    verification: 'DOI resolved online from the template author on 2026-09-11 to the ACL Anthology page 2023.emnlp-main.308 (content sha256 43ea5e223909c106f7ecf317aa9eaff8704d470703c3571ee354ad52c1b3376c).',
+    verification: 'DOI resolved online from this lane on 2026-09-11 to the ACL Anthology page 2023.emnlp-main.308 (content sha256 43ea5e223909c106f7ecf317aa9eaff8704d470703c3571ee354ad52c1b3376c).',
     note: 'Practical contamination-mitigation strategies; held-out splits and withheld information are the ones this template can record.' },
   { id: 'pineau-2021', type: 'article', authors: [author('Pineau', 'Joelle'), author('Vincent-Lamarre', 'Philippe'), author('Sinha', 'Koustuv'), author('Larivière', 'Vincent'), author('Beygelzimer', 'Alina'), author("d'Alché-Buc", 'Florence'), author('Fox', 'Emily'), author('Larochelle', 'Hugo')], year: 2021, title: 'Improving reproducibility in machine learning research (a report from the NeurIPS 2019 reproducibility program)',
     container: 'Journal of Machine Learning Research', volume: '22', issue: '164', pages: '1-20', doi: null, url: 'https://jmlr.org/papers/v22/20-303.html',
@@ -200,11 +200,11 @@ export const METHOD_REFERENCES = Object.freeze([
     note: 'Source of the reproducibility checklist practice the report follows.' },
   { id: 'dehghani-2021', type: 'article', authors: [author('Dehghani', 'Mostafa'), author('Tay', 'Yi'), author('Gritsenko', 'Alexey A.'), author('Zhao', 'Zhe'), author('Houlsby', 'Neil'), author('Diaz', 'Fernando'), author('Metzler', 'Donald'), author('Vinyals', 'Oriol')], year: 2021, title: 'The benchmark lottery',
     container: 'arXiv', volume: null, issue: null, pages: null, doi: null, url: 'https://arxiv.org/abs/2107.07002',
-    verification: 'arXiv abstract page fetched online from the template author on 2026-09-11 through the research fetch layer (content sha256 be40eb4115d5a6de8dfdc6ad1cd0c48832f67e01a25385711543cc3cf5ee0908).',
+    verification: 'arXiv abstract page fetched online from this lane on 2026-09-11 through the research fetch layer (content sha256 be40eb4115d5a6de8dfdc6ad1cd0c48832f67e01a25385711543cc3cf5ee0908).',
     note: 'Rankings depend on which tasks a benchmark happens to contain; cited for the task-selection limitation.' },
   { id: 'smith-2016', type: 'article', authors: [author('Smith', 'Arfon M.'), author('Katz', 'Daniel S.'), author('Niemeyer', 'Kyle E.')], year: 2016, title: 'Software citation principles',
     container: 'PeerJ Computer Science', volume: '2', issue: null, pages: 'e86', doi: '10.7717/peerj-cs.86', url: null,
-    verification: 'DOI resolved online from the template author on 2026-09-11 through the research fetch layer (redirect to peerj.com observed); Crossref record also verified by the citation audit of 2026-09-11.',
+    verification: 'DOI resolved online from this lane on 2026-09-11 through the research fetch layer (redirect to peerj.com observed); Crossref record also verified by the citation audit of 2026-09-11.',
     note: 'Why the template carries a version and a unique identity that every export and report repeats.' },
   { id: 'druskat-2021', type: 'software', authors: [author('Druskat', 'Stephan'), author('Spaaks', 'Jurriaan H.'), author('Chue Hong', 'Neil'), author('Haines', 'Robert'), author('Baker', 'James'), author('Bliven', 'Spencer'), author('Willighagen', 'Egon'), author('Pérez-Suárez', 'David'), author('Konovalov', 'Alexander')], year: 2021, title: 'Citation File Format (version 1.2.0)',
     container: 'Zenodo', volume: null, issue: null, pages: null, doi: '10.5281/zenodo.5171937', url: 'https://citation-file-format.github.io/',

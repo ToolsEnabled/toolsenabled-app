@@ -1,8 +1,7 @@
 'use strict'
 
-// Explicit QA preparation through the product's existing named-account store.
-// Credential bytes stay in memory and a private temporary profile, never in a
-// receipt. The provider may refresh that copy; it never receives the source home.
+// A caller-selected provider home is used in place. Account receipts describe
+// QA registry and session identities; only the official CLI handles sign-in.
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -10,56 +9,21 @@ const crypto = require('node:crypto')
 const { guardWindowsPath } = require('./page2-native-paths.cjs')
 const { servicesRootForSelectedIdentity } = require('./sterile-launch.cjs')
 const NAME = 'QA selected Codex'
-const LIMIT = 1024 * 1024
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex')
-const MAX_FILE_ID = (1n << 64n) - 1n
-function assertFileKey(value) {
-  for (const key of ['dev', 'ino']) {
-    assert.ok(typeof value?.[key] === 'string' && /^(?:0|[1-9]\d{0,19})$/.test(value[key])
-      && BigInt(value[key]) <= MAX_FILE_ID, 'File identity requires exact canonical decimal strings')
-  }
-  return value
-}
-function fileKey(stat) {
-  for (const key of ['dev', 'ino']) assert.ok(typeof stat[key] === 'bigint' && stat[key] >= 0n
-    && stat[key] <= MAX_FILE_ID, 'File identity must come directly from exact BigInt stat values')
-  return { dev: stat.dev.toString(), ino: stat.ino.toString() }
-}
-function statNumber(value) {
-  assert.ok(typeof value === 'bigint' && value >= 0n && value <= BigInt(Number.MAX_SAFE_INTEGER),
-    'File metadata must be exactly representable before conversion to a number')
-  return Number(value)
-}
-function credentialIdentity(stat) {
-  return { ...fileKey(stat), uid: statNumber(stat.uid), mode: statNumber(stat.mode) }
-}
-const sameFile = (left, right) => Boolean(left && right && assertFileKey(left) && assertFileKey(right)
-  && left.dev === right.dev && left.ino === right.ino)
 const inside = (root, value, api = path) => {
   const relative = api.relative(root, value)
   return relative && !api.isAbsolute(relative) && relative !== '..' && !relative.startsWith('..' + api.sep)
 }
 
 function guardOwnedPath(value, { accountHome, platform = process.platform, uid = process.getuid?.(),
-  expectedType = 'directory', allowMissing = false, allowHardlink = false, fsImpl = fs } = {}) {
+  expectedType = 'directory', allowMissing = false, fsImpl = fs } = {}) {
   const api = platform === 'win32' ? path.win32 : path.posix
   assert.ok(typeof value === 'string' && api.isAbsolute(value) && !value.includes('\0'), 'An explicit absolute provider profile path is required')
   assert.ok(typeof accountHome === 'string' && api.isAbsolute(accountHome), 'The operating-system account home is required')
   // Refuse foreign Windows paths before even inspecting an ancestor. The
   // maintained guard also rejects aliases, device paths and junctions.
   if (platform === 'win32') {
-    // The product can already have hard-linked an auth.json into a confined
-    // home. Guard the containing path before inspecting that exact leaf; this
-    // read-only exception neither follows links nor relaxes the shared guard.
-    let selected
-    if (allowHardlink) {
-      assert.ok(expectedType === 'file' && api.basename(value) === 'auth.json', 'Only an existing authentication leaf may have product-owned hard links')
-      const directory = guardWindowsPath(api.dirname(value), { accountHome, platform,
-        expectedType: 'directory', requireProfile: true, fsImpl })
-      selected = api.join(directory, 'auth.json')
-      const stat = fsImpl.lstatSync(selected)
-      assert.ok(stat.isFile() && !stat.isSymbolicLink(), 'The selected credential must be a regular file without a reparse point')
-    } else selected = guardWindowsPath(value, { accountHome, platform, expectedType, allowMissing, requireProfile: true, fsImpl })
+    const selected = guardWindowsPath(value, { accountHome, platform, expectedType, allowMissing, requireProfile: true, fsImpl })
     assert.ok(inside(accountHome, selected, api), 'The provider path must be below the owning profile')
     return selected
   }
@@ -78,46 +42,10 @@ function guardOwnedPath(value, { accountHome, platform = process.platform, uid =
     assert.equal(stat.isSymbolicLink(), false, 'Provider paths cannot follow a link')
     assert.equal(stat.uid, uid, 'Provider paths must belong to the invoking account')
     assert.ok(index < targets.length - 1 || expectedType === 'directory' ? stat.isDirectory() : stat.isFile(), 'A provider path has the wrong type')
-    if (stat.isFile() && !allowHardlink) assert.equal(stat.nlink, 1, 'A QA metadata or staged credential file cannot be hard-linked')
+    if (stat.isFile()) assert.equal(stat.nlink, 1, 'A QA metadata file cannot be hard-linked')
   }
   assert.equal(fsImpl.realpathSync(value), value, 'The provider path must be canonical')
   return value
-}
-
-function readCredential(profileHome, options, { allowHardlink = false } = {}) {
-  const api = options.platform === 'win32' ? path.win32 : path
-  guardOwnedPath(profileHome, options)
-  const file = guardOwnedPath(api.join(profileHome, 'auth.json'), { ...options, expectedType: 'file', allowHardlink })
-  const before = fs.lstatSync(file, { bigint: true })
-  assert.ok(before.size > 0n && before.size <= BigInt(LIMIT), 'The selected credential must be a bounded nonempty regular file')
-  const fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0))
-  let bytes, opened
-  try {
-    opened = fs.fstatSync(fd, { bigint: true })
-    assert.ok(opened.isFile() && opened.dev === before.dev && opened.ino === before.ino && opened.size === before.size,
-      'The selected credential changed before its owned read')
-    bytes = Buffer.alloc(statNumber(before.size))
-    let read = 0
-    while (read < bytes.length) {
-      const count = fs.readSync(fd, bytes, read, bytes.length - read, read)
-      assert.ok(count > 0, 'The selected credential changed during its owned read')
-      read += count
-    }
-    const after = fs.fstatSync(fd, { bigint: true })
-    assert.ok(after.size === opened.size && after.mtimeNs === opened.mtimeNs && after.ctimeNs === opened.ctimeNs,
-      'The selected credential changed during its owned read')
-  } finally { fs.closeSync(fd) }
-  let parsed
-  try { parsed = JSON.parse(bytes.toString('utf8')) } catch { throw new Error('The selected credential is not a readable authentication record') }
-  assert.equal(parsed?.auth_mode, 'chatgpt', 'Explicit native account selection requires an existing ChatGPT sign-in')
-  assert.ok(!parsed.OPENAI_API_KEY, 'Explicit native account selection cannot select metered API-key billing')
-  const id = parsed?.tokens?.account_id
-  assert.ok(typeof id === 'string' && id.length > 0 && id.length <= 512 && id.trim() === id,
-    'The selected sign-in has no unambiguous account identity')
-  assert.ok(typeof parsed.tokens.access_token === 'string' && parsed.tokens.access_token.length > 0,
-    'The selected sign-in has no access credential')
-  return { bytes, stat: opened, receipt: { file, sha256: hash(bytes), bytes: bytes.length, accountIdSha256: hash(id),
-    identity: credentialIdentity(opened) } }
 }
 
 function assertAccountReadback(answer, expected, active = answer?.active) {
@@ -127,16 +55,16 @@ function assertAccountReadback(answer, expected, active = answer?.active) {
   const row = answer.accounts[0]
   assert.equal(row.name, NAME, 'The account registry must retain the exact QA selection')
   assert.equal(row.provider, 'codex', 'The selected QA account must be Codex')
-  assert.equal(row.directory, expected.staged.profileHome, 'The provider must use the private QA credential copy')
-  assert.equal(row.signedIn, 'yes', 'The real account store must find the staged sign-in')
+  assert.equal(row.directory, expected.profileHome, 'The provider must use the caller-selected home in place')
+  assert.equal(row.signedIn, 'yes', 'The provider account store must report the selected sign-in')
   assert.equal(active?.name, NAME, 'The active account must be the selected QA account')
   assert.equal(active.provider, 'codex', 'The active program must be Codex')
   assert.equal(active.byProvider?.codex, NAME, 'The active Codex account must be the selected QA account')
   assert.equal(active.chosenByProvider?.codex, NAME, 'The explicit Codex account choice must be retained')
-  assert.equal(answer.policy?.ok, true, 'The actual account selection policy must be readable')
-  assert.equal(answer.policy.policy?.byProvider?.codex?.selectionMode, 'manual', 'The owned QA account must use the supported manual selection policy')
+
+
   return { name: row.name, provider: row.provider, directory: row.directory, signedIn: row.signedIn,
-    activeName: active.name, chosenName: active.chosenByProvider.codex, selectionMode: 'manual' }
+    activeName: active.name, chosenName: active.chosenByProvider.codex }
 }
 
 function assertSessionAccounts(answer, { records = [], afterSequence = 0, savedNodes = [] } = {}) {
@@ -178,154 +106,13 @@ function assertSessionAccounts(answer, { records = [], afterSequence = 0, savedN
   return { sessions, required }
 }
 
-function generatedCredentials(servicesRoot, guard, { forCleanup = false } = {}) {
-  const root = path.join(servicesRoot, 'agent-home')
-  guardOwnedPath(root, { ...guard, allowMissing: true })
-  if (!fs.existsSync(root)) return []
-  const found = [], queue = [root]
-  let entries = 0
-  while (queue.length) {
-    const directory = queue.pop()
-    guardOwnedPath(directory, guard)
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      assert.ok(++entries <= 100000, 'The owned generated credential inventory exceeded its bound')
-      const target = path.join(directory, entry.name)
-      const stat = fs.lstatSync(target, { bigint: true })
-      if (stat.isSymbolicLink()) {
-        // Codex creates ordinary bootstrap links in tmp/arg0. This inventory
-        // concerns only auth.json: never traverse or read unrelated links.
-        if (entry.name !== 'auth.json') continue
-        const identityError = 'Generated auth.json cannot be a symbolic link'
-        assert.ok(forCleanup, identityError)
-        // Retain the link's own metadata, not its target or credential bytes.
-        // The post-guardian remover rechecks the owned parent and this inode.
-        found.push({ file: target, bytes: statNumber(stat.size), sha256: null, accountIdSha256: null, symbolicLink: true,
-          identity: credentialIdentity(stat), identityError })
-        continue
-      }
-      if (stat.isDirectory()) queue.push(target)
-      else if (entry.name === 'auth.json') {
-        try {
-          const credential = readCredential(directory, guard, { allowHardlink: true })
-          credential.bytes.fill(0)
-          found.push(credential.receipt)
-        } catch (error) {
-          if (!forCleanup) throw error
-          // Bad credential contents refuse identity credit but cannot keep an
-          // otherwise proven owned regular-file name from being removed after
-          // process closure. No invalid bytes enter the returned receipt.
-          guardOwnedPath(target, { ...guard, expectedType: 'file', allowHardlink: true })
-          found.push({ file: target, bytes: statNumber(stat.size), sha256: null, accountIdSha256: null,
-            identity: credentialIdentity(stat), identityError: error.message })
-        }
-      }
-    }
-  }
-  return found.sort((a, b) => a.file.localeCompare(b.file))
-}
-
-// Called by the outer maintained runner only after its process guardian has
-// independently proved every owned process closed. application.close() alone
-// does not establish that custody boundary, so the native driver never calls
-// this. Paths remain bounded to the exact fresh run and recorded temp inode.
-function finalizeProviderAccount(receipt, { qaRoot, accountHome, processesClosed = false,
-  platform = process.platform, uid = process.getuid?.() } = {}) {
-  assert.equal(processesClosed, true, 'Credential removal requires independently proven process closure')
-  assert.equal(receipt?.schemaVersion, 1)
-  assert.equal(receipt.provider, 'codex')
-  assert.equal(receipt.name, NAME)
-  assert.equal(receipt.qaRoot, qaRoot, 'Credential cleanup must name this exact native run')
-  assertFileKey(receipt.source?.identity)
-  assertFileKey(receipt.staged?.directoryIdentity)
-  if (receipt.staged?.identity) assertFileKey(receipt.staged.identity)
-  const guard = { accountHome, platform, uid }
-  guardOwnedPath(qaRoot, guard)
-  const expectedServices = path.join(qaRoot, 'profile', 'localappdata', 'ToolsEnabled-Page2-QA')
-  assert.equal(receipt.servicesRoot, expectedServices, 'Only this run’s generated account homes may be cleaned')
-  const parent = platform === 'win32' ? path.join(accountHome, 'AppData', 'Local', 'Temp') : path.join(accountHome, '.cache')
-  const stagedHome = receipt.staged?.profileHome
-  assert.equal(path.dirname(stagedHome), parent, 'Credential cleanup cannot leave the owning temporary directory')
-  assert.match(path.basename(stagedHome), /^toolsenabled-native-account-[A-Za-z0-9]{6}$/, 'Only a fresh QA credential directory may be removed')
-  guardOwnedPath(stagedHome, guard)
-  const stat = fs.lstatSync(stagedHome, { bigint: true })
-  assert.ok(sameFile(fileKey(stat), receipt.staged.directoryIdentity),
-    'The temporary credential directory changed identity before cleanup')
-  const problems = []
-  let sourceSha256 = null, sourceIdentity = null, stagedAuthSha256 = null, stagedAccountIdSha256 = null
-  try {
-    const source = readCredential(receipt.profileHome, guard, { allowHardlink: true })
-    source.bytes.fill(0)
-    sourceSha256 = source.receipt.sha256
-    sourceIdentity = source.receipt.identity
-    if (source.receipt.file !== receipt.source.file || sourceSha256 !== receipt.source.sha256
-        || !sameFile(sourceIdentity, receipt.source.identity)
-        || source.receipt.accountIdSha256 !== receipt.expectedAccountIdSha256) problems.push('The original provider credential changed during the QA run')
-  } catch (error) { problems.push(error.message) }
-  try {
-    const staged = readCredential(stagedHome, guard, { allowHardlink: true })
-    staged.bytes.fill(0)
-    stagedAuthSha256 = staged.receipt.sha256
-    stagedAccountIdSha256 = staged.receipt.accountIdSha256
-    if (stagedAccountIdSha256 !== receipt.expectedAccountIdSha256) problems.push('The staged provider credential changed account identity')
-    if (sameFile(staged.receipt.identity, sourceIdentity) || sameFile(staged.receipt.identity, receipt.source.identity)) {
-      problems.push('The staged provider credential shares the original account inode')
-    }
-  } catch (error) { problems.push(error.message) }
-  let credentials = []
-  try { credentials = generatedCredentials(expectedServices, guard, { forCleanup: true }) }
-  catch (error) { problems.push(error.message) }
-  const removedGeneratedAuthFiles = []
-  for (const credential of credentials) {
-    if (credential.identityError) problems.push(credential.identityError)
-    if (credential.accountIdSha256 !== receipt.expectedAccountIdSha256) problems.push('A generated credential used a different account')
-    if (sameFile(credential.identity, sourceIdentity) || sameFile(credential.identity, receipt.source.identity)) {
-      problems.push('A generated credential shares the original account inode')
-    }
-    try {
-      assert.ok(inside(path.join(expectedServices, 'agent-home'), credential.file)
-        && path.basename(credential.file) === 'auth.json', 'Only an owned generated auth.json leaf may be removed')
-      guardOwnedPath(path.dirname(credential.file), guard)
-      const current = fs.lstatSync(credential.file, { bigint: true })
-      assert.ok(sameFile(fileKey(current), credential.identity), 'The generated credential changed before removal')
-      assert.equal(current.isSymbolicLink(), credential.symbolicLink === true, 'The generated credential changed type before removal')
-      if (platform !== 'win32') assert.equal(current.uid, BigInt(guard.uid), 'Generated credential names must belong to the invoking account')
-      if (!credential.symbolicLink) assert.equal(current.isFile(), true, 'Only a regular generated credential or its rejected link may be removed')
-      fs.unlinkSync(credential.file)
-      removedGeneratedAuthFiles.push(credential)
-    }
-    catch { problems.push('An owned generated credential name could not be removed') }
-  }
-  try {
-    guardOwnedPath(stagedHome, guard)
-    const current = fs.lstatSync(stagedHome, { bigint: true })
-    assert.ok(current.dev === stat.dev && current.ino === stat.ino, 'The staged directory changed before removal')
-    fs.rmSync(stagedHome, { recursive: true, force: false })
-  } catch { problems.push('The owned temporary credential profile could not be removed') }
-  let generatedCredentialsRemoved = false
-  try { generatedCredentialsRemoved = generatedCredentials(expectedServices, guard, { forCleanup: true }).length === 0 }
-  catch (error) { problems.push(error.message) }
-  return { schemaVersion: 1, provider: 'codex', qaRoot, stagedProfileHome: stagedHome,
-    processesClosed: true, sourceSha256, sourceIdentity,
-    sourceUnchanged: sourceSha256 === receipt.source.sha256 && sameFile(sourceIdentity, receipt.source.identity),
-    stagedAuthSha256, stagedAccountIdSha256,
-    stagedProfileRemoved: !fs.existsSync(stagedHome), removedGeneratedAuthFiles,
-    generatedCredentialsRemoved, errors: problems }
-}
-
 function prepareProviderAccount({ options, accountHome, qaRoot, userData, runtime, environment,
-  platform = process.platform, uid = process.getuid?.() }) {
-  const supplied = options.codexProfileHome !== undefined || options.codexAccountIdSha256 !== undefined
-  if (!supplied) return null
+  platform = process.platform, uid = process.getuid?.(), registryModule: suppliedRegistry }) {
+  if (options.codexProfileHome === undefined) return null
   assert.ok(options.realProvider, 'An explicit Codex profile requires --real-provider')
-  assert.match(options.codexAccountIdSha256 || '', /^[a-f0-9]{64}$/, 'An explicit expected Codex account-ID SHA-256 is required')
   const guard = { accountHome, platform, uid }
-  const requestedProfileHome = options.codexProfileHome
-  const profileHome = guardOwnedPath(requestedProfileHome, guard)
-  // A source may already have product-owned hard links from another live
-  // confined session. This read follows no link and never writes that inode.
-  const source = readCredential(profileHome, guard, { allowHardlink: true })
-  assert.equal(source.receipt.accountIdSha256, options.codexAccountIdSha256,
-    'The explicitly selected provider profile is not the expected account')
+  const profileHome = guardOwnedPath(options.codexProfileHome, guard)
+  environment.CODEX_HOME = profileHome
   for (const directory of [qaRoot, userData]) {
     guardOwnedPath(directory, { ...guard, allowMissing: true })
     fs.mkdirSync(directory, { recursive: true, mode: 0o700 })
@@ -333,7 +120,7 @@ function prepareProviderAccount({ options, accountHome, qaRoot, userData, runtim
   }
   const servicesRoot = servicesRootForSelectedIdentity({ env: environment, selectedUserData: userData, platform })
   assert.ok(inside(qaRoot, servicesRoot), 'The selected account state must stay inside this QA run')
-  const registryModule = require(path.join(runtime, 'shell/account-registry.cjs'))
+  const registryModule = suppliedRegistry || require(path.join(runtime, 'shell/account-registry.cjs'))
   const file = registryModule.accountsRegistryFile({ stateRoot: path.join(userData, 'capability') })
   const stateFile = registryModule.accountRotationStateFile({ servicesRoot })
   for (const target of [file, stateFile]) {
@@ -341,78 +128,15 @@ function prepareProviderAccount({ options, accountHome, qaRoot, userData, runtim
     guardOwnedPath(target, { ...guard, allowMissing: true, expectedType: 'file' })
     assert.equal(fs.existsSync(target), false, 'Explicit provider preparation requires fresh QA account stores')
   }
-  const temporaryParent = platform === 'win32' ? path.join(accountHome, 'AppData', 'Local', 'Temp') : path.join(accountHome, '.cache')
-  guardOwnedPath(temporaryParent, { ...guard, allowMissing: true })
-  fs.mkdirSync(temporaryParent, { recursive: true, mode: 0o700 })
-  guardOwnedPath(temporaryParent, guard)
-  assert.ok(!inside(qaRoot, temporaryParent) && temporaryParent !== qaRoot, 'Credentials must be staged outside the evidence directory')
-  const stagedHome = fs.mkdtempSync(path.join(temporaryParent, 'toolsenabled-native-account-'))
-  fs.chmodSync(stagedHome, 0o700)
-  const directoryStat = fs.lstatSync(stagedHome, { bigint: true })
-  const receipt = { schemaVersion: 1, provider: 'codex', name: NAME, qaRoot, servicesRoot, requestedProfileHome, profileHome,
-    expectedAccountIdSha256: options.codexAccountIdSha256, accountIdSha256: source.receipt.accountIdSha256,
-    source: source.receipt, staged: { profileHome: stagedHome, file: path.join(stagedHome, 'auth.json'),
-      directoryIdentity: fileKey(directoryStat) },
-    custodyStage: 'allocated', registry: null, prepared: null, opens: [], checks: [], finalCheck: null,
-    cleanup: { required: true, completed: false, scope: 'after-guardian-process-closure' } }
-  const custodyFile = path.join(qaRoot, 'provider-account-custody.json')
-  function retainCustody() {
-    // The initial durable receipt precedes the first credential write. If the
-    // outer guardian interrupts preparation, it can still find the exact temp
-    // inode for cleanup; this receipt never counts as a native result.
-    const temporary = custodyFile + '.tmp'
-    const fd = fs.openSync(temporary, 'wx', 0o600)
-    try { fs.writeFileSync(fd, JSON.stringify(receipt, null, 2) + '\n'); fs.fsyncSync(fd) } finally { fs.closeSync(fd) }
-    fs.renameSync(temporary, custodyFile)
-    if (platform === 'linux') {
-      const directory = fs.openSync(qaRoot, fs.constants.O_RDONLY | fs.constants.O_DIRECTORY)
-      try { fs.fsyncSync(directory) } finally { fs.closeSync(directory) }
-    }
-  }
-  let store
-  try {
-    guardOwnedPath(stagedHome, guard)
-    assert.equal(fs.existsSync(custodyFile), false, 'The native provider custody receipt must be fresh')
-    retainCustody()
-    const authFile = path.join(stagedHome, 'auth.json')
-    fs.writeFileSync(authFile, source.bytes, { flag: 'wx', mode: 0o600 })
-    const staged = readCredential(stagedHome, guard)
-    assert.ok(staged.stat.dev !== source.stat.dev || staged.stat.ino !== source.stat.ino,
-      'The staged credential must not share the original account inode')
-    assert.equal(staged.receipt.sha256, source.receipt.sha256, 'The staged credential must retain the verified source bytes')
-    receipt.staged = { profileHome: stagedHome, ...staged.receipt, separateFile: true,
-      directoryIdentity: fileKey(directoryStat) }
-    staged.bytes.fill(0)
-    store = registryModule.createAccountRegistryStore({ file, stateFile, servicesRoot, homedir: () => accountHome })
-    assert.equal(store.add({ name: NAME, provider: 'codex', directory: stagedHome }).ok, true)
-    assert.equal(store.setPolicy({ provider: 'codex', selectionMode: 'manual' }).ok, true)
-    assert.equal(store.switchTo({ name: NAME, provider: 'codex' }).ok, true)
-    receipt.prepared = assertAccountReadback(store.list(), receipt, store.activeAccount())
-    const registryBytes = fs.readFileSync(file)
-    receipt.registry = { file, sha256: hash(registryBytes), accountsSha256: hash(JSON.stringify(JSON.parse(registryBytes).accounts)),
-      stateFile, stateSha256: hash(fs.readFileSync(stateFile)) }
-    receipt.custodyStage = 'prepared'
-    retainCustody()
-  } catch (error) {
-    if (options.retainProviderCredentials === true) {
-      // The caller may authorize scratch cleanup while excluding credentials.
-      // Preserve this owned copy on failure as well as after a normal run.
-      receipt.custodyStage = 'preserved-before-launch'
-    } else {
-      fs.rmSync(stagedHome, { recursive: true, force: true })
-      receipt.custodyStage = 'removed-before-launch'
-    }
-    if (fs.existsSync(custodyFile)) retainCustody()
-    throw error
-  } finally { source.bytes.fill(0) }
-
-  function sourceUnchanged() {
-    const now = readCredential(profileHome, guard, { allowHardlink: true })
-    now.bytes.fill(0)
-    assert.equal(now.receipt.sha256, receipt.source.sha256, 'The original provider credential changed during the QA run')
-    assert.ok(sameFile(now.receipt.identity, receipt.source.identity), 'The original provider credential changed inode during the QA run')
-    return now.receipt
-  }
+  const store = registryModule.createAccountRegistryStore({ file, stateFile, servicesRoot, homedir: () => accountHome })
+  assert.equal(store.add({ name: NAME, provider: 'codex', directory: profileHome }).ok, true)
+  assert.equal(store.switchTo({ name: NAME, provider: 'codex' }).ok, true)
+  const receipt = { schemaVersion: 2, provider: 'codex', name: NAME, qaRoot, servicesRoot, profileHome,
+    credentialCustody: 'provider-cli-only', registry: null, opens: [], checks: [], finalCheck: null }
+  receipt.prepared = assertAccountReadback(store.list(), receipt, store.activeAccount())
+  const registryBytes = fs.readFileSync(file)
+  receipt.registry = { file, sha256: hash(registryBytes),
+    accountsSha256: hash(JSON.stringify(JSON.parse(registryBytes).accounts)), stateFile }
   const ledgerFile = path.join(userData, 'agent-spawn-records.jsonl')
   function ledgerBytes() {
     guardOwnedPath(ledgerFile, { ...guard, expectedType: 'file', allowMissing: true })
@@ -421,29 +145,13 @@ function prepareProviderAccount({ options, accountHome, qaRoot, userData, runtim
     return fs.readFileSync(ledgerFile)
   }
   function checkFiles() {
-    const source = sourceUnchanged()
-    const sourceSha256 = source.sha256
     guardOwnedPath(file, { ...guard, expectedType: 'file' })
-    guardOwnedPath(stateFile, { ...guard, expectedType: 'file' })
+    // 1.0.50 keeps no automatic-switching state, so this file may never be written.
+    guardOwnedPath(stateFile, { ...guard, expectedType: 'file', allowMissing: true })
     const registryBytes = fs.readFileSync(file)
-    // Setup may mirror its visible failover answer into the global policy.
-    // The account list and Codex-specific manual pin must remain exact; the
-    // real readback below owns that policy assertion on every native check.
     assert.equal(hash(JSON.stringify(JSON.parse(registryBytes).accounts)), receipt.registry.accountsSha256,
       'The explicitly selected QA account list changed during the run')
-    const staged = readCredential(stagedHome, guard, { allowHardlink: true })
-    staged.bytes.fill(0)
-    assert.equal(staged.receipt.accountIdSha256, receipt.accountIdSha256, 'The QA provider changed the selected account identity')
-    assert.ok(!sameFile(staged.receipt.identity, source.identity) && !sameFile(staged.receipt.identity, receipt.source.identity),
-      'The QA credential cannot share the original account inode')
-    const credentials = generatedCredentials(servicesRoot, guard)
-    for (const credential of credentials) {
-      assert.equal(credential.accountIdSha256, receipt.accountIdSha256, 'A generated session credential belongs to a different provider account')
-      assert.ok(!sameFile(credential.identity, source.identity) && !sameFile(credential.identity, receipt.source.identity),
-        'A generated session credential cannot share the original account inode')
-    }
-    return { sourceSha256, sourceIdentity: source.identity, stagedAuthSha256: staged.receipt.sha256,
-      stagedIdentity: staged.receipt.identity, registrySha256: hash(registryBytes), credentials }
+    return { registrySha256: hash(registryBytes), profileHome, credentialCustody: 'provider-cli-only' }
   }
   return {
     receipt,
@@ -493,4 +201,4 @@ function prepareProviderAccount({ options, accountHome, qaRoot, userData, runtim
   }
 }
 
-module.exports = { NAME, guardOwnedPath, readCredential, assertAccountReadback, assertSessionAccounts, prepareProviderAccount, finalizeProviderAccount }
+module.exports = { NAME, guardOwnedPath, assertAccountReadback, assertSessionAccounts, prepareProviderAccount }

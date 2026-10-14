@@ -1,8 +1,8 @@
 /* THE APPLICATION HALF OF "MY MANAGER IS GONE, AND I AM STILL WORKING".
  *
- * Ledger T123: a manager's session failed every turn; each worker below it
- * finished one item, sent the report to a circle that could no longer read
- * it, and then sat idle for hours. The
+ * Ledger T123, measured 2026-09-15: a manager's session failed every turn from
+ * 21:47Z; each worker below it finished one item, sent the report to a circle
+ * that could no longer read it, and then sat idle for over three hours. The
  * engine's continuation controller was always going to send those workers their
  * own next turn -- what nothing could tell it was that the manager had stopped,
  * so the turn it sent never said so and no ancestor was ever told.
@@ -342,7 +342,7 @@ test('a worker whose manager\'s provider died reads that manager as gone; a mana
 
     /* THE MEASURED CASE. The manager's provider goes away and nobody asked it
        to -- which is what happened on 2026-09-15 and what left three workers
-       sitting for hours. */
+       sitting for three hours. */
     assert.equal(engine.exitAt(1), true, 'the fixture never produced a manager child to kill')
     /* WAIT FOR THE ENTRY TO BE GONE, NOT JUST FOR THE ENDING. cleanupEndedSession()
        removes the session from the host's map asynchronously, and a reading taken
@@ -557,3 +557,32 @@ test('a fact the engine did not produce is refused by name rather than escalated
     rmSync(workdir, { recursive: true, force: true, maxRetries: 5 })
   }
 })
+
+
+for (const status of ['completed', 'success', 'end_turn']) {
+  test(`a ${status} turn clears a manager's failed-turn outage`, async () => {
+    const workdir = mkdtempSync(path.join(SCRATCH, 'recovered-'))
+    const engine = require_(ENGINE)
+    engine.calls.length = 0
+    const { seen, loader } = recordingContinuation()
+    const host = createAgentHost({ freeMemory: TEST_FREE_MEMORY, enginePath: ENGINE,
+      defaultCwd: workdir, confinementPlanner: () => plan(workdir), ledgerContinuationLoader: loader })
+    try {
+      await treeSession(host, engine, { sessionId: 'manager', selfName: 'Manager', managerName: null, anchors: [MANAGER] })
+      const completion = engine.calls.at(-1).onEvent
+      await treeSession(host, engine, { sessionId: 'worker', selfName: 'Worker', managerName: 'Manager', anchors: [MANAGER, WORKER] })
+      const worker = seen.sessions.get('worker')
+      for (let index = 0; index < MANAGER_TURN_FAILURE_STREAK; index += 1) {
+        completion({ type: 'turn_completed', threadId: 'thread-1', status: 'failed', turnId: `failure-${index}` })
+      }
+      assert.equal(seen.options.readManagerState(worker)?.reason, 'turn-failed')
+      completion({ type: 'turn_completed', threadId: 'thread-1', status: 'unknown-status', turnId: 'unknown' })
+      assert.equal(seen.options.readManagerState(worker)?.reason, 'turn-failed')
+      completion({ type: 'turn_completed', threadId: 'thread-1', status, turnId: 'recovered' })
+      assert.equal(seen.options.readManagerState(worker), null)
+    } finally {
+      await host.closeAll()
+      rmSync(workdir, { recursive: true, force: true, maxRetries: 5 })
+    }
+  })
+}

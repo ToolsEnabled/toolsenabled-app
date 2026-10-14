@@ -13,7 +13,7 @@
  * all. Every product tool call therefore rendered as the same anonymous line.
  *
  * Why that is a defect and not a nit: the action rows are the context window
- * that was asked for (finding 1). A row that cannot say which tool ran
+ * the owner asked for (his finding 1). A row that cannot say which tool ran
  * cannot tell a person WHICH call failed, and it makes the rows worthless as
  * evidence — the sweep that found this had to fall back to the signed ledger
  * for tool identity because the glass would not say.
@@ -54,7 +54,7 @@ test('the older shapes still win where they are the real subject', () => {
   /* codex puts a shell line on `command`; the Claude CLI passes the tool's own
      input. Those remain the most specific thing to say, so they still lead. */
   assert.match(call({ command: 'ls -la' }).detail, /ls -la/)
-  assert.match(call({ file_path: 'C:/x/notes.txt' }).detail, /notes\.txt/)
+  assert.match(call({ file_path: '\x43:/x/notes.txt' }).detail, /notes\.txt/)
 })
 
 test('a payload with nothing named says nothing, rather than guessing at its shape', () => {

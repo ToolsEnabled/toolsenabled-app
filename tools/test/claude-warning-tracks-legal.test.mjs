@@ -17,7 +17,7 @@
  * re-read the shipped copy against the new text and re-record the fingerprint.
  *
  * THIS IS NOT HYPOTHETICAL. On 2026-08-18 the privacy rider's R4 was corrected
- * AFTER the engine had applied it verbatim; the correction was caught by a
+ * AFTER the engine lane had applied it verbatim; the correction was caught by a
  * file timestamp and a manual diff, not by anything mechanical, and only because
  * someone happened to look. This test is that look, made automatic, for the one
  * piece of legal text this product paraphrases rather than quotes.
@@ -55,7 +55,7 @@ const POSITION_DOC = process.env.TOOLSENABLED_PROVIDER_POSITION_DOC
 const SECTION_START = '## The user warning'
 const SECTION_END = '## Cross-cutting obligations'
 
-/* Recorded 2026-08-18 against the adopted text; RE-RECORDED 2026-08-19
+/* Recorded 2026-08-18 against the owner-adopted text; RE-RECORDED 2026-08-19
    when the tripwire fired on legal's ratification stamp — the section gained
    the paragraph recording that the shipped paraphrase is RATIFIED and is now
    the reference wording (FROM-LEGAL-2026-08-19-claude-warning-ruling.md). The

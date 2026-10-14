@@ -1,8 +1,9 @@
+import { startExplicitContinuation } from './lib/explicit-continuation.mjs'
 /* A tree command that lands inside an account recovery is answered after it.
  *
  * These cases drive the real Computers view (runTreeNodeCommand) over the real account-recovery
  * coordinator on a native world: circles are saved with a session the host confirms, the host
- * announces the account_recovery_needed ticket, and the replacement start is held open so a command
+ * receives the person's explicit destination account, and the replacement start is held open so a command
  * can land in the middle of the flight. Nothing is stubbed between the command and the coordinator's
  * own isRecovering answer.
  *
@@ -67,11 +68,10 @@ async function startFlight(key) {
   script.start = async args => {
     starts.push({ key, args })
     await gate.promise
-    return { ok: true, sessionId: newSession(key), threadId: `thread-new-${key}` }
+    return { ok: true, sessionId: newSession(key), threadId: `thread-new-${key}`, account: args.treeAccount }
   }
-  for (const listener of [...listeners]) {
-    listener({ sessionId: oldSession(key), event: { type: 'account_recovery_needed', recoveryId: `ticket-${key}`, handoff: 'Continue the work.' } })
-  }
+  await startExplicitContinuation({ computerId: COMPUTER_ID, nodeId: nodeId(key),
+    sessionId: oldSession(key), emit: packet => { for (const listener of [...listeners]) listener(packet) } })
   await until(() => startsFor(key) === 1, `the recovery flight for ${key} never reached its replacement start`)
   return gate
 }

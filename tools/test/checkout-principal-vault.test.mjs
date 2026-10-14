@@ -1,7 +1,7 @@
 // CONDITION 2, AND THE FOUR ANSWERS IT CAN HAVE.
 //
-// The refusal condition: a person who is not signed in as a real user, with
-// their vault and the rest attached correctly, does not finish the form.
+// The owner's refusal condition, verbatim: "if i am not logged in as a real
+// user with my vault and such attached correctly i refuse to finish the form."
 //
 // src/checkout-principal.js kept those as two conditions on purpose, and until
 // now the second one had exactly one answer -- a frozen constant,
@@ -32,7 +32,7 @@ const AVAILABLE = Object.freeze({ ok: true, accountCount: 1, canPersistSession: 
 const SIGNED_IN = Object.freeze({
   signedIn: true,
   principal: 'account:0123456789abcdef0123456789abcdef',
-  account: Object.freeze({ id: '0123456789abcdef0123456789abcdef', username: 'alex', displayName: 'Alex' }),
+  account: Object.freeze({ id: '0123456789abcdef0123456789abcdef', username: 'Example', displayName: 'Example' }),
   session: Object.freeze({ issuedAtMs: 1, expiresAtMs: 2 ** 40 }),
 })
 
@@ -70,7 +70,7 @@ test('attached but absent from this installation vault is its OWN answer', () =>
 
 // THE ONE A REFACTOR DELETES. `checked: false` is such a natural companion to
 // `verified: false` that the two collapse into one branch, and the screen then
-// tells them they have no card because a file could not be read.
+// tells him he has no card because a file could not be read.
 test('a vault that could not be read is UNKNOWN and never reported as absent', () => {
   const answer = vaultConditionFrom(UNREADABLE)
   assert.equal(answer.verified, false)
@@ -115,7 +115,7 @@ test('the approver carries whichever of the four answers it actually got', () =>
   assert.equal(verified.principal.vault.code, 'VAULT_PAYMENT_METHOD_PRESENT')
 
   const unreadable = approvalIdentityFrom(AVAILABLE, SIGNED_IN, UNREADABLE)
-  assert.equal(unreadable.ok, true, 'an unreadable vault does not stop them being named on the record')
+  assert.equal(unreadable.ok, true, 'an unreadable vault does not stop him being named on the record')
   assert.equal(unreadable.principal.vault.verified, false)
   assert.equal(unreadable.principal.vault.checked, false)
 

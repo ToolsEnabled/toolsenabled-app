@@ -32,7 +32,7 @@ test('truthy or absent ok never confirms transcript readiness',async()=>{
    await assert.rejects(client.bind('session','node'),/did not confirm/)
   }
   answer={ok:false,error:{code:'unvalidated code',message:'Refusal message'}}
-  await assert.rejects(client.bind('session','node'),error=>error.message==='Refusal message'&&error.code===undefined)
+  await assert.rejects(client.bind('session','node'),error=>error.message==='Refusal message'&&error.code==='TRANSCRIPT_BIND_UNCONFIRMED')
  }finally{client.dispose()}
 })
 for(const change of ['superseded','released','disposed'])test('pending bind completion fenced after '+change,async()=>{

@@ -439,8 +439,8 @@ test('an empty message is refused locally and never reaches the network', async 
 // ---------------------------------------------------------------------------
 // THE SECTION IN ITS PLACE. Everything above drives the module on its own; the
 // tests below mount the real Settings view and read what it drew, because the
-// request was not to write a module -- it was to put it nicely into Settings.
-// Where the rows land, in what order, and what the section says
+// owner's request was not "write a module" -- it was "put it nicely into
+// settings". Where the rows land, in what order, and what the section says
 // about the one need nobody can clear are the parts a person actually meets.
 //
 // A SECOND STAND-IN, DELIBERATELY. mount() above models the DOM the MODULE
@@ -736,8 +736,8 @@ test('the section note carries the host sentence and promises no remedy for it',
 
 /* HOW MUCH THERE IS TO READ, AS A RATCHET RATHER THAN AS A NOTE IN A REPORT.
  *
- * The page was to become simpler and more useful, and the result significantly
- * improved rather than merely moved. Simple is a
+ * The owner asked for the page to become "more simple and useful", and then for
+ * the result to be "significantly improved" rather than moved. Simple is a
  * measurable claim: the page this section replaced put 1727 visible words and
  * 44 paragraphs in front of somebody who had come to press Install. Nothing
  * stops that growing back one helpful sentence at a time, which is exactly how
@@ -974,9 +974,9 @@ test('Stop cannot restore running controls after the exit event already arrived'
   assert.equal(page.signIns.codex.fields.install.disabled, false)
 })
 
-/* NO SECOND COPY, AND SAY WHICH COPY IS USED (install must not
-   overwrite things in a user's paths, and should do better at install time).
-   A program the machine reports installed used to keep
+/* NO SECOND COPY, AND SAY WHICH COPY IS USED (rc-0922, the owner: "right now do
+   we aggressively try to write over a users paths or such? Can we do a better
+   job at install time?"). A program the machine reports installed used to keep
    an Install button that put a second copy on the computer; now the copy you
    have is used, the button offers only the explicit choice of a private copy
    in ToolsEnabled's own folder, and one line says which copy runs, whose it is
@@ -1049,7 +1049,7 @@ test('checking a person-owned Claude copy offers its own update command without 
 })
 
 test('an update offer for a copy whose version could not be read names the program, not a placeholder', async t => {
-  /* an earlier commit filled a missing version with the words "an unknown version",
+  /* 74bdbbcb filled a missing version with the words "an unknown version",
      which read "Claude an unknown version is installed and ..." and is a
      dead end by the plain-language gate. */
   const page = mount({

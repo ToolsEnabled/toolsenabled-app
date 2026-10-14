@@ -1,6 +1,6 @@
 // Browser driver: every painted button carries the app's button look, never the browser default.
 //
-// A check for completely unstyled buttons such as Browse saved conversation and Full view.
+// Owner, 2026-09-10: "check for totaly unstyled buttons like browse saved cnversation and full view".
 // Measured on the LIVE build: "Browse saved conversation" (src/node-transcript-history.js, a button
 // created in script with no class) painted as Chromium's own grey default. This driver:
 //   1. walks the routes a person can reach, opens the home chat full view, and lists every visible

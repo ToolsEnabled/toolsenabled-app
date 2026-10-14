@@ -140,7 +140,7 @@ function normalizeLinuxArtifactPermissions(context) {
  * This ran verifyVoiceBundle unconditionally on win32 and blew up with a raw
  * ENOENT -- `lstat '...\release\win-unpacked\resources\voice-runtime\bundle'` --
  * the moment an installer was built without local speech. That is the same stale
- * assumption the before-pack hook carried (decision OD7 / B23c: speech ships
+ * assumption the before-pack hook carried (owner decision OD7 / B23c: speech ships
  * as a separate opt-in pack and 1.0.42 may ship without it), and here it surfaced
  * as a stack trace from fs rather than as a sentence anyone could act on.
  *

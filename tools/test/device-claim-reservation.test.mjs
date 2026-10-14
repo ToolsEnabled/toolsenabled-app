@@ -88,6 +88,18 @@ test('reserved exposes only the full account address and a reload poll cannot ac
   assert.equal(rig.spawn.calls.length, calls, 'a cached unanswered question made a network decision')
 })
 
+function assertPrivatePoll(call, accept) {
+  assert.equal(call.args[0], ENTRY)
+  assert.equal(call.args[1], 'poll')
+  assert.equal(JSON.stringify(call.args).includes(TOKEN), false, 'poll argv must not disclose the held token')
+  const tokenNames = Object.keys(call.options.env).filter(name => call.options.env[name] === TOKEN)
+  assert.equal(tokenNames.length, 1, 'poll receives its token only in the child environment')
+  assert.equal(call.args.includes(tokenNames[0]), true, 'the child can locate its token')
+  const decision = call.args.indexOf('--accept')
+  assert.equal(decision >= 0, accept !== undefined)
+  if (accept !== undefined) assert.equal(call.args[decision + 1], String(accept))
+}
+
 test('literal accept is sent once, then an argument-free poll collects the parked grant', async () => {
   const rig = shellClaim([
     answer(opened),
@@ -99,12 +111,12 @@ test('literal accept is sent once, then an argument-free poll collects the parke
   await rig.claim.poll()
   const accepted = await rig.claim.begin({ accept: true })
   assert.deepEqual(accepted, { ok: true, state: 'accepted', intervalSeconds: 1, childQuiescent: true })
-  assert.deepEqual(rig.spawn.calls[2].args, [ENTRY, 'poll', '--token', TOKEN, '--accept', 'true'])
+  assertPrivatePoll(rig.spawn.calls[2], true)
   assert.equal(rig.claim.enrolled(), false, 'acceptance alone was reported as enrolment')
 
   const connected = await rig.claim.poll()
   assert.equal(connected.state, 'connected')
-  assert.deepEqual(rig.spawn.calls[3].args, [ENTRY, 'poll', '--token', TOKEN])
+  assertPrivatePoll(rig.spawn.calls[3], undefined)
   assert.equal(rig.claim.enrolled(), true)
 })
 
@@ -117,7 +129,7 @@ test('literal decline spends the reservation and later polls have nothing to col
   await rig.claim.begin({ name: 'Friend computer' })
   await rig.claim.poll()
   assert.deepEqual(await rig.claim.begin({ accept: false }), { ok: true, state: 'rejected', childQuiescent: true })
-  assert.deepEqual(rig.spawn.calls[2].args, [ENTRY, 'poll', '--token', TOKEN, '--accept', 'false'])
+  assertPrivatePoll(rig.spawn.calls[2], false)
   assert.deepEqual(await rig.claim.poll(), { ok: true, state: 'none', childQuiescent: true })
 })
 

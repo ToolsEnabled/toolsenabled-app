@@ -1,12 +1,12 @@
 # The website's embedded product simulation
 
-R1268. Written 2026-08-11 by the change that built it.
+R1268 lane W1. Written 2026-08-11 by the lane that built it.
 
-**The shape of this surface:** no preview of paid services; the website offers a
-preview (an embedded simulation) of the product; paid versions work when paid, and
-a subscription page handles signing up.
+**The owner's shape for this surface, verbatim:** *"no need for preview of paid
+services. just offer a preview / embedded simulation of the product on the website.
+make the paid versions work when paid and make a nice subscription page for signing up"*
 
-Two of those four clauses are other changes'. This document is only the first one:
+Two of those four clauses are other lanes'. This document is only the first one:
 **a preview / embedded simulation of the product, on the website.**
 
 ---
@@ -19,7 +19,7 @@ drill-in, the approvals queue, spend, and the record — from data generated in 
 visitor's own browser from a fixed seed.
 
 **It is not the application served in a browser.** That already exists: `dist/`
-is the renderer, and an R1260 review drove it as a stranger and reported the
+is the renderer, and R1260 lane t5a drove it as a stranger and reported the
 result honestly — the software behaves well in a browser, but the site "drops a
 stranger into the product dashboard" with no landing, no download, and every
 panel correctly fail-closed to `—` because there is no shell behind it. A
@@ -27,7 +27,7 @@ fail-closed dashboard is the right behaviour and the wrong advertisement. A
 buyer needs to see the product *working*.
 
 **It is not an installable preview.** The download is the real, full product. The
-owner corrected two earlier readings to land there. Nothing in this change builds a
+owner corrected two earlier readings to land there. Nothing in this lane builds a
 crippled build.
 
 **It does not preview a paid capability.** The engine's gated set
@@ -62,7 +62,7 @@ matching.
 
 Machine B raised the defect this is built against: **a green "live" indicator
 painted over seeded data**, which makes fabricated activity look like a real
-fleet doing real work. R1260 re-measured it and reported honestly that it was
+fleet doing real work. R1260 t5a re-measured it and reported honestly that it was
 *"materially improved, not cleared"*, naming the open half as their weakest
 evidence — whether a live badge can still sit over fabricated numbers.
 
@@ -125,11 +125,11 @@ Both exits are **declared and then verified** (`public/preview/exits.js`):
   **immutable** location — never inside a build directory, because a build
   directory reuses one filename and a hash quoted against it expires on the next
   rebuild with no change to the name. This is the contract from
-  `docs/WEBSITE-DOWNLOAD-WIRE-PLAN.md` (R1260), whose rule is the one that
+  `docs/WEBSITE-DOWNLOAD-WIRE-PLAN.md` (R1260 t5a), whose rule is the one that
   matters: **no declaration ⇒ no download surface.**
 
 - **Subscription.** Needs a path, and something static that proves the surface is
-  in this build. A separate R1268 change builds the subscription page as a **route inside
+  in this build. R1268 lane W3 builds the subscription page as a **route inside
   the application shell** (`#/subscribe`) — measured in their worktree, not
   assumed — and a hash route **cannot be probed**: `fetch()` drops the fragment,
   so probing `/#/subscribe` requests `/`, which answers 200 on every deployment
@@ -139,22 +139,22 @@ Both exits are **declared and then verified** (`public/preview/exits.js`):
 
   So the declaration carries two fields: `href` (where a buyer is sent) and
   `probe` (a static artifact whose presence proves the surface shipped, defaulting
-  to `href` when they are the same thing). The probe is R1268's subscription
+  to `href` when they are the same thing). The probe is W3's subscription
   catalogue, because the page cannot render plans without it. A declaration that
   is a route with no probe fails closed and says so.
 
 **Today `DECLARED.download` is null on purpose.** There is no declared installer
-candidate on this machine — R1260 measured it, and Machine A's own candidate folder
+candidate on this machine — t5a measured it, and Machine A's own candidate folder
 says so in writing. The preview therefore shows a disabled control carrying the
 reason in words. When a candidate is declared, filling that object in is the
 whole wiring job, and `tools/test/preview-honesty.test.mjs` is the place that
 notices it changed.
 
 `DECLARED.subscribe` is `{ href: '/#/subscribe', probe: '/data/subscription-catalog.json' }`.
-**That is a dependency on the separate R1268 change.** If they land the catalogue under
+**That is a cross-lane dependency on R1268 W3.** If they land the catalogue under
 a different name, that one constant moves and nothing else does. Until it resolves,
 the control is disabled and says *"That page is not part of this build yet"* —
-which is why the coordinator can merge the two changes in either order without
+which is why the coordinator can merge the two lanes in either order without
 either one shipping a dead link.
 
 ---
@@ -201,10 +201,9 @@ run, or on a hang.
 
 ---
 
-## 5. What this change did not do
+## 5. What this lane did not do
 
-No landing page (that is the gap R1260 recorded as blocking, W2 in
-`docs/WEBSITE-DOWNLOAD-WIRE-PLAN.md`, and it is not this change's fence). No
-subscription page. No entitlement or licence code. No download wiring, because
-there is no declaration to wire. Nothing published, deployed, or made publicly
-reachable.
+No landing page (that is the W2-shaped gap t5a recorded as blocking, and it is
+not this lane's fence). No subscription page. No entitlement or licence code. No
+download wiring, because there is no declaration to wire. Nothing published,
+deployed, or made publicly reachable.

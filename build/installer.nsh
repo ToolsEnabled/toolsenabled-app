@@ -128,7 +128,7 @@
 # launch from asking for elevation, but Windows still lets a person explicitly
 # choose Run as administrator. In an over-the-shoulder UAC prompt that changes
 # HKCU, APPDATA and the installation principal before the app's own startup
-# guard exists, producing a separate admin tree. `preInit` is
+# guard exists, producing the separate admin tree the owner saw. `preInit` is
 # electron-builder's earliest custom hook and runs before initMultiUser and
 # customInit; therefore neither account discovery nor legacy-state rescue can
 # happen first. Silent setup gets no modal and the same nonzero exit.
@@ -219,7 +219,30 @@
 # user-initiated uninstall (not an update) is left to behave normally. Because
 # the operation is copy-only and never-overwrite, running it in addition to
 # customInit is harmless.
+#
+# IT ALSO RECORDS WHETHER ANYBODY CAN BE ASKED (1.0.50 platform review, U5).
+# This is a one-click build, and app-builder-lib's un.onInit (uninstaller.nsh)
+# runs an uninstall started WITHOUT /S like this: it shows "are you sure", then
+# calls `SetSilent silent` before customUnInit, because a one-click uninstaller
+# runs its section silently. So ${Silent} is TRUE in customUnInstall for every
+# uninstall, including one a person started from Settings > Apps, and the data
+# question below could never be shown. $TEInteractive is read from the command
+# line here, with the same GetOptions test the template uses to decide whether
+# /S was given: 1 when it was not, so a person is there to answer.
 !macro customUnInit
+  Var /GLOBAL TEInteractive
+  StrCpy $TEInteractive 0
+  Push $R0
+  Push $R1
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/S" $R1
+  ${If} ${Errors}
+    StrCpy $TEInteractive 1
+  ${EndIf}
+  ClearErrors
+  Pop $R1
+  Pop $R0
   ${If} ${isUpdated}
     !insertmacro RescueLegacyInstallDirState
   ${EndIf}
@@ -258,18 +281,25 @@
 # ask:
 #
 #   interactive  ->  ASK, with both options stated plainly and neither preselected
-#                    as "recommended". /SD IDNO is set so that if this dialog is
-#                    ever reached non-interactively despite the ${Silent} guard
-#                    below, the answer is KEEP -- the non-destructive direction.
+#                    as "recommended".
 #   silent (/S)  ->  keep, and WRITE DATA-KEPT-AFTER-UNINSTALL.txt into the
 #                    directory naming what was kept and where. The bytes on disk
 #                    are the same as the old behaviour; the difference is that
 #                    the person can find out. That is the whole fix.
 #
+# WHICH ONE IT IS COMES FROM $TEInteractive, NOT ${Silent} (U5). The one-click
+# template has already called SetSilent by the time this runs, so ${Silent} is
+# true for every uninstall and used to send the person who started it from
+# Settings > Apps down the silent branch: never asked, and left a note saying
+# nobody could be. customUnInit sets $TEInteractive from the command line: 0
+# when /S was given. For the same reason the MessageBox carries no /SD: in a
+# silent-mode section NSIS answers a box that has /SD itself, without showing
+# it, so /SD IDNO would have answered "keep" for the person.
+#
 # A silent uninstall must never open a dialog. This build already has a defect
 # where the uninstaller ignores /S, opens a modal and blocks forever while
 # returning success to its caller; putting an unguarded MessageBox here would
-# deepen exactly that. ${Silent} is checked before any UI.
+# deepen exactly that. $TEInteractive (no /S) is checked before any UI.
 #
 # AND THIS NEVER RUNS DURING AN UPGRADE. ${isUpdated} is checked first: an
 # update runs the uninstaller as an implementation detail, and a person clicking
@@ -390,7 +420,7 @@
     ${ElseIf} $R2 == "keep-my-data"
       # An informed choice to keep. Nothing to do and nothing to announce.
     ${Else}
-      ${If} ${Silent}
+      ${If} $TEInteractive != 1
         !insertmacro TE_DeclareRetention "$R0"
       ${Else}
         MessageBox MB_YESNO|MB_ICONQUESTION \
@@ -398,7 +428,7 @@
           This includes your saved credentials, the signed record of every action taken, your linked accounts, your agent history and your settings.$\r$\n$\r$\n\
           Yes  -  delete it permanently. This cannot be undone.$\r$\n\
           No   -  keep it. Reinstalling restores everything as you left it." \
-          /SD IDNO IDYES te_remove_user_data IDNO te_keep_user_data
+          IDYES te_remove_user_data IDNO te_keep_user_data
 
         te_remove_user_data:
           !insertmacro TE_RemoveAllUserData "$R0" "$R1"

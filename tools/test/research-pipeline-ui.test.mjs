@@ -152,7 +152,7 @@ test('old duplicate settings stay as reference while the single schedule control
   original.conditions[0].adapter = { kind: 'command', command: 'node', args: ['harness/draw.mjs', '--surface', 'claude-cli', '--model', 'claude-sonnet-5', '--effort', 'max', '--append', 'An existing instruction.'] }
   const legacy = normalizeProtocolDecisions({ values: { noask: 'yes', 'noask-text': 'A retired instruction.', 'draw-timeout': 40, 'n-eligible': 99, models: ['old-model'], 'study-kind': 'exploratory' }, notes: 'Keep these notes.' })
   original.decisions = decisionsText(legacy, { includeManaged: true })
-  const pipeline = { version: 1, root: 'C:/cleanroom', rows: [{ surface: 'claude-cli', model: 'claude-sonnet-5', executable: '', efforts: ['high', 'max'], noask: true }], judges: [] }
+  const pipeline = { version: 1, root: '\x43:/lbres', rows: [{ surface: 'claude-cli', model: 'claude-sonnet-5', executable: '', efforts: ['high', 'max'], noask: true }], judges: [] }
   assert.equal((await view.openDraft({ spec: original, editors: { 'data-bench-protocol-decisions': JSON.stringify(legacy), 'data-bench-pipeline-draft': JSON.stringify(pipeline) } }, 'previous-protocol.json')).ok, true)
   f(view, 'tab="protocol"').click(); await idle(view)
   const proto = name => view.el.querySelector(`[data-proto-${name}]`)

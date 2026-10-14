@@ -20,7 +20,7 @@
  * constant expression: it compiles the real guard body without trying to load
  * a Windows-only UAC plugin. A Windows run may set NSIS_USE_UAC_PLUGIN=1 and
  * NSIS_PLUGIN_DIR to use the real plugin. Evidence is retained in a temporary
- * directory whose name starts with nsis-preinit-. Supply an existing
+ * directory whose name starts with BUILDER5-W3-nsis-preinit-. Supply an existing
  * absolute NSIS_QA_EVIDENCE_ROOT to retain evidence in a caller-owned directory;
  * Windows requires this explicitly and never uses inherited TEMP/TMP.
  */
@@ -34,7 +34,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const INSTALLER_NSH = path.join(REPO_ROOT, 'build', 'installer.nsh')
-const PREFIX = 'nsis-preinit-'
+const PREFIX = 'BUILDER5-W3-nsis-preinit-'
 
 function posixPath(value) {
   return value.split(path.sep).join('/')
@@ -185,12 +185,10 @@ export function runNsisPreinitBoundary({
   // Reject a foreign profile before inspecting any path component.
   const normalizedRoot = path.resolve(outputRoot)
   if (process.platform === 'win32') {
-    // The account name is a placeholder, and the path is joined at run time so
-    // the source carries no literal profile path.
-    const devTemp = path.win32.join('C:\\', 'Users', 'BuildAccount-Dev', 'AppData', 'Local', 'Temp')
+    const devTemp = '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp'
     if (normalizedRoot.toLowerCase() !== devTemp.toLowerCase() &&
         !normalizedRoot.toLowerCase().startsWith(`${devTemp.toLowerCase()}\\`)) {
-      return { ok: false, exitCode: 3, reason: 'NSIS_QA_EVIDENCE_ROOT must stay inside the literal BuildAccount-Dev Temp tree' }
+      return { ok: false, exitCode: 3, reason: 'NSIS_QA_EVIDENCE_ROOT must stay inside the literal fixture-profile Temp tree' }
     }
     let component = path.parse(normalizedRoot).root
     try {

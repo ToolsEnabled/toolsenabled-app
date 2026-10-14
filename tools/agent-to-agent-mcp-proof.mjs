@@ -3,7 +3,8 @@
 /* CAN ONE AGENT ON THIS COMPUTER ACTUALLY REACH ANOTHER ONE — ASKED OF THE
  * SHIPPED TOOL SERVER, OVER REAL STDIO JSON-RPC, FAILING FIRST.
  *
- * THE FINDING: reaching the coordinator through agent comms did not work.
+ * THE OWNER'S FINDING, verbatim: "This is just the issue with trying to have it
+ * reach coordinator through agent comms it didnt work."
  *
  * WHAT THIS RUN IS, EXACTLY, so nobody reads more into it than it proves. It
  * starts capability/src/mcp-server.js -- the real tool server a customer's Codex
@@ -116,7 +117,7 @@ async function main() {
      ...\local\ToolsEnabled -- and a missing record is not an error: the server
      fell back to the fail-closed level in silence, advertised 98 tools and no
      messenger, and this run printed a confident false FAIL about the payload
-     (measured 2026-09-16 at an earlier engine commit, ledger T138). The state root now
+     (measured 2026-09-16 at engine 85520c4b, ledger T138). The state root now
      sits under a "ToolsEnabled" user-data directory, so both sides agree. */
   const runRoot = mkdtempSync(path.join(tmpdir(), 'a2a-proof-'))
   const stateRoot = path.join(runRoot, 'ToolsEnabled', 'capability')

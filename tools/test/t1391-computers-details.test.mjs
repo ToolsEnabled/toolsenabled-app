@@ -141,7 +141,7 @@ test('mounted Reports-to preserves the store revision refusal and keeps its reme
 })
 
 /* T1467: with two trees, Reports to listed parents only as role + id suffix
-   ("Controller (aaaa1111)"), so nothing said which tree a move went to. */
+   ("Controller (d3f68efd)"), so nothing said which tree a move went to. */
 test('mounted Reports-to names the tree of every choice, and this circle\'s own tree as this tree', async t => {
   const f = await mountComputers(t, [...family(),
     { id: 'other-root', role: 'controller', treeId: 'tree-2', message: 'Ship the installer' },

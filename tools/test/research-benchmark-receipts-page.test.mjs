@@ -215,8 +215,8 @@ test('Verify native evidence records its receipt in the exported evidence under 
 // Venue spec item 13 (Attribution and reused code) is rendered from the provenance registry
 // this runtime carries. The page passes that registry itself; nothing here supplies it. So the
 // report the page downloads must print the live registry's digest under item 13 and retain the
-// live ATTRIBUTIONS.md, or the page has silently stopped attributing (an earlier review
-// finding).
+// live ATTRIBUTIONS.md, or the page has silently stopped attributing (board 23:58Z, Worker 6's
+// alternative assigned to RP6).
 test('the page renders spec item 13 from the live provenance registry, not from anything the caller supplies', async () => {
   const f = await fixture(), view = await frozenView(f)
   await importFile(view, 'import-evidence', evidenceFile(f))

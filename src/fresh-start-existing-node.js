@@ -7,6 +7,8 @@
  * resumeThreadId, or transcript seed material.
  */
 
+import { modelIdProblem, nextModelChoiceProblem, modelChoiceEffort } from './model-picker.js'
+
 const nothing = () => {}
 
 export async function executeFreshStartExistingNode({
@@ -70,6 +72,10 @@ export async function executeFreshStartExistingNode({
   if (!sourceIsReal) return refused('MC_TREE_COMMAND_REAL_SOURCE_REQUIRED')
   if (!startAllowed()) return refused('MC_TREE_COMMAND_START_DISABLED')
 
+  const choiceProblem = node.nextModelChoice ? nextModelChoiceProblem(node.nextModelChoice) : node.model == null ? '' : modelIdProblem(node.model)
+  if (choiceProblem) return refused('AGENT_MODEL_INVALID', choiceProblem)
+  if (node.nextModelChoice) node = { ...node, ...node.nextModelChoice }
+
   const nodeIds = sessionState?.nodeIds
   if (!nodeIds || typeof nodeIds.has !== 'function' || typeof nodeIds.set !== 'function') {
     return refused('MC_TREE_COMMAND_EVENT_MAP_UNAVAILABLE')
@@ -77,8 +83,8 @@ export async function executeFreshStartExistingNode({
   const oldSessionId = typeof node.sessionId === 'string' && node.sessionId ? node.sessionId : null
   const oldSessionIsOurs = Boolean(oldSessionId && nodeIds.has(oldSessionId))
   const saved = transcriptStore ? transcriptStore.get(node.id) : null
-  const keptEffort = (oldSessionId ? sessionState.efforts?.get(oldSessionId) : null)
-    || saved?.effort || tierEffort
+  const keptEffort = node.model != null ? modelChoiceEffort(node.tier, node.model, node.effort)
+    : (oldSessionId ? sessionState.efforts?.get(oldSessionId) : null) || saved?.effort || tierEffort
 
   /* A live renderer-owned session must be proved closed. A persisted session
      from a previous app run is deliberately treated as stale and unknown. */
@@ -107,7 +113,7 @@ export async function executeFreshStartExistingNode({
       sessionState.pendingImages,
     ]) map?.delete(oldSessionId)
     resetSessionMetrics(oldSessionId)
-    for (const map of [nodeIds, sessionState.profileIds, sessionState.efforts, sessionState.threadIds, sessionState.accountNames]) map?.delete(oldSessionId)
+    for (const map of [nodeIds, sessionState.profileIds, sessionState.efforts, sessionState.threadIds, sessionState.accountNames, sessionState.accountRecords]) map?.delete(oldSessionId)
     notifySessionMappingsChanged()
   }
 
@@ -120,7 +126,7 @@ export async function executeFreshStartExistingNode({
      exists -- always, in the packaged app) answers `remove()` with a Promise,
      never a bare boolean. Reading it without awaiting made this refuse every
      restart unconditionally, after the old session above was already closed
-     and its maps cleared: MEASURED, four circles for
+     and its maps cleared: MEASURED, Controller 2026-09-06, four circles for
      four attempts, before and after an app restart. */
   if (transcriptStore) {
     let removed = false
@@ -134,6 +140,13 @@ export async function executeFreshStartExistingNode({
   for (const map of [nodeState?.diffHistories, nodeState?.replies, nodeState?.activity, nodeState?.lastTool]) map?.delete(node.id)
   treeStore?.detachSession(node.id)
 
+  if (node.model != null && treeStore) {
+    const savedChoice = treeStore.setNodeLaunchPreferences(node.id, { tier: node.tier, model: node.model, effort: keptEffort || '', nextModelChoice: null })
+    if (savedChoice?.ok !== true || savedChoice.snapshot?.persistenceFailed) {
+      return markFailed(refused('MC_TREE_COMMAND_MODEL_PREFERENCE_SAVE_FAILED', 'The model choice could not be saved, so this agent was not started. Keep this page open and try again.'))
+    }
+  }
+
   let started = null
   try {
     if (!startAllowed()) return markFailed(refused('MC_TREE_COMMAND_START_DISABLED'))
@@ -145,6 +158,7 @@ export async function executeFreshStartExistingNode({
          two live addresses after an app restart. */
       ...(oldSessionId ? { replacesSessionId: oldSessionId } : {}),
       ...(node.tier ? { tier: node.tier } : {}),
+      ...(node.model == null ? {} : { model: node.model }),
       ...(keptEffort ? { effort: keptEffort } : {}),
       ...(profileId ? { profileId } : {}),
       ...(roleBinding ? { roleBinding } : {}),
@@ -179,6 +193,8 @@ export async function executeFreshStartExistingNode({
     started.sessionId,
     typeof started.account === 'string' && started.account ? started.account : null,
   )
+  sessionState.accountRecords?.set(started.sessionId, { provider: started.provider,
+    ...(Object.hasOwn(started, 'account') ? { account: started.account } : {}) })
   if (treeStore) {
     /* THE NODE MUST STILL BE THE ONE THIS SESSION IS FOR. bridge.start() above
        is a real, slow call -- spawning a process and resolving an account can
@@ -201,6 +217,7 @@ export async function executeFreshStartExistingNode({
       sessionState.efforts?.delete(started.sessionId)
       sessionState.threadIds?.delete(started.sessionId)
       sessionState.accountNames?.delete(started.sessionId)
+      sessionState.accountRecords?.delete(started.sessionId)
       try { await bridge.close({ sessionId: started.sessionId }) }
       catch { /* nothing on the tree can reach it either way; best effort */ }
       return refused(

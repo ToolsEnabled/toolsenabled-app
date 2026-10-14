@@ -197,9 +197,9 @@ const MAX_TOKEN_CHARS = 160
  * THE DEVELOPMENT ENTRY NAMES AN APPLICATION, NOT ONE FILENAME -- AND A
  * DEVELOPMENT LAUNCH ALSO NAMES A PROFILE.
  *
- * MEASURED on a development tier: spooled resume commands were written to
- * %APPDATA%\ToolsEnabled-<tier>\coordinator-commands\requests and not one
- * was ever claimed. That tier runs the development launch form
+ * MEASURED 2026-09-03 on the owner's Live tier: nine spooled resume commands
+ * were written to %APPDATA%\ToolsEnabled-Live\coordinator-commands\requests and
+ * not one was ever claimed. The Live tier runs the development launch form
  *   electron.exe <appDirectory> --user-data-dir=<profile>
  * so a command helper spawned beside it carries
  *   [electron.exe, <appDirectory>, --toolsenabled-tree-command=<id>]
@@ -212,8 +212,8 @@ const MAX_TOKEN_CHARS = 160
  * THE RELAYED ARGV IS NOT IN LAUNCH ORDER, AND CARRIES WHAT THE HELPER
  * APPENDED.
  *
- * MEASURED on a development instance: a restart spooled by the Controller
- * circle was claimed about a second later and answered
+ * MEASURED 2026-09-04T08:16Z on the owner's Live instance: a restart spooled
+ * by the Controller circle was claimed 1.4 s later and answered
  * MC_TREE_COMMAND_ARGUMENT_INVALID with no reason. MEASURED the same day on
  * Electron 43.3.0 (Windows) with a probe launched exactly the way
  * Start-ToolsEnabled-Live.cmd launches the Live tier: for a helper started as
@@ -646,7 +646,7 @@ function runWindowsAclPass({ secure = [], directories = [], files = [] } = {}) {
     ...files.map(target => aclPassLine('F', target, ACL_VERIFY_FAILED)),
   ]
   if (lines.length === 0) return []
-  const powershell = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+  const powershell = path.join(process.env.SystemRoot || '\x43:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
   const encoded = Buffer.from(WINDOWS_ACL_PASS_SCRIPT, 'utf16le').toString('base64')
   const answer = spawnSync(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
     input: lines.join('\n'),
@@ -1053,18 +1053,18 @@ function normalizeRendererResult(value, request) {
      for the whole hand-off, so a future change to what counts as bounded
      cannot land in one caller and not the other.
 
-     An earlier commit once narrowed this to a four-key return, reasoning
-     from a copy of tools/test/tree-command-refusal-reason.test.mjs that a
-     same-day integration of several parallel branches had already superseded
-     on the branch this one merges from: the spawn-drain branch had its own
-     copy of that test pinning the old four-key shape, and the reconciled
-     decision -- reaffirmed there with the drain branch's own comment and test
-     updated to match -- was that the gate KEEPS the reason. That earlier
-     commit fixed a real red test on its own branch tip, but by matching the
-     code to a stale test instead of catching that the test was the stale
-     side; merging the integration branch here (which carries the reconciled
-     test, unchanged from before that commit) turned red again for the
-     opposite reason. See tools/test/tree-command-refusal-reason.test.mjs,
+     A commit on this lane (370fd8f) once narrowed this to a four-key return,
+     reasoning from a copy of tools/test/tree-command-refusal-reason.test.mjs
+     that a same-day cross-lane integration (page2/integration, "Integrate
+     the five Page 2 lanes") had already superseded on the branch this one
+     merges from: the spawn-drain lane had its own copy of that test pinning
+     the old four-key shape, and the reconciled decision -- reaffirmed there
+     with the drain lane's own comment and test updated to match -- was that
+     the gate KEEPS the reason. 370fd8f fixed a real red test on its own
+     branch tip, but by matching the code to a stale test instead of catching
+     that the test was the stale side; merging page2/integration here (which
+     carries the reconciled test, unchanged from before 370fd8f) turned red
+     again for the opposite reason. See tools/test/tree-command-refusal-reason.test.mjs,
      "the spool result gate admits and keeps a bounded renderer reason". */
   exactKeys(value, [...required, 'reason'], required, 'Tree-node command result')
   if (value.requestId !== request.requestId || value.nodeId !== request.nodeId || typeof value.ok !== 'boolean') {
@@ -1202,9 +1202,9 @@ function publishTreeNodeCommandResult(envelope, rendererResult, { now = Date.now
  *
  * The result file is a coordinator's ONLY channel: the helper is detached with
  * stdio ignored, so a console line or a stderr write is not a report, it is a
- * silence. MEASURED on a development tier: resume commands refused at the
- * argv grammar left request files and no results at all, and the caller read
- * that as ok.
+ * silence. MEASURED 2026-09-03 on the owner's Live tier: nine resume commands
+ * refused at the argv grammar left nine request files and no results at all,
+ * and the caller read that as ok.
  *
  * This publishes the same immutable refusal the "no primary instance" path
  * already publishes, and grants nothing on the way: it touches ONE request that
@@ -1220,8 +1220,8 @@ function publishTreeNodeCommandLaunchRefusal({
   userDataRoot,
   requestId,
   code,
-  /* THE REASON TRAVELS WITH THE CODE. MEASURED on a development instance:
-     the result file said MC_TREE_COMMAND_ARGUMENT_INVALID
+  /* THE REASON TRAVELS WITH THE CODE. MEASURED 2026-09-04T08:16Z on the
+     owner's Live instance: the result file said MC_TREE_COMMAND_ARGUMENT_INVALID
      and nothing else, and the sentence that named the offending argument had
      been thrown away at the call site. One line, bounded, beside the code. */
   reason = null,

@@ -3,7 +3,7 @@
 // validateExperimentTemplate in templates.mjs for a resource-template study. A field
 // added to one and not the other passes every generic test and then refuses at freeze
 // for template studies only, with the unknown-field sentence. It has happened three
-// times now: 'generator' (fixed in an earlier commit), 'pricing', and 'version' below.
+// times now: 'generator' (fixed in acd8aae4), 'pricing', and 'version' below.
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFile } from 'node:fs/promises'

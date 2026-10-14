@@ -6,7 +6,7 @@
  * when the installation's policy gates it the dispatch refuses with
  * APPROVAL_REQUIRED -- "requires a one-time approval token from system.ask".
  * The Settings vault page already raises a real confirmation on the owner's own
- * approvals surface and will not remove anything until they approve it there. So
+ * approvals surface and will not remove anything until he approves it there. So
  * before this file, a person who approved the deletion at #/approvals then met
  * a SECOND approval wall for the same act. Two prompts for one decision is not
  * safety; it is a control that does not work, and the owner's ruling is that
@@ -25,7 +25,7 @@
  *   APPROVAL_EXPIRED           the grant has a short life of its own
  *
  * Measured against both engine payloads on this machine: a grant minted for
- * `vaultKey: vqa_alpha` refused `vqa_beta` with APPROVAL_BINDING_MISMATCH,
+ * `vaultKey: w87_alpha` refused `w87_beta` with APPROVAL_BINDING_MISMATCH,
  * consumed once for its own key, and refused the replay with
  * APPROVAL_ALREADY_USED.
  *

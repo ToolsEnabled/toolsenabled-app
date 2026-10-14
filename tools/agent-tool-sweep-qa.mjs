@@ -2,8 +2,8 @@
 
 /* DRIVE EVERY TOOL IN THE CATALOG, ONE REAL CALL EACH, WITH A VERDICT.
  *
- * THE ESCALATION: drive every tool and verify everything works across
- * machines. This driver is the local half: every
+ * THE OWNER'S ESCALATION, verbatim: "you should drive every tool and verify
+ * everything will work cross machine." This driver is the local half: every
  * tool the generated configuration advertises is CALLED, over real stdio
  * JSON-RPC against the staged payload, and answers one of six verdicts:
  *
@@ -100,6 +100,7 @@ const NOT_DRIVEN = new Map([
   ['clipboard.read', 'the owner\'s live clipboard may hold a secret'],
   ['clipboard.write', 'clobbers the owner\'s live clipboard'],
   ['browser.start', 'opens a visible browser on the desk'],
+  ['duo.institution_login', 'drives a real Duo login surface'],
   ['gcloud.account_login', 'starts a visible browser sign-in'],
   ['firebase.account_login', 'starts a visible browser sign-in'],
   ['system.kill_switch_activate', 'halts agent tooling if any reader resolves outside the scratch root'],
@@ -581,19 +582,11 @@ async function main() {
   const confinement = require_(path.join(PAYLOAD, 'src/lib/agent-session-confinement.js'))
   const fakeCodexHome = path.join(SCRATCH, 'codex-user-home')
   mkdirSync(fakeCodexHome, { recursive: true })
-  writeFileSync(path.join(fakeCodexHome, 'auth.json'), '{}\n')
   const plan = confinement.confinedSessionPlan({ userCodexHome: fakeCodexHome })
   if (plan.ok !== true) throw new Error(`confinement plan refused: ${plan.code}`)
-  const toml = readFileSync(path.join(plan.codexHome, 'config.toml'), 'utf8')
   const serverName = TIER === 'guided' ? 'toolsenabled-readonly' : 'toolsenabled'
-  const block = toml.split(`[mcp_servers.${serverName}]`)[1]
-  if (!block) throw new Error(`no ${serverName} server in the generated configuration`)
-  const entry = {
-    command: /command = '([^']*)'/.exec(block)[1],
-    args: [...( /args = \[(.*)\]/.exec(block)[1].matchAll(/'([^']*)'/g) )].map(m => m[1]),
-    cwd: /cwd = '([^']*)'/.exec(block)[1],
-    env: Object.fromEntries([...block.matchAll(/^([A-Z_]+) = '([^']*)'$/gm)].map(m => [m[1], m[2]])),
-  }
+  const entry = plan.codexConfig.mcp_servers[serverName]
+  if (!entry) throw new Error(`no ${serverName} server in the generated launch configuration`)
 
   /* The two tree circles the local messenger needs, registered through the
      payload's own directory module. */

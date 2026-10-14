@@ -22,7 +22,7 @@ foreach ($component in $request.paths) {
  if (($attributes -band [IO.FileAttributes]::ReparsePoint) -or ($request.requireDirectory -and -not ($attributes -band [IO.FileAttributes]::Directory))) { throw 'Browser storage path is linked or invalid' }
 }
 'reset-browser-storage-path-ok'`
-  const executable = pathDefault.win32.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+  const executable = pathDefault.win32.join(process.env.SystemRoot || '\x43:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
   const result = execFileSync(executable, ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], {
     input: JSON.stringify({ paths: chain, requireDirectory }),
     encoding: 'utf8', windowsHide: true, timeout: Math.min(5000, timeoutMs), maxBuffer: 4096, stdio: ['pipe', 'pipe', 'pipe'],

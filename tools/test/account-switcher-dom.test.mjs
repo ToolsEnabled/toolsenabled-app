@@ -92,7 +92,7 @@ test('an empty profile offers account setup and keeps unavailable policy and all
   const menu = await mount(fakeBridge(state))
   try {
     await menu.open()
-    assert.equal(menu.mode.disabled, true)
+
     assert.equal(menu.refresh.disabled, true)
     assert.equal(menu.addButton('codex').disabled, false)
     assert.equal(document.activeElement, menu.name)
@@ -100,7 +100,7 @@ test('an empty profile offers account setup and keeps unavailable policy and all
     assert.equal(menu.root.querySelector('[data-acct="setup"]').getAttribute('href'), GUIDE_HREF)
     menu.addButton('codex').click()
     await settle()
-    assert.equal(menu.mode.disabled, false)
+
     assert.equal(menu.refresh.disabled, false)
   } finally { menu.destroy() }
 })
@@ -125,7 +125,7 @@ test('an incompatible registry names the unusable account and disables edits in 
     await menu.open()
     assert.match(menu.list.textContent, /beta/)
     assert.match(menu.list.textContent, /cannot|could not/)
-    assert.equal(menu.mode.disabled, true)
+
     assert.equal(menu.addButton('codex').disabled, true)
     assert.equal(menu.row('codex', 'alpha'), null)
     assert.equal(readFileSync(file, 'utf8'), bytes)
@@ -158,7 +158,7 @@ test('missing provider programs offer setup and a later refresh enables adding t
   } finally { menu.destroy() }
 })
 
-test('an allowance check visibly disables account actions, including rows redrawn by a policy save', async () => {
+test('an allowance check visibly disables account actions, while checking usage', async () => {
   const held = deferred()
   const fixture = fakeBridge()
   fixture.bridge.accountUsage = async () => { await held.promise; return fixture.state.usage }
@@ -169,9 +169,9 @@ test('an allowance check visibly disables account actions, including rows redraw
     assert.equal(menu.addButton('codex').disabled, true)
     assert.equal(rowButton(menu.row('codex', 'work'), COPY.switchTo).disabled, true)
     assert.equal(rowButton(menu.row('codex', 'work'), COPY.rename).disabled, true)
-    assert.equal(menu.mode.disabled, false)
-    menu.mode.value = 'even'
-    menu.mode.dispatchEvent({ type: 'change' })
+
+
+
     await settle()
     assert.equal(rowButton(menu.row('codex', 'work'), COPY.switchTo).disabled, true)
     held.resolve()
@@ -192,11 +192,11 @@ test('a direct-only allowance survives its explicit check but not closing, reope
       await menu.open()
       menu.refresh.click()
       await settle()
-      assert.match(menu.row('codex', 'team').textContent, /direct-only@example\.test/, kind)
+      assert.match(menu.row('codex', 'school').textContent, /direct-only@example\.test/, kind)
       fixture.state.usageCache = fixture.state.usage // Even a forged disk carrier must not grant this context.
       menu.root.querySelector('[data-acct="close"]').click()
       await menu.open()
-      assert.doesNotMatch(menu.row('codex', 'team').textContent, /direct-only@example\.test/, 'the closed direct result returned from memory or disk')
+      assert.doesNotMatch(menu.row('codex', 'school').textContent, /direct-only@example\.test/, 'the closed direct result returned from memory or disk')
       const held = deferred(), directRead = fixture.bridge.accountUsage
       fixture.bridge.accountUsage = async () => { await held.promise; return directRead() }
       menu.refresh.click()
@@ -204,7 +204,7 @@ test('a direct-only allowance survives its explicit check but not closing, reope
       await menu.open()
       held.resolve()
       await settle()
-      assert.doesNotMatch(menu.row('codex', 'team').textContent, /direct-only@example\.test/, 'a late result gained authority in a different open lifecycle')
+      assert.doesNotMatch(menu.row('codex', 'school').textContent, /direct-only@example\.test/, 'a late result gained authority in a different open lifecycle')
       assert.equal(menu.refresh.disabled, false)
       assert.equal(callsNamed(fixture.calls, 'accountUsage').length, 2, 'closing or opening triggered a provider retry')
     } finally { menu.destroy() }
@@ -227,13 +227,13 @@ test('a direct-only allowance is withdrawn when its post-check account list cann
     }
     menu.refresh.click()
     await settle()
-    assert.doesNotMatch(menu.row('codex', 'team').textContent, /unvalidated@example\.test/)
+    assert.doesNotMatch(menu.row('codex', 'school').textContent, /unvalidated@example\.test/)
     assert.match(menu.root.querySelector('[data-acct="out"]').textContent, /could not|not.*read|try/i)
     assert.equal(callsNamed(fixture.calls, 'accountUsage').length, 1)
   } finally { menu.destroy() }
 })
 
-test('refresh and policy saves preserve an inline rename and Escape cancels just that edit', async () => {
+test('refreshes preserve an inline rename and Escape cancels just that edit', async () => {
   const menu = await mount()
   try {
     await menu.open()
@@ -244,8 +244,8 @@ test('refresh and policy saves preserve an inline rename and Escape cancels just
     await settle()
     assert.ok(menu.row('codex', 'work').querySelector('.acct-rename-input') === input)
     assert.equal(input.value, 'office draft')
-    menu.mode.value = 'even'
-    menu.mode.dispatchEvent({ type: 'change' })
+
+
     await settle()
     assert.ok(menu.row('codex', 'work').querySelector('.acct-rename-input') === input)
     input.focus()
@@ -276,74 +276,11 @@ test('rename and removal put keyboard focus on their result after replacing the 
   } finally { menu.destroy() }
 })
 
-test('edits made during another policy save are all persisted, including the latest value', async () => {
-  const fixture = fakeBridge(), held = deferred()
-  const write = fixture.bridge.accountPolicy
-  let first = true
-  fixture.bridge.accountPolicy = async request => {
-    if (first) { first = false; await held.promise }
-    return write(request)
-  }
-  const menu = await mount(fixture)
-  try {
-    await menu.open()
-    menu.mode.value = 'even'
-    menu.mode.dispatchEvent({ type: 'change' })
-    menu.limitWeekly.value = '80'
-    menu.limitWeekly.dispatchEvent({ type: 'change' })
-    menu.limitHourly.value = '70'
-    menu.limitHourly.dispatchEvent({ type: 'change' })
-    menu.limitWeekly.value = '85'
-    menu.limitWeekly.dispatchEvent({ type: 'change' })
-    held.resolve()
-    await settle()
-    assert.equal(fixture.state.mode, 'even')
-    assert.equal(fixture.state.exhaustedAtPercentWeekly, 85)
-    assert.equal(fixture.state.exhaustedAtPercentHourly, 70)
-    assert.equal(menu.limitWeekly.value, '85')
-    assert.equal(menu.limitHourly.value, '70')
-    assert.equal(menu.root.querySelector('[data-acct="save-status"]').dataset.state, 'saved')
-  } finally { held.resolve(); menu.destroy() }
-})
 
-test('a slow allowance check does not drop edits or restore its earlier policy snapshot', async () => {
-  const fixture = fakeBridge(), held = deferred()
-  fixture.bridge.accountUsage = async () => { await held.promise; return fixture.state.usage }
-  const menu = await mount(fixture)
-  try {
-    await menu.open()
-    menu.refresh.click()
-    await settle()
-    menu.mode.value = 'even'
-    menu.mode.dispatchEvent({ type: 'change' })
-    const recovery = menu.root.querySelector('[data-acct="auto-recover"]')
-    recovery.checked = true
-    recovery.dispatchEvent({ type: 'change' })
-    await settle()
-    assert.equal(fixture.state.mode, 'even')
-    assert.equal(fixture.state.autoRecoverOnLimit, true)
-    held.resolve()
-    await settle()
-    assert.equal(menu.mode.value, 'even')
-    assert.equal(recovery.checked, true)
-  } finally { held.resolve(); menu.destroy() }
-})
 
-test('accepted policy edits finish saving when navigation destroys the panel', async () => {
-  const fixture = fakeBridge(), held = deferred()
-  const write = fixture.bridge.accountPolicy
-  fixture.bridge.accountPolicy = async request => { await held.promise; return write(request) }
-  const menu = await mount(fixture)
-  menu.mode.value = 'even'
-  menu.mode.dispatchEvent({ type: 'change' })
-  menu.rank.value = 'weekly'
-  menu.rank.dispatchEvent({ type: 'change' })
-  menu.destroy()
-  held.resolve()
-  await settle()
-  assert.equal(fixture.state.mode, 'even')
-  assert.equal(fixture.state.rankWindow, 'weekly')
-})
+
+
+
 
 test('reopening adopts a newer cached allowance without starting a provider probe', async () => {
   const fixture = fakeBridge()
@@ -354,54 +291,19 @@ test('reopening adopts a newer cached allowance without starting a provider prob
     menu.close()
     fixture.state.usageCache = {
       ...fixture.state.usage, readAt: '2026-09-08T01:05:00Z',
-      accounts: [{ name: 'team', provider: 'codex', canServe: true, windows: { weekly: { usedPercent: 77 } } }],
+      accounts: [{ name: 'school', provider: 'codex', canServe: true, windows: { weekly: { usedPercent: 77 } } }],
     }
     await menu.open()
-    assert.ok(menu.row('codex', 'team').textContent.includes('23%'))
+    assert.ok(menu.row('codex', 'school').textContent.includes('23%'))
     assert.equal(callsNamed(menu.calls, 'accountUsage').length, 0)
   } finally { menu.destroy() }
 })
 
-test('a failed read after saving keeps the last shown policy and reports that refresh failed', async () => {
-  const fixture = fakeBridge(), read = fixture.bridge.accounts
-  let broken = false
-  fixture.bridge.accounts = async () => broken ? { ok: false } : read()
-  const menu = await mount(fixture)
-  try {
-    await menu.open()
-    broken = true
-    menu.mode.value = 'even'
-    menu.mode.dispatchEvent({ type: 'change' })
-    await settle()
-    assert.equal(fixture.state.mode, 'even')
-    assert.equal(menu.mode.value, 'even', 'unavailable must not paint default policy values')
-    assert.equal(menu.root.querySelector('[data-acct="save-status"]').dataset.state, 'refresh-failed')
-    assert.match(menu.out.textContent, /saved.*refresh/i)
-  } finally { menu.destroy() }
-})
 
-test('finishing a save does not reset another slider that is still being dragged', async () => {
-  const fixture = fakeBridge(), held = deferred(), write = fixture.bridge.accountPolicy
-  fixture.bridge.accountPolicy = async request => { await held.promise; return write(request) }
-  const menu = await mount(fixture)
-  try {
-    menu.mode.value = 'even'
-    menu.mode.dispatchEvent({ type: 'change' })
-    menu.limitWeekly.value = '83'
-    menu.limitWeekly.dispatchEvent({ type: 'input' })
-    held.resolve()
-    await settle()
-    assert.equal(menu.limitWeekly.value, '83')
-    assert.equal(menu.limitWeeklyFigure.textContent, '83%')
-    assert.equal(fixture.state.exhaustedAtPercentWeekly, null)
-    assert.equal(menu.root.querySelector('[data-acct="save-status"]').dataset.state, 'editing')
-    menu.limitWeekly.dispatchEvent({ type: 'change' })
-    await settle()
-    assert.equal(fixture.state.exhaustedAtPercentWeekly, 83)
-  } finally { held.resolve(); menu.destroy() }
-})
 
-test('Refresh accounts reloads saved policy and account changes without checking allowances', async () => {
+
+
+test('Refresh accounts reloads account changes without checking allowances', async () => {
   const menu = await mount()
   try {
     await menu.open()
@@ -410,8 +312,8 @@ test('Refresh accounts reloads saved policy and account changes without checking
     menu.state.accounts.push({ provider: 'codex', name: 'new account', signedIn: 'yes' })
     menu.root.querySelector('[data-acct="refresh-list"]').click()
     await settle()
-    assert.equal(menu.mode.value, 'dynamic')
-    assert.equal(menu.reserve.value, '35')
+
+
     assert.ok(menu.row('codex', 'new account'))
     assert.equal(callsNamed(menu.calls, 'accountUsage').length, 0)
     assert.equal(menu.out.textContent, COPY.accountsRefreshed)
@@ -466,71 +368,11 @@ test('a late account refresh does not take focus after closing, reopening or des
   }
 })
 
-test('a replacement panel follows pending saves and shares write order with the old panel', async () => {
-  const fixture = fakeBridge(), held = deferred(), write = fixture.bridge.accountPolicy
-  let first = true
-  fixture.bridge.accountPolicy = async request => {
-    if (first) { first = false; await held.promise }
-    return write(request)
-  }
-  const old = await mount(fixture)
-  old.mode.value = 'even'
-  old.mode.dispatchEvent({ type: 'change' })
-  old.rank.value = 'weekly'
-  old.rank.dispatchEvent({ type: 'change' })
-  old.destroy()
-  const current = await mount(fixture)
-  try {
-    assert.equal(current.root.querySelector('[data-acct="save-status"]').dataset.state, 'saving')
-    held.resolve()
-    await settle()
-    assert.equal(current.mode.value, 'even')
-    assert.equal(current.rank.value, 'weekly')
-    assert.equal(current.root.querySelector('[data-acct="save-status"]').dataset.state, 'saved')
-    current.mode.value = 'priority'
-    current.mode.dispatchEvent({ type: 'change' })
-    await settle()
-    assert.equal(fixture.state.mode, 'priority')
-  } finally { held.resolve(); current.destroy() }
-})
 
-test('two open panels serialize edits to the same computer and both refresh after saving', async () => {
-  const fixture = fakeBridge(), held = deferred(), write = fixture.bridge.accountPolicy
-  let first = true
-  fixture.bridge.accountPolicy = async request => {
-    if (first) { first = false; await held.promise }
-    return write(request)
-  }
-  const one = await mount(fixture), two = await mount(fixture)
-  try {
-    one.mode.value = 'even'
-    one.mode.dispatchEvent({ type: 'change' })
-    one.rank.value = 'weekly'
-    one.rank.dispatchEvent({ type: 'change' })
-    two.mode.value = 'priority'
-    two.mode.dispatchEvent({ type: 'change' })
-    held.resolve()
-    await settle()
-    assert.equal(fixture.state.mode, 'priority')
-    assert.equal(fixture.state.rankWindow, 'weekly')
-    for (const menu of [one, two]) {
-      assert.equal(menu.mode.value, 'priority')
-      assert.equal(menu.rank.value, 'weekly')
-    }
-  } finally { held.resolve(); one.destroy(); two.destroy() }
-})
 
-test('typing the existing reserve value does not leave a false unsaved indicator', async () => {
-  const menu = await mount()
-  try {
-    menu.reserve.value = '35'
-    menu.reserve.dispatchEvent({ type: 'input' })
-    menu.reserve.value = '25'
-    menu.reserve.dispatchEvent({ type: 'input' })
-    assert.equal(menu.root.querySelector('[data-acct="save-status"]').dataset.state, 'idle')
-    assert.equal(callsNamed(menu.calls, 'accountPolicy').length, 0)
-  } finally { menu.destroy() }
-})
+
+
+
 
 /* Every press on the menu is a chain of awaited bridge calls, all of them
    microtasks; a macrotask turn or three drains them. */
@@ -560,22 +402,22 @@ function freshState() {
     /* A program's own rule, when the fixture holds one: { selectionMode?, reservePercent?, rankWindow? }. */
     byProvider: {},
     accounts: [
-      { name: 'team', provider: 'codex', signedIn: 'yes' },
+      { name: 'school', provider: 'codex', signedIn: 'yes' },
       { name: 'work', provider: 'codex', signedIn: 'yes' },
       { name: 'home', provider: 'claude', signedIn: 'no' },
       { name: 'lab', provider: 'claude', signedIn: 'yes' },
       { name: 'spare', provider: 'gemini', signedIn: 'yes' },
     ],
-    activeByProvider: { codex: 'team', claude: 'lab', gemini: 'spare' },
+    activeByProvider: { codex: 'school', claude: 'lab', gemini: 'spare' },
     usage: {
       ok: true,
       accounts: [
-        { name: 'team', provider: 'codex', status: 'HEALTHY', canServe: true, windows: { hourly: { usedPercent: 18 }, weekly: { usedPercent: 40 } } },
+        { name: 'school', provider: 'codex', status: 'HEALTHY', canServe: true, windows: { hourly: { usedPercent: 18 }, weekly: { usedPercent: 40 } } },
         { name: 'home', provider: 'claude', status: 'signed_out', canServe: false, reason: SIGNED_OUT_REASON },
         { name: 'lab', provider: 'claude', status: 'EXHAUSTED', canServe: false, reason: EXHAUSTED_REASON },
       ],
       orders: [
-        { provider: 'codex', names: ['team', 'work'], why: '“team” has the most left.' },
+        { provider: 'codex', names: ['school', 'work'], why: '“school” has the most left.' },
         { provider: 'claude', names: ['lab', 'home'], why: UNREAD },
         { provider: 'gemini', names: ['spare'], why: UNREAD },
       ],
@@ -805,26 +647,16 @@ async function mount(fixture = fakeBridge()) {
 
 /* ------------------------------ mounting and opening ------------------------------ */
 
-test('automatic limit recovery is opt-in, persists both choices, and restores refused changes', async () => {
+test('Accounts offers only explicit selection and does not expose automatic limit recovery', async () => {
   const menu = await mount()
-  await menu.open()
-  const input = menu.root.querySelector('[data-acct="auto-recover"]')
-  assert.equal(input.checked, false)
-  input.checked = true
-  input.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy').at(-1)[1], { autoRecoverOnLimit: true })
-  assert.equal(input.checked, true)
-  input.checked = false
-  input.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.equal(menu.state.autoRecoverOnLimit, false)
-  menu.fixture.bridge.accountPolicy = async () => ({ ok: false, reason: 'Write refused.' })
-  input.checked = true
-  input.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.equal(input.checked, false)
-  menu.destroy()
+  try {
+    await menu.open()
+    assert.equal(menu.root.querySelector('[data-acct="auto-recover"]'), null)
+
+
+
+    assert.deepEqual(callsNamed(menu.calls, 'accountPolicy'), [], 'reading the menu must not rewrite saved choices')
+  } finally { menu.destroy() }
 })
 
 test('mounts closed, reads the list once and nothing else, and ships the status line hidden and script-focusable', async () => {
@@ -897,7 +729,7 @@ test('a press outside closes the menu; a press inside does not', async () => {
   documentEvent('pointerdown', { target: document.body })
   assert.equal(menu.panel.hidden, true)
   await menu.open()
-  documentEvent('pointerdown', { target: menu.mode })
+  documentEvent('pointerdown', { target: menu.name })
   assert.equal(menu.panel.hidden, false)
   documentEvent('pointerdown', { target: menu.trigger })
   assert.equal(menu.panel.hidden, false, 'the button is inside the control; its own click handler decides')
@@ -906,88 +738,11 @@ test('a press outside closes the menu; a press inside does not', async () => {
 
 /* ------------------------------ the status line ------------------------------ */
 
-test('the status line shows on the first say(), keeps the keyboard on the changed select, and empties when the menu closes', async () => {
-  const menu = await mount()
-  await menu.open()
-  assert.equal(menu.out.hidden, true, 'opening says nothing')
 
-  menu.mode.focus()
-  menu.mode.value = 'even'
-  menu.mode.dispatchEvent({ type: 'change' })
-  assert.equal(menu.out.hidden, false, 'the first say() has to show the line')
-  assert.equal(menu.out.textContent, COPY.saving)
-  assert.equal(menu.out.dataset.tone, 'note')
-  assert.equal(menu.mode.disabled, false, 'controls remain editable while saves are queued')
-  await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy'), [['accountPolicy', { selectionMode: 'even' }]])
-  assert.equal(menu.out.textContent, COPY.modeSaved('Keep them even'))
-  assert.equal(menu.out.dataset.tone, 'confirmed')
-  assert.equal(menu.mode.disabled, false)
-  assert.equal(menu.mode.value, 'even', 'the re-read list agrees with the saved mode')
-  assert.equal(document.activeElement, menu.mode, 'the select keeps the keyboard after its own change')
 
-  menu.close()
-  assert.equal(menu.out.hidden, true, 'a closed menu carries no stale answer into its next open')
-  assert.equal(menu.out.textContent, '')
-  menu.destroy()
-})
 
-test('a refused mode puts the select back to what the file says and keeps the shell\'s sentence', async () => {
-  const reason = 'That mode is not one this copy has.'
-  const fixture = fakeBridge(freshState(), { accountPolicy: async () => ({ ok: false, code: 'ACCOUNT_MODE_UNSUPPORTED', reason }) })
-  const menu = await mount(fixture)
-  await menu.open()
-  menu.mode.focus()
-  menu.mode.value = 'even'
-  menu.mode.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.equal(menu.out.textContent, reason)
-  assert.equal(menu.out.dataset.tone, 'refused')
-  assert.equal(menu.mode.value, 'manual', 'a select left showing a refused mode tells a person their computer does something it does not')
-  assert.equal(document.activeElement, menu.mode)
-  menu.destroy()
-})
 
-test('a dynamic mode with an empty reserve box sends no reservePercent and says the reserve sentence', async () => {
-  const menu = await mount()
-  await menu.open()
-  assert.equal(menu.reserveField.hidden, true, 'the reserve is offered by dynamic alone')
 
-  menu.mode.value = 'dynamic'
-  menu.reserve.value = ''
-  menu.mode.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.equal(callsNamed(menu.calls, 'accountPolicy').length, 0, 'an empty box used to be sent as 0 under a "Saved" confirmation')
-  assert.equal(menu.out.textContent, COPY.reserveInvalid)
-  assert.equal(menu.out.dataset.tone, 'note')
-  assert.equal(menu.reserveField.hidden, false, 'choosing dynamic offers the box even while the box is empty')
-
-  for (const bad of ['abc', '101', '-1', '  ']) {
-    menu.reserve.value = bad
-    menu.reserve.dispatchEvent({ type: 'change' })
-    await settle()
-    assert.equal(callsNamed(menu.calls, 'accountPolicy').length, 0, `${JSON.stringify(bad)} must not be sent`)
-    assert.equal(menu.out.textContent, COPY.reserveInvalid)
-  }
-
-  menu.reserve.value = '30'
-  menu.reserve.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy'), [['accountPolicy', { selectionMode: 'dynamic', reservePercent: 30 }]])
-  assert.equal(menu.out.textContent, COPY.modeSaved('Dynamic'))
-  assert.equal(menu.reserve.value, '30', 'the re-read list agrees with the saved reserve')
-
-  /* Any other mode never carries the reserve, whatever the box says. */
-  menu.mode.value = 'even'
-  menu.reserve.value = ''
-  menu.mode.dispatchEvent({ type: 'change' })
-  await settle()
-  const last = callsNamed(menu.calls, 'accountPolicy').at(-1)
-  assert.deepEqual(last, ['accountPolicy', { selectionMode: 'even' }])
-  assert.equal('reservePercent' in last[1], false, 'a request without a reserve must not grow one')
-  assert.equal(menu.reserveField.hidden, true)
-  menu.destroy()
-})
 
 /* ------------------------------ Check allowances ------------------------------ */
 
@@ -1007,17 +762,17 @@ test('Check allowances says it started, says it finished, and draws only the bar
   assert.equal(menu.out.hidden, false)
   assert.equal(menu.refresh.disabled, false)
 
-  const team = menu.row('codex', 'team')
-  assert.deepEqual(team.querySelectorAll('.acct-bar-figure').map(textOf), [COPY.percentRemaining(82), COPY.percentRemaining(60)],
+  const school = menu.row('codex', 'school')
+  assert.deepEqual(school.querySelectorAll('.acct-bar-figure').map(textOf), [COPY.percentRemaining(82), COPY.percentRemaining(60)],
     'the figure beside a bar is the share free, the same quantity the sentence speaks')
-  assert.equal(team.querySelectorAll('.acct-bar-unread').length, 0)
-  assert.deepEqual(team.querySelectorAll('.acct-bar-detail').map(textOf), ['18% used', '40% used'])
-  assert.deepEqual(linesOf(team), [], 'visible meter labels and details already carry the readings')
+  assert.equal(school.querySelectorAll('.acct-bar-unread').length, 0)
+  assert.deepEqual(school.querySelectorAll('.acct-bar-detail').map(textOf), ['18% used', '40% used'])
+  assert.deepEqual(linesOf(school), [], 'visible meter labels and details already carry the readings')
   const work = menu.row('codex', 'work')
   assert.equal(work.querySelectorAll('.acct-bar-unread').length, 2, 'an unread window draws no bar')
   assert.equal(work.querySelectorAll('.acct-bar-fill').length, 0)
   assert.equal(menu.label.textContent, COPY.buttonMultiple(3), 'a global header must not claim the first provider is the selected agent')
-  assert.ok(menu.trigger.title.includes('Codex · team'))
+  assert.ok(menu.trigger.title.includes('Codex · school'))
   assert.ok(menu.trigger.title.includes('Claude · lab'))
   menu.destroy()
 })
@@ -1029,7 +784,7 @@ test('a check the shell refused, or that threw, keeps the status line honest', a
   await refused.check()
   assert.equal(refused.out.textContent, reason)
   assert.equal(refused.out.dataset.tone, 'refused')
-  assert.equal(refused.row('codex', 'team').querySelectorAll('.acct-bar-unread').length, 2, 'a refused read draws no bar')
+  assert.equal(refused.row('codex', 'school').querySelectorAll('.acct-bar-unread').length, 2, 'a refused read draws no bar')
   refused.destroy()
 
   const threw = await mount(fakeBridge(freshState(), { accountUsage: async () => { throw new Error('ACCOUNT_STATE_UNAVAILABLE') } }))
@@ -1042,55 +797,7 @@ test('a check the shell refused, or that threw, keeps the status line honest', a
 
 /* ------------------------------ why this order ------------------------------ */
 
-test('the why paragraph is absent under manual and priority, present under a ranked mode, and never about Gemini', async () => {
-  const fixture = fakeBridge()
-  const menu = await mount(fixture)
-  await menu.open()
-  assert.equal(menu.order.hidden, true, 'nothing has been read')
 
-  await menu.check()
-  assert.equal(menu.order.hidden, true, 'under "stop and let me switch" the order is the list; a sentence there is filler')
-  assert.equal(menu.order.textContent, '')
-
-  fixture.state.mode = 'priority'
-  await menu.check()
-  assert.equal(menu.order.hidden, true, 'under "in the order listed" the order is the list too')
-
-  fixture.state.mode = 'most-available'
-  await menu.check()
-  assert.equal(menu.order.hidden, false)
-  assert.equal(menu.order.textContent, `Codex: “team” has the most left. Claude: ${UNREAD}`)
-  assert.ok(!menu.order.textContent.includes('Gemini'), 'a Gemini order sentence read as a fault beside a row that says Gemini is never measured')
-
-  /* Changing the mode on the select repaints the paragraph from the same rule. */
-  menu.mode.value = 'manual'
-  menu.mode.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.equal(menu.order.hidden, true)
-  assert.equal(menu.order.textContent, '')
-
-  /* A ranked mode chosen after a read under ANOTHER mode does not inherit that
-     read's sentence: the order paragraph waits for the next check, while the
-     bars (readings, not an order) stay on the rows. Seen on the live drive,
-     where "in the order listed" stood beneath "Expiring soonest first". */
-  fixture.state.mode = 'most-available'
-  await menu.check()
-  assert.equal(menu.order.hidden, false)
-  const rowsBefore = menu.rows().length
-  menu.mode.value = 'resets-soonest'
-  fixture.state.mode = 'resets-soonest'
-  menu.mode.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.equal(menu.order.hidden, true, 'the sentence of the previous mode must not stand under the new one')
-  assert.equal(menu.order.textContent, '')
-  assert.equal(menu.rows().length, rowsBefore, 'the rows and their readings stay')
-  /* Plain class queries: the stand-in document does not know :not(). */
-  assert.equal(menu.row('codex', 'team').querySelectorAll('.acct-bar-unread').length, 0, 'the bars of the last read stay on the rows')
-  assert.ok(menu.row('codex', 'team').querySelector('.acct-bar-figure'), 'a measured bar carries its figure')
-  await menu.check()
-  assert.equal(menu.order.hidden, false, 'the next check brings the sentence for the mode chosen now')
-  menu.destroy()
-})
 
 test('an empty list clears the order paragraph and the closed button', async () => {
   const fixture = fakeBridge()
@@ -1098,14 +805,14 @@ test('an empty list clears the order paragraph and the closed button', async () 
   const menu = await mount(fixture)
   await menu.open()
   await menu.check()
-  assert.equal(menu.order.hidden, false)
+
 
   fixture.state.accounts = []
   fixture.state.activeByProvider = { codex: null, claude: null, gemini: null }
   menu.close()
   await menu.open()
-  assert.equal(menu.order.textContent, '', 'an explanation of an order that no longer exists stood under an empty list')
-  assert.equal(menu.order.hidden, true)
+
+
   assert.equal(menu.rows().length, 0)
   assert.equal(menu.list.querySelector('.acct-empty').textContent, COPY.none)
   assert.equal(menu.label.textContent, COPY.buttonUnread)
@@ -1113,7 +820,7 @@ test('an empty list clears the order paragraph and the closed button', async () 
 })
 
 test('the menu says when the computer is not on the chosen account, marks the chosen row, and clears both when it goes back', async () => {
-  /* MEASURED 2026-09-03 on a real machine: the hand-chosen account was
+  /* MEASURED 2026-09-03 on the owner's machine: the hand-chosen account was
      92% through a week that had three hours left to run, the start used the
      other account, and this menu drew that other account "In use now" with
      nothing anywhere saying a choice had been made -- which reads as a pick
@@ -1131,11 +838,10 @@ test('the menu says when the computer is not on the chosen account, marks the ch
   const menu = await mount(fixture)
   await menu.open()
 
-  assert.equal(menu.moved.hidden, false, 'the menu said nothing about a choice it was not honouring')
-  assert.match(menu.moved.textContent, /“home” is the account you chose/)
-  assert.match(menu.moved.textContent, /on “lab” for now/)
-  assert.ok(menu.moved.textContent.includes(EXHAUSTED_REASON),
-    'the reason the chosen account could not serve was dropped')
+
+
+
+
 
   /* The row says which one is theirs; the paragraph alone cannot. */
   assert.equal(menu.row('claude', 'home').querySelector('.acct-chosen').textContent, COPY.chosenLabel)
@@ -1143,7 +849,7 @@ test('the menu says when the computer is not on the chosen account, marks the ch
   assert.equal(menu.row('claude', 'lab').querySelector('.acct-inuse').textContent, COPY.inUse)
   assert.equal(menu.row('claude', 'lab').querySelector('.acct-chosen'), null,
     'the row in use carried a second badge saying the same thing')
-  assert.equal(menu.row('codex', 'team').querySelector('.acct-chosen'), null,
+  assert.equal(menu.row('codex', 'school').querySelector('.acct-chosen'), null,
     'a Claude choice marked a Codex row')
 
   // Back on it: nothing to explain, and the badge is the "In use now" one.
@@ -1151,8 +857,8 @@ test('the menu says when the computer is not on the chosen account, marks the ch
   fixture.state.activeByProvider = { ...fixture.state.activeByProvider, claude: 'home' }
   menu.close()
   await menu.open()
-  assert.equal(menu.moved.textContent, '', 'a sentence about a move that is over stood under the list')
-  assert.equal(menu.moved.hidden, true)
+
+
   assert.equal(menu.row('claude', 'home').querySelector('.acct-inuse').textContent, COPY.inUse)
   assert.equal(menu.row('claude', 'home').querySelector('.acct-chosen'), null)
   menu.destroy()
@@ -1161,8 +867,8 @@ test('the menu says when the computer is not on the chosen account, marks the ch
 test('a shell that says nothing about a choice draws nothing, rather than "nothing happened"', async () => {
   const menu = await mount()
   await menu.open()
-  assert.equal(menu.moved.hidden, true)
-  assert.equal(menu.moved.textContent, '')
+
+
   assert.equal(menu.root.querySelector('.acct-chosen'), null)
   menu.destroy()
 })
@@ -1172,19 +878,19 @@ test('a shell that says nothing about a choice draws nothing, rather than "nothi
 test('search and program filters use friendly identities without changing the chosen account', async () => {
   const fixture = fakeBridge()
   fixture.state.accounts[0].directory = '.private-folder-marker'
-  fixture.state.usage.accounts[0].email = 'member@example.test'
+  fixture.state.usage.accounts[0].email = 'student@example.test'
   fixture.state.usage.accounts[0].planType = 'Study Plus'
   fixture.state.usageCache = fixture.state.usage
   const menu = await mount(fixture)
   try {
     await menu.open()
-    assert.equal(menu.row('codex', 'team').querySelector('.acct-signin-identity').textContent, COPY.signedInAs('member@example.test'))
+    assert.equal(menu.row('codex', 'school').querySelector('.acct-signin-identity').textContent, COPY.signedInAs('student@example.test'))
     assert.equal(menu.row('codex', 'work').querySelector('.acct-signin-identity').textContent, COPY.identityNotReported)
-    for (const query of ['team', 'MEMBER@', 'study plus']) {
+    for (const query of ['school', 'STUDENT@', 'study plus']) {
       menu.query.value = query
       menu.query.dispatchEvent({ type: 'input' })
       assert.equal(menu.rows().length, 1)
-      assert.ok(menu.row('codex', 'team'))
+      assert.ok(menu.row('codex', 'school'))
       assert.equal(menu.matches.textContent, COPY.matchingAccounts(1, 5))
     }
     menu.providerFilter.value = 'claude'
@@ -1204,7 +910,7 @@ test('search and program filters use friendly identities without changing the ch
     await settle()
     assert.equal(menu.query.value, 'claude')
     assert.equal(menu.rows().length, 2)
-    assert.deepEqual(fixture.state.activeByProvider, { codex: 'team', claude: 'lab', gemini: 'spare' })
+    assert.deepEqual(fixture.state.activeByProvider, { codex: 'school', claude: 'lab', gemini: 'spare' })
     assert.equal(callsNamed(menu.calls, 'accountSwitch').length, 0)
     assert.equal(callsNamed(menu.calls, 'accountUsage').length, 0)
     assert.doesNotMatch(menu.root.textContent, /private-folder-marker/)
@@ -1221,20 +927,20 @@ test('remaining meter fill, numeric value and reset details agree, while unread 
   const menu = await mount(fixture)
   try {
     await menu.open()
-    assert.equal(menu.row('codex', 'team').querySelector('.acct-reading-state').textContent, COPY.allowanceNotChecked)
+    assert.equal(menu.row('codex', 'school').querySelector('.acct-reading-state').textContent, COPY.allowanceNotChecked)
     await menu.check()
-    const team = menu.row('codex', 'team')
-    const allowance = team.querySelector('.acct-allowance')
+    const school = menu.row('codex', 'school')
+    const allowance = school.querySelector('.acct-allowance')
     assert.equal(allowance.getAttribute('aria-label'), COPY.allowanceHeading)
-    assert.ok(allowance.contains(team.querySelector('.acct-reading-state')), 'measurement age stays with its allowance windows')
-    const meters = team.querySelectorAll('.acct-bar-track')
+    assert.ok(allowance.contains(school.querySelector('.acct-reading-state')), 'measurement age stays with its allowance windows')
+    const meters = school.querySelectorAll('.acct-bar-track')
     assert.deepEqual(meters.map(node => node.getAttribute('role')), ['meter', 'meter'])
     assert.deepEqual(meters.map(node => node.getAttribute('aria-valuenow')), ['0', '60'])
-    assert.deepEqual(team.querySelectorAll('.acct-bar-fill').map(node => node.getAttribute('style')), ['width:0%', 'width:60%'])
-    assert.deepEqual(team.querySelectorAll('.acct-bar-figure').map(textOf), ['0% remaining', '60% remaining'])
-    assert.deepEqual(team.querySelectorAll('.acct-bar-reset').map(textOf), ['resets in 30 min'])
+    assert.deepEqual(school.querySelectorAll('.acct-bar-fill').map(node => node.getAttribute('style')), ['width:0%', 'width:60%'])
+    assert.deepEqual(school.querySelectorAll('.acct-bar-figure').map(textOf), ['0% remaining', '60% remaining'])
+    assert.deepEqual(school.querySelectorAll('.acct-bar-reset').map(textOf), ['resets in 30 min'])
     assert.match(meters[0].getAttribute('aria-valuetext'), /100% used/)
-    assert.match(team.querySelector('.acct-reading-state').textContent, /Last checked/)
+    assert.match(school.querySelector('.acct-reading-state').textContent, /Last checked/)
     assert.equal(menu.row('codex', 'work').querySelectorAll('[role="meter"]').length, 0)
     assert.equal(menu.row('codex', 'work').querySelector('.acct-reading-state').textContent, COPY.allowanceNoReading)
   } finally { menu.destroy() }
@@ -1246,14 +952,14 @@ test('older, undated and failed allowance checks have distinct visible text', as
     fixture.state.usageCache = { ...fixture.state.usage, readAt }
     const menu = await mount(fixture)
     try {
-      assert.match(menu.row('codex', 'team').querySelector('.acct-reading-state').textContent, expected)
+      assert.match(menu.row('codex', 'school').querySelector('.acct-reading-state').textContent, expected)
     } finally { menu.destroy() }
   }
   const failed = await mount(fakeBridge(freshState(), { accountUsage: async () => ({ ok: false, reason: 'The check could not finish.' }) }))
   try {
     await failed.open()
     await failed.check()
-    const row = failed.row('codex', 'team')
+    const row = failed.row('codex', 'school')
     assert.equal(row.dataset.allowanceState, 'failed')
     assert.equal(row.querySelector('.acct-reading-state').textContent, COPY.allowanceCheckFailed)
     assert.equal(row.querySelector('.acct-usage-error').textContent, 'The check could not finish.', 'the missing allowance has its own visible failure reason')
@@ -1269,7 +975,7 @@ test('an undated account reading never borrows a fresh allowance sweep time', as
   fixture.state.usageCache = fixture.state.usage
   const menu = await mount(fixture)
   try {
-    const row = menu.row('codex', 'team')
+    const row = menu.row('codex', 'school')
     assert.equal(row.querySelector('.acct-reading-state').textContent,
       `${COPY.allowanceCheckTimeUnknown} · ${COPY.allowanceOlderReading}`)
     assert.equal(row.dataset.allowanceState, 'stale')
@@ -1314,7 +1020,7 @@ test('a partial allowance failure names the failed check without claiming every 
     assert.equal(rowButton(failed, COPY.signIn), null)
     assert.equal(menu.out.dataset.tone, 'refused')
     assert.equal(menu.out.textContent, COPY.allowanceSomeFailed(1))
-    assert.equal(menu.row('codex', 'team').querySelectorAll('[role="meter"]').length, 2)
+    assert.equal(menu.row('codex', 'school').querySelectorAll('[role="meter"]').length, 2)
   } finally { menu.destroy() }
 })
 
@@ -1326,7 +1032,7 @@ test('a failed refresh retains the last real reading and its age, clearly marked
   try {
     await menu.open()
     await menu.check()
-    const row = menu.row('codex', 'team')
+    const row = menu.row('codex', 'school')
     assert.equal(row.dataset.allowanceState, 'failed')
     assert.match(row.querySelector('.acct-reading-state').textContent, /Couldn’t check allowances.*Last checked 10 min ago.*Older reading/)
     assert.deepEqual(row.querySelectorAll('.acct-bar-figure').map(textOf), ['82% remaining', '60% remaining'])
@@ -1342,14 +1048,14 @@ test('an account relink never displays the previous identity or allowance under 
   const menu = await mount(fixture)
   try {
     await menu.open()
-    assert.equal(menu.row('codex', 'team').querySelector('.acct-signin-identity').textContent, COPY.signedInAs('previous@example.test'))
+    assert.equal(menu.row('codex', 'school').querySelector('.acct-signin-identity').textContent, COPY.signedInAs('previous@example.test'))
     fixture.state.accounts[0].allowanceBinding = 'f'.repeat(64)
     menu.root.querySelector('[data-acct="refresh-list"]').click()
     await settle()
-    const row = menu.row('codex', 'team')
+    const row = menu.row('codex', 'school')
     assert.equal(row.querySelector('.acct-signin-identity').textContent, COPY.identityNotReported)
     assert.equal(row.querySelectorAll('[role="meter"]').length, 0)
-    assert.equal(fixture.state.activeByProvider.codex, 'team')
+    assert.equal(fixture.state.activeByProvider.codex, 'school')
     assert.equal(callsNamed(menu.calls, 'accountSwitch').length, 0)
     assert.doesNotMatch(menu.root.textContent, /previous@example.test|f{64}/)
   } finally { menu.destroy() }
@@ -1383,39 +1089,23 @@ test('a Gemini row says one sentence, an unread Codex row says two, and an engin
 
 /* ------------------------------ Use this one ------------------------------ */
 
-test('Rotate saves and reads back globally and per program, without asking for an allowance ranking', async () => {
+test('a legacy rotation policy does not restore automatic selection choices in a reopened menu', async () => {
   const fixture = fakeBridge()
-  let menu = await mount(fixture)
-  await menu.open()
-  assert.ok(menu.mode.querySelectorAll('option').some(option => option.value === 'rotate' && option.textContent === 'Rotate'))
-  menu.mode.value = 'rotate'
-  menu.mode.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy').at(-1), ['accountPolicy', { selectionMode: 'rotate' }])
-  assert.equal(menu.out.textContent, COPY.modeSaved('Rotate'))
-  assert.equal(menu.mode.value, 'rotate')
-  assert.equal(menu.rankField.hidden, true)
-  assert.equal(menu.providerRank('codex').hidden, true)
-  menu.destroy()
+  fixture.state.mode = 'rotate'
+  for (let opening = 0; opening < 2; opening++) {
+    const menu = await mount(fixture)
+    try {
+      await menu.open()
 
-  menu = await mount(fixture)
-  await menu.open()
-  assert.equal(menu.mode.value, 'rotate', 'a new view uses the rule read from the shell')
-  menu.mode.value = 'manual'
-  menu.mode.dispatchEvent({ type: 'change' })
-  await settle()
-  menu.providerMode('codex').value = 'rotate'
-  menu.providerMode('codex').dispatchEvent({ type: 'change' })
-  await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy').at(-1), ['accountPolicy', { provider: 'codex', selectionMode: 'rotate' }])
-  assert.equal(menu.providerMode('codex').value, 'rotate')
-  assert.equal(menu.providerMode('claude').value, 'inherit')
-  assert.equal(menu.mode.value, 'manual')
-  assert.equal(menu.providerRank('codex').hidden, true)
-  menu.destroy()
+
+
+      assert.equal(menu.providerMode('codex'), null)
+      assert.deepEqual(callsNamed(menu.calls, 'accountPolicy'), [])
+    } finally { menu.destroy() }
+  }
 })
 
-test('Use this one under Rotate shows the chosen account and says the next start will advance', async () => {
+test('Use this one under a legacy Rotate record shows the exact chosen account without promising rotation', async () => {
   const fixture = fakeBridge()
   fixture.state.mode = 'rotate'
   const menu = await mount(fixture)
@@ -1423,10 +1113,11 @@ test('Use this one under Rotate shows the chosen account and says the next start
   rowButton(menu.row('codex', 'work'), COPY.switchTo).click()
   await settle()
   assert.deepEqual(callsNamed(menu.calls, 'accountSwitch'), [['accountSwitch', { name: 'work', provider: 'codex' }]])
-  assert.equal(menu.out.textContent, COPY.switchedRotate('work'))
+  assert.equal(menu.out.textContent, COPY.switched('work'))
   assert.equal(menu.row('codex', 'work').getAttribute('data-active'), 'yes')
   assert.ok(menu.trigger.title.includes('Codex · work'))
-  assert.equal(menu.mode.value, 'rotate', 'an explicit switch leaves the rotation rule saved')
+
+  assert.equal(fixture.state.mode, 'rotate', 'choosing an account does not silently rewrite an unrelated legacy record')
   menu.destroy()
 })
 
@@ -1449,7 +1140,7 @@ test('Use this one asks the shell for that row, says which account, redraws the 
   assert.equal(document.activeElement, menu.out, 'the keyboard has to land on the answer, not on the page body')
   assert.equal(menu.row('codex', 'work').getAttribute('data-active'), 'yes')
   assert.equal(rowButton(menu.row('codex', 'work'), COPY.switchTo), null, 'the account in use offers no switch')
-  assert.ok(rowButton(menu.row('codex', 'team'), COPY.switchTo))
+  assert.ok(rowButton(menu.row('codex', 'school'), COPY.switchTo))
   assert.equal(menu.label.textContent, COPY.buttonMultiple(3))
   assert.ok(menu.trigger.title.includes('Codex · work'))
 
@@ -1457,13 +1148,17 @@ test('Use this one asks the shell for that row, says which account, redraws the 
   fixture.state.mode = 'dynamic'
   menu.close()
   await menu.open()
-  rowButton(menu.row('codex', 'team'), COPY.switchTo).click()
+  rowButton(menu.row('codex', 'school'), COPY.switchTo).click()
   await settle()
-  assert.equal(menu.out.textContent, COPY.switchedRanked('team', 'Dynamic'))
+  assert.equal(menu.out.textContent, COPY.switched('school'))
+  assert.doesNotMatch(menu.out.textContent, /automatically|picks|Rotate/)
   assert.equal(document.activeElement, menu.out)
   menu.destroy()
 })
 
+/* A Claude folder with no saved sign-in is not signed out (accounts C; REVIEW-1050 #12): for Claude only the
+   engine's signed_out verdict is a sign-out, so that is what the Claude case carries. The next test covers the
+   Claude row with no saved sign-in. */
 for (const provider of ['codex', 'claude', 'gemini', 'grok']) {
   test(`selecting a signed-out ${provider} account warns before a run and keeps sign-in reachable`, async () => {
     const state = freshState()
@@ -1473,7 +1168,10 @@ for (const provider of ['codex', 'claude', 'gemini', 'grok']) {
     ]
     state.activeByProvider = { [provider]: 'current' }
     state.mode = provider === 'claude' ? 'dynamic' : provider === 'gemini' ? 'rotate' : 'manual'
-    state.usage = { ok: true, accounts: [], orders: [] }
+    state.usage = { ok: true, accounts: provider === 'claude'
+      ? [{ name: 'selected', provider, status: 'signed_out', canServe: false, reason: 'no sign-in' }] : [], orders: [] }
+    // The Claude verdict is the shell's kept last check, read when the menu opens.
+    if (provider === 'claude') state.usageCache = { ...state.usage, readAt: new Date().toISOString() }
     const fixture = fakeBridge(state)
     let menu = await mount(fixture)
     try {
@@ -1505,6 +1203,31 @@ for (const provider of ['codex', 'claude', 'gemini', 'grok']) {
     } finally { menu.destroy() }
   })
 }
+
+/* 1.0.50 REVIEW-1050 #12: selecting a Claude account whose folder has no saved sign-in (it may run on an API key,
+   a key helper or a cloud provider) says it was selected, not "sign in before a run", and still offers Sign in. */
+test('selecting a Claude account with no saved sign-in says it is selected and keeps sign-in reachable', async () => {
+  const state = freshState()
+  state.accounts = [
+    { name: 'current', provider: 'claude', signedIn: 'yes' },
+    { name: 'selected', provider: 'claude', signedIn: 'no' },
+  ]
+  state.activeByProvider = { claude: 'current' }
+  state.usage = { ok: true, accounts: [], orders: [] }
+  const fixture = fakeBridge(state)
+  const menu = await mount(fixture)
+  try {
+    await menu.open()
+    rowButton(menu.row('claude', 'selected'), COPY.switchTo).click()
+    await settle()
+    assert.equal(state.activeByProvider.claude, 'selected')
+    assert.equal(menu.out.textContent, COPY.switched('selected'))
+    assert.doesNotMatch(menu.out.textContent, /sign in.*before.*run/i)
+    assert.doesNotMatch(menu.row('claude', 'selected').textContent, /sign in.*before.*run/i)
+    assert.match(menu.row('claude', 'selected').textContent, new RegExp(COPY.noSavedSignIn))
+    assert.ok(rowButton(menu.row('claude', 'selected'), COPY.signIn))
+  } finally { menu.destroy() }
+})
 
 test('a provider-reported sign-out warns even when the local sign-in file is unknown', async () => {
   const fixture = fakeBridge()
@@ -1547,7 +1270,7 @@ test('a refused switch redraws nothing and puts the keyboard back on the button'
   assert.equal(menu.root.contains(pressed), true, 'a refusal redraws nothing')
   assert.equal(pressed.disabled, false)
   assert.equal(document.activeElement, pressed, 'after a refusal, trying again has to be one press away')
-  assert.equal(menu.row('codex', 'team').getAttribute('data-active'), 'yes', 'the account in use did not change')
+  assert.equal(menu.row('codex', 'school').getAttribute('data-active'), 'yes', 'the account in use did not change')
   menu.destroy()
 })
 
@@ -1651,7 +1374,7 @@ test('after a Sign in press the row changes when that folder does, and nothing i
 function threeToSignIn() {
   const state = freshState()
   state.accounts = [
-    { name: 'team', provider: 'codex', signedIn: 'no' },
+    { name: 'school', provider: 'codex', signedIn: 'no' },
     { name: 'work', provider: 'codex', signedIn: 'yes' },
     { name: 'home', provider: 'claude', signedIn: 'no' },
     { name: 'spare', provider: 'gemini', signedIn: 'no' },
@@ -1681,9 +1404,9 @@ test('one control signs in every account that needs it, opening ONE window per p
 
   menu.signInEach.click()
   await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountSignIn'), [['accountSignIn', { name: 'team', provider: 'codex' }]],
+  assert.deepEqual(callsNamed(menu.calls, 'accountSignIn'), [['accountSignIn', { name: 'school', provider: 'codex' }]],
     'one press opened more than one window, or opened the wrong one')
-  assert.equal(menu.out.textContent, COPY.signInOpened('team', 'ToolsEnabled sign-in: team - codex'))
+  assert.equal(menu.out.textContent, COPY.signInOpened('school', 'ToolsEnabled sign-in: school - codex'))
   assert.equal(menu.signInEach.textContent, COPY.signInEach(2), 'the control does not say how many are left')
 
   /* The list still reports every one of them as not signed in -- the person is
@@ -1703,7 +1426,7 @@ test('one control signs in every account that needs it, opening ONE window per p
 
   /* Three presses, three windows, three different accounts and no repeats. */
   const names = callsNamed(menu.calls, 'accountSignIn').map(([, request]) => request.name)
-  assert.deepEqual(names, ['team', 'home', 'spare'])
+  assert.deepEqual(names, ['school', 'home', 'spare'])
   assert.equal(new Set(names).size, 3, 'the run opened the same account twice')
   menu.destroy()
 })
@@ -1753,19 +1476,19 @@ test('the run listens to the window it opened, and the listener follows the run 
     await menu.open()
     assert.equal(fixture.listening(), 0, 'the menu listened to a folder nobody pressed anything for')
 
-    /* First press of the run: 'team'. */
+    /* First press of the run: 'school'. */
     menu.signInEach.click()
     await settle()
-    assert.deepEqual(callsNamed(menu.calls, 'accountSignIn').at(-1), ['accountSignIn', { name: 'team', provider: 'codex' }])
+    assert.deepEqual(callsNamed(menu.calls, 'accountSignIn').at(-1), ['accountSignIn', { name: 'school', provider: 'codex' }])
     assert.equal(fixture.listening(), 1, 'the run opened a window and listened to nothing')
 
     /* The program writes its sign-in; the shell re-probes that one folder and
        pushes the same three words the list answers with. */
-    fixture.state.accounts.find(account => account.name === 'team').signedIn = 'yes'
-    fixture.pushSignIn({ name: 'team', provider: 'codex', signedIn: 'yes' })
+    fixture.state.accounts.find(account => account.name === 'school').signedIn = 'yes'
+    fixture.pushSignIn({ name: 'school', provider: 'codex', signedIn: 'yes' })
     await settle()
-    assert.equal(menu.out.textContent, COPY.signInSeen('team'), 'an account the run signed in reported nothing')
-    assert.equal(rowButton(menu.row('codex', 'team'), COPY.signIn), null, 'a signed-in row still offered Sign in')
+    assert.equal(menu.out.textContent, COPY.signInSeen('school'), 'an account the run signed in reported nothing')
+    assert.equal(rowButton(menu.row('codex', 'school'), COPY.signIn), null, 'a signed-in row still offered Sign in')
     assert.equal(menu.signInEach.textContent, COPY.signInEach(2), 'the count did not fall when an account actually signed in')
     assert.equal(callsNamed(menu.calls, 'accountUsage').length, 0, 'learning the outcome started a program per account')
 
@@ -1806,10 +1529,10 @@ test('a run press that opened nothing leaves the watch the last window armed', a
     await settle()
     assert.equal(menu.out.textContent, reason)
     assert.equal(fixture.listening(), 1, 'a refused press detached the watch on the window that did open')
-    fixture.state.accounts.find(account => account.name === 'team').signedIn = 'yes'
-    fixture.pushSignIn({ name: 'team', provider: 'codex', signedIn: 'yes' })
+    fixture.state.accounts.find(account => account.name === 'school').signedIn = 'yes'
+    fixture.pushSignIn({ name: 'school', provider: 'codex', signedIn: 'yes' })
     await settle()
-    assert.equal(menu.out.textContent, COPY.signInSeen('team'), 'the open window went unreported after a later press failed')
+    assert.equal(menu.out.textContent, COPY.signInSeen('school'), 'the open window went unreported after a later press failed')
   } finally {
     menu.destroy()
   }
@@ -1975,7 +1698,7 @@ test('the last read the shell kept paints at mount, dated, and the chip shows ro
   const checked = menu.root.querySelector('[data-acct="checked"]')
   assert.equal(checked.hidden, false)
   assert.equal(checked.textContent, COPY.checkedAgo('10 min ago'))
-  assert.ok(menu.row('codex', 'team').querySelector('.acct-bar-figure'), 'the kept bars are on the rows')
+  assert.ok(menu.row('codex', 'school').querySelector('.acct-bar-figure'), 'the kept bars are on the rows')
   /* A press replaces the kept read with a fresh one and re-dates the line. */
   fixture.state.usage = { ...fixture.state.usage, readAt: new Date().toISOString() }
   await menu.check()
@@ -2028,11 +1751,11 @@ test('an account header with only a model ceiling names that model instead of cl
 test('an account that answered one window says "none reported" for the other, not "not known"', async () => {
   const fixture = fakeBridge()
   /* Codex Pro: one window, the week, reported as primary with no length. */
-  fixture.state.usage.accounts[0] = { name: 'team', provider: 'codex', status: 'HEALTHY', canServe: true, windows: { hourly: null, weekly: { usedPercent: 87 } } }
+  fixture.state.usage.accounts[0] = { name: 'school', provider: 'codex', status: 'HEALTHY', canServe: true, windows: { hourly: null, weekly: { usedPercent: 87 } } }
   const menu = await mount(fixture)
   await menu.open()
   await menu.check()
-  const bars = menu.row('codex', 'team').querySelectorAll('.acct-bar')
+  const bars = menu.row('codex', 'school').querySelectorAll('.acct-bar')
   assert.equal(bars[0].querySelector('.acct-bar-none').textContent, COPY.noneReported, 'the missing 5-hour window of a plan without one')
   assert.ok(bars[1].querySelector('.acct-bar-figure'), 'the week is drawn')
   const unread = menu.row('codex', 'work').querySelectorAll('.acct-bar')
@@ -2041,11 +1764,12 @@ test('an account that answered one window says "none reported" for the other, no
 })
 
 test('a Claude row draws BOTH weeks, each named, and the accessible names are not two of the same sentence', async () => {
-  /* MEASURED on a real account: the `get_usage` reply carried a week across
-     all models AND a Fable-scoped week, each at a different share used,
-     active. The menu had one weekly slot, so it drew
-     the worse of the two under the word "this week" -- for Claude the
-     per-model weekly limit hid the all-models one, and both belong on screen. */
+  /* MEASURED 2026-09-02 (Claude Code 2.1.258, the owner's own account): the
+     `get_usage` reply carried a week across all models at 25% used AND a
+     Fable-scoped week at 46%, active. The menu had one weekly slot, so it drew
+     the worse of the two under the word "this week" -- owner: "i think fable
+     weekly limit instead of all models weekly limit is shown for claude we
+     should include both". */
   const fixture = fakeBridge()
   fixture.state.usage.accounts[2] = {
     name: 'lab',
@@ -2081,7 +1805,7 @@ test('a Claude row draws BOTH weeks, each named, and the accessible names are no
 
   /* A row from an engine that sends one week only keeps the two bars and the
      plain word it has always had. */
-  const codex = menu.row('codex', 'team')
+  const codex = menu.row('codex', 'school')
   assert.deepEqual(codex.querySelectorAll('.acct-bar-label').map(textOf), [COPY.hourlyBar, COPY.weeklyBar])
   menu.destroy()
 })
@@ -2153,163 +1877,45 @@ test('Remove is armed by one press and done by the next; a refusal disarms it', 
 
 /* ------------------------------ the window a ranking reads ------------------------------ */
 
-test('the window field is offered by ranked modes only, paints the recorded window, and saves on its own', async () => {
+
+
+test('program groups offer explicit account buttons without automatic selection overrides', async () => {
   const menu = await mount()
-  await menu.open()
-  assert.equal(menu.rankField.hidden, true, '"stop and let me switch" asks no window')
-  assert.equal(menu.rankHelp.hidden, true)
-
-  menu.mode.value = 'resets-soonest'
-  menu.mode.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.equal(menu.rankField.hidden, false, 'a ranking asks which window it reads')
-  assert.equal(menu.rankHelp.hidden, false)
-  assert.equal(menu.rank.value, 'either', 'the recorded window is painted')
-
-  menu.rank.value = 'weekly'
-  menu.rank.dispatchEvent({ type: 'change' })
-  assert.equal(menu.rank.disabled, false, 'controls remain editable while saves are queued')
-  await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy').at(-1), ['accountPolicy', { rankWindow: 'weekly' }],
-    'the window rides alone; no mode is re-sent with it')
-  assert.equal(menu.out.textContent, COPY.rankSaved('Weekly window'))
-  assert.equal(menu.out.dataset.tone, 'confirmed')
-  assert.equal(menu.rank.disabled, false)
-  assert.equal(menu.rank.value, 'weekly', 'the re-read list agrees with the saved window')
-
-  menu.mode.value = 'manual'
-  menu.mode.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.equal(menu.rankField.hidden, true, 'back to a mode that reads no allowance, the window goes away')
-  menu.destroy()
+  try {
+    await menu.open()
+    for (const provider of ['codex', 'claude', 'gemini']) {
+      assert.equal(menu.providerMode(provider), null)
+      assert.equal(menu.providerRank(provider), null)
+    }
+    assert.ok(rowButton(menu.row('codex', 'work'), COPY.switchTo))
+    assert.ok(rowButton(menu.row('claude', 'home'), COPY.switchTo))
+    assert.deepEqual(callsNamed(menu.calls, 'accountPolicy'), [])
+  } finally { menu.destroy() }
 })
 
-test('each program carries its own rule in its group head; "Same as above" is the recorded absence of one', async () => {
-  const menu = await mount()
-  await menu.open()
-  const codexLabel = menu.root.querySelectorAll('.acct-group-name')[0].textContent
-  const codex = menu.providerMode('codex')
-  assert.ok(codex, 'a rule select per program')
-  assert.equal(codex.parentElement.querySelector('.acct-field-label').textContent, COPY.providerRule(codexLabel), 'the program rule has a visible label as well as an accessible name')
-  assert.equal(codex.value, 'inherit')
-  assert.ok(menu.providerMode('claude') && menu.providerMode('gemini'))
-  assert.equal(menu.providerRank('codex').hidden, true, 'the rule above reads no allowance, so no window is asked')
-  assert.equal(menu.providerRank('codex').parentElement.hidden, true, 'an unavailable comparison field must not leave an orphan label')
-
-  codex.value = 'resets-soonest'
-  codex.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy').at(-1), ['accountPolicy', { provider: 'codex', selectionMode: 'resets-soonest' }])
-  assert.equal(menu.out.textContent, COPY.providerRuleSaved(codexLabel, 'Resetting soonest first'))
-  assert.equal(menu.out.dataset.tone, 'confirmed')
-  assert.equal(menu.providerMode('codex').value, 'resets-soonest', 'the repaint draws the recorded rule')
-  assert.equal(menu.providerRank('codex').hidden, false, 'a program that ranks is asked its window')
-  assert.equal(menu.providerRank('codex').parentElement.hidden, false)
-  assert.equal(menu.providerMode('claude').value, 'inherit', 'the other programs still follow the rule above')
-  assert.equal(menu.mode.value, 'manual', 'the rule above is untouched')
-
-  menu.providerRank('codex').value = 'weekly'
-  menu.providerRank('codex').dispatchEvent({ type: 'change' })
-  await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy').at(-1), ['accountPolicy', { provider: 'codex', rankWindow: 'weekly' }])
-  assert.equal(menu.providerRank('codex').value, 'weekly')
-  assert.equal(menu.out.textContent, COPY.providerRuleSaved(codexLabel, 'Weekly window'))
-
-  menu.providerMode('codex').value = 'inherit'
-  menu.providerMode('codex').dispatchEvent({ type: 'change' })
-  await settle()
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy').at(-1), ['accountPolicy', { provider: 'codex', selectionMode: null }],
-    'clearing sends null for that one field, so the shell drops it and leaves the rest')
-  assert.equal(menu.out.textContent, COPY.providerRuleSaved(codexLabel, COPY.sameAsAbove))
-  assert.equal(menu.providerMode('codex').value, 'inherit')
-  menu.destroy()
-})
-
-test('a refused per-program rule is put back where the file says it is', async () => {
+test('a refused explicit account choice preserves the account already in use', async () => {
   const fixture = fakeBridge()
-  fixture.bridge.accountPolicy = async request => {
-    fixture.calls.push(['accountPolicy', { ...request }])
-    return { ok: false, code: 'ACCOUNT_MODE_UNSUPPORTED', reason: 'This copy does not know that mode.' }
+  fixture.bridge.accountSwitch = async request => {
+    fixture.calls.push(['accountSwitch', request])
+    return { ok: false, reason: 'This account is unavailable.' }
   }
   const menu = await mount(fixture)
-  await menu.open()
-  const claude = menu.providerMode('claude')
-  claude.value = 'even'
-  claude.dispatchEvent({ type: 'change' })
-  await settle()
-  assert.equal(menu.out.dataset.tone, 'refused')
-  assert.equal(menu.out.textContent, 'This copy does not know that mode.')
-  assert.equal(menu.providerMode('claude').value, 'inherit', 'the repaint shows the recorded rule, not the refused one')
-  menu.destroy()
+  try {
+    await menu.open()
+    rowButton(menu.row('codex', 'work'), COPY.switchTo).click()
+    await settle()
+    assert.equal(menu.out.dataset.tone, 'refused')
+    assert.equal(menu.out.textContent, 'This account is unavailable.')
+    assert.equal(menu.row('codex', 'school').getAttribute('data-active'), 'yes')
+    assert.deepEqual(callsNamed(menu.calls, 'accountSwitch'), [['accountSwitch', { name: 'work', provider: 'codex' }]])
+  } finally { menu.destroy() }
 })
 
-test('both windows start on the single number and say they are inheriting it', async () => {
-  /* The registry names one limit and neither window overrides it. Showing the
-     sliders empty, or at some default of the menu's own, would be a screen
-     disagreeing with what a start actually does. */
-  const menu = await mount()
-  await menu.open()
 
-  assert.equal(menu.limitWeekly.value, '90')
-  assert.equal(menu.limitHourly.value, '90')
-  assert.equal(menu.limitWeekly.style.getPropertyValue('--fill'), `${89 / 99 * 100}%`)
-  assert.equal(menu.limitHourly.style.getPropertyValue('--fill'), `${89 / 99 * 100}%`)
-  assert.equal(menu.limitWeeklyFigure.textContent, `90%${' \u00b7 '}using 90% for both`)
-  assert.equal(menu.limitHourlyFigure.textContent, `90%${' \u00b7 '}using 90% for both`)
-  menu.destroy()
-})
 
-test('dragging a slider updates the figure and saves nothing; letting go saves that window alone', async () => {
-  const menu = await mount()
-  await menu.open()
 
-  menu.limitWeekly.value = '95'
-  menu.limitWeekly.dispatchEvent({ type: 'input' })
-  assert.equal(menu.limitWeeklyFigure.textContent, '95%', 'the figure follows the drag')
-  assert.equal(menu.limitWeekly.style.getPropertyValue('--fill'), `${94 / 99 * 100}%`, 'the colored fill follows the same declared range as the thumb')
-  assert.equal(callsNamed(menu.calls, 'accountPolicy').length, 0,
-    'a save per pixel would be a file write per pixel')
 
-  menu.limitWeekly.dispatchEvent({ type: 'change' })
-  assert.equal(menu.limitWeekly.disabled, false, 'controls remain editable while saves are queued')
-  await settle()
 
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy'),
-    [['accountPolicy', { exhaustedAtPercentWeekly: 95 }]],
-    'only the window that moved is sent; the other keeps whatever the file says')
-  assert.equal(menu.out.textContent, COPY.limitSaved('this week', 95))
-  assert.equal(menu.out.dataset.tone, 'confirmed')
-  assert.equal(menu.limitWeekly.disabled, false)
-
-  /* THE OTHER WINDOW IS UNTOUCHED AND STILL SAYS SO. This is the whole point of
-     two numbers: 91% of a week that refills over days is a different fact from
-     91% of five hours, and the owner's own accounts sat at exactly that. */
-  assert.equal(menu.limitWeekly.value, '95')
-  assert.equal(menu.limitWeeklyFigure.textContent, '95%', 'a limit that was chosen no longer says it is inherited')
-  assert.equal(menu.limitHourly.value, '90')
-  assert.equal(menu.limitHourlyFigure.textContent, `90%${' \u00b7 '}using 90% for both`)
-  menu.destroy()
-})
-
-test('a refused limit puts the slider back where the file says it is', async () => {
-  const reason = 'A window limit must be a number between 1 and 100, or cleared.'
-  const fixture = fakeBridge(freshState(), {
-    accountPolicy: async () => ({ ok: false, code: 'ACCOUNT_WINDOW_LIMIT_INVALID', reason }),
-  })
-  const menu = await mount(fixture)
-  await menu.open()
-
-  menu.limitHourly.value = '40'
-  menu.limitHourly.dispatchEvent({ type: 'change' })
-  await settle()
-
-  assert.equal(menu.out.textContent, reason)
-  assert.equal(menu.out.dataset.tone, 'refused')
-  assert.equal(menu.limitHourly.value, '90',
-    'a slider left showing a limit that was refused is a screen telling somebody their computer does something it does not do')
-  assert.equal(menu.limitHourly.style.getPropertyValue('--fill'), `${89 / 99 * 100}%`, 'the refused change also restores the last saved fill')
-  menu.destroy()
-})
 
 test('sign-in completion discards the previous identity and allowance for only that account', async () => {
   const fixture = fakeBridge()
@@ -2328,7 +1934,7 @@ test('sign-in completion discards the previous identity and allowance for only t
       'the previous signed_out allowance result contradicts the completed sign-in')
     assert.deepEqual(flagsOf(menu.row('claude', 'home')), [])
     assert.equal(menu.row('claude', 'home').textContent.includes('previous@example.test'), false)
-    assert.ok(menu.row('codex', 'team').textContent.includes('60%'), 'another account lost its measured allowance')
+    assert.ok(menu.row('codex', 'school').textContent.includes('60%'), 'another account lost its measured allowance')
     assert.equal(callsNamed(fixture.calls, 'accountUsage').length, 0, 'sign-in change started allowance probes without a press')
     fixture.state.usage = { ok: true, accounts: [{ name: 'home', provider: 'claude', status: 'signed_out', canServe: false }] }
     menu.refresh.click()
@@ -2353,7 +1959,7 @@ test('an unknown sign-in file change also retires the old identity in the open p
       'the changed sign-in kept the old identity because its new state was unknown')
     assert.equal(Boolean(rowButton(menu.row('claude', 'home'), COPY.signIn)), false,
       'an unknown answer was presented as a definite sign-out')
-    assert.ok(menu.row('codex', 'team').textContent.includes('60%'))
+    assert.ok(menu.row('codex', 'school').textContent.includes('60%'))
     assert.equal(callsNamed(fixture.calls, 'accountUsage').length, 0)
   } finally { menu.destroy() }
 })
@@ -2410,11 +2016,11 @@ test('Grok and Antigravity rows render what their programs reported: Antigravity
 
 test('the account header shows a measured percentage when only one provider is active', async () => {
   const fixture = fakeBridge()
-  fixture.state.activeByProvider = { codex: 'team', claude: null, gemini: null }
+  fixture.state.activeByProvider = { codex: 'school', claude: null, gemini: null }
   const menu = await mount(fixture)
   try {
     await menu.open(); await menu.check()
-    assert.equal(menu.label.textContent, `team · ${COPY.roomLeft(60)}`)
+    assert.equal(menu.label.textContent, `school · ${COPY.roomLeft(60)}`)
   } finally { menu.destroy() }
 })
 
@@ -2428,91 +2034,11 @@ test('the account header shows a measured percentage when only one provider is a
    These two checks are the notice that tells them, and the one action that
    acts on it. */
 
-test('the notice names every program not following the default, in the copy table\'s words, and writes nothing by drawing (T378)', async () => {
-  const state = freshState()
-  state.mode = 'rotate'
-  /* TWO programs with a rule of their own, not one: a notice that named only
-     the first would read as complete while leaving a program off the list. */
-  state.byProvider = { claude: { selectionMode: 'dynamic' }, codex: { selectionMode: 'manual' } }
-  const menu = await mount(fakeBridge(state))
-  await menu.open()
 
-  assert.equal(menu.overrideNotice.hidden, false, 'two programs carry a rule of their own and neither was named')
-  assert.equal(
-    menu.overrideNoticeText.textContent,
-    COPY.overrideNotice(`${providerLabel('codex')} and ${providerLabel('claude')}`, 2, 'Rotate'),
-    'the notice must name both programs and the default they are not following')
-  /* EVERY WORD COMES FROM THE COPY TABLES. A raw provider key on the owner's
-     screen is breakage a cut ships silently, so the rendered sentence is
-     checked against the labels rather than against the ids. */
-  for (const id of ['codex', 'claude']) {
-    assert.ok(menu.overrideNoticeText.textContent.includes(providerLabel(id)), `${id} is not named by its label`)
-  }
-  assert.equal(menu.overrideApply.textContent, COPY.overrideNoticeApply, 'the action is labelled from the copy table')
 
-  /* READ-ONLY. Drawing it is not a write, and it did not disturb either rule. */
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy'), [], 'drawing the notice wrote a policy')
-  assert.equal(menu.state.byProvider.claude.selectionMode, 'dynamic')
-  assert.equal(menu.state.byProvider.codex.selectionMode, 'manual')
-  assert.equal(menu.mode.value, 'rotate', 'the rule above is untouched by the notice')
 
-  menu.destroy()
-})
 
-test('a default every program already follows draws no notice at all (T378)', async () => {
-  const state = freshState()
-  state.mode = 'rotate'
-  state.byProvider = {}
-  const menu = await mount(fakeBridge(state))
-  await menu.open()
-  assert.equal(menu.overrideNotice.hidden, true, 'nothing overrides the default, so there is nothing to say')
-  assert.equal(callsNamed(menu.calls, 'accountPolicy').length, 0)
-  menu.destroy()
-})
 
-test('"Apply the default to these programs" drops BOTH named rules on the click, leaves an unnamed program and a non-mode field alone, and writes only when pressed (T378)', async () => {
-  const state = freshState()
-  state.mode = 'rotate'
-  /* Codex also carries a window of its own. A window is not a mode: it shapes
-     a ranking and cannot decide which mode runs, so this action must not
-     reach it. Gemini carries nothing and is never named. */
-  state.byProvider = {
-    claude: { selectionMode: 'dynamic' },
-    codex: { selectionMode: 'manual', rankWindow: 'weekly' },
-  }
-  const menu = await mount(fakeBridge(state))
-  await menu.open()
-  assert.equal(menu.overrideNotice.hidden, false)
-  /* NOTHING IS WRITTEN UNTIL THE PERSON CLICKS. */
-  assert.deepEqual(callsNamed(menu.calls, 'accountPolicy'), [], 'a policy was written before any click')
-
-  menu.overrideApply.click()
-  await settle()
-
-  const writes = callsNamed(menu.calls, 'accountPolicy').map(([, request]) => request)
-  assert.equal(writes.length, 2, `one write per named program, got ${writes.length}: ${JSON.stringify(writes)}`)
-  /* The same request the per-program "Use default" already sends: scoped, and
-     null for the mode. Not a second route for clearing a rule. */
-  assert.deepEqual(
-    [...writes].sort((a, b) => a.provider.localeCompare(b.provider)),
-    [{ provider: 'claude', selectionMode: null }, { provider: 'codex', selectionMode: null }])
-
-  /* BOTH programs, checked in the shell's own state -- the SECOND as well as
-     the first, because a clearing bug that skips one entry and eats the rest
-     passes a one-program check. */
-  assert.equal(menu.state.byProvider.claude.selectionMode, undefined, 'the first named program kept its own mode')
-  assert.equal(menu.state.byProvider.codex.selectionMode, undefined, 'the second named program kept its own mode')
-  assert.equal(menu.state.byProvider.codex.rankWindow, 'weekly', 'the action reached a field that is not a mode')
-  assert.equal(writes.some(request => request.provider === 'gemini'), false, 'a program the notice never named was written')
-
-  /* REDRAWN FROM WHAT CAME BACK, not from what the click assumed. */
-  assert.equal(menu.overrideNotice.hidden, true, 'nothing overrides the default now, so the notice is gone')
-  assert.equal(menu.providerMode('claude').value, 'inherit')
-  assert.equal(menu.providerMode('codex').value, 'inherit')
-  assert.equal(menu.mode.value, 'rotate', 'the rule above is untouched by the action')
-
-  menu.destroy()
-})
 
 /* T1588: an address that names the Accounts menu opens it on arrival. */
 test('the menu opens itself when the page was reached through the Accounts menu address', async () => {
@@ -2535,4 +2061,23 @@ test('the menu opens itself when the page was reached through the Accounts menu 
     if (priorLocation === undefined) delete globalThis.location
     else globalThis.location = priorLocation
   }
+})
+
+/* 1.0.50 REVIEW, ACCOUNTS G. Removing an account whose folder Accounts made
+   deletes the sign-in saved in it (shell/account-registry.cjs destroyCredential),
+   but the screen said "Its folder and sign-in stay where they are". The first
+   press now warns, and the confirmation follows the receipt. */
+test('Remove warns on the first press and says when the sign-in was deleted', async () => {
+  const fixture = fakeBridge(undefined, { accountRemove: async () => ({ ok: true, removed: true, credentialDestroyed: true }) })
+  const menu = await mount(fixture)
+  await menu.open()
+  const button = rowButton(menu.row('claude', 'home'), COPY.remove)
+  button.click()
+  await settle()
+  assert.equal(menu.out.textContent, COPY.removeArmedNote)
+  button.click()
+  await settle()
+  assert.equal(menu.out.textContent, COPY.removedWithSignIn('home'))
+  assert.equal(menu.out.dataset.tone, 'confirmed')
+  menu.destroy()
 })

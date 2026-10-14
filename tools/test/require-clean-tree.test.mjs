@@ -244,7 +244,7 @@ test('build-info.json records no absolute path, username, or hostname', () => {
     // THE NEEDLE MUST BE JSON-ENCODED, AND THIS ASSERTION WAS DEAD WITHOUT IT.
     // It read `!serialised.includes(payload)` with `payload` a raw Windows
     // path. JSON.stringify escapes every backslash, so the haystack holds
-    // `%SystemDrive%\\Users\\...` while the needle holds `%SystemDrive%\Users\...` -- includes() is
+    // `<profile-root>/...` while the needle holds `<profile-root>/...` -- includes() is
     // false even when the path is right there, and the assertion passed on a
     // record that leaked. A guard that cannot fail is worse than no guard: it
     // occupies the slot where a real one would go. Caught by another lane

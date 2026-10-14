@@ -1,7 +1,7 @@
 // Every METHOD_REFERENCES entry carries a verification string that travels into each
 // export's paper/references.json. A string a reader cannot follow is worse than none,
 // because it looks like evidence: one of these named a file that did not contain the
-// entry, and only a reviewer's grep caught it.
+// entry, and only a Manager's grep caught it.
 //
 // This is a CONTENT pin and never a filesystem check. An exported project must verify
 // on a machine that has never seen the evidence tree, so the test asserts what the
@@ -11,13 +11,13 @@ import test from 'node:test'
 import { METHOD_REFERENCES, methodReference } from '../../src/benchmark/study.mjs'
 
 // The record these two entries rest on, named exactly as the string must name it.
-const LOG_NAME = 'citation verification log'
+const LOG_PATH = 'research-44/sub/stats/logs/citations-verified.md'
 const LOG_DATE = '2026-09-10'
 const LOG_METHOD = 'Crossref API'
 
 const SHIPPED = {
-  'wilson-1927': 'Crossref API record confirmed by the citation verification log of 2026-09-10 (row 1): title, author, year, journal, volume 22, issue 158, pages 209-212 and the DOI.',
-  'brown-cai-dasgupta-2001': 'Crossref API record confirmed by the citation verification log of 2026-09-10 (row 2): title, three authors, year, journal, volume 16, issue 2, pages 101-133 and the DOI; that log records the page range separately confirmed against the Project Euclid article page.',
+  'wilson-1927': 'Crossref API record confirmed by the citation verification log of 2026-09-10 (research-44/sub/stats/logs/citations-verified.md, row 1): title, author, year, journal, volume 22, issue 158, pages 209-212 and the DOI.',
+  'brown-cai-dasgupta-2001': 'Crossref API record confirmed by the citation verification log of 2026-09-10 (research-44/sub/stats/logs/citations-verified.md, row 2): title, three authors, year, journal, volume 16, issue 2, pages 101-133 and the DOI; that log records the page range separately confirmed against the Project Euclid article page.',
 }
 
 test('the two proportion-interval references carry exactly the shipped verification text', () => {
@@ -28,12 +28,12 @@ test('the two proportion-interval references carry exactly the shipped verificat
   }
 })
 
-test('a string that cites the verification log names the log, its date, method and row', () => {
-  const citing = METHOD_REFERENCES.filter(reference => /citation verification log/.test(reference.verification || ''))
+test('a string that cites the verification log names its path, date, method and row', () => {
+  const citing = METHOD_REFERENCES.filter(reference => /citations-verified/.test(reference.verification || ''))
   assert.ok(citing.length >= 2, 'the two proportion-interval references cite that log')
   for (const reference of citing) {
     const text = reference.verification
-    assert.ok(text.includes(LOG_NAME), `${reference.id} cites the log without naming it: ${text}`)
+    assert.ok(text.includes(LOG_PATH), `${reference.id} cites the log without its full path: ${text}`)
     assert.ok(text.includes(LOG_DATE), `${reference.id} cites the log without its generated date: ${text}`)
     assert.ok(text.includes(LOG_METHOD), `${reference.id} cites the log without naming the method: ${text}`)
     assert.match(text, /\brow \d+\b/, `${reference.id} cites the log without a row number: ${text}`)

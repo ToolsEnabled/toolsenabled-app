@@ -48,6 +48,9 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+// The signer is read from the certificate subject the same way the in-app
+// updater reads it, so the build-time read-back and the install-time check agree.
+const { commonNameFromDistinguishedName } = require('../../shell/installer-pe-identity.cjs')
 
 const ENV = Object.freeze({
   config: 'TOOLSENABLED_ARTIFACT_SIGNING_CONFIG',
@@ -317,14 +320,21 @@ function classifyFileForSigning(file) {
 // to the host's own modules for the same reason tools/release-packager/
 // cut-release-candidate.mjs readInstallerSignature does: an inherited pwsh 7
 // module path makes 5.1 discover Security cmdlets it cannot load.
+//
+// Constrained-Language safe (1.0.50 platform review, U3): no .NET method
+// calls and no [pscustomobject] cast, so the same script works under an App
+// Control or AppLocker policy. It prints the subject and issuer as Windows
+// does; the signer is the subject's CN, read by the shell's own
+// commonNameFromDistinguishedName. shell/installer-pe-identity.cjs carries the
+// same script for the in-app updater, and tools/test/update-check.test.mjs
+// holds the two equal.
 const VERIFY_FILE_VARIABLE = 'TOOLSENABLED_SIGNATURE_READBACK_FILE'
 const VERIFY_SCRIPT = [
   "$ErrorActionPreference='Stop'",
-  "$env:PSModulePath=[IO.Path]::Combine($PSHOME,'Modules')",
+  '$env:PSModulePath="$PSHOME\\Modules"',
   `$s=Get-AuthenticodeSignature -LiteralPath $env:${VERIFY_FILE_VARIABLE}`,
   '$c=$s.SignerCertificate',
-  "$simple=[System.Security.Cryptography.X509Certificates.X509NameType]::SimpleName",
-  '[pscustomobject]@{status=$s.Status.ToString();signer=$(if($c){$c.GetNameInfo($simple,$false)}else{$null});issuer=$(if($c){$c.GetNameInfo($simple,$true)}else{$null});timestamped=($null -ne $s.TimeStamperCertificate)} | ConvertTo-Json -Compress',
+  '@{status="$($s.Status)";subject=$(if($c){$c.Subject}else{$null});issuer=$(if($c){$c.Issuer}else{$null});timestamped=($null -ne $s.TimeStamperCertificate)} | ConvertTo-Json -Compress',
 ].join('; ')
 
 /* Judge the read-back. Throws unless the file is Valid, signed by exactly the
@@ -337,13 +347,15 @@ function interpretSignatureReadback(output, settings, file = 'file') {
     throw new Error(`the signature of ${path.win32.basename(file)} could not be read back after signing`)
   }
   const problems = []
+  const signer = commonNameFromDistinguishedName(record?.subject)
+  const issuer = commonNameFromDistinguishedName(record?.issuer) ?? (typeof record?.issuer === 'string' && record.issuer.trim() ? record.issuer.trim() : null)
   if (record?.status !== 'Valid') problems.push(`Authenticode status is ${JSON.stringify(record?.status)}, not "Valid"`)
-  if (record?.signer !== settings.publisher) {
-    problems.push(`signed by ${JSON.stringify(record?.signer)}, expected ${JSON.stringify(settings.publisher)}`)
+  if (signer !== settings.publisher) {
+    problems.push(`signed by ${JSON.stringify(signer)}, expected ${JSON.stringify(settings.publisher)}`)
   }
   if (record?.timestamped !== true) problems.push('the signature carries no timestamp, so it stops validating when the three-day certificate expires')
   if (problems.length) throw new Error(`${path.win32.basename(file)} failed signature read-back: ${problems.join('; ')}`)
-  return Object.freeze({ status: record.status, signer: record.signer, issuer: record.issuer ?? null, timestamped: true })
+  return Object.freeze({ status: record.status, signer, issuer, timestamped: true })
 }
 
 const normalizeModulePath = (value) => './' + String(value).replace(/\\/g, '/').replace(/^\.\//, '')

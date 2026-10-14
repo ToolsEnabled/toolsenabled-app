@@ -2,9 +2,10 @@
 
 /* LAUNCH AN AGENT FROM INSIDE THE PRODUCT AND ASK IT WHAT IT CAN DO.
  *
- * THE DIRECTIVE: launch an agent from inside and ask it what it can do; anything
- * it gets stuck on, and any tool that does not work, is then built, fixed or
- * wired correctly.
+ * THE OWNER'S DIRECTIVE, verbatim: "one thing worth doing is launching an
+ * agent from inside and then asking it what it can do. remember anything that
+ * it gets stuck on or tools that dont work or get stuck etc need to either be
+ * built or fixed or wired correctly."
  *
  * WHAT THIS DRIVES. The product's own launcher -- shell/agent-host.cjs, the
  * module every in-app Start button goes through -- against a scratch

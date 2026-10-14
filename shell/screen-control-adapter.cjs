@@ -4,6 +4,13 @@ const { spawn } = require('node:child_process')
 const fail = (code, message) => { throw Object.assign(new Error(message), { code }) }
 const KEYS = /^(?:(?:Control|Alt|Shift|Meta)\+){0,3}(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Enter|Tab|Escape|Backspace|Delete|Insert|Space|Home|End|PageUp|PageDown|ArrowUp|ArrowDown|ArrowLeft|ArrowRight)$/
 
+/* Windows, or a Linux desktop session on X11. Screen control and the video box
+   (shell/video-box-host.cjs) share this one copy of the rule. */
+function desktopCaptureSupported({ platform = process.platform, environment = process.env } = {}) {
+  return platform === 'win32' || (platform === 'linux' && Boolean(environment.DISPLAY)
+    && environment.XDG_SESSION_TYPE !== 'wayland' && !environment.WAYLAND_DISPLAY)
+}
+
 function createScreenControlAdapter({ screen, desktopCapturer, platform = process.platform,
   environment = process.env, spawnProcess = spawn }) {
   const sharedDesktop = [environment, process.env].some(source => Object.keys(source).some(name =>
@@ -11,8 +18,7 @@ function createScreenControlAdapter({ screen, desktopCapturer, platform = proces
   const unavailableReason = () => sharedDesktop
     ? 'Screen takeover in a shared DEV session requires an independently owned desktop. Private profiles do not isolate the mouse, keyboard or screen.'
     : 'Screen control requires Windows or a Linux X11 desktop session.'
-  const supported = () => !sharedDesktop && (platform === 'win32' || (platform === 'linux' && Boolean(environment.DISPLAY)
-    && environment.XDG_SESSION_TYPE !== 'wayland' && !environment.WAYLAND_DISPLAY))
+  const supported = () => !sharedDesktop && desktopCaptureSupported({ platform, environment })
   function geometry() {
     return { displays: screen.getAllDisplays().map(display => ({ id: String(display.id),
       bounds: display.bounds, scaleFactor: display.scaleFactor })) }
@@ -50,7 +56,7 @@ function createScreenControlAdapter({ screen, desktopCapturer, platform = proces
       { code: 'SCREEN_ACTION_INTERRUPTED', cleanupConfirmed: true }))
     const windows = platform === 'win32'
     const helperRoot = __dirname.replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2')
-    const command = windows ? path.join(environment.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe') : '/usr/bin/python3'
+    const command = windows ? path.join(environment.SystemRoot || '\x43:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe') : '/usr/bin/python3'
     const args = windows ? ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(helperRoot, 'screen-control-native.ps1')]
       : ['-I', '-S', '-B', path.join(helperRoot, 'screen-control-native.py')]
     return new Promise((resolve, reject) => {
@@ -123,4 +129,4 @@ function createScreenControlAdapter({ screen, desktopCapturer, platform = proces
   }
   return { supported, unavailableReason, geometry, validate, execute }
 }
-module.exports = { createScreenControlAdapter }
+module.exports = { createScreenControlAdapter, desktopCaptureSupported }

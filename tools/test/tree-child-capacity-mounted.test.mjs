@@ -100,7 +100,7 @@ test('and it is still drawn while that parent has room, so the guard is not vacu
 })
 
 /* THE OTHER SIDE OF THE 2026-09-11 WIDTH DECISION. The cap fell from eight to
-   four, and real saved trees have parents with many more live
+   four, and the owner's saved trees have parents with eight to fourteen live
    children. Such a tree is not broken: the real view must still load it and
    account for every child it holds, and simply offer no "+" under that parent.
    A narrow canvas folds a wide rank into group circles ("3 agents") -- the
@@ -253,7 +253,7 @@ test('returning to the mounted tree after a settings change reads fresh bounds',
    and the turn finishes. Every one of those events refreshes the tree, and the
    view looked each agent's name up through a store snapshot -- one SYNCHRONOUS
    settings read per agent per event. On the 2026-09-21 LIVE generation (app
-   an earlier commit) that was 232 to 357 reads per five seconds. A read belongs to a
+   d46c18f49) that was 232 to 357 reads per five seconds. A read belongs to a
    full render asking the store for its offers, once; it does not belong to an
    agent. */
 function eventDoor(world) {

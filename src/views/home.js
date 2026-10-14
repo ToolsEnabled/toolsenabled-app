@@ -4,13 +4,12 @@ import { createHomeAgentWorkspacePool } from '../home-agent-workspace.js'
 import { mountHomeChatLayout } from '../home-chat-layout.js'
 import { ROLES } from '../vocab.js'
 import { ROSTER, ACTIVITY_FILTERS, ACTIVITY_LABELS, ACTIVITY_MARKS, activityContext, activityDisclosure, activityMatches, activityPreview, treePickGroups, treePickChoices, TREE_PICK, agentBoardLines, agentMonogram, AGENT_BOARD } from '../home-activity.js'
-import { HOME_CIRCLE_STYLE_EVENT, currentHomeCircleStyle, HOME_CIRCLE_MOTION_EVENT, currentHomeCircleMotion } from '../home-circle-choice.js'
 import { homeLedgerStatus, readHomeLedger, ledgerStatusHref } from '../home-ledger-status.js'
 import { mountHomeStatusColors } from '../home-status-colors.js'
 import { subscribeAutonomousContinuationStatus } from './computers.js'
 import { sampleLedgerData } from '../sample-ledger.js'
 import { exampleOwnerPrompts } from '../approvals-example.js'
-// /home — the hero ring and, beside it, what is actually happening.
+// /home — observed work, owner requests and the existing conversations.
 //
 // WHAT CHANGED AND WHY, because the previous version of this file argued at
 // length for a design that did not survive contact with an installed copy.
@@ -47,20 +46,18 @@ import { exampleOwnerPrompts } from '../approvals-example.js'
 //
 // ONE CARD, NOT TWO. The demonstration used to have a renderer of its own -- a
 // written coordinator transcript with timed arrivals and a composer that faked
-// replies -- beside the live list of runs. The live one became the foundation,
-// with more context added to it, and context collapses as it goes, as it does
-// in chat. So there is one
+// replies -- beside the live list of runs. The owner, with both on screen: make
+// the live one "the foundation, and try to add more context to it. And
+// collapse the context and such as it goes like we do in chat." So there is one
 // list of runs for every source; each row folds open to what was asked, the
 // lines between, and what was said back; and the example feeds that same list
 // with a record and conversations of its own (src/sample-activity.js) instead
 // of a second screen.
 
-import { el, uptimeRing, openMemory, ownDisclosure, buildChat } from '../components.js'
+import { el, openMemory, ownDisclosure, buildChat } from '../components.js'
 import { createCoordinatorFeed, createCoordinatorSender, toHistory } from '../home-coordinator-chat.js'
 import { attachPersistentVoice } from '../voice-coordinator.js'
-import { homeCircleClockMode, HOME_CIRCLE_CLOCK_EVENT, clockParts } from '../home-circle-clock.js'
 import { onNextFrame } from '../page-frames.js'
-import { textZoom } from '../text-size.js'
 import { fetchStatus, fetchCoordinator } from '../live-status.js'
 import { ownerPromptSnapshot } from '../mission-bridge.js'
 /* WHEN AN IDLE SCREEN SHOULD ASK AGAIN, and how its polls stay out of phase
@@ -72,11 +69,11 @@ import {
   nextApprovalsWaitMs,
   pollPhaseOffsetMs,
 } from '../idle-cadence.js'
-/* A decision the person made on #/approvals whose answer arrived after they had
+/* A decision the owner made on #/approvals whose answer arrived after he had
    already left that screen. The approvals design nominated this screen as its
    one signal channel ("the only signal that anything is waiting is a count on
    the home view's existing readouts"), so it is also the screen that has to
-   carry the case where a decision the person made did not land. */
+   carry the case where a decision he made did not land. */
 import {
   APPROVAL_OUTCOME_EVENT,
   reconcileUndeliveredDecisions,
@@ -126,7 +123,7 @@ import { providerSignInReading } from '../agent-availability-copy.js'
    savedConversations() for the metrics page, nine hours after this screen
    shipped its own, and this screen was never switched over. Two byte-identical
    readers of one record is one widening away from a silent divergence, and the
-   widening arrived: this list shows what each agent SAID, the
+   widening arrived: the owner asked this list to show what each agent SAID, the
    field was already on the node, and adding it to one reader would have left
    the other blind. There is one reader now and this is it. */
 import { readSessionRoles } from '../session-roles.js'
@@ -183,64 +180,13 @@ import {
 import { createFleetTreeStore, safeTreeStorage, nodeDisplayName, fleetTreesStorageKey, treeStatus, displayName as treeDisplayName, TREE_NODE_REMOVED_EVENT } from '../fleet-trees.js'
 import { THIS_COMPUTER_ID, THIS_COMPUTER_LABEL } from '../declared-fleet.js'
 import '../home.css'
-import '../home-circle.css'
-import '../home-blob-ring.css'
-import '../home-circle-launch.css'
 import '../home-roster-polish.css'
 import { filterRosterGroups } from '../home-roster-filter.js'
 import '../home-overview.css'
-import { homeOverviewMarkup, homeClockMarkup, homeGlanceMarkup, glanceFigures } from '../home-overview.js'
-import { homeCircleMarkup } from '../home-circle.js'
-import { launchCircleMarkup } from '../home-circle-launch.js'
-import { mountLaunchFluid } from '../home-circle-fluid-launch.js'
-import { mountHomeCircleFluid } from '../home-circle-fluid.js'
-import { mountHomeCircleFluid as mountClassicFluid } from '../home-circle-fluid-classic.js'
-import { actionForLive, sampleAction, actionLabel, agentFilterFor, followedRowFor, TREE_TIPS_CHOICE, TREE_CHOICE_PREFIX, treeChoiceId } from '../home-circle-action.js'
+import { homeOverviewMarkup, homeGlanceMarkup, glanceFigures, glanceLiveTreeRows } from '../home-overview.js'
+import { actionForLive, sampleAction, actionLabel, agentFilterFor, followedRowFor, followingActivityRow, homeActivityTone, homeAvatarToken, TREE_TIPS_CHOICE, TREE_CHOICE_PREFIX, treeChoiceId } from '../home-following.js'
 import '../home-chat.css'
 import '../home-chat-layout.css'
-
-/* THE HERO RING'S DIAMETER, AS A FUNCTION OF THE WINDOW IT HAS TO FIT IN.
- *
- * The height term decides the ring on every desktop: min(520, max(380,
- * height - 300)).
- *
- * WHAT THE 380 FLOOR DID ON A PHONE. It is a floor on the DIAMETER and it
- * knows nothing about width, so below the 900px stack -- where .home is one
- * column inside padding: 0 clamp(20px, 4vw, 60px) -- it asked for a circle
- * wider than the screen at every phone size in the register: 380 into 280 at
- * 320x568, 500 into 320 at 360x800, 520 into 350 at 390x844, 520 into 390 at
- * 430x932. .view is overflow: hidden, so nothing scrolls to the missing part;
- * the left and right of the hero are simply cut off, on the screen this
- * product opens on. The width term is the gutter arithmetic that was missing.
- *
- * AND IN LANDSCAPE THE SAME FLOOR OVERRAN THE HEIGHT. At 844x390 the stage
- * gives .home height - 82 = 308px and the floor still asks for 380, so the
- * circle is clipped top and bottom instead. height - 120 is that 308 less a
- * little air; it can only bite below a 500px-tall window, which no desktop
- * window on this product is (its own stated floor is 1024x768), so every
- * desktop keeps the exact diameter it has today.
- *
- * THE WINDOW IS MEASURED IN THE RING'S OWN PIXELS, which is what `zoom` is
- * for. uptimeRing writes this number as a CSS px size inside the zoomed body,
- * while innerWidth and innerHeight are window pixels; the Text size setting
- * separates the two (src/text-size.js). Undivided, every budget above is
- * overspent by exactly that zoom -- at Large a ring that fits "width - 2
- * gutters" paints 12% wider than the window, and .view is overflow: hidden,
- * so the sides of the hero are cut off again, which is the failure the width
- * term was added to end. At Default the zoom is 1 and every number here is
- * unchanged.
- *
- * A PURE FUNCTION, EXPORTED, because a view factory over a live DOM cannot be
- * mounted in this repo's node tests but a function can be called with values;
- * see agentvChatFloorPx in src/views/agent.js for the same shape and
- * tools/test/mobile-size-floor.test.mjs for the values it is called with. */
-export function homeRingSize(windowWidth, windowHeight, zoom = 1) {
-  const scale = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
-  const width = windowWidth / scale
-  const height = windowHeight / scale
-  const gutter = Math.min(60, Math.max(20, width * 0.04))
-  return Math.min(560, Math.max(380, height - 300), width - 2 * gutter, height - 120)
-}
 
 /* The fleet health snapshot changes when a sweep runs, which is minutes apart.
    It is only asked for at all when other computers have actually been
@@ -250,7 +196,7 @@ const HEALTH_POLL_MS = 45_000
 /* THE COORDINATOR THREAD IS POLLED WHILE THE CONVERSATION IS ON SCREEN. Until
    2026-09-18 it was read once, when the panel switched to the conversation
    kind, so a reply that arrived later never reached the page and no
-   responding state could ever appear (the writing/reply indicator
+   responding state could ever appear (owner: the writing/reply indicator
    never shows). The shared surface's responding row is driven by the feed
    diffing successive snapshots (src/home-coordinator-chat.js), which needs
    snapshots to succeed one another. Four seconds: a growing answer reads as
@@ -360,8 +306,8 @@ const FOLD_MARK = `<span class="chat-action-mark" aria-hidden="true"><svg viewBo
  * and renderChatVoice above is now asked the same question by both. This is
  * the last thing they were spelling twice.
  *
- * AND A LONG TURN FOLDS. The instruction, for both cards: context collapses as
- * it goes, as it does in chat. The
+ * AND A LONG TURN FOLDS. The owner's instruction, with the two cards in front
+ * of him: "collapse the context and such as it goes like we do in chat." The
  * run rows took that; the transcript beside them never did, so one agent reply
  * of a few hundred lines pushed the whole conversation off the glass and there
  * was no way to put it away. It ships OPEN -- nothing that was visible before
@@ -468,31 +414,24 @@ export function homeView() {
   const root = el(`
     <div class="home" data-mode="loading">
       ${homeOverviewMarkup()}
-      <!-- THE RING COLUMN IS THE STAGE, and it holds the three things the
-           design asked for on 2026-09-18, in reading order and in DOM order --
-           not in visual order with the DOM left behind, because this column is
-           a tab path and a screen-reader path before it is a picture.
-
-             1. the clock, ABOVE the circle (it was in the page header),
-             2. the circle,
-             3. the agents-working figures as a compact strip UNDER it
-                (they were a full-width band across both columns).
-
-           The ring itself is mounted into .home-ring-slot rather than appended
-           to this wrapper, which is what keeps the strip below it: an
-           appendChild on the wrapper would land the ring after the strip and
-           the order would then be held up by a CSS order property, i.e. by
-           nothing at all as far as Tab and Narrator are concerned. -->
-      <div class="home-ring-wrap">
-        ${homeClockMarkup()}
-        <div class="home-ring-slot"></div>
-        ${homeGlanceMarkup()}
-      </div>
+      ${homeGlanceMarkup()}
+      <div class="home-columns">
+        <div class="home-follow-column">
+          <section class="home-following" data-home-following aria-label="Following">
+            <div class="home-card-head"><h2>Following</h2><button type="button" class="home-follow-change" data-follow-change>Change</button></div>
+            <div class="home-follow-person" data-follow-person hidden><span class="home-follow-avatar" data-follow-avatar aria-hidden="true"></span><div><b data-follow-name></b><span class="home-status-chip" data-follow-status></span></div></div>
+            <p class="home-follow-action" data-follow-action hidden></p>
+            <p class="home-follow-empty" data-follow-empty>Follow an agent to keep it here.</p>
+            <button type="button" class="home-follow-chat" data-follow-chat hidden>Open chat</button>
+            <button type="button" class="home-follow-choose" data-follow-choose>Choose an agent</button>
+          </section>
+          <div class="home-facts"></div>
+        </div>
       <div class="home-feed-wrap" role="region" aria-labelledby="${panelTitleId}">
         <div class="home-feed">
           <div class="session-head">
-            <div class="home-context-heading"><span class="home-context-label">Context</span><span data-panel-title id="${panelTitleId}"></span></div>
-            <!-- TREES, AND THE AGENTS UNDER EACH (2026-09-19). "All
+            <div class="home-context-heading"><span class="home-context-label">Activity</span><h2 class="home-activity-title">Activity</h2><span class="panel-badge" data-panel-badge hidden></span></div>
+            <!-- TREES, AND THE AGENTS UNDER EACH (owner, 2026-09-19). "All
                  trees" is the whole view; a tree scopes the runs below to its
                  agents; an agent under a tree opens that agent's chat right
                  here, with no second press. The circle follows the same
@@ -507,7 +446,8 @@ export function homeView() {
               <button type="button" data-home-mode-choice="summary" aria-pressed="true">Summary</button>
               <button type="button" data-home-mode-choice="chat" aria-pressed="false">Chat</button>
             </div>
-            <span class="panel-badge" data-panel-badge hidden></span>
+            <span data-panel-title id="${panelTitleId}"></span>
+            <div class="home-example-note" data-home-example-note hidden></div>
             <!-- THE DOOR TO THE FULL PAGE. A button, not a link: it changes
                  what this view shows and does not navigate, so a route would
                  be a second path to a thing that already has one. It carries
@@ -515,6 +455,7 @@ export function homeView() {
                  made larger, not a separate place. -->
             <button class="session-expand" type="button" data-chat-expand aria-expanded="false"></button>
           </div>
+          <div class="home-activity-meta">Agents with activity <span data-glance="agents">0</span></div>
           <div class="activity-overview" data-activity-overview hidden>
             <div class="activity-counts"><span data-activity-count></span><span data-activity-working hidden></span><span class="activity-order">Newest first</span></div>
             <div class="activity-actions">
@@ -538,16 +479,17 @@ export function homeView() {
           <div class="home-agent-chat" data-home-chat hidden></div>
           <div class="session-foot" data-panel-foot hidden></div>
           <p class="home-scope-reply" data-scope-reply hidden>Open a run on its computer to continue the conversation.</p>
-          <!-- NO SUBSCRIPTION DOOR HERE. The app does not advertise
-               subscriptions. This used to render a
+          <!-- NO SUBSCRIPTION DOOR HERE. Owner, 2026-08-26: "i dont want to
+               advertise subscriptions in the app." This used to render a
                disabled "Subscriptions coming soon" control with its reason
                underneath -- honest about being shut, and still an advert for
                something nobody can buy, on the first screen of the product.
-               It is also a standing rule that payments do not open during public
+               The owner has also ruled that payments do not open during public
                beta, so this is not a temporary hold with a date behind it.
                The /subscribe view still exists and still refuses honestly for
                anyone who reaches it; what is gone is the SELLING of it here. -->
         </div>
+      </div>
       </div>
       <!-- THE FULL PAGE. Empty until it is opened, and it does not hold a
            COPY of the panel: the panel element itself is moved in here and
@@ -618,8 +560,8 @@ export function homeView() {
   let threadManual = false, threadOpen = false, threadRevision = null
   threadBundle.append(turnsSlot)
 
-  /* THE CONVERSATION IS THE SHARED CHAT SURFACE NOW. The chat in the chat view
-     is the same as every chat surface in the app. buildChat
+  /* THE CONVERSATION IS THE SHARED CHAT SURFACE NOW. Owner: "the chat in the
+     chat view needs to be the same as every chat surface in the app." buildChat
      (src/components.js) is mounted into the turns slot and fed by
      src/home-coordinator-chat.js: the first snapshot as history, every later
      poll diffed into addOwnerMessage / openStream+push, a status source that
@@ -689,18 +631,19 @@ export function homeView() {
   ownDisclosure(threadBundle, { within: threadBundle.querySelector('summary'), onToggle: open => { threadManual = true; threadOpen = open } })
   const scopeEmpty = el('<p class="home-scope-empty" hidden></p>')
   const coordinatorEmpty = el('<div class="home-coordinator-empty" hidden><strong>No coordinator conversation on this computer</strong><p>You can follow your agents and read their replies in Everything.</p><button type="button" data-open-everything>View all activity</button></div>')
-  /* AGENTS AT A GLANCE (the contents carry more useful, easy, on-demand
-     information): one line per agent in the panel's
+  /* AGENTS AT A GLANCE (owner, 2026-09-19: "the contents inside need to have
+     more useful, easy, on demand info"): one line per agent in the panel's
      scope, above the runs and inside the same scroller, so it is the first
      thing on the glass and the run history sits under it. Painted by
      paintAgentBoard from the rows the list has already painted; the words
      come from home-activity.js (AGENT_BOARD, agentBoardLines). */
-  /* A ROSTER (2026-09-19, after rows, folds and cards): one
+  /* A ROSTER (owner, 2026-09-19 late, after rows, folds and cards): one
      strip of numbers, then one table -- Agent, Status, What it is doing,
      Since, Chat -- with the trees as quiet group rows inside it, and ONE
      detail pane under the table for the row a person selects. No folds, no
      cards, no run tabs. Built from the same agentBoardLines data. */
   const boardSlot = el(`<section class="home-agents" data-home-agents aria-label="${escText(AGENT_BOARD.label)}" hidden>
+    <p class="home-roster-scope">${escText(AGENT_BOARD.scope)}</p>
     <div class="home-agents-strip"><span class="home-agents-summary" data-agents-summary></span><a class="home-agents-ledger" data-agents-ledger href="#/ledger" hidden></a></div>
     <div class="home-roster-tools">
       <input type="search" data-roster-search aria-label="Search agents and activity" placeholder="Search agents or activity…" autocomplete="off">
@@ -769,8 +712,9 @@ export function homeView() {
   const modeGroup = root.querySelector('[data-home-mode]')
   const modeButtons = [...root.querySelectorAll('[data-home-mode-choice]')]
   const chatHost = root.querySelector('[data-home-chat]')
-  /* THE PICKER MOVES WITH THE CHAT (the tree selection button changes place
-     on the page, for example when a chat is opened). While a chat is open the tree/agent picker leaves the
+  /* THE PICKER MOVES WITH THE CHAT (owner, 2026-09-19 late: "the selection
+     button for trees should change place on the page for example when a
+     chat is opened"). While a chat is open the tree/agent picker leaves the
      header for a compact toolbar right above the chat, beside the chatted
      agent's name and a Back to list button; when the chat closes it goes
      back to its place in the header. The same <select> node is moved, so
@@ -801,8 +745,8 @@ export function homeView() {
     home?.focus?.({ preventScroll: true })
   })
   function placePicker(inChat) {
-    /* All trees was still being moved when chat pulled up -- the picker stays
-       in the header; the toolbar above the chat
+    /* Owner, 2026-09-20: "all trees is still getting moved when chat pulls
+       up" -- the picker stays in the header; the toolbar above the chat
        carries only the agent's name and Back to list. */
     if (agentPick.parentNode !== sessionHeadEl) sessionHeadEl.insertBefore(agentPick, modeGroup)
     chatToolbar.hidden = !inChat
@@ -824,8 +768,8 @@ export function homeView() {
     rememberAgentPick()
     resolveChoice()
     /* PICKING AN AGENT FROM THE LIST OPENS ITS CHAT, right here, with no
-       second press (the agent to chat with is selected right there from the
-       list, immediately). The Summary button beside it is the way back to
+       second press (owner: "select the agent to chat right there from the
+       list immediately"). The Summary button beside it is the way back to
        that agent's runs. A tree is a scope, not a conversation, so choosing
        one leaves the mode alone and the panel shows its runs. */
     if (oneLaneSelected()) { agentMode = 'chat'; rememberAgentMode() }
@@ -982,15 +926,22 @@ export function homeView() {
           const root = store.rootOf(tree.id)
           records.push({
             id: `${id}:${tree.id}`,
+            computerId: id,
             name: treeDisplayName(tree) || tree.name || tree.id,
             active: treeStatus(tree) === 'running',
             tipKey: root ? root.id : null,
             memberKeys: nodes.map(node => node.id),
             /* For the picker: the store's own name for a member that has no
-               run row yet, and which members the store says are live right
-               now -- the starting/running pair tree-session-liveness calls busy. */
+               run row yet. The session join below supplies observed work. */
             memberNames: Object.fromEntries(nodes.map(node => [node.id, nodeDisplayName(node, snapshot.nodes || [], { roleLabel: role => ROLES[role]?.label || role })])),
-            liveKeys: nodes.filter(node => ['starting', 'running'].includes(node.agent?.state)).map(node => node.id),
+            /* The store reloads saved running as unconfirmed starting. Its nodes
+               carry sessionId, not the drawing projection's agent.state. Only
+               this view's observed stream can claim current work; approval or
+               session end withdraws that claim even before saved state moves. */
+            liveKeys: nodes.filter(node => {
+              const live = node.sessionId ? liveSessions.get(node.sessionId) : null
+              return live?.working === true && !live.waiting && !live.ended
+            }).map(node => node.id),
             memberRoles: Object.fromEntries(nodes.map(node => [node.id, node.agent?.declaredRole || node.agent?.role || ''])),
             /* What the tree itself saved about each member, for the board's rows
                when there is no run record (T1375): the status Computers draws,
@@ -1004,8 +955,8 @@ export function homeView() {
     return records
   }
   let treeRecords = []
-  /* THE MONOGRAM'S COLOUR IS THE NODE'S COLOUR ON PAGE 2 (the colours match,
-     taken from the tree itself):
+  /* THE MONOGRAM'S COLOUR IS THE NODE'S COLOUR ON PAGE 2 (owner, 2026-09-20:
+     'make those colors match more, maybe grab them from the tree itself'):
      the same painter the tree graph uses for a node's circle, keyed by the
      agent's role and its own id, so the same agent is the same mark on both
      pages and follows the Role library's saved colours. */
@@ -1281,148 +1232,49 @@ export function homeView() {
   }
   window.addEventListener('keydown', takeoverKeys)
 
-  /* ------------------------------------------------------------------
-     The hero ring.
-     ------------------------------------------------------------------ */
-  /* Read once at construction, as it always was -- an orientation change
-     remounts the view through the router rather than resizing this in place.
-     The arithmetic is homeRingSize(), at the top of this file. */
-  const ringSize = homeRingSize(window.innerWidth, window.innerHeight, textZoom())
-  const ring = uptimeRing({ size: ringSize, epoch: Date.now(), caption: '', sub: '', crescent: true, corona: false })
-  ring.el.dataset.load = 'unknown'
   root.dataset.ledgerStatus = 'unknown'
   const statusColors = mountHomeStatusColors(root)
-  ring.el.dataset.circleMotion = currentHomeCircleMotion()
-  ring.el.classList.add('home-circle')
-  ring.el.appendChild(el(homeCircleMarkup()))
-  ring.el.appendChild(el(launchCircleMarkup()))
-  /* The live Navier-Stokes fluid inside the ring (home-circle-fluid.js), page 1 only. Kill switch: drop data-fluid to
-     turn it off, or a word of data-fluid-extras to drop that extra. It follows the circle's Motion and Glow settings. */
-  ring.el.dataset.fluidExtras = 'personality blowup voice'
-  // The stage lets the dial fit its column without resizing voice controls.
-  const ringStage = el('<div class="home-ring-stage"></div>')
-  ringStage.appendChild(ring.el)
-  root.querySelector('.home-ring-slot').appendChild(ringStage)
-  const voiceContact = attachPersistentVoice({ sample, ring: ring.el })
-  root.querySelector('.home-ring-wrap').appendChild(voiceContact.el)
-  let ringFluid = null
-  function paintCircleStyle() {
-    const style = currentHomeCircleStyle()
-    ring.el.dataset.circleStyle = style
-    const still = style === 'simple'
-    ring.el.dataset.fluid = still ? 'off' : 'on'
-    if (still) {
-      // Simple never mounts a simulation. Switching to it releases the
-      // canvas, GPU context, animation loop and listeners immediately.
-      ringFluid?.destroy()
-      ringFluid = null
-      ring.el.dataset.fluidState = 'off'
-      ring.el.dataset.fluidReason = style
-      delete ring.el.dataset.fluidLevel
-    } else {
-      /* Classic is the style, including the animations at rest. The base -- its look and its
-         movement at rest -- is the 09-15 renderer (home-circle-fluid-classic.js)
-         for BOTH Blob and Classic. The current renderer takes the ring only
-         while the agent is thinking or using a tool (the mist and the Bash
-         rings that were kept), and hands it back when that ends. */
-      /* The blob's colour and style were inconsistent, switching back to the
-         previous style -- so Blob is the classic renderer for EVERY action; it acts out
-         thinking, reading, writing and tools itself. Nothing swaps. */
-      /* Launch is the 09-11..09-15 circle -- the spinning
-         crest over the site's fluid (home-circle-launch.js and
-         home-circle-fluid-launch.js), its own renderer beside the classic one. */
-      const wantClassic = style === 'classic' || style === 'standard'
-      const kind = style === 'launch' ? 'launch' : wantClassic ? 'classic' : 'current'
-      if (ringFluid && ringFluid.kind !== kind) { ringFluid.destroy(); ringFluid = null }
-      if (!ringFluid) {
-        delete ring.el.dataset.fluidReason
-        ringFluid = kind === 'launch' ? mountLaunchFluid(ring.el, { sample })
-          : kind === 'classic' ? mountClassicFluid(ring.el, { sample }) : mountHomeCircleFluid(ring.el, { sample })
-        if (ringFluid) { ringFluid.classic = wantClassic; ringFluid.kind = kind }
-      }
-    }
+  const factsEl = root.querySelector('.home-facts')
+  const exampleNote = root.querySelector('[data-home-example-note]')
+  const following = root.querySelector('[data-home-following]')
+  const voiceContact = attachPersistentVoice({ sample })
+  root.querySelector('.home-follow-column').appendChild(voiceContact.el)
+  const followPerson = following.querySelector('[data-follow-person]')
+  const followName = following.querySelector('[data-follow-name]')
+  const followStatus = following.querySelector('[data-follow-status]')
+  const followAction = following.querySelector('[data-follow-action]')
+  const followAvatar = following.querySelector('[data-follow-avatar]')
+  const followEmpty = following.querySelector('[data-follow-empty]')
+  const followChat = following.querySelector('[data-follow-chat]')
+  const followChoose = following.querySelector('[data-follow-choose]')
+  let followedAgent = ''
+  const chooseFollowing = () => {
+    if (!agentPick.hidden) { agentPick.focus(); agentPick.showPicker?.() }
+    else if (!boardSlot.hidden) { rosterSearch.focus(); rosterSearch.scrollIntoView?.({ block: 'nearest' }) }
+    else location.hash = '#/computers'
   }
-  /* The actions the current renderer still owns: the thinking mist and the
-     tool rings. Everything else (idle, waiting, reading, writing, finished)
-     rests on the classic base. */
-  const ACTIVE_ACTIONS = new Set(['thinking', 'running'])
-  paintCircleStyle()
-
-  const captionEl = ring.el.querySelector('.uring-caption')
-  const digitsEl = ring.el.querySelector('.uring-digits')
-  const innerEl = ring.el.querySelector('.uring-inner')
-  /* THE TIMER SITS ABOVE THE CIRCLE.
-     First the timer moved into the header -- it was
-     moved out of the circle's face into .home-overview-head.
-     Later the timer moved BACK ABOVE THE CIRCLE. So the slot it is
-     moved into is now the first child of the ring column instead of the middle
-     track of the page header; the earlier instruction is kept here because
-     "above" is the word both of them use and the difference between them is
-     only which "above" -- above the page, or above the ring.
-
-     What does NOT change either time: these are the same caption and digit
-     nodes uptimeRing built, moved rather than copied, so the clock below goes
-     on writing into them and nothing about the count changes. The circle's face
-     stays left to the fluid and to the line naming the agent it follows. */
-  const clockSlot = root.querySelector('[data-home-clock]')
-  /* The clock and the following line swap places -- the line
-     naming the agent the circle follows goes to the plate ABOVE the circle,
-     and the clock goes back into the circle's face. Same nodes, moved. */
-  innerEl.append(captionEl, digitsEl)
-  clockSlot.hidden = false
-  const agentLine = el('<div class="home-agent-line" data-agent-line hidden><b></b><span></span></div>')
-  clockSlot.appendChild(agentLine)
-  /* uptimeRing only emits `.uring-sub` when it is given text at construction,
-     and this view has none until a source answers. Create it once here rather
-     than passing placeholder text that would paint and then be replaced. */
-  const subEl = el('<div class="uring-sub"></div>')
-  /* The agent-runs line is removed -- the
-     sentence is still computed (other readers use view.headline) but is not
-     in the document. */
-
-  const factsEl = el('<div class="home-facts"></div>')
-  // Status details can grow with text zoom and connection errors. Keep them
-  // below the dial so they never push its clock through the circular edge.
-  ringStage.appendChild(factsEl)
-
-  /* THE CLOCK. The timer becomes a clock showing the
-     user's time -- the person's local hours and minutes, in the face of
-     every circle, switched on or off in quick settings (home-circle-clock.js).
-     The caption named what the old elapsed count measured, so it stays hidden. */
-  digitsEl.innerHTML = ['hour', 'minute', 'second']
-    .map(part => (part === 'hour' ? '' : `<span class="colon" data-clock-colon="${part}">:</span>`)
-      + `<span class="seg" data-clock-part="${part}"><span class="n-stack"><span class="n cur"></span></span></span>`)
-    .join('') + '<span class="uring-period" data-clock-part="period" hidden></span>'
-  // Seconds and the colon before them show only with the clock's With seconds choice.
-  // The colon is named, not found as a sibling: the Home test harnesses' DOM has no sibling links.
-  const secondParts = [digitsEl.querySelector('[data-clock-part="second"]'), digitsEl.querySelector('[data-clock-colon="second"]')]
-  digitsEl.dataset.clockFace = 'local'
-  const stacks = [...digitsEl.querySelectorAll('.n-stack')]
-  const periodEl = digitsEl.querySelector('.uring-period')
-  captionEl.hidden = true
-
-  /* The digit rolls' own settle timers, so a Home torn down mid-roll leaves
-     nothing scheduled (disposal-teardown): the clock now rolls at mount. */
-  const digitRolls = new Set()
-  function setDigit(stack, value) {
-    const last = stack.lastElementChild
-    if (!last || last.textContent === value) return
-    const outgoing = [...stack.children]
-    const next = document.createElement('span')
-    next.className = 'n next'
-    next.textContent = value
-    stack.appendChild(next)
-    outgoing.forEach(n => { n.classList.remove('cur', 'next', 'in'); n.classList.add('out') })
-    requestAnimationFrame(() => requestAnimationFrame(() => next.classList.add('in')))
-    const finish = () => {
-      outgoing.forEach(n => n.remove())
-      stack.querySelectorAll('.n.out').forEach(n => n.remove())
-      next.classList.remove('next', 'in'); next.classList.add('cur')
-    }
-    const tid = setTimeout(() => { digitRolls.delete(tid); finish() }, 420)
-    digitRolls.add(tid)
-    next.addEventListener('transitionend', () => { clearTimeout(tid); digitRolls.delete(tid); finish() }, { once: true })
-  }
+  following.querySelector('[data-follow-change]').addEventListener('click', chooseFollowing)
+  followChoose.addEventListener('click', chooseFollowing)
+  followChat.addEventListener('click', () => {
+    if (!followedAgent) return
+    chooseAgent(followedAgent, 'chat')
+    if (!takeoverSurface && !chatToolbar.hidden) chatBack.focus?.({ preventScroll: true })
+  })
+  const newAgent = root.querySelector('[data-home-new-agent]')
+  newAgent.disabled = true
+  newAgent.title = sample ? 'Open your live fleet to start a new chat.' : 'Checking available computers.'
+  newAgent.addEventListener('click', async () => { await openTakeover(); if (!destroyed) takeoverSurface?.newChat() })
+  for (const tile of root.querySelectorAll('[data-glance-filter]')) tile.addEventListener('click', () => {
+    const filter = tile.dataset.glanceFilter
+    chooseAgent('', 'summary')
+    rosterStatus.value = filter
+    if (boardSlot.hidden) activityFilter = filter
+    for (const parts of runRows.values()) parts.keepUpdated = false
+    paintRunScope()
+    logEl.scrollTop = 0
+    rosterStatus.focus()
+    readingControls?.changed()
+  })
 
   /* ------------------------------------------------------------------
      Scroll pinning for the panel. The seeded history renders while the view is
@@ -1559,36 +1411,6 @@ export function homeView() {
 
   let renderedPanelKind = null
 
-  let clockTimer = 0
-  function stopClock() {
-    if (clockTimer) { clearTimeout(clockTimer); clockTimer = 0 }
-  }
-  let clockSeconds = false
-  function tickClock() {
-    const now = new Date()
-    const { hour, minute, second, period } = clockParts(now)
-    setDigit(stacks[0], hour)
-    setDigit(stacks[1], minute)
-    if (clockSeconds) setDigit(stacks[2], second)
-    if (periodEl.textContent !== period) periodEl.textContent = period
-    periodEl.hidden = !period
-    // Wake just after the next second (or minute) turns rather than polling every frame.
-    const intoSecond = now.getMilliseconds()
-    clockTimer = setTimeout(tickClock, clockSeconds ? 1000 - intoSecond + 20 : 60000 - (now.getSeconds() * 1000 + intoSecond) + 50)
-  }
-  function paintClock() {
-    const mode = homeCircleClockMode()
-    const on = mode !== 'off'
-    clockSeconds = mode === 'seconds'
-    root.dataset.clock = on ? 'running' : 'none'
-    digitsEl.hidden = !on
-    digitsEl.dataset.clockSeconds = clockSeconds ? 'on' : 'off'
-    for (const part of secondParts) part.hidden = !clockSeconds
-    stopClock()
-    if (on && !destroyed) tickClock()
-  }
-  paintClock()
-
   const TONE_COLOR = { good: 'var(--s-good)', warn: 'var(--s-warn)', neutral: 'var(--ink-4)' }
 
   /* Nothing is painted until the two local reads have answered.
@@ -1620,20 +1442,21 @@ export function homeView() {
        ring gives its middle back to the headline when there are no digits in
        it. Both are stated here because only this function knows. */
     root.dataset.panel = view.panel.empty ? 'empty' : view.panel.kind
-
-    captionEl.textContent = readerSentence(view.caption)
-    subEl.textContent = readerSentence(view.headline)
+    const newAgentComputer = takeoverChoices().some(choice => choice.computerId)
+    newAgent.disabled = sample || !newAgentComputer
+    newAgent.title = sample ? 'Open your live fleet to start a new chat.' : newAgentComputer ? '' : 'No computer is available for a new chat.'
 
     const ledger = state.ledgerStatus
     root.dataset.ledgerStatus = ledger.status
-    ring.el.dataset.ledgerStatus = ledger.status
-    // Keep the underlying ring's existing tokens, now driven only by Ledger.
-    ring.el.dataset.load = ({ clear: 'idle', attention: 'busy', blocked: 'peak', unknown: 'unknown' })[ledger.status]
     const ledgerFact = el('<a class="home-fact" data-home-ledger-status href="#/ledger"><i></i><span></span></a>')
     ledgerFact.setAttribute('href', ledgerStatusHref(ledger.status))
-    ledgerFact.querySelector('i').style.background = 'var(--core-status-color)'
+    ledgerFact.querySelector('i').style.background = `var(--home-ledger-${ledger.status}, var(--ink-3))`
     ledgerFact.querySelector('span').textContent = ledger.label
     ledgerFact.title = ledger.title
+    ledgerFact.dataset.status = ledger.status
+    const ledgerTile = root.querySelector('[data-glance-ledger]')
+    ledgerTile.replaceChildren()
+    if (!root.querySelector('[data-home-glance]').hidden) ledgerTile.appendChild(ledgerFact)
 
     const recoveryFacts = []
     if (currentDataSource() === 'local' && continuationStatus?.blocked) {
@@ -1642,14 +1465,20 @@ export function homeView() {
       fact.querySelector('span').textContent = continuationStatus.reason
       recoveryFacts.push(fact)
     }
-    factsEl.replaceChildren(ledgerFact, ...recoveryFacts, ...view.facts.map(fact => {
+    const renderedFacts = view.facts.map(fact => {
       const node = el(fact.href
         ? `<a class="home-fact" href="${fact.href}"><i></i><span></span></a>`
         : `<div class="home-fact"><i></i><span></span></div>`)
       node.querySelector('i').style.background = TONE_COLOR[fact.tone] || TONE_COLOR.neutral
       node.querySelector('span').textContent = readerSentence(fact.text)
-      return node
-    }))
+      return { fact, node }
+    })
+    const sampleFacts = renderedFacts.filter(({ fact }) => fact.id === 'sample')
+    for (const { node } of sampleFacts) node.querySelector('i')?.remove()
+    exampleNote.replaceChildren(...sampleFacts.map(({ node }) => node))
+    exampleNote.hidden = sampleFacts.length === 0
+    factsEl.replaceChildren(...(ledgerFact.parentNode === ledgerTile ? [] : [ledgerFact]), ...recoveryFacts,
+      ...renderedFacts.filter(({ fact }) => fact.id !== 'sample').map(({ node }) => node))
 
     panelTitle.textContent = readerSentence(view.panel.title)
     panelBadge.hidden = !view.panel.badge
@@ -1749,8 +1578,9 @@ export function homeView() {
 
   /* ---- ONE RUN, AS A FLOW RATHER THAN AS A LINE IN A LOG ----
    *
-   * THE REPORT THIS IS FOR: page 1 is a context flow of all the agents, showing
-   * their outputs cleanly. What was there was a row per run carrying a number, a
+   * THE REPORT THIS IS FOR, in the owner's words: "on page 1 this is supposed
+   * to be a context flow of all the agents and such we want to see their
+   * outputs cleanly." What was there was a row per run carrying a number, a
    * verb and a relative time, and it could not have carried an output however
    * long anybody waited: the join took the role and the brief off the node and
    * never read `reply`, which is the field that exists on the node for exactly
@@ -1781,8 +1611,9 @@ export function homeView() {
    * list -- which would fight the scroll pin and re-animate rows a person is
    * reading.
    *
-   * AND EACH ROW FOLDS, the way the chat's context block does. Context
-   * collapses as it goes, as it does in chat. The closed line is the run, its verdict,
+   * AND EACH ROW FOLDS, the way the chat's context block does. The owner's
+   * words, with the two cards in front of him: "collapse the context and such
+   * as it goes like we do in chat." The closed line is the run, its verdict,
    * one clipped line of what it was about, and when; the open body is the
    * question, the lines between, what it did, what it said back, and the door
    * to its real chat. A native <details> carries the state, the keyboard and
@@ -1945,6 +1776,7 @@ export function homeView() {
     parts.revision = disclosure.revision
     parts.unread = disclosure.unread
     parts.el.dataset.status = context.status.kind
+    parts.el.dataset.tone = homeActivityTone(context.status.label)
     parts.statusMark.textContent = context.status.mark
     parts.statusLabel.textContent = context.status.label
     parts.statusLabel.title = context.status.label === ACTIVITY_LABELS.running ? 'Saved status; no live activity observed in this view yet.' : ''
@@ -1976,7 +1808,7 @@ export function homeView() {
        writes down when a run ends. */
     setLine(parts.live, said.working ? COPY.runWorkingNow : '')
     parts.el.dataset.working = said.working ? 'true' : 'false'
-    /* What it is doing right now, in the circle's words (home-circle-action.js),
+    /* What it is doing right now, in the circle's words (home-following.js),
        on the row's head so the list and the circle say the same thing. */
     const working = Boolean(said.working) || (sample && entry?.status === 'running')
     const doing = working ? (actionForLive(live) ? actionLabel(actionForLive(live), live.kind === 'text' ? 'reply' : live.tool || '')
@@ -2156,7 +1988,7 @@ export function homeView() {
           : 'No recorded runs for this choice. Choose All trees to see all recent runs.'
     paintActivityOverview()
     paintGlance()
-    paintCircleAction()
+    paintFollowing()
     paintAgentBoard()
     paintPanelMode()
   }
@@ -2349,7 +2181,7 @@ export function homeView() {
     const parts = {
       el: node, key,
       mono: node.querySelector('.home-roster-mono'), name: node.querySelector('.home-roster-name'),
-      word: node.querySelector('.home-roster-word'), doing: node.querySelector('.home-roster-doing-text'),
+      word: node.querySelector('.home-roster-word'), mark: node.querySelector('.home-roster-dot'), doing: node.querySelector('.home-roster-doing-text'),
       since: node.querySelector('.home-roster-since'), chat: node.querySelector('.home-roster-chat'),
       facts: node.querySelector('.home-roster-facts'),
       details: node.querySelector('.home-roster-details'),
@@ -2460,13 +2292,16 @@ export function homeView() {
       if (parts.el.dataset.state !== line.state) parts.el.dataset.state = line.state
       writeText(parts.name, line.name)
       writeText(parts.mono, monogramOf(line.name))
-      if (loose) { parts.mono.classList.add('is-loose'); parts.mono.style.removeProperty('--rc'); parts.mono.style.removeProperty('--role-ink') }
-      else { parts.mono.classList.remove('is-loose'); paintRoleColor(parts.mono, roleOfAgent(line.key) || 'default', line.key) }
+      parts.mono.style.background = homeAvatarToken(line.name)
+      parts.mono.style.removeProperty('--rc')
+      parts.mono.style.removeProperty('--role-ink')
+      parts.el.dataset.tone = homeActivityTone(line.statusLabel || line.word)
+      writeText(parts.mark, ACTIVITY_MARKS[line.state] || ACTIVITY_MARKS.other)
       const facts = ROSTER.facts(line)
       writeText(parts.facts, facts)
       parts.facts.title = facts
       parts.facts.hidden = !facts
-      writeText(parts.word, line.word)
+      writeText(parts.word, line.statusLabel || line.word)
       writeText(parts.doing, line.task || '')
       parts.doing.title = line.task || ''
       writeText(parts.since, line.since || '')
@@ -2519,13 +2354,12 @@ export function homeView() {
   /* Follow the first visible run in the panel's newest-first order. Map
      insertion order is different after a new run arrives, so use the same
      records that renderRuns uses to order the list. */
-  function paintCircleAction() {
+  function paintFollowing() {
     const rows = (state.sessions.runs || []).map(run => runRows.get(run.sequence))
       .filter(parts => parts?.inScope && !parts.el.hidden && parts.agentKey)
     /* The circle follows the tree's MOST ACTIVE agent when a tree is chosen:
        one that is working, else one that needs the owner, else the newest. */
-    const kept = rows.filter(parts => keepForChoice(parts))
-    const row = kept.find(parts => parts.working) || kept.find(parts => parts.el.dataset.status === 'attention') || kept[0] || null
+    const row = followingActivityRow(rows.filter(parts => keepForChoice(parts)))
     let action = 'idle', tool = '', event = 0
     if (row) {
       const live = row.liveRecord
@@ -2533,22 +2367,38 @@ export function homeView() {
       if (fromLive) { action = fromLive; tool = live.kind === 'text' ? 'reply' : live.tool || ''; event = live.events || 0 }
       else if (row.working && sample) ({ action, tool, event } = sampleAction(row.runRecord, Date.now(), SAMPLE_HEARTBEAT_MS))
       else if (row.working) action = 'running'
-      else if (row.el.dataset.status === 'attention') action = 'waiting'
+      /* "waiting for you" is the permission wait only (the same words the
+         ledger and the tree reserve for it): a live record that is waiting.
+         Every other attention state (Did not start, Failed, Interrupted,
+         Session ended, Turn ended, Paused) is already said by the status chip
+         above this line, so the line says nothing rather than contradicting
+         the chip with "waiting for you". */
+      else if (row.el.dataset.status === 'attention' && live?.waiting) action = 'waiting'
     }
     const name = row ? row.agentName : ''
     const key = row ? row.agentKey : ''
     for (const parts of runRows.values()) parts.el.toggleAttribute('data-followed', parts === row)
-    if (ring.el.dataset.agentAction !== action) { ring.el.dataset.agentAction = action; if (!destroyed) paintCircleStyle() }
-    if (ring.el.dataset.agentTool !== tool) ring.el.dataset.agentTool = tool
-    if (ring.el.dataset.agentName !== name) ring.el.dataset.agentName = name
-    if (ring.el.dataset.agentKey !== key) ring.el.dataset.agentKey = key
-    const eventValue = String(event)
-    if (ring.el.dataset.agentEvent !== eventValue) ring.el.dataset.agentEvent = eventValue
-    const label = actionLabel(action, tool) || (row ? row.el.dataset.status === 'finished' ? 'finished' : 'no current activity' : '')
-    agentLine.hidden = !name || !label
-    const [who, what] = agentLine.children
-    if (who.textContent !== name) who.textContent = name
-    if (what.textContent !== label) what.textContent = label
+    following.dataset.agentAction = action
+    following.dataset.agentTool = tool
+    following.dataset.agentEvent = String(event)
+    const selected = row ? key : oneLaneSelected() ? agentFilter : ''
+    followedAgent = selected
+    const hasAgent = Boolean(selected)
+    const label = actionLabel(action, tool) || (row ? row.el.dataset.status === 'finished' ? 'finished' : row.el.dataset.status === 'attention' ? '' : 'no current activity' : 'No recorded activity yet.')
+    const statusLabel = row?.working ? ACTIVITY_LABELS.working : row?.statusLabel?.textContent || (selected ? rosterLines.get(selected)?.statusLabel || rosterLines.get(selected)?.word || ACTIVITY_LABELS.unrecorded : '')
+    following.dataset.agentKey = selected
+    following.dataset.agentName = row ? name : selected ? agentNameFor(selected) : ''
+    followPerson.hidden = !hasAgent
+    followEmpty.hidden = hasAgent
+    followChoose.hidden = hasAgent
+    followChat.hidden = !hasAgent
+    followAction.hidden = !hasAgent || !label
+    followName.textContent = following.dataset.agentName
+    followStatus.textContent = statusLabel ? `${row?.statusMark?.textContent || (row?.working ? ACTIVITY_MARKS.working : ACTIVITY_MARKS.other)} ${statusLabel}` : ''
+    followStatus.dataset.tone = homeActivityTone(statusLabel)
+    followAction.textContent = label
+    followAvatar.textContent = agentMonogram(followName.textContent)
+    followAvatar.style.background = homeAvatarToken(followName.textContent)
   }
 
   /* At a glance (home-overview.js): four figures from every run this view knows, not only the scoped ones. */
@@ -2564,7 +2414,9 @@ export function homeView() {
            'Working 0' beside '1 working' (T1481). A live computer keeps the
            rule that only an observed stream is work. */
         status: sample && parts.working ? 'working' : parts.el.dataset.status,
-      })))
+      })),
+      sample ? [] : glanceLiveTreeRows(treeRecords),
+    )
     for (const [key, value] of Object.entries(figures)) {
       const text = String(value)
       if (glanceValues[key] && glanceValues[key].textContent !== text) glanceValues[key].textContent = text
@@ -2574,6 +2426,13 @@ export function homeView() {
       if (glance.dataset[key] !== value) glance.dataset[key] = value
     }
     glance.hidden = !shown
+    // The ledger's source and the run source answer independently. Preserve
+    // its exact fact and link even when the run strip is hidden.
+    const ledgerFact = root.querySelector('[data-home-ledger-status]')
+    if (ledgerFact) {
+      const host = shown ? root.querySelector('[data-glance-ledger]') : factsEl
+      if (ledgerFact.parentNode !== host) host.appendChild(ledgerFact)
+    }
   }
   function paintActivityOverview() {
     activityOverview.hidden = runRows.size === 0
@@ -2663,7 +2522,7 @@ export function homeView() {
 
   /* ---- THE DEMONSTRATION'S OWN HEARTBEAT ----
    *
-   * The example moves, so it feels a little alive.
+   * Owner, 2026-08-26: "make it move ... just make it feel alive a bit."
    * src/sample-activity.js now emits a rolling head whose newest run is left
    * unresolved, so the example fleet gains a run and finishes one as the clock
    * advances -- but only if something re-reads it. This is that something.
@@ -2679,7 +2538,7 @@ export function homeView() {
    * record; nothing here paints anything itself. */
   let sampleTick = 0
   /* The example's working run walks the circle through its repertoire as the
-     slot ages (home-circle-action.js sampleAction), so the circle is re-asked
+     slot ages (home-following.js sampleAction), so the circle is re-asked
      a few times a slot. Example only, for the same reason the heartbeat is. */
   let sampleActionTick = 0
   function startSampleHeartbeat() {
@@ -2691,7 +2550,7 @@ export function homeView() {
         const parts = runRows.get(run.sequence)
         if (parts?.working) setLine(parts.action, (({ action, tool }) => actionLabel(action, tool))(sampleAction(run, Date.now(), SAMPLE_HEARTBEAT_MS)))
       }
-      paintCircleAction()
+      paintFollowing()
     }, 2500)
     /* Phase-offset for the same reason the health poll is, and it matters more
        here: this heartbeat and the health poll carry the SAME 45s period, so
@@ -3031,8 +2890,8 @@ export function homeView() {
 
   /* IS THIS COMPUTER ON THE PERSON'S TOOLSENABLED ACCOUNT.
    *
-   * WHY HOME ASKS AT ALL. The report was that, after signing up, a user could
-   * not see how to connect their computer, and the first screen's
+   * WHY HOME ASKS AT ALL. The owner's report is "as a user I dont even see how
+   * after signing up that I now connect my computer", and the first screen's
    * one sentence about other computers used to be a fleet fact pointing at a
    * guide that says connecting is impossible. It is an account fact now, and an
    * account fact has to be READ or it is a guess -- the row would otherwise
@@ -3146,8 +3005,8 @@ export function homeView() {
      shell/spawn-record.cjs takes most of that cost away, but the honest fix is
      not to ask the question when there is no reason to.
 
-     WHAT CHANGED, AND WHY IT DOES NOT BRING THAT COST BACK. The panel is a
-     flow rather than a photograph, and the second half of the reasoning above
+     WHAT CHANGED, AND WHY IT DOES NOT BRING THAT COST BACK. The owner asked for
+     a flow rather than a photograph, and the second half of the reasoning above
      turned out to be the part that was wrong: a run started on the computers
      page keeps running when a person walks back to this screen, so this view IS
      mounted while agents work, and the list simply never moved again.
@@ -3291,21 +3150,6 @@ export function homeView() {
   }
   window.addEventListener(CHATBOX_FEED_EVENT, onChatboxSettings)
 
-  // Settings can commit while Home is still mounted behind it. Switch only
-  // its decoration; the clock, live facts and conversation keep their state.
-  const onHomeCircleStyle = () => {
-    if (!destroyed) paintCircleStyle()
-  }
-  window.addEventListener(HOME_CIRCLE_STYLE_EVENT, onHomeCircleStyle)
-  const onHomeCircleMotion = () => {
-    if (!destroyed) ring.el.dataset.circleMotion = currentHomeCircleMotion()
-  }
-  window.addEventListener(HOME_CIRCLE_MOTION_EVENT, onHomeCircleMotion)
-  const onHomeCircleClock = () => {
-    if (!destroyed) paintClock()
-  }
-  window.addEventListener(HOME_CIRCLE_CLOCK_EVENT, onHomeCircleClock)
-
   /* AN AGENT REMOVED FROM ITS OWN CHAT HERE. The removal runs in the hidden
      conversation view, which paints only its own status; Home kept showing and
      selecting the agent, and its window said "This conversation is no longer
@@ -3332,10 +3176,10 @@ export function homeView() {
   }
   window.addEventListener(TREE_NODE_REMOVED_EVENT, onTreeNodeRemoved)
 
-  /* The case this exists for: they pressed Submit on #/approvals, pressed the
+  /* The case this exists for: he pressed Submit on #/approvals, pressed the
      arrow, and landed HERE — and only then did the bridge refuse. Waiting out
-     this screen's own 20s poll before saying so would leave them looking at a
-     screen that knows their decision did not land and is not telling them.
+     this screen's own 20s poll before saying so would leave him looking at a
+     screen that knows his decision did not land and is not telling him.
      Clamped to the count this screen actually read, so it can never report
      more failures than there are requests waiting. */
   const onApprovalOutcome = () => {
@@ -3394,12 +3238,8 @@ export function homeView() {
       takeoverOpenToken++
       destroyed = true
       sessionTextReader.clear()
-      ringFluid?.destroy()
       statusColors.destroy()
       voiceContact.destroy()
-      stopClock()
-      for (const tid of digitRolls) clearTimeout(tid)
-      digitRolls.clear()
       /* Every recurring read on this screen is now a self-rescheduling
          timeout rather than a fixed interval -- that is what lets each one
          carry its own phase and its own back-off -- so they are all cleared
@@ -3424,9 +3264,6 @@ export function homeView() {
       cancelAnimationFrame(firstPinFrame)
       cancelAnimationFrame(settledPinFrame)
       window.removeEventListener(CHATBOX_FEED_EVENT, onChatboxSettings)
-      window.removeEventListener(HOME_CIRCLE_STYLE_EVENT, onHomeCircleStyle)
-      window.removeEventListener(HOME_CIRCLE_MOTION_EVENT, onHomeCircleMotion)
-      window.removeEventListener(HOME_CIRCLE_CLOCK_EVENT, onHomeCircleClock)
       window.removeEventListener(TREE_NODE_REMOVED_EVENT, onTreeNodeRemoved)
       clearTimeout(removalNoteTimer)
       window.removeEventListener(APPROVAL_OUTCOME_EVENT, onApprovalOutcome)
@@ -3442,36 +3279,6 @@ export function homeView() {
       agentWorkspacePool?.destroy()
       agentWorkspacePool = null
       document.fonts?.removeEventListener?.('loadingdone', onFontsLoaded)
-      /* THE CRESCENT, WHICH NOTHING HAD EVER TAKEN DOWN.
-       *
-       * uptimeRing() mounts the corona and hands its teardown back as
-       * root.destroyCrescent (src/components.js). Grepped across this tree
-       * before this line existed, that property was written in exactly one
-       * place and READ in none -- so every visit to this page built a corona
-       * that was never dismantled.
-       *
-       * WHAT ONE UNCLOSED MOUNT LEAVES BEHIND, read off a staged packaged
-       * build by instrumenting the page from before its first line ran
-       * (tools/dom-retention-probe.mjs): two MutationObservers still watching
-       * documentElement and body -- neither of which is ever collected, so
-       * neither are their closures -- a transitionstart and a transitionend
-       * listener on the colour probe, a webglcontextlost listener on the
-       * canvas, and a WebGL context nobody released. Holding any node of a
-       * tree holds the whole tree, so those observers kept a 132-node detached
-       * copy of this ring alive, one more on every lap of the ring.
-       *
-       * MEASURED BEFORE AND AFTER THIS LINE, same probe, three laps:
-       *   before  88 -> 94 -> 100 listeners, 4 -> 6 retained detached trees,
-       *           8 observers nobody had disconnected and climbing
-       *   after   76 / 76 / 76 listeners, 2 / 2 / 2 trees, 5 observers, flat
-       *
-       * IT IS ONE CALL, and the reason it was missing is that nothing forced
-       * it: a teardown handed back as a property on a DOM element is a
-       * teardown a caller can forget. Nothing in the unit suites can catch it
-       * coming back -- this file needs a real document and a real GL context to
-       * be wrong in this way -- so the probe above is the instrument that
-       * would, and it is why that file exists. */
-      ring.el.destroyCrescent?.()
     },
   }
 }

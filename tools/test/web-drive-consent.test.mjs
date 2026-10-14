@@ -3,7 +3,7 @@
  * Findings 2026-08-22: shell/relay-supervisor.cjs reads `mc.relay.web-drive`
  * per command and answers true only for the exact string 'on' -- and nothing
  * in src/ wrote that key. The refusal a browser met pointed at a control that
- * did not exist. The rule is that the question is asked on the
+ * did not exist. The owner's ruling is that the question is asked on the
  * computer, at the moment it becomes meaningful: the moment the connect
  * section sees the claim land. src/connect-computer-settings.js now draws the
  * question and the switch; this file holds both still.

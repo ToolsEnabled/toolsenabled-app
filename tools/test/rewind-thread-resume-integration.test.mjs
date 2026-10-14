@@ -1,4 +1,4 @@
-/* THE REWIND FIX (an earlier commit), CARRIED ALL THE WAY TO THE RESUME DECISION.
+/* THE REWIND FIX (8d4adab), CARRIED ALL THE WAY TO THE RESUME DECISION.
  *
  * tools/test/rewind-thread-persists.test.mjs proved that performRewind now
  * calls `sessionThreadIds.set(node.sessionId, done.threadId)` before
@@ -123,8 +123,22 @@ function instantiateRewindAndPersist({ computerId = 'suite' } = {}) {
     refreshed,
     treeStore: { nodes, ...treeStore },
     queueRewind: result => { rewindPlan.push({ result }) },
+    queueRefusal: error => { rewindPlan.push({ error }) },
   }
 }
+
+test('a refused fork-origin save names the storage failure and leaves the saved circle unchanged', async () => {
+  const env = instantiateRewindAndPersist(), out = { textContent: '' }
+  env.sessionThreadIds.set('s1', 'original')
+  env.transcriptStore.save('node-1', { lines: [{ who: 'agent', text: 'Kept', at: 1 }], threadId: 'original', provider: 'codex' })
+  const saved = env.transcriptStore.get('node-1')
+  env.queueRefusal(new Error('AGENT_REWIND_ORIGIN_STORAGE_FAILED'))
+  assert.equal(await env.performRewind({ id: 'node-1', sessionId: 's1' }, 't1', out), false)
+  assert.equal(out.textContent, 'Rewind could not save the fork’s original sign-in home. This conversation is still on its previous thread.')
+  assert.deepEqual(env.transcriptStore.get('node-1'), saved)
+  assert.equal(env.sessionThreadIds.get('s1'), 'original')
+  assert.deepEqual(env.workspaceRefreshes, [])
+})
 
 test('resumableThread, fed the REAL saved record, targets the fork after a rewind -- not the pre-rewind thread', async () => {
   const env = instantiateRewindAndPersist()

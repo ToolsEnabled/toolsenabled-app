@@ -1,9 +1,9 @@
 /* THE /TASK AND /ASK FAMILIES IN THE CHAT BOX — built the same way as the
  * /Request family (see request-commands.test.mjs), for the ledger's T and A
- * subsets (the shared interface: T for tasks, which are
- * recurring loop tasks or tasks with a definite completion and which agents may
- * complete and remove; A for asks, the things agents need from the person).
- * Four scopes each,
+ * subsets (Controller 3's shared interface, 2026-09-07, quoting the owner:
+ * "T for tasks, these can be recurring loop tasks or tasks that have a
+ * definitve completion - these tasks can be completed and removed by
+ * agents; Asks for things agents need from the owner"). Four scopes each,
  * eight commands, typed right where the person is already talking to an
  * agent. The PRODUCT files the words; the agent needs no tool for it and
  * just sees the confirmation.

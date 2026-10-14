@@ -10,7 +10,7 @@
  *
  * One definition, and tools/test/brand-mark.test.mjs parses the owner's SVG
  * and asserts these numbers still describe it, so the mark cannot drift from
- * the file they supplied. Nothing here is a design choice about the mark itself
+ * the file he supplied. Nothing here is a design choice about the mark itself
  * — the mark is not ours to change.
  *
  * BUILD-TIME ONLY, and it lives under tools/ for two reasons. The renderer

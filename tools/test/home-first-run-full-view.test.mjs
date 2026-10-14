@@ -191,7 +191,7 @@ test('saved local identities display a human computer name in Open picker, pane 
 })
 
 // T1537: three agents each set in a new, unnamed tree were listed in the Open
-// picker as 'tree-1-00000001-...' and a chosen tree's window was titled by
+// picker as 'tree-1-6a83ca13-...' and a chosen tree's window was titled by
 // that id. Trees are named the way Computers names them.
 test('unnamed trees are named the way Computers names them in the Open picker, pane tab and window title', async t => {
   const f = await fixture(t)
@@ -199,8 +199,8 @@ test('unnamed trees are named the way Computers names them in the Open picker, p
   const tree = (id, name = null) => ({ id, name, createdAt: stamp, updatedAt: stamp, profileId: null })
   const node = (id, treeId, message = '') => ({ id, treeId, status: 'draft', createdAt: stamp, updatedAt: stamp, role: 'builder', message, statusNote: '', sessionId: null, parentId: null })
   f.world.storage.setItem(fleetTreesStorageKey(THIS_COMPUTER_ID), JSON.stringify({ version: 1, computerId: THIS_COMPUTER_ID,
-    trees: [tree('tree-1-00000001-0000-4000'), tree('tree-1-00000002-0000-4000'), tree('tree-1-00000003-0000-4000', 'Release notes'), tree('tree-1-9f0e7d6c-5b4a-4938')],
-    nodes: [node('node-a', 'tree-1-00000001-0000-4000'), node('node-b', 'tree-1-00000002-0000-4000'), node('node-c', 'tree-1-00000003-0000-4000'),
+    trees: [tree('tree-1-6a83ca13-23c4-4b8d'), tree('tree-1-2e7ae088-27a3-4c84'), tree('tree-1-c29b3818-1677-4c07', 'Release notes'), tree('tree-1-9f0e7d6c-5b4a-4938')],
+    nodes: [node('node-a', 'tree-1-6a83ca13-23c4-4b8d'), node('node-b', 'tree-1-2e7ae088-27a3-4c84'), node('node-c', 'tree-1-c29b3818-1677-4c07'),
       node('node-d', 'tree-1-9f0e7d6c-5b4a-4938', 'Tidy the downloads folder\nthen report')] }))
   const view = await f.open()
   const trees = options(view).filter(option => option.value.startsWith(`tree:${THIS_COMPUTER_ID}:`))

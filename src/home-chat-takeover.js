@@ -1,20 +1,23 @@
 /* THE HOME PAGE'S FULL-PAGE CHAT, and the list of what it can be pointed at.
  *
- * The coordinator chat window expands to the WHOLE page for a bigger view; it
- * replicates the page 2 chat surface when opened; any agent can be switched to
- * from a drop-down list; but only one view at a time -- and trees are offered
- * too, so a person can see specific trees, computers or everything, with the
- * main trees as options rather than every subtree.
+ * Owner, verbatim: "I want that coordinator chat window to be expandable to
+ * the WHOLE page this time so an even bigger view; i want it to replicate the
+ * page 2 chat surface when you open it up; and i want you to be able to switch
+ * to any agent by a drop down list; but ONLY 1 view at a time" -- and then
+ * "also trees so you can see specific trees or computers or everything. So;
+ * most surfaces specified as options but not every subtree needs to be
+ * included just the main trees".
  *
  * THREE RULES THIS FILE EXISTS TO KEEP.
  *
  * 1. ONE VIEW AT A TIME, enforced by construction rather than by care. The
  *    surface is mounted into a single host, and every subject change disposes
  *    the previous mount BEFORE the next one is built. There is no code path
- *    that can leave two mounted, which is the only way one view at a time
- *    survives the next person to edit this. Split screen was floated and is
- *    deliberately NOT built: a second pane would need a second disposal
- *    contract, and page 2 is the multi-agent view.
+ *    that can leave two mounted, which is the only way "only 1 view" survives
+ *    the next person to edit this. Split screen was floated ("maybe a split
+ *    screen but thats it for now") and is deliberately NOT built: a second
+ *    pane would need a second disposal contract, and the owner named page 2 as
+ *    the multi-agent view.
  *
  * 2. REPLICATE MEANS REUSE, NOT COPY. For an agent, this mounts the SAME
  *    mountAgentSessionSurface that page 2 and the agent page mount -- not a
@@ -90,7 +93,7 @@ export function takeoverFocusStops(surface) {
 }
 
 /**
- * The list a person picks from, in the named order: everything,
+ * The list a person picks from, in the order the owner named it: everything,
  * the coordinator, computers, main trees, then agents.
  *
  * `treesByComputer` maps a computer id to that computer's tree records --
@@ -271,8 +274,8 @@ export function coordinatorChatConfig({ live = false, label = '' } = {}) {
     : { ...base, sampleConversation: true }
 }
 
-/* THE EXAMPLE AGENT'S CHAT IS THE ONE PAGE 2 DRAWS. The chat surface was not
-   yet the same as the rest of the software -- the
+/* THE EXAMPLE AGENT'S CHAT IS THE ONE PAGE 2 DRAWS. Owner, 2026-09-19: "the
+   chat surface still is not the same as the rest of the software" -- the
    Home panel used to give an example-fleet agent a coordinator-styled,
    self-answering buildChat of its own. This is src/views/computers.js
    exampleChatConfigFor, field for field: the example subtitle, the header
@@ -283,8 +286,8 @@ export function coordinatorChatConfig({ live = false, label = '' } = {}) {
    example shows them: the same rows, the same loop interval (the default,
    since an example node has no loop of its own), every one switched off with
    the example sentence -- exampleOnlyRows keeps only the copy rows enabled,
-   and this chat has none, and those rows are required. A live tree agent in
-   this panel is page 2's own controller and
+   and this chat has none. Owner, 2026-09-19: "ok well they need to have
+   those." A live tree agent in this panel is page 2's own controller and
    carries its rows itself. */
 export function exampleCommonRows(reason) {
   const why = typeof reason === 'function' ? reason() : reason
@@ -335,9 +338,9 @@ export function mountChatTakeover(host, {
   let list = Array.isArray(choices) ? choices : []
   let current = null
   let release = null
-   /* THE HELD DRAFT, ACROSS EVERY REBUILD THIS MOUNT EVER DOES (reported
-     Occasional UI redraws erased what a person was typing).
-     One store per takeover mount, keyed by subject id --
+  /* THE HELD DRAFT, ACROSS EVERY REBUILD THIS MOUNT EVER DOES (owner's
+     report, 2026-09-07: "occassionally really annoying UI redraws...erase
+     my typing"). One store per takeover mount, keyed by subject id --
      see src/home-chat-composer-draft.js for why and for the rule it
      borrows from composer-queue-recall.js. `composerInput` is the
      currently-mounted coordinator composer's own input element, or null
@@ -373,8 +376,8 @@ export function mountChatTakeover(host, {
        exactly one and this page was not using it. buildChat (components.js) is
        the finished composer -- role icon, bubbles, queue, actions, stop -- and
        until now it was mounted ONLY by page 3, so on page 1 neither the surface
-       nor its icons could appear at all, which was seen and asked about. The
-       takeover's DEFAULT subject is the coordinator, so this
+       nor its icons could appear at all, which the owner saw and asked about in
+       as many words. The takeover's DEFAULT subject is the coordinator, so this
        is the first thing a visitor meets.
 
        ON THE SIMULATION it opens in the surface's own labelled demonstration
@@ -396,7 +399,7 @@ export function mountChatTakeover(host, {
        collapsed panel on page one IS a working coordinator surface. So the
        expand replaced a real conversation with an empty, disabled one carrying
        "The coordinator cannot be messaged yet."
-       The door added because the first page had no chat
+       The door added to answer the owner's "there is no chat on the first page"
        opened onto that exact complaint. Two independent verifiers reproduced it,
        the second by driving the whole home view in the repo's own Electron and
        pressing the real button.
@@ -455,8 +458,8 @@ export function mountChatTakeover(host, {
          mountAgentSessionSurface's live fence answers "render nothing at all"
          when live is false -- right for a write surface, and measured wrong
          here: the takeover's DEFAULT subject is an agent, so a simulation
-         visitor opened the full page onto two empty panels, which was seen
-         exactly. The caller's own painter is the same one every non-agent
+         visitor opened the full page onto two empty panels. The owner saw
+         exactly that. The caller's own painter is the same one every non-agent
          subject uses; it filters the activity feed to the subject, which on
          the simulation shows the example fleet's transcript -- a demonstration
          instead of a blank. */

@@ -39,8 +39,8 @@ test('single-instance handoff carries opaque data and command launches suppress 
 
 /* THE TWO GRAMMAR CALL SITES MUST DESCRIBE THE SAME PROCESS.
  *
- * MEASURED on a development tier: spooled resume commands were written and
- * none was claimed, because both call sites told the grammar
+ * MEASURED 2026-09-03 on the owner's Live tier: nine spooled resume commands
+ * were written and none was claimed, because both call sites told the grammar
  * the one permitted entry argument was `__filename` while the development
  * launch names the app DIRECTORY. The behaviour that fixes it is asserted by
  * calling the grammar with values in tools/test/tree-node-command.test.mjs;
@@ -59,14 +59,106 @@ test('both command-grammar call sites take their identity from Electron, not fro
   assert.match(main, /\.\.\.treeNodeCommandLaunchIdentity\('launch'\)/)
   assert.match(main, /\.\.\.treeNodeCommandLaunchIdentity\('relayed'\)/)
   assert.equal(main.match(/\.\.\.treeNodeCommandLaunchIdentity\(/g)?.length, 2)
-  assert.match(main, /appendedSwitches = form === 'relayed'[\s\S]*?\[\.\.\.OUTSIDE_CONTROL_SWITCHES, '--ozone-platform=x11', '--disable-logging'\] : \[\]/)
   assert.match(main, /const \{ OUTSIDE_CONTROL_SWITCHES \} = require\('\.\/outside-control\.cjs'\)/)
   assert.doesNotMatch(main, /developmentEntry: app\.isPackaged \? null : __filename/)
 })
 
+// Exercise the production identity function with Electron's native answers,
+// then pass the real helper/relay argv through the production grammar. The
+// 2026-09-29 no-window Electron 43.3.0 measurement had no ozone token in the
+// helper's process.argv; Chromium appended --ozone-platform=wayland only in
+// second-instance. A static source regex cannot prove that distinction.
+function commandIdentity({ platform = 'linux', ozone = 'wayland', packaged = false, nativeGetter = 'value' } = {}) {
+  const main = read('shell/main.cjs')
+  const start = main.indexOf("const treeNodeCommandLaunchIdentity = (form = 'launch') => {")
+  const end = main.indexOf('/* THE PRIVATE COMMAND SWITCH', start)
+  assert.ok(start >= 0 && end > start)
+  return vm.runInNewContext(main.slice(start, end) + '\ntreeNodeCommandLaunchIdentity', {
+    process: { platform },
+    __filename: '/opt/toolsenabled/app/shell/main.cjs',
+    OUTSIDE_CONTROL_SWITCHES: ['remote-debugging-port', 'remote-debugging-address'],
+    app: {
+      isPackaged: packaged,
+      getAppPath: () => '/opt/toolsenabled/app',
+      commandLine: {
+        hasSwitch: name => nativeGetter !== 'missing' && name === 'user-data-dir',
+        getSwitchValue: nativeGetter === 'missing' ? undefined : name => {
+          if (name === 'ozone-platform' && nativeGetter === 'throws') throw new Error('Native selection unavailable')
+          return name === 'user-data-dir' ? '/\x68ome/tester/.config/private-tree-probe' : name === 'ozone-platform' ? ozone : ''
+        },
+      },
+    },
+  })
+}
+
+test('Linux command identity admits only Electron-selected backend on the relayed side', async () => {
+  const { treeNodeCommandRequestIdFromArgv: parse, treeNodeCommandLaunchArgv: build } = await import('../../shell/tree-node-command.cjs')
+  const executablePath = '/opt/toolsenabled/electron'
+  const requestId = 'tnc-27760906-e987-4f01-a864-a84aebdca902'
+  for (const ozone of ['wayland', 'x11']) for (const packaged of [false, true]) {
+    const identity = commandIdentity({ ozone, packaged })
+    const launch = identity('launch')
+    const argv = build({ executablePath, requestId,
+      developmentEntry: packaged ? null : launch.developmentEntry[1],
+      developmentUserDataPath: launch.developmentUserDataPath })
+    assert.equal(parse(argv, { executablePath, ...launch }), requestId)
+    assert.throws(() => parse([...argv, `--ozone-platform=${ozone}`], { executablePath, ...launch }),
+      error => error.code === 'MC_TREE_COMMAND_ARGUMENT_INVALID', 'an explicit caller override is still forbidden')
+    const relay = [argv[0], ...argv.slice(1).filter(value => value.startsWith('--')),
+      '--allow-file-access-from-files', `--ozone-platform=${ozone}`, '--disable-logging',
+      ...argv.slice(1).filter(value => !value.startsWith('--'))]
+    assert.equal(parse(relay, { executablePath, ...identity('relayed') }), requestId, `${ozone} ${packaged ? 'packaged' : 'development'}`)
+    for (const foreign of [ozone === 'wayland' ? 'x11' : 'wayland', 'headless', '', `${ozone}=extra`, `${ozone} --disable-gpu`]) {
+      assert.throws(() => parse(relay.map(value => value === `--ozone-platform=${ozone}` ? `--ozone-platform=${foreign}` : value),
+        { executablePath, ...identity('relayed') }), error => error.code === 'MC_TREE_COMMAND_ARGUMENT_INVALID', foreign)
+    }
+    for (const extra of [`--ozone-platform=${ozone}`, `--ozone-platform=${ozone === 'wayland' ? 'x11' : 'wayland'}`,
+      '--ozone-platform', '--ozone-platform-hint=auto', '--no-sandbox', '--disable-gpu', '--disable-seccomp-filter-sandbox']) {
+      assert.throws(() => parse([...relay, extra], { executablePath, ...identity('relayed') }),
+        error => error.code === 'MC_TREE_COMMAND_ARGUMENT_INVALID', extra)
+    }
+    assert.throws(() => parse([...argv, '--ozone-platform', ozone], { executablePath, ...identity('relayed') }),
+      error => error.code === 'MC_TREE_COMMAND_ARGUMENT_INVALID', 'two-token backend override')
+  }
+})
+
+test('unknown native backend and non-Linux identities never add ozone permission', async () => {
+  const { treeNodeCommandRequestIdFromArgv: parse, treeNodeCommandLaunchArgv: build } = await import('../../shell/tree-node-command.cjs')
+  const executablePath = '/opt/toolsenabled/electron'
+  const requestId = 'tnc-27760906-e987-4f01-a864-a84aebdca902'
+  for (const platform of ['linux', 'win32', 'darwin']) for (const ozone of ['', 'headless', 'wayland --no-sandbox', 'x11', 'wayland']) {
+    if (platform === 'linux' && ['x11', 'wayland'].includes(ozone)) continue
+    const identity = commandIdentity({ platform, ozone })
+    const launch = identity('launch')
+    const argv = build({ executablePath, requestId, developmentEntry: launch.developmentEntry[1], developmentUserDataPath: launch.developmentUserDataPath })
+    for (const value of ['x11', 'wayland', 'headless']) {
+      assert.throws(() => parse([...argv, `--ozone-platform=${value}`], { executablePath, ...identity('relayed') }),
+        error => error.code === 'MC_TREE_COMMAND_ARGUMENT_INVALID', `${platform} ${ozone} ${value}`)
+    }
+  }
+})
+
+test('an unavailable native backend getter grants no relayed backend exception', async () => {
+  const { treeNodeCommandRequestIdFromArgv: parse, treeNodeCommandLaunchArgv: build,
+    treeNodeCommandAdditionalData: data, treeNodeCommandRequestIdFromAdditionalData: dataId } = await import('../../shell/tree-node-command.cjs')
+  const executablePath = '/opt/toolsenabled/electron'
+  const requestId = 'tnc-27760906-e987-4f01-a864-a84aebdca902'
+  assert.equal(dataId(data(requestId)), requestId)
+  for (const nativeGetter of ['missing', 'throws']) {
+    const identity = commandIdentity({ nativeGetter })
+    const launch = identity('launch')
+    const argv = build({ executablePath, requestId, developmentEntry: launch.developmentEntry[1], developmentUserDataPath: launch.developmentUserDataPath })
+    assert.equal(parse(argv, { executablePath, ...identity('relayed') }), requestId)
+    for (const value of ['x11', 'wayland']) {
+      assert.throws(() => parse([...argv, `--ozone-platform=${value}`], { executablePath, ...identity('relayed') }),
+        error => error.code === 'MC_TREE_COMMAND_ARGUMENT_INVALID', 'valid opaque additionalData does not authorize invalid argv')
+    }
+  }
+})
+
 test('a command launch refused before the broker writes its reason into the request result', () => {
   const main = withoutComments(read('shell/main.cjs'))
-  /* MEASURED 2026-09-04: a Live result file said
+  /* MEASURED 2026-09-04T08:16Z: a Live result file said
      MC_TREE_COMMAND_ARGUMENT_INVALID and nothing else, because every call site
      threw the grammar's sentence away. The reason now travels beside the code
      at all three: module scope, the second-instance handoff, and no-primary. */
@@ -145,7 +237,7 @@ test('renderer queue mounts Computers and delegates to the view-owned command me
 
 /* THE GATE THAT DROPS A REQUEST ON THE FLOOR WITHOUT A WORD.
  *
- * MEASURED 2026-09-03 (internal report):
+ * MEASURED 2026-09-03 (REPORT-controller-2-tree-spawn-regression-20260903.md):
  * cleanTreeNodeCommand returns null for a create-and-start-node brief over its
  * own length check, and the onRequest listener below does `if (!command ...)
  * return` -- nothing calls bridge.complete, so the waiting caller gets no
@@ -228,8 +320,8 @@ test('writer and documentation use app userData and keep messages off argv', () 
   assert.match(docs, /message.*never placed in argv/is)
 })
 
-/* A RELOAD IS A MAIN-FRAME NAVIGATION, NOT A SPINNER. MEASURED 2026-09-04:
-   three tree commands were refused MC_TREE_COMMAND_RENDERER_RELOADED
+/* A RELOAD IS A MAIN-FRAME NAVIGATION, NOT A SPINNER. MEASURED 2026-09-04
+   15:16-15:39Z: three tree commands were refused MC_TREE_COMMAND_RENDERER_RELOADED
    while the window never reloaded, because rendererReloaded() hung off
    did-start-loading, which also fires when a frame inside the page starts
    loading. Only a top-level navigation that replaces the document can lose the
@@ -253,6 +345,7 @@ test('the broker learns of a reload only from a main-frame, new-document navigat
     accessibilityApp: { invalidateDocument: ownedCall('document') },
     accessibilityHost: { close: ownedCall('accessibility') },
     screenControlHost: { close: ownedCall('screen-control') },
+    videoBoxHost: { close: ownedCall('video') },
     treeNodeCommandBroker: { rendererReloaded: () => calls.push('broker') },
     handCameraOwners: { delete: ownedCall('camera') },
     voiceHost: { close: ownedCall('voice') },
@@ -263,5 +356,5 @@ test('the broker learns of a reload only from a main-frame, new-document navigat
     assert.deepEqual(calls, [], 'non-document navigation must preserve every owner')
   }
   navigate({ isMainFrame: true, isSameDocument: false })
-  assert.deepEqual(calls, ['document', 'accessibility', 'screen-control', 'broker', 'camera', 'voice'])
+  assert.deepEqual(calls, ['document', 'accessibility', 'screen-control', 'video', 'broker', 'camera', 'voice'])
 })

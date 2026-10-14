@@ -1,6 +1,6 @@
 /* ONE CONVERSATION, PAINTED THREE DIFFERENT WAYS.
  *
- * Items 2 and 4: the messages piled up and merged into each other.
+ * Owner, items 2 and 4: the messages "pile" and "combine into each other".
  * MEASURED on a staged packaged build: nothing geometrically overlapped
  * (overlaps [], textSpill [], clipped [], the log scrolled correctly) -- so
  * this was never a layout collision. It was identity.

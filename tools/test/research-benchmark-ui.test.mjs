@@ -98,7 +98,7 @@ test('snippet names and labels persist through account save and remount, includi
 
 // One round trip a person actually performs: write a snippet, give it a label
 // in their own words, then find it again by that label and by its wording.
-/* PROMPT B: the shipped library now carries its own labels, two of
+/* PROMPT B: the shipped library now carries the owner's own labels, two of
    which are "Reason to buy". These two tests are about a label a PERSON
    types, so they use one the library does not already hold; otherwise they
    were asserting that the example set stays out of their way, which is a

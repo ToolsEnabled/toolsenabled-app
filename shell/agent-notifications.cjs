@@ -8,8 +8,8 @@
  * die on its second turn, and the only way to find out was to go and look. That
  * is not an unreliable notification; it is the absence of the whole idea.
  *
- * HOW IT IS CONTROLLED: every one of these is a setting the user picks.
- * So every trigger below is a settings
+ * THE OWNER DECIDED HOW IT IS CONTROLLED, in these words: "settings -> all of
+ * these are just settings a user picks". So every trigger below is a settings
  * row a person chooses, every row ships OFF, and this file READS THE ROW BEFORE
  * IT NOTIFIES. A row nothing reads is the defect this repository has already
  * recorded once at scale -- seventy-four settings that wrote a key nothing read

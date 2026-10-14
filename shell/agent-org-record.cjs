@@ -175,10 +175,16 @@ function describeRole(modules, stores, stored, suppliedRecord = null) {
   const isDefault = defaults.has(definition.id)
   const base = definition.baseDefaultRole || null
   const capabilities = roleCapabilities(definition)
+  /* The plugin a role came from, while that plugin's role is the one in force.
+     A projected role is shaped exactly like a stored one, so only the store can
+     say; a payload from before plugins answers null. */
+  const supplied = typeof stores.customRoles.suppliedBy === 'function'
+    ? stores.customRoles.suppliedBy(definition.id) : null
   return {
     id: definition.id,
     name: shipped ? shipped.name : definition.id,
     custom: !isDefault,
+    plugin: supplied && typeof supplied.plugin === 'string' && supplied.plugin ? supplied.plugin : null,
     baseDefaultRole: base,
     summary: shipped ? shipped.summary : null,
     owns: definition.rules.owns,
@@ -221,6 +227,13 @@ function projectOrg(read) {
     source: read.source,
     damaged: read.damaged,
     baselineDrift: read.baselineDrift,
+    /* A seat whose plugin role went away with its plugin reads as a Worker; the
+       engine names each one so the page can say so (src/org-controls.js). */
+    ...(Array.isArray(read.withdrawnPluginRoles) && read.withdrawnPluginRoles.length
+      ? { withdrawnPluginRoles: read.withdrawnPluginRoles.map((entry) => ({
+        agentId: entry.agentId, displayName: entry.displayName, role: entry.role,
+      })) }
+      : {}),
     agents: read.org.agents.map((agent) => ({
       id: agent.id,
       displayName: agent.displayName,
@@ -257,6 +270,20 @@ function createAgentOrgRecord({ env = process.env, modules = loadModules() } = {
   }
 
   return {
+    /* THE ROLES THE PERSON WROTE: stored custom roles, including one that hides a
+       plugin's role of the same id, and never a shipped role or a plugin's. The
+       plugins page asks, to name a plugin role that one of these hides. */
+    ownRoleIds() {
+      return withStores((stores) => {
+        const defaults = new Set(modules.agentOrg.ROLES)
+        const supplied = (id) => typeof stores.customRoles.suppliedBy === 'function' && stores.customRoles.suppliedBy(id) !== null
+        return {
+          ok: true,
+          ids: stores.customRoles.listRoles().map((role) => role.id).filter((id) => !defaults.has(id) && !supplied(id)),
+        }
+      }, 'ORG_READ_FAILED')
+    },
+
     /* Everything the page needs to draw the organisation AND its editing
        controls, in one call: the org, the role vocabulary that may be assigned,
        and what each role actually enforces. Split across three calls the page

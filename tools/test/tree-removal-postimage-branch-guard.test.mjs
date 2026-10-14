@@ -121,7 +121,7 @@ function fixture(t) {
   for (const name of ['nodeDiffHistories', 'nodeReplies', 'nodeActivity', 'nodeLastTool',
     'sessionTranscripts', 'sessionTurnLog', 'sessionTurnText', 'sessionUsage',
     'sessionModelOverride', 'sessionPendingImages', 'sessionNodeIds', 'sessionProfileIds',
-    'sessionEfforts', 'sessionThreadIds', 'sessionAccountNames', 'sessionActions',
+    'sessionEfforts', 'sessionThreadIds', 'sessionAccountNames', 'sessionAccountRecords', 'sessionActions',
     'chatSurfaces', 'turnReplies']) scope[name] = new Map()
   const context = vm.createContext(scope)
   vm.runInContext(`${removalSource}\n${directRouteSource}`, context, { filename: 'actual-computers-removal.cjs' })

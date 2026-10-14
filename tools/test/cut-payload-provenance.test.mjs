@@ -1,10 +1,10 @@
 // WHAT THE CUT PACKS, AND WHETHER ANY GATE ACTUALLY READ IT.
 //
-// Measured on an assembly worktree, 2026-09-17, at an earlier app commit:
-//   private/capability-source.owner.json  ref       an earlier commit
-//   capability/PAYLOAD.json               sourceRef an earlier commit
+// Measured on the b4a assembly worktree, 2026-09-17, at app d8ea7ae7:
+//   private/capability-source.owner.json  ref       e2d443c5be89f5e851f4b4b5d9262c8fa6aeb011
+//   capability/PAYLOAD.json               sourceRef e2d443c5be89f5e851f4b4b5d9262c8fa6aeb011
 //   capability/tools/secrets-manager.ps1            ABSENT
-// while the cut was told --engine-source-ref an earlier commit, dozens of commits ahead,
+// while the cut was told --engine-source-ref bafd25a5b..., 36 commits ahead,
 // and tools/capability-manifest.json at that tip declares secrets-manager.ps1.
 //
 // Nobody repacked it wrongly. pack-capability-layer.mjs resolves its engine
@@ -37,13 +37,13 @@ import {
   measurePackedTree,
 } from '../release-packager/cut-release-candidate.mjs'
 
-const ENGINE = '1111111111111111111111111111111111111111'
-const STALE = '2222222222222222222222222222222222222222'
+const ENGINE = 'bafd25a5b72466a8ed33f44e1419981a438fedd4'
+const STALE = 'e2d443c5be89f5e851f4b4b5d9262c8fa6aeb011'
 const PAYLOAD = path.join('C:', 'build', 'capability')
 
 /* The manifest is given to assertPackedPayload as a PATH and read there, so a
  * caller cannot shorten the declared list and thereby shorten the check. */
-const manifestDir = mkdtempSync(path.join(os.tmpdir(), 'cqa-manifest-'))
+const manifestDir = mkdtempSync(path.join(os.tmpdir(), 'w86-manifest-'))
 const manifest = path.join(manifestDir, 'capability-manifest.json')
 writeFileSync(manifest, JSON.stringify({ helperPrograms: ['tools/secrets.ps1', 'tools/secrets-manager.ps1'] }))
 process.on('exit', () => rmSync(manifestDir, { recursive: true, force: true }))
@@ -66,7 +66,7 @@ test('a build worktree declaring a different engine than --engine-source-ref is 
   assert.equal(assertDeclaredEngineSource({ ref: ENGINE }, ENGINE), ENGINE, 'agreement passes through')
   assert.equal(assertDeclaredEngineSource({ ref: ENGINE.toUpperCase() }, ENGINE), ENGINE, 'case is not a disagreement')
 
-  // The measured case.
+  // The measured b4a case.
   assert.throws(
     () => assertDeclaredEngineSource({ ref: STALE }, ENGINE),
     (error) => {
@@ -97,7 +97,7 @@ test('the packed payload itself is measured, not trusted from the declaration', 
     },
   )
 
-  // MUTATION 2: the exact measured shape -- right ref, declared helper missing.
+  // MUTATION 2: the exact b4a shape -- right ref, declared helper missing.
   const withoutManager = (p) => complete(p) && p !== path.join(PAYLOAD, 'tools', 'secrets-manager.ps1')
   assert.throws(
     () => assertPackedPayload(PAYLOAD, ENGINE, manifest, { read: readPacked(ENGINE), exists: withoutManager, measureTree: measuresTree }),

@@ -1,5 +1,5 @@
-/* READ ONLY over a local node-transcript store. Writes nothing there.
- * Prints PROVIDER NAMES AND COUNTS ONLY -- never a line of text and
+/* READ ONLY over the owner's LIVE node-transcripts. Writes nothing there.
+ * Prints PROVIDER NAMES AND COUNTS ONLY -- never a line of the owner's text and
  * never an account name, which node.json also carries.
  *
  * ITEM 5: what does the renderer actually get handed, per provider? The answer

@@ -205,7 +205,7 @@ function createDiffFiles({ fs, path, workspaceRoots, pid = process.pid, randomUU
    *
    * `modifiedMs` travels back so the window can say, at save time, that the
    * file on disk has moved since it was opened. That is a STATEMENT, not a
-   * lock: the rule is that this surface warns and then lets the person
+   * lock: the owner ruled that this surface warns and then lets the person
    * save. Nothing here refuses a save because of it.
    */
   function read(candidate) {
@@ -255,9 +255,9 @@ function createDiffFiles({ fs, path, workspaceRoots, pid = process.pid, randomUU
   /**
    * Replace one file with what is in one pane.
    *
-   * THE DELIBERATE MANUAL OVERRIDE. The user is warned that the file may be
-   * stale and then does it themselves -- this is their manual override of the
-   * agent. So there is no freshness token here and no
+   * THE DELIBERATE MANUAL OVERRIDE. The owner: "warn the user about the
+   * staleness possibility ... then let them do it themselves - this is their
+   * manual override of the agent." So there is no freshness token here and no
    * compare-and-swap. The window warns; this writes.
    *
    * IT IS STILL ATOMIC. Temporary file, fsync, rename -- the same three steps

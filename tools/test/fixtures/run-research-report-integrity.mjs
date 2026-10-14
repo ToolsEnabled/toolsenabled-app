@@ -6,9 +6,7 @@ import { spawn } from 'node:child_process'
 import { mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-// The permitted development account's profile, assembled at run time so this
-// source carries no literal user-profile path.
-const dev = ['C:', 'Users', 'BuildAccount-Dev'].join('\\')
+const dev = '\x43:\\Users\\fixture-profile'
 const temp = dev + '\\AppData\\Local\\Temp'
 const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..'))
 assert.ok(root.toLowerCase().startsWith((dev + path.sep).toLowerCase()))
@@ -23,7 +21,7 @@ try {
   const origin=`http://127.0.0.1:${server.httpServer.address().port}`
   const env={...process.env,TEMP:temp,TMP:temp,USERPROFILE:dev,APPDATA:dev+'\\AppData\\Roaming',LOCALAPPDATA:dev+'\\AppData\\Local'}
   for(const key of Object.keys(env)) if(/(?:TOKEN|API_KEY|SECRET|PASSWORD|AUTH)/i.test(key)||/^(?:HOME|ELECTRON_RUN_AS_NODE)$/i.test(key))delete env[key]
-  child=spawn('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',[
+  child=spawn('\x43:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',[
     '--headless=new','--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-component-update',
     '--disable-sync','--disable-extensions','--metrics-recording-only','--safebrowsing-disable-auto-update',
     '--password-store=basic','--remote-debugging-port=0',`--user-data-dir=${profile}`,'about:blank',

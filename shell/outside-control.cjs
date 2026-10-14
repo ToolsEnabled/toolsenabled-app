@@ -17,8 +17,8 @@
  *     throw at startup. An app that refuses to start because a setting could not
  *     be read would be worse than an app that starts with the port shut.
  *
- * An agent may be allowed to press buttons from outside the app, as a setting
- * rather than a standard. */
+ * Owner, 2026-09-02: "the version on my computer SHOULD allow you an agent to
+ * touch buttons from the outside and this should be a setting not a standard". */
 const path = require('node:path')
 const { resolveCapabilityRoot } = require('./capability-layer.cjs')
 

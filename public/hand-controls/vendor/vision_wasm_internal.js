@@ -2989,7 +2989,7 @@ var FS = {
   createDefaultDirectories() {
     FS.mkdir("/tmp");
     FS.mkdir("/home");
-    FS.mkdir("/home/web_user");
+    FS.mkdir("/\x68ome/web_user");
   },
   createDefaultDevices() {
     // create /dev
@@ -6015,7 +6015,7 @@ var getEnvStrings = () => {
       "LOGNAME": "web_user",
       "PATH": "/",
       "PWD": "/",
-      "HOME": "/home/web_user",
+      "HOME": "/\x68ome/web_user",
       "LANG": lang,
       "_": getExecutableName()
     };

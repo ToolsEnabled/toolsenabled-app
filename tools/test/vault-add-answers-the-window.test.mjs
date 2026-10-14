@@ -132,8 +132,8 @@ test('a launched form is still a success, and so is a replay of one already aske
 
   /* THE OVER-CORRECTION THIS GUARDS AGAINST. The queue deliberately does not
      spawn a second runner for a request that is still active, so a replay
-     reports `launcherRequested: false` while the person already has the question
-     in front of them. Reading that as "the form never opened" would refuse a
+     reports `launcherRequested: false` while the owner already has the question
+     in front of him. Reading that as "the form never opened" would refuse a
      working ask. */
   const replayed = add({ ownerPromptQueue: queueStub({ launch: { launcherRequested: false, replayed: true } }) })
   assert.equal(replayed.ok, true, replayed.reason)

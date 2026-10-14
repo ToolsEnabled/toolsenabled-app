@@ -10,6 +10,10 @@ import {
 import { layoutTree } from '../../src/tree-layout.js'
 import { TEXT_SIZES } from '../../src/text-size.js'
 import { Element, installDomStandIn } from './lib/dom-stand-in.mjs'
+import { installWorld, fleetFetch } from './lib/tree-command-real-mount.mjs'
+import { boxVideoLane, treeBoxSize, TREE_VIEW_CHANGE_EVENT } from '../../src/tree-box-layout.js'
+import { videoBoxBroker, VIDEO_BOX_PICK_EVENT } from '../../src/video-box-broker.js'
+import { BOX_VIDEO_STALL_MS, BOX_VIDEO_WORDS, createBoxVideoWatcher, mountBoxVideo, renderBoxVideo } from '../../src/tree-box-video.js'
 
 const graph = computer => Object.assign(Object.create(StaticTreeGraph.prototype), { computer })
 
@@ -169,7 +173,7 @@ test('a drilled tree contains its root and every descendant, regardless of recor
 })
 
 function screenshotFleet() {
-  // A saved preview: Controller + five Builders + Manager + eleven
+  // The saved 09:13:55 preview: Controller + five Builders + Manager + eleven
   // Workers in one tree, and Reviewer + one Builder in the other. All are drafts.
   const node = (id, name, parentId, treeId) => ({ id, name, parentId, treeNode: { treeId, status: 'draft' } })
   return [
@@ -386,7 +390,7 @@ test('slot copy distinguishes adding another tree from adding a child', () => {
   )
 })
 
-/* The owner's defect: a tree they had already grown could not be grown any
+/* The owner's defect: a tree he had already grown could not be grown any
    further from its own view. Every agent on it still had legal room for a
    child, and the separate "start another tree" offer was still there in the
    overview — which is exactly why it read as the page losing a button rather
@@ -1143,14 +1147,14 @@ test('a linked or unlinked confirmation fades from the canvas while a link refus
   assert.equal(subject.linkStatus.hidden, false)
 })
 
-/* T1464: a move can rename a circle ('Manager (10000001)' becomes
-   'Manager 2 (10000001)'). The visible name followed; the accessible name
+/* T1464: a move can rename a circle ('Manager (15525313)' becomes
+   'Manager 2 (15525313)'). The visible name followed; the accessible name
    and the box's chat button kept the old one, so keyboard and screen-reader
    users heard a name the page no longer showed. */
 test('a circle renamed on refresh is announced by its new name, and so is its chat button', () => {
   const subject = graph({ agents: [
     { id: 'root', name: 'Controller', role: 'controller', parentId: null },
-    { id: 'moved', name: 'Manager (10000001)', role: 'manager', parentId: 'root' },
+    { id: 'moved', name: 'Manager (15525313)', role: 'manager', parentId: 'root' },
   ] })
   subject.nodes = new Map(subject.computer.agents.map(agent => {
     const el = new Element('div')
@@ -1166,17 +1170,17 @@ test('a circle renamed on refresh is announced by its new name, and so is its ch
   subject._syncConversationShelf = () => {}
   subject._layoutNow = () => { subject._layoutResult = {}; subject._layoutKey = subject._structureKey() }
   subject._layoutNow()
-  subject.computer.agents = subject.computer.agents.map(agent => agent.id === 'moved' ? { ...agent, name: 'Manager 2 (10000001)' } : agent)
+  subject.computer.agents = subject.computer.agents.map(agent => agent.id === 'moved' ? { ...agent, name: 'Manager 2 (15525313)' } : agent)
   subject._reconcile()
   const record = subject.nodes.get('moved')
-  assert.equal(record.el.getAttribute('aria-label'), 'Manager 2 (10000001) — Manager; Shift+Enter opens controls')
-  assert.equal(record.el.querySelector('.tree-box-chat').getAttribute('aria-label'), 'Open Manager 2 (10000001) in a chat tab')
+  assert.equal(record.el.getAttribute('aria-label'), 'Manager 2 (15525313) — Manager; Shift+Enter opens controls')
+  assert.equal(record.el.querySelector('.tree-box-chat').getAttribute('aria-label'), 'Open Manager 2 (15525313) in a chat tab')
   assert.equal(subject.nodes.get('root').el.getAttribute('aria-label'), 'Controller — Controller; Shift+Enter opens controls')
 })
 
 /* T1487: 'Find an agent…' matched only role names, ordinals and ids, so the
    brief a person wrote ('Manager A …') and the tree it belongs to found
-   nothing, and every row read like 'Worker (dddd4444)'. */
+   nothing, and every row read like 'Worker (66009264)'. */
 test('agent search matches a brief and a tree label, and each row names its tree', t => {
   const { document, restore } = installDomStandIn()
   t.after(restore)
@@ -1267,7 +1271,7 @@ test('returning to a renamed hidden agent refreshes its voice and box controls w
   const record = subject.nodes.get('retained')
   const card = record.el
   const voice = card.querySelector('.node-contact-icon')
-  assert.equal(voice.getAttribute('aria-label'), 'Voice controls for Manager before move')
+  assert.equal(voice.getAttribute('aria-label'), 'Voice, screen and video for Manager before move')
   subject.setRoot('elsewhere', { fit: false })
   assert.equal(card.hidden, true)
   const renamed = { ...record.agent, name: 'Manager after move' }
@@ -1285,9 +1289,426 @@ test('returning to a renamed hidden agent refreshes its voice and box controls w
   assert.equal(card.querySelector('.tree-box-add-agent').getAttribute('aria-label'), 'Add an agent under Manager after move')
   assert.equal(card.querySelector('.tree-box-branch').getAttribute('aria-label'), 'Explore Manager after move and its 1 descendant')
   assert.equal(card.querySelector('.node-contact-icon'), voice, 'voice control is retained')
-  assert.equal(voice.getAttribute('aria-label'), 'Voice controls for Manager after move')
+  assert.equal(voice.getAttribute('aria-label'), 'Voice, screen and video for Manager after move')
   assert.equal(voice.title, 'Manager after move · voice listening · screen access on')
   assert.equal(voice.getAttribute('aria-pressed'), 'true')
   voice.dispatchEvent({ type: 'click', stopPropagation() {} })
   assert.deepEqual(contacted, [renamed], 'the existing voice action targets the renamed record')
+})
+
+/* ============================================================================
+   1.0.49 VIDEO BOX (SPEC-49 delivery B, DESIGN.md section 4 item 3).
+   A real StaticTreeGraph on the real-mount stand-in, with the page's one
+   video broker. The desktop bridge and getDisplayMedia are stand-ins that
+   hand back fake tracks; everything the graph and the panel do is production.
+   ============================================================================ */
+const FULL_SET = rate => ({ width: { max: 854 }, height: { max: 480 }, frameRate: { max: rate } })
+const VIDEO_TOKEN = 'ab'.repeat(16)
+
+function videoTrack() {
+  const listeners = new Map()
+  return {
+    stopped: 0, applied: [],
+    stop() { this.stopped++ },
+    applyConstraints(constraints) { this.applied.push(constraints); return Promise.resolve() },
+    addEventListener(type, listener) { if (!listeners.has(type)) listeners.set(type, []); listeners.get(type).push(listener) },
+    fire(type) { for (const listener of listeners.get(type) || []) listener({ type }) },
+  }
+}
+
+async function videoGraphWorld(t, { agents, computerId = 'this-computer', observer = null } = {}) {
+  const world = await installWorld(fleetFetch(), { asyncFrames: true })
+  const savedObserver = Object.getOwnPropertyDescriptor(globalThis, 'IntersectionObserver')
+  if (observer) Object.defineProperty(globalThis, 'IntersectionObserver', { value: observer, writable: true, configurable: true })
+  const tracks = []
+  window.navigator = { mediaDevices: { async getDisplayMedia() {
+    const track = videoTrack()
+    tracks.push(track)
+    return { getVideoTracks: () => [track], getTracks: () => [track] }
+  } } }
+  window.mcVideoBox = Object.freeze({
+    sources: async () => ({ ok: true, sources: [] }), arm: async () => ({ ok: true }), forget: async () => ({ ok: true }),
+    saved: async () => ({ ok: true, records: [] }), remember: async () => ({ ok: true }), clear: async () => ({ ok: true }),
+  })
+  const graphs = []
+  t.after(() => {
+    for (const graph of graphs) if (!graph._destroyed) graph.destroy()
+    videoBoxBroker().dispose()
+    world.restore()
+    if (savedObserver) Object.defineProperty(globalThis, 'IntersectionObserver', savedObserver)
+    else delete globalThis.IntersectionObserver
+  })
+  function mount(options = {}) {
+    const host = document.createElement('div'), container = document.createElement('div')
+    host.clientWidth = 1000; host.clientHeight = 700
+    container.clientWidth = 1000; container.clientHeight = 700
+    document.body.appendChild(host); host.appendChild(container)
+    const graph = new StaticTreeGraph(container, {
+      computer: { id: computerId, agents: agents || [
+        { id: 'root', name: 'Controller', role: 'controller', parentId: null, state: 'draft' },
+        { id: 'child-a', name: 'Builder A', role: 'worker', parentId: 'root', state: 'draft' },
+        { id: 'child-b', name: 'Builder B', role: 'worker', parentId: 'root', state: 'draft' },
+      ] },
+      nodeStyle: 'boxes', emptySlots: false, onContact: () => {}, ...options,
+    })
+    graphs.push(graph)
+    return graph
+  }
+  const start = (nodeId, label = 'ROS · agent') => videoBoxBroker().start(nodeId, { token: VIDEO_TOKEN, label })
+  return { mount, start, tracks }
+}
+
+const panelOf = record => record.el.querySelector('.tree-box-video')
+
+test('video marks set data-video and the title on the agent\'s voice button', async t => {
+  const { mount, start } = await videoGraphWorld(t)
+  const graph = mount()
+  await start('root')
+  // root streams; child-a only has a choice saved before a restart (review 2, item 4).
+  graph.setContactMarks({ voiceNodeId: null, screenNodeIds: ['child-a'], videoNodeIds: ['root', 'child-a'], videoStartedNodeIds: ['root'] })
+  const voice = id => graph.nodes.get(id).el.querySelector('.node-contact-icon')
+  assert.equal(voice('root').dataset.video, 'true')
+  assert.equal(voice('root').title, 'Controller · open voice, screen and video · video on')
+  assert.equal(voice('child-a').dataset.video, 'true')
+  assert.equal(voice('child-a').title, 'Builder A · open voice, screen and video · screen access on · video saved', 'nothing streams for it yet')
+  assert.equal(voice('child-b').dataset.video, 'false')
+  assert.equal(voice('child-b').title, 'Builder B · open voice, screen and video')
+  graph.setContactMarks({ voiceNodeId: null, screenNodeIds: ['child-a'], videoNodeIds: ['root', 'child-a'], videoStartedNodeIds: ['root', 'child-a'] })
+  assert.equal(voice('child-a').title, 'Builder A · open voice, screen and video · screen access on · video on')
+})
+
+test('a video panel appears only in Boxes, only for a marked agent that is not a group, never in edit mode', async t => {
+  const { mount, start } = await videoGraphWorld(t)
+  const graph = mount()
+  await start('child-a')
+  graph.setContactMarks({ videoNodeIds: ['child-a'] })
+  const panelled = () => [...graph.nodes.values()].filter(record => panelOf(record)).map(record => record.id)
+  assert.deepEqual(panelled(), ['child-a'], 'only the marked agent gets a panel')
+  const panel = panelOf(graph.nodes.get('child-a'))
+  assert.equal(panel.hasAttribute('data-video-box-controls'), true, 'agent app control is refused on the panel')
+  assert.equal(panel.parentNode === graph.nodes.get('child-a').el, true, 'the panel hangs inside its own box')
+  // A group box never gets one, even with a marked id.
+  const group = { id: 'child-a', agent: { id: 'child-a', treeScope: { group: true } }, el: document.createElement('div') }
+  assert.equal(graph._videoExtra(group), 0)
+  graph._syncVideoPanel(group)
+  assert.equal(Boolean(group.videoPanel), false)
+  // Edit mode draws no panel and reserves no lane.
+  graph.setEditMode(true)
+  assert.deepEqual(panelled(), [])
+  assert.equal(graph._videoExtra(graph.nodes.get('child-a')), 0)
+  graph.setEditMode(false)
+  assert.deepEqual(panelled(), ['child-a'])
+  // Circles draw none either, and Boxes bring it back.
+  graph.setNodeStyle('circles')
+  assert.deepEqual(panelled(), [])
+  graph.setNodeStyle('boxes')
+  assert.deepEqual(panelled(), ['child-a'])
+  // Without the desktop bridge (browser, phone, paired window) there is none.
+  const bridge = window.mcVideoBox
+  delete window.mcVideoBox
+  graph._layoutKey = null
+  graph._reconcile()
+  assert.deepEqual(panelled(), [])
+  window.mcVideoBox = bridge
+  graph._layoutKey = null
+  graph._reconcile()
+  assert.deepEqual(panelled(), ['child-a'])
+  graph.setContactMarks({ videoNodeIds: [] })
+  assert.deepEqual(panelled(), [], 'unmarking removes the panel')
+  assert.equal(videoBoxBroker().get('child-a').state, 'live', 'removing a panel never stops the stream')
+})
+
+test('switching Boxes and Circles or edit mode tells the page, so the Video section can say why no panel shows', async t => {
+  const { mount } = await videoGraphWorld(t)
+  const graph = mount()
+  const heard = []
+  const listener = () => heard.push(`${graph.nodeStyle}${graph.editMode ? ' edit' : ''}`)
+  const page = window
+  page.addEventListener(TREE_VIEW_CHANGE_EVENT, listener)
+  t.after(() => page.removeEventListener(TREE_VIEW_CHANGE_EVENT, listener))
+  graph.setNodeStyle('circles')
+  graph.setNodeStyle('boxes')
+  graph.setEditMode(true)
+  graph.setEditMode(false)
+  assert.equal(heard.length, 4)
+  assert.equal(heard[0], 'circles')
+  assert.equal(heard[1], 'boxes')
+  assert.equal(heard[2].endsWith(' edit'), true)
+  assert.equal(heard[3], 'boxes')
+})
+
+test('turning a video on or off changes the structure key, the projection and the rank lanes', async t => {
+  const { mount } = await videoGraphWorld(t)
+  const graph = mount()
+  const box = treeBoxSize(graph.cardSize), lane = boxVideoLane(box)
+  const pitch = () => graph.nodes.get('child-a').y - graph.nodes.get('root').y
+  const plainPitch = pitch()
+  assert.equal(plainPitch, box.height + box.rowGap)
+  // The adaptive policy (Page 2's workspace) caches its projection.
+  graph.smartScope = true
+  graph._reconcile()
+  const plainKey = graph._structureKey(), plainProjection = graph._projection
+  assert.ok(plainProjection)
+  graph._readableAgents()
+  assert.equal(graph._projection, plainProjection, 'an unchanged view reuses its projection')
+  graph.setContactMarks({ videoNodeIds: ['root'] })
+  assert.notEqual(graph._structureKey(), plainKey)
+  assert.notEqual(graph._projection, plainProjection, 'a video chooses the frontier again')
+  assert.ok(graph._projection.fitScale < plainProjection.fitScale, 'the projection measured the panel')
+  assert.equal(pitch(), box.height + box.rowGap + lane, 'the rank under the video gets its lane')
+  const videoKey = graph._structureKey(), videoProjection = graph._projection
+  graph.setContactMarks({ videoNodeIds: ['root'], voiceNodeId: 'child-b' })
+  assert.equal(graph._structureKey(), videoKey, 'other marks never re-lay out the tree')
+  assert.equal(graph._projection, videoProjection)
+  graph.setContactMarks({ videoNodeIds: [] })
+  assert.notEqual(graph._structureKey(), videoKey)
+  assert.notEqual(graph._projection, videoProjection)
+  assert.equal(pitch(), plainPitch)
+})
+
+test('the content box, label box and hit test include the panel', async t => {
+  const { mount } = await videoGraphWorld(t, { agents: [
+    { id: 'root', name: 'Controller', role: 'controller', parentId: null, state: 'draft' },
+    { id: 'leaf', name: 'Builder', role: 'worker', parentId: 'root', state: 'draft' },
+  ] })
+  const graph = mount()
+  const box = treeBoxSize(graph.cardSize), lane = boxVideoLane(box)
+  const before = graph._contentBox(1)
+  graph.setContactMarks({ videoNodeIds: ['leaf'] })
+  const after = graph._contentBox(1)
+  assert.equal(after.h, before.h + lane, 'fitting the view keeps the leaf\'s panel on screen')
+  assert.equal(after.w, before.w)
+  const leaf = graph.nodes.get('leaf')
+  assert.equal(graph._labelBox(leaf).bottom, leaf.y + box.height / 2 + lane)
+  const inPanel = { x: leaf.x, y: leaf.y + box.height / 2 + lane - 4 }
+  assert.equal(graph._nearestRecordTo(inPanel.x, inPanel.y, 1), leaf, 'a point on the panel belongs to its box')
+  assert.equal(graph._nearestRecordTo(inPanel.x, leaf.y + box.height / 2 + lane + 30, 1), null)
+})
+
+/* STAGE D, D3: when the tree filled the canvas height, the canvas hint
+   ("7 agents · Drag to pan · …", drawn 6px above the bottom edge, over the
+   canvas) covered the caption of the lowest panel -- the window's title sits
+   on the panel's bottom edge. A fit with a video panel keeps the hint's band
+   clear; a fit without one is unchanged. */
+test('a fit keeps the canvas hint off the lowest video panel, and changes nothing without video', async t => {
+  const { mount, start } = await videoGraphWorld(t, { agents: [
+    { id: 'root', name: 'Controller', role: 'controller', parentId: null, state: 'draft' },
+    { id: 'mid', name: 'Manager', role: 'manager', parentId: 'root', state: 'draft' },
+    { id: 'leaf', name: 'Builder', role: 'worker', parentId: 'mid', state: 'draft' },
+  ] })
+  const graph = mount()
+  const height = 420
+  graph.zoomHost.clientHeight = height
+  graph.zoomHost.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1000, bottom: height, width: 1000, height })
+  graph.container.getBoundingClientRect = () => ({ left: graph.panX, top: graph.panY, width: 1000, height })
+  // The hint as the browser draws it: bottom 6px, one 22px line, over the canvas.
+  const hintTop = height - 28
+  graph.panHint.getBoundingClientRect = () => ({ left: 10, right: 420, top: hintTop, bottom: height - 6, width: 410, height: 22 })
+  const box = treeBoxSize(graph.cardSize), lane = boxVideoLane(box)
+  graph.fitToHost()
+  const plain = { zoom: graph.zoom, panX: graph.panX, panY: graph.panY }
+  const bottomOf = (id, extra) => graph.panY + (graph.nodes.get(id).y + box.height / 2 + extra) * graph.zoom
+  assert.ok(bottomOf('leaf', 0) > hintTop, 'this tree fills the height: without video the hint band is not kept clear')
+  await start('leaf')
+  graph.setContactMarks({ videoNodeIds: ['leaf'] })
+  graph.fitToHost()
+  assert.ok(bottomOf('leaf', lane) <= hintTop, `the panel ends at ${bottomOf('leaf', lane).toFixed(1)}px, above the hint at ${hintTop}px`)
+  // Without video the fit is exactly what it was.
+  graph.setContactMarks({ videoNodeIds: [] })
+  graph.fitToHost()
+  assert.deepEqual({ zoom: graph.zoom, panX: graph.panX, panY: graph.panY }, plain)
+  // A hidden hint (no box) reserves nothing.
+  graph.setContactMarks({ videoNodeIds: ['leaf'] })
+  graph.panHint.getBoundingClientRect = () => ({ left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 })
+  graph.fitToHost()
+  assert.ok(Math.abs(bottomOf('leaf', lane) - (height - 10)) < 0.5, 'the usual 10px pad, when there is no hint to clear')
+})
+
+test('a parent\'s trunk starts under its own panel and the child end does not move', async t => {
+  const { mount } = await videoGraphWorld(t)
+  const graph = mount()
+  const box = treeBoxSize(graph.cardSize), lane = boxVideoLane(box)
+  graph.setContactMarks({ videoNodeIds: ['root'] })
+  const root = graph.nodes.get('root'), child = graph.nodes.get('child-a')
+  const route = graph._elbowRoute(root, child, (root.y + box.height / 2 + lane + child.y - box.height / 2) / 2)
+  assert.equal(route.segments[0].y1, root.y + box.height / 2 + lane)
+  assert.equal(route.segments.at(-1).y2, child.y - box.height / 2)
+  const drawn = graph.svg.querySelectorAll('.tree-link-route').filter(path => path.getAttribute('data-from') === 'root')
+  assert.equal(drawn.length, 2)
+  for (const path of drawn) {
+    const [, , y] = path.getAttribute('d').split(' ')
+    assert.equal(Number(y), root.y + box.height / 2 + lane, 'the drawn trunk leaves from under the panel')
+    const bus = Number(path.getAttribute('d').split(' ')[5])
+    assert.ok(bus > root.y + box.height / 2 + lane && bus < child.y - box.height / 2, 'the shared bus sits in the clear lane')
+  }
+  // The child keeps its own end, and a child without video starts at its box.
+  graph.setContactMarks({ videoNodeIds: ['child-a'] })
+  const plainRoute = graph._elbowRoute(graph.nodes.get('root'), graph.nodes.get('child-a'), graph.nodes.get('root').y + 200)
+  assert.equal(plainRoute.segments[0].y1, graph.nodes.get('root').y + box.height / 2)
+  assert.equal(plainRoute.segments.at(-1).y2, graph.nodes.get('child-a').y - box.height / 2)
+})
+
+test('a rebuilt record shows the same stream again, and the stream stays with the broker', async t => {
+  const { mount, start, tracks } = await videoGraphWorld(t)
+  const graph = mount()
+  await start('root')
+  const stream = videoBoxBroker().get('root').stream
+  graph.setContactMarks({ videoNodeIds: ['root'] })
+  const first = panelOf(graph.nodes.get('root'))
+  assert.equal(first.querySelector('video').srcObject === stream, true)
+  assert.equal(first.querySelector('video').muted, true)
+  graph.setNodeStyle('circles')
+  graph.setNodeStyle('boxes')
+  const second = panelOf(graph.nodes.get('root'))
+  assert.equal(second === first, false, 'the box was rebuilt')
+  assert.equal(second.querySelector('video').srcObject === stream, true, 'the same stream object is attached again')
+  assert.equal(first.querySelector('video').srcObject, null, 'the old panel lets go of it')
+  graph.destroy()
+  assert.equal(tracks[0].stopped, 0, 'closing the graph never ends the capture')
+  assert.equal(videoBoxBroker().get('root').stream === stream, true)
+  const again = mount()
+  again.setContactMarks({ videoNodeIds: ['root'] })
+  assert.equal(panelOf(again.nodes.get('root')).querySelector('video').srcObject === stream, true)
+})
+
+test('pressing, clicking, dragging or Enter on the panel never reaches the box', async t => {
+  const { mount, start } = await videoGraphWorld(t)
+  const graph = mount()
+  await start('root')
+  graph.setContactMarks({ videoNodeIds: ['root'] })
+  const record = graph.nodes.get('root'), panel = panelOf(record)
+  const reached = []
+  for (const type of ['pointerdown', 'click', 'dblclick', 'keydown', 'dragstart']) {
+    record.el.addEventListener(type, () => reached.push(type))
+    graph.zoomHost.addEventListener(type, () => reached.push(`host ${type}`))
+  }
+  panel.dispatch('pointerdown', { button: 0, pointerId: 1 })
+  panel.dispatch('click', { detail: 1 })
+  panel.dispatch('dblclick')
+  const drag = panel.dispatch('dragstart', { dataTransfer: { setData() {} } })
+  panel.querySelector('.tree-box-video-action').dispatch('keydown', { key: 'Enter' })
+  assert.deepEqual(reached, [], 'the panel is not part of the box\'s gestures')
+  assert.equal(drag.defaultPrevented, true, 'a drag on the video does not pick the box up')
+  assert.equal(graph.selectedId, null)
+  record.el.dispatch('click', { detail: 1 })
+  assert.equal(graph.selectedId, 'root', 'the same click on the box itself selects it')
+})
+
+test('agents that left this computer\'s tree lose their stream; other graphs never drop one', async t => {
+  const { mount, start, tracks } = await videoGraphWorld(t)
+  const graph = mount()
+  await start('child-a')
+  await start('child-b')
+  graph.computer = { ...graph.computer, agents: graph.computer.agents.filter(agent => agent.id !== 'child-b') }
+  graph.refresh()
+  assert.equal(videoBoxBroker().get('child-b'), null)
+  assert.equal(tracks[1].stopped, 1)
+  assert.equal(videoBoxBroker().get('child-a').state, 'live')
+  // A tree still loading, a split frame or another computer never drops one.
+  graph.computer = { ...graph.computer, agents: [] }
+  graph.refresh()
+  const frame = mount({ chatOwner: graph })
+  frame.computer = { id: 'this-computer', agents: [{ id: 'root', name: 'Controller', role: 'controller', parentId: null }] }
+  frame.refresh()
+  graph.computer = { id: 'another-computer', agents: [{ id: 'x', name: 'X', role: 'worker', parentId: null }] }
+  graph.refresh()
+  assert.equal(videoBoxBroker().get('child-a').state, 'live')
+  assert.equal(tracks[0].stopped, 0)
+})
+
+test('the frame rate follows the screen: 10 for the selected or hovered box, 5 visible, 1 not drawn', async t => {
+  const observers = []
+  class Observer {
+    constructor(callback, options) { this.callback = callback; this.options = options; this.targets = new Set(); observers.push(this) }
+    observe(target) { this.targets.add(target) }
+    unobserve(target) { this.targets.delete(target) }
+    disconnect() { this.targets.clear() }
+    show(target, isIntersecting) { this.callback([{ target, isIntersecting }]) }
+  }
+  const { mount, start, tracks } = await videoGraphWorld(t, { observer: Observer })
+  const graph = mount()
+  await start('root')
+  graph.setContactMarks({ videoNodeIds: ['root'] })
+  const [observer] = observers
+  assert.equal(observers.length, 1, 'one observer per graph')
+  assert.equal(observer.options.root, graph.zoomHost)
+  const panel = panelOf(graph.nodes.get('root'))
+  assert.equal(observer.targets.has(panel), true)
+  const rate = () => tracks[0].applied.at(-1)
+  assert.deepEqual(rate(), FULL_SET(1), 'not yet drawn')
+  observer.show(panel, true)
+  assert.deepEqual(rate(), FULL_SET(5))
+  graph.select('root')
+  assert.deepEqual(rate(), FULL_SET(10), 'the selected box')
+  graph.select('child-a')
+  assert.deepEqual(rate(), FULL_SET(5))
+  graph.nodes.get('root').el.dispatch('pointerenter')
+  assert.deepEqual(rate(), FULL_SET(10), 'the hovered box')
+  graph.nodes.get('root').el.dispatch('pointerleave')
+  assert.deepEqual(rate(), FULL_SET(5))
+  observer.show(panel, false)
+  assert.deepEqual(rate(), FULL_SET(1), 'scrolled or zoomed out of view')
+  for (const constraints of tracks[0].applied) assert.ok(constraints.width.max <= 854 && constraints.height.max <= 480)
+  graph.setContactMarks({ videoNodeIds: [] })
+  assert.equal(observer.targets.has(panel), false, 'a removed panel is no longer watched')
+  assert.deepEqual(rate(), FULL_SET(1), 'no panel shows it')
+})
+
+test('the panel says what is happening: starting, the window title, closed, paused, or pick again', t => {
+  const { document, restore } = installDomStandIn()
+  t.after(restore)
+  let view = null
+  const calls = []
+  const broker = { get: () => view, resume: nodeId => { calls.push(['resume', nodeId]); return Promise.resolve({ ok: true }) },
+    watch: (...args) => calls.push(['watch', args[0], args[2]]), unwatch: () => {} }
+  let now = 1000
+  const record = { id: 'node-1', agent: { name: 'Builder' }, el: document.createElement('div') }
+  const panel = mountBoxVideo(record, { broker, now: () => now })
+  const text = () => panel.querySelector('.tree-box-video-text')
+  const action = () => panel.querySelector('.tree-box-video-action')
+  const shows = () => [panel.dataset.videoState, text().hidden ? '' : text().textContent, action().hidden ? '' : action().textContent]
+  assert.deepEqual(shows(), ['saved', BOX_VIDEO_WORDS.saved, BOX_VIDEO_WORDS.savedAction])
+  assert.equal(BOX_VIDEO_WORDS.saved + ' ' + BOX_VIDEO_WORDS.savedAction + '.', 'Video was on for this agent. Pick the window again.')
+  const picks = []
+  window.addEventListener(VIDEO_BOX_PICK_EVENT, event => picks.push(event.detail.nodeId))
+  action().click()
+  assert.deepEqual(picks, ['node-1'], 'one press asks the Video section for its list of windows')
+  const track = videoTrack(), stream = { getVideoTracks: () => [track], getTracks: () => [track] }
+  for (const [next, expected] of [
+    [{ state: 'starting', label: 'ROS · agent', stream: null }, ['starting', BOX_VIDEO_WORDS.starting, '']],
+    [{ state: 'live', label: '<b>ROS</b> · agent', stream }, ['live', '<b>ROS</b> · agent', '']],
+    [{ state: 'ended', label: 'ROS · agent', stream }, ['ended', 'Window closed', '']],
+    [{ state: 'paused', label: 'ROS · agent', stream: null, note: null }, ['paused', '', 'Click to resume']],
+    // A resume that failed (the window was renamed, closed or has a twin) cannot resume: it picks again.
+    [{ state: 'paused', label: 'ROS · agent', stream: null, note: 'That window closed, changed its name or is minimized. Restore it if needed, then pick it again.' },
+      ['paused', 'That window closed, changed its name or is minimized. Restore it if needed, then pick it again.', 'Pick the window again']],
+  ]) {
+    view = { nodeId: 'node-1', note: null, ...next }
+    renderBoxVideo(record)
+    assert.deepEqual(shows(), expected)
+  }
+  assert.equal(panel.querySelector('.tree-box-video-text').children.length, 0, 'a window title is text, never markup')
+  action().click()
+  assert.deepEqual(picks, ['node-1', 'node-1'], 'after a failed resume, one press asks the Video section for its list')
+  assert.equal(calls.some(call => call[0] === 'resume'), false, 'a resume that cannot find the window is not tried again')
+  view = { nodeId: 'node-1', state: 'paused', label: 'ROS · agent', stream: null, note: null }
+  renderBoxVideo(record)
+  action().click()
+  assert.deepEqual(calls.at(-1), ['resume', 'node-1'], 'Click to resume starts again from the person\'s click')
+  assert.equal(picks.length, 2)
+  // A live source that stops sending frames (minimized) keeps its last frame and says why.
+  const ticks = []
+  const watcher = createBoxVideoWatcher({ broker, now: () => now, setTicker: callback => { ticks.push(callback); return 1 }, clearTicker: () => {} })
+  view = { nodeId: 'node-1', state: 'live', label: 'ROS · agent', stream, note: null }
+  renderBoxVideo(record)
+  watcher.observe(record)
+  assert.equal(ticks.length, 1)
+  now += BOX_VIDEO_STALL_MS - 1
+  watcher.checkStalls()
+  assert.equal(text().textContent, 'ROS · agent')
+  now += 1
+  watcher.checkStalls()
+  assert.equal(text().textContent, BOX_VIDEO_WORDS.stalled)
+  assert.equal(panel.querySelector('video').srcObject === stream, true, 'the last frame stays')
+  watcher.destroy()
 })

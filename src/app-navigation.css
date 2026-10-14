@@ -10,74 +10,33 @@ html.in-shell body[data-navigation="side"] #stage {
   height: calc(100% - var(--shell-titlebar-height, 36px));
 }
 
-/* ==========================================================================
-   THE RAIL (design rule: the left sidebar is a considered surface, built on
-   the foundation's tokens).
-   A considered surface of its own: one step off the page, a hairline edge
-   with a faint inner light on the dark sheets, 16px of side padding. On it,
-   one row for everything -- the brand, the pages, Settings, Guide, Quick
-   settings -- 36px tall with a 20px icon box, a 12px gap and one label
-   style, 2px apart, square-ish (the foundation's 4px control radius); one
-   quiet plate on hover; the current page on a neutral raised plate (design
-   rule: no tinted accent plate), its
-   icon and label in full ink, and a 3px accent bar on the rail's outer
-   edge -- the same place in the full and the collapsed rail. Groups are parted by one hairline with 16px of air. The
-   collapsed rail is the same rows as 36px squares in a 56px column. Nothing
-   here changes what the controls do or how they are named.
-   ========================================================================== */
+/* Stage A rail: neutral app ground, one flat current-page pill, and a brand
+   cue inside that pill. The existing controller owns all routes and names. */
 body[data-navigation="side"] {
   --navigation-width: 232px;
   --navigation-inset: 16px;
-  --navigation-accent: var(--ui-accent, var(--theme-accent, var(--c-coordinator)));
-  --nav-row: 36px;
-  --nav-icon: 20px;
-  --nav-gap: 12px;
+  --navigation-accent: var(--brand, var(--s-serious));
+  --nav-row: 32px;
+  --nav-icon: 16px;
+  --nav-gap: 8px;
   --nav-pad-x: 10px;
-  --nav-radius: var(--radius-sm, 4px);
-  --nav-surface: color-mix(in srgb, var(--ink) 2.5%, var(--bg));
-  --nav-edge: var(--border-default, var(--line));
-  --nav-inner-light: transparent;
+  --nav-radius: 8px;
+  --nav-surface: var(--bg-app, var(--bg));
+  --nav-edge: var(--line);
   --nav-ink: var(--ink);
   --nav-ink-rest: var(--ink-2);
   --nav-icon-rest: var(--ink-3);
-  --nav-plate-hover: var(--state-hover, color-mix(in srgb, var(--ink) 6%, transparent));
-  /* THE CURRENT PAGE IS A RAISED PLATE (design rule: the current page is
-     marked without a highlight colour). Four were rendered in
-     White and Black (notes/upgrade/shots/nav-highlight/): a neutral raised
-     plate, a sunken plate, no plate, an ink wash. Only the raised plate stays
-     a different KIND of mark from hover's flat wash; the other three read as
-     hover or quieter. So: the foundation's raised control surface, its top
-     light, a hairline ring and the control shadow; no tint. */
-  --nav-plate-current: var(--surface-raised, var(--sheet));
-  --nav-lift-current: var(--shadow-highlight, inset 0 1px 0 rgb(255 255 255 / .7)), 0 0 0 1px var(--border-hairline, var(--line)), var(--shadow-1, 0 1px 1px rgb(0 0 0 / .05));
+  --nav-plate-hover: var(--bg-hover, var(--state-hover));
+  --nav-plate-current: var(--bg-surface, var(--sheet));
+  --nav-lift-current: 0 0 0 1px var(--line);
   --nav-icon-current: var(--ink);
-  --nav-line: var(--border-hairline, var(--line));
-  --nav-tile: color-mix(in srgb, var(--navigation-accent) 16%, transparent);
-  --nav-tile-ink: var(--navigation-accent);
-  --nav-badge: var(--navigation-accent);
-  --nav-badge-ink: #fff;
-  --nav-foot: color-mix(in srgb, var(--ink) 3%, var(--nav-surface));
-  --nav-seg: color-mix(in srgb, var(--ink) 2%, var(--nav-surface));
-  --nav-seg-line: var(--line);
-  --nav-ink-off: var(--ink-4, var(--ink-3));
-}
-:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) body[data-navigation="side"] {
-  --nav-surface: color-mix(in srgb, var(--ink) 4%, var(--bg));
-  --nav-edge: var(--line-2);
-  --nav-inner-light: rgb(255 255 255 / .035);
-  --nav-plate-hover: var(--state-hover, color-mix(in srgb, var(--ink) 8%, transparent));
-  /* On charcoal the raised step is a film of light over the rail (the
-     foundation's own control recipe), a faint lit top and a hairline ring;
-     hover's wash is half its strength. */
-  --nav-plate-current: color-mix(in srgb, var(--ink) 11%, transparent);
-  --nav-lift-current: inset 0 1px 0 rgb(255 255 255 / .06), 0 0 0 1px var(--border-hairline, var(--line)), 0 1px 2px rgb(0 0 0 / .28);
-  --nav-line: var(--border-default, var(--line-2));
-  --nav-icon-rest: var(--ink-2);
-  --nav-tile: color-mix(in srgb, var(--navigation-accent) 24%, transparent);
-  --nav-tile-ink: color-mix(in srgb, var(--navigation-accent) 70%, #fff);
-  --nav-foot: color-mix(in srgb, #000 16%, var(--nav-surface));
-  --nav-seg: color-mix(in srgb, #fff 3%, var(--nav-foot));
-  --nav-seg-line: var(--line-2);
+  --nav-line: var(--line);
+  --nav-badge: var(--brand-text, var(--s-serious));
+  --nav-badge-ink: var(--bg-surface, var(--sheet));
+  --nav-foot: var(--nav-surface);
+  --nav-seg: transparent;
+  --nav-seg-line: transparent;
+  --nav-ink-off: var(--ink-3);
 }
 /* THE TOP STRIP'S BACKING PLATE STAYS OFF WITH THE RAIL (styles.css draws
    .topbar::before as a fixed 58px band for the floating strip; the rail is a
@@ -89,7 +48,7 @@ body[data-navigation="side"] .topbar {
   display: flex; flex-direction: column; align-items: stretch; gap: 0;
   padding: 14px var(--navigation-inset) 14px;
   background: var(--nav-surface); border: 0; border-right: 1px solid var(--nav-edge);
-  box-shadow: inset -1px 0 0 var(--nav-inner-light);
+  box-shadow: none;
   pointer-events: auto; transform: none;
   overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
   transition: width var(--dur-2, 160ms) var(--ease-out, ease);
@@ -102,7 +61,7 @@ body[data-navigation="side"] :is(.tb-nav a, .app-nav-home, .app-nav-footer .firs
   width: 100%; min-height: var(--nav-row); height: var(--nav-row); padding: 0 var(--nav-pad-x);
   margin: 0; border: 0; border-radius: var(--nav-radius);
   color: var(--nav-ink-rest); background: transparent; box-shadow: none; text-decoration: none;
-  font: var(--weight-medium, 500) var(--text-base, 14px)/1.2 var(--font-ui); letter-spacing: 0; text-transform: none; text-align: left; white-space: nowrap;
+  font: 500 13.5px/1.2 var(--font-ui); letter-spacing: 0; text-transform: none; text-align: left; white-space: nowrap;
   cursor: pointer; transform: none;
   transition: color var(--dur-1, 100ms) ease, background-color var(--dur-1, 100ms) ease;
 }
@@ -110,17 +69,15 @@ body[data-navigation="side"] :is(.tb-nav a, .app-nav-footer .first-use-launch, #
   color: var(--nav-ink); background: var(--nav-plate-hover); box-shadow: none; transform: none;
 }
 body[data-navigation="side"] :is(.tb-nav a, .app-nav-home, .app-nav-footer .first-use-launch, #open-settings, .app-nav-history .icon-btn, .app-nav-collapse):focus-visible {
-  outline: var(--focus-width, 2px) solid var(--focus-ring, var(--navigation-accent)); outline-offset: var(--focus-offset, 2px);
+  outline: var(--focus-width, 2px) solid var(--ink); outline-offset: var(--focus-offset, 2px);
 }
 body[data-navigation="side"] :is(.tb-nav a, .app-nav-footer .first-use-launch, #open-settings):active { transform: none; background: var(--nav-plate-hover); box-shadow: none; }
 /* the strip's own pseudo-elements (press glow, underline) are off in the rail */
 body[data-navigation="side"] .tb-nav a::before { display: none; content: none; }
-/* THE BAR sits on the rail's outer edge (the window's edge), where the
-   collapsed rail already drew it, so the cue does not jump when the rail
-   narrows. */
+/* The brand cue stays inside the current-page pill at every rail width. */
 body[data-navigation="side"] .tb-nav a::after {
-  content: ''; display: block; position: absolute; inset: auto; left: calc(-1 * var(--navigation-inset)); top: 8px; bottom: 8px; width: 3px; z-index: 0;
-  border-radius: 0 var(--radius-xs, 3px) var(--radius-xs, 3px) 0; background: var(--navigation-accent); opacity: 0; transform: none; pointer-events: none;
+  content: ''; display: block; position: absolute; inset: auto; left: 0; top: 8px; bottom: 8px; width: 3px; z-index: 0;
+  border-radius: 3px; background: var(--navigation-accent); opacity: 0; transform: none; pointer-events: none;
   transition: opacity var(--dur-1, 100ms) ease;
 }
 
@@ -133,7 +90,7 @@ body[data-navigation="side"] .app-nav-icon {
   color: var(--nav-icon-rest); background: none; border: 0; border-radius: 0; box-shadow: none;
   transition: color var(--dur-1, 100ms) ease;
 }
-body[data-navigation="side"] .app-nav-icon svg { display: block; width: 20px; height: 20px; stroke-width: 1.75px; }
+body[data-navigation="side"] .app-nav-icon svg { display: block; width: 16px; height: 16px; stroke-width: 1.5px; }
 body[data-navigation="side"] :is(#open-settings, .app-nav-history .icon-btn) > svg:not(.app-nav-icon svg) { display: none; }
 body[data-navigation="side"] :is(.tb-nav a, .app-nav-footer .first-use-launch, #open-settings):hover .app-nav-icon { color: var(--nav-ink); }
 /* THE LABEL: one style; the Quick settings word is the same label. */
@@ -150,9 +107,7 @@ body[data-navigation="side"] .app-nav-badge {
 }
 body[data-navigation="side"] .app-nav-badge[hidden] { display: none; }
 
-/* THE CURRENT PAGE: a neutral raised plate, the label and icon in full ink,
-   and the accent bar on the window edge -- the one colour in the rail. The
-   plate survives the collapsed rail as a raised square; so does the bar. */
+/* Current page: surface pill, ink text, hairline ring and interior brand cue. */
 body[data-navigation="side"] :is(.tb-nav a.active, #open-settings[aria-expanded="true"]) { color: var(--nav-ink); font-weight: var(--weight-semibold, 600); background: var(--nav-plate-current); box-shadow: var(--nav-lift-current); }
 body[data-navigation="side"] :is(.tb-nav a.active, #open-settings[aria-expanded="true"]):hover { background: var(--nav-plate-current); box-shadow: var(--nav-lift-current); }
 body[data-navigation="side"] .tb-nav a.active::after { opacity: 1; }
@@ -171,23 +126,24 @@ body[data-navigation="side"] .app-nav-home:hover { background: var(--nav-plate-h
 body[data-navigation="side"] .app-nav-mark {
   display: grid; place-items: center; flex: none; order: -1;
   width: 28px; height: 28px; margin: 0; padding: 0;
-  /* THE TE MARK AS IT WAS BUILT (an earlier commit, 2026-09-08, "Match the navigation
-     TE logo to the active theme"; the ToolsEnabled icon was built to change
-     colour with the page): a plate in the page's own ground with the glyph in
+  /* THE TE MARK AS IT WAS BUILT (fa583fde, 2026-09-08, "Match the navigation
+     TE logo to the active theme"; owner, 2026-09-19: "we had a specific
+     toolsenabled icon that changed colors based on the page and we had built
+     that specifically"): a plate in the page's own ground with the glyph in
      black, white on the dark trio, and a hairline -- not an accent tile. */
   color: #000; background: var(--bg); border: 1px solid var(--border-default, var(--nav-line)); border-radius: var(--radius-md, 6px);
-  box-shadow: var(--shadow-1, 0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent));
+  box-shadow: none;
 }
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) body[data-navigation="side"] .app-nav-mark { color: #fff; }
 body[data-navigation="side"] .app-nav-mark svg { display: block; width: 20px; height: 20px; }
-body[data-navigation="side"] .app-nav-wordmark { font: var(--weight-bold, 650) var(--text-lg, 15px)/1.2 var(--font-ui); letter-spacing: var(--tracking-title, -.01em); color: var(--nav-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-navigation="side"] .app-nav-wordmark { font: 650 14px/1.2 var(--font-ui); letter-spacing: var(--tracking-title, -.01em); color: var(--nav-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body[data-navigation="side"] .app-nav-collapse {
   display: grid; place-items: center; flex: none;
   width: 28px; height: 28px; padding: 0; margin: 0;
   color: var(--nav-icon-rest); background: transparent; border: 0; border-radius: var(--nav-radius); box-shadow: none; cursor: pointer;
   transition: color var(--dur-1, 100ms) ease, background-color var(--dur-1, 100ms) ease;
 }
-body[data-navigation="side"] .app-nav-collapse svg { width: 16px; height: 16px; stroke-width: 1.75px; }
+body[data-navigation="side"] .app-nav-collapse svg { width: 16px; height: 16px; stroke-width: 1.5px; }
 body[data-navigation="side"] .app-nav-collapse:hover { color: var(--nav-ink); background: var(--nav-plate-hover); }
 
 /* ---- THE GROUPS: pages, then Settings, then the footer; one hairline
@@ -200,13 +156,7 @@ body[data-navigation="side"] .tb-nav a[data-route="settings"] { margin-top: 17px
 body[data-navigation="side"] .tb-nav a[data-route="settings"]::before {
   display: block; content: ''; position: absolute; left: 0; right: 0; top: -9px; height: 1px; background: var(--nav-line);
 }
-/* ---- THE FOOTER (design rule: no loose buttons at the bottom of the
-   rail): one quiet band at the base of the rail, a tone deeper than the
-   rail with a hairline above it, running edge to edge. On it, Guide and
-   Quick settings as two compact utility rows -- smaller than the pages,
-   because they are not pages -- and Back and Next as ONE segmented control
-   the width of the rail, two halves with a hairline between, chevrons
-   centred, greyed when there is nowhere to go. ---- */
+/* Footer utilities stay quiet; history uses two independent ghost buttons. */
 body[data-navigation="side"] .app-nav-footer {
   display: flex; flex-direction: column; gap: 2px;
   margin: auto calc(-1 * var(--navigation-inset)) -14px; padding: 10px var(--navigation-inset) 10px;
@@ -220,14 +170,14 @@ body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-foo
 body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) .app-nav-icon { width: 16px; height: 16px; }
 body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) .app-nav-icon svg { width: 16px; height: 16px; }
 body[data-navigation="side"] .app-nav-history {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  display: flex; gap: 4px;
   margin: 8px 0 0; padding: 0; overflow: hidden;
-  background: var(--nav-seg); border: 1px solid var(--nav-seg-line); border-radius: var(--nav-radius);
+  background: transparent; border: 0; border-radius: 6px;
 }
 body[data-navigation="side"] .app-nav-history .icon-btn {
   display: grid; place-items: center; box-sizing: border-box;
-  width: auto; height: 28px; min-height: 0; padding: 0; margin: 0;
-  color: var(--nav-icon-rest); background: transparent; border: 0; border-radius: 0; box-shadow: none;
+  width: 28px; height: 28px; min-height: 0; padding: 0; margin: 0;
+  color: var(--nav-icon-rest); background: transparent; border: 0; border-radius: 6px; box-shadow: none;
   font-family: var(--font-ui);
   cursor: pointer; transform: none; transition: color var(--dur-1, 100ms) ease, background-color var(--dur-1, 100ms) ease;
 }
@@ -236,7 +186,7 @@ body[data-navigation="side"] .app-nav-history .icon-btn .app-nav-icon { order: 0
 body[data-navigation="side"] .app-nav-history .icon-btn .app-nav-icon svg { width: 16px; height: 16px; }
 body[data-navigation="side"] .app-nav-history .icon-btn:hover { color: var(--nav-ink); background: var(--nav-plate-hover); transform: none; box-shadow: none; }
 body[data-navigation="side"] .app-nav-history .icon-btn:hover .app-nav-icon { color: var(--nav-ink); }
-body[data-navigation="side"] .app-nav-history .icon-btn[disabled] { opacity: 1; color: var(--nav-ink-off); cursor: default; }
+body[data-navigation="side"] .app-nav-history .icon-btn[disabled] { opacity: .45; color: var(--nav-ink-off); cursor: default; }
 body[data-navigation="side"] .app-nav-history .icon-btn[disabled] .app-nav-icon { color: var(--nav-ink-off); }
 body[data-navigation="side"] .app-nav-history .icon-btn[disabled]:hover { background: transparent; }
 /* THE ARROW'S DESTINATION WORD, WHERE IT CAN BE READ (T1558). The caption
@@ -293,11 +243,11 @@ body[data-navigation="side"][data-navigation-collapsed="true"] :is(.app-nav-foot
 body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-brand { flex-direction: column; gap: 6px; align-items: center; padding-bottom: 10px; }
 body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-home { padding: 0; }
 body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-collapse svg { transform: rotate(180deg); }
-body[data-navigation="side"][data-navigation-collapsed="true"] .tb-nav a::after { left: calc(-1 * var(--navigation-inset) - (56px - 2 * var(--navigation-inset) - var(--nav-row)) / 2); }
+body[data-navigation="side"][data-navigation-collapsed="true"] .tb-nav a::after { left: 0; }
 body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-footer { margin-inline: calc(-1 * var(--navigation-inset)); padding-inline: 8px; }
 body[data-navigation="side"][data-navigation-collapsed="true"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) { width: 36px; min-width: 0; height: 36px; margin-inline: auto; }
-body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history { grid-template-columns: 1fr; width: 36px; margin-inline: auto; }
-body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn { height: 30px; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history { flex-direction: column; align-items: center; width: 36px; margin-inline: auto; }
+body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn { height: 28px; }
 body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn + .icon-btn { border-left: 0; border-top: 1px solid var(--nav-seg-line); }
 body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn:first-child { border-radius: calc(var(--nav-radius) - 1px) calc(var(--nav-radius) - 1px) 0 0; }
 body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history .icon-btn:last-child { border-radius: 0 0 calc(var(--nav-radius) - 1px) calc(var(--nav-radius) - 1px); }
@@ -308,11 +258,11 @@ body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history 
   body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) { font-size: 0; padding: 0; gap: 0; }
   body[data-navigation="side"] .app-nav-brand { flex-direction: column; align-items: center; }
   body[data-navigation="side"] .app-nav-home { padding: 0; }
-  body[data-navigation="side"] .tb-nav a::after { left: calc(-1 * var(--navigation-inset) - (56px - 2 * var(--navigation-inset) - var(--nav-row)) / 2); }
+  body[data-navigation="side"] .tb-nav a::after { left: 0; }
   body[data-navigation="side"] .app-nav-footer { padding-inline: 8px; }
   body[data-navigation="side"] :is(.app-nav-footer .first-use-launch, .app-nav-footer #open-settings) { width: 36px; min-width: 0; height: 36px; margin-inline: auto; }
-  body[data-navigation="side"] .app-nav-history { grid-template-columns: 1fr; width: 36px; margin-inline: auto; }
-  body[data-navigation="side"] .app-nav-history .icon-btn { height: 30px; }
+  body[data-navigation="side"] .app-nav-history { flex-direction: column; align-items: center; width: 36px; margin-inline: auto; }
+  body[data-navigation="side"] .app-nav-history .icon-btn { height: 28px; }
   body[data-navigation="side"] .app-nav-history .icon-btn + .icon-btn { border-left: 0; border-top: 1px solid var(--nav-seg-line); }
   body[data-navigation="side"] .app-nav-history .icon-btn:first-child { border-radius: calc(var(--nav-radius) - 1px) calc(var(--nav-radius) - 1px) 0 0; }
   body[data-navigation="side"] .app-nav-history .icon-btn:last-child { border-radius: 0 0 calc(var(--nav-radius) - 1px) calc(var(--nav-radius) - 1px); }
@@ -347,3 +297,61 @@ body[data-navigation="side"][data-navigation-collapsed="true"] .app-nav-history 
    bar to step past. */
 body.first-run[data-navigation] .topbar { display: none; }
 body.first-run[data-navigation="side"] { --navigation-width: 0px; }
+
+/* History controls remain separate ghost buttons in every rail width. */
+body[data-navigation="side"] .app-nav-history .icon-btn { border: 0; border-radius: 6px; }
+body[data-navigation="side"] .app-nav-history .icon-btn + .icon-btn { border: 0; }
+
+/* A real top-layout strip can be selected on desktop too. Wrap its page links
+   within the fitted strip rather than clipping labels or pretending it is a
+   phone. Phone mode retains its own hidden direct-page row and touch floor. */
+body[data-navigation="top"] .topbar {
+  container: app-navigation / inline-size;
+  height: auto; min-height: 44px; row-gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  background: var(--bg-app, var(--bg));
+}
+body[data-navigation="top"] .tb-nav { flex-wrap: wrap; gap: 4px; }
+body[data-navigation="top"] .tb-nav a {
+  height: 32px; padding-inline: 8px; border-radius: 8px;
+  font-size: 13.5px; font-weight: 500;
+}
+body[data-navigation="top"] .tb-nav a.active {
+  background: var(--bg-surface, var(--sheet)); box-shadow: 0 0 0 1px var(--line);
+  color: var(--ink); font-weight: 600;
+}
+body[data-navigation="top"] .tb-nav a::before { content: none; }
+body[data-navigation="top"] .tb-nav a::after { content: none; }
+body[data-navigation="top"] :is(.tb-nav a, .icon-btn, .first-use-launch):focus-visible {
+  outline: 2px solid var(--ink); outline-offset: 2px;
+}
+@container app-navigation (max-width: 680px) {
+  body[data-navigation="top"] .tb-nav { grid-row: 2; grid-column: 1 / -1; }
+  body[data-navigation="top"] .tb-side { gap: 4px; }
+  body[data-navigation="top"] #open-settings { padding-inline: 4px; }
+}
+body[data-navigation="top"] { --navigation-top-compact-clearance: 82px; --navigation-top-compact-backdrop: 58px; }
+@media (max-width: 720px) {
+  body[data-navigation="top"] .topbar { left: 8px; width: calc(100% - 16px); }
+  body[data-navigation="top"] #stage { padding-top: var(--navigation-top-clearance, 172px); }
+  body[data-navigation="top"] .view { top: var(--navigation-top-clearance, 172px); }
+  body[data-navigation="top"] .topbar::before { height: var(--navigation-top-backdrop, 172px); }
+}
+/* Keep recovered paths actionable and recovery controls clear of navigation. */
+body[data-navigation] .settings-recovery {
+  border-radius: 10px; background: var(--bg-surface, var(--sheet));
+  box-shadow: var(--shadow-popover, var(--elev-3)); padding: 16px;
+}
+body[data-navigation] .settings-recovery-dismiss { min-height: 28px; border-radius: 6px; }
+body[data-navigation] .settings-recovery-dismiss:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+body.reduce-motion[data-navigation] :is(.topbar, #stage, .tb-nav a, .app-nav-collapse, #open-settings, .first-use-launch, .app-nav-history .icon-btn, .app-nav-icon) { transition: none !important; }
+body.reduce-motion[data-navigation] .tb-nav a::after { transition: none !important; }
+@media (forced-colors: active) {
+  body[data-navigation] :is(.tb-nav a, .icon-btn, .app-nav-collapse, .app-nav-home, .first-use-launch, .settings-recovery-dismiss):focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+}
+
+@container app-navigation (max-width: 300px) {
+  body[data-navigation="top"] .tb-settings-label { white-space: normal; max-width: 54px; line-height: 1.2; }
+  body[data-navigation="top"] .tb-side { gap: 2px; }
+  body[data-navigation="top"] #open-settings { gap: 2px; }
+}

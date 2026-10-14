@@ -1,4 +1,4 @@
-// The acceptance sequence, walked in its stated order:
+// The owner's own acceptance sequence, walked in their stated order:
 // load a research folder, browse its files and contents, load data into a
 // visible sheet, chart it, then build a snippet, label it into a category,
 // filter by that label and search for it.

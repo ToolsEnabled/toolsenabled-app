@@ -4,8 +4,8 @@ export const THEME_CHOICES = Object.freeze([
   { id: 'white', label: 'White' },
   { id: 'tan', label: 'Tan' },
   { id: 'black', label: 'Black' },
-  { id: 'ember', label: 'Ember', description: 'Deep red with a ruby glow' },
-  { id: 'cobalt', label: 'Cobalt', description: 'Midnight blue with a sapphire glow' },
+  { id: 'ember', label: 'Ember', description: 'Dark, warm red tint' },
+  { id: 'cobalt', label: 'Cobalt', description: 'Dark, blue tint' },
 ].map(Object.freeze))
 
 export const normalizeThemeId = id => THEME_CHOICES.some(choice => choice.id === id) ? id : 'white'

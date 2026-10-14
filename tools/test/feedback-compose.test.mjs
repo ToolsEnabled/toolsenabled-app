@@ -9,8 +9,8 @@ import {
 /* WHAT A PERSON SENDS US WHEN SOMETHING IS WRONG, AND WHERE IT GOES NOW.
  *
  * This used to build a mailto: and hand it to the person's own mail client.
- * It now POSTs to /v1/feedback on the account service, per the rule that the
- * mailto version must never ship. The tests that
+ * It now POSTs to /v1/feedback on the account service, per the owner's own
+ * ruling that the mailto version must never ship (S6 lane). The tests that
  * matter have shifted with it:
  *
  *   - composeFeedback still validates first, exactly as before -- a
@@ -19,9 +19,9 @@ import {
  *     is two-valued by design: only a confirmed `available: true` counts,
  *     everything else -- a false, a malformed reply, a thrown fetch -- is
  *     `false`. There is no third "could not check" value here, unlike
- *     src/capability-probes.js's general convention, because the rule for
- *     this specific door is that it is absent when the backend does not
- *     answer, never a dead button -- a probe that could not run must
+ *     src/capability-probes.js's general convention, because the owner's
+ *     rule for this specific door is "absent when the backend doesn't
+ *     answer, never a dead button" -- a probe that could not run must
  *     behave exactly like one that ran and said no.
  *   - submitFeedback never trusts the network: a thrown fetch, a malformed
  *     reply, an unnamed status are all folded into the same `ok: false`

@@ -154,9 +154,9 @@ test('a saved session is absent from the bindings until the host has answered fo
   assert.deepEqual(seenDuringProbe, [[]])
 })
 
-/* T830: THE STORM THE REFUSAL MEMORY EXISTS TO END. MEASURED on a
- * development install: hundreds of refused mc-agent:models reads within half an
- * hour, in bursts -- one refused read per saved circle
+/* T830: THE STORM THE REFUSAL MEMORY EXISTS TO END. MEASURED 2026-09-21 on the
+ * LIVE generation (app d46c18f49): 303 refused mc-agent:models reads in 27
+ * minutes, in bursts of 77, 76, 75 and 75 -- one refused read per saved circle
  * of an earlier run, per mount of the Agents page or the Home chat -- because
  * the sweep asked the host about every saved circle it did not own on every
  * mount and remembered nothing between mounts. The host's refusal reaches the

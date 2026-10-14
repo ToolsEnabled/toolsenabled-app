@@ -2,9 +2,9 @@
 
 /* THE TEXT SIZE, AND THE ONE NUMBER THE LAYOUT NEEDS TO KNOW ABOUT IT.
  *
- * Rule: a larger text size must never push part of the window off screen.
- * This module is the answer's first half; the second is the `--zoom` contract
- * written down at :root in src/styles.css.
+ * "text sizes for example large on my screen hides parts of the window"
+ * (owner, 2026-09-03). This module is the answer's first half; the second is
+ * the `--zoom` contract written down at :root in src/styles.css.
  *
  * WHY ANYTHING IS HIDDEN AT ALL. Text size is `zoom` on <body> -- the app is
  * sized in px throughout, so zoom rescales the layout coherently. But a

@@ -23,8 +23,8 @@ import {
   sealCutRecord,
 } from '../release-packager/cut-release-candidate.mjs'
 
-const TOOL = path.join(os.tmpdir(), 'cqa-controller', 'seal-cut-record.mjs')
-const OTHER = path.join(os.tmpdir(), 'cqa-controller', 'other-seal-cut-record.mjs')
+const TOOL = path.join(os.tmpdir(), 'w54-controller', 'seal-cut-record.mjs')
+const OTHER = path.join(os.tmpdir(), 'w54-controller', 'other-seal-cut-record.mjs')
 
 function value(argv, flag) {
   const at = argv.indexOf(flag)
@@ -93,12 +93,12 @@ function invocation(overrides = {}) {
     calls,
     options: {
       tool: TOOL,
-      installerPath: path.join(os.tmpdir(), 'cqa-stage', 'ToolsEnabled-Setup.exe'),
+      installerPath: path.join(os.tmpdir(), 'w54-stage', 'ToolsEnabled-Setup.exe'),
       appRef: APP_REF,
       engineRef: ENGINE_REF,
       version: '1.0.45',
-      manifestPath: path.join(os.tmpdir(), 'cqa-stage', 'declaration-facts.json'),
-      recordPath: path.join(os.tmpdir(), 'cqa-stage', 'seal-cut-record-1.0.45.json'),
+      manifestPath: path.join(os.tmpdir(), 'w54-stage', 'declaration-facts.json'),
+      recordPath: path.join(os.tmpdir(), 'w54-stage', 'seal-cut-record-1.0.45.json'),
       log: () => {},
       exists: (target) => target !== overrides.missing,
       run: async (command, argv) => {
@@ -111,7 +111,7 @@ function invocation(overrides = {}) {
 }
 
 test('the exit path runs the seal tool with the installer, both refs, the version and the manifest', async () => {
-  const { calls, options } = invocation({ missing: path.join(os.tmpdir(), 'cqa-stage', 'seal-cut-record-1.0.45.json') })
+  const { calls, options } = invocation({ missing: path.join(os.tmpdir(), 'w54-stage', 'seal-cut-record-1.0.45.json') })
   // The record does not exist before the run and does after it.
   let written = false
   options.exists = (target) => (target === options.recordPath ? written : true)
@@ -199,7 +199,7 @@ test('an existing record is never overwritten, and the tool is not even run', as
 })
 
 test('the record path the cut chooses lands beside the staged candidate and names the version', async () => {
-  const staging = await mkdtemp(path.join(os.tmpdir(), 'cqa-t155-'))
+  const staging = await mkdtemp(path.join(os.tmpdir(), 'w54-t155-'))
   const recordPath = path.join(staging, 'seal-cut-record-1.0.45.json')
   const { options } = invocation()
   options.recordPath = recordPath

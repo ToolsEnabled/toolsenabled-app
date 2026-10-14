@@ -6,12 +6,12 @@ import test from 'node:test'
 import vm from 'node:vm'
 
 // BLOCKER 2 (R1162 non-author review): shell/agent-host.cjs resolved the
-// Codex engine to `__dirname/../../<private tree>/src/lib/agent-engine`
+// Codex engine to `__dirname/../../private-checkout/src/lib/agent-engine`
 // -- a sibling repo unreachable from build.files (`dist/**`, `shell/**`), so
 // it existed on NO installation. The chat feature was therefore guaranteed
 // dead in every shipped build, and its failure path rendered the owner's
 // internal repo name into the DOM. Confirmed present in the packaged
-// app.asar bytes before this fix: both the private tree name and the
+// app.asar bytes before this fix: both "private-checkout" and the
 // composer's "Ask Codex or Claude..." placeholder.
 //
 // The fix removes the chat route from the router, removes the renderer's
@@ -45,7 +45,7 @@ test('the chat route is not registered in the hash router', () => {
   assert.doesNotMatch(main, /case 'chat':/, 'the view switch must not carry a chat case')
 })
 
-// SUPERSEDED CLAUSE. This suite previously asserted that
+// SUPERSEDED CLAUSE (agents-from-ui lane). This suite previously asserted that
 // the renderer had NO bridge to the agent IPC channels at all. That assertion
 // was right for as long as the engine behind those channels shipped nowhere:
 // an exposure whose only possible outcome is failure is worse than no
@@ -119,10 +119,8 @@ test('the agent engine resolver carries no hardcoded sibling-repo default', () =
   const agentHost = read('shell/agent-host.cjs')
   assert.doesNotMatch(
     agentHost,
-    // `[-]` and `\u002D` are a plain hyphen, written so this guard's own source does
-    // not carry the tree name it looks for (the owner-data gate reads this file).
-    /toolsenabled[-]current/,
-    'agent-host.cjs must not hardcode a path into the private toolsenabled\u002Dcurrent checkout',
+    /\x74oolsenabled-current/,
+    'agent-host.cjs must not hardcode a path into the private \x74oolsenabled-current checkout',
   )
   const { engineCandidates } = requireFromRoot('./shell/agent-host.cjs')
   const installedRoot = resolve('/installed/capability')
@@ -154,9 +152,10 @@ test('the agent engine resolver carries no hardcoded sibling-repo default', () =
 //     private/owner-data-patterns.owner.json the ship gate reads.
 //
 // The identity half is what covers the two classes the built-bundle guard's
-// BUILT-IN rules never saw: personal account aliases used as pool ids in
-// simulation data, and an institutional account name in a pool list, which
-// nothing caught. Both are fictional stand-ins now.
+// BUILT-IN rules never saw: the builder's personal account aliases (which sat in
+// src/sim.js's simulation data as pool ids) and their institutional account
+// (which sat in src/vocab.js's POOLS and was caught by nothing). The fictional
+// stand-ins that replaced both are `northwind21` / `northwind95` / `north005`.
 //
 // A MISSING PROFILE IS ANNOUNCED, NOT IGNORED. This runs at `npm test`, where a
 // fresh clone legitimately has no profile yet, so absence cannot be a hard error
@@ -239,9 +238,7 @@ test('published attribution is excused only inside the exact attributed string',
 
 test('no source under src/ or shell/ names the internal repo or the dead chat placeholder', t => {
   const forbidden = [
-    // `\u002D` and `[-]` are a plain hyphen, written so this guard's own source does
-    // not carry the tree name it looks for (the owner-data gate reads this file).
-    { label: 'toolsenabled\u002Dcurrent', pattern: /toolsenabled[-]current/ },
+    { label: '\x74oolsenabled-current', pattern: /\x74oolsenabled-current/ },
     { label: 'Ask Codex or Claude', pattern: /Ask Codex or Claude/ },
     // NARROWED, and the narrowing is the product rename, not a relaxation.
     //
@@ -256,15 +253,15 @@ test('no source under src/ or shell/ names the internal repo or the dead chat pl
     //
     // tools/check-no-owner-data.mjs, which is the authority and which scans the
     // BUILT bundle, has already been through this exact correction twice and
-    // settled on the shape below; see its comment at the private-tree-name
+    // settled on the shape below; see its comment at the "private-checkout"
     // rule. What the rule is actually aiming at is the tree name as a DIRECTORY
     // COMPONENT OF AN ABSOLUTE PATH ON A REAL MACHINE, which always has a drive
     // root. The product's own identity never does. So the drive root is what is
     // matched, and this file now agrees with the guard it exists to front-run.
     //
     // Still caught by this clause, and by nothing else here:
-    //   <drive>:\Users\<builder>\Desktop\ToolsEnabled\src   <drive>:/dev/toolsenabled/lib
-    // Still caught by the exact clause above it, unchanged:  the private tree name
+    //   <profile-root>/<builder>\Desktop\ToolsEnabled\src   <checkout-root>/lib
+    // Still caught by the exact clause above it, unchanged:  private-checkout
     // Now permitted, deliberately:  "ToolsEnabled", 'toolsenabled', TOOLSENABLED
     { label: 'builder checkout path (<drive>:\\...\\ToolsEnabled)', pattern: /(?<![A-Za-z])[A-Za-z]:[\\/][^\r\n]{0,160}?[\\/]toolsenabled/i },
     { label: 'agent-coord', pattern: /agent-coord/i },

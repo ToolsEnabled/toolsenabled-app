@@ -62,7 +62,7 @@ test('the live streaming bubble opens stamped with the turn settleTurnBoundary j
  * transcript line. Then the drain grew a second surface to stamp -- the
  * broadcast to every mounted chat on that session -- and the expression was
  * hoisted into one named const so both surfaces could be handed the same
- * value (an earlier commit). The behaviour this test exists to protect got STRONGER and
+ * value (40eea8d). The behaviour this test exists to protect got STRONGER and
  * the test went red, which is the pin failing, not the code: a source
  * assertion that duplicates an expression's exact spelling breaks on every
  * refactor that does not change what the expression means.

@@ -213,12 +213,12 @@ test('tools, delegation and research have separate destinations', () => {
   assert.equal(section.sectionOfRow('purchases.require_owner_approval'), 'Rules & approvals')
 })
 
-/* THE NESTED SUB-SETTING (O7 improvements: a user setting, default no, nested
- * below it in settings). The register
+/* THE NESTED SUB-SETTING (O7 improvements; owner, 2026-08-22: "this is more
+ * of a user setting. default no. nest it below in settings"). The register
  * declares rules.ask_when_unsure at depth 3, default off, with the same
  * enforcer as the row it belongs to. That row is now the three-way choice
- * rules.filing_from (manually on the Ledger page only; the Ledger page and
- * /request; or agents too, as before), which
+ * rules.filing_from (owner, 2026-09-15: "either manually on the ledger page
+ * only, or ledger page and /request, or agent and such like now"), which
  * superseded the on/off switch rules.capture_spoken; the page draws the child
  * nested under it -- the catalogue's own open tier, the indent rule that means
  * "this belongs to the row above" -- and OUT OF USE unless the choice is
@@ -279,7 +279,7 @@ test('the nested row is drawn under its parent, disabled while the parent is off
 
   /* A parent that reads ON but was chosen by nobody is, to the gate, off --
      and the child is drawn held, not live: a control enforcing a value
-     nobody chose would be the software failure named in the rule. */
+     nobody chose would be the software failure the owner named. */
   const unchosen = off.map(row => (row.id === 'rules.filing_from' ? { ...row, value: 'Agents too', provenance: { source: 'default' } } : row))
   const unchosenHtml = await render(unchosen)
   assert.ok(unchosenHtml.includes('data-setting-id="rules.ask_when_unsure"'))

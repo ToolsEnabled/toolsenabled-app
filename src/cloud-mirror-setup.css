@@ -111,7 +111,7 @@
   font-size: 13px;
   color: var(--ink);
   background: var(--surface);
-  border: 1px solid var(--line-2);
+  border: 1px solid var(--field-border);
   border-radius: var(--r-sm);
 }
 .cms-input:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 1px; }

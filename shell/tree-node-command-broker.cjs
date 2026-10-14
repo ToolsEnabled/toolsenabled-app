@@ -9,8 +9,8 @@
 
 /* HOW LONG A CIRCLE IS GIVEN TO APPEAR, AND WHY IT IS THIS NUMBER.
  *
- * MEASURED from a development ledger, every agent.spawn that carried a
- * duration:
+ * MEASURED 2026-09-03 from the owner's own ledger, every agent.spawn that
+ * carried a duration (111 records):
  *
  *   SUCCEEDED           n=20   min 6.4s   median 17.0s   p90 41.8s   max 225.7s
  *   COMPLETION_TIMEOUT  n=9    min 45.3s  median 45.4s   max 47.8s
@@ -20,8 +20,8 @@
  * seconds of it, and a spawn that legitimately took three minutes was killed
  * at forty-five seconds. Every one of the nine timeouts sits in a dead heat
  * at the deadline itself -- the signature of a clock expiring, not of work
- * failing. The visible result: something worked for 15 minutes and then
- * failed, so nothing looked reliable. It was not intermittent; it was a
+ * failing. The owner's words for the result: "something works for 15 minutes
+ * and then fails. NOTHING is reliable." It was not intermittent; it was a
  * coin toss weighted by how busy the machine was.
  *
  * A start is genuinely expensive -- it plans confinement, probes an account,
@@ -71,7 +71,7 @@ const DEFAULT_RETRY_DELAYS_MS = Object.freeze([75, 250, 750])
  * the life of the app, which is the one main-process structure in this file
  * that grew with work done rather than with work outstanding.
  *
- * MEASURED: 36 bytes of id plus the Set's own slot, so a
+ * MEASURED 2026-09-03 (lane H): 36 bytes of id plus the Set's own slot, so a
  * fleet doing a spawn every few seconds costs kilobytes an hour, not megabytes.
  * That is why this is a bound and not a rewrite: the defect is that it had no
  * ceiling at all, and an unbounded structure in the process that must not die

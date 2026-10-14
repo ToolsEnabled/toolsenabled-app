@@ -12,9 +12,11 @@
  *    computer). Add one in config/machines.profile.json to enable local model
  *    inference."
  *
- * MEASURED 2026-09-03 in a real audit ledger (capability/logs/actions.jsonl):
- * every call to research.local_tiers_status over several days failed, NOT ONE
- * SUCCESS, every one of them with that same code; median server time 19 ms. Each call is a loopback round trip
+ * MEASURED 2026-09-03 in the owner's own audit ledger
+ * (ToolsEnabled-Live/capability/logs/actions.jsonl and its legacy archive):
+ * twenty-one calls to research.local_tiers_status between 2026-08-29T21:38Z and
+ * 2026-09-03T04:17Z, TWENTY-ONE FAILURES, NOT ONE SUCCESS, every one of them
+ * that same code; median server time 19 ms. Each call is a loopback round trip
  * the page waits on before it can draw the tiers panel, and each one lands two
  * durable audit records on the capability layer -- mcp.tool.failed, then its
  * share of a controller.meter.tool_batch -- on the process that is also serving

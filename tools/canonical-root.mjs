@@ -2,7 +2,8 @@
  * Resolve the private engine checkout used by integration fixtures and doctor.
  *
  * This is configuration, never filesystem archaeology. Older versions probed
- * sibling and other nearby paths for an older checkout name. That made a passing integration run depend on which
+ * sibling, reorganisation-bucket, and Desktop paths named
+ * `private-checkout`. That made a passing integration run depend on which
  * old checkout happened to exist first, and it taught agents to walk outside
  * the working pair looking for a repository. A marker probe does not make that
  * safe: it proves only that a directory resembles an engine, not that it is the

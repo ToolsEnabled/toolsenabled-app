@@ -5,9 +5,10 @@
   exactly `.github`, and commit this content as `profile/README.md`. GitHub renders that
   file on https://github.com/ToolsEnabled.
 
-  The `.github` repository must be public for the profile to render, but it contains only
-  this page. Publishing it does not publish the product repository, which stays private
-  until the payload boundary is cleared.
+  The `.github` repository must be public for the profile to render, and it contains only
+  this page. The product source is public in its own repositories,
+  ToolsEnabled/toolsenabled-app and ToolsEnabled/toolsenabled-engine; this page does not
+  publish or change them.
 
   Everything below the marker is the page content. Do not copy this comment.
 -->

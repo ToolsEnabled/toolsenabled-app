@@ -2,8 +2,8 @@
  *
  * A stall means the loop came back late. It does not say why, and the two
  * reasons need opposite fixes: code that HELD the thread, or a thread that was
- * never SCHEDULED. Measured 2026-09-06 on a development machine, both conditions were
- * live at once -- more runnable threads than logical processors, and a durable-write
+ * never SCHEDULED. Measured 2026-09-06 on this machine, both conditions were
+ * live at once -- 8 logical processors, a run queue of 9, and a durable-write
  * path known to run inside the app's own main process. Argued from CPU figures
  * taken at some other moment, the question changes answer with the weather.
  *

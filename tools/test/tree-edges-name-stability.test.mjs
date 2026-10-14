@@ -1,4 +1,4 @@
-// Tree edges, part (a): the drawn name (src/fleet-trees.js
+// Lane 1-3 (tree-edges), part (a): the drawn name (src/fleet-trees.js
 // nodeDisplayName), the tree-address name (src/tree-node-brief.js
 // composeNodeBrief / readTreeAddress) and the name a circle registers under
 // (shell/agent-host.cjs reads this same address line -- see
@@ -6,13 +6,13 @@
 // string for a circle's whole life, including for the FIRST circle of a role
 // after a SECOND one is created.
 //
-// THE DEFECT THIS GUARDS, measured by the second tree (internal report 1a
+// THE DEFECT THIS GUARDS, measured by the second tree (m1-REPORT-ready.md 1a
 // to 1c, 6c): Manager 1 was registered "Manager", its workers were bound to
 // "Manager 1" (TREE_MANAGER_UNREGISTERED), and every send from it was refused
 // TREE_RECIPIENT_NOT_CONNECTED. The cause was a display name recomputed from
 // a same-role sibling COUNT at read time, so a circle's own name moved under
 // it the moment a second circle of the same role was created. App commit
-// an earlier commit ("keep circle names stable for their lifetime") froze the ordinal
+// bd80beb ("keep circle names stable for their lifetime") froze the ordinal
 // at addNode() time instead (src/fleet-trees.js nameOrdinal); this test
 // proves the fix holds all the way to the sentence a session is actually
 // told, not only inside the store.
@@ -111,7 +111,7 @@ test('the first Manager keeps one name across its whole life, including after a 
 // blank-role circle was permanently stuck on nodeDisplayName's OTHER branch --
 // a live count of same-tree, same-role peers, taken fresh on every call. That
 // is exactly the pre-nameOrdinal defect this file's own test above (and app
-// an earlier commit) exists to have retired, left standing for the one role
+// commit bd80beb) exists to have retired, left standing for the one role
 // value ordinals were withheld from. A first blank-role circle registers and
 // is briefed as "Agent"; a second one joining the SAME TREE (anywhere in it --
 // this pool is not scoped to siblings under one parent) silently renames the

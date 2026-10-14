@@ -165,14 +165,12 @@ test('default-workspace files retain normal editing even without a session assoc
 })
 test('Windows common account fence rejects a foreign profile before any filesystem call', {skip:process.platform!=='win32'},()=>{
   const f=fixture();const touched=[]
-  // Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-  const foreignFile=['C:','Users','DiffFixtureForeign','file.txt'].join('\\')
   const fileSystem=new Proxy({}, {get:(_target,name)=>(...args)=>{touched.push([name,...args]);throw Error('Unexpected filesystem access')}})
-  assert.throws(()=>assertAccountProfilePath(foreignFile, {
+  assert.throws(()=>assertAccountProfilePath('\x43:\\Users\\DiffFixtureForeign\\file.txt', {
     fileSystem,resolveProfileShortPath:()=>null,
   }),error=>error.code==='AGENT_CONFINEMENT_FOREIGN_PROFILE')
   assert.deepEqual(touched,[])
-  assert.equal(f.read(f.service,'session-one',foreignFile).ok,false)
+  assert.equal(f.read(f.service,'session-one','\x43:\\Users\\DiffFixtureForeign\\file.txt').ok,false)
 })
 test('the actual preload keeps optional session context and never accepts a directory grant',async()=>{
   const source=fs.readFileSync(new URL('../../shell/fleet-profile-preload.cjs',import.meta.url),'utf8')

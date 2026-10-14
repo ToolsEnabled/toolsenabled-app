@@ -72,8 +72,8 @@ function deadOwner() {
 
 /* THE BUDGET IS WALL TIME FOR FOUR ROUNDS OF CONCURRENT CLI CHILDREN, NOT A PRODUCT
  * LIMIT. The two cases below took 7.3 s and 8.0 s in the .46 census of 2026-09-23 under
- * the machine's turbo profile (unit 12) and timed out at 20 s in unit 18 once the CPU
- * was capped with turbo off, inside the release envelope's one-CPU quota.
+ * the machine's turbo profile (unit 12) and timed out at 20 s in unit 18 after the owner
+ * capped the CPU at 60 percent with turbo off, inside the release envelope's one-CPU quota.
  * The assertion is that every attempt dispatches exactly once, so the budget only has to
  * keep a hung child from stalling the census. */
 const CONCURRENT_CLI_BUDGET_MS = 90000

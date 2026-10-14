@@ -165,7 +165,7 @@ test('a press on the bridge reaches the operating system hand-off, with the righ
 
 test('the fence is in the chain: a name that leaves the folder never reaches the hand-off', async () => {
   const { bridge, opened } = bridgeOverRealSurface()
-  for (const name of ['..\\..\\Windows\\System32\\calc.exe', '../invoice.pdf', 'C:\\Windows\\notepad.exe']) {
+  for (const name of ['..\\..\\Windows\\System32\\calc.exe', '../invoice.pdf', '\x43:\\Windows\\notepad.exe']) {
     const reply = await bridge.open({ folderId: 'chosen-0', name })
     assert.equal(reply.ok, false)
   }

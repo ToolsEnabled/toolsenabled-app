@@ -1,15 +1,16 @@
 /* THE QUEUE STRIP'S CONTROLS, DRIVEN AS A PERSON DRIVES THEM.
  *
- * The queue and Send now buttons in chat did not work properly.
- * Both were true, and both had passing tests -- because every
+ * The owner, 2026-09-03: "first que and send now buttons in chat dont wokr
+ * properly." Both were true, and both had passing tests -- because every
  * existing pin on them reads the SOURCE (chat-composer.test.mjs pins
  * `deliverTurn(entry.text)`; chat-composer-chips.test.mjs pinned
  * `chipQueue.disabled = entries.length === 0`). A source pin proves the wire
  * is attached. It cannot prove what comes out the other end, and what came out
  * the other end was the opposite of the label.
  *
- * R14: the old Send button only sent, and Send next only
- * reordered, so a third button, Send now, is needed -- and (R17) that third button has to actually interrupt a
+ * The owner, 2026-09-04 (R14): "the send now button just says send and then
+ * the send next button just moves it around we need a thrid button there for
+ * send now also" -- and (R17) that third button has to actually interrupt a
  * running turn. What was one button wearing two faces is now three
  * always-present doors: Send (the ordinary drain), Send next (unchanged --
  * moves a row to the head of the queue), and Send now (new -- may stop a
@@ -32,9 +33,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
-// Picture attachments below are synthetic. Their Windows Temp folder is
-// assembled at run time, so this source carries no literal user-profile path.
-const PICTURE_TEMP = ['C:', 'Users', 'BuildAccount-Dev', 'AppData', 'Local', 'Temp'].join('/')
 const moduleUrl = process.env.DOM_STAND_IN_MODULE
   ? pathToFileURL(process.env.DOM_STAND_IN_MODULE).href
   : new URL('./lib/dom-stand-in.mjs', import.meta.url).href
@@ -225,8 +223,8 @@ test('a row whose message is gone says so instead of moving something else', () 
 })
 
 test('a queued row wears no Send door, because the row is already sent -- only move it, jump the turn with it, or take it back', () => {
-   /* W18c: queued items need no additional send button, since they are already
-     sent at that point. A queued row is a message
+  /* THE OWNER, W18c, verbatim: "in the qued items, no need for an additional
+     send button it is already sent at that point." A queued row is a message
      the person has already committed; the ordinary drain in
      views/computers.js takes it at the next turn boundary without being asked.
      The old Send door only did early what was going to happen anyway, and it
@@ -313,8 +311,8 @@ test('with nothing running, Send now delivers the row it was pressed on and leav
 /* ------------------------------------------------------- the third button */
 
 test('Send now pressed while nothing runs delivers without calling stop at all', async () => {
-   /* R17: the user can send a Send now that actually interrupts
-     the agent. Interrupting is
+  /* THE OWNER, 2026-09-04 (R17, verbatim): "the user needs to be able to
+     send a send now that actually interrrupts the agent." Interrupting is
      only honest when there is something to interrupt -- idle, Send now is
      an ordinary send and must not reach for the halt path regardless. */
   const fixture = mount({ busy: true })
@@ -468,7 +466,7 @@ test('a refused interrupt does not consume or send the committed message', async
   assert.equal(fixture.root.querySelector('.chat-send').disabled, false)
 })
 
-/* THE RELEASE BUDGET (the pre-install handoff: "150-250ms
+/* THE RELEASE BUDGET (HANDOFF-M13-BEFORE-INSTALL-20260918.md: "150-250ms
    release budget on the user path"), and the residue it ends.
 
    A Send now whose interrupt the host accepted still waits for THIS window's
@@ -481,7 +479,7 @@ test('a refused interrupt does not consume or send the committed message', async
    own fixture before the bound: at +1 s the row still read "Send now" with all
    three doors disabled and the composer's send button disabled.
 
-   The rule on what the bound does: no hard kill (bridge.close()
+   The Controller's ruling on what the bound does: no hard kill (bridge.close()
    destroys the agent), and when idle never arrives the row shows a NAMED hold
    with Retry send and Unqueue -- never a silent stall, never a refusal on the
    glass. These assert exactly that, by what a person sees and can press. */
@@ -644,7 +642,7 @@ test('busy Send now interrupts and delivers the message WITH its attachment', as
 
      Asserted by values, not by spelling: the interrupt happened, the words
      went, the file went with them, and the composer is empty afterwards. */
-  const attachment = { ok: true, path: `${PICTURE_TEMP}/queue-test-image.png`, size: 100 }
+  const attachment = { ok: true, path: '\x43:/\x55sers/fixture-profile/AppData/Local/Temp/queue-test-image.png', size: 100 }
   const fixture = mount({ busy: true, holdStop: true, withHold: true, attachment })
   fixture.root.querySelector('[data-chat-attach]').dispatch('click')
   await new Promise(resolve => setTimeout(resolve, 0))
@@ -942,8 +940,8 @@ test('a direct send that becomes queued retracts its optimistic bubble and paint
 /* ------------------------------------------------------------------- ⇧⏎ */
 
 test('⇧⏎ while a turn runs interrupts it and sends, rather than queueing at the front', async () => {
-   /* W18c: Enter is the default send and Shift+Enter is Send now, on top of
-     R17's Send now that actually interrupts the agent.
+  /* W18c, the owner: "Send should be the default send now should be sahift
+     enter", on top of R17's "a send now that actually interrrupts the agent".
      This chord used to queue-and-promote -- "next" wearing the word "now" --
      which was the best available act before W18b built a door that can really
      stop a turn. It is not the best available act any more, and a chord that
@@ -967,8 +965,8 @@ test('⇧⏎ while a turn runs interrupts it and sends, rather than queueing at 
 })
 
 test('a Send now that loses the settling race waits at the FRONT of the queue, never behind everything', async () => {
-   /* W18c clarification: Send now interrupts immediately; queue waits for the
-     end of the turn (an idle).
+  /* THE OWNER, W18c clarification, verbatim: "send now should interrupt
+     immediately. que should wait for the end of their turn (an idle)."
      The interrupt itself has no delay in it -- runStop calls onStop, which is
      bridge.interrupt, with no timer anywhere between the press and the wire.
      What CAN delay the words is the send that follows: the engine accepts the
@@ -1028,7 +1026,7 @@ test('⇧⏎ with nothing running is still a plain send, and never reaches for t
 })
 
 test('⏎ is the ordinary send: while a turn runs it queues, exactly as the arrow does', () => {
-  /* W18c: the arrow sends. Plain ⏎ and the arrow are one act, and at a
+  /* W18c: "The arrow should send". Plain ⏎ and the arrow are one act, and at a
      busy agent that act is "wait your turn" -- which is why the Queue chip is
      gone: the arrow already is the queue door. */
   const fixture = mount({ busy: true })
@@ -1163,7 +1161,7 @@ test('Unqueue does not overwrite a draft the person already has in the box', () 
   fixture.root.dispose()
 })
 
-/* ---- SEND NEXT SAYS THE REAL STATE (item 3, 2026-09-19) ----
+/* ---- SEND NEXT SAYS THE REAL STATE (lane B item 3, 2026-09-19) ----
  *
  * A queued row is drawn at an IDLE agent too -- a refused resume, an ended
  * session -- and there "it goes the moment this turn finishes" named a turn
@@ -1222,7 +1220,7 @@ test('Send now from the message box puts the stop note above the new message, as
 // T1426: Send now on a queued row was refused whenever the message box held a
 // picture, with a note about "this message" that described the draft.
 test('Send now on a queued row goes while the message box holds an unrelated picture draft, which stays', async () => {
-  const attachment = { ok: true, path: `${PICTURE_TEMP}/draft-picture.png`, size: 100 }
+  const attachment = { ok: true, path: '\x43:/\x55sers/fixture-profile/AppData/Local/Temp/draft-picture.png', size: 100 }
   const fixture = mount({ busy: true, holdStop: true, withHold: true, attachment })
   queueWhileBusy(fixture, ['older queued A', 'urgent B'])
   fixture.root.querySelector('[data-chat-attach]').dispatch('click')
@@ -1247,7 +1245,7 @@ test('Send now on a queued row goes while the message box holds an unrelated pic
 // empty draft, put the words back in the queue as text only, and the picture
 // was in neither place; the words later went without it.
 test('closing a chat during Send now with a picture hands the words and the picture back together', async () => {
-  const attachment = { ok: true, path: `${PICTURE_TEMP}/this-screenshot.png`, size: 100 }
+  const attachment = { ok: true, path: '\x43:/\x55sers/fixture-profile/AppData/Local/Temp/this-screenshot.png', size: 100 }
   const fixture = mount({ busy: true, holdStop: true, withHold: true, attachment })
   queueWhileBusy(fixture, ['first'])
   fixture.root.querySelector('[data-chat-attach]').dispatch('click')

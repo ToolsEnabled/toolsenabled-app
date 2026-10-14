@@ -7,7 +7,7 @@ import { validateAgainstSchema } from './gen-projection-lib.mjs';
 //
 // `public/data/research-queue.json` is copied verbatim into the bundle by vite
 // and rendered on first run. It used to hold 28 hand-authored engineering
-// post-mortems that name the owner, describe their private fleet, and quote a
+// post-mortems that name the owner, describe his private fleet, and quote a
 // credential env var. Every one of those reached a stranger's disk inside
 // app.asar; tools/check-no-owner-data.mjs is what finally said so.
 //

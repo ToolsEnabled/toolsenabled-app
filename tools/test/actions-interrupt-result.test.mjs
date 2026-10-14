@@ -33,6 +33,7 @@ function fixture(t, refusal = null, interrupt = null) {
   const scope = {
     PALETTE_PANEL, EFFORT_SWITCH, MODEL_PANEL, REMOVE_PANEL, RESUME_PANEL, REWIND_PANEL, SWITCH_PANEL,
     RUN_SESSION_CLEANUPS: new Map(),
+    ownedSessions: () => new Map([[node.sessionId, node.id]]),
     pendingModelChoices: new Map(),
     treeImagePreparations: new Map(),
     closePersonNode() { assert.fail('Interrupt must not close the session') },

@@ -8,6 +8,7 @@ register('./helpers/css-stub-loader.mjs', import.meta.url)
 const { installWorld, fleetFetch, seedTreeNode, mountView, settle } = await import('./lib/tree-command-real-mount.mjs')
 const { DATA_SOURCE_EVENT } = await import('../../src/data-source.js')
 const { WRITE_FLAGS_EVENT } = await import('../../src/write-flags.js')
+const { createRouteSwapLatch } = await import('../../src/route-swap-latch.js')
 
 const MAIN = readFileSync(new URL('../../src/main.js', import.meta.url), 'utf8')
 const listenerStart = MAIN.indexOf('window.addEventListener(DATA_SOURCE_EVENT, event => {')
@@ -161,7 +162,7 @@ async function homeFixture(t) {
   const { setRunsMode } = await import('../../src/chatbox-feed.js')
   const { homeView } = await import('../../src/views/home.js')
   const { createHistoryEntries } = await import('../../src/history-entries.js')
-  /* main.js marks each mounted route for diagnostics (an earlier commit): swapView
+  /* main.js marks each mounted route for diagnostics (4860c95d): swapView
      mounts, retireView unmounts. The real module runs with its sink recorded. */
   const { createPageDiagnostics } = await import('../../src/page-diagnostics.js')
   const diagnostics = []
@@ -187,6 +188,8 @@ async function homeFixture(t) {
     syncFirstRunChrome: () => {},
     // main.js's module-level history tracker (src/history-entries.js, T1412)
     historyEntries: createHistoryEntries(),
+    // main.js's module-level pending-swap latch (src/route-swap-latch.js, B38)
+    routeSwaps: createRouteSwapLatch(),
     pageDiagnostics: createPageDiagnostics({ send: event => diagnostics.push(event) }),
     shouldOpenSetup: () => false,
     SETUP_RESOLUTION: {},

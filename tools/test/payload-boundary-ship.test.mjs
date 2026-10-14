@@ -1,7 +1,7 @@
 // THE PUBLISH VERDICT IS NOT THE BUILD VERDICT.
 //
 // check-payload-boundary deliberately exits 0 while `pending` files still ship.
-// That is the right default -- pending means it has been decided and the removal
+// That is the right default -- pending means the owner has ruled and the removal
 // work has not landed yet, and a guard that fails every build until then is a
 // guard someone switches off. But the report says so only in PROSE, and a build
 // chain consumes the exit code, not the prose. Three separate lanes read "exit 0"
@@ -47,8 +47,8 @@ function cleanPayload() {
 // A MANIFEST WRITTEN FOR THE TEST, AND WHY THE LIVE ONE STOPPED WORKING HERE.
 //
 // The two tests below need a path that is `pending`, and the live manifest's
-// pending block is now empty -- legitimately: every entry was decided and the
-// decoupling work landed. src/lib/entitlement.js, which these
+// pending block is now empty -- legitimately: the owner ruled on every entry on
+// 2026-08-11 and the decoupling work landed. src/lib/entitlement.js, which these
 // tests had hard-coded as their pending example, moved pending -> paid in that
 // change. Both tests went red instantly, and neither the gate nor the behaviour
 // they pin had changed at all.
@@ -76,7 +76,7 @@ function fixtureManifest(payloadDir, { pending = {}, open = [], paid = [] } = {}
 }
 
 const PENDING_FIXTURE = {
-  'src/lib/entitlement.js': 'the commercial tier table, ruled paid, still shipping until the decoupling lands',
+  'src/lib/entitlement.js': 'the commercial tier table, owner-ruled as paid, still shipping until the decoupling lands',
 }
 
 test('a payload with no pending file is clean under BOTH verdicts', async () => {
@@ -95,7 +95,7 @@ test('a pending file passes the build verdict and FAILS the publish verdict', as
   const dir = cleanPayload()
   try {
     // entitlement.js is `pending` in the FIXTURE manifest: the commercial tier
-    // table, ruled paid, still shipping until the decoupling work lands.
+    // table, owner-ruled as paid, still shipping until the decoupling work lands.
     mkdirSync(path.join(dir, 'src', 'lib'), { recursive: true })
     writeFileSync(path.join(dir, 'src', 'lib', 'entitlement.js'), '// the tier table\n')
     const MANIFEST = fixtureManifest(dir, { pending: PENDING_FIXTURE })

@@ -7,13 +7,13 @@
   <meta name="description" content="A simulated preview of ToolsEnabled running in your browser. No account, no download, no data leaves this page." />
   <!-- No third-party anything. Five same-origin modules and one stylesheet; the
        policy below is what makes that a promise rather than a habit. It also
-       closes the finding an R1260 review raised against the product page, which
+       closes the finding R1260 lane t5a raised against the product page, which
        makes every visitor's browser probe a loopback port on their own computer:
        connect-src here is same-origin only, so this page cannot knock on a
        visitor's machine even by accident.
        frame-ancestors is deliberately NOT here: Chrome ignores that directive
        in a <meta> policy, so writing it would read as protection and enforce
-       nothing (an internal report). Whatever
+       nothing (reports/lanes/preview-frame-ancestors-inert.md). Whatever
        serves this page sends it as a response header instead — the shell's
        own server does (serveDist in shell/main.cjs), and the website's server
        records the same requirement for its vendored copy. -->

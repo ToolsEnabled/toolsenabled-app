@@ -1,5 +1,5 @@
-/* REMOVING A NODE FROM THE TREE — the missing leg: there was no way to remove
- * an old node a person wanted to delete.
+/* REMOVING A NODE FROM THE TREE — the missing leg the owner named, verbatim:
+ * "there was also no way to remove an old node you wanted to delete."
  *
  * Trees could create agents, drag them between slots and trees, rename them,
  * start and stop them — and never remove one. This suite holds the leg that
@@ -154,7 +154,7 @@ test('the removal deletes the transcript through the store API and cleans every 
   /* The canvas repaints without the node. */
   assert.match(body, /refreshTree\(\)/, 'the canvas is not repainted after the removal')
   /* WHAT IS KEPT: the signed ledger is never touched from this path. Since
-     an earlier commit (T1630) the removal hands the node's open TASKS to its parent
+     2a942239 (T1630) the removal hands the node's open TASKS to its parent
      through the main-process command surface (window.mcFleetProfile
      .removeNodeHandoff) and names that handoff's refusals T_LEDGER_HANDOFF_*.
      That is the task Ledger's own admitted door, not the signed records; it

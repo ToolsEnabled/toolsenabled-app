@@ -18,11 +18,11 @@
 }
 .drawer-group-label {
   margin: 0;
-  font-size: 11px;
-  font-weight: 640;
-  text-transform: uppercase;
-  letter-spacing: var(--track-caps);
-  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-2);
 }
 /* the honest line for a page with no page-specific settings — prose, 13px floor */
 .drawer-page-empty { font-size: 13px; color: var(--ink-3); line-height: 1.65; }
@@ -58,9 +58,9 @@
    the text inside it. */
 .drawer .drawer-body .set-row.set-link { align-items: center; }
 
-/* THE QUICK MOVE (R1520: a quick move to the Settings page). This was a
-   13px ink-3 text line a cold reader could take for a caption; a clearly
-   visible action was asked for, so it now wears the app's segmented-control
+/* THE QUICK MOVE (R1520: "with a quick move to settings page"). This was a
+   13px ink-3 text line a cold reader could take for a caption; the owner asked
+   for a clearly visible action, so it now wears the app's segmented-control
    skin (--seg-bg trough) as a full-width pressable row, pinned under the
    scrolling body.
 
@@ -108,7 +108,7 @@
 .drawer .drawer-all:hover { color: var(--ink); background: var(--sheet); }
 .drawer .drawer-all:active { transform: scale(0.98); }
 .drawer .drawer-all:focus-visible {
-  outline: 3px solid var(--focus-ring);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -125,7 +125,7 @@ body:has(#drawer.open) .fleet-profile-notice { display: none; }
 
 /* AND NOT ON TOP OF THE SETTINGS PAGE EITHER — the notice's own href points at
    #/settings, so on that route it is a nag standing on its own destination.
-   Measured 2026-08-13 (from a screenshot): it painted over the System section's
+   Measured 2026-08-13 (owner screenshot): it painted over the System section's
    "Your account" row, semi-transparent, swallowing the row's clicks. Same
    remedy as the drawer above, same reasoning: on this route it has nothing to
    add that the page it covers is not already saying. */
@@ -352,12 +352,12 @@ body[data-route="settings"] .fleet-profile-notice { display: none; }
 [data-account-section] .ctl-btn:disabled,
 [data-account-section] .ctl-btn:disabled:hover {
   cursor: not-allowed;
-  opacity: .48;
+  opacity: .45;
   transform: none;
   box-shadow: none;
-  background: rgba(255,255,255,calc(0.62 * var(--wa)));
-  border-color: var(--line);
-  color: var(--ink-2);
+  background: var(--control-bg);
+  border-color: var(--line-strong);
+  color: var(--ink);
 }
 
 /* ONE ROW ANATOMY: name — state sentence — description — control — disclosure.
@@ -488,9 +488,9 @@ body[data-route="settings"] .fleet-profile-notice { display: none; }
 .settings-seg { max-width: 100%; }
 .settings-seg > button { padding-inline: var(--s2); }
 
-/* THE PERMISSION LEVEL SLIDER. A vertical slider: the higher it is, the more
-   protected and the more restricted the agents; at the bottom the agents are
-   not restricted at all.
+/* THE PERMISSION LEVEL SLIDER. Owner, 2026-08-26: "a slider; up and down and
+   the higher up the more protected the more restricted the agents, at the
+   bottom the agents are not at all restricted".
    It is the same segmented control turned on its side, so every behaviour --
    focus order, aria-pressed, the handler, the writer, the unrestricted risk
    gate -- is unchanged and only the axis is new. The rungs are rendered
@@ -498,7 +498,7 @@ body[data-route="settings"] .fleet-profile-notice { display: none; }
    TIER_CHOICES), and the two caps name the ends so the direction cannot be
    guessed backwards.
    Square corners: --r-sm/--r-md are the house radii, 3px used 73 times in
-   this stylesheet, and square boxes were asked for twice. */
+   this stylesheet, and the owner has asked twice for square boxes. */
 .settings-level-slider {
   display: flex;
   flex-direction: column;
@@ -834,10 +834,10 @@ body.reduce-motion .settings-tier {
 .settings-page .settings-header .mt {
   margin: 0;
   color: var(--ink);
-  font-size: clamp(20px, 2vw, 26px);
+  font-size: 22px;
   font-weight: 650;
-  letter-spacing: -0.025em;
-  line-height: 1.1;
+  letter-spacing: -.012em;
+  line-height: 1.2;
   text-transform: none;
 }
 
@@ -875,7 +875,7 @@ body.reduce-motion .settings-tier {
 .settings-page .settings-search input:focus {
   border-bottom-color: var(--focus-ring);
   border-color: var(--focus-ring);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--focus-ring) 20%, transparent);
+  box-shadow: none;
 }
 
 .settings-page .settings-layout {
@@ -904,9 +904,9 @@ body.reduce-motion .settings-tier {
   color: var(--ink-25);
   font-size: 11px;
   font-weight: 660;
-  letter-spacing: var(--track-caps);
+  letter-spacing: 0;
   line-height: 1.2;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .settings-page .settings-rail-count {
@@ -1000,8 +1000,8 @@ body.reduce-motion .settings-tier {
   min-width: 0;
   color: var(--ink-25);
   font-weight: 660;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* The step you are on is the one worth reading twice. */
@@ -1082,7 +1082,7 @@ body.reduce-motion .settings-tier {
 
 .settings-page .settings-name {
   color: var(--ink);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.45;
 }
 
@@ -1130,7 +1130,7 @@ body[data-navigation="side"] .settings-page .settings-row.settings-row-wide { gr
 .settings-page .fleet-profile-input:focus {
   border-bottom-color: var(--focus-ring);
   border-color: var(--focus-ring);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--focus-ring) 18%, transparent);
+  box-shadow: none;
 }
 
 .settings-page .fleet-profile-status,
@@ -1272,7 +1272,7 @@ body[data-navigation="side"] .settings-page .settings-row.settings-row-wide { gr
    above it. Measured on the running page: the bar's top stayed a constant
    7.94px below the scroller's top at every offset past the stick point, and
    `document.elementFromPoint` in that strip returned a live INPUT, which is
-   the sheared text and the stray "Claude" that showed there.
+   the sheared text and the stray "Claude" the owner saw.
 
    The offset is expressed in the SAME token that creates the padding rather
    than as a literal 8px, so the two cannot drift apart. The rule that needs

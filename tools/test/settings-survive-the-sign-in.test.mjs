@@ -1,7 +1,7 @@
 /* THE CHOICES A PERSON MADE MUST STILL BE THEIRS AFTER THEY SIGN IN.
  *
- * WHAT WAS MEASURED, and it is a real installation rather than a
- * hypothetical: `renderer-prefs.json` holds `mc.theme` and several `mc.set.*` rows,
+ * WHAT WAS MEASURED, and it is the owner's own installation rather than a
+ * hypothetical: `renderer-prefs.json` holds `mc.theme` and six `mc.set.*` rows,
  * the single account on that computer arrived through the HOSTED door, and that
  * account's partition holds ONE key with `adopted` null. Both facts come from
  * the same rule: `adoptDeviceSettings` is called at two of the creation sites
@@ -9,8 +9,8 @@
  * the computer were owned by nobody -- and `public/durable-storage.js`
  * `getItem` answers `null`, not the device value, for an account-scoped name
  * the overlay has never heard of. From where the person sits every one of those
- * choices is gone the moment they are signed in. Settings that do not seem to
- * persist is what that looks like.
+ * choices is gone the moment they are signed in. "still doesnt seem to actually
+ * persist" is what that looks like.
  *
  * THESE ARE BEHAVIOUR TESTS, DELIBERATELY. They call the real store with real
  * values and ask what comes back; not one of them names the function that
@@ -144,7 +144,7 @@ test('a choice made before there was an account is still the person\'s choice af
   before.storage.setItem('mc.set.tree_style', 'boxes')
   assert.equal(before.storage.getItem('mc.set.tree_style'), 'boxes', 'the choice did not even hold while signed out')
 
-  /* They sign in through the door that real installation used. */
+  /* They sign in through the door the owner's own installation used. */
   const signedIn = box.signInHosted('171a949d-hosted-subject', 'someone@example.invalid')
   assert.equal(signedIn.ok, true, signedIn.reason || 'the hosted sign-in refused')
 

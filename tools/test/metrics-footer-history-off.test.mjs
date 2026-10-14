@@ -1,4 +1,5 @@
-/* THE METRICS FOOTER, AND THE OFF COPY, BY VALUE (BUG08). The prior BUG08 fix said the off-message only when BOTH the
+/* THE METRICS FOOTER, AND THE OFF COPY, BY VALUE (BUG08 root review
+ * 2026-09-21). The prior BUG08 fix said the off-message only when BOTH the
  * sessions and usage reads were disabled; a page where history is off and
  * usage read fine (or the reverse) still fell through to "Some records could
  * not be read. Try Refresh data." -- an intentional-off state reported as a

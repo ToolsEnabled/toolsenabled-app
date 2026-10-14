@@ -63,8 +63,8 @@ test('actual Settings sections remain readable without writing any setting',asyn
 
     /* THE QUICK STRIP IS THE LANDING PAGE'S, AND ONLY THE LANDING PAGE'S.
      *
-     * The sliders belong where Settings opens -- easily reachable
-     * on the Settings landing page. Drawn above every category
+     * Owner, 2026-09-15: the sliders belong where Settings opens -- "easily
+     * accessible on the settings landing page". Drawn above every category
      * instead, the strip stacks to about 1300px at this width and pushes the
      * first row of the category a person navigated to below the fold, which is
      * what the assertion directly above catches. Both halves are asserted here

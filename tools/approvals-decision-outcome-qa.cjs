@@ -1,6 +1,6 @@
 /* Real-Electron proof for ONE question: when a decision the owner submitted on
-   #/approvals comes back REFUSED after they have already navigated off that screen,
-   does the product tell them?
+   #/approvals comes back REFUSED after he has already navigated off that screen,
+   does the product tell him?
 
    It used to not. src/ledger-prompt-queue.js submit() awaited the audited bridge and
    then read `if (destroyed) return` BEFORE reading `result.ok`, so the refusal --
@@ -428,7 +428,7 @@ async function run(mode) {
     observed.answeredWhileOffScreen = viewGoneAt !== null && fixture.state.decisionAnsweredAt > viewGoneAt
     await new Promise(resolve => setTimeout(resolve, 600))
 
-    /* 1. HOME -- the screen they land on, and the one this design nominated as
+    /* 1. HOME -- the screen he lands on, and the one this design nominated as
           its only signal channel. */
     const toHome = await pressUntil(browser.webContents, 'nav-next', '#/')
     if (!toHome.arrived) throw new Error(`the forward arrow never reached home: ${JSON.stringify(toHome.seen)}`)
@@ -475,7 +475,7 @@ async function run(mode) {
       if (observed.approvals.canRetry !== true) failures.push('the person cannot try the decision again')
       if (!NOT_RECORDED.test(observed.approvals.countNote || '')) failures.push('the queue count line does not mention the decision that was not recorded')
       if (!observed.approvals.countNoteVisible) failures.push('the approvals queue count warning is not visibly rendered')
-      if (!observed.toldOnHome) failures.push('home does NOT state that a decision they made was not recorded')
+      if (!observed.toldOnHome) failures.push('home does NOT state that a decision he made was not recorded')
     } else {
       if (!fixture.state.decided) failures.push('the fixture was told to accept and did not record a decision')
       if (observed.approvals.cards !== 0) failures.push('the decided request is still on the approvals screen')

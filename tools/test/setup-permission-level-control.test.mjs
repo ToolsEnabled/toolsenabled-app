@@ -213,7 +213,7 @@ test('a failure after the disk write leaves the screen honest and the section us
   assert.ok(pressedIn(host.last(), 'guided'), 'the row does not follow the machine after a recovery')
 })
 
-/* AUDIT OFF IS NOT A FAILED RECORD (product rule T782; the
+/* AUDIT OFF IS NOT A FAILED RECORD (owner direction 2026-09-20, T782; the
    shell's shape is shell/tier-consent.cjs auditedTierChoice, the engine's
    not-required object is M10's exact contract). With optional auditing off
    the shell answers recorded = the exact not-required object for
@@ -231,7 +231,7 @@ test('a level change with auditing off says no record was requested; only the si
   const original = globalThis.mcSetup.chooseTier
   /* The shell's whole answer: { ok, tier, recorded, intentAudit? } with
      intentAudit a TOP-LEVEL field beside recorded (shell/tier-consent.cjs
-     auditedTierChoice). */
+     auditedTierChoice; Controller review of v3, F5). */
   const notRequired = (tier, action = 'setup.tier.choose') => ({ ok: true, disposition: 'not-required', required: false, recorded: false, durable: false, anchored: false, signed: false, sequence: null, eventId: null, eventHash: null, action, target: `tier:${tier}` })
   const answers = [
     { answer: tier => ({ recorded: notRequired(tier), intentAudit: notRequired(tier, 'setup.tier.choose.intent') }),
@@ -311,7 +311,8 @@ test('tierRecordDisposition reads the shell\'s answer exactly, and nothing contr
   ]) assert.equal(tierRecordDisposition(shellAnswer, tier), 'unconfirmed', why)
 })
 
-/* THE ACTUAL SHELL PRODUCER → THE ACTUAL RENDERER. shell/tier-consent.cjs auditedTierChoice is run with a recorder that
+/* THE ACTUAL SHELL PRODUCER → THE ACTUAL RENDERER (Controller review of v3,
+   F5). shell/tier-consent.cjs auditedTierChoice is run with a recorder that
    answers the way the Engine does -- with auditing off, operation-audit's
    own skippedStatus (the exact not-required object, required from the
    configured Engine root); with auditing on, sequence receipts -- and its

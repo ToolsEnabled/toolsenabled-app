@@ -20,6 +20,8 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { USAGE_STRING_FIELDS } from '../../shell/spawn-record.cjs'
+import { turnUsageFrom, usageLabel } from '../../shell/usage-record.cjs'
+import vm from 'node:vm'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const read = (relative) => readFileSync(path.join(REPO_ROOT, relative), 'utf8')
@@ -83,6 +85,18 @@ test('the labels are bounded by the writer\'s own table, not by a copy kept in m
   }
   assert.doesNotMatch(main.slice(0, start), /const USAGE_(TURN|TIER|ACCOUNT|STATUS)_PATTERN/,
     'a second copy of the writer\'s patterns is back; the two can drift again')
+})
+
+/* 1.0.50 review CM-4: the typed model name is read from the host (never from the page) and bounded by the same
+   table; a typed name the table refuses still records modelChoice 'typed'. */
+test('the typed model name on a usage record comes from the host and is bounded by the writer\'s table', () => {
+  const main = read('shell/main.cjs')
+  const start = main.indexOf('function noteAgentTurnUsage')
+  const body = main.slice(start, main.indexOf('function spawnRecordAvailability'))
+  assert.match(body, /typedModel = agentHost\?\.typedModelFor\?\.\(packet\.sessionId\)/)
+  assert.match(body, /model: typedModel \? usageLabel\('model', typedModel\) : null,/)
+  assert.match(body, /modelChoice: typedModel \? 'typed' : null,/)
+  assert.ok(new Map(USAGE_STRING_FIELDS).has('model') && new Map(USAGE_STRING_FIELDS).has('modelChoice'))
 })
 
 test('the identity on a usage record is read in main, never accepted from the page', () => {
@@ -151,12 +165,12 @@ test('the host\'s sentence rule holds on raw engine text, which has been through
     "You're out of usage credits \u00b7 resets Aug 25, 12am")
 
   /* WHAT MAY NOT CROSS, whatever it would have explained. */
-  assert.equal(turnFailureSentence('ENOENT: no such file, open X:\\SyntheticProfile\\a'), null)
+  assert.equal(turnFailureSentence('ENOENT: no such file, open \x58:\\SyntheticProfile\\a'), null)
   assert.equal(turnFailureSentence('TypeError: x is not a function'), null)
   assert.equal(turnFailureSentence('ECONNRESET'), null)
   /* A real V8 frame, which is the shape that actually arrives: it carries a
      path, and the path is what the rule refuses. */
-  assert.equal(turnFailureSentence('    at handleResult (C:\\app\\shell\\agent-host.cjs:481:12)'), null)
+  assert.equal(turnFailureSentence('    at handleResult (\x43:\\app\\shell\\agent-host.cjs:481:12)'), null)
   assert.equal(turnFailureSentence('at handleResult(agent-host.cjs:481)'), null)
   assert.equal(turnFailureSentence(undefined), null)
   assert.equal(turnFailureSentence(null), null)
@@ -185,7 +199,7 @@ test('every sentence the host lets through is one the usage ledger can hold', ()
     'The Claude program stopped before finishing the turn (exit 1).',
     'The Claude program did not finish this turn in time.',
     'a'.repeat(TURN_FAILURE_SENTENCE_MAX + 50),
-    'ENOENT: no such file, open X:\\SyntheticProfile\\a',
+    'ENOENT: no such file, open \x58:\\SyntheticProfile\\a',
     'read of /etc/passwd failed',
     'first line\nsecond line',
   ]
@@ -194,5 +208,23 @@ test('every sentence the host lets through is one the usage ledger can hold', ()
     if (sentence === null) continue
     assert.ok(pattern.test(sentence),
       `the host passed ${JSON.stringify(sentence.slice(0, 40))}, which the ledger then refuses -- that turn's tokens would be lost`)
+  }
+})
+
+/* 1.0.50 review CM-4, driven: the writer itself, lifted out of main, given a host that reports a typed name. */
+test('a typed model name reaches the usage row; one with a path character is recorded only as typed', () => {
+  const source = read('shell/main.cjs').match(/function noteAgentTurnUsageImpl\([^]*?\n\}/)[0]
+  for (const [typed, model, modelChoice] of [['my-typed-model', 'my-typed-model', 'typed'], ['openai/gpt-oss-120b', null, 'typed'], [null, null, null]]) {
+    const writes = []
+    const writer = vm.runInNewContext(`${source}; noteAgentTurnUsageImpl`, {
+      agentHost: { typedModelFor: id => id === 'chat-1' ? typed : 'wrong-session' },
+      getUsageRecorder: () => ({ recordTurnAsync: async value => { writes.push(value) } }),
+      turnUsageFrom, usageLabel, turnFailureSentence: () => null, MAX_PENDING_TURN_USAGE: 20,
+    })
+    const session = { usageAuditRequired: true, tier: 'astra' }
+    writer(session, { sessionId: 'chat-1', event: { type: 'usage', turnId: 'turn-1', usage: { totalTokens: 15 } } })
+    writer(session, { sessionId: 'chat-1', event: { type: 'turn_completed', turnId: 'turn-1', status: 'completed' } })
+    assert.equal(writes.length, 1)
+    assert.deepEqual([writes[0].tier, writes[0].model, writes[0].modelChoice], ['astra', model, modelChoice], String(typed))
   }
 })

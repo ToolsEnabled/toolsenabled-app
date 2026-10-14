@@ -13,7 +13,7 @@
  *     IMMUTABLE location — never a build directory, because a build directory
  *     reuses one filename and a hash quoted against it expires on the next
  *     rebuild with no change to the name). This mirrors the contract in
- *     docs/WEBSITE-DOWNLOAD-WIRE-PLAN.md (R1260), whose rule is the
+ *     docs/WEBSITE-DOWNLOAD-WIRE-PLAN.md (R1260 lane t5a), whose rule is the
  *     one that matters here: NO DECLARATION => NO DOWNLOAD SURFACE.
  *
  *   - The subscription exit has an explicit enabled-plus-reason contract. It
@@ -27,7 +27,7 @@
  * silently disappears teaches the visitor that the product has no download.
  *
  * TODAY, DELIBERATELY: `DECLARED.download` is null. There is no declared
- * installer candidate on this machine (R1260 measured that, and Machine A's
+ * installer candidate on this machine (R1260 t5a measured that, and Machine A's
  * own candidate folder says so in writing). Shipping a download button anyway
  * would be the exact defect this file exists to prevent, so the preview shows
  * the refusal instead, with the reason.

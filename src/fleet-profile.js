@@ -5,7 +5,7 @@
 // "compatibility host" beside a "canonical" one, the real durable-memory board
 // keys, the real request ledger, the real account aliases, the real transport
 // ports. The byte-level ship gate (tools/check-no-owner-data.mjs) cannot see
-// any of it — none of it is their name, their username, their paths or their LAN. It
+// any of it — none of it is his name, his username, his paths or his LAN. It
 // is the SHAPE that identifies, and a stranger opening the app was reading
 // somebody else's world with no way to know that is what it was.
 //
@@ -1108,20 +1108,71 @@ function exampleIsOn() {
   try { return globalThis.localStorage?.getItem('mc.example') === 'on' } catch { return false }
 }
 
+let runtimeNoticeMeasurement = null
+
+function releaseRuntimeProfileNotice(notice) {
+  if (runtimeNoticeMeasurement?.notice !== notice) return
+  runtimeNoticeMeasurement.disconnect()
+  runtimeNoticeMeasurement = null
+}
+
+function measureRuntimeProfileNotice(notice) {
+  runtimeNoticeMeasurement?.disconnect()
+  const root = document.documentElement
+  const update = () => {
+    if (!root?.style?.setProperty) return
+    const style = typeof getComputedStyle === 'function' ? getComputedStyle(notice) : null
+    const visible = notice.isConnected !== false && style && style.display !== 'none'
+      && style.visibility !== 'hidden' && notice.getClientRects().length > 0
+    // offsetHeight and computed insets are logical CSS pixels even when the
+    // document uses text zoom. Client rectangles would double-apply that zoom.
+    const height = visible ? notice.offsetHeight : 0
+    const bottom = visible ? Math.max(0, parseFloat(style.bottom) || 0) : 0
+    const gap = visible ? Math.max(0, parseFloat(getComputedStyle(root).getPropertyValue('--s2')) || 0) : 0
+    root.style.setProperty('--fleet-profile-notice-clearance', `${Math.ceil(height + bottom + gap)}px`)
+  }
+  const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(update) : null
+  observer?.observe(notice)
+  globalThis.window?.addEventListener?.('resize', update)
+  document.fonts?.addEventListener?.('loadingdone', update)
+  runtimeNoticeMeasurement = { notice, disconnect() {
+    observer?.disconnect()
+    globalThis.window?.removeEventListener?.('resize', update)
+    document.fonts?.removeEventListener?.('loadingdone', update)
+    root?.style?.removeProperty?.('--fleet-profile-notice-clearance')
+  } }
+  update()
+}
+
 function mountRuntimeProfileNotice(message, serious = false) {
   if (typeof document === 'undefined' || !message) return
   const mount = () => {
     let notice = document.querySelector('[data-fleet-profile-notice]')
     if (!notice) {
-      notice = document.createElement('a')
-      notice.href = '#/settings'
+      notice = document.createElement('div')
       notice.dataset.fleetProfileNotice = 'true'
       notice.className = 'fleet-profile-notice'
       document.body.appendChild(notice)
     }
     notice.classList.toggle('is-serious', serious)
     notice.setAttribute('role', serious ? 'alert' : 'status')
-    notice.textContent = `${message} Open Settings →`
+    const link = document.createElement('a')
+    link.className = 'fleet-profile-notice-link'
+    link.href = '#/settings'
+    link.textContent = `${message} Open Settings →`
+    notice.replaceChildren(link)
+    // Faults keep their existing alert and actionable link. Only the ordinary
+    // example toast adds the design's window-local close affordance.
+    if (!serious) {
+      const close = document.createElement('button')
+      close.type = 'button'
+      close.className = 'fleet-profile-notice-close'
+      close.setAttribute('aria-label', 'Close example notice')
+      close.textContent = '×'
+      close.addEventListener('click', () => { releaseRuntimeProfileNotice(notice); notice.remove() })
+      notice.appendChild(close)
+    }
+    measureRuntimeProfileNotice(notice)
   }
   if (document.body) mount()
   else document.addEventListener('DOMContentLoaded', mount, { once: true })
@@ -1142,7 +1193,7 @@ export function syncPhoneExampleNotice() {
   const notice = document.querySelector('[data-fleet-profile-notice]')
   if (notice?.classList.contains('is-serious')) return
   if (exampleIsOn()) mountRuntimeProfileNotice(EXAMPLE_NOTICE)
-  else notice?.remove()
+  else if (notice) { releaseRuntimeProfileNotice(notice); notice.remove() }
 }
 
 if (FLEET_PROFILE_RESOLUTION.kind === 'invalid') {

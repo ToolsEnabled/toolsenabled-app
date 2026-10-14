@@ -1,5 +1,5 @@
 /* A TREE-SPAWNED CIRCLE'S SEAT NAMES NO MANAGER AT ALL, SO THE ORG STORE
- * SILENTLY DEFAULTS IT TO THE ROOT -- see an internal report.
+ * SILENTLY DEFAULTS IT TO THE ROOT -- see REPORT-org-vocabulary-leak-20260907.md.
  *
  * ensureSeatForNode (src/views/computers.js) is closure-private inside
  * computersView, same wall as every other test in this neighbourhood; it is
@@ -56,7 +56,7 @@ test('a tree-spawned circle asks for a seat named by the node id, with no manage
   const calls = []
   const agents = [{ id: 'alpha', role: 'manager', enabled: true }]
   const ensureSeatForNode = loadEnsureSeatForNode({ agents, calls, displayName: 'Worker 3' })
-  const node = { id: 'node-1-00000001-0000-4000-8000-000000000001', parentId: 'alpha', tier: null }
+  const node = { id: 'node-1-11bbb999-2218-44a6-893a-9a7a3e8e6716', parentId: 'alpha', tier: null }
 
   await ensureSeatForNode(node, 'worker')
 
@@ -73,7 +73,7 @@ test('a tree-spawned circle\'s seat request names the tree node in its own nodeI
   const calls = []
   const agents = [{ id: 'alpha', role: 'manager', enabled: true }]
   const ensureSeatForNode = loadEnsureSeatForNode({ agents, calls, displayName: 'Worker 3' })
-  const node = { id: 'node-1-00000001-0000-4000-8000-000000000001', parentId: 'alpha', tier: null }
+  const node = { id: 'node-1-11bbb999-2218-44a6-893a-9a7a3e8e6716', parentId: 'alpha', tier: null }
 
   await ensureSeatForNode(node, 'worker')
 
@@ -172,7 +172,7 @@ test('a Claude Controller circle asks the root seat to adopt Claude while it car
   const calls = []
   const agents = [{ id: 'controller', role: 'controller', provider: 'codex', enabled: true }]
   const ensureSeatForNode = loadEnsureSeatForNode({ agents, calls, displayName: 'Controller', tiers: TIERS })
-  const node = { id: 'node-2-00000202', parentId: null, tier: 'claude-opus' }
+  const node = { id: 'node-2-99180884', parentId: null, tier: 'claude-opus' }
   await ensureSeatForNode(node, 'controller')
   assert.equal(calls.length, 1, 'a root circle always asks, so the store can add its provider')
   assert.equal(calls[0].id, 'controller')

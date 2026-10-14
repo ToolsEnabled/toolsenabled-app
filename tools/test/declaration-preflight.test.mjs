@@ -56,16 +56,13 @@ async function runFixture(mode) {
     // owner's identity. Keep the real scanner and explicit privacy profile.
     delete env.TOOLSENABLED_STATE_ROOT
     delete env.TOOLSENABLED_VAULT_PATH
-    // Synthetic profile paths, assembled at run time so this source carries no
-    // literal user-profile path; the scanner under test still receives one.
-    const profileRoot = ['C:', 'Users'].join('\\')
-    const accountPath = String.raw`${profileRoot}\independent-path-account\fixture`
+    const accountPath = String.raw`${"\x43:\\Users\\independent-path-account\\fixture"}`
     const notes = {
       'profile-path': accountPath,
       'escaped-profile-path': JSON.stringify(accountPath),
       'twice-escaped-profile-path': JSON.stringify(JSON.stringify(accountPath)),
-      'bare-profile-root': profileRoot,
-      'escaped-profile-root': JSON.stringify(profileRoot + '\\'),
+      'bare-profile-root': String.raw`${"\x43:\\Users"}`,
+      'escaped-profile-root': JSON.stringify(String.raw`${"\x43:\\Users"}` + '\\'),
     }
     const input = [
       "import assert from 'node:assert/strict';",

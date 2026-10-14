@@ -1,8 +1,7 @@
 // Shared UI pieces: uptime ring, chat window, sparkline, tooltip.
 
 import { uptimeParts } from './runtime-clock.js'
-import { crescentSpec } from './crescent-field.js'
-import { mountCrescent } from './crescent-mount.js'
+import { createModelNameField, modelIdProblem, MODEL_NAME_HELP } from './model-picker.js'
 import { onNextFrame } from './page-frames.js'
 import { currentDataSource } from './data-source.js'
 import { markRefusalCode, readerRemedy, refusalCodeOf } from './refusal-copy.js'
@@ -44,9 +43,9 @@ import {
   ACTIONS_BUILD_FAILED, actionsBuildFailedWhy,
   ATTACH_LABEL, ATTACH_TITLE, ATTACHMENT_REMOVE_TEXT, attachmentFilenameText, attachmentRemoveLabel, attachmentSizeText,
   CANNOT_SEND_PLACEHOLDER,
-  CHAT_CONTEXT_FALLBACK,
+  CHAT_CONTEXT_FALLBACK, CHAT_AI_DISCLOSURE,
   CHAT_DIFF_OPEN_TEXT, chatDiffAddedText, chatDiffOpenLabel, chatDiffPathText, chatDiffPositionText, chatDiffRemovedText, chatDiffStatusText,
-  chatHeaderBranchCopy, chatHeaderContextCopy, chatHeaderPathCopy, chatHeaderStatusCopy, chatWorkspaceLabel,
+  chatHeaderAccountCopy, chatHeaderBranchCopy, chatHeaderContextCopy, chatHeaderPathCopy, chatHeaderStatusCopy, chatWorkspaceLabel,
   chatMessageTimeCopy,
   chatWorkingCountersLabel, chatWorkingCountersText,
   imageMessageStatusCopy, imageMessageActionFailureCopy, imageDeliveryNotice,
@@ -265,33 +264,14 @@ function hashString(s) {
  * Big glowing uptime ring. Returns { el, update, destroy }.
  * update() re-renders digits + arc from the epoch.
  */
-export function uptimeRing({ size = 460, epoch, colors = ['#35eab7', '#45d6ff'], caption = UPTIME_CAPTION, sub = '', showDays = true, crescent = false, corona = true }) {
+export function uptimeRing({ size = 460, epoch, colors = ['#35eab7', '#45d6ff'], caption = UPTIME_CAPTION, sub = '', showDays = true }) {
   const stroke = Math.max(7, size * 0.02)
   const r = (size - stroke * 2 - 14) / 2
   const cx = size / 2
   const gid = `uring-grad-${++gradSeq}`
   const circ = 2 * Math.PI * r
 
-  // The sketch's hero: a plain circle with a crescent of light hugging its
-  // OUTSIDE-LEFT edge — an offset shadow made of light rather than a progress
-  // sweep. Its colour is the fleet's load: green idle, orange climbing, red
-  // full throttle. Three layers — a broad outer haze, a mid halo and a tight
-  // bright core — give the falloff, each wider, softer and fainter than the one
-  // inside it, and all nudged left so the light reads as coming from beside the
-  // circle rather than from the stroke itself.
-  //
-  // The DESIGN is unchanged. What changed is that it is no longer approximated.
-  // These three layers used to be stroked arcs handed to feGaussianBlur, which
-  // cost the render four defects that were measured, not guessed: the barely
-  // blurred core ended in two blunt linecap tips; the blur radii stepped 5.5x
-  // then 2.27x and left a shoulder in the falloff; the haze's filter region
-  // cleared its own blur by 0.85px at every size; and stacked 8-bit translucent
-  // layers band. src/crescent-field.js evaluates the same light in closed form
-  // instead — see its header. The arcs' apertures, widths, blur radii, offset
-  // and opacities are all still the numbers below, read from crescentSpec().
-  const svgBody = crescent
-    ? `<circle class="uring-rim" cx="${cx}" cy="${cx}" r="${crescentSpec(size).r}" fill="none" stroke-width="2"/>`
-    : `
+  const svgBody = `
         <defs>
           <linearGradient id="${gid}" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="${colors[0]}"/>
@@ -309,7 +289,7 @@ export function uptimeRing({ size = 460, epoch, colors = ['#35eab7', '#45d6ff'],
         </g>`
 
   const root = el(`
-    <div class="uring ${size < 240 ? 'compact' : ''} ${crescent ? 'crescent' : ''}" style="width:${size}px;height:${size}px">
+    <div class="uring ${size < 240 ? 'compact' : ''}" style="width:${size}px;height:${size}px">
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${svgBody}
       </svg>
       <div class="uring-center">
@@ -322,26 +302,8 @@ export function uptimeRing({ size = 460, epoch, colors = ['#35eab7', '#45d6ff'],
     </div>
   `)
 
-  /* The crescent mounts itself: a GPU corona when WebGL2 is there, the CPU
-     masked layers when it is not. Either way it inserts ahead of the SVG so the
-     rim stays the topmost drawn line. */
-  const crescentMount = crescent && corona ? mountCrescent(root, size) : null
-  if (crescentMount) {
-    root.crescentMode = crescentMount.mode
-    root.redrawCrescent = crescentMount.redraw
-    root.destroyCrescent = crescentMount.destroy
-  }
-
   const digitsEl = root.querySelector('.uring-digits')
   const arcs = root.querySelectorAll('.arc, .arc-glow')
-
-  /** Load state drives the crescent's colour. 0..1 → idle | busy | peak. */
-  let lastState = ''
-  root.setLoad = (v) => {
-    const state = v >= 0.72 ? 'peak' : v >= 0.38 ? 'busy' : 'idle'
-    if (state !== lastState) { lastState = state; root.dataset.load = state }
-  }
-  if (crescent) root.setLoad(0)
 
   const seg = (n, u) => `<span class="seg"><span class="n">${n}</span><span class="u">${u}</span></span>`
   const colon = `<span class="colon">:</span>`
@@ -356,10 +318,8 @@ export function uptimeRing({ size = 460, epoch, colors = ['#35eab7', '#45d6ff'],
         ? seg(p.d, UPTIME_UNITS.days) + colon + seg(p.h, UPTIME_UNITS.hours) + colon + seg(p.m, UPTIME_UNITS.minutes) + colon + seg(p.s, UPTIME_UNITS.seconds)
         : seg(p.h, UPTIME_UNITS.hours) + colon + seg(p.m, UPTIME_UNITS.minutes) + colon + seg(p.s, UPTIME_UNITS.seconds)
     }
-    if (!crescent) {
-      const sweep = circ * p.frac
-      arcs.forEach(a => a.setAttribute('stroke-dasharray', `${sweep} ${circ - sweep}`))
-    }
+    const sweep = circ * p.frac
+    arcs.forEach(a => a.setAttribute('stroke-dasharray', `${sweep} ${circ - sweep}`))
   }
   update()
 
@@ -474,7 +434,7 @@ function normalizeChatContext(value) {
 /* THE OLD LOCAL-SIDECAR NAME IS GONE FROM HERE, AND IT WAS THE WORST OF ITS NINE
    PLACES. It mapped an internal subsystem's name to a role, so the literal word
    was styled as an agent in REAL conversations, not only in the example fleet.
-   The ruling: the name was never meant to ship. terra-02, which replaces
+   The owner's ruling: the name was never meant to ship. terra-02, which replaces
    it in the example, is deliberately NOT added here -- terra-NN and luna-NN have
    always been absent from this map and take the default role, and the pattern
    below already matches them. */
@@ -614,8 +574,8 @@ const escapeMarkup = value => String(value ?? '').replace(/[&<>"']/g, character 
  *
  * Extracted from addContext below, byte-for-byte in behaviour, because the home
  * screen's run rows now fold the same way the chat's context block does and
- * that is the requirement: context collapses as it goes, as it does in chat.
- * One memory with two prefixes is one rule; a second copy
+ * the owner asked for exactly that: "collapse the context and such as it goes
+ * like we do in chat." One memory with two prefixes is one rule; a second copy
  * inside home.js would be the version that drifts.
  *
  * `recall` answers 'open' | 'closed' | null, where null is "nobody has said"
@@ -761,7 +721,7 @@ const composerAttachmentName = item => hostDraftAttachment(item)
   ? (typeof item.name === 'string' && item.name ? item.name : 'Pasted image')
   : attachmentFilenameText(item.path)
 /* A PASTED PICTURE HAS NO NAME A PERSON CAN USE. The host saves it under
-   paste-attachments/ with a random file name ('f4f2f22e-ebca-...png'), so two
+   paste-attachments/ with a random file name ('0566bb63-afe7-...png'), so two
    pasted screenshots could not be told apart in the box and Remove named a
    random id (T1482). Such pictures, and host-draft images without a name,
    read 'Pasted image', numbered in the order they sit in the box when there
@@ -991,6 +951,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
           <svg viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>` : ''}
       </div>
+      <p class="chat-ai-disclosure" data-chat-ai-disclosure>${escapeMarkup(CHAT_AI_DISCLOSURE)}</p>
       <div class="chat-search" hidden><input type="search" aria-label="${SEARCH_INPUT_LABEL}" placeholder="${SEARCH_INPUT_PLACEHOLDER}"></div>
       <div class="chat-log"></div>
       <button class="chat-new-below" type="button" hidden>${NEW_BELOW_FALLBACK}</button>
@@ -1019,8 +980,8 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
           <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="9.2" cy="7" r="2.1" fill="var(--sheet, #fff)" stroke="currentColor" stroke-width="1.8"/><circle cx="15" cy="12" r="2.1" fill="var(--sheet, #fff)" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="17" r="2.1" fill="var(--sheet, #fff)" stroke="currentColor" stroke-width="1.8"/></svg>
         </button>` : ''}
         <textarea rows="1" ${cannotSend
-          /* "NOT NOW" WAS NOT A LEAKED LABEL. A disabled composer read "Not
-             now" with no reason. It was typed here, and it is the whole of what a disabled
+          /* "NOT NOW" WAS NOT A LEAKED LABEL (owner: "why is it saying not
+             now?"). It was typed here, and it is the whole of what a disabled
              box says for itself: two words that read like a button, sitting
              under a sentence that has already explained the situation
              properly. The identical words in src/fleet-tree-copy.js are the
@@ -1053,21 +1014,14 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
               ? '<button type="button" class="chat-chip chat-chip-model" data-chat-chip="model" hidden></button>'
               : '<span class="chat-chip chat-chip-model chat-chip-static" data-chat-chip="model" hidden></span>')
             : ''}
-          ${typeof chips.accountRetry === 'function'
-            ? `<select class="chat-chip chat-chip-account-retry" data-chat-chip="account-retry" aria-label="Account retry policy">
-              <option value="off">Off</option>
-              <option value="keep">Keep trying accounts</option>
-              <option value="wait">Wait for resets</option>
-            </select>
-            <button type="button" class="chat-chip chat-chip-account-retry-now" data-chat-chip="account-retry-now" hidden>Try accounts now</button>`
-            : ''}
+
         </div>
         <div class="chat-chips-right">
           ${onStop ? `<button type="button" class="chat-chip chat-chip-halt" data-chat-chip="halt" hidden>${CHIP_HALT_LABEL}</button>` : ''}
           <!-- ONE DOOR UNDER THE ARROW, AND IT IS THE ONE THE ARROW CANNOT BE.
-               W18c: under the arrow there were a send and a queue button; the
-               arrow sends, and the button below is for Send now.
-               The old pair was redundant: the SEND chip
+               The owner, W18c: "under the arrow is a send and a que button. The
+               arrow should send, the button below should be for send now."
+               They are right that the old pair was redundant: the SEND chip
                called the same send() the arrow calls, and the QUEUE chip called
                send() too, because send()'s busy branch IS the queue. Three
                controls, two verbs, one of them already spoken by the arrow.
@@ -1075,9 +1029,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
                the act R17 asked for. So the pair becomes one Send now. -->
           <button type="button" class="chat-chip chat-chip-sendnow" data-chat-chip="sendnow" aria-label="${QUEUE_SEND_NOW_LABEL}"${cannotSend ? ' disabled' : ''}>${QUEUE_SEND_NOW}</button>
         </div>
-        ${typeof chips.accountRetry === 'function'
-          ? '<output class="chat-chip-account-retry-status" data-chat-chip="account-retry-status" role="status" aria-live="polite"></output>'
-          : ''}
+
       </div>` : ''}
       </div>
       </div>
@@ -1113,6 +1065,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
       facts = [
         ['data-chat-header-path', chatHeaderPathCopy(snapshot.path)],
         ['data-chat-header-status', chatHeaderStatusCopy(snapshot.status)],
+        ['data-chat-header-account', chatHeaderAccountCopy(snapshot.account)],
         ['data-chat-header-branch', chatHeaderBranchCopy(snapshot.branch)],
         ['data-chat-header-context', chatHeaderContextCopy(snapshot.context)],
       ].filter(([, copy]) => copy !== null)
@@ -1127,6 +1080,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
       fact.setAttribute(hook, '')
       fact.textContent = copy.text
       fact.setAttribute('aria-label', copy.ariaLabel)
+      if (hook === 'data-chat-header-account') fact.setAttribute('role', 'note')
       if (hook === 'data-chat-header-path') {
         const details = document.createElement('details')
         details.className = 'chat-workspace'
@@ -1208,9 +1162,6 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
   const chipEffort = root.querySelector('[data-chat-chip="effort"]')
   const chipModel = root.querySelector('[data-chat-chip="model"]')
   const chipMode = root.querySelector('[data-chat-chip="mode"]')
-  const chipAccountRetry = root.querySelector('[data-chat-chip="account-retry"]')
-  const chipAccountRetryNow = root.querySelector('[data-chat-chip="account-retry-now"]')
-  const chipAccountRetryStatus = root.querySelector('[data-chat-chip="account-retry-status"]')
   const chipHalt = root.querySelector('[data-chat-chip="halt"]')
   const chipSendNow = root.querySelector('[data-chat-chip="sendnow"]')
   /* Reassigned once isBusy/runStop/send exist, below -- the forward-reference
@@ -1274,7 +1225,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
      it still needs the way down, which is why this offers the pill under its
      countless label instead of staying silent. Until this existed, live
      thinking arriving while the reader was scrolled up produced no follow AND
-     no pill, so the thinking could never be seen. */
+     no pill: the owner's "why cant i ever see the thinking". */
   const offerNewBelow = () => {
     if (pinned || !newBelow) return
     if (!newBelowCount) newBelow.textContent = NEW_BELOW_FALLBACK
@@ -1377,8 +1328,8 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
     return true
   }
   root.querySelector('[data-chat-attach]')?.addEventListener('click', chooseAttachment)
-  /* CTRL+V, IMAGE TO THE AGENT (R10: pasting an image with Ctrl+V must
-     work). Bound to the composer's own
+  /* CTRL+V, IMAGE TO THE AGENT (owner R10, verbatim: "I still cant control V
+     and image to you please get that fixed"). Bound to the composer's own
      input -- the attachment area -- and NOT to `document`: a person pastes
      an image while their cursor is where they are writing the message it
      rides with, and binding wider would catch a paste meant for some other
@@ -1519,9 +1470,9 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
       text.title = entry.text
       /* TWO DOORS AND AN UNQUEUE, EACH ITS OWN ACT.
 
-         THE SEND DOOR IS GONE, W18c: queued items need no additional send
-         button, since they are already sent at that point. That describes
-         what the row IS: a message
+         THE SEND DOOR IS GONE, and it is the owner who removed it, W18c: "in
+         the qued items, no need for an additional send button it is already
+         sent at that point." They are describing what the row IS: a message
          the person has already committed to send, waiting only for a turn
          boundary that the ordinary drain (views/computers.js outboxTakeNext
          plus drainOutboxMessage, three call sites on turn completion) reaches
@@ -1557,8 +1508,8 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
         const said = outcome && typeof outcome.sentence === 'string' ? outcome.sentence : ''
         markRefusalCode(addMsg('note', said || QUEUE_PROMOTE_FAILED), { code: refusalCodeFromThrown(thrown) })
       })
-      /* SEND NOW (R17: the user can send a Send now that actually interrupts
-         the agent) is the one door that
+      /* SEND NOW (owner R17, verbatim: "the user needs to be able to send a
+         send now that actually interrrupts the agent") is the one door that
          may stop a running turn to deliver its own row. Never disabled by
          isBusy() -- that is the entire point of the button -- only by
          `stopping` (a halt already in flight, the same guard every other
@@ -1881,7 +1832,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
       input.setAttribute('aria-label', reason)
     }
   }
-  /* THE RELEASE BUDGET. The pre-install handoff, the ratified
+  /* THE RELEASE BUDGET. HANDOFF-M13-BEFORE-INSTALL-20260918.md, the ratified
    * A/B split: "150-250ms release budget on the user path". This is the wait
    * between the host answering the interrupt and this window's own status
    * reading idle -- a wait that had no bound at all. Unbounded, a completion
@@ -2090,7 +2041,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
 
   /* WHO IS SPEAKING, AND WHEN THE LOG SAYS SO.
    *
-   * THE DEFECT (items 2 and 4: live messages piled up). Live messages
+   * THE DEFECT (owner, items 2 and 4: the messages "pile"). Live messages
    * passed no label at all while restored history passed one for every entry,
    * so the same conversation carried names on its past and none on its
    * present, and a person reading it could not tell whose words were whose.
@@ -2272,7 +2223,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
 
   /* THE MODEL'S OWN WORKING, SHOWN -- AND NEVER MISTAKEN FOR THE ANSWER.
    *
-   * Thinking is to be shown. What must not happen while it is: engine
+   * The owner wants thinking shown. What must not happen while it is: engine
    * claude-cli-adapter.js forwards a `thinking` content block as its own
    * event type instead of assistant speech, for exactly one reason stated in
    * its own header -- forwarding it as assistant text "would still put the
@@ -2303,7 +2254,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
 
   /* ---- THE SECOND DOOR: WHAT THE AGENT DID, BESIDE WHAT IT SAID. ----
    *
-   * THE DEFECT THIS CLOSES (item 1, the biggest ask). The engine
+   * THE DEFECT THIS CLOSES (owner, item 1, and his biggest ask). The engine
    * narrates every turn -- tool_call, tool_result, approval_request, each
    * carrying the command or the path and the name that pairs a result with its
    * call -- and every one of those packets already reached this window. They
@@ -2381,8 +2332,9 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
     body.className = 'chat-action-run-body'
     head.append(mark, actionStateMark(), line, disclosure)
     wrap.append(head, body)
-    /* TEMPORARILY VISIBLE, THEN COLLAPSED (more of the agent's text is shown,
-       temporarily, and then collapses). A run is OPEN while it is the live edge of the log, so
+    /* TEMPORARILY VISIBLE, THEN COLLAPSED (owner, 2026-08-24: "we want more of
+       the agent's text… we want to see those too just temporarily and then let
+       them collapse"). A run is OPEN while it is the live edge of the log, so
        the calls stream past as they happen — and the moment the agent speaks
        again, settleActionRuns() folds it to its one line. A run the person
        opened or closed BY HAND is theirs: the flag below takes it out of the
@@ -2420,8 +2372,8 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
     const rows = [...run.body.querySelectorAll('.chat-action')]
     const tools = rows.filter(row => row.dataset.actionKind !== 'thinking')
     run.count = tools.length
-    /* A RUN HOLDING EXACTLY ONE CALL IS NOT A CLUSTER TO FOLD -- tools
-     * condense more. Every call is wrapped in a
+    /* A RUN HOLDING EXACTLY ONE CALL IS NOT A CLUSTER TO FOLD -- owner,
+     * 2026-09-03: "Tools need to condense more." Every call is wrapped in a
      * run, even a lone one (addToActionRun below has no other door), so a
      * turn that ran ONE tool cost a person two presses to read it: open the
      * run's own "1 tool call" line to reach the row that sentence stood in
@@ -2867,8 +2819,8 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
         restoredOwnerSeats.set(entry.turnStamp, seatBefore)
       }
       /* A PICTURE IS PART OF THE MESSAGE WHEN IT IS REPLAYED, NOT ONLY WHEN IT
-         IS FIRST PAINTED (T332). The defect: images disappeared from chat right
-         after sending. They disappeared because the picture
+         IS FIRST PAINTED (T332). The owner's words were: "the images disappear
+         from chat right after sending". They disappeared because the picture
          lived in exactly one optimistic DOM node and this loop -- every reopen,
          every remount, every rebuild of a surface -- redrew the conversation
          from stored entries and passed no pictures at all. So an entry that
@@ -3167,14 +3119,14 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
      with AGENT_TURN_ACTIVE while the interrupted turn settles, and the view
      then puts those words in the durable queue -- at the BACK. That turns the
      person's "now" into "last", which is the opposite of what the door
-     promises. The rule: Send now interrupts immediately; queue waits for the
-     end of the turn (an idle). So a
+     promises. The owner's rule, verbatim: "send now should interrupt
+     immediately. que should wait for the end of their turn (an idle)". So a
      Send now that loses that race is moved to the FRONT of the queue: it still
      cannot overlap a turn the engine says is running -- nothing may -- but it
      is the next thing to go, not the last. */
   /* `issueAfter` SPLITS THE TWO LATENCIES THE OWNER EXPERIENCES AS ONE.
    *
-   * A: their words on screen, the abandoned partial gone, nothing handed back --
+   * A: his words on screen, the abandoned partial gone, nothing handed back --
    *    ours, local, and it happens on this function's first lines.
    * B: the engine accepting the new turn -- the CLI child's, and it genuinely
    *    cannot be immediate: measured at the interrupt site, a send issued +8ms
@@ -3182,12 +3134,12 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
    *    accepted at +430ms, because the engine's turn really is still running.
    *
    * So the send WAITS for `issueAfter` (the stop, resolving on the real turn
-   * release) while the painting does not. They see A; B happens behind the row
-   * that already says their message went. Clearing activeTurnId to skip the wait
+   * release) while the painting does not. He sees A; B happens behind the row
+   * that already says his message went. Clearing activeTurnId to skip the wait
    * was tried before and only moved the refusal down into the provider, which
    * is the "stop that one first" bounce this exists to end. */
   const deliverTurn = (v, { promoteIfQueued = false, delivery = null, issueAfter = null, takeDelivery = false, onDeliverySettled = null, silentHold = false, onSendOutcome = null, withComposerAttachments = true } = {}) => {
-    /* `delivery` MAY BE A FUNCTION, and that is what lets their words be painted
+    /* `delivery` MAY BE A FUNCTION, and that is what lets his words be painted
        before the durable hold is even written. The hold is a storage write; the
        paint is not, and making the paint wait for it is how "press -> words on
        screen" became 46-201ms on a loaded box. Read it at issue time instead. */
@@ -3311,14 +3263,14 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
     if (typeof onSend === 'function') {
       bumpChatDebug('sentTurns', 1)
       /* A REJECTED `issueAfter` STILL SENDS. It is a stop that reported a
-         problem, not a decision about their message; refusing to deliver here
-         would hand their words back for a reason they never asked about.
+         problem, not a decision about his message; refusing to deliver here
+         would hand his words back for a reason he never asked about.
          An ORDINARY send keeps its original timing exactly -- one microtask,
          no extra hop: composer-send-failure-code reads the refusal note after
          a fixed number of ticks, and an unconditional `.catch()` link pushed
          the note one tick past it. The wait exists only when something is
          actually being waited for. */
-      /* HOLD SILENTLY AND LAND -- the rule that keeps a refusal off their glass.
+      /* HOLD SILENTLY AND LAND -- the rule that keeps a refusal off his glass.
        *
        * THE PATH THIS EXISTS FOR: waitForTurnRelease RESOLVES ON TIMEOUT ("on
        * timeout this behaves exactly as it did before the wait existed"), so a
@@ -3328,7 +3280,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
        * front of the person who had just pressed the thing that stops it.
        *
        * TWO SHAPES, DELIBERATELY HANDLED DIFFERENTLY, because only one of them
-       * can be retried without duplicating their words:
+       * can be retried without duplicating his words:
        *   - words alone: the view has ALREADY put them in the durable queue by
        *     the time it calls queued(), so retrying here would send them twice.
        *     The words are held where they are and the note is suppressed; the
@@ -3336,7 +3288,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
        *   - words WITH a file: that branch queues nothing (the outbox carries
        *     text only) and hands both back with a note. Nothing was stored, so
        *     re-issuing is safe, and it is the only way the file still rides the
-       *     message they pressed Send now on.
+       *     message he pressed Send now on.
        * BOUNDED, and it gives up out loud: after the last delay the ordinary
        * refusal path runs, note and all. A silent hold that never lands would
        * be a worse defect than the one being fixed. */
@@ -3394,7 +3346,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
                cancel(session, entry.id), which removes both the row and the
                hold. take() is what set deliveryUnconfirmed in the first place.
                A confirmDelivered(sessionId, entry) call was added here and
-               REMOVED again by rule: its body is
+               REMOVED again on Controller's ruling: its body is
                resolveDeliveryTarget + releaseSeat, and a Send-now entry was
                never takeNext-ed, so it has no seat to release -- at best a
                no-op, at worst it releases a DIFFERENT delivery's seat. */
@@ -3421,7 +3373,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
             retractOptimistic()
             /* Under a silent hold the words are in the queue and the strip
                already shows them; saying "this message is next" as well is the
-               sentence they read as "it did not go". */
+               sentence he reads as "it did not go". */
             if (text && !silentHold) addMsg('note', String(text))
             /* The row the view just wrote is the one id that was not there
                before this send. Identified by difference, never by matching
@@ -3473,7 +3425,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
           if (disposed) { cancelPendingSend(); return null }
           /* A STOP THAT WAS REFUSED IS NOT A SEND WINDOW. The interrupt did not
              happen, so the turn is still running and a send now would bounce --
-             which is the refusal this whole change exists to keep off their
+             which is the refusal this whole change exists to keep off his
              glass. The words stay exactly where the hold put them, visible in
              the queue strip, and go when the turn ends. Pinned by
              chat-queue-doors "a refused interrupt does not consume or send the
@@ -3724,9 +3676,10 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
     if (pendingAttachments.some(item => item?.kind === 'host-draft-image') && typeof onImageIntent !== 'function') { markRefusalCode(addMsg('note', 'Images remain attached. Open a complete ToolsEnabled build to send them.'), { code: 'IMAGE_QUEUE_BRIDGE_UNAVAILABLE' }); return }
     if (pendingAttachments.length && typeof onImageIntent === 'function') { await submitImageIntent(true); return }
     /* ⇧⏎ AND THE CHIP UNDER THE ARROW ARE "SEND NOW", AND SEND NOW INTERRUPTS.
-       W18c: the arrow sends, and the button below is Send now; Enter is the
-       default send and Shift+Enter is Send now, on top of R17: the user can
-       send a Send now that actually interrupts the agent.
+       The owner, W18c: "The arrow should send, the button below should be for
+       send now. Send should be the default send now should be sahift enter",
+       on top of R17: "the user needs to be able to send a send now that
+       actually interrrupts the agent".
 
        WHAT THIS USED TO DO, and why that is no longer the right answer. It
        queued the words and promoted them to the FRONT (queue.add then
@@ -3799,7 +3752,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
       /* THE PRESS'S OWN FRAME, IN ORDER, AND NOTHING ASYNCHRONOUS IN IT.
        *
        * 1. the abandoned answer leaves the screen
-       * 2. their words are painted as sent
+       * 2. his words are painted as sent
        * 3. only then is the stop started, and only after IT resolves does the
        *    engine send go out.
        *
@@ -3904,8 +3857,9 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
       chips.onCycleTier()
       return
     }
-    /* ↑ ↓ ESC — THE QUEUED-MESSAGE WALK (as in a command prompt, pressing Up
-       in the chat reaches the queued messages so a person can edit them).
+    /* ↑ ↓ ESC — THE QUEUED-MESSAGE WALK (owner: "i like how in cmd you can
+       press the up button and edit your qued messages ... let userrs press up
+       from the chat to get to their qued messages and edit them").
        Composer-focused, on this input's own keydown, never on document or
        window: the same discipline the slash door and ⇧⏎ keep, so these keys
        can never fire while a person is reading a different agent's transcript.
@@ -3937,10 +3891,10 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
        ends. send() carries the same check for the button; this line is what
        puts ⇧⏎ under it too. */
     if (keepsRecalledEdit()) return
-    /* ⏎ IS SEND, ⇧⏎ IS SEND NOW -- the division from W18c: Enter is the
-       default send, and Shift+Enter is Send now. ⏎ keeps
+    /* ⏎ IS SEND, ⇧⏎ IS SEND NOW -- the owner's own division, W18c: "Send
+       should be the default send now should be sahift enter". ⏎ keeps
        send()'s behaviour exactly, including queueing when the agent is busy,
-       which is what the arrow does and what the design means by the arrow
+       which is what the arrow does and what the owner means by the arrow
        sending. ⇧⏎ is the interrupting send, the same act as the one chip
        under the arrow, through the same function.
 
@@ -4179,25 +4133,6 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
       chipModel.hidden = !label
       if (label) chipModel.textContent = label
     }
-    if (chipAccountRetry) {
-      let value = null
-      try { value = typeof chips.accountRetry === 'function' ? chips.accountRetry() : null } catch { value = null }
-      chipAccountRetry.value = ['off', 'keep', 'wait'].includes(value?.value) ? value.value : 'off'
-      const options = chipAccountRetry.options ? Array.from(chipAccountRetry.options)
-        : Array.from(chipAccountRetry.querySelectorAll?.('option') || [])
-      const labels = { off: 'Off', keep: 'Keep trying accounts', wait: 'Wait for resets',
-        ...(value?.labels && typeof value.labels === 'object' ? value.labels : {}) }
-      for (const option of options) {
-        const label = labels[option.value]
-        if (typeof label === 'string' && label) option.textContent = label
-      }
-      chipAccountRetry.disabled = value?.disabled === true
-      if (chipAccountRetryNow) {
-        chipAccountRetryNow.hidden = value?.showAction !== true
-        chipAccountRetryNow.disabled = value?.actionDisabled === true
-      }
-      if (chipAccountRetryStatus) chipAccountRetryStatus.textContent = typeof value?.status === 'string' ? value.status : ''
-    }
     if (chipHalt) {
       const stoppable = isBusy() && typeof onStop === 'function'
       chipHalt.hidden = !stoppable
@@ -4234,12 +4169,6 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
   chipEffort?.addEventListener('click', () => { if (!disposed) chips?.onOpenEffort?.(root) })
   chipMode?.addEventListener('click', () => { if (!disposed) chips?.onOpenMode?.(root) })
   chipModel?.addEventListener('click', () => { if (!disposed) chips?.onOpenModel?.(root) })
-  chipAccountRetry?.addEventListener('change', () => {
-    if (!disposed) void chips?.onAccountRetryChange?.(chipAccountRetry.value, root)
-  })
-  chipAccountRetryNow?.addEventListener('click', () => {
-    if (!disposed && !chipAccountRetryNow.disabled) void chips?.onAccountRetryNow?.(root)
-  })
   chipHalt?.addEventListener('click', () => { if (!disposed && !chipHalt.disabled) void runStop() })
   /* The chip and ⇧⏎ are two spellings of ONE act, so they call one function.
      A second implementation here is exactly how the queue strip's own doors
@@ -4478,12 +4407,12 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
       let closed = false
       /* STOP MEANS THE HALF-WRITTEN ANSWER IS GONE, AT THE PRESS.
        *
-       * T335: the person's input goes in first and the partial answer is
-       * discarded at once -- no grace period. Everything that makes that true on
+       * The owner, T335: his input goes in first and the agent's partial work
+       * is DISCARDED -- no grace period. Everything that makes that true on
        * screen has to be local and synchronous, because the engine cannot stop
-       * in single-digit milliseconds and the person is not waiting for it.
+       * in single-digit milliseconds and he is not waiting for it.
        *
-       * MEASURED on the sealed an earlier commit candidate, three chip-door presses
+       * MEASURED on the sealed 3b9c32ac candidate, three chip-door presses
        * (t0 taken in the same event-loop turn as the press): the abandoned turn
        * went on painting for 139ms, 364ms and 271ms after the press, and its
        * partial was still on screen at the end of every run -- the discard
@@ -4493,7 +4422,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
        * keeps its words and folds its runs. This throws the words away. It sets
        * the same `closed` flag, so a late push() or close() from the engine's
        * own completion is a no-op rather than a resurrection -- the packets
-       * that were already in flight when they pressed must not repaint a row they
+       * that were already in flight when he pressed must not repaint a row he
        * has been told is gone. */
       const abandon = () => {
         if (closed) return false
@@ -4813,8 +4742,9 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
      an outcome through ctx.say, which lands on the status line at the
      bottom. Escape and any press outside close it; so does dispose.
 
-     KEYBOARD-FIRST, LIKE A CODE EDITOR'S QUICK PICK. Rule: this menu works
-     like VS Code's quick pick and stays intuitive. What VS Code's quick pick has that this did not is not
+     KEYBOARD-FIRST, WHICH IS THE SUBSTANCE OF "MORE LIKE VSCODE". The
+     owner's report on this menu was that it should be more like VS Code and
+     more intuitive. What VS Code's quick pick has that this did not is not
      a look: it is that the whole thing is driven from the filter box. Type
      to narrow, Up and Down to move, Enter to run, Escape to leave, and the
      row under the cursor announced to assistive tech as you move. This
@@ -4949,6 +4879,11 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
         if (hint) addMsg('note', hint)
         syncComposer()
       },
+      modelInput: ({ value = '', hint = MODEL_NAME_HELP, submit } = {}) => {
+        popStack.push({ rows: [], title: 'Other model', modelInput: { value, hint, submit } })
+        popActive = -1
+        renderPopStage()
+      },
       show: (nextRows, { title: stageTitle = null } = {}) => {
         popStack.push({ rows: typeof nextRows === 'function' || Array.isArray(nextRows) ? nextRows : [], title: stageTitle })
         popActive = -1
@@ -5011,6 +4946,7 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
   const onPopKeys = (event) => {
     if (event.isComposing || event.keyCode === 229) return
     if (!popEl) return
+    if (popStack[popStack.length - 1]?.modelInput) return
     if (event.key === 'ArrowDown') { event.preventDefault(); movePopActive(1); return }
     if (event.key === 'ArrowUp') { event.preventDefault(); movePopActive(-1); return }
     if (event.key === 'Home') { event.preventDefault(); popActive = popRendered.length ? 0 : -1; paintPopActive(); return }
@@ -5050,6 +4986,51 @@ export function buildChat({ title, subtitle = '', headerMeta = null, roleKey = '
     filter.hidden = Boolean(stage)
     titleLine.hidden = !stage?.title
     if (stage?.title) titleLine.textContent = stage.title
+    if (stage?.modelInput) {
+      if (list.modelInputStage === stage) return
+      list.modelInputStage = stage
+      list.textContent = ''
+      list.setAttribute('role', 'group')
+      popRendered = []
+      const { field, input: modelName } = createModelNameField(document, { value: stage.modelInput.value, className: 'agent-compose-field' })
+      modelName.className = 'agent-compose-select'
+      const hint = document.createElement('p')
+      hint.className = 'chat-actions-hint'
+      hint.textContent = stage.modelInput.hint
+      const use = document.createElement('button')
+      use.type = 'button'
+      use.className = 'chat-actions-row'
+      use.textContent = 'Use this model'
+      const back = document.createElement('button')
+      back.type = 'button'
+      back.className = 'chat-actions-row chat-actions-back'
+      back.textContent = ACTIONS_BACK
+      back.addEventListener('click', () => { list.focus(); popStack.pop(); renderPopStage() })
+      const submit = async () => {
+        const problem = modelIdProblem(modelName.value)
+        if (problem) { modelName.setAttribute('aria-invalid', 'true'); popCtx().say(problem); modelName.focus(); return }
+        use.disabled = true
+        try {
+          const outcome = await stage.modelInput.submit?.(modelName.value, popCtx())
+          if (outcome) popCtx().say(outcome.sentence || outcome)
+        } catch { popCtx().say(ACTION_RUN_FAILED) }
+        finally { use.disabled = false }
+      }
+      modelName.addEventListener('input', () => {
+        stage.modelInput.value = modelName.value
+        modelName.removeAttribute('aria-invalid')
+        popCtx().say('')
+      })
+      modelName.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.isComposing && !use.disabled) { event.preventDefault(); void submit() }
+      })
+      use.addEventListener('click', () => { if (!use.disabled) void submit() })
+      list.append(field, hint, use, back)
+      modelName.focus({ preventScroll: true })
+      return
+    }
+    list.modelInputStage = null
+    list.setAttribute('role', 'listbox')
     list.textContent = ''
     popRendered = []
     /* A LEADING SLASH IS A COMMAND LINE, NOT A FILTER. "/Request keep it

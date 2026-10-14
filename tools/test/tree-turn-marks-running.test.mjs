@@ -1,6 +1,6 @@
 /* A CIRCLE THAT IS WORKING MUST NOT READ AS FINISHED.
  *
- * THE DEFECT, measured on a development tier: the
+ * THE DEFECT, measured 2026-09-04 on the owner's Live tier (fifth tree): the
  * tree courier hands a message from one circle to another inside
  * shell/agent-host.cjs (pumpTreeSessionOnce -> sendTurn, origin 'agent').
  * The renderer marks a node `running` only for turns IT sends -- the composer
@@ -8,8 +8,8 @@
  * before their send -- so a turn the shell started on the courier's behalf
  * never touched the node's status. Manager and Manager 2 each ran judge
  * builds, merges and spawns for ten minutes while their circles showed
- * "finished" with a reply from the previous turn; the whole tree read as
- * idle. The run clock and the supervisor's quiet check read the same
+ * "finished" with a reply from the previous turn; the owner read the whole
+ * tree as idle. The run clock and the supervisor's quiet check read the same
  * status, so both were wrong for the same reason.
  *
  * THE FIX IS AT THE ONE SEAM EVERY TURN CROSSES. The engine names each turn

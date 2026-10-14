@@ -1,10 +1,10 @@
 /* WHAT A PERSON SENDS US WHEN SOMETHING IS WRONG, AND WHERE IT NOW GOES.
  *
  * THIS USED TO BUILD A mailto: AND HAND IT TO THE PERSON'S OWN MAIL CLIENT.
- * That path must never ship (the mailto version never ships) now
- * that a route exists to receive this
+ * The owner has since ruled that path must never ship (S6 lane, "the mailto
+ * version must never ship") now that a route exists to receive this
  * properly: `POST /v1/feedback` on the account service
- * (the paid server's HTTP service). That route's own header
+ * (toolsenabled-paid/server/src/http-service.js). That route's own header
  * answers the three worries the mailto approach existed to dodge --
  *
  *   1. A store now exists on purpose, with a retention story: every
@@ -112,9 +112,9 @@ function outcome(ok, code, why, extra = {}) {
  * DELIBERATELY TWO-VALUED, NOT THE THREE-VALUED true/false/undefined
  * src/capability-probes.js uses for "could not check" elsewhere in this
  * product. That convention exists so a control can stay OFFERED, disabled,
- * with a reason, when a probe cannot run. The rule for this door specifically
- * forbids that middle state: the door is absent when the backend does not
- * answer, never a dead button. A door that cannot be probed has to
+ * with a reason, when a probe cannot run. The owner's ruling for this door
+ * specifically forbids that middle state: "door absent when the backend
+ * doesn't answer, never a dead button." A door that cannot be probed has to
  * behave exactly like one that was probed and answered no.
  */
 export async function probeFeedbackAvailable({ fetchImpl } = {}) {

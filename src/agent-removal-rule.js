@@ -1,8 +1,8 @@
-/* THE RULE FOR WHO MAY REMOVE A CIRCLE, IN ONE CALLABLE PLACE.
+/* THE OWNER'S RULE FOR WHO MAY REMOVE A CIRCLE, IN ONE CALLABLE PLACE.
  *
- * The rule: agents spawned by agents that the user has not prompted can be
- * removed by their parent agents; an agent the user has prompted remains, even
- * if another agent created it.
+ * Verbatim, 2026-09-03: "agents that were spawned by agents AND who the user
+ * hasnt prompted - THEY can be removed by parent agents. AGENTS that a user
+ * prompts even if created by another agent can remain".
  *
  * The rule turns on three facts, and NOT ONE OF THEM IS THE CALLER'S TO CLAIM:
  *
@@ -68,7 +68,7 @@ export const REMOVAL_REFUSALS = Object.freeze({
  * The direction of the doubt is deliberate. Marking a circle prompted only
  * makes it HARDER to remove, so a line this answers `true` about too readily
  * costs an assistant a tidy-up; a line it answers `false` about too readily
- * loses work the person did. The second is the one the rule exists to
+ * loses work the person did. The second is the one the owner's rule exists to
  * prevent, so anything that carries the person's words to the model counts.
  */
 export function personTurnPromptsCircle(text) {
@@ -101,7 +101,7 @@ export function notePersonSpokeTo(treeStore, node, text) {
 /**
  * Is `nodeId` below `callerNodeId` on the tree? Walks parents from the named
  * circle upward, so the answer is "the asker is somewhere above it", which is
- * the shape of the rule: a circle is removed BY THE ONE ABOVE IT.
+ * the shape of the owner's sentence: a circle is removed BY THE ONE ABOVE IT.
  * A circle is never below itself, so a circle cannot ask for its own removal.
  */
 export function circleIsBelow(readNode, nodeId, callerNodeId, { maxSteps = REMOVAL_CHAIN_STEPS } = {}) {
@@ -117,8 +117,8 @@ export function circleIsBelow(readNode, nodeId, callerNodeId, { maxSteps = REMOV
 
 /* THE SAME PLACEMENT QUESTION, ASKED FOR A STOP OR A RESTART.
  *
- * Agents can delete, start and restart the agents under them. Three verbs,
- * one word: UNDER. executeRemoveNode
+ * Owner, 2026-09-03: "THE AGENTS NEED TO BE ABLE TO DELETE AND START AND
+ * RESTART AGENTS UNDER THEM". Three verbs, one word: UNDER. executeRemoveNode
  * below has always read where the asker stands from the session the
  * application bound and refused a circle that is not below it; the stop and
  * restart routes in the view read nothing of the kind when they shipped, so an
@@ -186,8 +186,8 @@ export async function executeRemoveNode({
   /* WHERE THE ASKER STANDS, read from the session the application bound to a
      circle -- never from anything the request carries. Without this an
      assistant could name ANY circle on the tree: a sibling, a circle in another
-     manager's branch, or the one above it. The rule says removed by parent
-     agents, and this is the half of it that was never checked. */
+     manager's branch, or the one above it. The owner's sentence is "removed by
+     parent agents", and this is the half of it that was never checked. */
   const callerNodeId = sessionNodeIds.get(command.parentSessionId) || null
   if (!callerNodeId) return refused(REMOVAL_REFUSALS.callerUnknown)
   if (!circleIsBelow(id => treeStore.getNode(id), node.id, callerNodeId, { maxSteps })) {

@@ -2,9 +2,10 @@
 
 /* DRAG A NODE ONTO AN EMPTY SLOT, WITH A REAL MOUSE, AND SEE WHETHER IT LANDS.
  *
- * THE DEFECT THIS EXISTS FOR: editing had worked -- dragging a node to a new
- * node slot on the same tree, a new tree or a different tree -- and then on
- * page 2 nodes could no longer be dropped onto the new bubbles.
+ * THE DEFECT THIS EXISTS FOR, in the owner's words: "edit had been working;
+ * drag a node to a new node slot; on the same tree, on a new tree, or on a
+ * different tree. On pg2 you cant drag and drop the nodes onto the new bubbles
+ * anymore."
  *
  * WHY IT HAD TO BE WRITTEN. This gesture had NO harness. tools/page2-qa.cjs is
  * the only driver in the repository that drags at all, and it chooses its
@@ -14,7 +15,7 @@
  * the compose panel. So the product shipped a broken drop with every gate
  * green, twice.
  *
- * WHAT BROKE IT. an earlier commit clamped the LIVE drag into the node's rank corridor --
+ * WHAT BROKE IT. c06c44c clamped the LIVE drag into the node's rank corridor --
  * half the pitch to the neighbouring row. Every empty slot is in a different
  * row from the node you would drag onto it (the new-tree slot is in row 0, a
  * child slot is one row below its parent), contact needs about 77px between

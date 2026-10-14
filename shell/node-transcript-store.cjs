@@ -12,7 +12,7 @@ const identity = value => {
 }
 /* WHO THIS TRANSCRIPT BELONGS TO, OR A REFUSAL THAT SAYS WHICH HALF IS MISSING.
  *
- * T406 (measured 2026-09-18 on the earlier candidate): mcTranscripts.list()
+ * T406 (measured 2026-09-18 on the 3e1cd3a9 candidate): mcTranscripts.list()
  * reached this file with no request at all, and `async function list({
  * computerId })` answered with a TypeError -- "Cannot destructure property
  * 'computerId' of 'undefined'" -- which shell/main.cjs then dressed as
@@ -358,14 +358,14 @@ function createNodeTranscriptStore({ directory, io = fs, settings = {}, saveSett
  * When the aggregate landed mid-run, D is a shorter prefix, the file is not its
  * own double, and the person still reads the opening of every old reply twice.
  *
- * MEASURED over a local node-transcript store (legacy spill files, counts
- * only -- no text was copied out): some are whole doubles and were repaired;
- * many more are prefix doubles and were not, carrying duplicated characters
- * that are re-read on every reopen or resume.
+ * MEASURED over the owner's LIVE node-transcripts (4124 legacy spill files,
+ * 2026-09-19, counts only -- no text was copied out): 576 are whole doubles and
+ * were repaired; 2808 more are prefix doubles and were not, carrying 570,686
+ * duplicated characters that the owner re-reads on every reopen or resume.
  *
- * THE SPLIT IS NOT A JUDGEMENT CALL. Of the doubled files, nearly all admit
+ * THE SPLIT IS NOT A JUDGEMENT CALL. Of the 3384 doubled files, 3349 admit
  * EXACTLY ONE n with text[0..n) === text[n..2n), and after removing the leading
- * copy have no doubling left at all. The largest such n is taken, which is
+ * copy 3349 have no doubling left at all. The largest such n is taken, which is
  * precisely what halving already did for a whole double (n = length / 2), so
  * this generalises the shipped rule rather than adding a second one.
  *

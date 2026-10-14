@@ -6,6 +6,7 @@ import { ROLES, PROVIDERS } from '../../src/vocab.js'
 import { NODE_STATUS_WORDS, PALETTE_PANEL } from '../../src/fleet-tree-copy.js'
 import { EXAMPLE_BADGE } from '../../src/comms-copy.js'
 import { NO_SENDER_WIRED, UPTIME_UNITS } from '../../src/chat-copy.js'
+import { installDomStandIn } from './lib/dom-stand-in.mjs'
 
 // Remove comments without mistaking comment markers inside strings for comments.
 function stripComments(source) {
@@ -81,12 +82,24 @@ test('agent no-sender refusal derives from chat copy', async () => {
   await assertDerived('src/views/agent.js', 'NO_SENDER_WIRED', [NO_SENDER_WIRED])
 })
 
-test('home uptime labels derive from chat copy', async () => {
-  // Home draws its clock through uptimeRing (an earlier commit), so the units are imported where they are
-  // painted, in components.js. Home itself must still never type one out.
+test('ordinary Agent uptime renders the shared chat units and Home does not retype them', async t => {
+  // Stage A removed Home's clock; ordinary Agent still paints this component.
+  // Keep the shared-vocabulary guard and exercise its actual values.
   await assertDerived('src/components.js', 'UPTIME_UNITS', Object.values(UPTIME_UNITS))
+  const dom = installDomStandIn()
+  t.after(() => dom.restore())
+  t.mock.timers.enable({ apis: ['Date'], now: 1_000_000_000 })
+  const { uptimeRing } = await import('../../src/components.js')
+  const epoch = Date.now() - (((24 + 2) * 60 + 3) * 60 + 4) * 1000
+  for (const showDays of [true, false]) {
+    const ring = uptimeRing({ epoch, showDays, size: 160 })
+    assert.deepEqual([...ring.el.querySelectorAll('.u')].map(node => node.textContent), showDays
+      ? [UPTIME_UNITS.days, UPTIME_UNITS.hours, UPTIME_UNITS.minutes, UPTIME_UNITS.seconds]
+      : [UPTIME_UNITS.hours, UPTIME_UNITS.minutes, UPTIME_UNITS.seconds])
+    assert.deepEqual([...ring.el.querySelectorAll('.n')].map(node => Number(node.textContent)), showDays ? [1, 2, 3, 4] : [2, 3, 4])
+    ring.update()
+  }
   const home = await production('src/views/home.js')
-  assert.match(home, /import\s*\{[^}]*\buptimeRing\b[^}]*\}\s*from '\.\.\/components\.js'/, 'Home paints uptime through uptimeRing')
   for (const unit of Object.values(UPTIME_UNITS)) {
     assert.doesNotMatch(home, new RegExp(`(['"\\\`])${escapeRegExp(unit)}\\1`), `src/views/home.js must not re-type ${JSON.stringify(unit)}`)
   }

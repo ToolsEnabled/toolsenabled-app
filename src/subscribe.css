@@ -64,21 +64,22 @@
 .sub-mast { display: flex; flex-direction: column; gap: 0; padding-top: var(--s3); }
 .sub-eyebrow {
   margin: 0 0 var(--s2);
-  font-size: var(--text-caps, 11px);
-  text-transform: uppercase;
-  letter-spacing: var(--track-caps);
-  color: var(--ink-25);
-  font-weight: 640;
+  font-size: 12.5px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink-2);
+  font-weight: 600;
 }
 .sub-mast h1 {
   margin: 0;
-  font-size: 36px;
-  line-height: 1.15;
-  letter-spacing: -.035em;
-  font-weight: 610;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: -.012em;
+  font-weight: 650;
   color: var(--ink);
   text-wrap: balance;
 }
+.sub-shell-narrow .sub-mast h1 { font-size: 28px; font-weight: 650; line-height: 1.2; }
 .sub-lede {
   margin: var(--s3) 0 0;
   font-size: var(--text-base, 14px);
@@ -118,11 +119,12 @@
 
 .sub-period { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
 .sub-period-label {
-  font-size: var(--text-caps, 11px);
-  text-transform: uppercase;
-  letter-spacing: var(--track-caps);
+  font-size: 12.5px;
+  text-transform: none;
+  letter-spacing: normal;
   color: var(--ink-25);
-  font-weight: 620;
+  font-weight: 600;
+  line-height: 1.4;
 }
 /* The foundation's segmented control: a sunken trough, the chosen period
    raised out of it with the selected tint and edge. */
@@ -159,12 +161,13 @@
 
 .sub-plans-set { border: 0; padding: 0; margin: 0; min-width: 0; }
 .sub-plans-legend {
-  font-size: var(--text-caps, 11px);
-  text-transform: uppercase;
-  letter-spacing: var(--track-caps);
+  font-size: 12.5px;
+  text-transform: none;
+  letter-spacing: normal;
   color: var(--ink-25);
-  font-weight: 620;
+  font-weight: 600;
   padding: 0 0 var(--s3);
+  line-height: 1.4;
 }
 
 .sub-plans {
@@ -195,8 +198,11 @@
   cursor: pointer;
   /* the .glass rule supplies the base card's surface, edge and shadow; only
      the hover edge, the selected state and the focus ring are added here */
-  border-radius: var(--radius-card, 6px);
   transition: box-shadow var(--dur-2) var(--ease-out, ease), border-color var(--dur-2) var(--ease-out, ease);
+  border: 1px solid var(--line-strong);
+  background: var(--bg-surface);
+  box-shadow: none;
+  border-radius: 10px;
 }
 .sub-plan:hover { border-color: var(--border-strong, var(--line-2)); }
 
@@ -223,8 +229,9 @@
   transition: border-color var(--dur-2) var(--ease-out, ease), box-shadow var(--dur-2) var(--ease-out, ease);
 }
 .sub-plan.is-chosen {
-  border-color: var(--selected-border, var(--line-2));
-  box-shadow: var(--shadow-card, none), inset 0 0 0 1px var(--selected-border, var(--line-2));
+  border-color: var(--line-strong);
+  background: var(--bg-subtle);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
 }
 .sub-plan.is-chosen .sub-plan-tick {
   border-color: var(--action-primary, var(--ink));
@@ -233,24 +240,26 @@
 /* The focus ring has to appear on the CARD while focus is really on the hidden
    input — :focus-visible on the input, drawn on its label. */
 .sub-plan:has(.sub-plan-radio:focus-visible) {
-  outline: var(--focus-outline, 2px solid var(--focus-ring));
-  outline-offset: var(--focus-offset, 2px);
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 .sub-plan.is-unavailable {
   cursor: not-allowed;
-  opacity: 0.66;
+  opacity: 1;
 }
-.sub-plan.is-unavailable:hover { border-color: var(--border-default, var(--line-2)); }
+.sub-plan.is-unavailable:hover {
+  border-color: var(--line-strong); }
 
 .sub-plan-head { display: flex; flex-direction: column; gap: 2px; padding-right: var(--s5); }
 .sub-plan-name { font-size: 17px; font-weight: 640; letter-spacing: -0.01em; color: var(--ink); }
 .sub-plan-of {
-  font-size: var(--text-caps, 11px);
-  text-transform: uppercase;
-  letter-spacing: var(--track-caps);
+  font-size: 12.5px;
+  text-transform: none;
+  letter-spacing: normal;
   color: var(--ink-25);
   font-weight: 600;
   overflow-wrap: anywhere;
+  line-height: 1.4;
 }
 
 .sub-plan-price { display: flex; align-items: baseline; gap: var(--s2); flex-wrap: wrap; }
@@ -277,11 +286,12 @@
   margin-top: var(--s1);
   padding-top: var(--s3);
   border-top: 1px solid var(--border-hairline, var(--line));
-  font-size: var(--text-caps, 11px);
-  text-transform: uppercase;
-  letter-spacing: var(--track-caps);
+  font-size: 12.5px;
+  text-transform: none;
+  letter-spacing: normal;
   color: var(--ink-25);
-  font-weight: 620;
+  font-weight: 600;
+  line-height: 1.4;
 }
 .sub-inc-list { list-style: none; display: flex; flex-direction: column; gap: var(--s3); }
 .sub-inc { display: flex; gap: var(--s2); align-items: flex-start; }
@@ -325,9 +335,9 @@
 }
 .sub-input {
   box-sizing: border-box;
-  height: 36px;
+  height: 32px;
   font: inherit;
-  font-size: var(--text-md, 13.5px);
+  font-size: 13.5px;
   color: var(--ink);
   background: var(--field-bg, var(--sheet));
   border: 1px solid var(--field-border, var(--line-2));
@@ -341,8 +351,8 @@
 }
 .sub-input:hover:not(:focus) { border-color: var(--field-border-hover, var(--ink-3)); }
 .sub-input:focus-visible {
-  outline: var(--focus-outline, 2px solid var(--focus-ring));
-  outline-offset: var(--focus-offset, 2px);
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
   box-shadow: none;
 }
 .sub-input[aria-invalid="true"] { border-color: var(--field-border-invalid, var(--s-serious)); }
@@ -355,40 +365,39 @@
    Checkout's and Vault's primaries, at the page's control height. */
 .sub-submit {
   appearance: none;
-  min-height: 40px;
+  min-height: 32px;
   border: 1px solid var(--action-primary, var(--ink));
-  border-radius: var(--radius-control, 4px);
+  border-radius: var(--radius-sm);
   background: var(--action-primary, var(--ink));
-  box-shadow: var(--shadow-control, none);
+  box-shadow: none;
   color: var(--action-primary-ink, var(--sheet));
   font: inherit;
-  font-size: var(--text-base, 14px);
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 550;
   line-height: 1.25;
-  padding: 0 18px;
+  padding: 0 12px;
   cursor: pointer;
   /* the row is a flex column, so justify-self does nothing here; without this
      the primary action stretched to the full width of its half of the panel
      and read as a banner rather than a button */
   align-self: flex-start;
   transition: background-color var(--dur-2) var(--ease-out, ease), border-color var(--dur-2) var(--ease-out, ease);
+  height: 32px;
 }
 .sub-submit:hover:not(:disabled) { background: var(--action-primary-hover, var(--ink)); border-color: var(--action-primary-hover, var(--ink)); }
 .sub-submit:active:not(:disabled) { transform: none; }
 .sub-submit:disabled {
   cursor: not-allowed;
-  border-color: var(--border-hairline, var(--line));
-  background: var(--control-disabled-bg, transparent);
   box-shadow: none;
-  color: var(--control-disabled-ink, var(--ink-3));
+  opacity: .45;
 }
 .sub-submit:focus-visible,
 .sub-checkout-link:focus-visible,
 .sub-foot-link:focus-visible,
 .sub-seg-btn:focus-visible,
 .sub-refusal-next a:focus-visible {
-  outline: var(--focus-outline, 2px solid var(--focus-ring));
-  outline-offset: var(--focus-offset, 2px);
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 .sub-submit-note { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
 
@@ -397,54 +406,59 @@
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  padding: var(--s4) var(--s5);
-  border: 1px solid var(--border-default, var(--line-2));
-  border-left-width: 2px;
-  border-radius: var(--radius-card, 6px);
-  background: var(--surface-base, var(--sheet));
   max-width: 74ch;
+  --sub-notice-tone: var(--line-strong);
+  position: relative;
+  padding: 12px 16px 12px 44px;
+  border: 1px solid var(--sub-notice-tone);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  font-size: 13.5px;
 }
-.sub-status:focus-visible { outline: var(--focus-outline, 2px solid var(--focus-ring)); outline-offset: var(--focus-offset, 2px); }
-.sub-status-title { font-size: 13px; font-weight: 620; color: var(--ink); }
-.sub-status-why { font-size: 13px; line-height: 1.55; color: var(--ink-2); overflow-wrap: anywhere; }
+.sub-status:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.sub-status-title { color: var(--ink); font-size: 13.5px; font-weight: 600; }
+.sub-status-why { color: var(--ink-2); overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.5; }
 .sub-status-safe { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
 .sub-status.is-working,
-.sub-status.is-known { border-left-color: var(--border-strong, var(--line-2)); }
-.sub-status.is-checkout { border-left-color: var(--s-good); }
+.sub-status.is-known { }
+.sub-status.is-checkout { }
 .sub-status.is-lapsed,
-.sub-status.is-offline { border-left-color: var(--ink); }
+.sub-status.is-offline { }
 .sub-status.is-declined,
-.sub-status.is-refused { border-left-color: var(--s-serious); }
+.sub-status.is-refused { }
 
 .sub-testmode {
   align-self: flex-start;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: var(--track-caps);
-  font-weight: 620;
+  text-transform: none;
+  letter-spacing: normal;
   color: var(--ink);
   border: 1px solid var(--border-strong, var(--line-2));
   border-radius: var(--radius-xs, 3px);
   background: var(--surface-sunken, transparent);
   padding: 3px var(--s2);
+  line-height: 1.4;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 550;
 }
 .sub-checkout-link {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
   margin-top: var(--s1);
   border: 1px solid var(--action-primary, var(--ink));
   border-radius: var(--radius-control, 4px);
   background: var(--action-primary, var(--ink));
   color: var(--action-primary-ink, var(--sheet));
   text-decoration: none;
-  font-size: var(--text-base, 14px);
-  font-weight: 600;
-  padding: 0 18px;
   overflow-wrap: anywhere;
   transition: background-color var(--dur-2) var(--ease-out, ease);
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  font-weight: 550;
+  box-sizing: border-box;
 }
 .sub-checkout-link:hover { background: var(--action-primary-hover, var(--ink)); border-color: var(--action-primary-hover, var(--ink)); }
 
@@ -456,12 +470,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  padding: var(--s5) var(--s5) var(--s5);
-  border-radius: var(--radius-card, 6px);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+  background: var(--bg-surface);
+  box-shadow: none;
 }
 .sub-refusal p { margin: 0; }
 .sub-refusal-title {
-  font-size: var(--text-lg, 15px);
+  font-size: 15px;
   font-weight: 620;
   line-height: 1.35;
   color: var(--ink);
@@ -531,6 +548,18 @@
 /* Nothing on this page moves: the card lift and the press hop are gone, and
    the sheet's global clamps cover the colour transitions. */
 @media (max-width: 520px) {
-  .sub-mast h1 { font-size: 30px; }
-  .sub-refusal { padding: var(--s4); }
+  .sub-mast h1 { font-size: 22px; font-weight: 650; line-height: 1.2; letter-spacing: -.012em; }
+  .sub-refusal { border: 1px solid var(--line); border-radius: 10px; padding: 20px; background: var(--bg-surface); box-shadow: none; }
+}
+.sub-eyebrow::first-letter { text-transform: uppercase; }
+.sub-shell-narrow .sub-lede { font-size: 14.5px; color: var(--ink-2); }
+.sub-status.is-checkout { --sub-notice-tone: var(--status-working); }
+.sub-status:is(.is-declined, .is-refused) { --sub-notice-tone: var(--status-error); }
+.sub-status::before { content: ''; position: absolute; top: 14px; left: 16px; width: 16px; height: 16px; background: var(--sub-notice-tone); mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27black%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Cpath d=%27M12 7v6m0 4h.01%27/%3E%3C/svg%3E") center / contain no-repeat; }
+.subscribe-page:not(:has(.sub-shell-narrow)) .sub-mast h1 { font-size: 22px; }
+.sub-submit:disabled:hover { background: var(--action-primary); color: var(--action-primary-ink); border-color: var(--action-primary); }
+.sub-input:disabled { opacity: .45; cursor: not-allowed; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .subscribe-page :is(.sub-refusal, .sub-details) { border-color: var(--line-strong); }
+@media (forced-colors: active) {
+  .sub-status::before { background: CanvasText; forced-color-adjust: none; }
 }

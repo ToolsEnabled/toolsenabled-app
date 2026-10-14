@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 /* THE CHAT CARD'S DEFAULT WIDTH, PINNED AT SOURCE.
  *
- * The picked chat card ("Dense — light-mode palette",
+ * The owner's picked chat card ("Dense — light-mode palette",
  * design/chat/picked-card.png) sets the Card width at 420px (SIZING LAW,
  * design/chat/Sizes.dc.html: Card 420 / Panel 520 / Full). SCREEN_CHAT_W is
  * tree-graph.js's one declaration of that default -- the width an agent's

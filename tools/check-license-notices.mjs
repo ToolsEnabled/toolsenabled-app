@@ -30,8 +30,8 @@ const packagedRoot = process.argv[2] || null;
 
 // THE MIT TEXT IS PINNED IN TWO PARTS, and the split is the point.
 //
-// This project was relicensed from AGPL-3.0-or-later to MIT on 2026-08-12, both
-// halves. The AGPL is a fixed document that could be pinned by a
+// This project was AGPL-3.0-or-later until 2026-08-12, when the owner relicensed
+// both halves to MIT. The AGPL is a fixed document that could be pinned by a
 // single digest of the whole file; MIT is not, because it embeds the copyright
 // line -- and therefore the YEAR -- inside the grant itself. Pinning the whole
 // file would turn this gate red every January on a file nobody touched, and a
@@ -127,6 +127,68 @@ function productionClosure() {
     for (const dep of Object.keys(pkg.dependencies || {})) queue.push([dep, dir]);
   }
   return found;
+}
+
+// Static faces bypass npm's dependency closure. Inspect every authored font
+// directory and every local WOFF2 declaration, so deleting a font cannot turn
+// an obligation into an empty successful enumeration.
+function checkStaticFonts(tpl, closure) {
+  const files = []
+  const noticeForFont = (directory, filename) => readdirSync(directory).find(name => {
+    if (/^LICEN[CS]E(?:\.txt)?$/i.test(name)) return true
+    const family = /^(.*)-LICEN[CS]E(?:\.txt)?$/i.exec(name)?.[1]
+    return family && filename.toLowerCase().startsWith(family.toLowerCase() + '-')
+  })
+  function walk(directory, inFonts = false) {
+    if (!existsSync(directory)) return
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) walk(path, inFonts || entry.name === 'fonts')
+      else if (entry.isFile()) {
+        if (inFonts && /\.woff2$/i.test(entry.name)) files.push(path)
+        if (/\.css$/i.test(entry.name)) {
+          const css = readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+          for (const match of css.matchAll(/url\(\s*['"]?([^'"\s)]+\.woff2)(?:[?#][^'"\s)]*)?['"]?\s*\)/gi)) {
+            const url = match[1]
+            if (/^(?:data:|https?:)/i.test(url)) continue
+            const font = url.startsWith('/') ? join(REPO, 'public', url.slice(1)) : join(directory, url)
+            if (!existsSync(font)) fail(`static font declared in ${path} is missing: ${url}`)
+          }
+        }
+      } else if (inFonts && entry.isSymbolicLink()) fail(`static font entry is a symbolic link: ${path}`)
+    }
+  }
+  walk(join(REPO, 'src'))
+  walk(join(REPO, 'public'))
+  for (const path of files) {
+    const bytes = readFileSync(path)
+    if (bytes.length < 48 || bytes.subarray(0, 4).toString('latin1') !== 'wOF2' || bytes.readUInt32BE(8) !== bytes.length) {
+      fail(`static font is not a complete WOFF2 file: ${path}`)
+    }
+    const directory = dirname(path)
+    const filename = path.split(/[\\/]/).at(-1)
+    const adjacent = noticeForFont(directory, filename)
+    let licensePath = adjacent ? join(directory, adjacent) : null
+    // Existing preview faces are byte copies of the offered npm faces. Their
+    // installed OFL source remains authoritative when no adjacent notice exists.
+    if (!licensePath) {
+      const component = closure.find(row => row.name.startsWith('@fontsource-variable/') && filename.startsWith(row.name.split('/').at(-1) + '-'))
+      if (component) {
+        const license = readdirSync(component.dir).find(name => /^(?:LICEN[CS]E|COPYING)/i.test(name))
+        if (license) licensePath = join(component.dir, license)
+      }
+    }
+    if (!licensePath) {
+      const canonical = join(REPO, 'src', 'assets', 'fonts', filename)
+      if (canonical !== path && existsSync(canonical) && sha256(bytes) === sha256(readFileSync(canonical))) {
+        const notice = noticeForFont(dirname(canonical), filename)
+        if (notice) licensePath = join(dirname(canonical), notice)
+      }
+    }
+    if (!licensePath) { fail(`static font has no readable license source: ${path}`); continue }
+    const body = readFileSync(licensePath, 'utf8').replace(/\r\n/g, '\n').trim()
+    if (!body || !tpl.replace(/\r\n/g, '\n').includes(body)) fail(`static font notice is missing or incomplete for ${path}; reproduce ${licensePath}`)
+  }
 }
 
 // ---- Repository mode ---------------------------------------------------
@@ -249,6 +311,7 @@ const tplPath = join(REPO, 'THIRD-PARTY-LICENSES.md');
 if (existsSync(tplPath)) {
   const tpl = readFileSync(tplPath, 'utf8');
   const closure = productionClosure();
+  checkStaticFonts(tpl, closure);
 
   for (const { name, version, dir } of closure.sort((left, right) =>
     left.name.localeCompare(right.name) || left.version.localeCompare(right.version) || left.dir.localeCompare(right.dir))) {

@@ -13,7 +13,7 @@ app.commandLine.appendSwitch('use-fake-device-for-media-stream') // No physical 
 const server = http.createServer((request, response) => {
   if (request.url === '/') {
     response.setHeader('Content-Type', 'text/html; charset=utf-8')
-    response.end('<!doctype html><html><head><link rel="stylesheet" href="/src/styles.css"><link rel="stylesheet" href="/src/home.css"></head><body><main class="home"><div class="home-ring-wrap"><div class="uring"><svg viewBox="0 0 240 240" aria-hidden="true"><circle class="arc-glow" cx="120" cy="120" r="100" fill="none" stroke="currentColor" stroke-width="4"></circle></svg></div></div></main></body></html>')
+    response.end('<!doctype html><html><head><link rel="stylesheet" href="/src/styles.css"><link rel="stylesheet" href="/src/home.css"></head><body><main class="home"><div class="home-follow-column"></div></main></body></html>')
     return
   }
   const file = path.resolve(root, '.' + new URL(request.url, 'http://127.0.0.1').pathname)
@@ -80,16 +80,16 @@ async function main() {
       async setLocalDescription(){} async setRemoteDescription(){} close(){}
     };
     const {voiceCoordinator,attachPersistentVoice,resetPersistentVoice}=await import('/src/voice-coordinator.js');
-    const ring=document.querySelector('.home-ring-wrap .uring');
-    const arc=ring.querySelector('.arc-glow');
-    const contact=voiceCoordinator({ring});document.querySelector('.home-ring-wrap').append(contact.el);
+    const contact=voiceCoordinator();document.querySelector('.home-follow-column').append(contact.el);
     const tick=()=>new Promise(resolve=>setTimeout(resolve,30));await tick();
     const get=name=>contact.el.querySelector('[data-voice-'+name+']');
-    const visual={styles:[...document.styleSheets].map(sheet=>new URL(sheet.href).pathname), backgrounds:{}, idle:getComputedStyle(arc).animationName, reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches};
+    const visual={styles:[...document.styleSheets].map(sheet=>new URL(sheet.href).pathname), backgrounds:{}, sheets:{}, reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches};
     for(const theme of ['default','white','tan','black']) {
       if(theme==='default') delete document.documentElement.dataset.theme;
       else document.documentElement.dataset.theme=theme;
       visual.backgrounds[theme]=getComputedStyle(contact.el).backgroundColor;
+      const probe=document.createElement('i');probe.style.background='var(--sheet)';document.body.append(probe);
+      visual.sheets[theme]=getComputedStyle(probe).backgroundColor;probe.remove();
     }
     delete document.documentElement.dataset.theme;
     const before={micRequests,starts:starts.length,visualContexts,selected:get('target').value};
@@ -104,11 +104,11 @@ async function main() {
     listeners.agent({sessionId:'coordinator',event:{type:'assistant_text',turnId:'format-test',text:'**Hello** 😊. Open _Settings_.'}});
     listeners.agent({sessionId:'coordinator',event:{type:'turn_completed',turnId:'format-test'}});await tick();
     const speechText=replies.map(value=>value.text).join('').replace(/\\s+/g,' ').trim();
-    visual.listening={state:ring.dataset.voice,animation:getComputedStyle(arc).animationName};
+    visual.listening={state:contact.el.dataset.state};
     listeners.voice({sessionId:'voice-1',targetAgentId:'coordinator',generation:1,sequence:1,speechEpoch:0,type:'playback.started'});await tick();
-    visual.speaking={state:ring.dataset.voice,animation:getComputedStyle(arc).animationName};
+    visual.speaking={state:contact.el.dataset.state};
     listeners.voice({sessionId:'voice-1',targetAgentId:'coordinator',generation:1,sequence:2,speechEpoch:0,type:'playback.stopped'});await tick();
-    visual.stopped={state:ring.dataset.voice,animation:getComputedStyle(arc).animationName};
+    visual.stopped={state:contact.el.dataset.state};
     get('compact-mute').click(); const muted=track.enabled===false && get('compact-mute').getAttribute('aria-label')==='Unmute mic';
     get('expand').click();await tick();
     get('target').value='worker';get('target').dispatchEvent(new Event('change'));await tick();
@@ -138,14 +138,14 @@ async function main() {
     compact.endedWithoutOpening=get('controls').hidden && contact.el.dataset.state==='off' && get('live').hidden;
     compact.endFocusRestored=document.activeElement===get('expand') && get('expand').getAttribute('aria-label').includes('Off.');
     contact.destroy();await tick();
-    visual.off={state:ring.dataset.voice,animation:getComputedStyle(arc).animationName};
+    visual.off={state:contact.el.dataset.state};
     const cleanup={trackStopped:track.stopped,listeners:Object.keys(listeners).length,panels:document.querySelectorAll('.voice-contact').length};
-    const first=attachPersistentVoice({ring});document.body.append(first.el);await tick();
+    const first=attachPersistentVoice();document.body.append(first.el);await tick();
     first.el.querySelector('[data-voice-start]').click();await tick();
     const oldStops=stops.length, oldMic=micRequests, sameElement=first.el;
     first.destroy();await tick();
     const inDock=Boolean(document.querySelector('.voice-screen-dock .voice-contact'));
-    const second=attachPersistentVoice({ring});document.body.append(second.el);
+    const second=attachPersistentVoice();document.body.append(second.el);
     first.destroy();await tick(); // A stale route teardown cannot detach the new lease.
     if(!document.querySelector('.voice-screen-dock').hidden)throw new Error('Voice dock must disappear when Home owns the panel');
     const continuity={sameElement:second.el===sameElement,inDock,noStop:stops.length===oldStops,noMicRestart:micRequests===oldMic,newLeaseAttached:second.el.parentElement===document.body};
@@ -267,20 +267,12 @@ async function main() {
     validSelectionClearsRefusal: true, staleClickDiscarded: true, latestDraftWins: true, staleCoordinatorSelectionDiscarded: true,
     handoffPreservesActiveVoice: true, detachedLeaseCannotRetarget: true, cleanup: true })
   assert.deepEqual(result.visual.styles, ['/src/styles.css', '/src/home.css', '/src/home-voice.css'], 'load the actual production styles in cascade order')
-  assert.deepEqual(result.visual.backgrounds, { default: 'rgb(255, 255, 255)', white: 'rgb(255, 253, 250)', tan: 'rgb(251, 241, 199)', black: 'rgb(46, 49, 54)' }, 'voice contact uses the active theme sheet, including the default light theme')
+  assert.deepEqual(result.visual.backgrounds, result.visual.sheets, 'voice contact uses the active resolved theme sheet')
   assert.equal(result.visual.reducedMotion, false)
-  assert.equal(result.visual.idle, 'home-ring-breathe')
-  assert.deepEqual(result.visual.listening, { state: 'listening', animation: 'none' })
-  assert.deepEqual(result.visual.speaking, { state: 'speaking', animation: 'voice-answer' }, 'speaking must override the later idle-ring animation')
-  assert.deepEqual(result.visual.stopped, { state: 'listening', animation: 'none' })
-  assert.deepEqual(result.visual.off, { state: 'off', animation: 'home-ring-breathe' })
-  await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
-  result.visual.reduced = await win.webContents.executeJavaScript(`(() => {
-    const ring=document.querySelector('.home-ring-wrap .uring');
-    ring.dataset.voice='speaking';
-    return {matches:matchMedia('(prefers-reduced-motion: reduce)').matches,animation:getComputedStyle(ring.querySelector('.arc-glow')).animationName};
-  })()`)
-  assert.deepEqual(result.visual.reduced, { matches: true, animation: 'none' }, 'reduced motion must disable speaking animation')
+  assert.deepEqual(result.visual.listening, { state: 'listening' })
+  assert.deepEqual(result.visual.speaking, { state: 'speaking' })
+  assert.deepEqual(result.visual.stopped, { state: 'listening' })
+  assert.deepEqual(result.visual.off, { state: 'off' })
   win.webContents.debugger.detach()
   console.log(JSON.stringify({ ok: true, result }))
 }

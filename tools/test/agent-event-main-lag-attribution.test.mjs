@@ -1,7 +1,7 @@
 /* W22 agent-run-lag. shell/main.cjs's `host.onEvent(...)` fan-out runs on
  * every packet from every live circle and is not an ipcMain handler, so
  * shell/main-lag.cjs's automatic ipcMain wrapping never saw it -- exactly
- * the gap a lag report named ("the per-agent-event work in the main process").
+ * the gap Manager 3 named ("the per-agent-event work in the main process").
  *
  * The Electron main process cannot be booted in a unit test (same constraint
  * tools/test/usage-record-wiring.test.mjs already states and works around),
@@ -91,7 +91,7 @@ test('the actual main event callback attributes forwarding, records and notifica
       }
       const listener = runInNewContext(`${wrappers}\n(${callback})`, context, { filename: 'main-event-span-fixture.cjs' })
       const packet = { sessionId: 'session-1', event: reason ? { type: 'session_ended', reason } : { type: 'turn_completed' } }
-      // Display waits for transcript capture (an earlier commit), so the listener is awaited.
+      // Display waits for transcript capture (138dab29), so the listener is awaited.
       await listener(packet)
       assert.equal(calls.find(call => call.operation === 'surface-forward')?.label, 'agent-event:forward')
       assert.equal(calls.find(call => call.operation === 'usage')?.label, 'agent-event:usage-record')

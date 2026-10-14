@@ -76,7 +76,7 @@ export function reachableDecisions(draft) {
 }
 
 /* HOW DEEP A DECISION GOES once its references are resolved, counting itself as
- * level 1. Reported, never limited: the model is arbitrarily large. A
+ * level 1. Reported, never limited: the owner's model is arbitrarily large. A
  * loop is refused by the names that form it, the way a composition loop is. */
 export function decisionDepth(name, draft, { active = [] } = {}) {
   const here = text(name)

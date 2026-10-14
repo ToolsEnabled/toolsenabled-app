@@ -38,7 +38,7 @@
 #>
 param(
   [string]$ProductName = "T1aRescueProbe",
-  [string]$Guid        = "7e57a000-0000-4000-8000-000000000001",
+  [string]$Guid        = "7f3a1c92-4b8e-4d21-9c6f-0a5e2d81b437",
   [switch]$KeepBuilds
 )
 $ErrorActionPreference = "Continue"

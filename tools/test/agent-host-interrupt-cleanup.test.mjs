@@ -130,7 +130,7 @@ for (const mode of ['announced-receipt', 'pending-receipt']) test('T489 busy Sen
   const { ClaudeCliAdapter } = require(path.join(canonicalRootForTests(), 'src/lib/agent-engine/claude-cli-adapter.js'))
   const claudeEngine = require('./fixtures/confined-engine/src/lib/agent-engine/claude-cli-process.js')
   const root = mkdtempSync(path.join(os.tmpdir(), 'te-busy-admission-'))
-  const threadId = '44444444-5555-4666-8777-888888888888'
+  const threadId = '91e7b7eb-bb57-4b28-b08e-2ca887fb043b'
   const wire = [], cancellations = []
   let inbound, adapter
   const receive = packet => inbound(packet)
@@ -199,7 +199,7 @@ async function pendingAdapterFixture(t, { family = 'claude', cancel = () => {}, 
   const engineRoot = path.join(canonicalRootForTests(), 'src/lib/agent-engine')
   const wire = [], accepted = [], cancellations = []
   let receive, adapter, releaseLocal, localSignal
-  let threadId = '55555555-6666-4777-8888-999999999999'
+  let threadId = 'a51a39b6-7fb2-4f35-801a-1ff8f5b9c9b9'
   t.mock.timers.enable({ apis: ['setTimeout'] })
   if (family === 'claude') {
     const { ClaudeCliAdapter } = require(path.join(engineRoot, 'claude-cli-adapter.js'))

@@ -4,7 +4,7 @@
  * accounts" and point at Sign in -- true, and it showed nothing of what the
  * menu does. This is the example's own account list: the sign-ins the working
  * tree (src/sample-simulation.js) spends -- two Codex accounts (the Work one it
- * runs out of and the Personal one Keep trying accounts moves to), a Claude
+ * runs out of and the Personal one the person chooses next), a Claude
  * account with a week for all models and one for Opus, the Antigravity Gemini
  * sign-in with its weekly buckets per model, and a Grok sign-in whose program
  * does not report an allowance, drawn in the menu's own honest words for that.
@@ -48,11 +48,11 @@ export function sampleAccountsRaw(nowMs = Date.now()) {
       account('grok', 'Grok', { priority: 1 }),
     ],
     active: { name: 'Personal', provider: 'codex', at: iso(nowMs - 6 * 60e3),
-      chosenByProvider: { codex: 'Work', claude: 'Work', gemini: 'Antigravity', grok: 'Grok' },
-      movedOffByProvider: { codex: { chosen: 'Work', using: 'Personal', at: iso(nowMs - 6 * 60e3), reason: 'Work reached its usage limit.' } } },
+      chosenByProvider: { codex: 'Personal', claude: 'Work', gemini: 'Antigravity', grok: 'Grok' },
+      movedOffByProvider: {} },
     activeByProvider: { codex: 'Personal', claude: 'Work', gemini: 'Antigravity', grok: 'Grok' },
-    lastSwitch: { at: iso(nowMs - 6 * 60e3), from: 'Work', to: 'Personal', provider: 'codex', automatic: true, reason: 'Work reached its usage limit.' },
-    policy: { recorded: true, selectionMode: 'most-available', reservePercent: 10, autoRecoverOnLimit: true },
+    lastSwitch: { at: iso(nowMs - 6 * 60e3), from: 'Work', to: 'Personal', provider: 'codex', automatic: false, reason: 'You chose Personal after Work reached its usage limit.' },
+
     usageCache: {
       ok: true,
       readAt: iso(nowMs - 90e3),
@@ -65,12 +65,12 @@ export function sampleAccountsRaw(nowMs = Date.now()) {
         { provider: 'claude', name: 'Work', status: 'ok', canServe: true, usedPercent: 41, planType: 'Max',
           windows: { hourly: { usedPercent: 41, resetsAt: inHours(2.1) }, weekly: { usedPercent: 55, resetsAt: monday },
             weeklyWindows: [{ usedPercent: 55, resetsAt: monday }, { usedPercent: 30, resetsAt: monday, model: 'Opus' }] } },
-        { provider: 'gemini', name: 'Antigravity', status: 'ok', canServe: true, usedPercent: 38,
+        { provider: 'gemini', name: 'Antigravity', client: 'antigravity', status: 'ok', canServe: true, usedPercent: 38,
           windows: { weekly: { usedPercent: 38, resetsAt: monday },
             weeklyWindows: [{ usedPercent: 38, resetsAt: monday, model: 'Gemini 3.1 Pro' }, { usedPercent: 12, resetsAt: monday, model: 'Gemini 3.8 Flash' }] } },
         { provider: 'grok', name: 'Grok', status: 'ok', canServe: true },
       ].map(row => ({ ...row, allowanceBinding: bindings.get(`${row.provider}:${row.name}`), authGeneration: generation(row.provider, row.name) })),
-      orders: [{ provider: 'codex', names: ['Personal', 'Work'], why: 'Personal has the most left; Work is out until its 5-hour window resets.' }],
+
     },
   }
 }

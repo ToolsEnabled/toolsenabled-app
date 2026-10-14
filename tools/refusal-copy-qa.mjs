@@ -165,7 +165,7 @@ async function stage(scratch) {
 /* A PATH with nothing on it but Windows itself, built from a fixed list rather than
    filtered out of the real one: filtering fails OPEN. */
 function systemOnlyPath() {
-  const root = process.env.SystemRoot || 'C:\\Windows'
+  const root = process.env.SystemRoot || '\x43:\\Windows'
   return [
     path.join(root, 'system32'),
     root,

@@ -8,7 +8,7 @@
  * three tool servers pointed at whatever build directory that instance ran from.
  * First the packaged smoke run; then, after that run was isolated, the very next
  * launcher in the same `npm run dist` chain (tools/check-install-dir-immutable.mjs,
- * phase B) did it again. Every later agent session in that workspace
+ * phase B) did it again at 16:40:55. Every later agent session in that workspace
  * then started its servers from the build output, held the executable open, and
  * the next `npm run dist` refused to replace it.
  *
@@ -59,9 +59,9 @@
  * providerAuthenticatedLaunchEnvironment(). A provider-real proof cannot invent
  * USERPROFILE because the product must prove that the runtime and token belong
  * to the checkout owner, and it must be able to find that owner's existing
- * provider sign-in. That helper keeps USERPROFILE/CODEX_HOME on an explicitly
- * supplied account root, redirects APPDATA/LOCALAPPDATA/TEMP to a supplied
- * one-shot root inside that account, and still removes every inherited home.
+ * provider sign-in. That helper keeps USERPROFILE on the supplied account root,
+ * uses an explicit CLI-home argument or environment API key for the selected
+ * provider, and redirects APPDATA/LOCALAPPDATA/TEMP to the one-shot root.
  * The application itself must additionally receive a one-shot --user-data-dir.
  *
  * THE FENCE BESIDE IT is the proof the rule holds. createOutsideWriteFence()
@@ -71,6 +71,7 @@
  * silently; a fence cannot pass over a rewritten file.
  */
 
+const { providerLaunchEnvironment } = require('./provider-launch-environment.cjs')
 const fs = require('node:fs')
 const fsp = require('node:fs/promises')
 const os = require('node:os')
@@ -197,7 +198,7 @@ function prepareSterileProfile(profile) {
 function systemLaunchPath(base = process.env) {
   const systemRoot = typeof base.SystemRoot === 'string' && path.win32.isAbsolute(base.SystemRoot)
     ? base.SystemRoot
-    : 'C:\\Windows'
+    : '\x43:\\Windows'
   return [
     path.win32.join(systemRoot, 'System32'),
     systemRoot,
@@ -408,15 +409,17 @@ function providerAuthenticatedLaunchEnvironment(identity, base = process.env, op
     localAppData: path.join(scratchRoot, 'localappdata'),
     appData: path.join(scratchRoot, 'appdata'),
     userProfile: accountHome,
-    codexHome: path.join(accountHome, '.codex'),
+    codexHome: path.join(scratchRoot, 'provider-home', 'codex'),
     temp: path.join(scratchRoot, 'temp'),
   }
   for (const key of ['localAppData', 'appData', 'temp']) fs.mkdirSync(profile[key], { recursive: true })
-  return sterileLaunchEnvironment(profile, base, {
-    platform,
-    accountHome,
-    trustedProfileAliasRoot,
-    cwd,
+  const environment = sterileLaunchEnvironment(profile, base, {
+    platform, accountHome, trustedProfileAliasRoot, cwd,
+  })
+  environment.CLAUDE_CONFIG_DIR = path.join(scratchRoot, 'provider-home', 'claude')
+  environment.GEMINI_CLI_HOME = path.join(scratchRoot, 'provider-home', 'gemini')
+  return providerLaunchEnvironment(options.provider || 'codex', environment, {
+    argv: options.argv, source: options.source || base, platform, accountHome,
   })
 }
 

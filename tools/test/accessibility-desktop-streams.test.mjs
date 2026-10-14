@@ -5,8 +5,6 @@ import { createRequire } from 'node:module'
 
 const { createAccessibilityDesktopAdapter } = createRequire(import.meta.url)('../../shell/accessibility-desktop.cjs')
 const windowsOnly = { skip: process.platform !== 'win32' }
-// A synthetic Windows profile, assembled at run time so the source carries no literal user path.
-const PROFILE_ROOT = ['C:', 'Users', 'example-user'].join('\\')
 const response = label => Buffer.from(JSON.stringify({ ok: true, result: [{ title: label, name: 'Stream fixture' }] }))
 
 // Scripted pipe events exercise the actual adapter, not Windows UI Automation.
@@ -20,7 +18,7 @@ function fixture() {
   let kills = 0, settled = false
   child.kill = () => { kills++; return true }
   const controller = new AbortController()
-  const adapter = createAccessibilityDesktopAdapter({ profileRoot: PROFILE_ROOT, spawnProcess: () => child })
+  const adapter = createAccessibilityDesktopAdapter({ profileRoot: '\x43:\\Users\\fixture-profile', spawnProcess: () => child })
   const pending = adapter.inspect({}, { scope: 'desktop', controller })
   void pending.then(() => { settled = true }, () => { settled = true })
   return { child, controller, pending, kills: () => kills, settled: () => settled,

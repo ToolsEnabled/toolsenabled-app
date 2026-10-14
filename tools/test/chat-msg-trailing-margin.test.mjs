@@ -4,7 +4,7 @@
  * Found while auditing src/styles.css's `.chat-msg-text` block for the
  * lane's own defect (a negative margin drawing text over a tool row -- see
  * tools/test/chat-action-run-overlap.test.mjs, the round that actually
- * closed the text-overlaps-tool-use report). This is a different shape of
+ * closed the owner's "text overlaps tool use"). This is a different shape of
  * bug in the same rule block, not that one: no row overlaps another here,
  * the LAST block of a reply simply kept trailing space it was supposed to
  * lose.

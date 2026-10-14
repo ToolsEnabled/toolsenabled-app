@@ -11,7 +11,7 @@ export const WRITE_ACTION_FLAGS = Object.freeze([
   Object.freeze({ id: 'agent-session', label: 'Run an agent session', description: 'Start, watch, and stop a live agent session from the agent page.' }),
   /* Codex Cloud. Default-off like every other write action, and that is the
      answer to "why is this feature not simply on": the flags fail closed
-     (see an earlier commit, where an absent key used to read as enabled), and a cloud
+     (see 2c9318e, where an absent key used to read as enabled), and a cloud
      launch is the most consequential write in this list -- it starts real,
      billable work on a remote service that cannot be cancelled once accepted.
 

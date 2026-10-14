@@ -29,7 +29,7 @@ function fixture({ expanded = false, status = 'attention' } = {}) {
     state: { sessions: { runs: rows.map((_, sequence) => ({ sequence })) } },
     conversations: new Map(), subjectMatchesRun: () => true, activityMatches,
     scopeEmpty: {}, threadBundle: { hidden: true }, readerSentence: text => text,
-    paintActivityOverview() {}, paintGlance() {}, paintAgentPick() {}, paintCircleAction() {}, paintAgentBoard() {}, paintPanelMode() {},
+    paintActivityOverview() {}, paintGlance() {}, paintAgentPick() {}, paintFollowing() {}, paintAgentBoard() {}, paintPanelMode() {},
   }
   vm.createContext(state)
   vm.runInContext(paint, state)

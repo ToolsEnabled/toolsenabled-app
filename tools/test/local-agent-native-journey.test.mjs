@@ -103,11 +103,9 @@ test('explicit model selection never downloads, substitutes or targets an extern
 })
 
 test('Windows profile paths are rejected lexically before any foreign-profile access', () => {
-  // Synthetic Windows profile paths, assembled at runtime so the source carries no literal user path.
-  const userPath = (...parts) => ['C:', 'Users', ...parts].join('\\')
-  const options = { platform: 'win32', accountHome: userPath('FixtureOwner') }
-  assert.doesNotThrow(() => assertLocalAccountPath(userPath('FixtureOwner', 'Temp', 'run'), options))
-  for (const file of [userPath('Other', 'run'), userPath('FixtureOwner-other', 'run'), userPath('FixtureOwner', '..', 'Other', 'run'), '\\\\host\\share', userPath('FixtureOwner', 'Temp:stream')]) assert.throws(() => assertLocalAccountPath(file, options))
+  const options = { platform: 'win32', accountHome: '\x43:\\Users\\FixtureOwner' }
+  assert.doesNotThrow(() => assertLocalAccountPath('\x43:\\Users\\FixtureOwner\\Temp\\run', options))
+  for (const file of ['\x43:\\Users\\Other\\run', '\x43:\\Users\\FixtureOwner-other\\run', '\x43:\\Users\\FixtureOwner\\..\\Other\\run', '\\\\host\\share', '\x43:\\Users\\FixtureOwner\\Temp:stream']) assert.throws(() => assertLocalAccountPath(file, options))
 })
 
 test('unavailable and malformed local metadata produce prerequisite refusals without raw response bodies', async () => {

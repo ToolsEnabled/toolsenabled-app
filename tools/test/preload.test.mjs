@@ -113,6 +113,7 @@ test('shell/preload.cjs reports both explicit and default theme states after pai
   assert.deepEqual([...harness.htmlClasses], ['in-shell'])
   assert.deepEqual([...harness.bodyClasses], ['in-shell'])
   assert.equal(harness.prepended[0].id, 'shell-titlebar', 'the shell drag surface must be installed')
+  assert.equal(harness.prepended[0].textContent, '', 'the native drag strip leaves branding to the sidebar')
   assert.equal(harness.frames.length, 1, 'theme colour must be sampled after the next paint')
   assert.equal(harness.timers[0].delay, 600, 'a settle pass must heal a transition-time sample')
 

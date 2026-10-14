@@ -20,6 +20,7 @@ const refusal = 'The connection could not reach that computer. Try again in a mo
 
 async function fixture(t, { remount }) {
   const world = await installWorld({ fetch: async () => ({ ok: false, status: 404, json: async () => ({}) }) }, { asyncFrames: true })
+  window.MutationObserver = globalThis.MutationObserver
   delete window.mcShell.getBridgeProof
   setBridgeTransport(async () => ({ ok: false, reason: 'No fleet fixture.' }))
   const previousGlobalAccount = Object.getOwnPropertyDescriptor(globalThis, 'mcAccount')
@@ -97,11 +98,19 @@ async function fixture(t, { remount }) {
       assert.ok(button, 'the actual account machine button is mounted')
       button.click()
     },
-    finish: async () => {
+    menu: (name, keyboard = true) => {
+      const tab = view.el.querySelectorAll('[data-machine-tab]').find(node => node.textContent === name)
+      assert.ok(tab); tab.focus()
+      view.el.querySelector('.tabs').dispatchEvent({ type: keyboard ? 'keydown' : 'contextmenu', key: 'ContextMenu', target: tab, clientX: 30, clientY: 40, preventDefault() {}, stopPropagation() {} })
+      const menu = document.body.querySelector('.node-menu')
+      assert.ok(menu, 'the computer opens its actual action menu')
+      return { menu, tab, action: id => menu.querySelector(`[data-menu-action="${id}"]`) }
+    },
+    finish: async (reachable = false) => {
       await settle()
       await Promise.all(pending)
       assert.equal(typeof releaseCheck, 'function', 'the real switch is waiting on the native reachability answer')
-      releaseCheck({ ok: false, code: 'MC_RELAY_UNREACHABLE', reason: refusal })
+      releaseCheck(reachable ? { ok: true } : { ok: false, code: 'MC_RELAY_UNREACHABLE', reason: refusal })
       await settle()
       await Promise.all(pending)
     },
@@ -160,4 +169,27 @@ test('same-pair newer intent cancels the mounted old switch without an authority
   await f.finish()
   assert.equal(f.calls.filter(([kind]) => kind === 'choose').length, 1)
   assert.equal(f.view().el.querySelector('.machine-note').textContent, '')
+})
+
+for (const reachable of [false, true]) test(`computer context action uses the existing remote switch and keeps ${reachable ? 'accepted selection' : 'offline refusal'}`, async t => {
+  const f = await fixture(t, { remount: false })
+  let opened = f.menu('Computer B', reachable)
+  assert.equal(opened.tab.getAttribute('aria-haspopup'), 'menu')
+  assert.equal(opened.menu.getAttribute('role'), 'menu')
+  assert.equal(opened.action('open-computer').textContent, 'Computer BOpen this computer')
+  assert.equal(opened.action('computer-details').getAttribute('aria-disabled'), 'true')
+  opened.action('computer-details').click(); await settle(2)
+  assert.equal(f.calls.length, 0)
+  assert.equal(opened.menu.querySelector('[role="status"]').textContent, 'Open this computer first.')
+  opened.action('open-computer').click()
+  await f.waiting()
+  assert.equal(f.calls.filter(([kind]) => kind === 'choose').length, 1)
+  await f.finish(reachable)
+  assert.equal(f.selected(), reachable ? 'b' : 'a')
+  assert.equal(f.calls.filter(([kind]) => kind === 'choose').length, reachable ? 1 : 2)
+  if (!reachable) assert.equal(f.view().el.querySelector('.machine-note').textContent, `${refusal} You are still driving Computer A.`)
+  opened = f.menu(reachable ? 'Computer B' : 'Computer A')
+  assert.equal(opened.action('computer-details').getAttribute('aria-disabled'), 'false')
+  opened.action('computer-details').click(); await settle(2)
+  assert.equal(f.view().el.querySelector('.stats-page').classList.contains('is-active'), true)
 })

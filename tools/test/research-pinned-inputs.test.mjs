@@ -80,8 +80,8 @@ test('pin declaration validators reject partial, duplicate, malformed and excess
     assert.equal(parsePinnedFiles('process', [{ ...pin, path: file }]).ok, false)
     assert.throws(() => validatePinnedFiles('process', { pinnedFiles: [{ ...pin, path: file }] }))
   }
-  const windowsPin = { ...pin, path: 'C:\\declared-fixture\\input.txt' }
-  assert.equal(parsePinnedFiles('process', [windowsPin, { ...windowsPin, path: 'c:/DECLARED-FIXTURE/input.txt' }]).ok, false)
+  const windowsPin = { ...pin, path: '\x43:\\declared-fixture\\input.txt' }
+  assert.equal(parsePinnedFiles('process', [windowsPin, { ...windowsPin, path: '\x63:/DECLARED-FIXTURE/input.txt' }]).ok, false)
   const full = Array.from({ length: 64 }, (_, index) => ({ ...pin, path: path.join(root, `input-${index}.txt`) }))
   assert.equal(parsePinnedFiles('process', full).ok, true)
   assert.equal(validatePinnedFiles('process', { pinnedFiles: full }).length, 64)

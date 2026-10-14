@@ -8,7 +8,7 @@
  * tools/release-packager/cut-release-candidate.mjs deliberately builds in a
  * throwaway `git worktree add --detach` checkout and then runs `npm run dist`
  * inside it. docs/REPRODUCIBLE-BUILD.md calls that "the one command". Measured
- * 2026-08-11 in a detached worktree cut from an earlier app commit:
+ * 2026-08-11 in a detached worktree cut from app HEAD 9723d2e9fe2f:
  *
  *   @@STEP sync-packed-payload EXIT=2
  *   Payload sync refused: the packed payload does not exist at

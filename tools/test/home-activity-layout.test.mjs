@@ -15,7 +15,7 @@ const { TAKEOVER_COPY, takeoverFocusStops } = await import('../../src/home-chat-
 const { ACTIVITY_LABELS, activityContext, activityDisclosure, activityMatches, activityPreview } = await import('../../src/home-activity.js')
 const { setChatMessageBody, addChatMessageCopy } = await import('../../src/chat-message-body.js')
 const { COPY, describeRun, summariseRunWork } = await import('../../src/local-activity.js')
-const { actionForLive, actionLabel, sampleAction } = await import('../../src/home-circle-action.js')
+const { actionForLive, actionLabel, sampleAction, homeActivityTone } = await import('../../src/home-following.js')
 const source = readFileSync(new URL('../../src/views/home.js', import.meta.url), 'utf8')
 const css = readFileSync(new URL('../../src/home-chat.css', import.meta.url), 'utf8')
 
@@ -55,8 +55,8 @@ function fixture() {
     agentFilter: '', agentPick: { value: '' }, logEl: { scrollTop: 0 }, readingControls: null,
     resolveChoice() {}, rememberAgentPick() {}, keepForChoice: () => true, scopeTitle: '', oneLaneSelected: () => false,
     liveSessions, usageBySession, summariseRunWork, describeRun, conversations, state: { nowMs }, COPY, TAKEOVER_COPY, sample: false,
-    // The row's "doing" words come from the circle's vocabulary (home-circle-action.js).
-    actionForLive, actionLabel, sampleAction, SAMPLE_HEARTBEAT_MS: 45_000,
+    // The row's "doing" words come from the circle's vocabulary (home-following.js).
+    actionForLive, actionLabel, sampleAction, homeActivityTone, SAMPLE_HEARTBEAT_MS: 45_000,
     // The turn renderer has its own markdown/speaker tests. This seam keeps
     // every supplied word, so this suite can detect loss or rebuilds of it.
     runTurnNode: line => { const node = el('<span class="test-turn"></span>'); node.textContent = line.text; return node },

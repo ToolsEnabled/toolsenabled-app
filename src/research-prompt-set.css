@@ -20,8 +20,8 @@
 .prompt-set-editor .ps-counts:empty { display: none; }
 .prompt-set-editor .ps-counts b { color: var(--ink); font-weight: 650; }
 .ps-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.prompt-set-editor button.ps-small { min-height: 0; padding: 3px 9px; font-size: 13px; font-weight: 500; line-height: 1.4; }
-.prompt-set-editor button.ps-link { min-height: 0; padding: 0; border: 0; background: transparent; text-align: left; font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.prompt-set-editor button.ps-small { min-height: 32px; padding: 3px 9px; font-size: 13.5px; font-weight: 550; line-height: 1.4; }
+.prompt-set-editor button.ps-link { min-height: 32px; padding: 0; border: 0; background: transparent; text-align: left; font-size: 13.5px; font-weight: 550; text-decoration: underline; text-underline-offset: 3px; }
 .prompt-set-editor .bench-primary { background: var(--ink); border-color: var(--ink); color: var(--sheet); font-weight: 600; }
 .prompt-set-editor .bench-primary:disabled { background: transparent; color: var(--ink-3); border-color: var(--line-2); opacity: 1; }
 .prompt-set-editor label.ps-field { gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }

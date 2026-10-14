@@ -39,7 +39,7 @@ function fixture(t, name, draftExtra, settingsExtra = {}) {
   const settings = { ...pipelineSettings(emptyProtocolDecisions()), shapeTest: false, envAllowlist: ['PATH', 'SystemRoot', 'windir', 'FAKE_ARGV_LOG'], ...settingsExtra }
   const generated = generatePipeline(draft, settings)
   for (const [path, contents] of Object.entries(generated.files)) writeFileSync(join(root, path), contents)
-  const run = (script, args, input, extraEnv = {}) => spawnSync(process.execPath, [join(root, script), ...args], { cwd: root, input, encoding: 'utf8', env: { ...process.env, FAKE_ARGV_LOG: argvLog, ...extraEnv }, timeout: 120000, windowsHide: true })
+  const run = (script, args, input, extraEnv = {}) => spawnSync(process.execPath, [join(root, script), ...args], { cwd: root, input, encoding: 'utf8', env: { ...process.env, ANTHROPIC_API_KEY: 'test-only-anthropic-key', OPENAI_API_KEY: 'test-only-openai-key', GEMINI_API_KEY: 'test-only-gemini-key', FAKE_ARGV_LOG: argvLog, ...extraEnv }, timeout: 120000, windowsHide: true })
   const argv = () => { try { return readFileSync(argvLog, 'utf8').trim().split('\n').map(line => JSON.parse(line)) } catch { return [] } }
   return { root, draft, generated, run, argv }
 }
@@ -157,4 +157,15 @@ test('a custom-named model draws over HTTP with the key from its named variable,
   for (const text of [drawn.stdout, drawn.stderr, canary.stdout, f.generated.files['harness/surfaces.json'], f.generated.files['harness/README.md']]) assert.ok(!text.includes('test-key-value'), 'the key value appears nowhere')
   const denied = f.run('harness/draw.mjs', ['--surface', 'http', '--model', 'lab', '--effort', 'medium'], request('http-lab-medium'), { LAB_KEY: 'wrong' })
   assert.equal(denied.status, 4); assert.equal(JSON.parse(denied.stdout).completion.reason, 'harness-error'); assert.equal(JSON.parse(denied.stdout).harness.evidence.exit, 401)
+})
+
+test('the generated harness never copies a sign-in into the room; a CLI draw uses the API key by name and names it when missing', () => {
+  const generated = generatePipeline({ ...emptyPipelineDraft(), root: '/room' }, { ...pipelineSettings(emptyProtocolDecisions()), shapeTest: false })
+  const source = Object.values(generated.files).join('\n')
+  for (const leaf of ['.credentials.json', 'auth.json', 'oauth_creds.json']) {
+    assert.equal(source.includes("'" + leaf + "'"), false, `the harness must not read or copy ${leaf}`)
+  }
+  assert.equal(source.includes('copyFileSync'), false, 'nothing is copied into the room homes')
+  assert.match(source, /API_KEY_ENV = \{ 'claude-cli': \['ANTHROPIC_API_KEY'\], 'codex-cli': \['CODEX_API_KEY', 'OPENAI_API_KEY'\], 'gemini-cli': \['GEMINI_API_KEY'\] \}/)
+  assert.match(source, /sign-ins are not copied into the room/)
 })

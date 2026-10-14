@@ -1,7 +1,7 @@
 /* A PICTURE THAT RODE A TURN, AND ONE THAT DID NOT, BOTH LEAVE A RECORD.
  *
- * T18. A pasted image was reported as not sent to the agent and causing an
- * error, and a 14,652-byte png was found saved on disk with no
+ * T18. The owner reported that a pasted image "DONT get sent to the agent and
+ * cause an error", and a 14,652-byte png was found saved on disk with no
  * transcript row naming an attachment and none naming an error. That was not a
  * coincidence: agent:send wrote a transcript row only on the success path, and
  * that row carried sessionId, text, turnId and nothing about pictures at all.
@@ -22,8 +22,8 @@ const require = createRequire(import.meta.url)
 const { createNodeTranscriptStore } = require('../../shell/node-transcript-store.cjs')
 const { createNodeTranscriptCapture } = require('../../shell/node-transcript-capture.cjs')
 
-const sessionId = '00000000-0000-4000-8000-0000000000c1'
-const turnId = '00000000-0000-4000-8000-0000000000c2'
+const sessionId = 'd63849e4-c442-4dc6-9eb4-d6bb0c6937bc'
+const turnId = '7884fa80-446d-478a-bdb2-ac31a9bb4a2d'
 const node = { computerId: 'computer', nodeId: 'local-observer' }
 
 async function fixture(t) {

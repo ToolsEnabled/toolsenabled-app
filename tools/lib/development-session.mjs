@@ -147,7 +147,7 @@ export function sessionPaths(root) {
     controlEngine: path.join(root, 'control-engine'),
     evidence: path.join(root, 'evidence'), staging: path.join(root, 'candidates'), build: path.join(root, 'build'),
     runtimeProfile: path.join(root, 'profiles', 'runtime'), buildProfile: path.join(root, 'profiles', 'build'),
-    userData: path.join(root, 'profiles', 'runtime', 'ToolsEnabled.Development'), cache: path.join(root, 'cache') })
+    userData: path.join(root, 'profiles', 'runtime', 'fixture-profileelopment'), cache: path.join(root, 'cache') })
 }
 
 export function createDevelopmentSession({ directory, kind = 'dev', app, engine, appRef, engineRef, privacyProfile }) {

@@ -2,14 +2,14 @@
 
 /* THE CONVERSATION, DRIVEN: DOES IT SURVIVE, AND DOES IT SHOW THE WORK?
  *
- * WHAT THIS ANSWERS. Four findings on the preview build, each one about the
- * chat log on a tree node:
+ * WHAT THIS ANSWERS. Four of the owner's findings on the preview build, each
+ * one about the chat log on a tree node:
  *
  *   1  the chat is not a context window -- a turn that spends five minutes
  *      running commands puts nothing in it
- *   2  messages pile up
- *   4  messages merge into each other
- *   6  messages in history disappear
+ *   2  the messages "pile"
+ *   4  the messages "combine into each other"
+ *   6  "the messages in history disappear"
  *
  * and the defect underneath the last one, which is the worst of them: a save on
  * ONE node used to delete a DIFFERENT node's whole conversation and return true.
@@ -303,8 +303,8 @@ const READ_CHAT = `function readChat(nodeId) {
     const messages = [...chat.querySelectorAll('.msg')].map(m => {
       const style = getComputedStyle(m)
       /* PAINTED IS MEASURED SIX WAYS, NOT FOUR -- retuned for the gutter
-         redesign (src/styles.css, "approved mockup"), which moved identity
-         OFF the message box entirely.
+         redesign (src/styles.css, "owner-approved mockup, applied
+         2026-08-24"), which moved identity OFF the message box entirely.
          The four checks below this comment are the ORIGINAL ones, written
          for the bubble era (backgroundImage was the person's gradient
          quote-box); they still catch a role with genuinely no rule at all
@@ -535,7 +535,7 @@ async function scenarioA(executable, scratch, appRoot) {
 
 /* B -- A REFUSED SEND MUST NOT EAT THE CONVERSATION.
  *
- * A reported screenshot: a panel showing one YOU bubble over a node that had
+ * The owner's screenshot: a panel showing one YOU bubble over a node that had
  * held a real conversation. treeCardSend records the typed line BEFORE the send;
  * the send is refused (this session id belongs to no live session); the recovery
  * is refused too, because starting agents is switched off. The strip that takes

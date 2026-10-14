@@ -12,25 +12,27 @@
 .ledger-prompt-queue .approvals-badge {
   flex: none;
   margin-left: auto;
-  font-size: 11px;
-  font-weight: 640;
-  padding: var(--s1) var(--s2);
-  border-radius: var(--r-lg);
-  color: var(--s-warn-text, var(--s-warn));
-  border: 1px solid color-mix(in srgb, var(--s-warn) 70%, transparent);
-  background: var(--s-warn-wash);
+  font-size: 12px;
+  font-weight: 550;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  color: var(--status-idle);
+  border: 1px solid var(--line);
+  background: var(--status-idle-soft);
+  min-height: 22px;
+  box-sizing: border-box;
 }
 
 .ledger-prompt-queue .approvals-source {
   margin: 0 0 var(--s3);
-  color: var(--ink-25);
+  color: var(--ink-2);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 500;
 }
 
 /* An example card reads at a slight remove: the same card, visibly not armed.
    The controls inside it are disabled by the view; this only says so. */
 .ledger-prompt-queue [data-example='true'] {
-  opacity: 0.92;
+  opacity: 1;
 }

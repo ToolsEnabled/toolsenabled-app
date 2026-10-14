@@ -1,7 +1,7 @@
 /* THREE STATES PER TOOL, AND THE ONE PLACE THAT DECIDES WHAT EACH ONE MEANS.
  *
- * On the tool pop-up every tool has three states: enabled, permissions
- * required, disabled.
+ * The owner: "on the tool pop up every tool needs 3 states: enabled;
+ * permissions required; disabled".
  *
  * WHY THE OLD SHAPE COULD NOT HOLD THREE. The row was `agent_tools_disabled`,
  * a JSON array of the names switched OFF, and ON was the ABSENCE of a name.
@@ -22,7 +22,7 @@
  * function over values, not a behaviour of a page.
  */
 
-/* The three states, in order. The middle one is the whole point of
+/* The owner's three words, in his order. The middle one is the whole point of
    the change: a tool that may be used, one approval at a time. */
 export const TOOL_STATES = Object.freeze(['enabled', 'ask', 'disabled'])
 

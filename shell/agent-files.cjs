@@ -8,8 +8,9 @@
  * `shell.openExternal` for one sign-in URL (shell/google-signin.cjs). So an
  * assistant could write a document, a drawing or a report into the person's own
  * folder and the person had no way to open it from the application that put it
- * there. Both halves are required: PDFs and files open both on mobile and in
- * the app, and the person can view the reports an agent sends.
+ * there. The owner asked for both halves in one sentence: "pdf and files need to
+ * be openable both in mobile and in the app", and "they also need to be able to
+ * view reports etc that the agent sends".
  *
  * THIS FILE IS THE DESKTOP HALF. Mobile is a different lane.
  *
@@ -168,8 +169,8 @@ const READABLE_EXTENSIONS = Object.freeze(new Set([...TEXT_EXTENSIONS, ...SCRIPT
 
      notes and reports  the kinds this window can already show. Their registered
                         programs are viewers and editors, not interpreters.
-     .pdf               named explicitly: PDFs and files open both on mobile
-                        and in the app.
+     .pdf               the owner asked for this one by name: "pdf and files
+                        need to be openable both in mobile and in the app".
      pictures           raster only.
 
    DELIBERATELY ABSENT, so the next reader does not think they were forgotten:

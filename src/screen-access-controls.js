@@ -37,7 +37,7 @@ export function createScreenAccessControls({ sample = false, getComputerId = () 
      promises exactly that, "This agent won't appear on the tree" -- so the
      lookup can never hit and the label fell through to the agent id. Measured
      on a built candidate: the row read
-     standalone-0fe0a8aa-0000-4000-8000-000000000003, while the org record held
+     standalone-3f9f14df-89d3-4144-8136-f23fc616367f, while the org record held
      "Agent 1" the whole time. This list is a list of DECLARED agents, and the
      org record is the authority on what a declared agent is called. */
   let seatNames = new Map()

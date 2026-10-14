@@ -5,8 +5,8 @@
 // Before this module there were two stores for the same fact: the canonical
 // JSON ledger (reports/OWNER-REQUEST-LEDGER.json, written by the owner-capture
 // CLI and read by every gate, digest and projection) and four markdown files
-// behind /Request (src/lib/r-ledger.js). The rule: one canonical ledger with
-// scope tiers, filed by /Request*, managed on /ledger.
+// behind /Request (src/lib/r-ledger.js). The owner ruled on 2026-09-02: one
+// canonical ledger with scope tiers, filed by /Request*, managed on /ledger.
 // This module is that ledger's single write API and its tier reader;
 // src/lib/r-ledger.js is now a thin adapter over it so every existing caller
 // keeps its names.
@@ -122,10 +122,11 @@ const EVENT_KINDS = Object.freeze(['file', 'edit', 'remove', 'approve', 'decline
 const BOM = '\uFEFF';
 
 // ---------------------------------------------------------------------------
-// Kinds, 2026-09-07: the ledger has four subsets -- R for rules; T for tasks,
-// which agents may complete and remove; A for asks, the things agents need
-// from the person; and P for actual purchases -- each built the same way as
-// the existing one. R (rules) above is untouched: its ids
+// Kinds -- owner's words, 2026-09-07: "ledger should have the following
+// subsets: R for rules; T for tasks ... these tasks can be completed and
+// removed by agents; Asks for things agents need from the owner; and
+// Purchases for actual purchases ... Respect how its built, build it the
+// same or similar for each." R (rules) above is untouched: its ids
 // (assertId, family 'R'), its reader (isStoreRecordId, family 'R' only,
 // still exactly as written) and its vocabulary (STATUS_VOCABULARY) are
 // exactly what they were. T (tasks), A (asks) and P (purchases) are new,
@@ -1312,9 +1313,10 @@ function resolve({ id, status, reason, actor, now } = {}, options = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// T, A, P writes -- flat families, agent-usable per the 2026-09-07 rule: T for
-// tasks, which agents may complete and remove; A for asks, the things agents
-// need from the person; and P for actual purchases. Every one of them runs through the SAME transact() the
+// T, A, P writes -- flat families, agent-usable per the owner's words
+// (2026-09-07): "T for tasks ... these tasks can be completed and removed by
+// agents; Asks for things agents need from the owner; and Purchases for
+// actual purchases". Every one of them runs through the SAME transact() the
 // R writes use, so it gets the same lock, the same atomic write, and the
 // same hash-chained history for free, unmodified. Scope works exactly like
 // R's own (assertScope/assertKey, the same four tiers) -- "T, A and P
@@ -1786,9 +1788,9 @@ function verifyHistory(options = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// ADDITIVE, 2026-09-07: purchase-specific store lookups only.
+// ADDITIVE, L3 (Worker 3), 2026-09-07: purchase-specific store lookups only.
 // Neither function below changes an existing function, the record shape or a
-// vocabulary; both are read-only compositions of readAll/idKind, which the store
+// vocabulary; both are read-only compositions of readAll/idKind, which L1
 // already exports with the {kinds} widening this file's own header comment
 // describes. Needed so the purchase tools (tool-registry.js) and the
 // mission-bridge decision pipeline can find the ONE P record a promptId
@@ -1820,7 +1822,7 @@ function findPurchaseByRequestId(requestId, options = {}) {
 }
 
 /** The DIRECT pay.record path (LEDGER-KINDS-INTERFACE-20260907.md, TOOLS
- * ruling): an agent calling pay.record with no cart/prompt only
+ * ruling 05:12Z): an agent calling pay.record with no cart/prompt only
  * reaches providers/pay.js's spend layer when `approval.autoApproved` is
  * true, which is itself an owner decision -- made once, in Settings
  * (outward.reserved_from_agents), rather than per purchase. This composes
@@ -1828,8 +1830,8 @@ function findPurchaseByRequestId(requestId, options = {}) {
  * recordPurchase) exactly as a person would on the Ledger page, one
  * transaction each, so the SAME hash-chained history and status gates apply;
  * it adds no new status and no new field. The decision is journalled under
- * OUTWARD_RESERVED_SETTING_ACTOR, not PERSON (by rule, once
- * assertPurchaseDecider/decidePurchase accepted it): a
+ * OUTWARD_RESERVED_SETTING_ACTOR, not PERSON (Controller 3, FINDING 2 ruling,
+ * once L1's assertPurchaseDecider/decidePurchase accepted it): a
  * setting-authorized spend must never read back as an owner click on this
  * exact purchase. `reason` still names the setting in full for a reader who
  * has not seen that constant before. */

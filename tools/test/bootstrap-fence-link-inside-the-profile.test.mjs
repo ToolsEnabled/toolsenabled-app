@@ -8,7 +8,7 @@
  *   if (stats.isSymbolicLink()) fail('AGENT_CONFINEMENT_PROFILE_REPARSE_REFUSED', ...)
  *
  * The danger a reparse point carries is that a lexical check can be defeated
- * by one: <profiles>\Owner\x can be a junction to <profiles>\Other\y, and the
+ * by one: <profile-root>/Owner\x can be a junction to <profile-root>/Other\y, and the
  * lexical answer ("inside the owned profile") is then a lie. That is the only
  * danger it carries. A junction whose target is ALSO inside the owned profile
  * moves nothing across the boundary this function exists to hold -- the
@@ -22,8 +22,8 @@
  * whose second segment is a link and is refused before it starts -- so the
  * agent-host suite is unrunnable in the exact layout the project requires for
  * parallel work, and passes only in a checkout where node_modules happens to
- * be a real directory. MEASURED in a worktree with a linked node_modules:
- * tree-handoff-transient-refusal 0/2,
+ * be a real directory. MEASURED 2026-09-04 in
+ * .../wt-codex-chat-controls: tree-handoff-transient-refusal 0/2,
  * first-turn-notes-survive-refusal 0/1, streaming-turn-delivery 1/4, all with
  * AGENT_CONFINEMENT_PROFILE_REPARSE_REFUSED raised from normalizeCwd.
  *

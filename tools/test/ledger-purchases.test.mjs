@@ -1,5 +1,5 @@
 /* The ledger's P tab is a MOUNT of approvals.js's card renderer, not a
- * rewrite (LEDGER-KINDS-INTERFACE-20260907.md, RULINGS). This drives
+ * rewrite (LEDGER-KINDS-INTERFACE-20260907.md, RULINGS 04:47Z). This drives
  * renderPurchasesTab() the way src/views/ledger.js's syncPurchasesMount()
  * drives ledgerPromptQueue(), and proves the three things a flattening into
  * plain ledger rows could not carry: the presentation-verification handshake

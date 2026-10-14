@@ -301,6 +301,63 @@ test('an open shelf updates its live subtitle when its session closes without ch
   assert.match(shelf.querySelector('[data-chat-subtitle]').textContent, /no longer open/)
 })
 
+test('typed /loop refuses a stale non-null session without opening unusable setup', async t => {
+  const f = await mount(t, { live: true })
+  f.world.bridge.workStatus = async ({ sessionId }) => ({ ok: true, sessionId, state: 'ready' })
+  const chat = await f.openRail()
+  const stopped = await f.view.runTreeNodeCommand({ action: 'stop-node', computerId: f.computerId, nodeId: f.nodeId })
+  assert.equal(stopped.ok, true)
+  await settle(4)
+
+  const loopChip = chat.querySelector('[data-common-command="loop"]')
+  assert.ok(loopChip, 'the mounted chat keeps the common loop control visible')
+
+  /* The start controls are real mounted controls, but a stale parent session
+     cannot hand them work. This is the value-level refusal the typed command
+     must agree with; it is not a chip-only assertion. */
+  const startToggle = f.view.el.querySelector('[data-start-work-toggle]')
+  assert.ok(startToggle, 'the mounted node exposes its real start-work disclosure')
+  startToggle.dispatch('click')
+  const startLoop = f.view.el.querySelector('.board-loop-box [data-loop="go"]')
+  assert.ok(startLoop, 'the mounted node exposes the real Start loop control')
+  assert.equal(startLoop.disabled, true, 'a stale saved session cannot hand work to a child loop')
+  assert.match(f.view.el.querySelector('.board-loop-box [data-loop="out"]').textContent, /Start or resume this agent|Write a brief/i)
+
+  const input = chat.querySelector('.chat-input textarea')
+  input.value = '/loop'
+  input.dispatch('input')
+  chat.querySelector('.chat-send').dispatch('click')
+  await settle(5)
+  assert.doesNotMatch(chat.textContent, /Loop setup is open\./, 'typed /loop must not promise an unusable setup')
+  assert.match(chat.textContent, /not running/i, 'typed /loop must leave a reachable refusal')
+  assert.equal(loopChip.disabled, true, 'the visible loop action agrees with the typed refusal')
+  assert.match(loopChip.title, /not running/i)
+  assert.equal(chat.querySelector('.chat-input textarea').value, '', 'the command was consumed as a refusal, not left as a model draft')
+})
+
+test('busy queue.add /loop still opens setup for an actually live session without sending', async t => {
+  const f = await mount(t, { live: true })
+  f.world.bridge.workStatus = async ({ sessionId }) => ({ ok: true, sessionId, state: 'ready' })
+  const chat = await f.openRail()
+  let sends = 0
+  f.world.bridge.send = async request => { sends += 1; return { turnId: request?.turnId || 'unexpected-send' } }
+  await f.emit({ type: 'assistant_text_delta', text: 'LIVE_LOOP_FIXTURE', turnId: 'live-loop-turn' })
+  const input = chat.querySelector('.chat-input textarea')
+  input.value = '/loop'
+  input.dispatch('input')
+  chat.querySelector('.chat-send').dispatch('click')
+  await settle(5)
+  const interval = f.view.el.querySelector('.board-loop-box [data-loop="every"]')
+  assert.ok(interval, 'the live typed command opens the real loop controls')
+  assert.equal(document.activeElement, interval, 'the live typed command focuses the loop interval')
+  assert.equal(f.view.el.querySelector('[data-rail-body="details"]').hidden, false)
+  assert.equal(f.view.el.querySelector('.board-loop-box [data-loop="go"]').disabled, true,
+    'the live setup keeps Start loop disabled until a brief is supplied')
+  assert.match(f.view.el.querySelector('.board-loop-box [data-loop="out"]').textContent, /Write a brief/i)
+  assert.equal(chat.querySelector('.chat-input textarea').value, '', 'the live command was consumed by the controls')
+  assert.equal(sends, 0, 'opening loop setup does not send a provider turn')
+})
+
 test('repeated Stop distinguishes an ended session from failed process cleanup', async t => {
   const f = await mount(t, { live: true })
   const command = { action: 'stop-node', computerId: f.computerId, nodeId: f.nodeId, expectedSessionId: f.sessionId }
@@ -457,7 +514,11 @@ test('a cold canonical transcript keeps the owner brief visible and the actually
   const { createNodeTranscriptCapture } = require('../../shell/node-transcript-capture.cjs')
   const enginePath = fileURLToPath(new URL('./fixtures/confined-engine/src/lib/agent-engine/codex-process.js', import.meta.url))
   const directory = await mkdtemp(join(tmpdir(), 'te-page2-cold-prompt-'))
-  t.after(() => rm(directory, { recursive: true, force: true }))
+  if (process.env.TOOLSENABLED_TEST_RETAIN_FIXTURES === '1') {
+    console.log('RETAINED_RUNTIME_CONTROLS_TRANSCRIPT_FIXTURE ' + directory)
+  } else {
+    t.after(() => rm(directory, { recursive: true, force: true }))
+  }
   const ask = 'KEEP_THE_ACTUAL_OWNER_BRIEF_VISIBLE'
   const f = await mount(t, { transcripts: async ({ computerId, nodeId, sessionId }) => {
     const store = createNodeTranscriptStore({ directory })

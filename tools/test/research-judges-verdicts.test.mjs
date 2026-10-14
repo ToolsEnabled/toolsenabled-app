@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 // The exported judge runner reads verdicts by the registered format and writes
 // a summary beside the records. Fake judges answer by name; the fixture lives
 // in a retained scratch directory (printed as a diagnostic) and the recording
@@ -89,7 +90,10 @@ async function fixture(t, name, verdicts, { http = false } = {}) {
     append: async event => { await journal.write(canonical(event) + '\n'); await journal.sync() } })
   await journal.close()
   assert.ok(readFileSync(join(root, 'results', 'attempts.jsonl'), 'utf8').includes('"finished"'), 'collection wrote its journal')
-  const run = script => spawnSync(process.execPath, [join(root, 'harness', script)], { cwd: root, encoding: 'utf8', timeout: 60000, env: { ...process.env, HOME: join(root, 'unused-profile'), USERPROFILE: join(root, 'unused-profile'), JUDGE_STYLE: verdicts.format, ...(http ? { JUDGE_HTTP_KEY: 'fixture-key' } : {}) } })
+  const run = script => spawnSync(process.execPath, [join(root, 'harness', script)], { cwd: root, encoding: 'utf8', timeout: 60000, env: { ...process.env,
+      // Only synthetic executables run here; satisfy the API-key-only contract
+      // without reading or copying a native subscription sign-in.
+      ANTHROPIC_API_KEY: randomUUID(), CODEX_API_KEY: randomUUID(), OPENAI_API_KEY: randomUUID(), GEMINI_API_KEY: randomUUID(), HOME: join(root, 'unused-profile'), USERPROFILE: join(root, 'unused-profile'), JUDGE_STYLE: verdicts.format, ...(http ? { JUDGE_HTTP_KEY: 'fixture-key' } : {}) } })
   const records = () => readdirSync(join(root, 'results/judges')).filter(file => /^[a-f0-9]{64}\.json$/.test(file)).map(file => JSON.parse(readFileSync(join(root, 'results/judges', file), 'utf8')))
   const summary = () => JSON.parse(readFileSync(join(root, 'results/judges/summary.json'), 'utf8'))
   return { root, run, records, summary, calls: () => http ? readFileSync(callLog, 'utf8').trim().split('\n').map(JSON.parse) : [] }

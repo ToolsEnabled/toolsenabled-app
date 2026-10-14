@@ -1,12 +1,13 @@
 /* WHAT THE METRICS PAGE IS ALLOWED TO SAY ON A COMPUTER THAT HAS ONE.
  *
- * THE DEFECT THIS EXISTS TO CLOSE: on an installed copy the metrics page said it
- * was not connected and showed no data, with nothing saying whether the account
- * or the product was at fault. Every tile on #/metrics read:
+ * THE DEFECT THIS EXISTS TO CLOSE, in the owner's own words, about his own
+ * install: "Metrics not connected? ... why does it not have any data is it also
+ * my account like have i just not been able to use it or is something not
+ * working?" Every tile on #/metrics read:
  *
  *     unavailable · No local agent fleet host detected on this machine.
  *
- * It was not the account, and no amount of use would ever have changed it. The
+ * It was not his account, and no amount of use would ever have changed it. The
  * page reads dist/data/metrics.json, which tools/gen-metrics.mjs writes AT BUILD
  * TIME from the builder's own checkout -- tools/agent-preflight.js, an owner
  * request ledger, a BUILD-QUEUE.md. None of those exist on a customer machine,
@@ -59,8 +60,8 @@ import { COPY, ENGINE_REASON, historyDisabled, notRecording, readLocalSessions, 
 /* THE SECOND REASON TABLE, AND WHY BOTH ARE READ RATHER THAN ONE BEING COPIED.
    ./local-activity.js keeps the short home-screen wording; ./agent-availability-copy.js
    keeps the fuller agent-page wording, and each holds codes the other does not
-   -- measured on a real record, where AGENT_TOOLS_ALL_DISABLED has a
-   sentence in the second table and none in the first, so a run a person could have
+   -- measured on the owner's own record, where AGENT_TOOLS_ALL_DISABLED has a
+   sentence in the second table and none in the first, so a run he could have
    fixed in one click read "the record does not say why". Asked in that order,
    never merged into a third copy that can drift from both. */
 import { UNAVAILABLE_TEXT } from './agent-availability-copy.js'
@@ -68,7 +69,7 @@ import { currentDataSource } from './data-source.js'
 import { readerRemedy } from './refusal-copy.js'
 /* The one table that says which assistant a model row belongs to. Imported
    rather than restated: see PROVIDER_LABELS below. */
-import { LAUNCH_TIERS } from './orchestration-controls.js'
+import { LAUNCH_TIERS, usageModel } from './orchestration-controls.js'
 /* The allowlist of words the two engines use for a turn that WORKED, read
    rather than restated: codex says "completed" and the Claude CLI says
    "success", and a fourth copy of that pair is how a page comes to paint a
@@ -98,8 +99,8 @@ export const LOCAL_METRICS_COPY = Object.freeze({
   noChannel: 'This page is open in a web browser, so there is no computer here keeping a record of agent runs. Open ToolsEnabled on a computer and this fills in as you use it.',
   /* The channel is there and the record would not open. This one IS a fault. */
   unreadable: 'ToolsEnabled could not open its own record of what has run on the computer you are driving. Nothing there has been lost; this page simply cannot read it right now.',
-  /* Activity auditing is OFF (product rule T782 / BUG08, as narrowed). The
-     person's own setting, the Basic default. Scoped
+  /* Activity auditing is OFF (owner direction 2026-09-20, T782 / BUG08; root
+     narrowing 2026-09-21). The person's own setting, the Basic default. Scoped
      to NEW operations and to this record: work already admitted to the audit
      may still finish recording after the toggle, and this page cannot vouch for
      the whole machine -- so no "nothing is broken and nothing was lost". */
@@ -119,11 +120,11 @@ export const LOCAL_METRICS_COPY = Object.freeze({
   /* WHICH FIGURES COVER WHICH RUNS, because they do not all cover the same
      ones and the sentence used to say they did.
    *
-   * MEASURED on a development record: more runs were written than the
-   * 200-line window this page may read can hold, and every one of them was
-   * started inside the last seven days. The strip showed a larger "Agent runs"
-   * three tiles above a smaller "Last 7 days", and this sentence sat under
-   * both of them promising "the totals cover all of them".
+   * MEASURED on the owner's own record 2026-09-03: 158 runs written, 411 ledger
+   * lines, so the 200-line window this page may read holds 82 of those runs --
+   * and every one of the 158 was started inside the last seven days. The strip
+   * showed "Agent runs 158" three tiles above "Last 7 days 82", and this
+   * sentence sat under both of them promising "the totals cover all of them".
    * The three run COUNTS do: they come from the writer's whole-chain tally.
    * The three figures measured over time cannot -- they need a timestamp per
    * run and only the window carries those -- so they count the runs shown. */
@@ -423,10 +424,10 @@ export function refusalBreakdown(sessions) {
      refusal outside it -- but the headline this function reports must still
      be the number outcomeBreakdown() just put on the strip two tiles up.
    *
-   * MEASURED on a development install: the whole-chain tally of refusals was
-   * larger than the count inside the 200-line window this function used to be
-   * the only one still counting from. The outcomes panel said "N did not start";
-   * this one, right below it on the same page, said "M runs did not start,
+   * MEASURED against the live ledger 2026-09-03: 17 refused in the whole-chain
+   * tally, 5 of them inside the 200-line window this function used to be the
+   * only one still counting from. The outcomes panel said "17 did not start";
+   * this one, right below it on the same page, said "5 runs did not start,
    * grouped by what the record says about them" -- two different answers to
    * one question, on one screen, both sourced from the one `sessions` object.
    * A ledger with no refusal at all inside the window read worse: this
@@ -481,11 +482,11 @@ export function refusalBreakdown(sessions) {
  * repair statTiles(), outcomeBreakdown() and refusalBreakdown() already made,
  * missed here.
  *
- * MEASURED on a development install: the writer's whole-chain tally was more
- * than twice the count inside the 200-line window this function reads. The
- * Agents section read "M runs recorded on the computer you are driving" --
- * the caption outcomeBreakdown()'s own panel builds from the identical
- * template ("${total} runs recorded on ...") said "N" two
+ * MEASURED against the live ledger 2026-09-03: 194 runs in the writer's
+ * whole-chain tally, 84 of them inside the 200-line window this function
+ * reads. The Agents section read "84 runs recorded on the computer you are
+ * driving" -- the caption outcomeBreakdown()'s own panel builds from the
+ * identical template ("${total} runs recorded on ...") said "194" two
  * sections above it, on the same page, about the same record. `rows` still
  * shows only what the window holds -- it cannot show a run this page never
  * received -- but the count in the sentence above the table is the count of
@@ -538,13 +539,17 @@ export function runRows(sessions, { nowMs = Date.now(), conversations = null, li
  * exists only on a run this page could actually read, which is the last
  * HISTORY_LIMIT ledger lines and nothing before them.
  *
- * MEASURED on a development record: more ledger lines than the window holds
+ * MEASURED on the owner's own record 2026-09-03. 158 runs, 411 ledger lines
  * (a run is a start, an outcome, and now an end), so the 200-line window held
- * only some of the runs -- and every one was started inside the last seven
- * days. Three figures were wrong in one strip of six: seven days that held
- * every run reported only the window's share of them, the days of use were
- * undercounted, and the record's first day was reported as the window's first
- * day. Each was the window's
+ * 82 runs -- and every one of the 158 was started inside the last seven days.
+ * The strip read:
+ *
+ *     Agent runs 158 · Ran 145 · Did not start 13
+ *     Last 7 days 82 · Last 24 hours 52 · Days used 3 since 2 Sep
+ *
+ * Three figures wrong in one strip of six: seven days that holds all 158 runs
+ * reported 82 of them, five days of use reported three, and a record that
+ * begins on 29 August said it begins on 2 September. Each was the window's
  * answer wearing the record's label, and the sentence under the strip
  * (LOCAL_METRICS_COPY.sampled) told the reader the totals covered all of them.
  *
@@ -593,8 +598,8 @@ export function statTiles(sessions, nowMs = Date.now()) {
       partial ? LOCAL_METRICS_COPY.overRecent(windowRuns) : runWord(last1)),
     /* THE DATE GOES WHEN IT IS THE WINDOW'S DATE RATHER THAN THE RECORD'S.
        `earliest` is the oldest run this page could read, and on a sampled
-       record printing it after the word "since" states the record began then,
-       which moved a record's first day forward by days. */
+       record printing it after the word "since" states the record began then.
+       On the owner's own machine that turned 29 August into 2 September. */
     tile('gates', 'Days used', distinctDays.size, partial
       ? LOCAL_METRICS_COPY.acrossRecent(windowRuns)
       : (Number.isFinite(earliest) ? `since ${DATE_LABEL.format(new Date(earliest))}` : 'so far')),
@@ -748,9 +753,9 @@ export const LOCAL_USAGE_COPY = Object.freeze({
     : `${count} of these ${turns} turns reported figures this record cannot add into a total, so they are left out of the counts above rather than counted as nothing.`),
   /* WHY A ZERO IS A ZERO, WHICH THIS PAGE COULD NOT SAY.
    *
-   * MEASURED on a development install: several claude-fable turns in a row
-   * wrote status "error" with every token figure zero, while claude-opus
-   * succeeded in the same window on the same install. The
+   * MEASURED 2026-09-03 on the owner's computer: five claude-fable turns in a
+   * row from 01:49:05Z wrote status "error" with every token figure zero, while
+   * claude-opus wrote 160 successes in the same window on the same install. The
    * page's only sentence for that shape was "no turn reported a token count",
    * which is what it says for a quiet week -- so a tier that had stopped
    * working entirely read as a tier nobody had used, and the provider's own
@@ -807,11 +812,12 @@ const usageNumber = value => (Number.isSafeInteger(value) && value >= 0 ? value 
  * has to be answered before its parts can be added up at all.
  *
  * THE DEFECT THIS EXISTS TO CLOSE. The rule here was `input + output`, and it
- * dropped every token the provider served from its cache. MEASURED over the
- * whole of a development agent-turn-usage-records.jsonl -- most rows reported
- * no total, and this page showed a few million tokens for turns whose reported
- * figures summed to hundreds of millions. Two orders of magnitude low, on
- * figures that were in the record, signed, the whole time. A cached read is a token the provider served and charged for;
+ * dropped every token the provider served from its cache. MEASURED 2026-09-03
+ * over the whole of the owner's own agent-turn-usage-records.jsonl -- 488 rows,
+ * 403 of them reporting no total: this page showed 3,668,392 tokens for those
+ * turns where the figures the engine actually reported sum to 857,520,354. Two
+ * hundred and thirty-four times low, on figures that were in the record, signed,
+ * the whole time. A cached read is a token the provider served and charged for;
  * pricing it at zero is not caution, it is the same invented number this file
  * exists to refuse, pointing the other way.
  *
@@ -933,6 +939,10 @@ export async function readLocalUsage({ agent = globalThis.mcAgent, limit = USAGE
       sessionId: typeof entry.sessionId === 'string' ? entry.sessionId : null,
       turnId: typeof record.turnId === 'string' ? record.turnId : null,
       tier: typeof record.tier === 'string' ? record.tier : null,
+      /* A typed model name, and whether one was used (1.0.50 review CM-4); see
+         usageModel() in src/orchestration-controls.js. Null on older lines. */
+      model: typeof record.model === 'string' && record.model.length > 0 ? record.model : null,
+      modelChoice: record.modelChoice === 'typed' ? 'typed' : null,
       account: typeof record.account === 'string' ? record.account : null,
       status: typeof record.status === 'string' ? record.status : null,
       /* The provider's own sentence for a turn that ended badly, when the
@@ -1000,12 +1010,14 @@ function collapseSessions(turns) {
     const key = turn.sessionId || `turn:${turn.sequence}`
     let row = sessions.get(key)
     if (!row) {
-      row = { key, sessionId: turn.sessionId, turns: 0, unknownTurns: 0, cumulative: null, figures: {}, newestMs: null, tiers: new Set(), accounts: new Set() }
+      row = { key, sessionId: turn.sessionId, turns: 0, unknownTurns: 0, cumulative: null, figures: {}, newestMs: null, tiers: new Set(), models: new Map(), accounts: new Set() }
       for (const name of Object.keys(TOKEN_FIELDS)) row.figures[name] = null
       row.figures.total = null
       sessions.set(key, row)
     }
     if (turn.tier) row.tiers.add(turn.tier)
+    const model = usageModel(turn)
+    if (model) row.models.set(model.key, model.label)
     if (turn.account) row.accounts.add(turn.account)
     if (turn.atMs !== null && (row.newestMs === null || turn.atMs > row.newestMs)) row.newestMs = turn.atMs
     if (turn.basis === 'session-total') {
@@ -1061,13 +1073,13 @@ const sumField = (sessions, name) => {
 function failureReading(turns) {
   const failed = turns.filter(turn => typeof turn.status === 'string' && !sessionTurnSucceeded(turn.status))
   if (failed.length === 0) return { count: 0, model: null, sentence: null }
-  const tiers = new Set(failed.map(turn => turn.tier).filter(tier => typeof tier === 'string' && tier.length > 0))
+  const models = new Map(failed.map(turn => usageModel(turn)).filter(Boolean).map(model => [model.key, model.label]))
   /* Newest first is the order the record is read in, so the first sentence
      found is the most recent one -- see readLocalUsage's caller contract. */
   const spoken = failed.find(turn => typeof turn.failure === 'string' && turn.failure.length > 0)
   return {
     count: failed.length,
-    model: tiers.size === 1 ? modelOf([...tiers][0]) : null,
+    model: models.size === 1 ? [...models.values()][0] : null,
     sentence: spoken ? spoken.failure : null,
   }
 }
@@ -1163,10 +1175,9 @@ export function usageByProvider(usage) {
 /** Tokens per model row -- Luna, Sonnet, and so on. */
 export function usageByModel(usage) {
   return groupSessions(usage, (row) => {
-    const tier = row.tiers.size === 1 ? [...row.tiers][0] : null
-    const label = modelOf(tier)
+    const [key, label] = row.models.size === 1 ? [...row.models][0] : [null, null]
     if (!label) return { key: 'unrecorded', label: LOCAL_USAGE_COPY.providerUnrecorded }
-    return { key: tier, label }
+    return { key, label }
   })
 }
 
@@ -1220,7 +1231,7 @@ export function usageByRun(usage, { conversations = null, limit = 40 } = {}) {
       unknownTurns: row.unknownTurns,
       atMs: row.newestMs,
       at: Number.isFinite(row.newestMs) ? new Date(row.newestMs).toLocaleString() : '',
-      model: modelOf(tier) || '',
+      model: (row.models.size === 1 ? [...row.models.values()][0] : '') || '',
       asked: said && typeof said.asked === 'string' ? said.asked : '',
       agent: said && typeof said.role === 'string' ? said.role : '',
     })

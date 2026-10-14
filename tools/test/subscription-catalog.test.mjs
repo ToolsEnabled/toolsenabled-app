@@ -285,8 +285,8 @@ test('rule 3 does not fire on an unrelated number that merely contains a price d
  * public/** into dist/ and package.json build.files packs dist/**, so it shipped
  * in every installer, and #/subscribe and #/pricing rendered it: plan names,
  * monthly and annual prices, a Team price and a three-seat minimum, generated
- * 2026-08-12. R1214 records that catalog as unauthorised and the release rule
- * that no payments are collected at first public launch.
+ * 2026-08-12. R1214 records that catalog as unauthorised and the owner's release
+ * rule as "we are NOT collecting payments at first public launch".
  *
  * These assertions are about BYTES, not about a flag, because that is the only
  * property a packaged build cannot undo by itself: no environment variable, no
@@ -310,7 +310,7 @@ test('the renderer payload carries no price catalog, and the manifest records th
     'mutation `delete the catalog outright` survived: expected the generated catalog to remain at config/subscription-catalog.json for rule 1')
 })
 
-test('rule 4 fires on a catalog restored to the payload, and its refusal says what was ruled', () => {
+test('rule 4 fires on a catalog restored to the payload, and its refusal says what the owner ruled', () => {
   const fixture = mkdtempSync(path.join(tmpdir(), 'subscription-rule4-'))
   try {
     mkdirSync(path.join(fixture, 'tools'), { recursive: true })

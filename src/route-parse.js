@@ -54,9 +54,9 @@ export function parseRoute(hash) {
   const query = new URLSearchParams(hashQuery)
   if (parts[0] === 'computers') return { name: 'computers', comp: parts[1] || null }
   /* T302: THE #/agent DRILL-IN IS RETIRED, DELIBERATELY LEFT UNMATCHED HERE
-     rather than routed anywhere. The complaint was the page itself surfacing
-     with no way in that made sense (it got pulled up, and nothing should reach
-     it) -- src/views/agent.js still exists (its ~20
+     rather than routed anywhere. The owner's complaint was the page itself
+     surfacing with no way in that made sense to them ("it got pulled up,
+     nothing should reach it") -- src/views/agent.js still exists (its ~20
      source-text witness tests still read it, and removing the file itself is
      a separate, deliberate cleanup), but no hash may resolve to it any more.
      An unmatched hash falls through to the `home` stop at the end of this
@@ -78,11 +78,18 @@ export function parseRoute(hash) {
      subscribe route already uses; nothing else about this stop changes, and a
      plain `#/settings` still lands where it always did. */
   if (parts[0] === 'settings') return { name: 'settings', query }
-   /* THE VAULT IS ITS OWN STOP, at its own address, because it was asked for
-     three times (it has its own page, as Settings and Ledger do) while the
-     surface existed only as a row inside Settings. */
+  /* THE VAULT IS ITS OWN STOP, at its own address, because the owner asked for
+     one three times ("its supposed to have its own page like settings and
+     ledger does") while the surface existed only as a row inside Settings. */
   if (parts[0] === 'vault') return { name: 'vault' }
   if (parts[0] === 'tools') return { name: 'tools' }
+  /* NOT A RING STOP, like tools and account. A person who has added no plugin
+     never needs it, and a stop on the ring one click from home is what put a
+     builder's own purchase list in front of every install once already
+     (src/checkout-visibility.js). It is reachable by address and from the
+     tools page, which is where somebody asking "what can my agents reach?"
+     already is. */
+  if (parts[0] === 'plugins') return { name: 'plugins' }
   if (parts[0] === 'setup') return { name: 'setup' }
   if (parts[0] === 'account') return { name: 'account' }
   /* THE OLD ADDRESS OF THE PAGE THAT IS NOW A SECTION OF SETTINGS. It stays

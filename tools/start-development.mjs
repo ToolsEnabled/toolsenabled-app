@@ -49,7 +49,7 @@ export async function startDevelopment(argv = process.argv.slice(2)) {
     ordinaryPath(engine)
     let directory = options.directory
     if (!directory) {
-      const parent = path.join(os.userInfo().homedir, '.toolsenabled.development', 'sessions')
+      const parent = path.join(os.userInfo().homedir, '.fixture-profileelopment', 'sessions')
       ordinaryPath(parent, { missing: true })
       fs.mkdirSync(parent, { recursive: true, mode: 0o700 })
       directory = path.join(parent, 'dev-' + new Date().toISOString().replace(/[:.]/g, '-') + '-' + randomUUID().slice(0, 8))

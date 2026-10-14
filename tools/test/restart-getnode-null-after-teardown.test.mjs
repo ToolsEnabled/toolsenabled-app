@@ -1,7 +1,7 @@
 /* THE SECOND, INDEPENDENT DEFECT BEHIND THE TRANSCRIPT-RESET ONE.
  *
- * MEASURED against the shipped transcript-reset fix in gen-00000000:
- * agent.restart got past
+ * MEASURED, Controller 2026-09-06T19:46:40Z, against the shipped transcript-
+ * reset fix in gen-eee4d40e: agent.restart got past
  * MC_TREE_COMMAND_TRANSCRIPT_RESET_FAILED (that defect is gone) and instead
  * failed with MC_TREE_COMMAND_RENDERER_FAILED, "Cannot read properties of
  * null (reading 'getNode')" -- moments after a replacement session had
@@ -25,7 +25,7 @@
  * HOW THIS IS TESTED, AND WHY IT CHANGED. An earlier version of this file
  * located the fix's own internal helper by its literal name
  * ("const resolveLiveTreeStore = () =>") before extracting the callback
- * around it. That is a spelling pin: renaming or
+ * around it. Controller measured that as a spelling pin: renaming or
  * restructuring the fix's internals -- with its behaviour unchanged -- would
  * have failed a test built that way, which is the exact failure mode the
  * project's own standing rule warns against. This version extracts the
@@ -86,8 +86,8 @@ function sliceBlock(source, header, what) {
    reads ".. || command.action === 'resume-node') {" at the equivalent
    position, which cannot match this header text. */
 /* resolveLiveTreeStore is now hoisted ABOVE both the resume-node and
-   fresh-start-existing-node branches (shared between them, MEASURED:
-   resume-node found to need the
+   fresh-start-existing-node branches (shared between them, MEASURED,
+   Worker 35 and Controller 2026-09-06, resume-node found to need the
    identical guard) -- so it no longer lives inside the branch slice below
    and must be extracted and prepended separately, by the same boundary
    marker used everywhere else in this file: its own start and its own
@@ -116,8 +116,8 @@ function loadRestartBranch() {
   return factory
 }
 
-/* resume-node's own copy of the same hazard: MEASURED,
-   `const resumed = treeStore.getNode(node.id)` sat
+/* resume-node's own copy of the same hazard: MEASURED, Worker 35 and
+   Controller 2026-09-06, `const resumed = treeStore.getNode(node.id)` sat
    bare after `await resumeNodeSession(node)` -- exactly as slow as a
    restart's own bridge.start(), per resumeNodeSessionUnguarded's own
    comment ("A resume IS a start -- bridge.start, a real child process").
@@ -219,8 +219,8 @@ test('a released treeStore (destroy() ran) with the SAME store retained in RUN_S
 })
 
 /* recoveryCoordinator().activeStore is DELIBERATELY excluded from this
- * resolution chain -- VERIFIED in account-recovery-coordinator.js: its
- * underlying entry is captured ONCE
+ * resolution chain -- VERIFIED, Controller and Worker 36, 2026-09-06T20:55Z,
+ * in account-recovery-coordinator.js: its underlying entry is captured ONCE
  * by the first overlapping recover() call for a computerId and never
  * reassigned by a later one, so while a recovery is in flight it can answer
  * a store from BEFORE this exact view's destroy()-and-reopen -- the one
@@ -272,7 +272,7 @@ test('a live treeStore for a DIFFERENT computer is not trusted; the retained/rec
 
 /* THE RESUME-NODE HALF OF THE SAME FIX.
  *
- * MEASURED: resume-node's own
+ * MEASURED, Worker 35 and Controller 2026-09-06: resume-node's own
  * `treeStore.getNode(node.id)` sat bare, immediately after
  * `await resumeNodeSession(node)` -- an await exactly as slow as a
  * restart's own bridge.start(). The equivalent restart defect produced

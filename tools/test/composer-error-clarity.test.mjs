@@ -5,7 +5,7 @@
  * true one must be present.
  *
  * 1. SEND_FAILED said "this screen was not told why". That stopped being true
- *    when an earlier commit began recording the refusal identifier on the note: the
+ *    when de68a1f2 began recording the refusal identifier on the note: the
  *    screen IS told, it deliberately does not show the person a machine code.
  *    Claiming ignorance the product no longer has is the kind of sentence that
  *    survives into a support conversation and misdirects it.

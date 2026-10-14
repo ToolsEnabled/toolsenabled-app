@@ -12,7 +12,7 @@ test('owner-name lookup separates absent from could-not-tell and never latches t
   const busyThenReadable = () => {
     reads += 1
     if (reads === 1) throw Object.assign(new Error('device busy'), { code: 'EBUSY' })
-    return "const forbidden = ['Pinckard']"
+    return "const forbidden = ['Example']"
   }
 
   assert.throws(
@@ -20,7 +20,7 @@ test('owner-name lookup separates absent from could-not-tell and never latches t
     error => error?.code === 'OWNER_NAME_NEEDLES_UNREADABLE'
       && /NOT claiming .* absent/.test(error.message),
     'EBUSY must be NO VERDICT with an explicit non-absence sentence')
-  assert.deepEqual(ownerNameNeedles(busyThenReadable), ['Pinckard'],
+  assert.deepEqual(ownerNameNeedles(busyThenReadable), ['Example'],
     'the could-not-tell result must not be cached or latched')
   assert.equal(reads, 2)
 

@@ -1,10 +1,10 @@
 /* CHECKOUT — an order form, in this product's own voice.
  *
- * The surface is meant to feel like checking out at a store, and
+ * The owner asked for a surface that feels like checking out at a store, and
  * for it to follow the site's theme. What is borrowed from a store is the
  * STRUCTURE -- browse, a running total that follows you, a review step, a
  * confirmation -- and what is borrowed from the app is every pixel of the
- * paint. Boxes here are square.
+ * paint. He has also asked, more than once, for square boxes here.
  *
  * THE 2026-09-23 PASS puts it on the foundation's layers (src/foundation.css):
  * the page is the canvas; the totals, each shelf, the order on the review step
@@ -29,13 +29,13 @@
   --co-rule: var(--border-hairline, var(--line));
   --co-card: var(--surface-base, var(--sheet));
   --co-well: var(--surface-sunken, var(--bg-2));
-  --co-radius: var(--radius-card, 6px);
+  --co-radius: 6px;
   --co-control-radius: var(--radius-control, 4px);
   --co-mark-radius: var(--radius-xs, 3px);
   --co-pad: var(--s5);
-  --co-control-h: 36px;
+  --co-control-h: 32px;
   --co-caution: var(--ink);
-  --co-serious: var(--s-serious);
+  --co-serious: var(--status-error);
   --co-price-col: minmax(10.5rem, 14rem);
   scrollbar-gutter: stable;
   color: var(--ink);
@@ -56,18 +56,18 @@
 .checkout-head { padding-bottom: var(--s5); }
 .checkout-page .checkout-eyebrow {
   margin: 0 0 var(--s2);
-  font-size: var(--text-caps, 11px);
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-25);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink-2);
 }
 .checkout-page .checkout-title {
   margin: 0;
-  font-size: 36px;
-  font-weight: 610;
-  line-height: 1.15;
-  letter-spacing: -.035em;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -.012em;
   color: var(--ink);
 }
 .checkout-lede {
@@ -128,17 +128,17 @@
 .checkout-stat + .checkout-stat { border-left: 1px solid var(--co-rule); }
 .checkout-stat-label {
   order: -1;
-  font-size: var(--text-caps, 11px);
-  font-weight: 640;
-  line-height: 1.35;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-25);
 }
 .checkout-stat-value {
   font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 620;
+  font-size: 28px;
+  font-weight: 650;
   line-height: 1.1;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
@@ -151,7 +151,7 @@
   color: var(--ink-3);
 }
 .checkout-stat-note:empty { display: none; }
-.checkout-stat[data-empty] .checkout-stat-value { color: var(--ink-3); font-weight: 500; }
+.checkout-stat[data-empty] .checkout-stat-value { color: var(--ink-3); font-weight: 650; }
 
 /* ---------- notice bands ----------
    One shape for every notice: a card-coloured box (a sunken well when it sits
@@ -161,37 +161,39 @@
    a plain note. */
 
 .checkout-band {
-  --band-rule: var(--co-edge);
-  --band-label: var(--ink-25);
   display: grid;
-  grid-template-columns: minmax(8.5rem, max-content) minmax(0, 1fr);
-  align-items: baseline;
-  gap: var(--s2) var(--s4);
-  padding: var(--s3) var(--s4);
-  border: 1px solid var(--co-rule);
-  border-left: 2px solid var(--band-rule);
-  border-radius: var(--co-control-radius);
-  background: var(--band-ground);
   font-size: var(--text-md, 13.5px);
   line-height: 1.55;
   color: var(--ink-2);
+  --band-rule: var(--line-strong);
+  --band-label: var(--ink);
+  --band-ground: var(--co-card);
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  padding: 12px 16px 12px 44px;
+  border: 1px solid var(--band-rule);
+  border-radius: var(--co-radius);
+  background: var(--co-card);
+  gap: 4px;
 }
-.checkout-band { --band-ground: var(--co-card); }
-.checkout-item .checkout-band { --band-ground: var(--co-well); }
-.checkout-band[data-kind="warn"] { --band-rule: var(--co-caution); --band-label: var(--co-caution); }
+.checkout-band { --band-rule: var(--line-strong); --band-label: var(--ink); --band-ground: var(--co-card); position: relative; grid-template-columns: minmax(0, 1fr); align-items: start; padding: 12px 16px 12px 44px; border: 1px solid var(--band-rule); border-radius: var(--co-radius); background: var(--co-card); gap: 4px; }
+.checkout-item .checkout-band {
+  --band-ground: var(--co-card); }
+.checkout-band[data-kind="warn"] { --band-rule: var(--field-border); --band-label: var(--ink); }
 .checkout-band[data-kind="blocked"] {
   --band-rule: var(--co-serious);
-  --band-label: var(--co-serious);
-  background: color-mix(in srgb, var(--co-serious) 6%, var(--band-ground));
+  --band-label: var(--ink);
+  background: var(--co-card);
 }
-.checkout-band[data-kind="good"] { --band-rule: var(--s-good); --band-label: var(--s-good); }
+.checkout-band[data-kind="good"] { --band-rule: var(--status-working); --band-label: var(--ink); }
 .checkout-band-label {
-  font-size: var(--text-caps, 11px);
-  font-weight: 640;
-  line-height: 1.6;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--band-label);
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
 }
 .checkout-band-body { min-width: 0; }
 .checkout-band-body p { margin: 0; overflow-wrap: anywhere; }
@@ -203,7 +205,7 @@
 .checkout-notices:empty { display: none; }
 /* A button that acts on a notice ("Got it", "Review in Ledger") sits inside
    it, under the sentences, at the body's left edge. */
-.checkout-band > .checkout-step-actions { grid-column: 2; margin-top: var(--s1); }
+.checkout-band > .checkout-step-actions { margin-top: var(--s1); grid-column: 1; }
 
 /* ---------- buttons ----------
    One control height on the whole page. Secondary is the foundation's raised
@@ -219,22 +221,22 @@
   gap: var(--s2);
   box-sizing: border-box;
   min-height: var(--co-control-h);
-  height: auto;
-  padding: 6px 14px;
   border: 1px solid var(--control-border, var(--line-2));
   border-radius: var(--co-control-radius);
   background: var(--control-bg, var(--sheet));
-  box-shadow: var(--shadow-control, none);
   color: var(--control-ink, var(--ink));
   font-family: var(--font-ui);
-  font-size: var(--text-sm, 12.5px);
-  font-weight: 600;
-  line-height: 1.25;
+  font-size: 13.5px;
+  font-weight: 550;
+  line-height: 1.4;
   text-align: center;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
   transition: background-color var(--dur-2, 160ms) var(--ease-out, ease), border-color var(--dur-2, 160ms) var(--ease-out, ease), color var(--dur-2, 160ms) var(--ease-out, ease);
+  height: var(--co-control-h);
+  padding: 0 12px;
+  box-shadow: none;
 }
 .checkout-btn:hover:not(:disabled),
 .checkout-page .checkout-step-actions .ctl-btn:hover {
@@ -244,11 +246,11 @@
 }
 .checkout-btn:active:not(:disabled) { background: var(--control-press, var(--sheet)); transform: none; }
 .checkout-btn[data-primary] {
-  padding-inline: 18px;
   border-color: var(--action-primary, var(--ink));
   background: var(--action-primary, var(--ink));
   color: var(--action-primary-ink, var(--sheet));
-  font-size: var(--text-base, 14px);
+  font-size: 13.5px;
+  padding-inline: 12px;
 }
 .checkout-btn[data-primary]:hover:not(:disabled) {
   border-color: var(--action-primary-hover, var(--ink));
@@ -264,16 +266,14 @@
 .checkout-btn[data-quiet]:hover:not(:disabled) { border-color: transparent; background: var(--state-hover); color: var(--ink); }
 .checkout-btn:disabled,
 .checkout-btn[data-primary]:disabled {
-  border-color: var(--co-rule);
-  background: var(--control-disabled-bg, transparent);
   box-shadow: none;
-  color: var(--control-disabled-ink, var(--ink-3));
   cursor: not-allowed;
+  opacity: .45;
 }
 .checkout-btn[data-quiet]:disabled { border-color: transparent; background: transparent; }
 .checkout-page :is(button, a, summary):focus-visible {
-  outline: var(--focus-outline, 2px solid var(--focus-ring));
-  outline-offset: var(--focus-offset, 2px);
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 
 /* ---------- a shelf ----------
@@ -299,11 +299,11 @@
 .checkout-group-head > div:first-child { flex: 1 1 22rem; min-width: 0; }
 .checkout-page .checkout-group-title {
   margin: 0;
-  font-size: var(--text-xl, 17px);
   font-weight: 620;
   line-height: 1.25;
   letter-spacing: var(--tracking-title, -.01em);
   color: var(--ink);
+  font-size: 15px;
 }
 .checkout-group-blurb {
   max-width: 74ch;
@@ -362,11 +362,11 @@
   border-top: 1px solid var(--co-rule);
   border-bottom: 1px solid var(--co-edge);
   background: var(--co-well);
-  font-size: var(--text-caps, 11px);
-  font-weight: 640;
-  line-height: 1.35;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-25);
 }
 .checkout-cols > span:last-child { text-align: right; }
@@ -394,7 +394,7 @@
 .checkout-item[data-choosable="false"]:hover { background: transparent; }
 /* A CHOSEN line that cannot safely be bought yet is marked in the serious hue
    instead: choosing it is allowed -- nothing here buys anything -- so the edge
-   is what stops it looking like an ordinary line while they scroll. */
+   is what stops it looking like an ordinary line while he scrolls. */
 .checkout-item[data-selected="true"][data-blocked="true"] {
   background: color-mix(in srgb, var(--co-serious) 6%, var(--co-card));
   box-shadow: inset 2px 0 0 var(--co-serious);
@@ -430,13 +430,12 @@
 }
 .checkout-item[data-blocked="true"] .checkout-pick[aria-checked="true"] {
   border-color: var(--co-serious);
-  background: var(--co-serious);
-  color: var(--surface-raised, #fff);
+  background: var(--primary-bg);
+  color: var(--primary-ink);
 }
 .checkout-pick:disabled {
-  border-color: var(--co-edge);
-  background: var(--co-well);
   cursor: not-allowed;
+  opacity: .45;
 }
 .checkout-pick:active { transform: none; }
 
@@ -465,21 +464,23 @@
   display: inline-block;
   padding: 2px 6px;
   border: 1px solid var(--co-edge);
-  border-radius: var(--co-mark-radius);
+  border-radius: 3px;
   background: transparent;
-  font-size: 10.5px;
-  font-weight: 640;
-  line-height: 1.35;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-2);
   white-space: nowrap;
+  min-height: 22px;
+  box-sizing: border-box;
 }
 .checkout-chips { display: inline-flex; flex-wrap: wrap; gap: 4px var(--s2); }
 .checkout-chip[data-tone="warn"] { border-color: var(--border-strong, var(--line-2)); background: var(--co-well); color: var(--co-caution); }
 .checkout-chip[data-tone="blocked"] {
   border-color: color-mix(in srgb, var(--co-serious) 45%, transparent);
-  background: color-mix(in srgb, var(--co-serious) 7%, transparent);
+  background: var(--status-error-soft);
   color: var(--co-serious);
 }
 .checkout-chip[data-tone="quiet"] { color: var(--ink-3); }
@@ -552,11 +553,12 @@
   align-items: baseline;
 }
 .checkout-reason dt {
-  font-size: var(--text-caps, 11px);
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-25);
+  line-height: 1.4;
 }
 .checkout-reason dd {
   margin: 0;
@@ -565,7 +567,7 @@
   line-height: 1.55;
   color: var(--ink-2);
 }
-/* Their own words are the point of the screen, so they read as prose. */
+/* His own words are the point of the screen, so they read as prose. */
 .checkout-reason[data-kind="wanted"] dd { color: var(--ink); font-style: italic; }
 
 .checkout-item-bands { display: grid; gap: var(--s2); margin-top: var(--s3); }
@@ -604,11 +606,12 @@
 }
 .checkout-price-cadence {
   margin-top: 2px;
-  font-size: var(--text-caps, 11px);
-  font-weight: 620;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-25);
+  line-height: 1.4;
 }
 /* THE FIRST-YEAR-VERSUS-RENEWAL CALLOUT. It is the only boxed thing in this
    column, because a renewal that differs from the advertised first year is
@@ -653,7 +656,7 @@
   grid-template-columns: 30px minmax(2.25rem, auto) 30px;
   align-items: stretch;
   box-sizing: border-box;
-  height: 32px;
+  height: 28px;
   margin-top: var(--s2);
   border: 1px solid var(--control-border, var(--line-2));
   border-radius: var(--co-control-radius);
@@ -676,8 +679,8 @@
   cursor: pointer;
 }
 .checkout-qty button:hover:not(:disabled) { background: var(--state-hover); color: var(--ink); }
-.checkout-qty button:disabled { color: var(--ink-4); cursor: not-allowed; }
-.checkout-qty button:focus-visible { outline-offset: -2px; }
+.checkout-qty button:disabled { opacity: .45; cursor: not-allowed; }
+.checkout-qty button:focus-visible { outline-offset: var(--focus-offset); outline: var(--focus-outline); }
 .checkout-qty output {
   display: grid;
   place-items: center;
@@ -734,11 +737,12 @@
   color: var(--ink);
 }
 .checkout-bar-figure span {
-  font-size: var(--text-caps, 11px);
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-25);
+  line-height: 1.4;
 }
 .checkout-bar-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--s2); }
 /* The bar states what the button does NOT do, right where the button is. */
@@ -750,11 +754,11 @@
   color: var(--ink-3);
 }
 /* The bar itself changes when the basket holds something that cannot be
-   bought yet, so the warning is attached to the total they are looking at. */
+   bought yet, so the warning is attached to the total he is looking at. */
 .checkout-bar[data-blocked="true"] { border-color: color-mix(in srgb, var(--co-serious) 45%, var(--co-edge)); box-shadow: var(--shadow-popover, var(--elev-2)), inset 2px 0 0 var(--co-serious); }
 .checkout-bar[data-blocked="true"] .checkout-bar-truth { color: var(--co-serious); font-weight: 560; }
 
-/* ---------- what is already waiting on their decision ----------
+/* ---------- what is already waiting on his decision ----------
    The audited queue's own carts, rendered whole. This panel decides nothing. */
 
 .checkout-queue { display: grid; gap: var(--s3); }
@@ -823,12 +827,13 @@
   border-bottom: 1px solid var(--co-edge);
 }
 .checkout-lines-head span {
-  font-size: var(--text-caps, 11px);
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-25);
   text-align: right;
+  line-height: 1.4;
 }
 .checkout-lines-head span:first-child { text-align: left; }
 .checkout-lines { list-style: none; margin: 0; padding: 0; }
@@ -897,7 +902,7 @@
 }
 
 /* WHAT CONFIRMING ACTUALLY DOES. Two lists, and the second one is not smaller
-   or quieter than the first: the things this does not do are the things they
+   or quieter than the first: the things this does not do are the things he
    would otherwise assume it did. */
 .checkout-truth {
   display: grid;
@@ -911,11 +916,11 @@
   background: var(--co-card);
 }
 .checkout-truth-title {
-  font-size: var(--text-caps, 11px);
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-25);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink-2);
 }
 .checkout-truth-list { display: grid; gap: var(--s2); margin-top: var(--s3); padding: 0; list-style: none; }
 .checkout-truth-list li {
@@ -969,7 +974,7 @@
   text-align: center;
   text-wrap: balance;
 }
-.checkout-state strong { font-size: var(--text-lg, 15px); font-weight: 620; color: var(--ink); }
+.checkout-state strong { font-size: 15px; font-weight: 620; color: var(--ink); }
 .checkout-state span { max-width: 64ch; font-size: var(--text-base, 14px); line-height: 1.6; color: var(--ink-2); }
 
 .checkout-sr-only {
@@ -1016,7 +1021,7 @@
 }
 
 @container checkout-shell (max-width: 900px) {
-  .checkout-page { --co-pad: var(--s4); }
+  .checkout-page { --co-pad: var(--s4); --co-control-h: 32px; --co-radius: 6px; }
   .checkout-cols,
   .checkout-item { grid-template-columns: 22px minmax(0, 1fr); row-gap: var(--s2); }
   .checkout-cols > span:last-child { display: none; }
@@ -1028,12 +1033,13 @@
 }
 
 @container checkout-shell (max-width: 640px) {
-  .checkout-page .checkout-title { font-size: 30px; }
+  .checkout-page .checkout-title { font-size: 22px; font-weight: 650; line-height: 1.2; letter-spacing: -.012em; }
   .checkout-summary { grid-template-columns: minmax(0, 1fr); }
   .checkout-stat + .checkout-stat { border-left: 0; border-top: 1px solid var(--co-rule); }
-  .checkout-stat-value { font-size: 22px; }
-  .checkout-band { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .checkout-band > .checkout-step-actions { grid-column: 1; }
+  .checkout-stat-value { font-size: 28px; font-weight: 650; }
+  .checkout-band { --band-rule: var(--line-strong); --band-label: var(--ink); --band-ground: var(--co-card); position: relative; grid-template-columns: minmax(0, 1fr); align-items: start; padding: 12px 16px 12px 44px; border: 1px solid var(--band-rule); border-radius: var(--co-radius); background: var(--co-card); gap: 4px; }
+  .checkout-band > .checkout-step-actions {
+    grid-column: 1; }
   .checkout-group-side { justify-content: flex-start; }
   .checkout-cart-head { grid-template-columns: minmax(0, 1fr); }
   .checkout-bar { grid-template-columns: minmax(0, 1fr); padding: var(--s3); }
@@ -1061,31 +1067,24 @@ body.reduce-motion .checkout-disclose { transition: none !important; }
   .checkout-pick[aria-checked="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
   .checkout-band { border-left-color: CanvasText; }
 }
-
-/* ===========================================================================
-   CRAFT (2026-09-23): layers and fills. The totals, each shelf, the order
-   and the record are the base layer on the foundation's soft lift with no
-   drawn edge; a shelf's title row sits on a band over its column heads.
-   The approvals line and the first-year price note are wells, and the item
-   tags are filled chips. Every state colour (cannot buy yet, not saved, the
-   chosen row) keeps its own rule; only the neutral outlines went.
-   =========================================================================== */
-.checkout-page :is(.checkout-summary, .checkout-group, .checkout-cart, .checkout-record, .checkout-truth-panel) {
-  border-color: transparent;
-  box-shadow: var(--shadow-lift);
-}
-.checkout-page .checkout-group-head {
-  background: var(--craft-band);
-  border-radius: var(--co-radius) var(--co-radius) 0 0;
-}
-.checkout-page :is(.checkout-band, .checkout-price-renewal) {
-  border-color: transparent;
-  background: var(--craft-well);
-}
-.checkout-page :is(.checkout-chip, .checkout-tag) {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--border-ink) 7%, transparent);
-}
 @media (forced-colors: active) {
   .checkout-page :is(.checkout-summary, .checkout-group, .checkout-cart, .checkout-record, .checkout-truth-panel, .checkout-band, .checkout-price-renewal, .checkout-chip, .checkout-tag) { border-color: CanvasText; }
+}
+.checkout-band::before { content: ''; position: absolute; top: 14px; left: 16px; width: 16px; height: 16px; background: var(--band-rule); mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27black%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Cpath d=%27M12 7v6m0 4h.01%27/%3E%3C/svg%3E") center / contain no-repeat; }
+.checkout-page :is(.checkout-chip, .checkout-tag) { display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; min-height: 22px; padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: 550; line-height: 16px; text-transform: none; color: var(--status-idle); background: var(--status-idle-soft); }
+.checkout-page :is(.checkout-chip, .checkout-tag)::before { content: ''; width: 6px; height: 6px; flex: none; border-radius: 50%; background: currentColor; }
+.checkout-page .checkout-chip[data-tone="blocked"] { background: var(--status-error-soft); color: var(--co-serious); border-color: transparent; }
+.checkout-page .checkout-chip[data-tone="warn"] { background: var(--bg-subtle); color: var(--co-caution); }
+.checkout-page .checkout-chip[data-tone="quiet"] { background: var(--status-idle-soft); color: var(--status-idle); }
+.checkout-item:hover .checkout-pick:not([aria-checked="true"]) { border-color: var(--ink-3); }
+.checkout-group-side .checkout-btn[data-quiet] { min-height: 28px; height: 28px; }
+.checkout-btn:disabled:hover { background: var(--control-bg); color: var(--control-ink, var(--ink)); border-color: var(--control-border); }
+.checkout-btn[data-primary]:disabled:hover { background: var(--action-primary); color: var(--action-primary-ink); border-color: var(--action-primary); }
+.checkout-btn[data-quiet]:disabled:hover { background: transparent; color: var(--ink-2); border-color: transparent; }
+.checkout-page .checkout-state { background: transparent; box-shadow: none; border: 0; font-size: 13.5px; line-height: 1.5; }
+.checkout-page .checkout-state strong { color: var(--ink); font-size: 15px; font-weight: 620; }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .checkout-page { --co-edge: var(--line-strong); }
+@media (forced-colors: active) {
+  .checkout-band::before,
+  .checkout-page :is(.checkout-chip, .checkout-tag)::before { background: CanvasText; forced-color-adjust: none; }
 }

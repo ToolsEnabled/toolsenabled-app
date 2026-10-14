@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { applySetupIntentChanges, applyDeferredAccountPolicy } from '../../src/setup-intent-commit.js'
+import { applySetupIntentChanges } from '../../src/setup-intent-commit.js'
 import { readStoredProfile, writeStoredProfile } from '../../src/setup-profile.js'
 import { createSettingsDraft } from '../../src/settings-draft.js'
 import { createRequire } from 'node:module'
@@ -31,7 +31,7 @@ test('only changed runtime intents are written and account thresholds are not su
   await applySetupIntentChanges(safe, safe, scope)
   assert.deepEqual(writes, [])
   await applySetupIntentChanges(safe, { approvals: 'other-work', ideImport: 'ask', failover: 'auto' }, scope)
-  assert.deepEqual(writes, [['agent.blocked_question', 'Switch to other work'], ['editor', 'ask'], { selectionMode: 'priority' }])
+  assert.deepEqual(writes, [['agent.blocked_question', 'Switch to other work'], ['editor', 'ask']])
 })
 
 test('runtime policy write refusals stay pending and are retried', async () => {
@@ -52,11 +52,7 @@ test('runtime policy write refusals stay pending and are retried', async () => {
 
 test('a missing native intent writer is a refusal; an absent account registry is explicitly deferred', async () => {
   await assert.rejects(applySetupIntentChanges(safe, { ...safe, ideImport: 'ask' }, { mcSetup: {} }), /cannot be saved/)
-  const result = await applySetupIntentChanges(safe, { ...safe, failover: 'auto' }, {
-    mcProviders: { accountPolicy: async () => ({ ok: false, error: { code: 'ACCOUNT_REGISTRY_ABSENT' } }) },
-  })
-  assert.equal(result.deferred.length, 1)
-  assert.match(result.deferred[0], /no provider accounts/)
+  assert.deepEqual(await applySetupIntentChanges(safe, { ...safe, failover: 'auto' }, {}), { ok: true })
 })
 
 test('the no-import default avoids discovery while an explicit check offers bounded metadata', () => {
@@ -190,36 +186,3 @@ function deferredScope({ accounts = [], recorded = false, failover = 'manual', d
     accountPolicyDeferred: deferred ? { reason: 'There are no provider accounts to switch between yet.' } : null }, scope)
   return { scope, writes }
 }
-
-test('a deferred switching answer waits while there is no account, then is applied to the first one and retired', async () => {
-  const empty = deferredScope({ accounts: [] })
-  assert.deepEqual(await applyDeferredAccountPolicy(empty.scope), { applied: false })
-  assert.deepEqual(empty.writes, [], 'an answer was written to a list with no accounts')
-  assert.ok(readStoredProfile(empty.scope).accountPolicyDeferred, 'the deferral was dropped before an account existed')
-
-  const first = deferredScope({ accounts: [{ name: 'work', provider: 'codex' }] })
-  assert.deepEqual(await applyDeferredAccountPolicy(first.scope), { applied: true, failover: 'manual' })
-  assert.deepEqual(first.writes, [{ selectionMode: 'manual' }], '"Stop and let me switch" did not reach the account switching rule')
-  assert.equal(readStoredProfile(first.scope).accountPolicyDeferred, null, 'the applied deferral was left to be applied again')
-  assert.deepEqual(await applyDeferredAccountPolicy(first.scope), { applied: false })
-  assert.equal(first.writes.length, 1, 'the answer was applied twice')
-
-  const auto = deferredScope({ accounts: [{ name: 'work', provider: 'codex' }], failover: 'auto' })
-  await applyDeferredAccountPolicy(auto.scope)
-  assert.deepEqual(auto.writes, [{ selectionMode: 'priority' }])
-})
-
-test('a deferred answer never overrides a rule already chosen, and a refused write keeps it waiting', async () => {
-  const chosen = deferredScope({ accounts: [{ name: 'work', provider: 'codex' }], recorded: true })
-  assert.deepEqual(await applyDeferredAccountPolicy(chosen.scope), { applied: false, failover: 'manual' })
-  assert.deepEqual(chosen.writes, [], 'an older setup answer replaced a rule chosen in the Accounts menu')
-  assert.equal(readStoredProfile(chosen.scope).accountPolicyDeferred, null)
-
-  const refused = deferredScope({ accounts: [{ name: 'work', provider: 'codex' }], policyWrite: async () => ({ ok: false, code: 'ACCOUNT_REGISTRY_DAMAGED' }) })
-  assert.deepEqual(await applyDeferredAccountPolicy(refused.scope), { applied: false })
-  assert.ok(readStoredProfile(refused.scope).accountPolicyDeferred, 'a refused write retired the deferral')
-
-  const none = deferredScope({ accounts: [{ name: 'work', provider: 'codex' }], deferred: false })
-  assert.deepEqual(await applyDeferredAccountPolicy(none.scope), { applied: false })
-  assert.deepEqual(none.writes, [], 'a policy was written with no deferral stored')
-})

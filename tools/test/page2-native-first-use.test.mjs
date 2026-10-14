@@ -113,7 +113,8 @@ test('the actual main bootstrap and account guard remove the generated provider 
   assert.equal(calls, 1)
   assert.deepEqual(Object.fromEntries(HOME_KEYS.map(key => [key, supplied[key] ?? null])), postBootstrapHomes(homes))
   assert.deepEqual(HOME_KEYS.filter(key => !Object.hasOwn(supplied, key)), ['CODEX_HOME'])
-  for (const key of ['CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'GEMINI_DIR', 'NODE_OPTIONS', 'NODE_PATH', 'PUBLIC']) assert.equal(Object.hasOwn(supplied, key), false)
+  assert.equal(supplied.CLAUDE_CONFIG_DIR, launch.CLAUDE_CONFIG_DIR, 'Ordinary startup retains the person’s own Claude configuration')
+  for (const key of ['CODEX_HOME', 'GEMINI_DIR', 'NODE_OPTIONS', 'NODE_PATH', 'PUBLIC']) assert.equal(Object.hasOwn(supplied, key), false)
   assert.equal(launch.CODEX_HOME, homes.CODEX_HOME, 'The requested generated selector remains a separately bound launch input')
 })
 

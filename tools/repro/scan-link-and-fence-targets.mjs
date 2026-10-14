@@ -1,8 +1,8 @@
-/* READ ONLY. Counts and target SCHEMES only -- no text, no URLs printed.
+/* READ ONLY. Counts and target SCHEMES only -- no owner text, no URLs printed.
    Two questions the shape census raised:
-     1. codex writes markdown links often and claude almost never. Does the
+     1. codex writes markdown links in 44% of replies and claude in 0%. Does the
         renderer's URL policy (isSafeChatUrl) admit what codex actually writes?
-     2. Most claude fence openings carry no language. What does the code
+     2. 745 of 770 claude fence openings carry no language. What does the code
         block's own caption say then? */
 import fs from 'node:fs'
 import path from 'node:path'

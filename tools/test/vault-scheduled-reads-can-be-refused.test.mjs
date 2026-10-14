@@ -10,7 +10,7 @@
  * Nothing on this page could write that false. The matrix draws its controls
  * from ROLE_COLOR_NAMES, which is the palette of roles an AGENT runs as, and
  * the scheduler is not one of them: it is the installation's own automation.
- * So the owner had an enforced rule they had no way to author -- the mirror image
+ * So the owner had an enforced rule he had no way to author -- the mirror image
  * of the defect the page's own header comment warns about, a lock with no key
  * rather than a key with no lock.
  *

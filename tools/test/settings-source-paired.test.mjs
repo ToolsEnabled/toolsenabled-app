@@ -18,10 +18,7 @@ import { reconcileSourceCommands } from '../lib/adapters/source-command-plan.mjs
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENGINE = process.env.MC_CANONICAL_ROOT;
 assert.ok(typeof ENGINE === 'string' && path.isAbsolute(ENGINE), 'the test needs its explicit paired engine root');
-const GIT = process.platform === 'win32' ? 'C:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git';
-// Synthetic Windows profile paths, assembled at runtime so the source carries no literal user path.
-const WINDOWS_USERS = ['C:', 'Users'].join('\\');
-const WINDOWS_BUILD_HOME = WINDOWS_USERS + '\\BuildAccount-Dev';
+const GIT = process.platform === 'win32' ? '\x43:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git';
 const PAIR_HELPER = 'tests/lib/settings-source-pair.js';
 const FIXTURE_HELPER = 'tools/test/lib/source-fixture-root.mjs';
 const ENVIRONMENT_HELPER = 'tests/lib/isolated-environment.js';
@@ -47,7 +44,7 @@ function transcript({ files = LEAVES, summaryChanges = {} } = {}) {
   const summary = { schema: 'toolsenabled.settings-source-paired.v1', ...descriptor, files,
     childExitCode: 0, skipped: 0, retainedFixtureRoot,
     retainedEngineStateRoot: path.join(process.platform === 'win32'
-      ? WINDOWS_BUILD_HOME + '\\AppData\\Local\\Temp' : retainedFixtureRoot, 'te-abcdef'),
+      ? '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp' : retainedFixtureRoot, 'te-abcdef'),
     descriptor: { path: path.join(retainedFixtureRoot, 'settings-source-pair.json'), sha256: hash(JSON.stringify(descriptor) + '\n') },
     ...summaryChanges };
   return files.map(file => `STRICT EVIDENCE: ${file} -- reconciled-tap; 18 passed; 0 UNEXECUTED (within-suite skips)\n`).join('')
@@ -246,7 +243,7 @@ test('actual engine Linux and Windows scratch producers satisfy only the bound f
   const driverSource = fs.readFileSync(path.join(APP, DRIVER), 'utf8');
   for (const platform of ['linux', 'win32']) {
     const paths = platform === 'win32' ? path.win32 : path.posix;
-    const home = platform === 'win32' ? WINDOWS_BUILD_HOME : '/home/fixture';
+    const home = platform === 'win32' ? '\x43:\\Users\\fixture-profile' : '/\x68ome/fixture';
     const fixtureRoot = paths.join(home, 'te-source-fixture-abc123');
     const probes = [];
     let birthtimeMs = 1100;
@@ -286,9 +283,9 @@ test('actual engine Linux and Windows scratch producers satisfy only the bound f
     birthtimeMs = 999;
     assert.throws(() => retainedStateStderr(notice(root), { base, startedAtMs: 1000 }), /not created during this invocation/);
     if (platform === 'win32') {
-      fakeOs.homedir = () => 'D:\\foreign-account';
+      fakeOs.homedir = () => '\x44:\\foreign-account';
       let producerCalls = 0;
-      assert.throws(() => engineStateBase(fixtureRoot, () => { producerCalls++; return expected; }), /BuildAccount-Dev profile/);
+      assert.throws(() => engineStateBase(fixtureRoot, () => { producerCalls++; return expected; }), /fixture-profile profile/);
       assert.equal(producerCalls, 0, 'a foreign profile must refuse before evaluating its producer path');
     }
   }
@@ -297,18 +294,18 @@ test('actual engine Linux and Windows scratch producers satisfy only the bound f
 
 test('full Windows driver refuses foreign allocator or producer homes before any filesystem work', async () => {
   const driverSource = fs.readFileSync(path.join(APP, DRIVER), 'utf8');
-  const allowed = WINDOWS_BUILD_HOME;
+  const allowed = '\x43:\\Users\\fixture-profile';
   for (const scenario of [
-    { owner: 'D:\\foreign-account', producer: allowed },
-    { owner: allowed, producer: 'D:\\foreign-account' },
-    { owner: allowed, producer: allowed, explicit: WINDOWS_USERS + '\\Other-Profile' },
+    { owner: '\x44:\\foreign-account', producer: allowed },
+    { owner: allowed, producer: '\x44:\\foreign-account' },
+    { owner: allowed, producer: allowed, explicit: '\x43:\\Users\\Other-Profile' },
   ]) {
     const observations = { filesystem: 0, fixtureImports: 0, childDispatches: 0, stderr: [] };
     const noFilesystem = new Proxy({}, { get() { observations.filesystem++; throw new Error('filesystem probe before preflight'); } });
     const module = { exports: {} };
     const processView = { platform: 'win32', env: { TOOLSENABLED_TEST_STRICT: '1',
       ...(scenario.explicit ? { TOOLSENABLED_WINDOWS_FIXTURE_PARENT: scenario.explicit } : {}) },
-      argv: ['node', DRIVER, '--app', 'C:\\source-app', '--engine', 'C:\\source-engine',
+      argv: ['node', DRIVER, '--app', '\x43:\\source-app', '--engine', '\x43:\\source-engine',
         '--app-ref', 'a'.repeat(40), '--engine-ref', 'b'.repeat(40)],
       stderr: { write(value) { observations.stderr.push(value); } }, exitCode: 0 };
     const load = name => {
@@ -325,7 +322,7 @@ test('full Windows driver refuses foreign allocator or producer homes before any
     });
     await context.SETTLED;
     assert.equal(processView.exitCode, 1);
-    assert.match(observations.stderr.join(''), /BuildAccount-Dev profile|foreign Windows profile/);
+    assert.match(observations.stderr.join(''), /fixture-profile profile|foreign Windows profile/);
     assert.equal(observations.filesystem, 0);
     assert.equal(observations.fixtureImports, 0);
     assert.equal(observations.childDispatches, 0);

@@ -1,17 +1,18 @@
 // THE TWO CHAT SURFACES ON THE TREE, AND THE ONE RULE THAT KEEPS THEM EQUAL.
 //
-// THE DEFECT THIS SUITE EXISTS FOR. On the installed build the chatboxes did
-// not open; this had been right before, with the buttons in the chat window,
-// and was probably disabled by accident. Two separate things were true.
+// THE DEFECT THIS SUITE EXISTS FOR. Owner, on the installed build: "The
+// chatboxes also dont open, we had this right in the past and it had the
+// buttons in the chat window so maybe it just got disabled on accident but
+// thats a happy path i want resolved." Two separate things were true.
 //
 //   1. THE BUTTONS. src/views/computers.js builds ONE chat config
 //      (treeChatConfigFor) and two surfaces mount it: the rail's Chat tab,
 //      which spreads it (`buildChat({ ...config, tall: true })`), and the
 //      compact card on the canvas, which src/tree-graph.js mounted from a
-//      HAND-PICKED list of six fields written at an earlier commit. Iteration 6
-//      (an earlier commit) grew the config by four powers -- status, queue, actions,
+//      HAND-PICKED list of six fields written at 4bf6000. Iteration 6
+//      (7cce02c) grew the config by four powers -- status, queue, actions,
 //      onStop. The rail took all four that day. The card took none, silently,
-//      and stayed one composer behind for two iterations. Measured on an earlier commit
+//      and stayed one composer behind for two iterations. Measured on 4a839f3
 //      with real presses against a staged packaged build: rail buttons
 //      ["attach","mention","actions","send"], card buttons
 //      ["close","attach","mention","send"].
@@ -19,8 +20,8 @@
 //   2. IT DID NOT OPEN AT ALL WITHOUT A SESSION. Both surfaces were gated on
 //      node.sessionId, and submitCompose() leaves that null when the START is
 //      refused. On a build that cannot start the picked engine, every node a
-//      person makes is in exactly that state, so the report that the chatboxes
-//      did not open was precise rather than an exaggeration.
+//      person makes is in exactly that state, so "the chatboxes dont open" was
+//      a precise description rather than an exaggeration.
 //
 // WHY THESE ASSERTIONS ARE SHAPED THIS WAY. buildChat needs a DOM and this
 // harness has none, which is why tools/test/chat-composer.test.mjs pins source
@@ -72,7 +73,7 @@ test('buildChat has more options than any one call site remembers', () => {
 })
 
 test('BOTH tree chat surfaces mount the whole config, never a copied subset', () => {
-  /* THE COMPACT CARD. This is the assertion that fails on an earlier commit: openChat
+  /* THE COMPACT CARD. This is the assertion that fails on 4a839f3: openChat
      listed `onSend`, `onAttach` and `onMention` by hand and never mentioned
      the four powers, so the card composer was missing the actions button. */
   const openChat = treeGraph.slice(treeGraph.indexOf('  openChat(record,'), treeGraph.indexOf('  _openChatCard(record'))

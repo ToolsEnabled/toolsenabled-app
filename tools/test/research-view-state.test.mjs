@@ -508,7 +508,7 @@ test('workflow keyboard navigation moves focus between the areas', async () => {
   view.el.querySelector('[data-workflow-nav]').dispatch('keydown', { target: design, key: 'ArrowRight' })
   assert.equal(view.el.dataset.researchArea, 'protocol')
   assert.equal(document.activeElement, view.el.querySelector('[data-research-area="protocol"]'))
-  // The "next step" strip (Open designer / Inspect runs /
+  // Owner, 2026-09-21: the "next step" strip (Open designer / Inspect runs /
   // Read evidence) described the older page and is gone; the areas are the
   // navigation.
   assert.equal(view.el.querySelector('[data-workflow-evidence]'), null)

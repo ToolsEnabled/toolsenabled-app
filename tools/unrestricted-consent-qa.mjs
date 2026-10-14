@@ -2,7 +2,7 @@
 
 /* THE MOMENT OF CHOOSING FULL ACCESS, DRIVEN ON THE PACKAGED WINDOW.
  *
- * Rule X4, on the unsandboxed configuration -- the
+ * The owner's X4 ruling (2026-08-15) on the unsandboxed configuration -- the
  * `unrestricted` permission level -- in four clauses, each of which this driver
  * proves with a real mouse press on a staged packaged build and a read of what
  * the disk and the signed ledger hold afterwards:
@@ -455,7 +455,7 @@ async function scenarioLegacy(executable, appRoot, scratch) {
     ledger.check('D4 ...and never says "confirmed on"', !/was confirmed on/.test(view.rowText))
     await shot(window, 'D-legacy-no-confirmation-on-record')
     /* And an unconfirmed re-record of the level it already holds is not an
-       enable: walking setup again does not strand the owner behind their own
+       enable: walking setup again does not strand the owner behind his own
        gate. The walkthrough RESUMES PAST a recorded level (resumeStep: a
        configured machine opens on the folder question), so the level question
        is reached by its own Back button -- and at the level the machine

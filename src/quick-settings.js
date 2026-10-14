@@ -1,13 +1,12 @@
 import { THEME_CHOICES, currentTheme } from './theme-choice.js'
-import { HOME_CIRCLE_STYLES, currentHomeCircleStyle, setHomeCircleStyle } from './home-circle-choice.js'
-import { HOME_CIRCLE_CLOCK_MODES, homeCircleClockMode, setHomeCircleClockMode } from './home-circle-clock.js'
 import { agentApiSettingMarkup, bindAgentApiSetting } from './agent-api-setting.js'
 import { auditPerformanceSettingsMarkup, bindAuditPerformanceSettings } from './audit-performance-settings.js'
-/* THE UPPER-RIGHT SETTINGS CONTROL, MADE PAGE-AWARE (R1520).
+/* THE UPPER-RIGHT SETTINGS CONTROL, MADE PAGE-AWARE (owner, R1520).
  *
- * The settings control in the upper right corner used to show simulation
- * settings; it shows per-page settings with a quick move to the Settings page,
- * and the Settings page is also reachable through the pages themselves.
+ * The owner's words: "the settings in the software in the upper right corner
+ * still goes to show simulation settings, it should show per page settings
+ * with a quick move to settings page and then there is a second way to access
+ * it by just going through the pages to the settings page".
  *
  * So the drawer the gear opens is built HERE, fresh at every open, from the
  * route that is on screen: first the settings that belong to that page, then
@@ -19,9 +18,10 @@ import { auditPerformanceSettingsMarkup, bindAuditPerformanceSettings } from './
  * ---------------------------------------------------------------------------
  * WHAT THE 2026-08-27 PASS CHANGED, AND WHAT IT MEASURED FIRST.
  *
- * The pop-out settings menu on each page was outdated from earlier days of the
- * program; it provides useful settings in a way consistent with the current
- * theme.
+ * The owner: "I also wanted to work on our settings menu in the software the
+ * pop out one on each page. It is outdated from earlier days of the program.
+ * it needs to provide useful settings in a way more consistent with the theme
+ * now."
  *
  * Driven before anything was written (Playwright, vite, 1366x768 and iPhone 13,
  * four routes each). What the measurement found:
@@ -72,7 +72,7 @@ import { auditPerformanceSettingsMarkup, bindAuditPerformanceSettings } from './
  * tool switches were the last page setting, and they are a page of their own
  * now (#/tools), reached from one link below. Every route with nothing of its
  * own still gets the honest "no settings specific to this page" line rather
- * than an invented control (R1502).
+ * than an invented control (owner, R1502).
  *
  * The markup uses the drawer's existing control language (.set-row, .theme-seg,
  * .toggle) and keeps the historical ids (#theme-seg, #text-seg, #set-glow,
@@ -83,7 +83,7 @@ import { auditPerformanceSettingsMarkup, bindAuditPerformanceSettings } from './
 import { isExampleMode, setExampleMode } from './data-source.js'
 import { rangeFill } from './views/computers.js'
 import { bindTouchRange } from './settings-numeric.js'
-/* WHAT EACH OF THESE GRANTS AND WHAT IT RISKS (R1529). Both surfaces
+/* WHAT EACH OF THESE GRANTS AND WHAT IT RISKS (owner, R1529). Both surfaces
    show it -- this drawer and the settings page -- and both ask the same module
    for the words, so the two can never describe one control two ways. That is
    the same rule the live-data row's title already follows. */
@@ -138,10 +138,6 @@ const esc = value => String(value ?? '')
    here: that module already owns which values exist and how the applied one is
    read, and a second list is a second thing to update when a size is added. */
 const currentText = () => String(normalizeTextSize(textZoom()) ?? DEFAULT_TEXT_SIZE)
-const currentGlow = () => {
-  const v = parseFloat(document.documentElement.style.getPropertyValue('--glow'))
-  return Number.isFinite(v) ? Math.round(v * 100) : 100
-}
 
 function announce(settingId, value) {
   window.dispatchEvent(new CustomEvent(QUICK_SETTING_EVENT, {
@@ -171,8 +167,8 @@ function groupMarkup(id, label, content) {
 
 /* THE PAGE ROW, AND THERE IS EXACTLY ONE IN THE PRODUCT.
  *
- * The phone ledger (src/phone-ledger.js, 2026-08-27: drop-down rows instead of
- * a tree on mobile) decides how ONE page draws — the
+ * The phone ledger (src/phone-ledger.js, owner 2026-08-27: "I like the dropdown
+ * functions instead of a tree for mobile") decides how ONE page draws — the
  * fleet page's tree, as circles or as rows — and nothing else in the product
  * reads it. That is the definition of a page setting, and it is the first one
  * this drawer has ever had.
@@ -191,7 +187,7 @@ function groupMarkup(id, label, content) {
  * unless the phone canvas is already on, and no desktop window at any width can
  * turn that mode on (src/phone-canvas.js, and the 3,000-point matrix in its
  * suite). So on a desktop this row would be a control that cannot move
- * anything, which is the one thing this product does not ship. The rule
+ * anything, which is the one thing this product does not ship. The owner's rule
  * points the other way — a phone must not LOSE a path a desktop has — and it is
  * kept: nothing a desktop can do disappears here.
  */
@@ -307,16 +303,6 @@ function appRows() {
     ${segMarkup('font-seg', 'font', FONT_CHOICES.map(choice => [choice.id, choice.label, `font-family:${choice.stack}`]), currentFontChoice(), 'Font')}
   </div>
   ${errorMarkup('font')}
-  <div class="set-row">
-    <span class="set-label">Home circle</span>
-    ${segMarkup('circle-seg', 'circle', HOME_CIRCLE_STYLES.map(choice => [choice.id, choice.label]), currentHomeCircleStyle(), 'Home circle')}
-  </div>
-  ${errorMarkup('circle')}
-  <div class="set-row">
-    <span class="set-label">Clock in the circle</span>
-    ${segMarkup('circle-clock-seg', 'circle-clock', HOME_CIRCLE_CLOCK_MODES.map(choice => [choice.id, choice.label]), homeCircleClockMode(), 'Clock in the circle')}
-  </div>
-  ${errorMarkup('circle-clock')}
   ${note('theme', 'Appearance', 'What Theme and Font change, and what they risk')}
   <div class="set-row">
     <span class="set-label">Text size</span>
@@ -324,17 +310,12 @@ function appRows() {
   </div>
   ${errorMarkup('text')}
   ${note('text_size', 'Text & Reading', 'What Text size changes, and what it risks')}
-  <label class="set-row">
-    <span class="set-label">Glow intensity</span>
-    <input type="range" id="set-glow" min="0" max="200" value="${currentGlow()}" aria-describedby="quick-glow-error" />
-  </label>
-  ${errorMarkup('glow')}
   <label class="set-row set-toggle">
     <span class="set-label">Reduce motion</span>
     <span class="toggle"><input type="checkbox" id="set-motion" ${motion ? 'checked' : ''} aria-describedby="quick-motion-error"/><i></i></span>
   </label>
   ${errorMarkup('motion')}
-  ${note('glow', 'Motion & Effects', 'What Glow and Reduce motion change, and what they risk')}
+  ${note('reduce_motion', 'Motion & Effects', 'What Reduce motion changes, and what it risks')}
   <div class="set-row set-build" data-build-row>
     <span class="set-label">This build</span>
     <span class="set-build-value" data-build-value>reading…</span>
@@ -343,7 +324,7 @@ function appRows() {
 
 /* WHICH BUILD IS THIS? Nothing in the app answered that, and it cost a whole
  * walkthrough: a build from a different branch was installed over this one
- * and neither the owner nor I could tell by looking — they reported defects
+ * and neither the owner nor I could tell by looking — he reported defects
  * against surfaces that had already been replaced. The packaged artifact has
  * always carried dist/build-info.json (version, refs, and whether the tree
  * was dirty when it was built); it simply had no reader. This is the reader.
@@ -395,7 +376,7 @@ function wire(body) {
   bindAuditPerformanceSettings(body)
   void fillBuildRow(body)
   const syncHomeColors = bindHomeStatusQuickSettings(body, announce)
-  const labels = { theme: 'Theme', font: 'Font', text: 'Text size', glow: 'Glow intensity', motion: 'Reduce motion', example: 'The example preference', ledger: 'The tree view', 'circle-clock': 'Clock in the circle' }
+  const labels = { theme: 'Theme', font: 'Font', text: 'Text size', motion: 'Reduce motion', example: 'The example preference', ledger: 'The tree view' }
   const persist = (id, write) => {
     const error = body.querySelector(`[data-quick-error="${id}"]`)
     try {
@@ -411,18 +392,6 @@ function wire(body) {
       return false
     }
   }
-  const clockSeg = body.querySelector('#circle-clock-seg')
-  clockSeg?.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-circle-clock]')
-    if (!b) return
-    let stored
-    if (!persist('circle-clock', () => { stored = setHomeCircleClockMode(b.dataset.circleClock) })) return
-    for (const btn of clockSeg.querySelectorAll('button')) {
-      const on = btn.dataset.circleClock === stored
-      btn.classList.toggle('on', on)
-      btn.setAttribute('aria-pressed', on ? 'true' : 'false')
-    }
-  })
   const themeSeg = body.querySelector('#theme-seg')
   themeSeg?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-theme]')
@@ -478,21 +447,6 @@ function wire(body) {
      licensed writer of that key — and that module announces the change; the
      redraw belongs to src/main.js, which owns render(). Nothing is applied
      here, so the drawer cannot hold an opinion the page disagrees with. */
-  /* Classic, Blob or Launch for the Home circle. setHomeCircleStyle writes the one
-     key and announces it; the Home view repaints on that event. */
-  const circleSeg = body.querySelector('#circle-seg')
-  circleSeg?.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-circle]')
-    if (!b) return
-    let stored
-    if (!persist('circle', () => { stored = setHomeCircleStyle(b.dataset.circle) })) return
-    for (const btn of circleSeg.querySelectorAll('button')) {
-      const on = btn.dataset.circle === stored
-      btn.classList.toggle('on', on)
-      btn.setAttribute('aria-pressed', on ? 'true' : 'false')
-    }
-    announce('home_circle_style', stored)
-  })
   const ledgerSeg = body.querySelector('#ledger-seg')
   ledgerSeg?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-ledger]')
@@ -507,20 +461,6 @@ function wire(body) {
     }
   })
 
-  const glow = body.querySelector('#set-glow')
-  if (glow) {
-    bindTouchRange(glow)
-    glow.addEventListener('input', () => {
-      const previous = currentGlow()
-      let value
-      if (!persist('glow', () => { value = rememberAppearance('glow', Number(glow.value)) })) { glow.value = String(previous); return }
-      if (value === null) { glow.value = String(previous); return }
-      glow.value = String(value)
-      document.documentElement.style.setProperty('--glow', String(value / 100))
-      announce('glow', value)
-    })
-    rangeFill(glow)
-  }
 
   body.querySelector('#set-motion')?.addEventListener('change', (e) => {
     const previous = document.body.classList.contains('reduce-motion')

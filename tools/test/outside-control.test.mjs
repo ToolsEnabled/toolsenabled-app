@@ -43,14 +43,14 @@ test('no payload, no module, a module without the function, and a throwing polic
   assert.equal(absent.enabled, false)
   assert.equal(absent.code, 'OUTSIDE_CONTROL_PAYLOAD_ABSENT')
 
-  const missing = resolveOutsideControl({ root: 'C:\\x', load: () => { throw new Error('Cannot find module') } })
+  const missing = resolveOutsideControl({ root: '\x43:\\x', load: () => { throw new Error('Cannot find module') } })
   assert.equal(missing.code, 'OUTSIDE_CONTROL_MODULE_ABSENT')
   assert.match(missing.reason, /src\/lib\/outside-control\.js/)
 
-  const wrong = resolveOutsideControl({ root: 'C:\\x', load: () => ({}) })
+  const wrong = resolveOutsideControl({ root: '\x43:\\x', load: () => ({}) })
   assert.equal(wrong.code, 'OUTSIDE_CONTROL_MODULE_INVALID')
 
-  const broken = resolveOutsideControl({ root: 'C:\\x', load: () => ({ outsideControlPolicy() { throw new Error('disk gone') } }) })
+  const broken = resolveOutsideControl({ root: '\x43:\\x', load: () => ({ outsideControlPolicy() { throw new Error('disk gone') } }) })
   assert.equal(broken.code, 'OUTSIDE_CONTROL_UNREADABLE')
   assert.match(broken.reason, /disk gone/)
   for (const answer of [absent, missing, wrong, broken]) assert.equal(answer.enabled, false)
@@ -59,14 +59,14 @@ test('no payload, no module, a module without the function, and a throwing polic
 test('the engine\'s decision is carried through: off stays off with its reason, chosen opens with port and address', () => {
   const loaded = []
   const load = file => { loaded.push(file); return policyModule({ enabled: false, port: 9223, address: '127.0.0.1', reason: 'not-chosen', source: 'default' }) }
-  const off = resolveOutsideControl({ root: 'C:\\payload', load })
+  const off = resolveOutsideControl({ root: '\x43:\\payload', load })
   assert.deepEqual(off, { available: true, enabled: false, port: 9223, address: '127.0.0.1', code: null, reason: 'not-chosen', source: 'default' })
-  assert.equal(loaded[0], path.join('C:\\payload', OUTSIDE_CONTROL_MODULE))
+  assert.equal(loaded[0], path.join('\x43:\\payload', OUTSIDE_CONTROL_MODULE))
 
-  const on = resolveOutsideControl({ root: 'C:\\payload', load: () => policyModule({ enabled: true, port: 9223, address: '127.0.0.1', reason: 'chosen', source: 'user' }) })
+  const on = resolveOutsideControl({ root: '\x43:\\payload', load: () => policyModule({ enabled: true, port: 9223, address: '127.0.0.1', reason: 'chosen', source: 'user' }) })
   assert.deepEqual(on, { available: true, enabled: true, port: 9223, address: '127.0.0.1', code: null, reason: 'chosen', source: 'user' })
 
-  const odd = resolveOutsideControl({ root: 'C:\\payload', load: () => policyModule({ enabled: true, port: '9223' }) })
+  const odd = resolveOutsideControl({ root: '\x43:\\payload', load: () => policyModule({ enabled: true, port: '9223' }) })
   assert.equal(odd.enabled, true)
   assert.equal(odd.port, null, 'a port that is not an integer is not a port')
 })
@@ -96,7 +96,7 @@ test('applying: off appends nothing; on appends the port and the loopback addres
 
 test('startOutsideControl() is decide-then-apply, one frozen account of both', () => {
   const commandLine = fakeCommandLine()
-  const account = startOutsideControl(commandLine, { root: 'C:\\payload', load: () => policyModule({ enabled: true, port: 9223, address: '127.0.0.1', reason: 'chosen', source: 'user' }) })
+  const account = startOutsideControl(commandLine, { root: '\x43:\\payload', load: () => policyModule({ enabled: true, port: 9223, address: '127.0.0.1', reason: 'chosen', source: 'user' }) })
   assert.equal(account.enabled, true)
   assert.equal(account.applied, true)
   assert.equal(account.why, 'setting')

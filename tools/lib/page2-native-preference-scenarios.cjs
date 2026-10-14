@@ -1,8 +1,11 @@
 'use strict'
 
+// Stage A reviewed source font vocabulary; this is not a new native capture.
 // Held native cohort. Every preference write below is a visible click or key.
 // The renderer cache, the real prefs IPC and the owned durable file must agree.
 // Account-scoped preferences and provider behavior are deliberately uncredited.
+// 1.0.50 retired the Quick Settings Glow slider (DESIGN-ADDENDUM item 5); its
+// saved mc.set.glow value is kept but never applied, so it earns no case here.
 const assert = require('node:assert/strict')
 const crypto = require('node:crypto')
 const fs = require('node:fs')
@@ -10,6 +13,7 @@ const path = require('node:path')
 const { navigate } = require('./page2-native-scenarios.cjs')
 
 const FONT_STACKS = Object.freeze({
+  geist: '"Geist", "Segoe UI Variable", system-ui, -apple-system, "Noto Sans", sans-serif',
   plex: '"IBM Plex Sans Variable", "IBM Plex Sans", "Segoe UI Variable", system-ui, sans-serif',
   manrope: '"Manrope Variable", "Segoe UI Variable", system-ui, sans-serif',
   source: '"Source Sans 3 Variable", "Segoe UI Variable", system-ui, sans-serif',
@@ -19,9 +23,8 @@ const FONT_STACKS = Object.freeze({
 })
 const PREFERENCES = Object.freeze([
   { id: 'theme', key: 'mc.theme', name: 'Theme', kind: 'segment', group: '#theme-seg', attr: 'theme', choices: ['white', 'tan', 'black', 'ember', 'cobalt'], default: 'white', control: 'appearance.quick.theme' },
-  { id: 'ui_font', key: 'mc.font', name: 'Font', kind: 'segment', group: '#font-seg', attr: 'font', choices: Object.keys(FONT_STACKS), default: 'plex', control: 'appearance.quick.font' },
+  { id: 'ui_font', key: 'mc.font', name: 'Font', kind: 'segment', group: '#font-seg', attr: 'font', choices: Object.keys(FONT_STACKS), default: 'geist', control: 'appearance.quick.font' },
   { id: 'text_size', key: 'mc.text', name: 'Text size', kind: 'segment', group: '#text-seg', attr: 'text', choices: ['0.9', '1', '1.12', '1.5', '2'], default: '1', control: 'appearance.quick.text-size' },
-  { id: 'glow', key: 'mc.set.glow', name: 'Glow intensity', kind: 'range', choices: [0, 200], default: 100, control: 'appearance.quick.glow' },
   { id: 'reduce_motion', key: 'mc.set.reduce_motion', name: 'Reduce motion', kind: 'toggle', choices: [true, false], default: false, control: 'appearance.quick.reduce-motion' },
   { id: 'reading_width', key: 'mc.home.chat-width', name: 'Home reading width', kind: 'width', choices: ['comfortable', 'wide'], default: 'comfortable', control: 'home.reading.width' },
 ].map(Object.freeze))
@@ -29,7 +32,7 @@ const KEYS = PREFERENCES.map(item => item.key)
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex')
 const normalizeFont = value => String(value).replace(/["']/g, '').replace(/\s+/g, ' ').trim()
 const plain = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-const expectedRaw = (item, value) => ['glow', 'reduce_motion'].includes(item.id) && value === item.default ? null : String(value)
+const expectedRaw = (item, value) => item.id === 'reduce_motion' && value === item.default ? null : String(value)
 
 function ownedPreferenceFile(paths, file, fsImpl = fs) {
   assert.ok(typeof file === 'string' && path.isAbsolute(file), 'The prefs bridge must name its actual absolute file')
@@ -92,7 +95,6 @@ function appliedValue(receipt, item) {
   if (item.id === 'theme') return applied.theme
   if (item.id === 'ui_font') return Object.keys(FONT_STACKS).find(id => normalizeFont(FONT_STACKS[id]) === normalizeFont(applied.fontStack))
   if (item.id === 'text_size') return String(Number(applied.zoom || 1))
-  if (item.id === 'glow') return Math.round(Number(applied.glow) * 100)
   if (item.id === 'reduce_motion') return applied.reduceMotion
   return applied.reading?.width ?? receipt.raw[item.key] ?? item.default
 }
@@ -113,15 +115,12 @@ function assertPreferenceReceipt(receipt) {
     assert.deepEqual(receipt.host[item.key], { ok: true, value: raw }, 'The exact host read must agree with the renderer preference')
     assert.equal(receipt.disk.values[item.key], raw, 'The durable file must contain the same exact saved preference as the host and renderer')
     const value = appliedValue(receipt, item)
-    if (item.kind === 'range') assert.ok(Number.isInteger(value) && value >= 0 && value <= 200)
-    else assert.ok(item.choices.includes(value), `The applied ${item.id} must identify an offered choice`)
+    assert.ok(item.choices.includes(value), `The applied ${item.id} must identify an offered choice`)
     assert.ok(raw === expectedRaw(item, value) || (raw === null && value === item.default),
       'A malformed or stale saved value cannot be treated as the applied preference')
   }
   assert.equal(normalizeFont(receipt.applied.bodyFont), normalizeFont(receipt.applied.fontStack), 'The selected font must reach the actual body style')
   assert.equal(Number(receipt.applied.layoutZoom || 1), Number(receipt.applied.zoom || 1), 'Text zoom and the layout zoom property must agree')
-  assert.ok(Math.abs(Number(receipt.applied.glow) * 100 - appliedValue(receipt, PREFERENCES.find(item => item.id === 'glow'))) < 1e-7,
-    'The actual glow style must name a whole offered percentage')
   assert.ok(typeof receipt.applied.themeBackground === 'string' && receipt.applied.themeBackground.trim())
   if (receipt.applied.reading) {
     const reading = receipt.applied.reading
@@ -186,7 +185,7 @@ async function readPreferenceState(context) {
       host: Object.fromEntries(keys.map(key => [key, window.mcPrefs?.read?.(key)])),
       applied: { theme: root.dataset.theme, fontStack: computed.getPropertyValue('--font-ui').trim(), bodyFont: getComputedStyle(document.body).fontFamily,
         zoom: document.body.style.zoom, layoutZoom: root.style.getPropertyValue('--zoom').trim(),
-        glow: computed.getPropertyValue('--glow').trim(), reduceMotion: document.body.classList.contains('reduce-motion'),
+        reduceMotion: document.body.classList.contains('reduce-motion'),
         themeBackground: computed.getPropertyValue('--bg').trim(), reading: surface ? { width: surface.dataset.readingWidth,
           max: getComputedStyle(surface).getPropertyValue('--reading-max').trim(), pressed: width?.getAttribute('aria-pressed'),
           label: width?.textContent.trim(), subject: surface.querySelector('[data-chat-subject]')?.value,
@@ -215,7 +214,6 @@ async function assertSettingsValue(context, item, value) {
   const row = settings.locator(`[data-setting-id="${item.id}"]`)
   await row.waitFor()
   if (item.kind === 'segment') assert.equal(await row.locator('[data-setting-value][aria-pressed="true"]').getAttribute('data-setting-value'), String(value))
-  else if (item.kind === 'range') assert.equal(await row.locator('input[type="range"]').inputValue(), String(value))
   else assert.equal(await row.locator('input[type="checkbox"]').isChecked(), value)
   assert.equal(await settings.locator('[data-settings-save]').isEnabled(), false, 'An immediate Quick Settings write must not leave a full-page settings draft')
   assert.equal(await settings.locator('[data-settings-discard]').isEnabled(), false)
@@ -236,46 +234,13 @@ async function assertQuickValue(drawer, item, value) {
     assert.deepEqual(await buttons.evaluateAll((nodes, attr) => nodes.map(node => node.getAttribute(`data-${attr}`)), item.attr), item.choices,
       'The real drawer must offer exactly the reviewed preference choices')
     assert.equal(await drawer.locator(`${item.group} button[aria-pressed="true"]`).getAttribute(`data-${item.attr}`), String(value))
-  } else if (item.kind === 'range') {
-    const input = drawer.locator('#set-glow')
-    assert.equal(await input.getAttribute('min'), '0'); assert.equal(await input.getAttribute('max'), '200')
-    assert.equal(await input.inputValue(), String(value))
   } else assert.equal(await drawer.locator('#set-motion').isChecked(), value)
 }
 async function chooseQuick(context, drawer, item, value) {
   await readPreferenceState(context) // repeat the owned, settled, signed-out gate before this input
   if (item.kind === 'segment') await drawer.locator(`${item.group} button[data-${item.attr}="${value}"]`).click()
-  else if (item.kind === 'range') {
-    assert.ok(Number.isInteger(value) && value >= 0 && value <= 200)
-    const input = drawer.locator('#set-glow'), fromEnd = value > 100
-    await input.press(fromEnd ? 'End' : 'Home')
-    for (let step = 0; step < (fromEnd ? 200 - value : value); step++) await input.press(fromEnd ? 'ArrowLeft' : 'ArrowRight')
-  } else if (await drawer.locator('#set-motion').isChecked() !== value) await drawer.locator('label:has(#set-motion)').click()
+  else if (await drawer.locator('#set-motion').isChecked() !== value) await drawer.locator('label:has(#set-motion)').click()
   await assertQuickValue(drawer, item, value)
-}
-
-function assertBoundaryKey(receipt, key, value) {
-  assert.deepEqual(receipt.keys, [{ key, trusted: true }], 'The real slider must receive exactly the requested trusted boundary key')
-  assert.equal(receipt.focused, true, 'The native boundary key must target the actual focused slider')
-  assert.equal(receipt.value, String(value), 'The actual slider must retain its offered endpoint')
-}
-async function pressBoundaryKey(input, value) {
-  const key = value === 0 ? 'ArrowLeft' : 'ArrowRight'
-  const observer = await input.evaluateHandle(element => {
-    const record = { element, keys: [] }
-    record.listener = event => record.keys.push({ key: event.key, trusted: event.isTrusted })
-    element.addEventListener('keydown', record.listener, true)
-    return record
-  })
-  try {
-    await input.press(key)
-    const receipt = await observer.evaluate(({ element, keys }) => ({ keys, value: element.value, focused: element === document.activeElement }))
-    assertBoundaryKey(receipt, key, value)
-    return receipt
-  } finally {
-    await observer.evaluate(record => record.element.removeEventListener('keydown', record.listener, true))
-    await observer.dispose()
-  }
 }
 
 function summarize(receipt, item) {
@@ -307,22 +272,16 @@ async function runQuickPreference(context, id) {
   await withRestoration(context, item, before, async () => {
     let previous = before
     await assertQuickValue(await openQuick(context), item, original)
-    for (const value of item.choices.filter(value => item.kind === 'range' || value !== original)) {
+    for (const value of item.choices.filter(value => value !== original)) {
       await context.step(`preference-${item.id}-choose-${value}`, async () => {
         const drawer = await openQuick(context)
         await chooseQuick(context, drawer, item, value)
         const after = await readPreferenceState(context)
         assertPreferenceChange(previous, after, item, value)
-        let boundary = null
-        if (item.kind === 'range') {
-          // The native keyboard must respect both offered endpoints.
-          boundary = await pressBoundaryKey(drawer.locator('#set-glow'), value)
-          assertPreferenceChange(after, await readPreferenceState(context), item, value)
-        }
         await closeQuick(context)
         await assertSettingsValue(context, item, value)
         previous = after
-        return { ...summarize(after, item), boundary }
+        return summarize(after, item)
       })
     }
     const chosen = appliedValue(previous, item)
@@ -349,8 +308,6 @@ const scenarios = [
     controls: ['appearance.quick.font'], requires: ['setup'], async run(context) { await runQuickPreference(context, 'ui_font') } },
   { id: 'quick-preference-text-size', title: 'Apply, persist, remount and restore Quick Settings Text size',
     controls: ['appearance.quick.text-size'], requires: ['setup'], async run(context) { await runQuickPreference(context, 'text_size') } },
-  { id: 'quick-preference-glow', title: 'Apply, persist, remount and restore Quick Settings Glow intensity',
-    controls: ['appearance.quick.glow'], requires: ['setup'], async run(context) { await runQuickPreference(context, 'glow') } },
   { id: 'quick-preference-reduce-motion', title: 'Apply, persist, remount and restore Quick Settings Reduce motion',
     controls: ['appearance.quick.reduce-motion'], requires: ['setup'], async run(context) { await runQuickPreference(context, 'reduce_motion') } },
   { id: 'home-preference-reading-width', title: 'Persist the Home reading width, retain the selected subject and restore the original width',
@@ -397,4 +354,4 @@ const scenarios = [
 ]
 
 module.exports = { scenarios, PREFERENCES, FONT_STACKS, ownedPreferenceFile, readPreferenceFile,
-  readStartIdentity, appliedValue, assertPreferenceReceipt, assertPreferenceChange, assertPreferenceRestored, withRestoration, assertBoundaryKey }
+  readStartIdentity, appliedValue, assertPreferenceReceipt, assertPreferenceChange, assertPreferenceRestored, withRestoration }

@@ -14,7 +14,7 @@ test('every field has a unique id, an accepted LeanBench value and a named origi
   assert.equal(DECISION_FIELDS.length + SETTING_FIELDS.length + Object.keys(PROTOCOL_MANAGED_FIELDS).length, PROTOCOL_FIELDS.length)
   for (const field of PROTOCOL_FIELDS) {
     assert.notEqual(normalizeValue(field, field.lb), undefined, `${field.id}: LeanBench value normalizes`)
-    assert.equal(Object.hasOwn(field, 'why'), false, `${field.id}: carries no reason text; the reasoning is documented outside the product`)
+    assert.equal(Object.hasOwn(field, 'why'), false, `${field.id}: carries no reason text; the reasoning is in the owner's paper`)
     assert.ok(Object.hasOwn(ORIGIN_LABELS, field.origin) && field.source.length > 10, `${field.id}: names where it came from`)
     if (field.kind === 'choice') assert.ok(field.options.some(([id]) => id === field.lb), `${field.id}: LeanBench value is an option`)
   }

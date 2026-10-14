@@ -1,7 +1,7 @@
 {
   "format": "research-benchmark-endpoints-baseline",
   "version": 1,
-  "baseCommit": "3333333333333333333333333333333333333333",
+  "baseCommit": "cf333f61e46d49736d3354a20f693c0e76f3d613",
   "tracked": "clean",
   "runtimeSources": {
     "cli.mjs": "c74eccc46b6398972212d6b404b7ab46034ec45b8b07b7de0f71ee0bd1562caa",
@@ -149,9 +149,9 @@
     "trials/task-3.first.2-1/response.json": "1fb1694aafb30a658ab966a3c88dae8e50053991f4793d0bc77c5eb6474995cd",
     "trials/task-3.first.2-1/response.txt": "1a252402972f6057fa53cc172b52b9ffca698e18311facd0f3b06ecaaef79e17",
     "trials/task-3.first.2-1/grade.json": "75ccc592cbe254b354a04615bdd750a6a655f266f4d928fe08d9a8836cde03bb",
-    "paper/CITATION.cff": "caa65d8cf9a99566f56c9e981d663dd95233f0a29280a873ca40ac5ee95dce4f",
-    "paper/CITATION.bib": "a6a3bdef5dc4fde8d80cbf95cea9a4316554527d16ea858593592c300da3817d",
-    "paper/references.json": "f247d11eb6accb07d6f096b2f3a609e5dbce6e524366c8492d82aee04f89611d",
+    "paper/CITATION.cff": "65b9b4da0d190670a7cf006d1709e06838f3c52bcf74d9d295da20eba3d62b99",
+    "paper/CITATION.bib": "7c6a6b57ee6c8b53544ae470b964c4e9850eeb5c1ea0f168c02c46022b7d5867",
+    "paper/references.json": "72616cdecdf7e7a93555e304e2c0a4da1b5a299e0f6fa9647a0c79cf2f068078",
     "tables/execution-scope.csv": "3615f7fe87897c53b5a68251916254ff508a6622d978b08447b2843f3a85373e",
     "tables/conditions.csv": "399e701b7222bb99cc044c24d2ab1310c0dfe92ddbb56629bb9aaa5c97a49e8d",
     "tables/tasks.csv": "d61c8c5f62f83e57a151bb092f12f855e8b8b552f104355e52d45628c423309e",
@@ -163,8 +163,8 @@
     "tables/contrasts.csv": "83566f13637412e8208127bdee6a1e601442c27ce0cf838e2dbd5fc53e54a44e",
     "tables/strata.csv": "d13b7f380af8ced25dbc569beff2c47d9687055c8619ea3e35965965dd299238",
     "tables/identities.csv": "af982c804f90c64d22b39b783b2345e8b5e88cd08a459dbaeba7bcda22792368",
-    "report.html": "70232a327ca6c40085d63421111665d98175633b2639f2b18da4b9e19db7a06c",
-    "report.md": "70dfc240b3847d08e6974dfcba740dbf49c935c9eb8aa2cf8db69e3a435a4dd2",
+    "report.html": "a206a45b4755512a6948a13c362e8ade3aeb88d675390436d91b5cf43056d265",
+    "report.md": "eb9f0aee6f2a4f75da927479f6cac2efbb9a4e921a0709cc2d86d47f7df08884",
     "analysis.json": "6ccacb5a169aad8e339b20d505c679f26c43c81792284ea9c000b4105d1740a7",
     "execution.json": "ba16b659cfcfd0510c81df21b9ea82410347dadfa72a1cc91f9161a41e0603f9",
     "summary.json": "a0d6dc9ac679bf2685c297d7b07ca156d8eb40878e1e0967c1972af27589ca78",
@@ -176,10 +176,10 @@
   "filesRecorded": {
     "commit": "uncommitted working tree",
     "tracked": "clean",
-    "reason": "public-source scrub: study.mjs citation verification strings no longer name private workspace paths"
+    "reason": "1.0.50 version bump: TEMPLATE_GENERATOR names ToolsEnabled 1.0.50; with 1.0.50 substituted back to 1.0.49 all four moved files return to their recorded digests (recorder: Nothing to record). Only the generated-by line moved; the study content is unchanged."
   },
   "priorIdentity": {
-    "baseCommit": "4444444444444444444444444444444444444444",
+    "baseCommit": "97c6156055b56eb0cc5dcefae1cf40284c1661e8",
     "projectSha256": "fbb4a325ecba3b949124371b61e010f858725767c2b0e2b9fe0c007be1522d28",
     "journalSha256": "9bfb80ffac48ce12a6a477355e6df70483aec6d83ff039ffac02c9669dd10a8b",
     "summarySha256": "32a150caf4107d5098f544c5eb1107b5d070c4a2d1e175326ce8c4100f922381",

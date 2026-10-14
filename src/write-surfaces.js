@@ -232,8 +232,8 @@ async function prepareSurface(surface) {
      does not have and one they do. The connection is this product's own,
      started with the window, so "Ready" is the whole of the good news. This
      used to add a second sentence when one named outside message channel was
-     offline; that channel was removed from the product (product rule: it is
-     neither needed nor mentioned), so the one sentence is the
+     offline; that channel was removed from the product (owner ruling,
+     2026-08-22: no need for it or to mention it), so the one sentence is the
      whole of the state. */
   actionState(status, 'ready', drivenComputer(
     'Ready. Everything you do here is written down on this computer as it happens.',
@@ -432,8 +432,8 @@ export function mountLedgerWriteSurface(root, { onMount = () => {}, onChanged = 
   /* BOTH OFF USED TO MEAN RENDER NOTHING AT ALL, and both are off on every
      fresh install -- isWriteEnabled answers false when localStorage holds
      nothing. So this whole block was missing from the ledger page and no
-     sentence anywhere accounted for it. The R items could not be seen or edited,
-     and the honest answer was that the feature was
+     sentence anywhere accounted for it. The owner asked "why cant i see or edit
+     what the R items are?", and the honest answer was that the feature was
      built, working, and two switches away with nothing pointing at them.
 
      Still no forms -- the flags are the authority on that and this does not

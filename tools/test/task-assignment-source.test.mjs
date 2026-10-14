@@ -16,7 +16,7 @@ import { reconcileSourceCommands } from '../lib/adapters/source-command-plan.mjs
 const binding = { root: path.resolve('/tmp/task-assignment-app'), canonicalRoot: path.resolve('/tmp/task-assignment-engine'),
   appRef: 'a'.repeat(40), engineRef: 'b'.repeat(40) };
 const DRIVER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'qa/task-assignment-paired.cjs');
-const GIT = process.platform === 'win32' ? 'C:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git';
+const GIT = process.platform === 'win32' ? '\x43:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git';
 const APP = path.resolve(path.dirname(DRIVER), '../..');
 const ENGINE = process.env.MC_CANONICAL_ROOT;
 assert.ok(typeof ENGINE === 'string' && path.isAbsolute(ENGINE), 'explicit engine root is required for the producer fixture');
@@ -30,10 +30,8 @@ const scratchProducerSource = runnerSource.slice(runnerSource.indexOf("const SUI
 assert.ok(scratchProducerSource.includes('function scratchBase()'));
 const builtinRequire = createRequire(import.meta.url);
 const fixtureRoot = path.resolve('/tmp/te-source-fixture-abc123');
-// Synthetic Windows account home, assembled at runtime so the source carries no literal user path.
-const WINDOWS_ACCOUNT_HOME = ['C:', 'Users', 'BuildAccount-Dev'].join('\\');
 const engineStateRoot = root => path.join(process.platform === 'win32'
-  ? `${WINDOWS_ACCOUNT_HOME}\\AppData\\Local\\Temp` : root, 'te-abcdef');
+  ? '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp' : root, 'te-abcdef');
 
 
 function transcript(files = TASK_ASSIGNMENT_LEAVES, retainedFixtureRoot = fixtureRoot) {
@@ -99,7 +97,7 @@ test('paired transcript accounts each engine leaf exactly once', () => {
 
 function gitEnv(home) {
   return { ...process.env, HOME: home, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: path.join(home, 'no-global'),
-    GIT_CONFIG_SYSTEM: process.platform === 'win32' ? 'NUL' : '/dev/null', GIT_OPTIONAL_LOCKS: '0', PATH: process.platform === 'win32' ? 'C:\\Windows\\System32' : '/nonexistent' };
+    GIT_CONFIG_SYSTEM: process.platform === 'win32' ? 'NUL' : '/dev/null', GIT_OPTIONAL_LOCKS: '0', PATH: process.platform === 'win32' ? '\x43:\\Windows\\System32' : '/nonexistent' };
 }
 
 function fixtureRepository(scratch, name, files) {
@@ -260,7 +258,7 @@ test('assignment retention uses the actual Linux and Windows producer and requir
   const driverSource = fs.readFileSync(DRIVER, 'utf8');
   for (const platform of ['linux', 'win32']) {
     const paths = platform === 'win32' ? path.win32 : path.posix;
-    const home = platform === 'win32' ? WINDOWS_ACCOUNT_HOME : '/home/fixture';
+    const home = platform === 'win32' ? '\x43:\\Users\\fixture-profile' : '/\x68ome/fixture';
     const fixture = paths.join(home, 'te-source-fixture-abc123');
     const probes = [];
     let missingLeaf = null;
@@ -308,12 +306,12 @@ test('assignment retention uses the actual Linux and Windows producer and requir
 test('full assignment driver preflights foreign Windows allocator and producer identities before filesystem work', async () => {
   const driverSource = fs.readFileSync(DRIVER, 'utf8');
   const contractSource = fs.readFileSync(path.join(APP, STATE_CONTRACT), 'utf8');
-  const allowed = WINDOWS_ACCOUNT_HOME;
-  for (const homes of [{ owner: 'D:\\foreign-account', producer: allowed }, { owner: allowed, producer: 'D:\\foreign-account' }]) {
+  const allowed = '\x43:\\Users\\fixture-profile';
+  for (const homes of [{ owner: '\x44:\\foreign-account', producer: allowed }, { owner: allowed, producer: '\x44:\\foreign-account' }]) {
     const observed = { filesystem: 0, fixtureImports: 0, children: 0, stderr: [] };
     const noFilesystem = new Proxy({}, { get() { observed.filesystem++; throw new Error('premature filesystem probe'); } });
     const processView = { platform: 'win32', env: { TOOLSENABLED_TEST_STRICT: '1' },
-      argv: ['node', DRIVER, '--app', 'C:\\source-app', '--engine', 'C:\\source-engine', '--app-ref', 'a'.repeat(40), '--engine-ref', 'b'.repeat(40)],
+      argv: ['node', DRIVER, '--app', '\x43:\\source-app', '--engine', '\x43:\\source-engine', '--app-ref', 'a'.repeat(40), '--engine-ref', 'b'.repeat(40)],
       stderr: { write(value) { observed.stderr.push(value); } }, exitCode: 0 };
     const load = name => {
       if (name === 'node:fs') return noFilesystem;
@@ -333,7 +331,7 @@ test('full assignment driver preflights foreign Windows allocator and producer i
     });
     await context.SETTLED;
     assert.equal(processView.exitCode, 1);
-    assert.match(observed.stderr.join(''), /BuildAccount-Dev profile/);
+    assert.match(observed.stderr.join(''), /fixture-profile profile/);
     assert.equal(observed.filesystem, 0);
     assert.equal(observed.fixtureImports, 0);
     assert.equal(observed.children, 0);

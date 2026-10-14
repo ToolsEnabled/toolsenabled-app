@@ -2,9 +2,11 @@
 /* ARE THE CHARTS BACK, AND IS EVERY MARK ON THEM SOMETHING THIS COMPUTER
  * ACTUALLY RECORDED?
  *
- * THE FINDING THIS ANSWERS: the metrics page lost its charts and its designed
- * appearance once it was connected, the appearance had to come back, and
- * simulation routing still looked like the old version, which was confusing.
+ * THE FINDING THIS ANSWERS, in the owner's words: "In metrics what happened to
+ * all the charts and the pretty page we had worked so hard to make? Im glad its
+ * connected now but you need to change the appearance back - although simulation
+ * routing still seems to have the old version so im just confused whats
+ * happening."
  *
  * Three separate claims are therefore measured here, and a green on one of them
  * is not a green on the others:
@@ -17,7 +19,7 @@
  *   3. a panel with nothing behind it is still a SENTENCE and not an empty
  *      pretty chart, and the Range control genuinely re-projects.
  *
- * And the fourth thing they asked for: that a person can tell the two faces apart
+ * And the fourth thing he asked for: that a person can tell the two faces apart
  * at a glance. Both are opened, through the product's own switch, pressed.
  *
  * WHAT IT DRIVES. A STAGED packaged build -- the same executable, the same
@@ -319,26 +321,10 @@ async function main() {
     console.log('staging the packaged build (never the installed copy)...')
     const staged = await stage(scratch)
 
-    /* The Codex sign-in is LENT to the scratch profile, as the sibling drivers
-       lend it: openWindow redirects CODEX_HOME into this temporary directory, so
-       a child started under it would otherwise look for a sign-in in a home that
-       has never had one. The copy lives only in the directory this run deletes. */
-    const realCodex = path.join(process.env.USERPROFILE || '', '.codex', 'auth.json')
-    if (!existsSync(realCodex)) {
-      note('FAIL', 'HARNESS STATE: this computer has no Codex sign-in to lend, so no real turn could be caused and nothing below would be a measurement.')
-      return
-    }
-    const scratchCodex = path.join(scratch, 'home', '.codex')
-    mkdirSync(scratchCodex, { recursive: true })
-    cpSync(realCodex, path.join(scratchCodex, 'auth.json'))
-    const realNpm = path.join(process.env.APPDATA || '', 'npm')
-    if (existsSync(realNpm)) {
-      mkdirSync(path.join(scratch, 'roaming'), { recursive: true })
-      try { symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* already linked */ }
-    }
+    // The official CLI uses the caller-selected provider home or environment API key.
 
     seedMachineRecord(scratch, staged.appRoot, 'standard')
-    window = await openWindow(staged.executable, scratch)
+    window = await openWindow(staged.executable, scratch, { provider: 'codex' })
     const prefs = assertIsolated(scratch)
     note('ok', `this run wrote to its own profile, measured: ${prefs}`)
 

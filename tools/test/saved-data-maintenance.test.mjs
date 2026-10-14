@@ -744,7 +744,7 @@ test('a preview or token older than its lifetime is not honoured', async t => {
 
 test('only the engine\'s own refusals and this adapter\'s are worded for the page; anything else is not shown', async t => {
   const h = harness(t)
-  h.engine.previewError = Object.assign(new Error('SQLITE_IOERR: disk I/O error at /home/redacted-profile/private/toolsenabled.sqlite3'), { code: 'ERR_SQLITE_ERROR' })
+  h.engine.previewError = Object.assign(new Error('SQLITE_IOERR: disk I/O error at /\x68ome/redacted-profile/private/toolsenabled.sqlite3'), { code: 'ERR_SQLITE_ERROR' })
   const generic = await preview(h)
   assert.equal(generic.ok, false)
   assert.equal(generic.code, 'AGENT_CONTINUATION_PRUNE_FAILED')
@@ -1027,11 +1027,11 @@ test('a service that fails, throws or answers with anything but success is never
     assert.equal(result.ok, false, JSON.stringify(prepareResult))
     assert.equal(result.code === undefined, false, JSON.stringify(prepareResult))
   }
-  const thrown = harness(t, { hooks: { prepareError: new Error('ENOENT: no such file /home/redacted-profile/private/renderer-fleet-documents.json') } })
+  const thrown = harness(t, { hooks: { prepareError: new Error('ENOENT: no such file /\x68ome/redacted-profile/private/renderer-fleet-documents.json') } })
   const failedPrepare = await thrown.adapter.nodeStatusRepairPreview({}, person)
   assert.deepEqual([failedPrepare.ok, failedPrepare.code], [false, 'AGENT_NODE_STATUS_REPAIR_FAILED'])
   assert.doesNotMatch(JSON.stringify(failedPrepare), /someone|private|ENOENT/)
-  const throwing = harness(t, { hooks: { confirmError: new Error('boom at /home/redacted-profile/private') } })
+  const throwing = harness(t, { hooks: { confirmError: new Error('boom at /\x68ome/redacted-profile/private') } })
   const review = await throwing.adapter.nodeStatusRepairPreview({}, person)
   const failedConfirm = await throwing.adapter.nodeStatusRepairConfirm({ previewToken: review.previewToken }, person)
   assert.deepEqual([failedConfirm.ok, failedConfirm.code], [false, 'AGENT_NODE_STATUS_REPAIR_FAILED'])

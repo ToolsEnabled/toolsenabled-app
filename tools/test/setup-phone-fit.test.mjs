@@ -104,9 +104,9 @@ const phoneQuery = atRule => {
 const SEG_RULES = SETUP_RULES.filter(rule => /\.seg(\b|-)/.test(rule.selector) && !rule.selector.includes(':has(.seg)'))
 
 /* ------------------------------------------------------------------
-   1. THE DESKTOP CANNOT REACH ANY OF IT.  This is the constraint -- mobile
-      development must not change the main app or the normal site -- and it is
-      the one assertion here a source test can settle outright.
+   1. THE DESKTOP CANNOT REACH ANY OF IT.  This is the owner's constraint --
+      "we cannot let mobile development change the main app or the normal site"
+      -- and it is the one assertion here a source test can settle outright.
    ------------------------------------------------------------------ */
 
 test('every seg rule this sheet declares is inside a phone media query', () => {
@@ -284,7 +284,7 @@ test('every autonomy and screens answer still has its own words', () => {
   assert.deepEqual(AUTONOMY_CHOICES.map(choice => choice.label), [
     'Nothing yet — let me look around first',
     'Act when I start it',
-    /* an earlier commit dropped "and tell me after" from this label in the same hunk
+    /* 0fe7fecb dropped "and tell me after" from this label in the same hunk
        that narrowed the option's detail, so the words were withdrawn on
        purpose rather than lost. Anchored to what the product ships. */
     'Act on its own',
@@ -296,14 +296,13 @@ test('every autonomy and screens answer still has its own words', () => {
   assert.match(VIEW, /AUTONOMY_CHOICES\.map\(choice => `<button type="button" class="setup-choice-card" data-setup-set="autonomy"/)
 })
 
-test('every review seg still offers the same options in the same order', () => {
+test('review keeps its supported choices without offering automatic account switching', () => {
   assert.deepEqual(
     PROFILE_INTENT.map(field => [field.id, field.order.map(value => field.labels[value])]),
     [
       ['approvals', ['Stop and ask me', 'Work on something else while it waits', 'Use its own judgement']],
       ['attach', ['Watch it only', 'Continue it in a copy', 'Take it over']],
       ['ideImport', ['Do not bring any in', 'Ask me each time', 'Bring in everything it finds']],
-      ['failover', ['Stop and let me switch', 'Switch to another account automatically']],
     ],
   )
 })

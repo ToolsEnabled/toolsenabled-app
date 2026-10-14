@@ -1,11 +1,13 @@
 // THE REPLY PAINTED ABOVE THE QUESTION IT ANSWERS, in the real rail chat.
 //
-// FOUND IN A HAND TEST of a local Observer node:
+// OWNER HAND TEST, LIVE 17b94e08, 2026-09-12, Local Observer
+// node-16-8a2ff6c3-2ccf-4a17-9e9c-69b14106daae (evidence
+// local-post-cut-success.json):
 //
-//     Observer (00000001)   LOCAL_POST_CUT linux    00000000...
-//     you                   Use host.exec ...       00000000...
+//     Observer (8a2ff6c3)   LOCAL_POST_CUT linux    02:05  1c3f7e96...
+//     you                   Use host.exec ...       02:05  1c3f7e96...
 //
-// Same turn id, answer first. A reader cannot tell what was asked.
+// Same turn id, same minute, answer first. A reader cannot tell what was asked.
 //
 // WHY IT HAPPENS. On the tree rail driven below, src/views/computers.js opens
 // the reply bubble on the FIRST delta, stamped with that turn
@@ -18,7 +20,7 @@
 // has the same shape for browser sessions (streamWords and paintPerson).
 //
 // desktop-person-turn-display.test.mjs already covers the ordinary arrival
-// order, person_turn first. This file drives the reversed order that was hit,
+// order, person_turn first. This file drives the reversed order the owner hit,
 // through the same real page mount and the same real packets.
 
 import assert from 'node:assert/strict'
@@ -27,8 +29,8 @@ import { register } from 'node:module'
 register('./helpers/css-stub-loader.mjs', import.meta.url)
 const { installWorld, fleetFetch, seedTreeNode, mountView, settle } = await import('./lib/tree-command-real-mount.mjs')
 
-const TURN = '00000000-0000-4000-8000-000000000001'
-const EARLIER_TURN = '00000000-0000-4000-8000-000000000002'
+const TURN = '1c3f7e96-15f7-40bf-92e4-44cdce4a67a8'
+const EARLIER_TURN = 'ca518ea0-95e6-4768-80ff-283afe872c99'
 const AT = Date.UTC(2026, 8, 12, 2, 5, 0)
 
 const textOf = message => message.querySelector('.chat-msg-text')?.textContent ?? ''

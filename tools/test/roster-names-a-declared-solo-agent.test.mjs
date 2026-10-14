@@ -1,9 +1,9 @@
 /* THE APP PERMISSIONS LIST CALLS A SOLO AGENT BY ITS NAME.
  *
- * Measured on a built candidate at an earlier commit, on screen, in Settings > App
+ * Measured on a built candidate at 49d50038, on screen, in Settings > App
  * permissions: the row for a + agent read
  *
- *   standalone-0fe0a8aa-0000-4000-8000-000000000003
+ *   standalone-3f9f14df-89d3-4144-8136-f23fc616367f
  *
  * instead of "Agent 1". A person deciding whether to hand something the mouse,
  * keyboard and screen was shown a UUID.
@@ -77,7 +77,7 @@ function world(t, { seats = [], targets = [], trees = null } = {}) {
 const rowLabels = controls => (controls.el.querySelector('[data-control-agents]')?.textContent || '')
 
 test('a declared solo agent is listed by the name it was declared with, not by its seat id', async t => {
-  const SEAT = 'standalone-0fe0a8aa-0000-4000-8000-000000000003'
+  const SEAT = 'standalone-3f9f14df-89d3-4144-8136-f23fc616367f'
   world(t, {
     seats: [{ id: SEAT, role: 'worker', enabled: true, displayName: 'Agent 1' }],
     targets: [{ sessionId: 'chat-solo', agentId: SEAT }],

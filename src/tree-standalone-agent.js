@@ -4,10 +4,11 @@ import { EFFORT_CHOICES, DEFAULT_TIER, MODEL_DEFAULT_EFFORT, PALETTE_PANEL, PROV
 import { transcriptSeedText } from './session-transcript-store.js'
 import { list as outboxList, moveSession as outboxMoveSession } from './session-outbox.js'
 import { sessionTurnSucceeded } from './agent-session-events.js'
+import { validateModelId, modelIdProblem, modelChoiceEffort, modelChoiceLabel } from './model-picker.js'
 
-/* PROVIDER, THEN MODEL, AND THE WIRE STILL CARRIES ONE ROW (1.0.48, owner
-   decision: every model a provider offers is selectable, chosen as
-   provider first, then model). START_TIERS in shell/agent-host.cjs
+/* PROVIDER, THEN MODEL, AND THE WIRE STILL CARRIES ONE ROW (1.0.48, owner:
+   "users need to be able to select all the models from the providers. it
+   should be provider, then model choice"). START_TIERS in shell/agent-host.cjs
    keys provider off the row, and startSession resolves `const sessionProvider =
    (startTier && startTier.provider) || …`, so a start carries a row id and
    nothing called "provider". The + pop-up's Provider menu (src/tree-workspace.js)
@@ -52,7 +53,7 @@ const SOLO_EFFORTS = Object.freeze(EFFORT_CHOICES.map(choice => choice.id))
    against low/medium/high/xhigh/max and passes `--effort <value>`. A person
    who picks one still gets exactly that.
 
-   Reading the CURRENT select here instead is the defect found on
+   Reading the CURRENT select here instead is the defect Worker 82 found on
    screen: pick max on a Codex row, switch to Claude, and max was sent by
    someone who never chose it for Claude. */
 const effortForTier = tierId => effortChoicesFor(tierId).find(choice => choice.isDefault)?.id || null
@@ -88,7 +89,7 @@ export const STANDALONE_PLACED_COPY = Object.freeze({
   child: 'This agent is on a tree now. Select it on the tree to start an agent under it.',
 })
 
-/* B4 (1.0.48, owner decision: reopen them). What a New agent tab says when it
+/* B4 (1.0.48, owner: "Yes, reopen them"). What a New agent tab says when it
    comes back after ToolsEnabled is closed and reopened, and what the page says
    when one cannot. Each failure says what happens next or what to do. */
 export const STANDALONE_RESTORE_COPY = Object.freeze({
@@ -212,7 +213,8 @@ export function standaloneStartFrom(choice) {
   const tier = typeof choice?.tier === 'string' && SOLO_TIER_IDS.has(choice.tier) ? choice.tier : null
   if (!tier) return defaultStandaloneStart()
   const effort = typeof choice?.effort === 'string' && SOLO_EFFORTS.includes(choice.effort) ? choice.effort : null
-  return { tier, effort: effortOnTier(tier, effort) }
+  const model = choice?.model == null ? null : validateModelId(choice.model)
+  return { tier, effort: model == null ? effortOnTier(tier, effort) : modelChoiceEffort(tier, model, effort), ...(model == null ? {} : { model }) }
 }
 
 /* Each row carries the depths ITS model takes ('' is "Model default"), so the
@@ -240,8 +242,8 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
   }
   let disposed = false, disposalRequested = false, controller = null, placementPending = false, binding = null, lastSnapshot = null, lastDraft = null
   /* WHICH SESSION THIS SEAT HAS CLAIMED IN THE DURABLE RECORD, and null until
-     one starts. T300: a + agent's turns were written NOWHERE. A measurement
-     found three replies from + agents landing in zero files under the state
+     one starts. T300: a + agent's turns were written NOWHERE. Worker 82
+     measured three replies from + agents landing in zero files under the state
      root while tree-agent replies resolved to node.json and .text files, so the
      conversation lived in renderer memory and died with the tab.
      The cause was one missing call, not a missing mechanism. The shell's
@@ -254,6 +256,7 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
      The seat id is the right key and is already durable: it is declared into
      the org record by openStandalone, which is what T300 asks to read back. */
   let transcriptBinding = { status: 'unbound', sessionId: null }
+  let placementRelease = null
   let bindingRevision = 0
   const bindingRefusal = code => ({ ok: false, code })
   const invalidateBinding = () => {
@@ -339,15 +342,19 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
      the old surface had one nobody could see or move. An UNKNOWN choice still
      refuses -- see getStartOptions -- because a menu that has gone stale must
      not put a row on the wire the host would reject later, in front of them. */
-  /* WHAT THE POP-UP CHOSE. Design rule: + opens a pop-up menu
-     that chooses what to spawn, then the standard chat interface, with no
-     buttons added where they do not belong.
+  /* WHAT THE POP-UP CHOSE. The owner, 2026-09-17: a pop-up menu should
+     select what to spawn, and then the standard chat interface should open,
+     without extra buttons where they do not belong.
      The two selects this file used to draw on the conversation were those
      buttons. The choice is made once, in the pop-up on +, before this
      surface exists; from here the chat is the shared one and nothing is
      added to it. A caller that says nothing still gets the named default,
      so no surface can start on a program nobody chose. */
   let chosen = standaloneStartFrom(start)
+  /* Monotonic identity for the pending choice. The tier can change away and
+     back while a start is awaiting owner/image work; comparing only its final
+     value would miss that stale-read hop. */
+  let chosenRevision = 0
   /* WHAT IS ACTUALLY RUNNING, which is not the same question as what was
      chosen. Once a session has started it is on the row it started with, and
      picking a different one changes what the NEXT start uses. The chip reads
@@ -361,7 +368,7 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
   const startLabel = value => {
     if (!value) return ''
     const row = SOLO_TIERS.find(tier => tier.id === value.tier)
-    const model = row?.fullLabel || row?.label || value.tier
+    const model = modelChoiceLabel(value, row?.fullLabel || row?.label || value.tier)
     return value.effort ? `${model} · ${value.effort}` : model
   }
   const copyDraft = draft => draft ? { ...draft, attachments: draft.attachments?.slice() || [] } : null
@@ -373,7 +380,8 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
      or effort is refused by name rather than stored, so a stale menu cannot
      put a row on the wire the host would only reject later, in front of a
      person. */
-  const chooseStandaloneStart = ({ tier, effort = null } = {}) => {
+  const chooseStandaloneStart = ({ tier, effort = null, model = null } = {}) => {
+    if (model != null && modelIdProblem(model)) return { ok: false, code: 'AGENT_MODEL_INVALID', sentence: modelIdProblem(model) }
     if (typeof tier !== 'string' || !SOLO_TIER_IDS.has(tier)) {
       return { ok: false, code: 'AGENT_STANDALONE_TIER_UNKNOWN', sentence: STANDALONE_UNCHOSEN_SENTENCE }
     }
@@ -384,10 +392,12 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
     /* The same answer the pop-up's own start gets: a depth this model does not
        take falls to its default. Named through standaloneStartFrom so this
        body reads no helper the module keeps to itself. */
-    chosen = standaloneStartFrom({ tier, effort })
+    chosen = standaloneStartFrom({ tier, effort, model })
+    chosenRevision += 1
     announceChip()
     // B4: the list of open tabs keeps what this tab will start on after a restart.
     if (typeof onStartChosen === 'function') { try { onStartChosen({ ...chosen }) } catch { /* the choice stands */ } }
+    void controller?.refreshAvailability?.()
     return { ok: true, ...chosen }
   }
 
@@ -397,7 +407,7 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
      the seat. That is why the solo agent gets Copy, the queue controls, the
      Actions menu, chips, /goal and /loop -- the same builder serving the
      same shape, not ten options copied across one at a time, which is the
-     rejected path.
+     path the owner rejected.
 
      A caller that supplies no builder still gets a conversation. Every
      existing caller does exactly that, and an empty tab would be a worse
@@ -439,12 +449,10 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
       // The Loop shortcut beside the composer reads these rows, so it says what the menu says.
       ...(typeof treeChat.commonActions === 'function' ? { commonActions: () => correctRows(treeChat.commonActions()) } : {}) }
     : treeChat
-  /* THE FIRST SEND AFTER A RESTART CONTINUES THE CONVERSATION (B4). The new
-     session is started with the saved speech as its handoff -- the same seed
-     a tree agent's deferred resume uses -- because nothing saved for a seat
-     can resume the provider's own thread. It counts as delivered only once a
-     turn of the seeded session has finished: a start or first send the host
-     refuses closes that session, and the next start must carry it again. */
+  /* The saved native identity is passed to the session surface for Claude
+     and Codex. The host must verify the original home before it can resume.
+     Speech remains available for placement and providers without native
+     resume; it is spent only after an accepted turn finishes. */
   let seedPending = Boolean(restored) && !restored.unreadable
     && (restoredLines.length > 0 || (Boolean(restored.before) && Boolean(restored.recoveryDirectory)))
   let seedSessionId = null
@@ -515,7 +523,7 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
     return bound?.ok === true && bound.binding?.agentId ? { roleBinding: bound.binding } : {}
   }
   /* THE CHIP SAYS WHAT THIS AGENT RUNS ON, AND IS THE DOOR TO CHANGING IT.
-     Page 2: nothing on the + chat named the program or the effort,
+     Worker 82, page 2: nothing on the + chat named the program or the effort,
      so the only way to find out was to ask the agent -- the same complaint the
      pop-up was built for, one step later.
      The chip does not open a menu of its own. It asks the HOST, which already
@@ -528,7 +536,7 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
      Stop, and the tab then said "already running ... open a new agent" over a
      session that had ended, while the next send used the choice. */
   const runningStart = () => (startedWith && snapshot()?.sessionId ? { ...startedWith } : null)
-  const sameStart = (a, b) => Boolean(a && b) && a.tier === b.tier && (a.effort || null) === (b.effort || null)
+  const sameStart = (a, b) => Boolean(a && b) && a.tier === b.tier && (a.model ?? null) === (b.model ?? null) && (a.effort || null) === (b.effort || null)
   /* A PICK FOR NEXT TIME NAMES WHAT CHANGES (c4 review). "Model default" is no
      word on the chip, so a depth-only pick -- Sonnet 5 · low running, Sonnet 5
      at Model default picked -- read "Next: Sonnet 5", naming no change at all. */
@@ -553,7 +561,7 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
       /* Re-picking exactly what runs changes nothing next time either: no note (c4 review). */
       if (running && !sameStart(chosen, running)) {
         const depth = nextDepth(chosen, running)
-        const label = startLabel({ tier: chosen.tier, effort: null })
+        const label = startLabel({ ...chosen, effort: null })
         surface.querySelector('[data-chat-panel]')?.addNote?.(standaloneStartChangedSentence(depth ? `${label} · ${depth}` : label))
       }
       return outcome
@@ -574,7 +582,7 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
       if (running && chosen && !sameStart(chosen, running)) {
         const row = SOLO_TIERS.find(tier => tier.id === chosen.tier)
         const depth = nextDepth(chosen, running)
-        return { label: `Next: ${row?.label || chosen.tier}${depth ? ` · ${depth}` : ''}` }
+        return { label: `Next: ${modelChoiceLabel(chosen, row?.label || chosen.tier)}${depth ? ` · ${depth}` : ''}` }
       }
       const label = startLabel(running || chosen)
       return label ? { label } : null
@@ -619,10 +627,18 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
     // persistence key, translate a computer alias, or manufacture a tree node.
     return Object.freeze({ ok: true, kind: 'standalone', computerId, nodeId, isCurrent })
   }
+  const actionListeners = new Set()
   const release = mountAgentSessionSurface(surface, {
     getImageDraftRegistrationContext,
     hostChat,
     chatChips,
+    resumeConversation: restored && (!restored.provider || ['claude', 'codex', 'gemini'].includes(restored.provider))
+      && (restored.resumeIdentityError || restored.sessionId || restored.nativeSessionId || restored.threadId || restoredLines.length || restored.before)
+      ? { sessionId: restored.nativeSessionId || restored.sessionId,
+        threadId: restored.threadId || null, provider: restored.provider || null,
+        ...(Object.hasOwn(restored, 'account') ? { account: restored.account } : {}),
+        identityError: restored.resumeIdentityError || null,
+        transcript: computerId ? { computerId, nodeId: id } : null } : null,
     agentId: id, live, bridge, chatComposer: true, chatTitle: name,
     publishSession: false,
     retainChatOnDetach: true,
@@ -630,6 +646,17 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
       controller = value
       controller?.setTitle(name)
       if (controller && placementPending) controller.beginPlacement()
+    },
+    /* Availability follows the same chosen tier as the eventual start. A
+       placed seat remains owned by its tree binding; the standalone picker is
+       the only surface that has a pending local choice to recheck. */
+    getAvailabilityOptions: () => binding ? {} : (chosen ? { tier: chosen.tier } : {}),
+    /* Expose the same pending-choice identity the picker uses. The session
+       surface compares this at final dispatch, including a change away and
+       back that would otherwise look equal by tier alone. */
+    getStartSelection: () => binding ? null : {
+      tier: chosen?.tier || null,
+      revision: chosenRevision,
     },
     /* A PLACED AGENT'S TREE IDENTITY STILL WINS. Once this seat is adopted the
        tree owns what it starts as, exactly as before. Unplaced, this used to
@@ -653,9 +680,10 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
          the row the host was actually asked for. */
       startedWith = { ...chosen }
       announceChip()
-      return { surface: STANDALONE_SURFACE, tier: chosen.tier, ...(chosen.effort ? { effort: chosen.effort } : {}), ...(await seatBinding()), ...seedFor(request) }
+      return { surface: STANDALONE_SURFACE, tier: chosen.tier, ...(chosen.model == null ? {} : { model: validateModelId(chosen.model) }), ...(chosen.effort ? { effort: chosen.effort } : {}), ...(await seatBinding()), ...seedFor(request) }
     },
     onSessionChange: (state, event) => {
+      for (const listener of actionListeners) { try { listener() } catch { /* UI observers cannot stop session state updates. */ } }
       const kind = event?.kind
       const current = typeof state?.sessionId === 'string' && state.sessionId ? state.sessionId : null
       const opened = kind === 'open' || kind === 'replaced'
@@ -714,6 +742,18 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
     surface.remove()
   }
   return {
+    // Tabs outlive the Computers view that supplied their transcript client.
+    // The new view adopts this tab and supplies its own client before any Send.
+    setTranscript(value) {
+      if (transcript === value) return
+      transcript = value
+      // A confirmed capture still belongs to this live session. Keep its
+      // receipt so placing a running retained tab can release it correctly.
+      if (transcriptBinding.status !== 'confirmed') invalidateBinding()
+    },
+    actionRows: () => hostChat?.actions?.() || [],
+    subscribeActions: listener => { actionListeners.add(listener); return () => actionListeners.delete(listener) },
+    openActions: id => surface.querySelector('.chat')?.openActions?.(id),
     startChoices: standaloneStartChoices,
     chosenStart: () => (chosen ? { ...chosen } : null),
     /* B4 step 10: the conversation this tab came back with, while no agent has
@@ -727,6 +767,33 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
       ? restoredLines.filter(line => line?.promptSource !== 'toolsenabled').map(line => ({ ...line })) : []),
     // Where the tab's older pages start, so the circle gets the whole conversation, not only its newest page.
     restoredConversationBefore: () => (seedPending && typeof restored?.before === 'string' && restored.before ? restored.before : null),
+    // Saved selectors only. Main independently verifies the canonical tab,
+    // native origin and stopped source before transferring ownership.
+    restoredNativeConversation: () => (!binding && restored
+      && (restored.nativeSessionId || restored.sessionId || restored.threadId || restoredLines.length || restored.before)
+      ? { nativeSessionId: controller?.nativeConversation?.()?.sessionId || restored.nativeSessionId || restored.sessionId || null,
+        threadId: controller?.nativeConversation?.()?.threadId || restored.threadId || null,
+        provider: controller?.nativeConversation?.()?.provider || restored.provider || null,
+        account: controller?.nativeConversation?.() ? controller.nativeConversation().account ?? null : restored.account ?? null,
+        sourceTranscript: computerId ? { computerId, nodeId: id } : null } : null),
+    async settlePlacement() {
+      const sentence = 'This reopened conversation could not be stopped and saved for placement. Its original tab is still open; finish the current operation and try again.'
+      if (!placementPending || binding || disposed) return { ok: false, sentence }
+      const liveId = snapshot().sessionId
+      if (liveId) {
+        if (transcriptBinding.status !== 'confirmed' || transcriptBinding.sessionId !== liveId || typeof transcript?.release !== 'function') return { ok: false, sentence }
+        const result = await controller?.settlePlacement?.()
+        if (result?.ok !== true || snapshot().sessionId) return { ok: false, sentence }
+        placementRelease = liveId
+      }
+      if (placementRelease) {
+        let receipt
+        try { receipt = await transcript.release(placementRelease) } catch { return { ok: false, sentence } }
+        if (receipt?.ok !== true) return { ok: false, sentence }
+        placementRelease = null
+      }
+      return { ok: true }
+    },
     /* Kept so the pop-up, or a later re-open of it, can set the choice
        before the first send. There is no control on the chat to keep in
        step with it any more. */
@@ -786,6 +853,10 @@ export function mountStandaloneAgent(host, { id, name = 'New agent', live = fals
       placementRevision++
       invalidateBinding()
       binding = { ...binding, ...value }
+      if (firstPlacement && value.nativeConversation) {
+        controller?.adoptStoppedConversation?.(value.nativeConversation)
+        seedPending = false
+      }
       if (firstPlacement && typeof onPlaced === 'function') {
         try { onPlaced(binding.nodeId) } catch { /* the acknowledged tree keeps custody even if a view handoff fails */ }
       }

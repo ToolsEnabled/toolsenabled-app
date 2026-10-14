@@ -307,7 +307,7 @@ test('a late custom Role library read updates labels/appends fields without repl
 
 test('global theme text/action/status colors retain AA contrast on all named surfaces', () => {
   const css = readFileSync(new URL('../../src/theme-refinements.css', import.meta.url), 'utf8')
-  /* WARN WORDS READ --s-warn-text (design rule): --s-warn is now a clean
+  /* WARN WORDS READ --s-warn-text (owner review 2026-09-23): --s-warn is now a clean
      yellow MARK on every sheet (dots, bars, edges, fills), and the warn role's text is
      ink on White and Tan, the yellow itself on the dark sheets. That text token is the
      one that must read at 4.5:1. On White and Tan it points at the theme's --ink, which
@@ -336,18 +336,21 @@ test('global theme text/action/status colors retain AA contrast on all named sur
   }
 })
 
-/* EACH AGENT'S OWN DEFAULT ACCENT. Agent circles keep unique colouring, and
-   the default set looks good in every theme at various tree sizes. Several Workers under
+/* EACH AGENT'S OWN DEFAULT ACCENT. The owner (2026-09-10): "for the agent
+   circles, they should maintain unique coloring but can you make the default
+   set look nice in all themes with various tree sizes". Several Workers under
    one Manager used to share the Worker color. */
-const LIVE_SIBLINGS = [ // four Workers and one more agent under one Manager
-  'node-9-000000a0-0000-4000-8000-0000000000a0', 'node-10-000000a1-0000-4000-8000-0000000000a1',
-  'node-11-000000a2-0000-4000-8000-0000000000a2', 'node-12-000000a3-0000-4000-8000-0000000000a3',
-  'node-1-000000a4-0000-4000-8000-0000000000a4',
+const LIVE_SIBLINGS = [ // the four Workers and providers-qa under the LIVE Manager, observed 2026-09-10
+  'node-9-dbacd1bc-9894-4de1-980b-50e32100a1b3', 'node-10-b9c19a2d-c150-4bd0-b4f3-44db699cdcef',
+  'node-11-86b9a3cb-360a-445a-82d7-815c3e08fbcc', 'node-12-517149d1-f6a3-4c08-8dc9-6744bc97d5fa',
+  'node-1-1e51e7e7-e651-4385-bd76-86a04a0769eb',
 ]
 // What the painted light-dark() resolves to: the tan tone on light themes, the charcoal tone on dark ones.
 const agentTone = (id, theme, minimum = 3.5) => {
-  const ground = ['black', 'ember', 'cobalt'].includes(theme) ? 'black' : 'tan'
-  return roleColorTone(defaultAgentColor(id, ground), ground, minimum)
+  // Read the actual CSS-valued API rather than repeating its old Black-only resolver.
+  const colors = roleColorCss('worker', minimum >= 4.5 ? 'text' : 'accent', id).match(/#[0-9a-f]{6}/gi)
+  assert.equal(colors?.length, 2, 'the actual CSS fallback provides light and dark colors')
+  return colors[['black', 'ember', 'cobalt'].includes(theme) ? 1 : 0]
 }
 const oklab = hex => {
   const [r, g, b] = hex.slice(1).match(/../g).map(part => { const s = parseInt(part, 16) / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 })
@@ -403,6 +406,21 @@ test('agent default accents keep theme-safe marks and AA text tones, without amb
       const hue = (Math.atan2(b, a) * 180 / Math.PI + 360) % 360
       assert.ok(hue < 60 || hue > 125, `${id}/${theme} hue ${hue.toFixed(0)} is not amber or olive`)
     }
+  }
+})
+
+test('unconfigured custom-role fallbacks keep marks and AA text across all dark themes', () => {
+  // Bounded 24 unconfigured role IDs; call the CSS-valued API with no node and
+  // no saved/root override, as standalone/default contexts do before hydration.
+  for (let n = 1; n <= 24; n += 1) for (const kind of ['accent', 'text']) {
+    const value = roleColorCss(`custom-role-${n}`, kind)
+    const colors = value.match(/#[0-9a-f]{6}/gi)
+    for (const theme of ['black', 'ember', 'cobalt']) for (const ground of ROLE_COLOR_THEMES[theme]) {
+      assert.ok(colorContrast(colors[1], ground) >= (kind === 'text' ? 4.5 : 3.5),
+        `custom-role-${n}/${kind}/${theme} fallback ${colors[1]} on ${ground}`)
+    }
+    assert.equal(colors[0], roleColorTone(defaultRoleColor(`custom-role-${n}`), 'tan', kind === 'text' ? 4.5 : 3.5),
+      'the existing light fallback remains the chosen hue solved for Tan')
   }
 })
 
@@ -484,30 +502,16 @@ test('Stop all is drawn in the status red each theme solves, not an undefined to
   assert.doesNotMatch(rule[1], /var\(--danger\b/, 'Stop all still leans on --danger, which no theme defines')
 })
 
-/* T1533: White's --ink-3 is solved for its light page; Home's activity plate
-   is the page with 6-7% of the ink mixed in (#e7e4df), and the pair measured
-   4.3:1 for Full view's empty-state sentence and reply hint, the chat subtitle,
-   the Copy buttons and the example badge. The plate's own --ink-3 must reach
-   4.5:1 on the darkest plate the page draws. */
-test('secondary text on Home\'s activity plate keeps AA contrast in the White theme', () => {
-  const styles = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8')
-  const refinements = readFileSync(new URL('../../src/theme-refinements.css', import.meta.url), 'utf8')
-  const context = readFileSync(new URL('../../src/home-context.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-  const token = (css, theme, name) => {
-    let found = null
-    for (const [, body] of css.matchAll(new RegExp(`:root\\[data-theme="${theme}"\\]\\s*\\{([^{}]*)\\}`, 'g'))) {
-      const match = new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, 'i').exec(body)
-      if (match) found = match[1].toLowerCase()
-    }
-    return found
+/* The live Home and Full view plates may use different theme grounds.
+   Measure their computed secondary text instead of requiring an obsolete
+   White override or a particular color-mix spelling. */
+test('secondary text on Home\'s activity plate keeps AA contrast in the White theme', async () => {
+  const { measureHomePlate } = await import('./helpers/home-css-contrast.mjs')
+  const records = await measureHomePlate('white')
+  console.log('HOME_PLATE_ACTUAL ' + JSON.stringify(records))
+  assert.equal(records.length, 3, 'Home metadata, Full view empty fact and actual chat subtitle ancestry must all be measured')
+  for (const record of records) {
+    assert.equal(record.color, record.expectedSecondary, `${record.text}: actual foreground must resolve its secondary ${record.token}, not inherited primary ink`)
+    assert.ok(record.contrast >= 4.6, `${record.text}: ${record.color} on ${JSON.stringify(record.background)} is ${record.contrast.toFixed(3)}:1`)
   }
-  const mix = (a, b, share) => '#' + [0, 2, 4].map(i => Math.round(parseInt(a.slice(1 + i, 3 + i), 16) * share + parseInt(b.slice(1 + i, 3 + i), 16) * (1 - share)).toString(16).padStart(2, '0')).join('')
-  const ink = token(styles, 'white', 'ink'), bg = token(styles, 'white', 'bg')
-  assert.ok(ink && bg, 'the White theme ink and page colours moved; re-derive the plate')
-  const plate = mix(ink, bg, 0.07)
-  const pageInk3 = token(refinements, 'white', 'ink-3') || token(styles, 'white', 'ink-3')
-  assert.ok(colorContrast(pageInk3, plate) < 4.5, 'the page\'s own --ink-3 now passes on the plate; this override may be unnecessary')
-  const override = /:root\[data-theme="white"\] \.home :is\([^)]*\.home-feed-wrap[^)]*\.home-chat-pane-body[^)]*\)\s*\{\s*--ink-3:\s*(#[0-9a-f]{6})/i.exec(context)
-  assert.ok(override, 'the plate keeps the page\'s --ink-3, 4.3:1 on its darker ground')
-  assert.ok(colorContrast(override[1], plate) >= 4.5, `plate --ink-3 ${override[1]} on ${plate} is ${colorContrast(override[1], plate).toFixed(2)}:1`)
 })

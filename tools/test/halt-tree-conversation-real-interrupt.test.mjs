@@ -1,4 +1,4 @@
-/* Reported top priority: pressing Halt/Stop
+/* Owner-reported top priority (Controller, 2026-09-17): pressing Halt/Stop
  * does nothing on the live build -- a running turn cannot be stopped.
  *
  * WHY THE EXISTING GREEN DID NOT ANSWER THIS. Every existing Halt/Stop test
@@ -16,9 +16,9 @@
  * t158-model-switch-transcript-carry.test.mjs) already closed for the model
  * switch; this closes it for Halt.
  *
- * Comparing an actually-running generation (an earlier commit) against this
- * worktree
- * (an earlier commit and later) found the interrupt() body itself unchanged past a
+ * Comparing the owner's actually-running generation (git commit ecee7986,
+ * live-control/runtime-generations/gen-b05b415a...) against this worktree
+ * (328b9dac and later) found the interrupt() body itself unchanged past a
  * T61 goal-pause addition that does not apply to an ordinary turn -- so a
  * stale build does not explain an ordinary Halt press doing nothing. This
  * file presses the real UI to find out whether the WIRING, not the mechanism,

@@ -248,3 +248,15 @@ test('static keyring guidance preserves process facts and never prints a backend
   assert.doesNotMatch(html, /private-session|password=|SECRET_BACKEND_LOCKED/)
   controller.destroy()
 })
+
+/* "FRA is only for testing purposes" never said what FRA is, so a reader could
+   not tell which feature was testing-only (1.0.50 release review, release-ops
+   F12). The notice names Full Remote Access and what it does. */
+test('the testing notice names the feature it is about, not only its initials', () => {
+  const controller = controllerFor(bridge())
+  const notice = controller.markup().match(/<p[^>]*data-fra-testing-notice[^>]*>([^<]*)<\/p>/)?.[1]
+  assert.ok(notice, 'the testing notice is missing')
+  assert.match(notice, /^Full Remote Access \(FRA\), which lets you reach a computer from another device through your account, is only for testing purposes\./)
+  assert.match(notice, /It has not been independently tested yet\.$/)
+  controller.destroy()
+})

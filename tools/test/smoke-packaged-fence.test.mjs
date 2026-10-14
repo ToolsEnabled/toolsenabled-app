@@ -196,9 +196,9 @@ test('F11 - the window is launched with every home inside the smoke profile, and
 test('F12 - the packaged GUI receives a system-only PATH even when the cut wrapper prepends a build tool', () => {
   const profile = sterileProfileDirectories(path.join(tmpdir(), 'smoke-path-fixture'))
   const environment = smokeGuiEnvironment(profile, {
-    PATH: 'C:\\Program Files\\nodejs;C:\\Windows\\System32',
-    Path: 'C:\\other-build-tool',
-    SystemRoot: 'C:\\Windows',
+    PATH: '\x43:\\agent-apps\\node-v22.19.0;\x43:\\Windows\\System32',
+    Path: '\x43:\\other-build-tool',
+    SystemRoot: '\x43:\\Windows',
   })
 
   if (process.platform === 'linux') {
@@ -207,14 +207,14 @@ test('F12 - the packaged GUI receives a system-only PATH even when the cut wrapp
   } else {
     assert.equal('PATH' in environment, false, 'Windows must not receive a second inherited PATH spelling')
     assert.equal(environment.Path, [
-      'C:\\Windows\\System32',
-      'C:\\Windows',
-      'C:\\Windows\\System32\\Wbem',
-      'C:\\Windows\\System32\\WindowsPowerShell\\v1.0',
+      '\x43:\\Windows\\System32',
+      '\x43:\\Windows',
+      '\x43:\\Windows\\System32\\Wbem',
+      '\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0',
     ].join(';'))
   }
   const searchPath = environment.PATH ?? environment.Path
-  assert.equal(searchPath.includes('nodejs'), false)
+  assert.equal(searchPath.includes('agent-apps'), false)
   assert.equal(searchPath.includes('other-build-tool'), false)
   assert.equal(environment.MC_SMOKE_HEADLESS, '1')
 })

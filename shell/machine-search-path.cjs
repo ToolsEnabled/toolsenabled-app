@@ -2,12 +2,13 @@
 
 /* WHERE THIS COMPUTER WOULD LOOK FOR A PROGRAM IF IT WERE ASKED RIGHT NOW.
  *
- * THE DEFECT THIS EXISTS TO CLOSE, reported from a second machine: Claude and
- * Codex were installed and signed in, yet launching agents said nothing was
- * started and to run a winget install. The person had done exactly what the product's guide said to do,
- * and the product told them to do it again.
+ * THE DEFECT THIS EXISTS TO CLOSE, reported by the owner from his own second
+ * machine: "i have claude and codex downloaded and installed and signed it but
+ * when i try to launch agents it says nothing was started and to run winget
+ * install openAI". He had done exactly what the product's guide told him to do,
+ * and the product told him to do it again.
  *
- * WHY THE PRODUCT COULD NOT SEE THEIR INSTALL. On Windows a process inherits its
+ * WHY THE PRODUCT COULD NOT SEE HIS INSTALL. On Windows a process inherits its
  * environment from whatever started it, and for an application launched from
  * Explorer that is the environment captured at login. Installing a program
  * afterwards writes the new directory into the REGISTRY copy of PATH and
@@ -109,7 +110,7 @@ const COULD_NOT_ASK_PACKAGE_MANAGER = 'MACHINE_SEARCH_PATH_COULD_NOT_ASK_PACKAGE
    shell/provider-login.cjs uses, so there is one answer to this in the shell. */
 function systemRoot(env) {
   const configured = env.SystemRoot || env.SYSTEMROOT || env.windir
-  return typeof configured === 'string' && configured.trim() ? configured.trim() : 'C:\\Windows'
+  return typeof configured === 'string' && configured.trim() ? configured.trim() : '\x43:\\Windows'
 }
 
 /* %NAME% -> the value, the way Windows expands a REG_EXPAND_SZ.

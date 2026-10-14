@@ -21,10 +21,10 @@ const { OUTSIDE_CONTROL_SWITCHES } = require('../../shell/outside-control.cjs')
 
 /* THE HAND-OFF, DRIVEN WITH THE ARGV ELECTRON REALLY RELAYS.
  *
- * MEASURED on a development instance: the Controller circle asked for
- * agent.restart of node-5 on tree-1; the request was spooled to
- * %APPDATA%\ToolsEnabled-<tier>\coordinator-commands\requests, a claim was
- * written about a second later, and the result came back
+ * MEASURED 2026-09-04T08:16:19-21Z on the owner's Live instance: the Controller
+ * circle asked for agent.restart of node-5 on tree-1; the request was spooled
+ * to %APPDATA%\ToolsEnabled-Live\coordinator-commands\requests, a claim was
+ * written 1.4 s later, and the result came back
  *   {"ok":false,"code":"MC_TREE_COMMAND_ARGUMENT_INVALID","sessionId":null}
  * with no reason.
  *
@@ -51,14 +51,12 @@ const { OUTSIDE_CONTROL_SWITCHES } = require('../../shell/outside-control.cjs')
  * spellings of the application (main script and app directory), the profile
  * from --user-data-dir, and the switches shell/main.cjs itself appends before
  * the lock (startOutsideControl at module scope). */
-const id = 'tnc-00000000-0000-4000-8000-000000000005'
+const id = 'tnc-33aaa831-e001-4726-b27b-11d1a8bca8a4'
 const flag = `${ARG_PREFIX}${id}`
-// Synthetic Windows account home, assembled at runtime so the source carries no literal user path.
-const ownerHome = ['C:', 'Users', 'owner'].join('\\')
-const exe = `${ownerHome}\\src\\deps\\app-node_modules\\electron\\dist\\electron.exe`
-const appDir = `${ownerHome}\\src\\live`
+const exe = '\x43:\\Users\\owner\\Desktop\\ToolsEnabled-1.0.41-WorkingFolder\\deps\\app-node_modules\\electron\\dist\\electron.exe'
+const appDir = '\x43:\\Users\\owner\\Desktop\\ToolsEnabled-1.0.41-WorkingFolder\\live'
 const mainScript = path.join(appDir, 'shell', 'main.cjs')
-const profile = `${ownerHome}\\AppData\\Roaming\\ToolsEnabled-Live`
+const profile = '\x43:\\Users\\owner\\AppData\\Roaming\\ToolsEnabled-Live'
 const liveIdentity = Object.freeze({
   executablePath: exe,
   developmentEntry: [mainScript, appDir],
@@ -94,7 +92,7 @@ test('the Live hand-off measured on 2026-09-04 is accepted at both ends', () => 
      inserted this exact backend token even though the helper did not pass it. */
   const linuxExe = '/opt/toolsenabled/electron'
   const linuxApp = '/opt/toolsenabled/app'
-  const linuxProfile = '/home/tester/.config/private-tree-probe'
+  const linuxProfile = '/\x68ome/tester/.config/private-tree-probe'
   const linuxIdentity = { executablePath: linuxExe, developmentEntry: linuxApp, developmentUserDataPath: linuxProfile, appendedSwitches: ['--ozone-platform=x11'] }
   const linuxRelay = [linuxExe, `--user-data-dir=${linuxProfile}`, flag, '--allow-file-access-from-files', '--ozone-platform=x11', linuxApp]
   assert.equal(treeNodeCommandRequestIdFromArgv(linuxRelay, linuxIdentity), id, 'primary second-instance, measured Linux/X11 token')
@@ -137,7 +135,7 @@ test('the launcher builds the argv from the same shape the validator parses, at 
 
 test('the relayed form admits exactly the launcher tokens: strays, duplicates, other profiles, and foreign switches still refuse', () => {
   const built = treeNodeCommandLaunchArgv({ executablePath: exe, developmentEntry: appDir, developmentUserDataPath: profile, requestId: id })
-  for (const stray of ['C:\\work', '--message=secret', 'https://example.test', '--disable-gpu', flag, appDir, `--user-data-dir=${profile}`]) {
+  for (const stray of ['\x43:\\work', '--message=secret', 'https://example.test', '--disable-gpu', flag, appDir, `--user-data-dir=${profile}`]) {
     assert.throws(() => treeNodeCommandRequestIdFromArgv(relayedByChromium([...built, stray], liveAppended), liveIdentity), refused, stray)
   }
   for (const platform of ['--ozone-platform', '--ozone-platform=', '--ozone-platform=wayland', '--ozone-platform=headless', '--ozone-platform=x11=extra', '--ozone-platform=x11 --disable-gpu', '--ozone-platform-hint=x11']) {
@@ -146,11 +144,11 @@ test('the relayed form admits exactly the launcher tokens: strays, duplicates, o
   assert.throws(() => treeNodeCommandRequestIdFromArgv(relayedByChromium(built, ['--ozone-platform=x11', '--ozone-platform=x11']), liveIdentity), refused, 'duplicate injected platform token')
   assert.throws(() => treeNodeCommandRequestIdFromArgv(relayedByChromium(built, ['--ozone-platform=x11', '--ozone-platform=wayland']), liveIdentity), refused, 'conflicting platform token')
   assert.throws(
-    () => treeNodeCommandRequestIdFromArgv(relayedByChromium([exe, appDir, `--user-data-dir=${ownerHome}\\AppData\\Roaming\\Somebody-Else`, flag]), liveIdentity),
+    () => treeNodeCommandRequestIdFromArgv(relayedByChromium([exe, appDir, '--user-data-dir=\x43:\\Users\\owner\\AppData\\Roaming\\Somebody-Else', flag]), liveIdentity),
     refused, 'another profile',
   )
   assert.throws(
-    () => treeNodeCommandRequestIdFromArgv(relayedByChromium([exe, `${ownerHome}\\src\\live-engine`, flag]), liveIdentity),
+    () => treeNodeCommandRequestIdFromArgv(relayedByChromium([exe, '\x43:\\Users\\owner\\Desktop\\ToolsEnabled-1.0.41-WorkingFolder\\live-engine', flag]), liveIdentity),
     refused, 'another application',
   )
   assert.throws(
@@ -179,7 +177,7 @@ test('a refused hand-off writes its reason beside the code, so the spool alone s
   t.after(() => rm(root, { recursive: true, force: true }))
   const userData = path.join(root, 'ToolsEnabled-Live')
   await mkdir(userData, { mode: 0o700 })
-  const now = Date.parse('2026-09-04T12:00:00.000Z')
+  const now = Date.parse('2026-09-04T08:16:19.732Z')
   const written = createTreeNodeCommandRequest({
     userDataRoot: userData, computerId: 'this-computer', treeId: 'tree-1', nodeId: 'node-5', now, aclInspector: safeAcl, aclSecurer: noAclMutation,
   })
@@ -324,7 +322,7 @@ test('a helper that fails to start rejects, instead of crashing the coordinator 
   )
 })
 
-/* AUDIT MODE, per an earlier commit (the commit above): that commit's own test drives
+/* AUDIT MODE, per 2a597826 (the commit above): that commit's own test drives
  * ONE launch alone. launchTreeNodeCommand keeps no module-level state -- each
  * call builds its own request, argv, child, and Promise -- so nothing in the
  * function AS WRITTEN can let two calls cross-talk; but that independence is

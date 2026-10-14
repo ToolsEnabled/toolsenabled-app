@@ -1,7 +1,7 @@
 /* THE COORDINATOR COMPOSER'S DRAFT, HELD ACROSS A SUBJECT-SWITCH REBUILD.
  *
- * The defect: occasional UI redraws erased what a person was typing.
- * MEASURED (2026-09-07): src/home-chat-takeover.js's
+ * Owner, verbatim: "theres occassionally really annoying UI redraws and they
+ * erase my typing." MEASURED (2026-09-07): src/home-chat-takeover.js's
  * mountChatTakeover tears its whole stage down and rebuilds it from scratch
  * on every subject switch -- its own `show(nextId)` closure, exposed as the
  * mounted surface's `.show` method and called by the subject picker's

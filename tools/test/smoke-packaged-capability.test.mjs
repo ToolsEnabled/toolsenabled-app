@@ -233,7 +233,7 @@ test('K10 - the layer is spawned in Node mode with LOCALAPPDATA, USERPROFILE and
 })
 
 test('K10b - the layer is told the sterile state root it is asserted against', async (t) => {
-  /* Since an earlier engine commit a packaged payload given no TOOLSENABLED_STATE_ROOT
+  /* Since engine 81b14e15 a packaged payload given no TOOLSENABLED_STATE_ROOT
      anchors its state to the installing account's own profile (from the process
      token, not APPDATA), so a launch that says nothing writes into the builder's
      real per-user root -- measured on the 1.0.40 r10 cut. */

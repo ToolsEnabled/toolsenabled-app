@@ -21,23 +21,25 @@ import './theme-refinements.css'
    motion tokens every page spends, and the primitives built on them. After the
    two theme sheets (it is the last writer of their tokens), before every view. */
 import './foundation.css'
+import './tokens.css'
+import { refreshThemedFonts } from './font-choice.js'
 import './common-commands.css'
 import { initializeRoleColors } from './role-colors.js'
 import { startHandControls } from './hand-controls.js'
 import './hand-controls.css'
-/* The capabilities-and-risks disclosure (R1529). Global rather than
+/* The capabilities-and-risks disclosure (owner, R1529). Global rather than
    view-scoped because the quick-settings drawer draws it on every page, so the
    rules must exist before any view has been visited; and because the module
    that emits the markup is reached from a module `node --test` imports, which a
    stylesheet import inside it would break. */
 import './guided-step.css'
-/* THE PHONE CANVAS. Loaded here with the rest of the app's
+/* THE PHONE CANVAS (owner, 2026-08-23). Loaded here with the rest of the app's
    sheets, and inert everywhere except a phone: every rule in it begins with the
    `[data-phone-canvas="on"]` attribute, which only src/phone-canvas.js writes
    and only on a device whose primary pointer is a finger. A desktop window at
    any width cannot reach one declaration in it. */
 import './phone-canvas.css'
-/* THE PHONE LEDGER'S AT-RULES. phone-canvas.css admits no
+/* THE PHONE LEDGER'S AT-RULES (owner, 2026-08-27). phone-canvas.css admits no
    at-rule by its own test, so the sheet-rise keyframes and the reduced-motion
    guard ride here. Selector-inert everywhere the ledger's elements were never
    built — which is every desktop and the canonical phone surface alike. */
@@ -61,6 +63,7 @@ import { settingsView, applyStoredAppearance } from './views/settings.js'
    rows come from the machine rather than from a written catalogue: three
    hundred of them, arriving over a read that can fail. */
 import { toolsView } from './views/tools.js'
+import { pluginsView } from './views/plugins.js'
 import { renderQuickSettings } from './quick-settings.js'
 import { TEXT_SIZE_KEY, applyTextSize } from './text-size.js'
 import { bindAppearanceAccountChanges } from './appearance-persistence.js'
@@ -115,6 +118,7 @@ import { mountAppNavigation } from './app-navigation.js'
 import { mountFirstUseGuidance } from './first-use-guidance.js'
 import { keepSkipLinkOnPage } from './skip-link.js'
 import { createHistoryEntries } from './history-entries.js'
+import { createRouteSwapLatch } from './route-swap-latch.js'
 const firstUseGuidance = mountFirstUseGuidance()
 const appNavigation = mountAppNavigation()
 const pageDiagnostics = createPageDiagnostics()
@@ -294,7 +298,7 @@ function cleanTreeNodeCommand(value) {
     'protocol', 'schemaVersion', 'requestId', 'action', 'computerId', 'treeId',
     'nodeId', 'expectedSessionId', 'parentSessionId', 'message', 'createdAt', 'expiresAt', 'containsSecretMaterial',
     /* create-and-start-node only. */
-    'role', 'tier', 'brief', 'effort', 'provider', 'model', 'delegationToken', 'reservedNodeId', 'choice',
+    'role', 'tier', 'brief', 'effort', 'provider', 'model', 'delegationToken', 'reservedNodeId', 'choice', 'research',
     /* resume-node only (T1792): the next assignment agent.resume carries. */
     'assignment',
   ])
@@ -357,8 +361,8 @@ function cleanTreeNodeCommand(value) {
           || typeof value.role !== 'string' || (value.role !== '' && !name.test(value.role))
           || typeof value.tier !== 'string' || !name.test(value.tier)
           /* EFFORT, PROVIDER AND MODEL ARE OPTIONAL AND CHECKED FOR SHAPE ONLY
-             (the effort level is selectable when agents are spawned). Null is
-             the ordinary case -- the asking
+             (owner, 2026-09-19: "you NEED to be able to select effort level
+             when you spawn agents"). Null is the ordinary case -- the asking
              assistant named none of them and the tier's own default decides.
 
              THE CLOSED VOCABULARIES ARE DELIBERATELY NOT REPEATED HERE. Which
@@ -444,9 +448,16 @@ function cleanTreeNodeCommand(value) {
      always inert; only a REAL value is what this check exists to refuse. */
   if (!create && ['role', 'tier', 'brief', 'effort', 'provider', 'model'].some(key => value[key] != null)) return null
   const delegated = value.delegationToken !== undefined
+  const researchCreate = create && value.research !== undefined
+  // Research uses the host issuer's 32-byte base64url token, not an ordinary
+  // creation UUID. This checks transport shape; the host still redeems and
+  // binds the private token to its parent, child and research inputs.
+  if (researchCreate && !delegated) return null
   if (!delegated && value.reservedNodeId !== undefined && (!create || typeof value.reservedNodeId !== 'string' || !id.test(value.reservedNodeId))) return null
   if (delegated && (!(create || fresh || resume) || typeof value.delegationToken !== 'string'
-      || !(create ? /^[a-f0-9-]{36}$/ : /^[a-f0-9-]{36}\.[1-9][0-9]{0,39}$/).test(value.delegationToken)
+      || !(create
+        ? (researchCreate ? /^[A-Za-z0-9_-]{43}$/ : /^[a-f0-9-]{36}$/)
+        : /^[a-f0-9-]{36}\.[1-9][0-9]{0,39}$/).test(value.delegationToken)
       || typeof value.reservedNodeId !== 'string' || !id.test(value.reservedNodeId)
       || (!create && (value.reservedNodeId !== value.nodeId || !value.expectedSessionId || !value.parentSessionId)))) return null
   if (create && Object.prototype.hasOwnProperty.call(value, 'message')) return null
@@ -537,11 +548,18 @@ async function completeTreeNodeCommand(command, result) {
   const normalized = result && typeof result === 'object'
     ? result
     : { ok: false, code: 'MC_TREE_COMMAND_RENDERER_FAILED', nodeId: command.nodeId, sessionId: null, threadId: null }
+  // A successful resume may still have refused its first input. Preserve only
+  // the bounded code for that specific outcome; other successes carry no code.
+  const assignmentCode = command.action === 'resume-node' && typeof command.assignment === 'string'
+      && normalized.ok === true && normalized.firstTurnState === 'not-submitted'
+    ? (typeof normalized.code === 'string' && /^[A-Z][A-Z0-9_]{1,127}$/.test(normalized.code)
+      ? normalized.code : 'MC_TREE_COMMAND_ASSIGNMENT_NOT_SUBMITTED')
+    : null
   try {
     await bridge.complete({
       requestId: command.requestId,
       ok: normalized.ok === true,
-      code: normalized.ok === true ? null : (normalized.code || 'MC_TREE_COMMAND_RENDERER_FAILED'),
+      code: normalized.ok === true ? assignmentCode : (normalized.code || 'MC_TREE_COMMAND_RENDERER_FAILED'),
       /* THE CREATE ACTION IS THE ONE WHOSE NODE ID COMES BACK RATHER THAN IN.
          The other two name a circle that already exists, so echoing the request
          is right for them and would be a lie here: the id was minted by the
@@ -632,6 +650,9 @@ async function drainTreeNodeCommands() {
   clearTreeNodeCommandSurfaceWait(command.requestId)
   pendingTreeNodeCommands.delete(command.requestId)
   drainingTreeNodeCommand = command.requestId
+  /* The view this command is handed to, kept to tell whether a later answer
+     came from a copy the router has since replaced (B38, below). */
+  const ranOn = current.view
   let result
   try {
     result = await current.view.runTreeNodeCommand(command)
@@ -661,12 +682,27 @@ async function drainTreeNodeCommands() {
        delivered). The command has not reached the product entry path in that
        case: keep the exact request object pending and reacquire the visible
        view. A completed operation never returns this code; Stop's confirmed
-       close receipt is authoritative even when its projection disappears. */
+       close receipt is authoritative even when its projection disappears.
+
+       A create whose circle was already drawn returns it too (B38), with the
+       circle still unstarted under its reserved id; the replacement view
+       adopts that circle instead of drawing a second one
+       (src/create-and-start-node.js).
+
+       THE REPLACEMENT MAY ALREADY BE ON SCREEN (B38). A view is retired by
+       the swap that mounts the next one, so when the page for this computer
+       is already a different, live Computers view, that view is the one to
+       hand the request to. Rendering again here retired that live copy too
+       and mounted a third, for nothing. */
     if (result?.ok === false && result.code === 'MC_TREE_COMMAND_VIEW_DESTROYED') {
       pendingTreeNodeCommands.set(command.requestId, command)
-      treeNodeCommandSurfaceReacquiring = true
-      boundTreeNodeCommandSurfaceReacquire(command)
-      render()
+      const replaced = Boolean(current?.view) && current.view !== ranOn
+        && current.route?.name === 'computers' && current.route.comp === command.computerId
+      if (!replaced) {
+        treeNodeCommandSurfaceReacquiring = true
+        boundTreeNodeCommandSurfaceReacquire(command)
+        render()
+      }
     } else {
       await completeTreeNodeCommand(command, result)
     }
@@ -707,8 +743,8 @@ if (typeof window !== 'undefined' && window.mcTreeCommand && typeof window.mcTre
 }
 // The arrows traverse this ring one stop at a time. Owner decisions live in
 // Ledger; Checkout follows it when this copy has a purchase list.
-// Settings is the last stop before the ring closes (R1520: a second way to
-// reach it is going through the pages to the Settings page) —
+// Settings is the last stop before the ring closes (owner, R1520: "a second
+// way to access it by just going through the pages to the settings page") —
 // so the page is one Back press from home, and walking forward reaches it
 // after the money stretch. Before this it was reachable ONLY through the
 // drawer's "all settings" link: a screen with exactly one door, and that door
@@ -800,6 +836,7 @@ function makeView(route) {
        like any other rather than a scroll inside a long page. */
     case 'settings': return settingsView({ query: route.query, navigate, accessibilityControls })
     case 'tools': return toolsView()
+    case 'plugins': return pluginsView()
     case 'setup': return setupView({ navigate })
     case 'account': return accountView({ navigate })
     case 'subscribe': return subscribeView({ query: route.query })
@@ -820,6 +857,7 @@ function crumbFor(route) {
     case 'checkout': return `${base} / checkout`
     case 'settings': return `${base} / settings`
     case 'tools': return `${base} / settings / tools`
+    case 'plugins': return `${base} / settings / plugins`
     case 'setup': return `${base} / setup`
     case 'account': return `${base} / account`
     case 'subscribe': return `${base} / subscriptions / coming soon`
@@ -872,6 +910,11 @@ function syncFirstRunChrome() {
    Forward back exactly as they were (src/history-entries.js, T1412). */
 const historyEntries = createHistoryEntries()
 
+/* The swap render() has handed to the browser and the browser has not run yet
+   (B38; src/route-swap-latch.js says why a second render in that gap mounted
+   Computers twice and lost an agent's new circle). */
+const routeSwaps = createRouteSwapLatch()
+
 function render() {
   // the hashchange caused by walking back from a refused move: nothing moved
   if (historyEntries.isUndoEcho(location.hash)) return
@@ -888,6 +931,14 @@ function render() {
     location.hash = '#/setup'
     return
   }
+
+  /* NOT A SECOND MOUNT OF A PAGE ALREADY ON ITS WAY (B38). The swap below is
+     called back by the browser a frame later and builds its view then, from
+     the state at that moment; a render of the same address in between would
+     only mount it twice and retire the first copy under whatever it had
+     started. drainTreeNodeCommands' 120 ms re-drain was the measured caller;
+     every other render() caller is answered by the same pending swap. */
+  if (routeSwaps.covers(location.hash)) return
 
   if (current?.view?.beforeLeave) {
     const decision = current.view.beforeLeave(route)
@@ -913,7 +964,11 @@ function render() {
   // scales into the node the incoming one fades up through), so it keeps the
   // class path; so does the first paint, which has nothing to fade from.
   if (supportsViewTransition && current && !zoom && !motionReduced() && pageCanAnimate()) {
-    const vt = document.startViewTransition(() => swapView(route, morph, zoom, true))
+    const swap = routeSwaps.begin(location.hash)
+    const vt = document.startViewTransition(() => {
+      routeSwaps.end(swap)
+      swapView(route, morph, zoom, true)
+    })
     // Navigating again mid-transition SKIPS the running one, which rejects
     // all three promises. Verified in headless Chromium: leaving `ready`
     // unhandled threw "AbortError: Transition was skipped" at the page on
@@ -921,6 +976,8 @@ function render() {
     vt.ready?.catch(() => {})
     vt.finished?.catch(() => {})
     vt.updateCallbackDone?.catch(() => {})
+    // Settled either way means the swap was called (or never will be).
+    vt.updateCallbackDone?.then(() => routeSwaps.end(swap), () => routeSwaps.end(swap))
     return
   }
   swapView(route, morph, zoom, false)
@@ -1114,7 +1171,7 @@ function swapView(route, morph, zoom, snapshotted) {
   /* The ring is closed: home <- computers <- metrics <- research <- comms <- ledger <- home. The
      ends used to dead-end (back dark on home, forward dark on comms), which
      made the two arrows read as a linear pager with nothing past its covers.
-     The arrows form a loop — back and forth exist on every page — so
+     The owner asked for a loop — back and forth exist on every page — so
      neither arrow ever disables and the maths below is modular. */
   back.toggleAttribute('disabled', false)
   next.toggleAttribute('disabled', false)
@@ -1167,7 +1224,7 @@ window.addEventListener(DATA_SOURCE_EVENT, event => {
   /* A different world's money list must not survive into this one.
      src/purchase-cart-changes.js remembers the cart's last reading and every
      sentence describing what moved since -- renderer memory that OUTLIVES any
-     one view on purpose, so the change strip on #/approvals survives them
+     one view on purpose, so the change strip on #/approvals survives him
      walking the ring away from it and back (see that file's own header). The
      same design that lets it survive a view swap also let it survive a
      sign-out: the module shipped a resetCartChanges() doc-commented "used ...
@@ -1438,6 +1495,7 @@ try {
 applyStoredAppearance()
 bindAppearanceAccountChanges()
 initializeRoleColors()
+refreshThemedFonts().catch(() => { console.warn('Bundled font readiness could not be checked.') })
 startHandControls()
 
 /* ---------- the phone canvas, decided once, before the first view ----------

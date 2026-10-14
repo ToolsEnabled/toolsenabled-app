@@ -3,7 +3,7 @@
 /* THE APPROVALS SCREEN'S TWO FACES, DRIVEN ON THE PACKAGED WINDOW.
  *
  * The finding this closes (the paid lane's walk of the vendored simulation
- * build, an earlier commit, reassigned here by legal's launch delivery): every
+ * build, commit 36010d5, reassigned here by legal's launch delivery): every
  * landing view labels its own example data and the approvals view labelled
  * nothing. This driver opens the staged packaged build twice on a sterile
  * profile and reads the glass in both states:

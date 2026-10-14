@@ -45,7 +45,7 @@ const OBSERVATION_FIELDS = ['observedAt', 'ok', 'reason', 'value']
 
 /* The rail glyphs the page paints for a request, minus 'unknown' -- the
    fall-through for a status nobody classified. A demonstration must not
-   demonstrate the unclassified glyph. THE RESOLVE ACTION
+   demonstrate the unclassified glyph. THE OWNER'S RESOLVE ACTION
    (2026-09-07): 'blocked-external' is now its own rail mark (see
    src/ledger-live.js stateOf), the way 'gated' already stands apart from
    plain 'open' -- and the ledger's own status vocabulary
@@ -61,7 +61,7 @@ const OBSERVATION_FIELDS = ['observedAt', 'ok', 'reason', 'value']
    rail mark. SUMMARY_STATES itself was not extended for the four
    newly-distinct statuses (partial, blocked-external, not-possible-as-asked,
    superseded), the same scoping T's own recurring/answered/approved states
-   already have -- see an internal report. 'removed'
+   already have -- see REPORT-ledger-r-resolve-action-20260907.md. 'removed'
    is the seventh, behind "Show removed". */
 const RENDERABLE_REQUEST_STATES = ['open', 'in-progress', 'gated', 'proposed', 'done', 'blocked-external', 'removed']
 

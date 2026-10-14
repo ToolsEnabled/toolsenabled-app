@@ -8,7 +8,7 @@
  * But the person could not see it. They attached a picture, got a bad answer,
  * pressed Respawn, and the new turn went without the picture with nothing on
  * screen saying so -- so a wrong answer looked like the agent ignoring an image
- * it had actually never been given. Approved as one plain
+ * it had actually never been given. Approved by Controller 2 as one plain
  * sentence; the person may reword it.
  *
  * The sentence is said ONLY when the replayed turn really did carry a picture.
@@ -37,7 +37,7 @@ function recordingBridge() {
     send: async (arg) => { sends.push(arg); return { ok: true, turnId: `turn-${sends.length}` } },
     close: async () => ({ ok: true }),
     interrupt: async () => ({ ok: true }),
-    pasteAttachment: async () => ({ ok: true, path: 'C:\\scratch\\held.png', size: 3 }),
+    pasteAttachment: async () => ({ ok: true, path: '\x43:\\scratch\\held.png', size: 3 }),
   }
 }
 

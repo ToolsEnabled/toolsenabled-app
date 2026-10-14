@@ -248,10 +248,10 @@ async function main() {
     ledger.check('the machines page is reachable by walking the ring', atComputers, `route=${await route(window)}`)
 
     /* Into an agent page, by pressing the door the CURRENT product offers.
-       Since an earlier commit ("a fleet tree you build, instead of one the app
+       Since 5cc2f09 ("a fleet tree you build, instead of one the app
        invented") a virgin profile's tree is EMPTY by design -- there is no
        `.static-tree-node` to click, which is what this step used to do -- and
-       since an earlier commit ("The only door to the page that starts an agent opened
+       since 18ef5e7 ("The only door to the page that starts an agent opened
        after you had started one") the `.graph-open-btn` in the named-controls
        strip is aimed at the first DECLARED seat and visible with no selection,
        exactly so a fresh install has a way in. So the door is pressed first;
@@ -266,7 +266,7 @@ async function main() {
       viaOpen = await window.clickVisible('.graph-open-btn')
       if (viaOpen !== 'clicked') await delay(400)
     }
-    if (viaOpen === 'clicked') door = '.graph-open-btn (declared capacity)'
+    if (viaOpen === 'clicked') door = '.graph-open-btn (declared capacity, 18ef5e7)'
     else {
       const clickedNode = await window.clickVisible('.static-tree-node')
       if (clickedNode === 'clicked') {

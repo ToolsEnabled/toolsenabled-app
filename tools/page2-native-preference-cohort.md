@@ -1,22 +1,23 @@
 # Held native preference cohort
 
-This adds six callable cases to `page2-native-audit.cjs`. They are prepared
+This adds five callable cases to `page2-native-audit.cjs`. They are prepared
 native checks, with no GUI execution or native coverage credited yet. They
 require only the existing `setup` case; selection through the maintained
 driver also selects its `startup` prerequisite. They use the current owning
 account's isolated QA app and require its ToolsEnabled product account to be
-signed out. They neither sign in nor start a provider session.
+signed out. They neither sign in nor start a provider session. 1.0.50 retired
+the Quick Settings Glow slider, so its former `quick-preference-glow` case is
+gone with it; a saved `mc.set.glow` value is kept but never applied.
 
 | Case | Proposed function ID | Actual action and applied readback |
 | --- | --- | --- |
 | `quick-preference-theme` | `appearance.quick.theme` | Click every other offered Theme button, then restore the original. Match `mc.theme`, `data-theme`, and the changed computed `--bg`. |
 | `quick-preference-ui-font` | `appearance.quick.font` | Click every other offered Font button, then restore. Match `mc.font`, computed `--font-ui`, and the body's actual font stack. |
 | `quick-preference-text-size` | `appearance.quick.text-size` | Click the other offered sizes, then restore. Match `mc.text`, body zoom and the layout's `--zoom`; Default must clear both inline overrides. |
-| `quick-preference-glow` | `appearance.quick.glow` | Use native Home/End keys on the real slider, then an arrow beyond each visited endpoint. Match `mc.set.glow` and computed `--glow`; the endpoint must hold. Restore by native Home/End and at most 100 arrow presses. |
 | `quick-preference-reduce-motion` | `appearance.quick.reduce-motion` | Click the visible checkbox label, then restore. Match `mc.set.reduce_motion` and the actual body class. |
 | `home-preference-reading-width` | `home.reading.width` | Open Home's Full view and click its width control. Match `mc.home.chat-width`, the mounted width attribute, pressed state, label and computed `--reading-max`; preserve the selected subject. Restore through that same control. |
 
-The five appearance cases also compare the corresponding full Settings row
+The four appearance cases also compare the corresponding full Settings row
 after every action. Save and Discard remain disabled: these immediate drawer
 changes must not leave an unsaved Settings draft. Each case remounts the actual
 route and checks the selected value again before restoring it. Home's width
@@ -38,11 +39,11 @@ retains both errors and prevents subsequent preference edits. Theme, Font,
 Text size and Home width have no visible "unset" action: if their original key
 was absent, selecting the original effective default writes its canonical
 value. The restoration receipt reports `canonicalDefaultWritten: true` in
-that precise situation. Glow and Reduce motion remove their key at default.
+that precise situation. Reduce motion removes its key at default.
 No script deletes or writes a preference behind the UI.
 
 The exact retained/remount steps are `preference-<id>-retained-after-remount`
-for the five appearance setting IDs (`theme`, `ui_font`, `text_size`, `glow`,
+for the four appearance setting IDs (`theme`, `ui_font`, `text_size`,
 `reduce_motion`), and `preference-reading-width-retained-after-remount` for
 Home. Their restoration steps are `preference-<id>-restore-owned-choice`,
 with Home's ID spelled `reading_width`. Each selected appearance target has
@@ -53,10 +54,10 @@ each step to the exact preference and run.
 Source authorities:
 
 - `src/quick-settings.js`: `appRows`, `wire`, `renderQuickSettings` and the real
-  `#theme-seg`, `#font-seg`, `#text-seg`, `#set-glow`, `#set-motion` controls.
+  `#theme-seg`, `#font-seg`, `#text-seg`, `#set-motion` controls.
 - `src/main.js`: `openDrawer`, `closeDrawer` and the boot call to
   `applyStoredAppearance`; `index.html` supplies the actual shell controls.
-- `src/views/settings.js`: `onQuickSetting`, `syncSetting`, the five actual
+- `src/views/settings.js`: `onQuickSetting`, `syncSetting`, the four actual
   settings definitions, and `applyStoredAppearance`'s durable event listener.
 - `src/theme-choice.js`, `src/font-choice.js`, `src/text-size.js`,
   `src/appearance-persistence.js`: offered values and storage/application rules.
@@ -69,9 +70,9 @@ Source authorities:
   read IPC, stored file and sender checks. `shell/spawn-record.cjs` supplies
   the event identity shape used for the no-new-start observation.
 
-The proposed six IDs are absent from the reviewed 338-function catalog. Adding
-them increases that denominator to 344 if no other inventory changes occur;
-it does not close six of the existing 200 gaps. The frozen catalog and its
+The proposed five IDs are absent from the reviewed 338-function catalog. Adding
+them increases that denominator to 343 if no other inventory changes occur;
+it does not close five of the existing 200 gaps. The frozen catalog and its
 current 54 cases remain unchanged until an explicitly reviewed integration.
 
 Saved conversation-source filters and transcript archive settings stay out of

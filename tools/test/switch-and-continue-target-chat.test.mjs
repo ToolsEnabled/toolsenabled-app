@@ -1,7 +1,7 @@
 /* THE AGENT BESIDE THE MENU.
  *
- * T775: the pop-up shows the chat next to the menu so the user
- * knows which agent is being restarted.
+ * OWNER (T775, 2026-09-21): "in the popup we need to show the chat next to
+ * the menu so the user knows what agent is being restarted."
  *
  * The Switch-and-continue dialog opens BY ITSELF when a saved account is
  * refused (src/views/computers.js offerSwitchAndContinue), so the person may
@@ -232,7 +232,7 @@ test('closing the dialog hands the keyboard back to the chat that had it, whiche
 
 /* THE BINDING IN THE VIEW, BY SOURCE. src/views/computers.js offerSwitchAndContinue
    is the one caller that opens this dialog on its own. This reads that function
-   and asserts the shape asked for: the target's ids are copied out at
+   and asserts the shape the owner asked for: the target's ids are copied out at
    open (not read through the mutable node later), the same frozen target is
    re-checked on Continue and on every status notification, the dialog is told
    when the target moved on, and the listener is released with the dialog. */
@@ -410,7 +410,7 @@ test('a dialog that went stale is still taken down when the store is replaced af
 })
 
 /* The same two sequences through the REAL dialog in the DOM stand-in (the
-   shape of M11's lifecycle probe, a recorded lifecycle probe):
+   shape of M11's lifecycle probe, evidence/T775-v2-M11-lifecycle-probe.json):
    the extracted caller drives mountSwitchAndContinueDialog itself, so what is
    checked is the body-level modal coming off the document, not a stub's flag. */
 test('through the real dialog: a stale modal is off the document once the view is destroyed or its store replaced', async () => {

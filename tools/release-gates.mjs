@@ -6,7 +6,7 @@
  * the installer, then failed check-no-owner-data on ONE comment. r10 passed
  * everything through the packaged smoke, then failed check-install-dir-immutable.
  * Each failure cost the whole ~20-minute cut, and each fix could only be
- * re-proven by paying it again. Hence the flags -- --gates-only,
+ * re-proven by paying it again. The owner asked for flags -- --gates-only,
  * --resume-from, --skip-verified with hash-bound evidence -- so that one failing
  * gate is re-run alone, standalone, against the tree it failed on.
  *

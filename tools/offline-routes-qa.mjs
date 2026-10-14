@@ -4,7 +4,7 @@
 // MEASURED IN THE PACKAGED WINDOW, ON A STERILE PROFILE, BY CLICKING.
 //
 // THREE MACHINE STATES, ONE VARIABLE EACH, and the baseline exists so that the
-// permanent no-fleet-host state (documented in an internal report) is not
+// permanent no-fleet-host state (documented in reports/lanes/team2-b5.md) is not
 // mistaken for an offline defect:
 //
 //   connected   the layer starts, the machine's own network is left alone.
@@ -164,7 +164,7 @@ function appExecutable(appRoot) {
 }
 
 function systemOnlyPath() {
-  const root = process.env.SystemRoot || 'C:\\Windows'
+  const root = process.env.SystemRoot || '\x43:\\Windows'
   return [
     path.join(root, 'system32'),
     root,
@@ -435,7 +435,7 @@ async function walkSetup({ evaluate, until, clickVisible, clickLastVisible }, ch
   check('a fresh profile opens on the permission question', onSetup, `hash=${await evaluate('location.hash')}`)
   /* Records what each press actually did. See the long note on the same helper
      in tools/first-run-recovery-qa.mjs: a discarded click answer is why every
-     the release-cut traps list failure reads "gave up waiting for the review"
+     RELEASE-CUT-TRAPS section 12 failure reads "gave up waiting for the review"
      and none of them can say whether the review failed to draw or the click
      before it never landed. */
   const press = async (click, selector, what) => {
@@ -715,7 +715,7 @@ async function main() {
       transcript[machineState.id] = result
     }
   } finally {
-    const out = path.join(REPO_ROOT, 'reports', 'offline-routes', 'transcript.json')
+    const out = path.join(REPO_ROOT, 'reports', 'lanes', 'team2-b7-transcript.json')
     try {
       mkdirSync(path.dirname(out), { recursive: true })
       writeFileSync(out, JSON.stringify(transcript, null, 2))

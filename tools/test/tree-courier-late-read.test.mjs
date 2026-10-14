@@ -13,12 +13,17 @@ if (process.env.TOOLSENABLED_TEST_STRICT !== '1' || process.env.TOOLSENABLED_TES
   throw new Error('Courier host proof requires the strict retained-fixture preload')
 }
 const retainedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tree-courier-late-read-'))
+const realDeletion = { fs: {}, promises: {} }
 for (const name of ['rmSync', 'unlinkSync', 'rmdirSync', 'rm', 'unlink', 'rmdir']) {
+  realDeletion.fs[name] = fs[name]
   fs[name] = () => { throw new Error('Deletion is forbidden in this retained test') }
 }
 for (const name of ['rm', 'unlink', 'rmdir']) {
+  realDeletion.promises[name] = fs.promises[name]
   fs.promises[name] = async () => { throw new Error('Deletion is forbidden in this retained test') }
 }
+// The ban covers the product under test, not the preload's own exit cleanup.
+test.after(() => { Object.assign(fs, realDeletion.fs); Object.assign(fs.promises, realDeletion.promises) })
 const require_ = createRequire(import.meta.url)
 const { createAgentHost } = require_('../../shell/agent-host.cjs')
 const fixture = path.join(sourceRoot, 'tools/test/fixtures/confined-engine/src/lib')

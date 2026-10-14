@@ -106,7 +106,7 @@ export function createImageQueueDrain({ bridge, owner, ownerContext, conversatio
   }
 
   async function run({ force = false, targetEnvelopeId = null, explicit = false } = {}) {
-    if (!current() || !mayDrain()) return { state: 'held', code: 'IMAGE_QUEUE_NOT_READY' }
+    if (!current() || !mayDrain({ explicit })) return { state: 'held', code: 'IMAGE_QUEUE_NOT_READY' }
     const read = await request('read')
     if (!current()) return { state: 'held', code: 'IMAGE_OWNER_CHANGED', detached: true }
     if (read?.ok !== true || read.operation !== 'read' || !read.result
@@ -160,7 +160,7 @@ export function createImageQueueDrain({ bridge, owner, ownerContext, conversatio
         code: entry.failure?.code || 'IMAGE_DELIVERY_UNKNOWN', reconcile: true,
         generation: snapshot.generation, detached: !current() })
     }
-    if (!current() || !mayDrain()) return { state: 'held', code: 'IMAGE_QUEUE_NOT_READY' }
+    if (!current() || !mayDrain({ explicit })) return { state: 'held', code: 'IMAGE_QUEUE_NOT_READY' }
 
     const operationId = newOperationId()
     const response = await request('dispatch', { sessionId, envelopeId: entry.envelopeId,

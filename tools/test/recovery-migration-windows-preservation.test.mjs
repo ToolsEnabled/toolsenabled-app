@@ -130,10 +130,11 @@ test('renderer crosses preload and main, persists full handoffs, refuses whole-r
   assert.equal((await client.readRecord('node')).handoff, handoff)
   assert.equal((await store.get({ computerId: 'fixture-computer', nodeId: 'node' })).record.handoff, handoff)
   assert.equal(settingsWrites, 0)
-  const record = { v: 1, handoff: 'short', extra: '' }
-  record.extra = 'x'.repeat(65_536 - Buffer.byteLength(JSON.stringify(record), 'utf8'))
+  // Unknown fields are dropped before the size check (node-recovery-store checkpointFields), so pad a kept one.
+  const record = { v: 1, handoff: 'short', conversation: '' }
+  record.conversation = 'x'.repeat(65_536 - Buffer.byteLength(JSON.stringify(record), 'utf8'))
   assert.equal((await bridge.save({ computerId: 'fixture-computer', nodeId: 'boundary', record })).ok, true)
-  record.extra += 'x'
+  record.conversation += 'x'
   const refused = await bridge.save({ computerId: 'fixture-computer', nodeId: 'boundary', record })
   assert.equal(refused.ok, false)
   assert.equal(refused.error.code, 'RECOVERY_RECORD_TOO_LARGE')

@@ -15,16 +15,17 @@
 // TOP of whatever is already there.
 //
 // So the packed payload is the UNION of every payload ever built in this tree.
-// A file ruled `excluded` and that has been removed from the
+// A file the owner has ruled `excluded` and that has been removed from the
 // closure survives every subsequent build, forever, on this machine. That is
-// how an excluded module -- require() edge removed, its SQLite tables
-// dropped -- was still sitting in the shipped payload hours later while the staged payload was clean.
+// how src/lib/review-correction-loop.js -- excluded on 2026-08-11, require()
+// edge removed, five SQLite tables dropped -- was still sitting in the shipped
+// payload hours later while the staged payload was clean.
 //
 // WHY THIS IS A SYNC AND NOT A PRUNE. The obvious tool deletes the stale files
 // and stops. That tool is dangerous, and I know because I wrote the delete by
 // hand first and it broke the product: the packed
 // src/lib/state-store.js of an older build still carried
-// a require() of that module, so removing the file alone left an
+// `require('./review-correction-loop')`, so removing the file alone left an
 // artifact that could no longer open its own state store.
 // `node tools/recommended-path-packaged-qa.mjs` went from 21/21 to exit 1 with
 // "timed out waiting for a running session".

@@ -3,12 +3,13 @@
  *
  * WHAT WAS MEASURED BEFORE THIS EXISTED. release/win-unpacked, as shipped, launched
  * in a sterile profile: one click on the back chevron from home landed on Checkout,
- * and the window read out the builder's own purchase list -- its item count and
- * date, its spend cap with the internal file and module it came from, a line
- * admitting the installer is unsigned, and second-person provenance notes carrying
- * an internal request id. Internal paths, internal request ids, the operator's own
- * second-person deliberations, and a written admission that the installer is
- * unsigned -- shipped to every stranger who installs this.
+ * and the window read out "37 items - list prepared 8/11/2026 - spend cap $100.00 per
+ * day from config/toolsenabled.policy.json ... by src/lib/providers/pay.js", the group
+ * "Needed to ship", the line "Code signing certificate ... Everyone who downloads the
+ * installer gets the full-screen blue panel with NO publisher name", and "WHY YOU
+ * WANTED IT: You asked the price directly, R1203". Internal paths, internal request
+ * ids, the operator's own second-person deliberations, and a written admission that
+ * the installer is unsigned -- shipped to every stranger who installs this.
  *
  * WHY A SOURCE TEST COULD NOT HAVE CAUGHT IT. Every one of those strings was in a
  * data file that no source assertion had any reason to look at, reached through a
@@ -19,7 +20,7 @@
  *
  * BOTH DIRECTIONS ARE ASSERTED, and the second one is not decoration. Deleting the
  * screen would also have made the first half green, and it would have taken away a
- * surface that was asked for by name (every purchase window one click away). So the
+ * surface the owner asked for by name ("all purchase windows 1 click away"). So the
  * run continues: it installs an invented test purchase list where an operator's own
  * install keeps one, restarts, and requires the checkout to come back and work. The
  * real operator list is private input and is never a release-gate dependency. A guard
@@ -471,7 +472,7 @@ async function main() {
      * This used to press `#nav-back` once and require `checkout`, because when
      * it was written `checkout` was the LAST stop on the ring and one click
      * back from home therefore landed on it -- the very shape of the leak.
-     * `settings` was appended after the ring in src/main.js (an earlier commit),
+     * `settings` was appended after the ring in src/main.js (commit 101ebb1),
      * so back-from-home is `settings` now and this went red on a product that
      * is behaving correctly, while saying nothing at all about the claim it
      * was written for.

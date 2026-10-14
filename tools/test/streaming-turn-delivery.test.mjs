@@ -20,7 +20,7 @@
  * not been told about, drainOutboxMessage() marks the node running after the
  * send is answered, and interrupt() waits on the send promise before it will
  * stop anything. On the Claude path all three happened after the turn was over.
- * The visible result was the one reported: a real claude.exe with a
+ * The visible result was the one the owner reported: a real claude.exe with a
  * textbook-correct command line, a node stuck at `running`, an empty reply, no
  * error and no refusal, for as long as anyone was willing to wait.
  *

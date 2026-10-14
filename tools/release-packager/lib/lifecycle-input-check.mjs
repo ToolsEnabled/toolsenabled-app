@@ -7,7 +7,7 @@ import { validateLifecycleInventory } from '../../lib/drivers/lifecycle-inventor
 import { DEV_PROFILE, DEV_TEMP, plainPath, readBounded, measureFile, relativeName, contains, digestRecord } from '../../lib/adapters/artifact-files.mjs'
 
 const LIMIT = 1024 * 1024
-const GIT = process.platform === 'win32' ? 'C:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git'
+const GIT = process.platform === 'win32' ? '\x43:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git'
 const NULL_FILE = process.platform === 'win32' ? 'NUL' : '/dev/null'
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
 const sameFile = (left, right) => left.sha256 === right.sha256 && left.bytes === right.bytes
@@ -162,8 +162,8 @@ function inspectMetadata(repository, checkTime, repositoryRoot) {
 function gitEnvironment() {
   // No inherited Git directory, executable, include, credential or hook state.
   return {
-    ...(process.platform === 'win32' ? { SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows',
-      PATH: 'C:\\Windows\\System32;C:\\Windows', TEMP: DEV_TEMP, TMP: DEV_TEMP,
+    ...(process.platform === 'win32' ? { SystemRoot: '\x43:\\Windows', WINDIR: '\x43:\\Windows',
+      PATH: '\x43:\\Windows\\System32;\x43:\\Windows', TEMP: DEV_TEMP, TMP: DEV_TEMP,
       USERPROFILE: DEV_PROFILE, APPDATA: `${DEV_PROFILE}\\AppData\\Roaming`, LOCALAPPDATA: `${DEV_PROFILE}\\AppData\\Local` }
       : { PATH: '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C' }),
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: NULL_FILE, GIT_CONFIG_SYSTEM: NULL_FILE,

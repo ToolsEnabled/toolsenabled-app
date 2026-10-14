@@ -4,6 +4,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 
 const WINDOWS_FIXTURE_PARENT = 'TOOLSENABLED_WINDOWS_FIXTURE_PARENT'
+const FIXTURE_BASENAME = /^te-source-fixture-[A-Za-z0-9]{6}$/
 
 // An explicit scratch volume is useful when the real profile has a Git
 // ancestor. It is an alternate owned boundary, never a replacement identity.
@@ -115,12 +116,111 @@ export function retainedSourceFixtureEnvironment(root, home, platform = process.
     TOOLSENABLED_TEST_RETAIN_FIXTURES: '1' }
 }
 
-export function prepareRetainedSourceFixture() {
-  const home = explicitWindowsFixtureParent() || inspectSourceFixtureHome(os.userInfo().homedir)
+export const SOURCE_FIXTURE_PARENT = 'TOOLSENABLED_TEST_SOURCE_FIXTURE_PARENT'
+export const SOURCE_FIXTURE_KEEP = 'TOOLSENABLED_TEST_SOURCE_FIXTURE_KEEP'
+
+// WHY THIS IS NOT THE ACCOUNT HOME ANY MORE.
+// The only real premise these fixtures need is "outside any repository":
+// inspectSourceFixtureHome walks every ancestor and refuses a `.git` marker,
+// because the strict *source* suites measure a fixture app/engine pair and
+// cannot sit inside an outer checkout. `$HOME` merely happened to satisfy that
+// on the owner's box; it was never the requirement, and using it leaked one
+// retained `te-source-fixture-XXXXXX` directory per strict test-FILE process
+// into the profile root. An OS temp root satisfies the same premise, and a
+// caller may name its own parent instead. Windows keeps its explicit owned
+// scratch volume (see explicitWindowsFixtureParent) because a Git marker at
+// the drive root - `C:\.git` - disqualifies the profile AND its own temp dir.
+function platformTempRoot() {
+  const saved = {}
+  for (const key of ['TMPDIR', 'TMP', 'TEMP']) {
+    if (Object.hasOwn(process.env, key)) { saved[key] = process.env[key]; delete process.env[key] }
+  }
+  try { return os.tmpdir() }
+  finally { for (const [key, value] of Object.entries(saved)) process.env[key] = value }
+}
+
+export function sourceFixtureParent({
+  platform = process.platform, env = process.env, filesystem = fs,
+  accountHome = null,
+} = {}) {
+  if (Object.hasOwn(env, SOURCE_FIXTURE_PARENT)) {
+    const supplied = env[SOURCE_FIXTURE_PARENT]
+    if (typeof supplied !== 'string' || supplied.length === 0) {
+      throw new Error('Explicit source fixture parent cannot be empty')
+    }
+    const resolved = filesystem.realpathSync.native(supplied)
+    return inspectSourceFixtureHome(resolved, { platform, filesystem })
+  }
+  if (platform === 'win32') {
+    const owned = explicitWindowsFixtureParent()
+    if (owned) return owned
+    // WINDOWS STAYS IN THE PROFILE. With TEMP/TMP scrubbed, os.tmpdir() on
+    // Windows is the system temp under %SystemRoot%: outside the account, while
+    // strict suites hold their fixture inside the permitted Dev profile
+    // (tree-standalone-binding-start-order.test.mjs refuses anything outside it
+    // and accepts the profile's AppData\Local\Temp as the literal Dev temp
+    // root). Use that temp root, taken from the OS account record rather than
+    // TEMP, so a nested run gets a sibling, not a child.
+    const profileTemp = path.win32.join(accountHome ?? os.userInfo().homedir, 'AppData', 'Local', 'Temp')
+    return inspectSourceFixtureHome(filesystem.realpathSync.native(profileTemp), { platform, filesystem })
+  }
+  // DE-NEST. A fixture points TMPDIR at itself for the run it owns
+  // (retainedSourceFixtureEnvironment), so a nested run would otherwise mint its
+  // fixture INSIDE ours, and the next one inside that. Each level adds ~25 bytes
+  // and run-isolated starts warning once a unix socket path passes 100, which the
+  // strict transcript check reads as a refusal. Climb out of any fixture segments
+  // so a nested run gets a SIBLING and the path length stays constant.
+  const paths = platform === 'win32' ? path.win32 : path.posix
+  // os.tmpdir() reads TMPDIR/TMP/TEMP at call time, and a fixture points all
+  // three at ITSELF for the run it owns, as does any suite that hands its child
+  // an explicit scratch (task-assignment-source.test.mjs:158-160). Reading it
+  // straight would nest fixture inside scratch inside fixture. Ask for the
+  // PLATFORM temp root with those three scrubbed, so the depth is always 1.
+  let base = filesystem.realpathSync.native(platformTempRoot())
+  for (let guard = 0; guard < 64; guard += 1) {
+    if (!FIXTURE_BASENAME.test(paths.basename(base))) break
+    const up = paths.dirname(base)
+    if (up === base) break
+    base = up
+  }
+  return inspectSourceFixtureHome(base, { platform, filesystem })
+}
+
+// Retention is a WITHIN-RUN contract, not a forever contract. The gate adapters
+// (tools/lib/adapters/task-assignment-source.mjs, settings-source-paired.mjs)
+// judge the fixture from the transcript's reported path only; they never stat it
+// after the child exits. What must survive is the directory for the LIFETIME OF
+// THE TEST PROCESS, so the product under test can keep its lifecycle state there
+// (TOOLSENABLED_RETAIN_LIFECYCLE_FIXTURES / TOOLSENABLED_TEST_RETAIN_FIXTURES).
+// Set TOOLSENABLED_TEST_SOURCE_FIXTURE_KEEP=1 to keep it for post-mortem debugging.
+export function removeFixtureOnExit(root, { env = process.env, filesystem = fs } = {}) {
+  if (env[SOURCE_FIXTURE_KEEP] === '1') return false
+  let done = false
+  const remove = () => {
+    if (done) return
+    done = true
+    // Success AND failure: 'exit' also runs after an uncaught exception or a
+    // failed assertion, so a red suite cleans up exactly like a green one.
+    try { filesystem.rmSync(root, { recursive: true, force: true, maxRetries: 3 }) }
+    catch { /* best-effort: never mask the test's own outcome */ }
+  }
+  process.once('exit', remove)
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+    process.once(signal, () => { remove(); process.kill(process.pid, signal) })
+  }
+  return true
+}
+
+export function prepareRetainedSourceFixture({
+  parent = sourceFixtureParent(), cleanup = removeFixtureOnExit,
+} = {}) {
+  const home = parent
   const root = fs.mkdtempSync(path.join(home, 'te-source-fixture-'))
   const entry = fs.lstatSync(root)
   if (!entry.isDirectory() || entry.isSymbolicLink() || fs.realpathSync.native(root) !== root) {
     throw new Error('Fresh source fixture is not an ordinary directory')
   }
-  return { root, environment: retainedSourceFixtureEnvironment(root, home) }
+  const environment = retainedSourceFixtureEnvironment(root, home)
+  cleanup(root)
+  return { root, environment }
 }

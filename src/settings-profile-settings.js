@@ -28,8 +28,8 @@ export function createWorkingProfileSettings({ draft, productSettings, setup, re
   const flagIds = WRITE_ACTION_FLAGS.map(flag => flag.id)
   const planFor = (id, state = setup.profileState()) => workingProfilePlan(id, { tier: state.tier, writeFlagIds: flagIds, totalBytes: resources.profileState().totalBytes })
 
-   /* THE CELL: always in view, never behind a disclosure (the drop-down was
-     replaced). It sits first in the quick
+  /* THE CELL: always in view, never behind a disclosure (owner, 2026-09-15:
+     "i dont like the dropdown lets change that"). It sits first in the quick
      strip the Settings landing page draws; the value review is a separate
      block under the whole strip (reviewMarkup) so its table can take the full
      width. Every hook the page and the tests read stays where it was. */
@@ -59,8 +59,8 @@ export function createWorkingProfileSettings({ draft, productSettings, setup, re
     return { product: rows.map(row => ({ ...row, value: saved ? row.savedValue : draft.value(`product:${row.id}`, row.savedValue) })),
       setup: setup.profileState({ saved }), resources: saved ? resource.savedSettings : resource.settings, resourceApplicable: resource.applicable }
   }
-   /* THE NAME THE PAGE READS BACK (these are preset profiles, nothing more).
-     An exact match names the preset. Otherwise the preset
+  /* THE NAME THE PAGE READS BACK (owner, 2026-09-16: "its literally just
+     preset profiles"). An exact match names the preset. Otherwise the preset
      this computer last applied -- the save's receipt -- is still the name,
      marked with how many values now differ from it, so a person who moved two
      quick sliders after choosing Autonomous+ reads "Autonomous+ · 2 changed"
@@ -105,8 +105,8 @@ export function createWorkingProfileSettings({ draft, productSettings, setup, re
     }).join('')
     const flags = WRITE_ACTION_FLAGS.map(flag => line(flag.label, display(current.setup.writeFlags[flag.id]), display(plan.setup.writeFlags[flag.id]), 'App action control; existing role and permission restrictions still apply.')).join('')
     const intents = PROFILE_INTENT.filter(field => field.id !== 'approvals').map(field => line(field.name,
-      field.labels[current.setup.intent[field.id]] || 'Unavailable', field.id === 'failover' && current.setup.accounts?.applicable === false ? 'No accounts configured — excluded' : field.labels[plan.setup.intent[field.id]],
-      field.id === 'failover' ? 'Global automatic/manual selection only; keeps provider overrides and an existing automatic ranking.' : '')).join('')
+      field.labels[current.setup.intent[field.id]] || 'Unavailable', field.labels[plan.setup.intent[field.id]],
+      '')).join('')
     const resourceRows = Object.entries(plan.resources).map(([key, value]) => {
       const control = RESOURCE_CONTROLS.find(control => (control.key || control.name) === key)
       const scale = control?.unit === 'MiB' ? MIB : 1
@@ -214,8 +214,9 @@ export function createWorkingProfileSettings({ draft, productSettings, setup, re
     paint()
     refreshFocus.restore(root?.querySelector('[data-working-profile-refresh]'))
   }
-   /* CHOOSING A PRESET APPLIES THE WHOLE PRESET (the sliders are independent
-     and give a quick, easy way to set most settings; they are preset profiles).
+  /* CHOOSING A PRESET APPLIES THE WHOLE PRESET (owner, 2026-09-16: "all the
+     sliders are supposed to be independent and make for a quick easy way to
+     set the large majority of settings. its literally just preset profiles").
      Every product row the preset names is staged through the row's own shared
      writer, the resource limits and the Setup intent go with it, and Save
      settings applies them all; the review table shows each current value

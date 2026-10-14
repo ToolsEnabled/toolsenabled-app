@@ -3,8 +3,8 @@
 // THE PAYLOAD BOUNDARY MUST BE RECONCILED AGAINST THE ENGINE AT LANDING, NOT
 // ONLY AT CUT TIME.
 //
-// WHY THIS EXISTS (T367 follow-up, measured 2026-09-18 at an earlier app commit +
-// an earlier engine commit). The engine landing added src/lib/multi-account/usability.js
+// WHY THIS EXISTS (T367 follow-up, measured 2026-09-18 at app 54f3e8e5 +
+// engine 62d445398). The engine landing added src/lib/multi-account/usability.js
 // and it packs into the capability payload, but config/payload-boundary.json
 // classified it nowhere. Nothing noticed until `check-payload-boundary.mjs
 // capability` ran at STEP 9 of the artifact half -- inside a cut, after a build
@@ -31,11 +31,11 @@
 // thing it checks is the hole this closes, not a convenience.
 
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { resolveCapabilitySourceBinding } from './lib/capability-source-git.mjs'
+import { EXACT_GIT_COMMIT, resolveCapabilitySourceBinding } from './lib/capability-source-git.mjs'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const RECONCILE_UNRESOLVED = 'PAYLOAD_BOUNDARY_RECONCILE_ENGINE_UNRESOLVED'
@@ -45,6 +45,42 @@ const BOUNDARY = path.join(REPO_ROOT, 'tools', 'check-payload-boundary.mjs')
 function refuse(message) {
   console.error(`check-payload-boundary-reconciled: ${message}`)
   process.exit(2)
+}
+
+// THE CHILD ENV IS BUILT IN ONE PLACE, AND NAMES THE REF IT PASSES.
+//
+// MEASURED 2026-09-24 (R4). resolveCapabilitySourceBinding returns the commit as
+// `sourceRef` (capability-source-git.mjs:180), not `ref`. This file destructured
+// `ref`, so `ref` was `undefined` on every run -- with a private/
+// capability-source.owner.json as much as without one. Node drops an env key whose
+// value is `undefined` from the child's environment entirely, so
+// `TOOLSENABLED_SOURCE_REF: ref` did not merely pass nothing: it DELETED a
+// TOOLSENABLED_SOURCE_REF the caller had exported, and pack then refused with
+// "the capability source has no exact commit binding". The documented env-var
+// route could therefore never satisfy pack through this gate, and the log line
+// read "@ undefined".
+//
+// So the env is built here, and the exact ref is asserted rather than assumed: a
+// binding that does not carry a 40-character commit refuses by name instead of
+// silently handing pack an environment with the key missing.
+export function reconcileChildEnvironment({ parentEnvironment = process.env, source, sourceRef } = {}) {
+  if (typeof source !== 'string' || !source.trim()) {
+    throw new Error('reconcileChildEnvironment needs the resolved capability source path')
+  }
+  if (typeof sourceRef !== 'string' || !EXACT_GIT_COMMIT.test(sourceRef)) {
+    throw new Error(
+      'reconcileChildEnvironment needs the binding\'s exact 40-character commit; '
+      + `got ${sourceRef === undefined ? 'undefined' : JSON.stringify(sourceRef)}. `
+      + 'Passing an undefined ref would delete a caller-supplied TOOLSENABLED_SOURCE_REF from the child environment.',
+    )
+  }
+  return {
+    ...parentEnvironment,
+    TOOLSENABLED_SOURCE: source,
+    TOOLSENABLED_SOURCE_REF: sourceRef,
+    TOOLSENABLED_STATE_ROOT: '',
+    TOOLSENABLED_VAULT_PATH: '',
+  }
 }
 
 function main() {
@@ -57,12 +93,12 @@ function main() {
     refuse(`${RECONCILE_UNRESOLVED}: the engine payload source could not be resolved (${error.message}). `
       + 'Configure private/capability-source.owner.json or TOOLSENABLED_SOURCE; this gate refuses rather than passing blind.')
   }
-  const { source, ref } = binding
+  const { source, sourceRef: ref } = binding
   console.log(`check-payload-boundary-reconciled: staging the payload from ${source} @ ${ref} to reconcile against ${'config/payload-boundary.json'}`)
 
   const out = mkdtempSync(path.join(tmpdir(), 'payload-reconcile-'))
   try {
-    const env = { ...process.env, TOOLSENABLED_SOURCE: source, TOOLSENABLED_SOURCE_REF: ref, TOOLSENABLED_STATE_ROOT: '', TOOLSENABLED_VAULT_PATH: '' }
+    const env = reconcileChildEnvironment({ parentEnvironment: process.env, source, sourceRef: ref })
     const packed = spawnSync(process.execPath, [PACK, '--out', out, '--quiet'], { cwd: REPO_ROOT, env, encoding: 'utf8' })
     if (packed.status !== 0) {
       process.stderr.write(packed.stderr || '')
@@ -85,4 +121,4 @@ function main() {
   }
 }
 
-main()
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) main()

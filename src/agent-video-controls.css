@@ -1,0 +1,43 @@
+/* 1.0.49 VIDEO BOX: the Video section under the Computer control card
+   (src/agent-video-controls.js). It is drawn as the same kind of card as the
+   one above it, in the same tokens, so the right-hand column reads as one
+   stack rather than a new widget. */
+.agent-video-controls { --video-accent: var(--accent-2, #13758d); min-width: 0; padding: 14px; border: 1px solid var(--line-2, #ccd3db); border-radius: 16px; background: var(--sheet, #fff); color: var(--ink, #192633); font: 13px/1.5 var(--font-ui, system-ui); }
+.agent-video-controls [hidden] { display: none !important; }
+.agent-video-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.agent-video-heading h3 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+.agent-video-heading p { margin: 2px 0 0; color: var(--ink-2, #546574); font-size: 12px; }
+.agent-video-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; color: var(--video-accent); background: color-mix(in srgb, var(--video-accent) 10%, transparent); }
+.agent-video-icon svg { width: 24px; height: 24px; }
+.agent-video-badge { margin-left: auto; border: 1px solid var(--line-2, #ccd3db); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 650; white-space: nowrap; }
+.agent-video-controls[data-state="live"] .agent-video-badge, .agent-video-controls[data-state="starting"] .agent-video-badge { color: var(--video-accent); border-color: currentColor; }
+.agent-video-agent { margin: 0 0 2px; font-weight: 600; overflow-wrap: anywhere; }
+.agent-video-status { min-height: 1.5em; margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.agent-video-controls .agent-control-hint { margin: 6px 0 0; opacity: 1; color: var(--ink-2, #546574); overflow-wrap: anywhere; }
+
+/* The list of windows: a grid of pressable thumbnails, the title under each. */
+.agent-video-picker { margin: 12px 0 0; padding: 10px; border: 1px solid var(--line-2, #ccd3db); border-radius: 10px; }
+.agent-video-picker-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.agent-video-picker-head .agent-control-hint { margin: 0; font-size: 11px; }
+/* 128 px keeps two thumbnails a row in the pop-over's column (about 299 px wide). */
+.agent-video-windows { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; max-height: 320px; overflow: auto; margin-top: 8px; padding: 2px; }
+.agent-video-windows:empty { display: none; }
+.agent-video-window { display: grid; gap: 6px; align-content: start; min-width: 0; padding: 6px; border: 1px solid var(--line-2, #ccd3db); border-radius: 8px; background: var(--bg, transparent); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color 160ms ease, background 160ms ease; }
+.agent-video-window:hover { border-color: var(--video-accent); }
+.agent-video-window[data-video-suggested="true"] { border-color: var(--video-accent); background: color-mix(in srgb, var(--video-accent) 6%, transparent); }
+.agent-video-thumb { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 4px; background: #000; }
+.agent-video-thumb[data-empty="true"] { background: color-mix(in srgb, var(--ink, #192633) 12%, transparent); }
+.agent-video-window-name { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 12px; font-weight: 550; overflow-wrap: break-word; }
+.agent-video-tag { justify-self: start; color: var(--video-accent); font-size: 10px; font-weight: 650; }
+
+.agent-video-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.agent-video-buttons button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--line-2, #ccd3db); border-radius: 6px; background: var(--bg, transparent); color: inherit; font: 550 12px/1.3 var(--font-ui, system-ui); cursor: pointer; }
+.agent-video-buttons button:disabled { opacity: .45; cursor: default; }
+.agent-video-buttons .agent-video-primary { color: var(--sheet, #fff); background: var(--ink, #192633); border-color: var(--ink, #192633); }
+.agent-video-privacy { font-weight: 550; }
+.agent-video-controls :focus-visible { outline: 2px solid var(--video-accent); outline-offset: 3px; }
+/* The node pop-over squares its controls; the Video section follows it. */
+.agent-screen-voice-controls.is-node-popover :is(.agent-video-buttons button, .agent-video-window) { border-radius: 3px; }
+:root[data-theme="black"] .agent-video-controls { --video-accent: #7dd3fc; }
+@media (prefers-reduced-motion: reduce) { .agent-video-controls * { transition: none !important; } }
+@media (max-width: 480px) { .agent-video-heading { gap: 8px; } .agent-video-heading h3 { font-size: 15px; } .agent-video-windows { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); } }

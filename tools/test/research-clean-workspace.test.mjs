@@ -50,7 +50,7 @@ test('a new project is empty, can save and restore empty, and examples are an ex
   await click('save')
   await click('load-examples')
   const exampleDraft = await exported()
-  assert.equal(exampleDraft.spec.catalog.length, 4)
+  assert.equal(exampleDraft.spec.catalog.length, 44)
   assert.deepEqual(exampleDraft.spec.tasks, [])
   await view.setContext(A, 'live', { reload: true })
   assert.deepEqual((await exported()).spec.catalog, [])

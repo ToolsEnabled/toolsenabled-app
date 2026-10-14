@@ -61,7 +61,7 @@ already owned by another lane.
 
 ## Retrieval source proof
 
-Integrate an earlier engine commit with the retrieval qualification mapping in
+Integrate engine commit `f50b9973` with the retrieval qualification mapping in
 this harness. The real CLI test now creates a disposable program copy and
 literal ledger, SQLite and document inputs. It requires successful searches,
 a genuine miss, and an unavailable-source result with their actual process

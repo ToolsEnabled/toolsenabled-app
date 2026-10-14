@@ -8,12 +8,12 @@
  * the tree chip row deletes itself, no node is a tree node so every path to
  * `showTreeNodeControls` is unreachable, and `treeChatConfigFor` never runs --
  * which is where the actions palette and the attachment and mention pickers
- * live. The result: agent actions and file upload seemed to be missing. They
- * were never removed. They were unreachable, because
+ * live. The owner's words for the result: "where are my agent actions and such
+ * and the file upload?" They were never removed. They were unreachable, because
  * the example had been pointed at the wrong half of the page.
  *
  * SO THE EXAMPLE GETS TREES, NOT A DIFFERENT RAIL. Seeded here, the example's
- * agents ARE tree nodes, and every surface their own tree code builds runs
+ * agents ARE tree nodes, and every surface his own tree code builds runs
  * unmodified over them. Nothing about the rail is reimplemented; there is
  * nothing left to reimplement.
  *
@@ -52,10 +52,10 @@ export const SAMPLE_TREE_COMPUTER_ID = 'sample-computer-1'
 /* WHAT THE EXAMPLE WAS ASKED, in the voice of things a person actually types.
  * A tree's displayed name comes from the first message typed into it when no
  * name was set (see treeLabel/displayName in fleet-trees.js), so these read as
- * the chip row they know: short, lowercase, a real request.
+ * the chip row he knows: short, lowercase, a real request.
  *
  * Roles are the declared vocabulary the tree panel offers; statuses are drawn
- * from NODE_STATUSES so the circles show the states their own page shows --
+ * from NODE_STATUSES so the circles show the states his own page shows --
  * something finished, something running, something that failed, and a draft
  * that was never started. A demonstration where everything succeeded would be
  * the least useful one to look at. */

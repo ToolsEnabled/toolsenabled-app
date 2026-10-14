@@ -59,7 +59,7 @@ import { CONNECT_HREF } from './device-claim-flow.js'
    already use, so the runs list says "Sonnet" where the record kept the id it
    was started with, and no fourth copy of that mapping can drift from it. The
    module is pure data with no imports of its own. */
-import { launchTier } from './orchestration-controls.js'
+import { launchTier, usageModel } from './orchestration-controls.js'
 /* DID THAT TURN SUCCEED, asked once, in the module that measured the answer.
    The two engines do not use the same word for a turn that went well (codex
    says "completed", the Claude CLI says "success"), and a second allowlist here
@@ -170,7 +170,7 @@ export const COPY = Object.freeze({
     }
     return `${spent}.`
   },
-  /* THE ABSENCES, IN WORDS. The box shows a flow of what the agents did
+  /* THE ABSENCES, IN WORDS. The owner asked for a flow of what the agents did
      and said, and the honest answer for some runs is that nobody wrote it down.
      A blank row reads as a screen that is broken; these say which of the three
      absences it really is, and none of them invents an ask that was not
@@ -184,8 +184,8 @@ export const COPY = Object.freeze({
      happening and never how long it has been happening. */
   runWorkingNow: 'Working now',
   /* THE LINES BETWEEN THE QUESTION AND THE ANSWER, labelled by who said them.
-     The home card carries the transcript turns -- what was asked, what was
-     said back -- the way the chat does. The person's own lines
+     The owner asked the home card to carry "the transcript turns, what was
+     asked, what was said back", the way the chat does. The person's own lines
      are labelled "You"; an agent's are labelled with its role, or with this
      word when the record never named one; an action line (a tool that ran) is
      unlabelled, as it is in the transcript. */
@@ -195,9 +195,10 @@ export const COPY = Object.freeze({
      run list, so the two halves read as two things rather than as one list
      that changes register halfway down. */
   threadLabel: (target) => `Conversation with ${target}`,
-   /* WHAT THE PANEL IS SHOWING WHEN A TREE IS PICKED (T401). Each tree is a
-     single option, and ALL TREES shows just the tip of each active tree, so
-     people can monitor their top-level agents more easily. The tips view says what it is rather
+  /* WHAT THE PANEL IS SHOWING WHEN A TREE IS PICKED (T401). Owner: "we have
+     each tree as a single option, then we have ALL TREES but this shows just
+     the tip of the tree when its active ... so then people can monitor just
+     their top level agents more easily." The tips view says what it is rather
      than naming a lane, because it is not showing one. */
   treeScopeTitle: (name) => name || 'This tree',
   treeTipsTitle: 'Every tree, top level',
@@ -208,7 +209,8 @@ export const COPY = Object.freeze({
      <agent> and nothing finer), so the door opens the page and says so. */
   runDoor: Object.freeze({ label: 'Open it on the computers page', href: '#/computers' }),
   /* The aggregate of outcomes across the record. No longer printed on the home
-     card -- the footer paragraph added nothing there -- but src/local-metrics.js still reads it
+     card -- the owner, with the footer paragraph on screen: "this little dialog
+     box is kind of pointless" -- but src/local-metrics.js still reads it
      verbatim for the metrics page, so it stays. Returns null when the ledger
      says nothing either way, which is exactly the state every record written
      before outcomes existed is in -- an older ledger therefore reads as it
@@ -223,7 +225,7 @@ export const COPY = Object.freeze({
     if (unknown > 0) return `${started} of ${total} started; the rest were recorded before this copy kept outcomes.`
     return total === 1 ? 'It started.' : 'All of them started.'
   },
-  /* The two settings, in the words the box uses when they
+  /* The two settings the owner asked for, in the words the box uses when they
      leave it holding something back. Each one names the setting that caused it
      and offers the way to it, because a box that is empty for a reason the
      person cannot see is the failure this whole feature could most easily
@@ -316,7 +318,7 @@ function agentOf(entry) {
   return null
 }
 
-/* THE FOURTH OUTCOME (product rule T782 / BUG08): activity
+/* THE FOURTH OUTCOME (owner direction 2026-09-20, T782 / BUG08): activity
    auditing switched OFF. The host answers history reads with
    { ok: false, code: 'AUDIT_NOT_ENABLED', reason } while the signed audit is
    off -- the Basic default -- and that is a state the person chose, not a
@@ -406,7 +408,7 @@ export function readLocalSessions(raw) {
         /* The bare code the shell recorded, or null. Turned into a sentence by
            runReason() below; never rendered raw. */
         reason: outcome ? outcome.reason : null,
-        /* THE JOIN KEY, and the whole of the second report. Without it
+        /* THE JOIN KEY, and the whole of the owner's second report. Without it
            a row can only ever say "Agent run 37"; with it a screen can find the
            conversation this app already saved for that session and say WHICH
            agent and WHAT it was asked. null when the record does not say, and
@@ -484,6 +486,13 @@ export function readAgentEngine(raw, sessionsEnabled = false) {
    more detail; this one stays at the register of a home screen. */
 export const ENGINE_REASON = Object.freeze({
   RULES_POLICY_UNAVAILABLE: 'ToolsEnabled could not load the rules needed for this agent. Reinstall or update ToolsEnabled from a complete build, then try again',
+  AGENT_CODEX_CONFINEMENT_UNAVAILABLE: 'Codex could not report its settings, so this agent’s tool limits could not be checked and nothing was started. Update Codex, then start the agent again',
+  AGENT_CONFINEMENT_SERVER_ENV_CONFLICT: 'Two of ToolsEnabled’s own tool connections asked for different values of the same private setting, so nothing was started. Restart ToolsEnabled, then start the agent again',
+  AGENT_RESUME_HOME_UNAVAILABLE: 'The original sign-in home for this saved conversation cannot be verified in this run, so it was not resumed. Your conversation is kept. Open a new agent to start another conversation',
+  AGENT_RESUME_HOME_CHANGED: 'This account now points to a different sign-in folder. Your conversation is kept. Choose the account again before resuming',
+  AGENT_RESUME_IDENTITY_MISMATCH: 'This saved conversation does not match its original agent or account, so it was not resumed. Your conversation and draft are kept. Open a new agent to start another conversation',
+  AGENT_RESUME_PROVIDER_MISMATCH: 'This saved conversation belongs to a different assistant program than the one chosen, so it was not resumed. Your conversation is kept. Choose the program that owns it, then resume it',
+  AGENT_CODEX_CONFINEMENT_MISMATCH: 'Codex did not accept the tool limits ToolsEnabled sets for this agent, so nothing was started. Update Codex, then start the agent again',
   ...ACCOUNT_SELECTION_REFUSALS,
   AGENT_IMAGE_UNSUPPORTED: 'This provider cannot receive images. Choose a provider with image support or remove the images before sending',
   AGENT_MODE_UNAVAILABLE: 'This session no longer offers that provider mode. Refresh provider modes and choose an available mode',
@@ -492,7 +501,7 @@ export const ENGINE_REASON = Object.freeze({
   AGENT_SWITCH_STALE: 'The conversation changed during a model switch. Check the active session before choosing another model',
   AGENT_SWITCH_ACCOUNT_UNAVAILABLE: 'The model switch could not use the selected account. Check its sign-in in Accounts and choose an available account',
   AGENT_SWITCH_NOT_STANDALONE: 'Change this session’s model using its tree controls in Computers',
-  AGENT_SWITCH_ACCOUNT_INVALID: 'The model and account choices do not match. Choose an account for the selected provider or automatic selection',
+  AGENT_SWITCH_ACCOUNT_INVALID: 'The model and account choices do not match. Choose an account for the selected provider',
   AGENT_SWITCH_HISTORY_UNAVAILABLE: 'The model switch could not link the existing conversation. Keep it open and check conversation history before retrying',
   AGENT_SWITCH_CLEANUP_REQUIRED: 'The model switch still needs recovery. Keep its conversation open and check its status before another switch',
   AGENT_CLOUD_COMMAND_INVALID: 'The cloud request could not be read. Enter /cloud followed by the work you want done, and check any worker limit you included',
@@ -502,6 +511,8 @@ export const ENGINE_REASON = Object.freeze({
   AGENT_TOOL_MODE_ROLE_CONFLICT: 'This role requires ToolsEnabled functions. Enable a ToolsEnabled tool mode in Settings before starting a new agent.',
   TOOL_API_DISABLED: 'This session has native provider tools only. Choose a ToolsEnabled tool mode and start a new session to use ToolsEnabled functions.',
   AGENT_ENGINE_UNAVAILABLE: 'This copy is not set up to run agents yet',
+  AGENT_PROVIDER_PRESENCE_UNAVAILABLE: 'The selected provider could not be verified on this computer, so the agent will not start. Check the provider installation and try again',
+  LOCAL_NODE_RUNTIME_UNAVAILABLE: 'The chosen local runtime is unavailable. Start it and check its address in Settings → Local models',
   AGENT_CONFINEMENT_UNAVAILABLE: 'This copy did not ship the permission-level enforcement an agent session needs, so it will not start one',
   AGENT_CONFINEMENT_ACCOUNT_PROFILE_UNAVAILABLE: 'ToolsEnabled could not establish which Windows account owns this installation, so it refused to load an agent. Close ToolsEnabled and open the copy installed for this Windows account',
   AGENT_CONFINEMENT_WRONG_PRINCIPAL: 'ToolsEnabled is running under a Windows account that does not own this installation, so it refused to load an agent. Close ToolsEnabled and open it from the Windows account that owns it',
@@ -513,15 +524,16 @@ export const ENGINE_REASON = Object.freeze({
   AGENT_CONFINEMENT_PROFILE_REPARSE_REFUSED: 'An agent path crosses a linked folder inside this Windows account, so ToolsEnabled refused it rather than follow the link. Choose an ordinary folder owned directly by this account',
   AGENT_CONFINEMENT_PROFILE_REPARSE_POINT: 'An agent path crosses a linked folder inside this Windows account, so ToolsEnabled refused it rather than follow the link. Choose an ordinary folder owned directly by this account',
   AGENT_CONFINEMENT_PROFILE_ENVIRONMENT_INVALID: 'ToolsEnabled could not construct a safe launch environment for this Windows account, so nothing was started. Close ToolsEnabled and open the copy installed for the account that owns it',
-  AGENT_ACCOUNT_RECOVERY_UNAVAILABLE: 'The original agent could not be verified for account recovery, so no replacement was started. Review the agent and its role in Computers before starting it again',
-  AGENT_ACCOUNT_RECOVERY_NO_ALTERNATE: 'Account recovery has no other eligible sign-in to use, so no replacement was started. Add or sign in to another account in Settings, or wait for the current account to have allowance again',
-  AGENT_ACCOUNT_RECOVERY_IDENTITY_MISMATCH: 'The earlier agent moved to a different place in the tree, so account recovery did not start a replacement. Review the agent and its role in Computers before starting it again',
-  AGENT_ACCOUNT_RECOVERY_STOPPED: 'The earlier agent was stopped, so account recovery did not start a replacement. Review the agent in Computers and start it again when you want it to run',
-  AGENT_PREDECESSOR_CLEANUP_FAILED: 'The earlier agent has not finished closing, so account recovery did not start a replacement. Use Stop on that agent in Computers, then start it again',
+
+
+
+
+  AGENT_PREDECESSOR_CLEANUP_FAILED: 'The earlier agent has not finished closing, so continuation did not start a replacement. Use Stop on that agent in Computers, then start it again',
   AGENT_PREDECESSOR_STOP_IN_PROGRESS: 'The earlier session of this agent is still stopping, so a new one will not start yet. Its saved conversation is kept. Wait for it to stop, then try again',
   AGENT_PREDECESSOR_CLOSE_REQUIRED: 'The earlier session of this agent has not finished closing, so a new one will not start. Its saved conversation is kept. Use Stop on that agent in Computers, then try again',
   ACCOUNT_CLIENT_UNAVAILABLE: 'The chosen account is not registered for this assistant client, so the agent will not start. Choose an account registered for that client in Accounts',
   PROVIDER_LOGIN_NOT_INSTALLED: 'The program this model needs is not installed here, so the agent will not start. Install it in Settings, under This computer, then start the agent again',
+  AGENT_AUTOMATIC_TURN_START_UNCONFIRMED: 'The assistant did not confirm starting the continuation. Its session and queued messages are kept. Stop it before retrying.',
   AGENT_RESUME_SOURCE_UNAVAILABLE: 'The saved conversation could not be checked for this agent, so it was not resumed. Close any session still using it, then choose Resume again',
   CODEX_RESUME_SOURCE_INVALID: 'The saved conversation could not be joined to a new session, so it was not resumed. Update ToolsEnabled, then choose Resume again',
   CODEX_RESUME_IDENTITY_MISMATCH: 'The saved file belongs to a different conversation, so this agent was not resumed. Start a new agent for this work instead',
@@ -590,6 +602,8 @@ export const ENGINE_REASON = Object.freeze({
   AGENT_ROLE_TOOL_RESTRICTION_INVALID: 'The saved role has invalid function settings. No agent was started. Open the Role library, save that role again, then retry',
   AGENT_ROLE_TOOL_SERVER_UNSUPPORTED: 'This engine cannot provide the functions selected for the role. No agent was started. Install a matching app and engine update, then retry',
   AGENT_OPTIMIZED_TOOLS_UNSUPPORTED: 'Optimized works with Claude only, so this assistant was not started. Your saved tool setting is unchanged. Start it with a Claude account, or choose Only, Enabled or Disabled for Agent API in quick settings, then retry',
+  AGENT_API_MODE_UNAVAILABLE: 'ToolsEnabled could not read the saved Agent API setting, so it will not start an agent. Choose a mode for Agent API in quick settings, then retry',
+  AGENT_ACP_REQUIRES_APP_TOOLS: 'Gemini and Grok Research sessions run with ToolsEnabled tools only. Set Agent API to Only in quick settings, then start the agent again',
   AGENT_CONFINEMENT_STATE_PATH_TOO_LONG: 'The app data folder path is too long to start this assistant. Use a shorter supported app data location in the owning account, then retry',
   AGENT_SESSION_IDENTITY_TRANSPORT_UNAVAILABLE: 'ToolsEnabled could not establish its app-owned agent identity channel, so it did not start the named agent. Close ToolsEnabled, open it again, then retry',
   AGENT_SESSION_ROOT_GUARD_UNAVAILABLE: 'The app and engine do not support the same final launch guard. No agent program was started. Install a matching app and engine update, then retry',
@@ -702,7 +716,7 @@ export const CODEX_SIGNED_OUT_FACT = `This copy can start an agent, but nobody i
  *
  * ENGINE_REASON's Codex-setup entries name Windows Terminal and winget, and a
  * Linux reader was shown both. Measured on this machine before the fix:
- * ENGINE_REASON.AGENT_CODEX_CLI_NOT_INSTALLED told a Linux user to run
+ * ENGINE_REASON.AGENT_CODEX_CLI_NOT_INSTALLED told a Linux owner to run
  * "winget install OpenAI.Codex" in Windows Terminal, and neither of those
  * exists there.
  *
@@ -755,9 +769,9 @@ export function codexSignedOutFact({ platform = globalThis.mcSetup?.platform } =
  */
 /* ONE RUN, WITH EVERYTHING THIS COMPUTER ACTUALLY WROTE DOWN ABOUT IT.
  *
- * THE REPORT THIS EXISTS FOR. On the installed build the activity list showed
- * "Agent run 37 - started" and a relative time, and nothing else. The agent
- * feeds that get this right carry
+ * THE REPORT THIS EXISTS FOR. The owner, on the installed build: the activity
+ * list shows "Agent run 37 - started" and a relative time, and nothing else. He
+ * named the repository whose agent feeds get this right, and what they carry is
  * always the same three things -- which agent, what it was asked, what happened
  * -- never a bare identifier and a verb.
  *
@@ -832,7 +846,7 @@ export function summariseRunWork(turns) {
   const rows = Array.isArray(turns) ? turns.filter(row => row && typeof row === 'object') : []
   if (rows.length === 0) return null
   const counted = rows.filter(row => row.basis !== 'session-total')
-  const model = launchTier(rows.find(row => typeof row.tier === 'string' && row.tier)?.tier || '')?.label || null
+  const model = usageModel(rows.find(row => typeof row.tier === 'string' && row.tier))?.label || null
   /* The rows this run is counted from: its turn rows when it has any, and the
      running totals only when they are all there is. Every figure below reads
      this one list so no two of them can disagree about what a turn was. */
@@ -1197,8 +1211,9 @@ export function describeHome(input) {
     } else if (mode === HOME_MODES.FLEET_UNREACHABLE) {
       facts.push({ id: 'peer', tone: 'warn', href: GUIDE_HREF, text: 'Nothing has been heard from them recently' })
     } else {
-       /* THE REPORT, AND THE ONE ROW ON THE FIRST SCREEN THAT COULD ANSWER IT:
-       * after signing up, a user could not see how to connect their computer.
+      /* THE OWNER'S OWN REPORT, AND THE ONE ROW ON THE FIRST SCREEN THAT COULD
+       * ANSWER IT: "as a user I dont even see how after signing up that I now
+       * connect my computer".
        *
        * WHAT THIS ROW USED TO SAY AND WHY IT WAS WORSE THAN NOTHING. "This is
        * the only computer connected", linked to the guide. Every word of it was
@@ -1242,7 +1257,7 @@ export function describeHome(input) {
        say. Zero is stated positively, because "nothing needs you" is
        information a person wants. */
     if (approvals?.readable) {
-      /* Decisions they ALREADY MADE that did not land -- src/approval-outcomes.js.
+      /* Decisions he ALREADY MADE that did not land -- src/approval-outcomes.js.
          Absence reads as zero, which is the only reading of a missing field that
          cannot invent a failure, and it is clamped to the pending count so this
          row can never claim more failures than there are requests left to fail.
@@ -1256,10 +1271,10 @@ export function describeHome(input) {
 
       /* ONE row, not two. The cap under the ring is three facts and it is a real
          cap (tools/test/home-screen.test.mjs), because five notices in a
-         viewport is what made this screen unreadable. So when a decision they made
+         viewport is what made this screen unreadable. So when a decision he made
          did not land, that DISPLACES the waiting count rather than joining it:
          both are true, the failed request is itself one of the waiting ones, and
-         only one of them corrects something they currently believe. The count is
+         only one of them corrects something he currently believes. The count is
          one click away on the screen this row links to. */
       facts.push(
         undelivered > 0
@@ -1328,7 +1343,7 @@ function fleetHeadline(health) {
  *
  * This function used to answer "which single thing is in the box" from the
  * state of the machine alone: a demonstration, a conversation, or a list of
- * runs, never two at once. The two are to be independently
+ * runs, never two at once. The owner asked for the two to be independently
  * controlled -- which agents' context appears, and whether runs appear too, not
  * at all, or on their own -- so the box now has a context half and a runs half
  * and this decides each one separately.
@@ -1344,7 +1359,7 @@ function fleetHeadline(health) {
  */
 function describePanel(mode, sessions, engine, chatbox) {
   /* A CONVERSATION IS ONLY THE COORDINATOR THREAD NOW. The demonstration used
-     to bring its own written transcript into this half; the rule is
+     to bring its own written transcript into this half; the owner asked for
      one card with the live list as the foundation and the transcript's
      substance folded into each run's row, so the example shows the same rows a
      real machine does (with their own asks, lines and answers) and has no
@@ -1483,8 +1498,9 @@ function panelTitle(mode, plan) {
 /* THE FOOTER IS A WARNING OR NOTHING.
  *
  * It used to be three sentences on every healthy record: that the record checks
- * out, how many runs started, and that no ending is ever written down. On a
- * healthy record it added nothing -- a paragraph that
+ * out, how many runs started, and that no ending is ever written down. The
+ * owner, with the card in front of him (verbatim): "this little dialog box is
+ * kind of pointless". He is right about the healthy case -- a paragraph that
  * says the same thing under every list is furniture, and the integrity
  * sentence was being read as a statement about the agents (it once sat under
  * three runs that all refused to start). So a record that checks out says

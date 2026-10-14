@@ -74,10 +74,11 @@ test('the refusal the deadline produces says what to do next, rather than only t
 })
 
 test('"nothing is waiting" is scoped to the installation that was actually read', () => {
-  // MEASURED on a development install: the running app's own state root held
-  // no prompts while the engine's store held several, some of them shopping
-  // lists close to their expiry date. Unqualified, this row would have told its
-  // reader that their money decisions were settled before some of them expired. The empty state is
+  // MEASURED ON THIS MACHINE while the sentence was being written: the running
+  // app's own state root held 0 prompts and the engine's store held 10 --
+  // including 2 shopping lists, 20 lines, denied by the calendar on 2026-08-18.
+  // Unqualified, this row would have told its reader that his money decisions
+  // were settled six days before four of them expired. The empty state is
   // therefore a statement about ONE installation and has to read as one.
   const html = cartMarkup({ cart: { readable: true, cartCount: 0, waitingCount: 0, spendNotice: 'x' } })
   assert.equal(cartStateOf(html), 'empty')

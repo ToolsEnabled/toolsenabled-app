@@ -16,8 +16,8 @@ dialog.switch-continue::backdrop { background: #10172480; backdrop-filter: blur(
 .switch-continue *, .switch-continue *::before, .switch-continue *::after { box-sizing: border-box; }
 .switch-form { display: flex; flex-direction: column; gap: 12px; padding: 18px 22px 16px; }
 .switch-title { margin: 0; font: 600 20px/1.25 var(--font-ui); letter-spacing: -0.02em; }
-/* THE AGENT BESIDE THE MENU (T775: the chat shows next to the menu so the
-   user knows which agent is being restarted). With a target the dialog
+/* THE AGENT BESIDE THE MENU (owner T775: "show the chat next to the menu so
+   the user knows what agent is being restarted"). With a target the dialog
    widens into two panes -- the circle's name and saved conversation on the
    left, the account/model/depth menu on the right -- so the person reads WHO
    before choosing HOW. Each pane scrolls on its own; the conversation never

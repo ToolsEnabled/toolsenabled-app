@@ -166,7 +166,7 @@ test('named home is literal data; reused terminal server cannot choose another a
     NODE_OPTIONS: '--require=/fixture/hostile', NODE_PATH: '/fixture/hostile',
     LD_PRELOAD: '/fixture/hostile', ELECTRON_RUN_AS_NODE: '1',
   } })
-  assert.equal((await service.start('claude', { home, label: 'Team & personal' })).ok, true)
+  assert.equal((await service.start('claude', { home, label: 'School & personal' })).ok, true)
   const [, args, { env }] = calls[0]
   assert.equal(env.HOME, owner)
   assert.equal(env.CLAUDE_CONFIG_DIR, home)
@@ -233,9 +233,9 @@ test('cloud-account composition awaits the same login acknowledgement and preser
     const { service } = fixture({ open: () => accepted ? Promise.resolve() : Promise.reject(new Error('fixture')) })
     const setup = createCloudAccountSetup({
       providerLogin: service,
-      addAccount: () => { recorded++; return { name: 'Team', home: '/fixture/team' } },
+      addAccount: () => { recorded++; return { name: 'School', home: '/fixture/school' } },
     })
-    const result = await setup.add({ name: 'Team' })
+    const result = await setup.add({ name: 'School' })
     assert.equal(recorded, 1)
     assert.equal(result.ok, true)
     assert.equal(result.signInOpened, accepted)
@@ -375,7 +375,7 @@ test('both actual main IPC handlers retain asynchronous login results and arm na
     ipcMain: { handle: (name, fn) => handlers.set(name, fn) },
     assertTrustedAgentSender() {}, agentPayload: value => value,
     boundedAgentString: value => value, rendererSafeAgentError: error => error,
-    accountAnswer: fn => fn(), accountRegistry: { homeOf: () => ({ provider: 'codex', name: 'Team', directory: '/fixture/team' }) },
+    accountAnswer: fn => fn(), accountRegistry: { homeOf: () => ({ provider: 'codex', name: 'School', directory: '/fixture/school' }) },
     providerLoginService: { start: () => pending },
     armSignInWatch: () => { watched++; return true },
   }
@@ -385,15 +385,15 @@ test('both actual main IPC handlers retain asynchronous login results and arm na
     const end = main.indexOf('\n})', start) + 3
     vm.runInContext(main.slice(start, end), context)
   }
-  const named = handlers.get('mc-accounts:sign-in')({ sender: {} }, { provider: 'codex', name: 'Team' })
+  const named = handlers.get('mc-accounts:sign-in')({ sender: {} }, { provider: 'codex', name: 'School' })
   const ordinary = handlers.get('mc-provider-login:start')({}, { provider: 'codex' })
   assert.equal(watched, 0)
-  accept({ ok: true, terminal: 'linux-gnome-terminal', title: 'Team' })
+  accept({ ok: true, terminal: 'linux-gnome-terminal', title: 'School' })
   assert.equal((await named).ok, true)
   assert.equal((await ordinary).ok, true)
   assert.equal(watched, 1)
   context.providerLoginService.start = async () => ({ ok: false, code: 'PROVIDER_LOGIN_SPAWN_FAILED' })
-  assert.equal((await handlers.get('mc-accounts:sign-in')({ sender: {} }, { provider: 'codex', name: 'Team' })).ok, false)
+  assert.equal((await handlers.get('mc-accounts:sign-in')({ sender: {} }, { provider: 'codex', name: 'School' })).ok, false)
   assert.equal((await handlers.get('mc-provider-login:start')({}, { provider: 'codex' })).ok, false)
   assert.equal(watched, 1)
 })

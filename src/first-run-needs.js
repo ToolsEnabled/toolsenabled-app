@@ -75,7 +75,7 @@ export const EXAMPLE_MODE_SETTING_HREF = settingRow('example_mode')
 /* THE ONE ADDRESS EVERY EMPTY SCREEN'S DOOR POINTS AT, and it is a row in
  * Settings rather than a screen of its own.
  *
- * It used to be `#/guide`. The instruction was to fold that screen into
+ * It used to be `#/guide`. The owner's instruction was to fold that screen into
  * Settings and make it simpler and more useful, so the live part of it -- the
  * assistant programs, their presence sentence and their Install and Sign in
  * buttons -- is now the section called "This computer", and this constant names
@@ -223,8 +223,8 @@ export const FIRST_RUN_NEEDS = Object.freeze([
   /* THE ONE THAT WAS MISSING, AND IT IS FIRST BECAUSE IT IS WHAT THE PERSON
    * CAME HERE FOR.
    *
-   * THE DEFECT: after signing up, a user could not see how to connect their
-   * computer. Measured on the rendered guide
+   * THE DEFECT, in the owner's own words: "as a user I dont even see how after
+   * signing up that I now connect my computer". Measured on the rendered guide
    * before this entry existed: the word "account" appeared thirteen times and
    * every single one of them meant a Codex or Claude sign-in folder;
    * "toolsenabled.ai", "website", "signed up", "second computer" and "code"
@@ -266,7 +266,7 @@ export const FIRST_RUN_NEEDS = Object.freeze([
        This section printed `winget install OpenAI.Codex` and `codex login` for
        a person to copy, a few inches above a section that now installs and
        signs in at the press of a button. Two ways to do one thing is the thing
-       that is ruled out, and the copied one is the one that failed a real
+       the owner ruled out, and the copied one is the one that failed a real
        person: the window their install ran in could not see the new program
        and answered "'codex' is not recognized". So this section says which
        switch to turn on, and points at the buttons for the rest. */
@@ -293,7 +293,7 @@ export const FIRST_RUN_NEEDS = Object.freeze([
     /* THE WORD "ONE" HAD NO ANTECEDENT A READER COULD SEE. Arriving here from
        the home row about computers, "there is no setting that connects one"
        read as "you cannot connect a computer" -- which is the opposite of true
-       and is the exact sentence the report is about. The paragraph now
+       and is the exact sentence the owner's report is about. The paragraph now
        ends by naming the section that DOES do the other thing.
 
        THEN THE NOUN ITSELF TURNED OUT TO BE THE DEFECT. This said "an agent
@@ -354,7 +354,7 @@ export function firstRunNeeds({ viaRelay = false } = {}) {
 /* THE THREE ASSISTANT PROGRAMS, WHAT EACH ONE COSTS A PERSON TO SET UP, AND
  * WHAT THIS COPY CAN ACTUALLY DO WITH IT.
  *
- * THE DEFECT. The requirement is that a person can add their Claude,
+ * THE DEFECT. The owner's requirement is that a person can add their Claude,
  * Codex and Gemini sign-ins easily and then have agents run on them. Measured on
  * the packaged product: Codex was the only one of the three named anywhere in
  * the product, Gemini appeared nowhere at all, and the only sentence about
@@ -463,8 +463,8 @@ export const PROVIDER_SETUP = Object.freeze([
   }),
   /* THE FOURTH ROW, AND THE FIRST ONE THAT IS NOT A SIGN-IN AT ALL.
    *
-   * Rule: the free local path is a full part of the product, not a fallback
-   * (the engine's local-node-runtime.js states the same rule). LAUNCH_TIERS
+   * "the free path is the product, not a consolation" (owner, 2026-08-12,
+   * quoted on the engine's own local-node-runtime.js). LAUNCH_TIERS
    * (src/orchestration-controls.js) already carries `local` in the SAME table
    * as the three paid tiers, not a separate one -- this row is that same
    * decision applied here.
@@ -548,7 +548,7 @@ export function presenceSentence(presence, { viaRelay = false } = {}) {
   /* "WE COULD NOT FIND IT" IS NOT "YOU HAVE NOT INSTALLED IT", and the second
      half of this sentence is the repair. It used to stop at the uncertainty,
      which reads to somebody who HAS installed the program as the product being
-     broken about their own machine -- and a person met exactly that on a
+     broken about their own machine -- and the owner met exactly that on his
      second computer, with Codex and Claude both installed and signed in. So it
      says the true thing next to it: it may be here, and reopening the
      application is what lets it be seen. That is not a guess about their

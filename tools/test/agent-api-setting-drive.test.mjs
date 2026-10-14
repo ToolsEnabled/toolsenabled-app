@@ -213,7 +213,7 @@ test('a staged payload that carries the enforcer obliges the control to exist', 
     return
   }
   assert.equal(shell.WRITABLE_IDS.includes(ID), true,
-    'this copy enforces agent.agent_api and offers no way to change it -- a registry row and an enforcement with no control is the lie the rule names')
+    'this copy enforces agent.agent_api and offers no way to change it -- a registry row and an enforcement with no control is the lie the owner named')
   assert.ok(section.PRODUCT_SETTING_IDS.includes(ID), 'and the page draws it')
 })
 
@@ -337,7 +337,7 @@ if (!driveable) {
     assert.equal(body.querySelector('[data-agent-api-discovery="agent.tool_summary"]').checked, false)
     assert.equal(body.querySelector('[data-agent-api-discovery="agent.capability_recall"]').checked, true)
     assert.equal(writes.length, 1, 'reopening only reads')
-    // Decision: the payload's real support rows say plainly that Optimized is Claude-only.
+    // rc-0922 decision: the payload's real support rows say plainly that Optimized is Claude-only.
     assert.equal(body.querySelector('[data-agent-api-optimized-support]').textContent,
       'Optimized works with Claude only. '
       + 'Claude sessions add file search, skills, planning and tool search, within the existing role and permission limits. '
@@ -447,7 +447,7 @@ if (!driveable) {
     }
   })
 
-  /* The engine's established reconciliation stays authoritative: legacy false means
+  /* The engine's established reconciliation stays authoritative (rc-0922): legacy false means
      "not Only", so an explicit Optimized alias refines it exactly as a Disabled alias already did;
      legacy true means Only, so it conflicts with the Optimized alias and the drawer refuses edits. */
   test('legacy false with the Optimized alias reads as Optimized without rewriting bytes or provenance', async () => {

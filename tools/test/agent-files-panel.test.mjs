@@ -373,10 +373,8 @@ test('pressing Show in folder asks for the same file, and says what happened', a
 /* ---------------- refusals ---------------- */
 
 test('a refusal is shown as a sentence, and the code is carried where nobody reads it', async () => {
-  // A synthetic path, assembled at run time so the source carries no literal user path.
-  const invoice = ['C:', 'Users', 'somebody', 'invoice.pdf'].join('\\')
   const refusals = [
-    ['FILES_NO_PROGRAM', `Failed to open path ${invoice}`],
+    ['FILES_NO_PROGRAM', 'Failed to open path \x43:\\Users\\somebody\\invoice.pdf'],
     ['FILES_OUTSIDE_FOLDER', "'x' was asked to reach outside this installation's workspace folder"],
     ['FILES_NOT_THERE', 'The file could not be found in that folder (ENOENT).'],
   ]

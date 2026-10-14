@@ -197,7 +197,7 @@ test('the reading reports the recorded level, its sandbox, and a measured tool c
     })
     assert.equal(unrestricted.toolsAllowed, null,
       'a level that narrows nothing has no allowlist, and null is that fact rather than a missing value')
-    /* true since an earlier engine commit (payload pin flip 2026-08-14): the widest tier
+    /* true since engine f1cc018 (payload pin flip 2026-08-14): the widest tier
        runs in the product's own prepared home too, so its tools are the
        generated surface instead of whatever ~/.codex happens to hold. Its
        sandbox stays danger-full-access -- isolation here is about WHOSE HOME,
@@ -266,8 +266,8 @@ test('a confining level never claims full local access, and unrestricted never c
 })
 
 test('the credential fact is on the glass at every level, in the tier\'s own direction', () => {
-  /* THE FIRST OUTSIDE USER'S CASE. Their agents could not use the
-     credential manager or vault at the recommended level, and no surface had
+  /* THE FIRST OUTSIDE USER'S CASE. Their agents "weren't able to use
+     credential manager or vault" at the recommended level, and no surface had
      said that the read-only level withholds credential requests BY DESIGN. The
      person deciding to press Start is owed that sentence at the moment of
      deciding, not after the agent reports a mystery refusal. */

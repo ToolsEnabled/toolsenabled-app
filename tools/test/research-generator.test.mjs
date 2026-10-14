@@ -18,22 +18,22 @@ import { fetchProjection } from '../../src/live-status.js'
 const FIXED_NOW = '2026-08-07T18:00:00.000Z'
 const FIXED_MTIME = new Date('2026-08-06T12:00:00.000Z')
 const SAFE_PATHS = Object.freeze([
-  'status-report-2026-08-01.md',
-  'coordinator-audit-2026-08-04.md',
-  'full-audit-2026-08-03.md',
-  'issues-report-2026-08-04.md',
-  'plan-audit-2026-08-04.md',
-  'report-corpus-research-audit-2026-08-06.md',
+  'TOOLSENABLED-MACHINE-B-STATUS-REPORT-2026-08-01.md',
+  'ToolsEnabled-COORDINATOR-AUDIT-2026-08-04.md',
+  'ToolsEnabled-FULL-AUDIT-2026-08-03.md',
+  'ToolsEnabled-Issues-Report-2026-08-04.md',
+  'ToolsEnabled-PLAN-AUDIT-2026-08-04.md',
+  'ToolsEnabled-Report-Corpus-Research-Audit-2026-08-06.md',
   'HANDOFF.md',
 ])
 const FLAGGED_PATHS = Object.freeze([
-  'restricted/research-corpus-audit-2026-08-06.md',
-  'restricted/benchmark-iteration-report.md',
-  'restricted/research-extension-report.md',
-  'BENCHMARK-AUDIT.md',
-  'BENCHMARK-AUDIT.html',
-  'BENCHMARK-AUDIT.pdf',
-  'restricted/product-iteration-report.md',
+  'currentWork86/AI-Research-Initiatives-Full-Corpus-Audit-2026-08-06.md',
+  'currentWork86/LLMBenchmarking-current-iteration-report.md',
+  'currentWork86/review-research-extension-report.md',
+  'LEAN-BENCH-AUDIT.md',
+  'LEAN-BENCH-AUDIT.html',
+  'LEAN-BENCH-AUDIT.pdf',
+  'currentWork86/\x54oolsEnabled-current-iteration-report.md',
 ])
 const FLAGGED_SENTINEL = 'FLAGGED-CONTENT-MUST-NOT-APPEAR'
 
@@ -48,7 +48,7 @@ function seedResearchRoot(root) {
     write(join(root, relativePath), `# Fixture safe report ${index + 1}\n\nA bounded ToolsEnabled fixture.\n`)
   })
   FLAGGED_PATHS.forEach(relativePath => {
-    write(join(root, relativePath), `${FLAGGED_SENTINEL}\nRESTRICTED-RESEARCH fixture content\n`)
+    write(join(root, relativePath), `${FLAGGED_SENTINEL}\nLLMBenchmarking fixture content\n`)
   })
 }
 

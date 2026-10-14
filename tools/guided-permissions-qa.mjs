@@ -2,10 +2,10 @@
 
 // THE GUIDED-PERMISSIONS DIRECTIVE, WALKED ON THE REAL PACKAGED WINDOW.
 //
-// R1529: settings must genuinely RESTRICT, and a person
+// Owner, R1529, in his own words: settings must genuinely RESTRICT, and a person
 // must be GUIDED through changing one -- told what each step does, told the
 // capabilities against the risks, told explicitly that the step is not required,
-// and never pushed. And where the step is outside this product (the example given: an
+// and never pushed. And where the step is outside this product (his example: an
 // operation that would need UAC elevation) we WALK THEM THROUGH IT and DO NOT DO
 // IT FOR THEM; the in-product setting still turns on, and we say honestly that
 // it might not work fully.

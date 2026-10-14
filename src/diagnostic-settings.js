@@ -1,5 +1,5 @@
-/* DIAGNOSTIC FILES, beside the Diagnostic retention row (product rule
- * T782/T783: routine diagnostics are finite by default; Keep and
+/* DIAGNOSTIC FILES, beside the Diagnostic retention row (owner direction
+ * 2026-09-20, T782/T783: routine diagnostics are finite by default; Keep and
  * Archive are the person's explicit choices).
  *
  * The retention row chooses the window. This panel is what the window is
@@ -45,6 +45,7 @@ const KIND_WORDS = Object.freeze({
   'main-lag': 'App stall record', 'main-heap': 'Memory record', 'exit-record': 'Exit record',
   'native-decisions': 'Native decision record', 'native-stream': 'Native agent log output',
   'startup-fatal': 'Startup troubleshooting record',
+  'legacy-signin-cleanup': 'Legacy sign-in cleanup record',
 })
 const kindWords = kind => KIND_WORDS[kind] || String(kind || 'Diagnostic record')
 

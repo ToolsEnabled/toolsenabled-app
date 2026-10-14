@@ -145,8 +145,11 @@ async function main() {
         // cannot distinguish it from a notice and is disabled for judges.
         const notices = { ...current, providerNotices: { ...current.providerNotices, shapeTest: false } }
         const transportOk = judge.surface === 'http' ? Number.isInteger(result.evidence.exit) && result.evidence.exit >= 200 && result.evidence.exit < 300 : result.evidence.exit === 0
-        const failure = result.isError || !transportOk || result.evidence.spawnError || !String(result.rawText ?? '').trim() ? 'judge-error'
-          : result.providerTruncated === true || truncated(current, result.rawText) ? 'judge-truncation'
+        // A provider refusal is never a verdict, even with partial text; its stop reason is kept as evidence.
+        if (result.providerRefusal) result.evidence.providerRefusal = String(result.providerRefusal)
+        const failure = result.providerRefusal ? 'provider-refusal'
+          : result.isError || !transportOk || result.evidence.spawnError || !String(result.rawText ?? '').trim() ? 'judge-error'
+          : result.providerTruncated === true || truncated(current, result.rawText, judge.surface) ? 'judge-truncation'
           : providerBlocked(notices, judge.surface, result.rawText, result.wallMs) ? 'provider-blocked' : null
         record = { binding, startedAt, finishedAt: new Date().toISOString(),
           judge: { id: judge.id, provider: judge.provider, surface: judge.surface, requestedModel: judge.model, servedModel: result.served, effort: judge.effort },

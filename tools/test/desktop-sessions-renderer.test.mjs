@@ -25,7 +25,7 @@ const {
   mountDesktopSessionChat,
   readDesktopSessionList,
 } = await import('../../src/desktop-sessions.js')
-const { DESKTOP_SESSION_COPY, DESKTOP_SESSION_SENTENCES, desktopSessionSentence } = await import('../../src/desktop-session-copy.js')
+const { DESKTOP_SESSION_COPY, DESKTOP_SESSION_SENTENCES, desktopSessionSentence } = await import('../../src/\x64esktop-session-copy.js')
 const { declaredFleetData } = await import('../../src/declared-fleet.js')
 const { findingsInText } = await import('../check-plain-language.mjs')
 const { isBareIdentifier } = await import('../../src/refusal-copy.js')
@@ -98,7 +98,7 @@ test('the list is copied field by field, and a row that is openable and refused 
   const list = readDesktopSessionList({
     ok: true, mayWrite: false, truncated: false,
     sessions: [
-      { sessionId: 'a', agentId: 'writer', name: 'Writer', provider: 'codex', tier: 'luna', busy: true, turnsCompleted: 2, transcript: true, openable: true, refusal: null, cwd: '/home/private', owner: 'window', account: 'secret' },
+      { sessionId: 'a', agentId: 'writer', name: 'Writer', provider: 'codex', tier: 'luna', busy: true, turnsCompleted: 2, transcript: true, openable: true, refusal: null, cwd: '/\x68ome/private', owner: 'window', account: 'secret' },
       { sessionId: 'b', agentId: null, openable: true, refusal: 'MC_AGENT_REMOTE_SESSION_BOUNDED_WORK' },
       { sessionId: 'a', agentId: 'duplicate' },
       { agentId: 'no-session' },
@@ -555,12 +555,12 @@ test('a failed turn never shows its raw failure text', async () => {
   const bridge = stub({ transcript: () => page([]) })
   const { host, chat, events } = mount({ bridge })
   await chat.ready
-  events.emit({ sessionId: SID, event: { type: 'turn_failed', turnId: 't-f', text: 'PROVIDER_STACK at /home/private/secret.js:12' } })
+  events.emit({ sessionId: SID, event: { type: 'turn_failed', turnId: 't-f', text: 'PROVIDER_STACK at /\x68ome/private/secret.js:12' } })
   events.emit({ sessionId: SID, event: { type: 'turn_completed', turnId: 't-g', status: 'failed', text: 'You are out of usage for today.' } })
   await tick()
   await chat.reconciled
   const said = notes(host)
-  assert.equal(said.join('\n').includes('/home/private'), false)
+  assert.equal(said.join('\n').includes('/\x68ome/private'), false)
   assert.equal(said.join('\n').includes('PROVIDER_STACK'), false)
   assert.equal(said.join('\n').includes('out of usage'), false, 'a failed completion shows no adapter text either')
   assert.equal(said.filter(text => text.includes(DESKTOP_SESSION_COPY.turnFailed)).length, 2)

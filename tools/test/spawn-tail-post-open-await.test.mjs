@@ -22,7 +22,7 @@ register('data:text/javascript,' + encodeURIComponent(`
 
 const { startAgentForNode } = await import('../../src/views/computers.js')
 
-/* THE SEAM AN EARLIER FINDING ASKS TO BE MEASURED: what
+/* THE SEAM t5-m2-LANE-W2-spawn-tail.md ASKS TO BE MEASURED: what
  * startAgentForNode still awaits after onSessionOpen has fired -- the point
  * at which the circle is attached, running, and registered.
  *

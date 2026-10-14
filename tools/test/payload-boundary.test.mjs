@@ -211,7 +211,7 @@ test("a pending file is reported with its reason and does NOT fail the build", a
 // THE PROPOSED NOTICE MUST NOT SEND THE READER LOOKING FOR A DECISION.
 //
 // This test used to pin the literal phrase "has not been ratified by the owner".
-// That phrase was false -- every entry was decided, and twenty-three of
+// That phrase was false -- the owner ruled on every entry, and twenty-three of
 // those decisions are executed -- and pinning it made the falsehood load-bearing:
 // correcting the tool turned this suite red, which is pressure to restore the
 // wrong sentence rather than fix it.
@@ -232,14 +232,14 @@ test("status 'proposed' explains the mechanism, not a missing decision", async (
     assert.doesNotMatch(
       result.output,
       /has not been ratified by the owner|once the owner has ruled/,
-      'the notice claims a decision is outstanding. Every entry has been decided; the status ' +
+      'the notice claims a decision is outstanding. The owner has ruled on every entry; the status ' +
         'is held by pending files, not by a missing signature, and a reader told otherwise goes ' +
         'hunting for a decision instead of removing the files.',
     );
   });
 });
 
-// RATIFICATION FORCES A DECISION. "Decided" and "these are undecided"
+// RATIFICATION FORCES A DECISION. "The owner decided" and "these are undecided"
 // cannot both be true, so flipping the status is impossible until pending is empty.
 test("ratifying while items are still pending is a manifest error", async () => {
   await withFixture(async ({ payload, writeManifest, writePayloadFile }) => {
@@ -281,7 +281,7 @@ for (const [name, manifest, expected] of [
     /has no reason/,
   ],
   ["a backslash path", baseManifest({ open: { paths: ["src\\lib\\thing.js"] } }), /uses a backslash/],
-  ["an absolute path", baseManifest({ open: { paths: ["C:/x/thing.js"] } }), /is absolute/],
+  ["an absolute path", baseManifest({ open: { paths: ["\x43:/x/thing.js"] } }), /is absolute/],
   ["a dot-slash path", baseManifest({ open: { paths: ["./thing.js"] } }), /not in normal form/],
   [
     "a prefix without a trailing slash",

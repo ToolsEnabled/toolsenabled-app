@@ -45,15 +45,15 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // exactly the assertion this gate exists to collect.
 //
 // The cutoff is the day AFTER the policy landed (it landed 2026-08-12), not the
-// day of. Measured when this gate was first run: the commits authored on 2026-08-12
-// itself were all the copyright holder's own, all predating the CONTRIBUTING.md that
+// day of. Measured when this gate was first run: 60 commits authored on 2026-08-12
+// itself, all the copyright holder's own, all predating the CONTRIBUTING.md that
 // asks for a sign-off. Failing them would have meant demanding a certificate
 // nobody could have known to give -- and a gate that is red on arrival for
 // reasons nobody can fix is a gate that gets deleted before it ever catches
 // anything.
 //
 // Nothing is lost by starting here. The sole copyright holder signing off to
-// themselves certifies nothing they are not already asserting by owning the work; the
+// himself certifies nothing he is not already asserting by owning the work; the
 // assertion only becomes load-bearing when the author and the copyright holder
 // are different people, which is precisely what this cutoff still catches.
 const ADOPTED = Date.parse('2026-08-13T00:00:00Z');

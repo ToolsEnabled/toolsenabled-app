@@ -16,7 +16,7 @@ declaration artifacts required for a publishable candidate.
 
 ## Required inputs
 
-Use two private Git repositories:
+Use two Git repositories:
 
 - the app repository containing this cutter;
 - the engine repository containing the capability layer.
@@ -122,8 +122,9 @@ explicit. The normal cut never transfers an installer or pushes a branch.
 
 Before pushing or publishing a candidate:
 
-1. confirm both GitHub repositories are private using an authenticated remote
-   query, and verify the exact remotes being pushed;
+1. remember that both GitHub repositories are public, so anything pushed is
+   published at once; verify the exact remotes being pushed with an
+   authenticated remote query;
 2. confirm both source worktrees are clean and their `HEAD` values match the
    declaration;
 3. run the full engine and app suites from the same committed trees used by the
@@ -134,9 +135,9 @@ Before pushing or publishing a candidate:
    ref, build ref, candidate filename, PE identity, and QA result;
 6. install and exercise the candidate as a normal user. A whole-app elevated
    launch under that same Windows account is measured, warned about once, and
-   then allowed to start. The former refusal was removed -- the user
-   decides, and the product may warn once, with a checkbox not to warn
-   again -- so a
+   then allowed to start. The owner struck the former refusal on 2026-09-02 --
+   "the whole point of this software is the user decides and we give them the
+   choice ... we can warn them, and a check box not to warn again" -- so a
    candidate that refuses to open under an elevated token is a regression, not a
    passing gate. Confirm instead that the "Running as administrator" warning is
    shown once with its "Do not warn me again" checkbox and that the app then

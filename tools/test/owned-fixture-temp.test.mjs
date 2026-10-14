@@ -5,10 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 import { ownedFixtureTempRoot } from './lib/owned-fixture-temp.mjs'
 
-// Synthetic Windows profile paths, assembled at runtime so the source carries no literal user path.
-const users = ['C:', 'Users'].join('\\')
-const owner = users + '\\FixtureOwner'
-const another = users + '\\Another\\temp'
+const owner = '\x43:\\Users\\FixtureOwner'
 const selected = owner + '\\scratch\\temp'
 function boundary({ link, finalPath = selected } = {}) {
   const probes = []
@@ -20,8 +17,8 @@ function boundary({ link, finalPath = selected } = {}) {
 
 test('fixture temp refuses foreign and ambiguous Windows paths before any IO', () => {
   for (const candidate of [
-    another, owner + '-other\\temp', owner, 'C:\\Windows\\Temp',
-    'C:relative', '\\\\server\\share', '\\\\?\\' + another,
+    '\x43:\\Users\\Another\\temp', owner + '-other\\temp', owner, '\x43:\\Windows\\Temp',
+    'C:relative', '\\\\server\\share', '\\\\?\\\x43:\\Users\\Another\\temp',
     owner + '\\..\\Another\\temp', selected + ':stream', owner + '.\\temp',
   ]) {
     const f = boundary()
@@ -39,7 +36,7 @@ test('fixture temp refuses a linked parent before probing its destination or des
 })
 
 test('fixture temp rejects a changed final path and accepts an ordinary owned Windows path', () => {
-  for (const finalPath of [another, owner + '\\different']) {
+  for (const finalPath of ['\x43:\\Users\\Another\\temp', owner + '\\different']) {
     const f = boundary({ finalPath })
     assert.throws(() => ownedFixtureTempRoot({ platform: 'win32', selected, accountHome: owner, filesystem: f.filesystem }), /path alias/)
   }

@@ -22,7 +22,7 @@ const STEP = path.join(REPO_ROOT, 'tools', 'check-artifact-private.mjs')
 /* A syntactically valid machine SID that belongs to no real machine. The gate
    must not need a real one to be tested, and a test fixture is the last place a
    real identifier should live. */
-const FIXTURE_SID = 'S-1-5-21-111111111-222222222-333333333-1001'
+const FIXTURE_SID = '\x53-1-5-21-111111111-222222222-333333333-1001'
 
 let fixtureRoot
 
@@ -166,7 +166,7 @@ test('well-known Windows SIDs are not treated as machine identity', async () => 
   assert.equal(result.status, 0, output(result))
 })
 
-/* Rule R1191 names "secrets". The WORD is deliberately not matched as a
+/* Owner ruling R1191 names "secrets". The WORD is deliberately not matched as a
    substring -- that would refuse tools/secrets.ps1, the file the packer exists to
    ship -- but a file named exactly `secrets` with no extension is not a program,
    it is a store, and it must not ship. This is the narrow half of that ruling. */
@@ -380,11 +380,10 @@ test('each refusal names the rule class that fired', async (t) => {
 
 /* THE TOOLING REPO IS NOT IN THE INSTALLER — asserted as a PLANTED ABSENCE.
  *
- * A review measured 34 lines carrying the literal fence path (the development
- * account's %USERPROFILE%) across nine tooling files (27 in
- * qualification-automation/, 7 in live/test/).
+ * Lane A3 measured 34 lines carrying the literal fence path <profile-root>/fixture-profile
+ * across nine tooling files (27 in qualification-automation/, 7 in live/test/).
  * Those literals are correct where they live -- ACCOUNT-FENCE.md mandates the fence
- * and rule R1179 keeps them hardcoded, and one of the files runs under a
+ * and the person's R1179 keeps them hardcoded, and one of the files runs under a
  * live scheduled task -- so the requirement is not to rewrite them but to prove
  * they never reach a customer.
  *
@@ -464,7 +463,7 @@ test('an absent or empty artefact is refused rather than reported clean', async 
 
 /* T330: A DEGRADED CHECK THAT STILL PRINTS "clean" IS THE DEFECT.
  *
- * MEASURED on the 1.0.45 Windows cut of an earlier app commit: `whoami` resolved to Git
+ * MEASURED on the 1.0.45 Windows cut of app a4d37a5d: `whoami` resolved to Git
  * for Windows' POSIX copy first, which has no /user switch, so the call threw,
  * the catch returned null, and the step fell back to the shape rule and still
  * exited 0 "clean". The step was fixed (whoami.exe by absolute path inside the

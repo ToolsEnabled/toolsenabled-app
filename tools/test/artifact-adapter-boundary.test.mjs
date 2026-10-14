@@ -5,7 +5,7 @@ import { artifactImplementationIdentity, executeArtifactIntegrity,
 import { assertReadinessAdaptersAvailable, getReadinessContract, readinessDigest } from '../lib/release-readiness.mjs';
 
 const requirement = () => getReadinessContract('toolsenabled').requirements.find(row => row.id === 'artifact-integrity');
-const run = { id: '66666666-7777-4888-8999-aaaaaaaaaaaa' };
+const run = { id: 'b95b77db-20cb-44ae-8c9c-d2e99a77f0ac' };
 
 // These controls stop at the adapter boundary. They do not substitute report
 // bytes, a decoder, a source tool or a successful native execution result.

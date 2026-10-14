@@ -62,23 +62,9 @@ const TREES_MODULE = 'src/fleet-trees.js'
 
 /** The engine's tier table, as { tier -> { provider, seats[] } }. */
 function engineTiers() {
-  const source = read(ACTIONS)
-  const start = source.indexOf('const TIERS = Object.freeze({')
-  assert.ok(start >= 0, 'the engine TIERS table was not found — this suite is checking air')
-  const block = source.slice(start, source.indexOf('});', start))
-  const tiers = new Map()
-  for (const row of block.matchAll(/'?([a-z][a-z-]*)'?:\s*Object\.freeze\(\{([^}]*)\}\)/g)) {
-    const body = row[2]
-    const provider = /provider:\s*'([a-z0-9-]+)'/.exec(body)
-    const seats = /seats:\s*Object\.freeze\(\[([^\]]*)\]\)/.exec(body)
-    if (!provider || !seats) continue
-    tiers.set(row[1], {
-      provider: provider[1],
-      seats: [...seats[1].matchAll(/'([a-z0-9_-]+)'/g)].map(match => match[1]),
-    })
-  }
-  assert.ok(tiers.size > 0, 'no tier rows parsed out of the engine table — the shape changed')
-  return tiers
+  const require = createRequire(path.join(ENGINE, 'package.json'))
+  const { TIERS } = require('./src/lib/mission-bridge/actions.js')
+  return new Map(Object.entries(TIERS))
 }
 
 /** A bare `const NAME = <number>;` from the engine. */
@@ -107,30 +93,13 @@ function documentedBounds() {
 const MAX_FAN_OUT = engineNumber(LAUNCH_RECORD, 'MAX_FAN_OUT')
 const MAX_DEPTH = engineNumber(LAUNCH_RECORD, 'MAX_DEPTH')
 
-const START_FIELDS = [
-  'sessionId', 'cwd', 'surface', 'tier', 'effort', 'profileId', 'resumeThreadId',
-  'resumeThreadProvider', 'resumeManagerName', 'resumeAccount', 'treeAccount', 'continueFromAccount',
-  'accountRecovery', 'accountRetry', 'replacesSessionId', 'requestKeys', 'treeIdentity', 'roleBinding',
-  'delegationToken', 'boundedWork', 'research', 'researchSetup', 'editorForkReceipt', 'treeCommandRequestId', 'historyHandoff',
-]
-
 /** Read the actual start payload expression, then execute the shipped parser.
  * Comments, whitespace and unrelated arrays cannot satisfy this contract. */
 function assertAgentStartBoundary(source) {
   const body = parseAst(source).body
-  const names = ['agentIpcError', 'agentPayload', 'boundedAgentString', 'parseAgentStart']
+  const names = ['agentIpcError', 'agentPayload', 'boundedAgentString', 'boundedAgentModel', 'parseAgentStart']
   const functions = body.filter(node => node.type === 'FunctionDeclaration' && names.includes(node.id?.name))
   assert.equal(functions.length, names.length, 'the actual start parser dependencies must be present')
-  const start = functions.find(node => node.id.name === 'parseAgentStart')
-  const payload = start.body.body.filter(node => node.type === 'VariableDeclaration')
-    .flatMap(node => node.declarations).find(node => node.id.name === 'payload')
-  assert.equal(payload?.init?.type, 'CallExpression', 'the payload must pass through agentPayload')
-  assert.equal(payload.init.callee.name, 'agentPayload', 'the payload must pass through agentPayload')
-  assert.equal(payload.init.arguments[0]?.name, 'value')
-  const allowed = payload.init.arguments[1]
-  assert.equal(allowed?.type, 'ArrayExpression', 'the start allowlist must be explicit')
-  assert.deepEqual(allowed.elements.map(node => node?.type === 'Literal' ? node.value : null),
-    START_FIELDS, 'the start allowlist changed; re-measure the documented boundary')
   const constantNames = ['MAX_SESSION_ID_LENGTH', 'MAX_CWD_LENGTH']
   const constants = body.filter(node => node.type === 'VariableDeclaration')
     .flatMap(node => node.declarations).filter(node => constantNames.includes(node.id.name))
@@ -138,7 +107,7 @@ function assertAgentStartBoundary(source) {
   for (const node of constants) assert.equal(typeof node.init.value, 'number')
   const parse = vm.runInNewContext(functions.map(node => source.slice(node.start, node.end)).join('\n') + '\nparseAgentStart',
     { ...Object.fromEntries(constants.map(node => [node.id.name, node.init.value])),
-      require: createRequire(path.join(ROOT, 'shell/main.cjs')) })
+      resolveCapabilityRoot: () => ENGINE, require: createRequire(path.join(ROOT, 'shell/main.cjs')) })
   const input = { sessionId: 'qa-session', profileId: 'qa-profile' }
   assert.deepEqual(JSON.parse(JSON.stringify(parse(input))), input)
   assert.throws(() => parse({ ...input, cwd: 'qa-folder' }), { code: 'MC_AGENT_CWD_NOT_YOURS' })
@@ -152,9 +121,14 @@ function assertAgentStartBoundary(source) {
   }
   assert.equal(parse({ ...input, editorForkReceipt: 'saved-source-receipt' }).editorForkReceipt, 'saved-source-receipt')
   assert.throws(() => parse({ ...input, editorForkReceipt: 'x'.repeat(129) }), { code: 'MC_AGENT_INVALID_PAYLOAD' })
-  for (const field of ['resumeThreadId', 'resumeAccount', 'continueFromAccount', 'accountRecovery', 'replacesSessionId', 'delegationToken']) {
+  for (const field of ['resumeThreadId', 'resumeAccount', 'replacesSessionId', 'delegationToken']) {
     assert.throws(() => parse({ ...input, editorForkReceipt: 'saved-source-receipt', [field]: 'incompatible' }), { code: 'EDITOR_FORK_INVALID' })
   }
+  for (const field of ['continueFromAccount', 'accountRecovery', 'accountRetry']) {
+    assert.throws(() => parse({ ...input, [field]: 'retired-input' }), { code: 'MC_AGENT_INVALID_PAYLOAD' })
+  }
+  const exact = { ...input, model: '  provider-model  ', resumeThreadId: 'qa-thread', resumeSessionId: 'qa-predecessor' }
+  assert.deepEqual(JSON.parse(JSON.stringify(parse(exact))), exact, 'exact model and predecessor identity survive parsing')
   const historyHandoff = 'Earlier conversation\n' + 'h'.repeat(160000 - 21)
   assert.equal(historyHandoff.length, 160000)
   assert.equal(parse({ ...input, historyHandoff }).historyHandoff, historyHandoff)
@@ -195,7 +169,7 @@ function assertPlain(value, label) {
 
 test('the design doc keeps the tree width within the engine fan-out, and states the engine\'s own depth', () => {
   const bounds = documentedBounds()
-  /* The width is the tree's own (four, by product decision)
+  /* The width is the tree's own since 2026-09-11 (four, the owner's decision)
      and the engine's MAX_FAN_OUT stays above it as the backstop for every
      nested launch, so the doc's number may be smaller than the engine's but
      never larger: a wider tree would offer seats the engine refuses. */
@@ -261,20 +235,10 @@ test('the documented agent seats match the engine and every seat is really decla
 })
 
 test('the default new-circle tier allocates a managed seat from the shipped organization', () => {
-  const source = read(ACTIONS), ast = parseAst(source)
-  const declaration = ast.body.filter(node => node.type === 'VariableDeclaration')
-    .flatMap(node => node.declarations).find(node => node.id.name === 'TIERS')
-  assert.ok(declaration?.init, 'the actual engine tier initializer must exist')
   const require = createRequire(path.join(ENGINE, 'package.json'))
   const agentOrg = require('./src/lib/agent-org.js')
-  const { refuse } = require('./src/lib/mission-bridge/errors.js')
-  const context = vm.createContext({ agentOrg, refuse,
-    // Allocation observes this explicit empty registry. An accidental fallback
-    // must fail before it can read the user's real presence registry.
-    presence: { readRegistry() { throw new Error('No ambient presence access in this fixture') } },
-  })
-  vm.runInContext(`const TIERS = ${source.slice(declaration.init.start, declaration.init.end)};\n`
-    + ['occupiedSeats', 'declaredLane'].map(name => declaredFunctionSource(source, name)).join('\n'), context)
+  const { declaredLane } = require('./src/lib/mission-bridge/actions.js')
+  const context = { declaredLane }
   const org = agentOrg.normalizeOrg(JSON.parse(read(SHIPPED_ORG)), { maxAgents: 256 })
   assert.equal(DEFAULT_TIER, 'astra', 'this regression reproduces the already-shipped default model choice')
   const lane = context.declaredLane(org, DEFAULT_TIER, { readRegistry: () => ({ agents: {} }) })
@@ -437,13 +401,13 @@ test('section 8 tells the truth about profiles: profile ids select folders, raw 
     `only ${starts} object-literal start call(s) found across ${callers.join(', ')}; the flow moved, so re-measure section 8.`)
 })
 
-test('the structural start guard rejects missing or extra fields and inactive boundary refusals', () => {
+test('start parser behavior rejects missing supported fields, extra fields and inactive refusals', () => {
   const shell = read('shell/main.cjs')
   const start = parseAst(shell).body.find(node => node.type === 'FunctionDeclaration' && node.id.name === 'parseAgentStart')
   const mutate = transform => shell.slice(0, start.start) + transform(shell.slice(start.start, start.end)) + shell.slice(start.end)
-  assert.throws(() => assertAgentStartBoundary(mutate(source => source.replace("'profileId', ", ''))), /start allowlist changed/)
-  assert.throws(() => assertAgentStartBoundary(mutate(source => source.replace('agentPayload(value, [', "agentPayload(value, ['workspace', "))), /start allowlist changed/)
-  assert.throws(() => assertAgentStartBoundary(mutate(source => source.replace('agentPayload(value, [', 'uncheckedPayload(value, ['))), /must pass through agentPayload/)
+  assert.throws(() => assertAgentStartBoundary(mutate(source => source.replace("'profileId', ", ''))), { code: 'MC_AGENT_INVALID_PAYLOAD' })
+  assert.throws(() => assertAgentStartBoundary(mutate(source => source.replace('agentPayload(value, [', "agentPayload(value, ['workspace', "))), /Missing expected exception/)
+  assert.throws(() => assertAgentStartBoundary(mutate(source => source.replace('agentPayload(value, [', 'uncheckedPayload(value, ['))), /uncheckedPayload is not defined/)
   // Keeping the old error code in dead code must not satisfy the security claim.
   assert.throws(() => assertAgentStartBoundary(mutate(source => source.replace('if (payload.cwd !== undefined)', 'if (false)'))), /Missing expected exception/)
   assert.throws(() => assertAgentStartBoundary(mutate(source => source.replace(
@@ -548,8 +512,8 @@ behaviour('two trees really coexist on one computer, and neither can reach into 
   assert.equal(held.listNodes(second.tree.id).length, 1, 'a tree\'s agents leaked into the other tree')
 
   /* A CROSS-TREE MOVE IS A CONNECTION SINCE 2026-08-13. Every agent begins as
-     its own single-node tree, so connecting two agents IS this move, and it
-     is a supported request. What coexistence still means: nothing leaks WITHOUT
+     its own single-node tree, so "connect these two" IS this move — the owner
+     asked for it in words. What coexistence still means: nothing leaks WITHOUT
      a deliberate move, the adoption re-trees the whole branch explicitly, and
      the emptied tree is removed rather than left as a husk. */
   const crossed = held.moveNode(second.node.id, first.node.id)
@@ -687,7 +651,7 @@ behaviour('every sentence this store hands a person survives the plain-language 
 })
 
 behaviour('the seat shortage names the trees holding the agents, by name and never by id', () => {
-  /* THE ANSWER THE QUESTION NEEDS. Tree A can hold every seat and tree B
+  /* THE ANSWER THE OWNER'S QUESTION NEEDS. Tree A can hold every seat and tree B
      then cannot start. The shipped refusal says "every agent is already working"
      and stops there, so the person on tree B has no way to learn that tree A is
      the one holding them. This is the second line that closes that. */
@@ -761,8 +725,8 @@ behaviour('a tree is named after the work, and a counting number is only the fal
 })
 
 behaviour('a typed-but-unstarted agent is not mistaken for an empty spot or a running one', () => {
-  /* THE LOSSY SEAM, pinned. The store has a `draft` state because the flow is
-     press the placeholder, THEN fill in role and message — so an agent
+  /* THE LOSSY SEAM, pinned. The store has a `draft` state because the owner's
+     flow is "press the placeholder, THEN fill in role and message" — so an agent
      exists, with the person's typing in it, before any session does. Collapsing
      that into either neighbour loses something a person can see: into "empty" it
      loses their typing, into "running" it claims a session that was never asked

@@ -16,7 +16,7 @@ import { approveBundle } from '../../src/benchmark/prompts.mjs'
 // blockers of one purpose only (the project's own), prints them as `path: message` without
 // the code, never explains why "Run recorded responses" is disabled, and offers no command
 // for the exported CLI that R2 actually had to use. Measured on the merged tree for project
-// an earlier commit (integration verify log): three purposes, 1 + 9 + 4 blockers,
+// ccd0ec90 (INTEGRATION/parity-709876dd/t61-verify.log): three purposes, 1 + 9 + 4 blockers,
 // every one of them hidden except the first purpose's single row.
 
 register('./css-loader.mjs', import.meta.url)
@@ -68,7 +68,7 @@ async function leanDraft() {
   // Lean Bench requires current personal bundle reviews before it will freeze. These
   // reviewer identities are synthetic and named as such; they approve nothing real.
   spec.catalog = await Promise.all(spec.catalog.map(bundle =>
-    approveBundle(bundle, 'SYNTHETIC PAGE EXECUTION TEST ONLY', undefined, { catalog: spec.catalog })))
+    approveBundle(bundle, 'SYNTHETIC RP4 LANE TEST ONLY', undefined, { catalog: spec.catalog })))
   return spec
 }
 
@@ -130,7 +130,7 @@ test('the page shows the exact exported-CLI commands the owner must run', async 
   assert.match(handoff, /evidence\.json/, 'the handoff must say which file comes back into the page')
 })
 
-// A review note. When readiness is what blocks the page, the handoff still
+// Worker 8's RP4a review note. When readiness is what blocks the page, the handoff still
 // offers the exported commands — and the exported runner applies that same readiness, so it
 // refuses for the same reasons until the requirements are met. Nothing shown was false, but
 // saying nothing costs the owner a round trip through the CLI to learn what the page already
@@ -150,7 +150,7 @@ test('the handoff says the exported runner applies the same readiness, exactly w
 test('the handoff stays silent about readiness when readiness is not what blocks the page', async () => {
   // The other direction of the test above. That one pins its fixture to not-ready, so it only ever
   // exercises "not ready, so the sentence is present", and making the sentence unconditional passes
-  // it unchanged (a review finding, measured by mutation).
+  // it unchanged (Worker 7, RP4/REVIEW-worker7-74467d40.md, measured by mutation).
   //
   // The sentence can only be wrongly present where the handoff renders AND readiness is eligible.
   // A runnable project is the wrong case: then the page renders no handoff at all and the sentence
@@ -161,7 +161,7 @@ test('the handoff stays silent about readiness when readiness is not what blocks
   const spec = await leanDraft()
   // A stand-in program, not a real LEAN algorithm: its only job here is that a program was recorded,
   // which is what readiness checks. The starter ships a JSON trace in this slot, which is the defect
-  // a separate change fixes at source; recording one locally keeps this test independent of that change.
+  // lane RP2 fixes at source; recording one locally keeps this test independent of that lane.
   spec.conditions[0].adapter.responses['flat-canary'] = 'from AlgorithmImports import *\n\nclass Recorded(QCAlgorithm):\n    def initialize(self):\n        pass\n'
 
   const project = await freezeStudy(await bindRuntimeSources(spec, sources))
@@ -228,7 +228,7 @@ test('a legacy project keeps a usable panel: every purpose evaluated, the open o
     'an uncurated code keeps its generated message; an incomplete guidance map must hide nothing')
 })
 
-// --- the run comes back ------------------------------------------------------------
+// --- RP4b: the run comes back ------------------------------------------------------
 // The parity job measured the REFUSAL (evidence from another frozen project), never a
 // successful import. These two cover the path the owner actually walks: run the project
 // this page froze, bring its evidence back, and be told something useful when it does

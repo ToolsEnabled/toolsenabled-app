@@ -1,13 +1,13 @@
 /* THE HOST'S REFUSALS, REMEMBERED ACROSS MOUNTS.
  *
- * MEASURED on a development install: the saved-
+ * MEASURED on the 2026-09-21 LIVE generation (app d46c18f49): the saved-
  * session sweep asks the host about every saved circle whose session this
  * run of the window does not own, on every mount of the Agents page and of
- * the Home chat, and it remembered nothing between mounts. Dozens of saved
- * sessions from earlier runs of the app, a few mounts in half an hour, and
- * the host logged hundreds of refused "mc-agent:models" reads, each one an
- * Electron handler stack, in one burst per mount. The same class as the
- * goal box storm (an earlier app commit), here for the reconnect probe and for the
+ * the Home chat, and it remembered nothing between mounts. Seventy-six saved
+ * sessions from earlier runs of the app, four mounts in twenty-seven minutes,
+ * and the host logged 303 refused "mc-agent:models" reads, each one an
+ * Electron handler stack (bursts of 77, 76, 75 and 75). The same class as the
+ * goal box storm (app 6f79978fd), here for the reconnect probe and for the
  * model catalog.
  *
  * A session the host does not hold stays unheld until the circle it belongs

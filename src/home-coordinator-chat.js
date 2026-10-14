@@ -1,7 +1,8 @@
 /* THE HOME PAGE'S COORDINATOR CONVERSATION ON THE SHARED CHAT SURFACE.
  *
- * The chat in the chat view is the same as every chat surface in the app,
- * following the newer version. The newer version is buildChat (src/components.js), which every
+ * Owner, verbatim: "the chat in the chat view needs to be the same as every
+ * chat surface in the app. look at the newer version to help understand
+ * better." The newer version is buildChat (src/components.js), which every
  * other conversation in the app mounts. The home feed had its own transcript
  * painter -- .turn rows in .log-turns, its own fold, chips and scroll pin, no
  * working row, no activity orbit, no composer state machine.

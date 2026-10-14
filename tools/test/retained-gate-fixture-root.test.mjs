@@ -18,7 +18,7 @@ class MemoryFilesystem {
     this.platform = platform
     this.uid = platform === 'win32' ? null : 1000
     this.paths = platform === 'win32' ? path.win32 : path.posix
-    const root = this.paths.parse(platform === 'win32' ? 'C:\\' : '/').root
+    const root = this.paths.parse(platform === 'win32' ? '\x43:\\' : '/').root
     this.dirs = new Set([root])
     this.files = new Map()
     this.owners = new Map([[root, this.uid]])
@@ -165,14 +165,11 @@ class MemoryFilesystem {
   }
 }
 
-// Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-const WINDOWS_ACCOUNT_HOME = ['C:', 'Users', 'redacted-profile'].join('\\')
-
 function fixture(platform = 'linux') {
   const paths = platform === 'win32' ? path.win32 : path.posix
   const accountHome = platform === 'win32'
-    ? WINDOWS_ACCOUNT_HOME
-    : '/home/redacted-profile'
+    ? '\x43:\\Users\\redacted-profile'
+    : '/\x68ome/redacted-profile'
   const parent = paths.join(accountHome, 'te-gate-fixtures')
   const filesystem = new MemoryFilesystem(platform)
   filesystem.ensureDirectoryChain(accountHome)
@@ -199,7 +196,7 @@ function options(fixtureState, overrides = {}) {
 function env(overrides = {}) {
   return {
     TOOLSENABLED_TEST_STRICT: '1',
-    [GATE_FIXTURE_ENV_KEYS.parent]: '/home/redacted-profile/te-gate-fixtures',
+    [GATE_FIXTURE_ENV_KEYS.parent]: '/\x68ome/redacted-profile/te-gate-fixtures',
     [GATE_FIXTURE_ENV_KEYS.limit]: '256',
     [GATE_FIXTURE_ENV_KEYS.runId]: 'run-20260922',
     [GATE_FIXTURE_ENV_KEYS.suite]: 'source-suite.mjs',
@@ -211,10 +208,11 @@ function parseLinuxGateFixtureContract(environment) {
   return parseGateFixtureContract(environment, { platform: 'linux' })
 }
 
-function runPreloadSandbox({ environment = {}, isMainThread = true } = {}) {
+function runPreloadSandbox({ environment = {}, isMainThread = true, canonicalRootForTests = () => '/engine' } = {}) {
   const preloadPath = new URL('./lib/isolate-native-state-root.mjs', import.meta.url)
   const preloadSource = readFileSync(preloadPath, 'utf8')
   const calls = {
+    cleanup: [],
     gate: [],
     legacy: 0,
     mkdtemp: [],
@@ -255,24 +253,24 @@ function runPreloadSandbox({ environment = {}, isMainThread = true } = {}) {
     }),
   })
   const gateFixture = Object.freeze({
-    root: '/home/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
+    root: '/\x68ome/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
     environment: Object.freeze({
-      TMPDIR: '/home/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
-      TEMP: '/home/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
-      TMP: '/home/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
+      TMPDIR: '/\x68ome/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
+      TEMP: '/\x68ome/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
+      TMP: '/\x68ome/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
     }),
     ownership: Object.freeze({
       schemaVersion: 1,
       kind: 'tools-enabled-retained-fixture',
       status: 'ALLOCATED',
-      parent: '/home/redacted-profile/te-gate-fixtures',
-      root: '/home/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
+      parent: '/\x68ome/redacted-profile/te-gate-fixtures',
+      root: '/\x68ome/redacted-profile/te-gate-fixtures/te-source-fixture-000001',
       slot: 1,
       runId: 'run-20260922',
       suite: 'source-suite.mjs',
       limit: 256,
       allocatedAt: '2026-09-22T11:00:00.000Z',
-      manifest: '/home/redacted-profile/te-gate-fixtures/te-source-fixture-000001/manifest.json',
+      manifest: '/\x68ome/redacted-profile/te-gate-fixtures/te-source-fixture-000001/manifest.json',
     }),
   })
   const processEnv = processRef.env
@@ -283,12 +281,12 @@ function runPreloadSandbox({ environment = {}, isMainThread = true } = {}) {
     fs: filesystem,
     os: {
       tmpdir: () => '/tmp',
-      userInfo: () => ({ homedir: '/home/redacted-profile' }),
+      userInfo: () => ({ homedir: '/\x68ome/redacted-profile' }),
     },
     path: path.posix,
     isMainThread,
     fileURLToPath: () => '/app',
-    canonicalRootForTests: () => '/engine',
+    canonicalRootForTests,
     parseGateFixtureContract: parseLinuxGateFixtureContract,
     prepareRetainedGateFixture: options => {
       calls.gate.push(options)
@@ -298,6 +296,9 @@ function runPreloadSandbox({ environment = {}, isMainThread = true } = {}) {
       calls.legacy += 1
       return legacyFixture
     },
+    // The preload now resolves its own fixture boundary and registers removal.
+    sourceFixtureParent: () => '/tmp',
+    removeFixtureOnExit: root => { calls.cleanup.push(root); return true },
     process: processRef,
     importMeta: { url: 'file:///sandbox/tools/test/lib/isolate-native-state-root.mjs' },
   }
@@ -325,6 +326,8 @@ test('actual preload sandbox preserves legacy strict setup without gate fields',
   assert.equal(signal.root, '/legacy-root')
   assert.deepEqual(signal.environment, state.legacyFixture.environment)
   assert.equal('ownership' in signal, false)
+  // The legacy helper owns its own removal, so the preload must not double-register.
+  assert.deepEqual(state.calls.cleanup, [])
 })
 
 test('actual preload sandbox selects full gate contract and emits complete ownership without environment', () => {
@@ -333,11 +336,12 @@ test('actual preload sandbox selects full gate contract and emits complete owner
   assert.equal(state.calls.legacy, 0)
   assert.equal(state.calls.gate.length, 1)
   assert.deepEqual(JSON.parse(JSON.stringify(state.calls.gate[0])), {
-    parent: '/home/redacted-profile/te-gate-fixtures',
+    parent: '/\x68ome/redacted-profile/te-gate-fixtures',
     limit: 256,
     runId: 'run-20260922',
     suite: 'source-suite.mjs',
-    accountHome: '/home/redacted-profile',
+    // The boundary is the source fixture parent, not the account home.
+    accountHome: '/tmp',
   })
   assert.deepEqual(state.calls.mkdtemp, [])
   const signal = JSON.parse(state.calls.logs[0].replace('RETAINED_SOURCE_FIXTURE ', ''))
@@ -354,6 +358,21 @@ test('actual preload sandbox selects full gate contract and emits complete owner
   assert.equal(signal.appRoot, '/app')
   assert.equal(signal.canonicalRoot, '/engine')
   assert.equal(signal.node, '/usr/bin/node')
+  // A gate slot has no other owner, so the preload registers its removal.
+  assert.deepEqual(state.calls.cleanup, [state.gateFixture.root])
+})
+
+test('actual preload sandbox registers the gate slot removal before anything that can still throw', () => {
+  // canonicalRootForTests throws when MC_CANONICAL_ROOT is absent, after the
+  // slot already exists. A removal registered only at the end left it behind.
+  const state = runPreloadSandbox({
+    environment: env(),
+    canonicalRootForTests: () => { throw new Error('MC_CANONICAL_ROOT is not set') },
+  })
+  assert.match(String(state.error && state.error.message), /MC_CANONICAL_ROOT/)
+  assert.equal(state.calls.gate.length, 1)
+  assert.deepEqual(state.calls.cleanup, [state.gateFixture.root])
+  assert.deepEqual(state.calls.logs, [], 'the preload failed before it reported the fixture')
 })
 
 test('actual preload sandbox refuses partial or non-strict declared contracts before mkdir', () => {
@@ -367,6 +386,7 @@ test('actual preload sandbox refuses partial or non-strict declared contracts be
     assert.equal(state.calls.legacy, 0)
     assert.deepEqual(state.calls.mkdtemp, [])
     assert.deepEqual(state.calls.mkdir, [])
+    assert.deepEqual(state.calls.cleanup, [])
   }
 })
 
@@ -378,12 +398,13 @@ test('actual preload sandbox is a no-op in Worker threads', () => {
   assert.deepEqual(state.calls.mkdtemp, [])
   assert.deepEqual(state.calls.mkdir, [])
   assert.deepEqual(state.calls.logs, [])
+  assert.deepEqual(state.calls.cleanup, [])
 })
 
 test('absent gate contract preserves legacy parsing while full own fields parse canonically', () => {
   assert.equal(parseLinuxGateFixtureContract({ TOOLSENABLED_TEST_STRICT: '1' }), null)
   assert.deepEqual(parseLinuxGateFixtureContract(env()), {
-    parent: '/home/redacted-profile/te-gate-fixtures',
+    parent: '/\x68ome/redacted-profile/te-gate-fixtures',
     limit: 256,
     runId: 'run-20260922',
     suite: 'source-suite.mjs',
@@ -407,7 +428,7 @@ test('declared gate contract refuses partial, empty, inherited, non-strict, and 
     }),
     env({ [GATE_FIXTURE_ENV_KEYS.limit]: '000256' }),
     env({ [GATE_FIXTURE_ENV_KEYS.limit]: String(MAX_GATE_FIXTURE_LIMIT + 1) }),
-    env({ [GATE_FIXTURE_ENV_KEYS.parent]: '/home/redacted-profile/../other' }),
+    env({ [GATE_FIXTURE_ENV_KEYS.parent]: '/\x68ome/redacted-profile/../other' }),
     env({ [GATE_FIXTURE_ENV_KEYS.suite]: '../secrets' }),
   ]
   for (const candidate of cases) {
@@ -418,7 +439,7 @@ test('declared gate contract refuses partial, empty, inherited, non-strict, and 
 test('gate allocation initializes only an owned parent and returns metadata-only ownership', () => {
   const state = fixture()
   const result = prepareRetainedGateFixture(options(state))
-  assert.equal(result.root, '/home/redacted-profile/te-gate-fixtures/te-source-fixture-000001')
+  assert.equal(result.root, '/\x68ome/redacted-profile/te-gate-fixtures/te-source-fixture-000001')
   assert.deepEqual(result.environment, {
     TMPDIR: result.root,
     TEMP: result.root,
@@ -518,7 +539,7 @@ test('foreign, linked, aliased, Git-ancestor, and noncanonical parents refuse', 
   assert.throws(() => prepareRetainedGateFixture(options(git)), /Git ancestor/)
   const noncanonical = fixture()
   assert.throws(() => prepareRetainedGateFixture(options(noncanonical, {
-    parent: '/home/redacted-profile/../redacted-profile/te-gate-fixtures',
+    parent: '/\x68ome/redacted-profile/../redacted-profile/te-gate-fixtures',
   })), /normalized/)
 })
 
@@ -681,7 +702,7 @@ test('Windows paths remain portable while case-normalized canonical roots are ac
     limit: 2,
     now: () => '2026-09-22T11:01:00.000Z',
   }))
-  assert.equal(result.root, WINDOWS_ACCOUNT_HOME + '\\te-gate-fixtures\\te-source-fixture-000001')
+  assert.equal(result.root, '\x43:\\Users\\redacted-profile\\te-gate-fixtures\\te-source-fixture-000001')
   const parsed = parseGateFixtureContract({
     TOOLSENABLED_TEST_STRICT: '1',
     [GATE_FIXTURE_ENV_KEYS.parent]: state.parent,

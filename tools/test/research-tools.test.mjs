@@ -7,7 +7,7 @@ import { SURFACE_TOOLS, describeToolServerPath, normalizeToolPolicy, surfaceTool
 
 const policy = () => normalizeToolPolicy({
   servers: [
-    { id: 'lean-rag', name: 'LEAN docs retrieval', kind: 'stdio', command: 'python', args: ['C:/research/rag/server.py'], tools: ['search_docs', 'bad name'], env: ['RAG_INDEX_DIR'] },
+    { id: 'lean-rag', name: 'LEAN docs retrieval', kind: 'stdio', command: 'python', args: ['\x43:/lb/rag/server.py'], tools: ['search_docs', 'bad name'], env: ['RAG_INDEX_DIR'] },
     { name: 'Compiler feedback', kind: 'http', url: 'http://127.0.0.1:8765/mcp' },
   ],
   profiles: [
@@ -36,10 +36,10 @@ test('the catalog lists every built-in tool per surface, then each server and it
 
 test('a path or address becomes a way to start the server, which the person can still change', () => {
   assert.deepEqual(describeToolServerPath('/opt/lab/rag/server.py'), { kind: 'stdio', command: 'python', args: ['/opt/lab/rag/server.py'], url: '', why: 'A Python file: started with python.' })
-  assert.equal(describeToolServerPath('C:/research/engine/index.mjs').command, 'node')
-  assert.deepEqual(describeToolServerPath('C:/research/engine/').args, ['C:/research/engine'])
+  assert.equal(describeToolServerPath('\x43:/lb/engine/index.mjs').command, 'node')
+  assert.deepEqual(describeToolServerPath('\x43:/lb/engine/').args, ['\x43:/lb/engine'])
   assert.equal(describeToolServerPath('http://127.0.0.1:8765/mcp').kind, 'http')
-  assert.equal(describeToolServerPath('C:/research/compiler/feedback.exe').command, 'C:/research/compiler/feedback.exe')
+  assert.equal(describeToolServerPath('\x43:/lb/compiler/feedback.exe').command, '\x43:/lb/compiler/feedback.exe')
   assert.equal(describeToolServerPath('   '), null)
 })
 
@@ -66,7 +66,7 @@ test('codex gets the sandbox mode and -c overrides; gemini gets settings and the
   const current = policy()
   const codex = surfaceToolFlags('codex-cli', current.profiles[0], current.servers)
   assert.equal(codex.sandbox, 'read-only')
-  assert.deepEqual(codex.args, ['-c', 'features.shell_tool=false', '-c', 'features.unified_exec=false', '-c', 'features.view_image=false', '-c', 'web_search="disabled"', '-c', 'mcp_servers.lean-rag.command="python"', '-c', 'mcp_servers.lean-rag.args=["C:/research/rag/server.py"]', '-c', 'mcp_servers.lean-rag.env_vars=["RAG_INDEX_DIR"]', '-c', 'mcp_servers.lean-rag.enabled_tools=["search_docs"]'])
+  assert.deepEqual(codex.args, ['-c', 'features.shell_tool=false', '-c', 'features.unified_exec=false', '-c', 'features.view_image=false', '-c', 'web_search="disabled"', '-c', 'mcp_servers.lean-rag.command="python"', '-c', 'mcp_servers.lean-rag.args=["\x43:/lb/rag/server.py"]', '-c', 'mcp_servers.lean-rag.env_vars=["RAG_INDEX_DIR"]', '-c', 'mcp_servers.lean-rag.enabled_tools=["search_docs"]'])
   assert.deepEqual(surfaceToolFlags('codex-cli', { enabled: ['codex-cli/shell', 'codex-cli/view_image', 'codex-cli/web_search'] }, []).args, ['-c', 'features.shell_tool=true', '-c', 'features.unified_exec=true', '-c', 'features.view_image=true', '-c', 'web_search="live"'], 'each selected native tool has an explicit supported setting')
   assert.equal(surfaceToolFlags('codex-cli', current.profiles[1], current.servers).sandbox, 'workspace-write')
   const gemini = surfaceToolFlags('gemini-cli', current.profiles[1], current.servers)
@@ -77,7 +77,7 @@ test('codex gets the sandbox mode and -c overrides; gemini gets settings and the
   assert.deepEqual(surfaceToolFlags('gemini-cli', current.profiles[0], current.servers).args, ['--approval-mode', 'yolo', '--allowed-mcp-server-names', 'lean-rag'], 'MCP policy permission is bounded by the exact server discovery allowlist')
   assert.deepEqual(surfaceToolFlags('gemini-cli', null, []).settings.tools.core, [], 'an empty profile cannot inherit default builtins')
   assert.equal(surfaceToolFlags('gemini-cli', null, []).settings.tools.allowed, undefined, 'no servers means no MCP execution allowance')
-  assert.deepEqual(surfaceToolFlags('gemini-cli', current.profiles[0], current.servers).settings.mcpServers['lean-rag'], { command: 'python', args: ['C:/research/rag/server.py'], includeTools: ['search_docs'] })
+  assert.deepEqual(surfaceToolFlags('gemini-cli', current.profiles[0], current.servers).settings.mcpServers['lean-rag'], { command: 'python', args: ['\x43:/lb/rag/server.py'], includeTools: ['search_docs'] })
   assert.deepEqual(surfaceToolFlags('gemini-cli', null, []).args, ['--approval-mode', 'plan'], 'nothing enabled keeps the read-only plan mode')
 })
 
@@ -86,6 +86,6 @@ test('the harness receives every profile translated per surface and the servers 
   assert.deepEqual(Object.keys(profiles), ['rag', 'everything'])
   assert.deepEqual(Object.keys(profiles.rag.bySurface), ['claude-cli', 'codex-cli', 'gemini-cli'])
   const servers = toolServersForHarness(current)
-  assert.deepEqual(servers[0], { id: 'lean-rag', name: 'LEAN docs retrieval', kind: 'stdio', command: 'python', args: ['C:/research/rag/server.py'], url: '', path: '', tools: ['search_docs'], env: ['RAG_INDEX_DIR'] })
+  assert.deepEqual(servers[0], { id: 'lean-rag', name: 'LEAN docs retrieval', kind: 'stdio', command: 'python', args: ['\x43:/lb/rag/server.py'], url: '', path: '', tools: ['search_docs'], env: ['RAG_INDEX_DIR'] })
   assert.ok(!JSON.stringify(servers).includes('note'))
 })

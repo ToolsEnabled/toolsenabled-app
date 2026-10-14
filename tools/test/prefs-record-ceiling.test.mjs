@@ -1,6 +1,6 @@
 ﻿// THE ORDINARY-RECORD CEILING, AND THE WORK IT USED TO DO ON EVERY WRITE.
 //
-// the 1.0.42 limitations review: settings writes are refused
+// LIMITATIONS-AND-HANDOFF-1.0.42.md section 4.28: settings writes are refused
 // once the non-fleet partition reaches 1 MiB, and mc-prefs:write stalls the
 // main thread. persist() in shell/renderer-prefs.cjs serialised the record
 // TWICE per write -- once whole, once for the ordinary subset -- and the
@@ -8,7 +8,7 @@
 // (shell/fleet-profile-preload.cjs) and ipcMain.on('mc-prefs:write')
 // (shell/main.cjs).
 //
-// Measured at an earlier commit on a synthetic record shaped like the one 4.28 found
+// Measured at 6909208e on a synthetic record shaped like the one 4.28 found
 // (whole 1,290,653 bytes, ordinary 1,000,616 of 1,048,576): whole serialisation
 // 9.15 ms, ordinary rebuild-and-serialise 8.71 ms, full synchronous set()
 // 25.79 ms. Half the serialising in a write was the second pass.
@@ -51,7 +51,7 @@ test('the fleet-key predicate still behaves as the guard assumes', () => {
 })
 
 function store() {
-  const directory = mkdtempSync(join(tmpdir(), 'pcl-ceiling-'))
+  const directory = mkdtempSync(join(tmpdir(), 'b13-ceiling-'))
   return { prefs: createRendererPrefs({ directory, fs, path, randomUUID }), directory }
 }
 
@@ -60,7 +60,7 @@ test('an ordinary partition that crosses the ceiling is still refused', () => {
   const CHUNK = 'x'.repeat(40_000)
   let refusal = null
   for (let i = 0; i < 200; i += 1) {
-    const answer = prefs.set(`mc.pcl.filler.${i}`, CHUNK)
+    const answer = prefs.set(`mc.b13.filler.${i}`, CHUNK)
     if (answer && answer.ok === false) { refusal = answer; break }
   }
   assert.ok(refusal, 'the ordinary partition never refused, so the ceiling is gone')
@@ -86,7 +86,7 @@ test('a small ordinary setting still saves while the record sits near the ceilin
   const { prefs, directory } = store()
   const CHUNK = 'x'.repeat(40_000)
   for (let i = 0; i < 200; i += 1) {
-    if ((prefs.set(`mc.pcl.filler.${i}`, CHUNK) || {}).ok === false) break
+    if ((prefs.set(`mc.b13.filler.${i}`, CHUNK) || {}).ok === false) break
   }
   const theme = prefs.set('mc.theme', 'dark')
   assert.notEqual(theme && theme.ok, false,
@@ -107,9 +107,9 @@ test('a fleet document write never rewrites the settings record, and the setting
      observe. It is observable directly: after a burst of fleet writes the
      settings file has the same bytes it had before, the fleet file holds the
      documents once the debounced flush has run, and a relaunch reads both
-     back through the one snapshot the renderer sees. A large record (megabytes
-     of chat diffs and trees) is what made a THEME TOGGLE cost milliseconds on
-     an idle SSD and seconds on a busy disk. */
+     back through the one snapshot the renderer sees. A record shaped like the
+     owner's (3.6 MB of chat diffs, 1.5 MB of trees) is what made a THEME
+     TOGGLE cost 53 ms on an idle SSD and 12.7 s on the owner's disk. */
   const { prefs, directory } = store()
   assert.notEqual((prefs.set('mc.theme', 'dark') || {}).ok, false)
   const settingsBefore = fs.readFileSync(prefs.file, 'utf8')
@@ -128,7 +128,7 @@ test('a fleet document write never rewrites the settings record, and the setting
   rmSync(directory, { recursive: true, force: true })
 })
 
-/* A real installation was exactly this: one multi-megabyte renderer-prefs.json. */
+/* The owner's installation is exactly this: one 5 MB renderer-prefs.json. */
 function seedLegacyCorpus(prefix) {
   const directory = mkdtempSync(join(tmpdir(), prefix))
   const legacy = { storageVersion: 1, values: { 'mc.theme': 'dark' }, drainedOrigins: ['http://127.0.0.1:4601'] }
@@ -166,7 +166,7 @@ test('a legacy settings record that still carries the corpus is split on first l
      documents are never absent from every file at once. The durable half is
      deferred (T380, below); what this test holds is that nothing is lost and
      the record ends up small once the split has settled. */
-  const { directory, file, documents } = seedLegacyCorpus('pcl-ceiling-legacy-')
+  const { directory, file, documents } = seedLegacyCorpus('b13-ceiling-legacy-')
   const legacyBytes = fs.statSync(file).size
   assert.ok(legacyBytes > 5_000_000)
   const prefs = createRendererPrefs({ directory, fs, path, randomUUID })
@@ -221,7 +221,7 @@ test('the one-time legacy split is not paid on the boot path (T380)', async () =
      Measured as bytes and fsyncs rather than milliseconds on purpose: the
      machine this runs on is shared and a wall-clock line would be a coin
      toss, while what the boot path asks of the disk is the same everywhere. */
-  const { directory, documents } = seedLegacyCorpus('pcl-t380-boot-')
+  const { directory, documents } = seedLegacyCorpus('b13-t380-boot-')
   const counter = { on: true, bytes: 0, fsyncs: 0 }
   const prefs = createRendererPrefs({ directory, fs: weighingFs(counter), path, randomUUID })
   const snapshot = prefs.snapshot()
@@ -245,7 +245,7 @@ test('a settings write inside the deferred-split window never drops the last cop
   /* The window is the only place the deferred split can go wrong: until the
      fleet file reaches disk, the settings file holds the only copy, and an
      ordinary write rewrites the settings file. */
-  const { directory, file, documents } = seedLegacyCorpus('pcl-t380-window-')
+  const { directory, file, documents } = seedLegacyCorpus('b13-t380-window-')
   const prefs = createRendererPrefs({ directory, fs, path, randomUUID })
   assert.equal(prefs.snapshot().values['mc.theme'], 'dark')
   const wrote = prefs.set('mc.theme', 'light')
@@ -261,7 +261,7 @@ test('a settings write inside the deferred-split window never drops the last cop
 })
 
 test('a quit inside the deferred-split window finishes the split rather than repeating it (T380)', () => {
-  const { directory, file, documents } = seedLegacyCorpus('pcl-t380-quit-')
+  const { directory, file, documents } = seedLegacyCorpus('b13-t380-quit-')
   const prefs = createRendererPrefs({ directory, fs, path, randomUUID })
   assert.equal(prefs.snapshot().values['mc.theme'], 'dark')
   const drained = prefs.flushFleetDocumentsSync()
@@ -278,7 +278,7 @@ test('a deferred split whose fleet write keeps failing keeps the legacy record i
   /* A fix that trades a stall for a data loss is not a fix. When the fleet file
      cannot be written at all, the settings record must still carry the
      documents, so the next launch migrates them again. */
-  const { directory, file, documents } = seedLegacyCorpus('pcl-t380-refuse-')
+  const { directory, file, documents } = seedLegacyCorpus('b13-t380-refuse-')
   const refusing = new Proxy(fs, {
     get(target, property) {
       if (property === 'promises') return undefined

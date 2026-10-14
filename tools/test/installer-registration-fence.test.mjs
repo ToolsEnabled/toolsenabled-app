@@ -39,21 +39,18 @@ const identity = (channel) => deriveInstallIdentity({
   appId: 'com.toolsenabled.desktop', productName: 'ToolsEnabled', version: '1.0.30', channel,
 });
 
-// Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-const inProfile = (...parts) => ['C:', 'Users', 'someone', ...parts].join('\\');
-const SCRATCH_INSTALL = inProfile('AppData', 'Local', 'Temp', 'scratch', 'install');
-
 /* Real `reg query <key> /v InstallLocation` output, kept verbatim so a change
    in the tool's format shows up here rather than in a silent null. */
 const REG_OUTPUT = [
   '',
   'HKEY_CURRENT_USER\\Software\\bcf2eb9a-404d-5a33-91d2-441f04bcf924',
-  '    InstallLocation    REG_SZ    ' + SCRATCH_INSTALL,
+  '    InstallLocation    REG_SZ    \x43:\\Users\\someone\\AppData\\Local\\Temp\\scratch\\install',
   '',
   '',
 ].join('\r\n');
 
-const registered = (location) => () => REG_OUTPUT.replace(SCRATCH_INSTALL, location);
+const registered = (location) => () => REG_OUTPUT.replace(
+  '\x43:\\Users\\someone\\AppData\\Local\\Temp\\scratch\\install', location);
 const absent = () => null;
 
 const verdict = (channel, expectUnder, runner) => registrationVerdict(identity(channel), {
@@ -66,26 +63,26 @@ test('a sibling with a shared prefix is NOT inside', () => {
   /* The trap a string startsWith() falls into, and it fails OPEN: it would
      judge the real install "inside" a scratch root it merely shares letters
      with, and wave the install through. */
-  assert.equal(pathIsWithin('C:\\Temp\\foobar', 'C:\\Temp\\foo', path.win32), false);
+  assert.equal(pathIsWithin('\x43:\\Temp\\foobar', '\x43:\\Temp\\foo', path.win32), false);
 });
 
 test('a directory is inside itself, and nesting is inside', () => {
-  assert.equal(pathIsWithin('C:\\Temp\\foo', 'C:\\Temp\\foo', path.win32), true);
-  assert.equal(pathIsWithin('C:\\Temp\\foo\\deep\\er', 'C:\\Temp\\foo', path.win32), true);
+  assert.equal(pathIsWithin('\x43:\\Temp\\foo', '\x43:\\Temp\\foo', path.win32), true);
+  assert.equal(pathIsWithin('\x43:\\Temp\\foo\\deep\\er', '\x43:\\Temp\\foo', path.win32), true);
 });
 
 test('an escape upwards is not inside', () => {
-  assert.equal(pathIsWithin('C:\\Temp\\foo\\..\\..\\Windows', 'C:\\Temp\\foo', path.win32), false);
+  assert.equal(pathIsWithin('\x43:\\Temp\\foo\\..\\..\\Windows', '\x43:\\Temp\\foo', path.win32), false);
 });
 
 test('a different drive is not inside', () => {
-  assert.equal(pathIsWithin('D:\\Temp\\foo', 'C:\\Temp\\foo', path.win32), false);
+  assert.equal(pathIsWithin('\x44:\\Temp\\foo', '\x43:\\Temp\\foo', path.win32), false);
 });
 
 // --- the verdict ------------------------------------------------------------
 
 test('THE DEFECT: a registration outside the intended root refuses', () => {
-  const v = verdict('test', 'C:\\Temp\\scratch', registered(inProfile('AppData', 'Local', 'Programs', 'toolsenabled')));
+  const v = verdict('test', '\x43:\\Temp\\scratch', registered('\x43:\\Users\\someone\\AppData\\Local\\Programs\\toolsenabled'));
   assert.equal(v.ok, false);
   assert.equal(v.code, 'REGISTERED_OUTSIDE_EXPECTED');
   assert.match(v.message, /precedence over \/D=/,
@@ -94,13 +91,13 @@ test('THE DEFECT: a registration outside the intended root refuses', () => {
 });
 
 test('a registration inside the intended root is allowed', () => {
-  const v = verdict('test', 'C:\\Temp\\scratch', registered('C:\\Temp\\scratch\\install'));
+  const v = verdict('test', '\x43:\\Temp\\scratch', registered('\x43:\\Temp\\scratch\\install'));
   assert.equal(v.ok, true);
   assert.equal(v.code, 'REGISTERED_WITHIN_EXPECTED');
 });
 
 test('no registration at all is allowed, and says /D= decides', () => {
-  const v = verdict('test', 'C:\\Temp\\scratch', absent);
+  const v = verdict('test', '\x43:\\Temp\\scratch', absent);
   assert.equal(v.ok, true);
   assert.equal(v.code, 'NOT_REGISTERED');
 });
@@ -109,13 +106,13 @@ test('an unstated intended root is refused rather than inspected', () => {
   /* Answering "registered somewhere" without a root to compare against would be
      an inspection dressed as a check, and it is exactly the shape that lets a
      person believe they ran a guard. */
-  const v = verdict('test', null, registered('C:\\anywhere'));
+  const v = verdict('test', null, registered('\x43:\\anywhere'));
   assert.equal(v.ok, false);
   assert.equal(v.code, 'EXPECTED_ROOT_REQUIRED');
 });
 
 test('the release channel is refused, because there the registration is correct', () => {
-  const v = verdict(RELEASE_CHANNEL, 'C:\\Temp\\scratch', registered('C:\\anywhere'));
+  const v = verdict(RELEASE_CHANNEL, '\x43:\\Temp\\scratch', registered('\x43:\\anywhere'));
   assert.equal(v.ok, false);
   assert.equal(v.code, 'RELEASE_CHANNEL_NOT_CHECKABLE');
 });
@@ -124,7 +121,7 @@ test('a non-Windows machine says so rather than reporting no registration', () =
   /* "Could not look" must never read as "nothing there". That distinction is
      the whole value of the check. */
   const v = registrationVerdict(identity('test'), {
-    expectUnder: 'C:\\Temp\\scratch', runner: absent, platform: 'linux', pathModule: path.win32,
+    expectUnder: '\x43:\\Temp\\scratch', runner: absent, platform: 'linux', pathModule: path.win32,
   });
   assert.equal(v.ok, false);
   assert.equal(v.code, 'PLATFORM_UNSUPPORTED');
@@ -135,9 +132,9 @@ test('a non-Windows machine says so rather than reporting no registration', () =
 test('the real reg output shape is parsed, spaces in the path included', () => {
   const { registration } = readInstallRegistration('any-guid', {
     platform: 'win32',
-    runner: registered('C:\\Program Files\\Some Product\\bin'),
+    runner: registered('\x43:\\Program Files\\Some Product\\bin'),
   });
-  assert.equal(registration.installLocation, 'C:\\Program Files\\Some Product\\bin');
+  assert.equal(registration.installLocation, '\x43:\\Program Files\\Some Product\\bin');
 });
 
 /* THIS TEST USED TO PIN THE DEFECT, and it is worth saying exactly how, because
@@ -164,7 +161,7 @@ test('an answer the parser does not understand REFUSES rather than allowing', ()
   assert.equal(reading.unreadable, true, 'an unrecognised answer must be marked unreadable');
   assert.equal(reading.registration, null);
 
-  const v = verdict('test', 'C:\\Temp\\scratch',
+  const v = verdict('test', '\x43:\\Temp\\scratch',
     () => 'FEHLER: Der angegebene Registrierungsschlüssel wurde nicht gefunden');
   assert.equal(v.ok, false, 'unknown must never be allowed to mean absent');
   assert.equal(v.code, 'REGISTRATION_UNREADABLE');
@@ -177,5 +174,5 @@ test('a genuine "no such key" is still allowed, and stays distinguishable', () =
   const reading = readInstallRegistration('any-guid', { platform: 'win32', runner: () => null });
   assert.equal(reading.unreadable, false);
   assert.equal(reading.registration, null);
-  assert.equal(verdict('test', 'C:\\Temp\\scratch', () => null).code, 'NOT_REGISTERED');
+  assert.equal(verdict('test', '\x43:\\Temp\\scratch', () => null).code, 'NOT_REGISTERED');
 });

@@ -1,8 +1,8 @@
 /* T52(4). "TURN OFF NEW-PAGE TIPS" HAS TO BE PRESSABLE ON EVERY PAGE THAT
  * OFFERS IT.
  *
- * WHAT WAS MEASURED: a check on the cut-1 candidate found `.first-use-quiet`
- * at **0x0 on Ledger and Settings**
+ * WHAT WAS MEASURED, and by whom: Builder (4a1a39df) on the cut-1 candidate,
+ * 2026-09-16 01:08Z, found `.first-use-quiet` at **0x0 on Ledger and Settings**
  * and **121x44 on Metrics**. A control with a zero box cannot be clicked, so on
  * two of the main pages a person could not turn tips off at all.
  *

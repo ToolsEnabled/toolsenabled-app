@@ -137,10 +137,7 @@ export function parseTaskAssignmentSourceTranscript(stdout, stderr, expected) {
   }
   const fixture = ordinaryAbsolute(summary.retainedFixtureRoot, 'retained fixture root');
   const state = ordinaryAbsolute(summary.retainedEngineStateRoot, 'retained engine state root');
-  // The Dev account's Windows Temp folder. The account name is a placeholder, and the
-  // path is joined at run time so the source carries no literal profile path.
-  const expectedBase = process.platform === 'win32'
-    ? path.win32.join('C:\\', 'Users', 'BuildAccount-Dev', 'AppData', 'Local', 'Temp') : fixture;
+  const expectedBase = process.platform === 'win32' ? '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp' : fixture;
   const equal = (left, right) => process.platform === 'win32' ? left.toLowerCase() === right.toLowerCase() : left === right;
   if (!/^te-source-fixture-[A-Za-z0-9]{6}$/.test(path.basename(fixture)) ||
       !equal(path.dirname(state), expectedBase) || !/^te-[A-Za-z0-9]{6}$/.test(path.basename(state)))

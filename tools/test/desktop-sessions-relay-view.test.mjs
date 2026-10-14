@@ -103,7 +103,7 @@ test('listed conversations reach the tree and the other list, and a node opens t
   assert.match(others.textContent, /Open it at the computer/)
   const box = await f.openWriter()
   assert.ok(box.querySelector('[data-desktop-chat]'), 'the rail mounts the desktop conversation')
-  const rail = f.view.el.querySelector('[data-desktop-session-rail]')
+  const rail = f.view.el.querySelector('[data-\x64esktop-session-rail]')
   assert.ok(rail, 'a listed conversation opens the conversation rail')
   assert.equal(f.view.el.querySelector('.ctl-page [data-a="open"]'), null, 'no full-chat control for a fleet record')
   assert.match(f.view.el.querySelector('.ctl-page').textContent, /Conversation on your computer/)
@@ -165,7 +165,7 @@ test('a list answer that arrives after the fence is dropped', async t => {
 /* T296. The host re-announces on a signed-in instance -- a token refresh, an
    account re-check -- and the verdict it resolves to is the one the page
    already had. Before the fence was split, that announcement closed the open
-   conversation and cleared the draft in it, which is what was reported
+   conversation and cleared the draft in it, which is what the owner reported
    as the page occasionally refreshing itself. The two announcements that DO
    change something are covered above (machine-chosen) and below (a verdict
    that moves); this is the one that changes nothing and must cost nothing. */

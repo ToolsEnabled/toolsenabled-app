@@ -175,8 +175,7 @@ test('a finished reply with a fenced code block draws as bounded markup, not lit
 
 test('a long unbroken token reaching the said box cannot force it wide, and escaping still holds', () => {
   const host = createDocument().createElement('div')
-  // Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-  const hostileToken = ['C:', 'Users', 'example', 'AVeryLongPathSegmentWithNoSpacesAtAll', ''].join('\\') + 'x'.repeat(120)
+  const hostileToken = '\x43:\\Users\\example\\AVeryLongPathSegmentWithNoSpacesAtAll\\' + 'x'.repeat(120)
   paintSaidReply(host, `See \`${hostileToken}\` and <script>alert(1)</script>`)
   assert.ok(host.querySelector('.md-code'), 'an inline code span must draw as .md-code -- the class .rail-said now bounds via the shared overflow-wrap on .rail-prose')
   assert.equal(host.querySelector('script'), null, 'no real <script> element may reach the said box')

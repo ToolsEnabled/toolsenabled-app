@@ -1,8 +1,8 @@
 /* BOB'S APP-SIDE FACADE SEAM, NOT A WHOLE NETWORK END TO END.
  *
- * The scenario: a person has agents running on their own computers, sits down
- * at a friend's machine, signs in to the website, and drives their own machine --
- * everything the app can do, except nothing runs on the computer they are sitting
+ * The owner's scenario: he has agents running on his own computers, sits down
+ * at a friend's machine, signs in to the website, and drives his own machine --
+ * everything the app can do, except nothing runs on the computer he is sitting
  * at.
  *
  * Every piece of that chain has its own suite. What none of them prove is that
@@ -79,19 +79,19 @@ function machineDeps(record) {
     usageRecordHistory: answer('usageRecordHistory', { ok: true, total: 0, entries: [], verified: true }),
     engineAvailability: answer('engineAvailability', { ok: true, code: 'AGENT_ENGINE_READY' }),
     ensureWorkspaceRoot: noop,
-    chosenWorkspaceCwd: () => 'C:/workspace',
+    chosenWorkspaceCwd: () => '\x43:/workspace',
     readAgentConfinement: answer('readAgentConfinement', { ok: true, tier: 'luna', toolsAllowed: 4, toolsTotal: 12 }),
     listAgentTools: answer('listAgentTools', { ok: true, tier: 'luna', total: 12, tools: ['read'] }),
     resolveCapabilityRoot: () => ROOT,
     requireModule: () => ({}),
     readStandingRequests: answer('readStandingRequests', { ok: true, exists: false, entries: [] }),
     readCanonicalLedger: answer('readCanonicalLedger', { ok: true, revision: 0, updatedAt: null, exists: false, records: [], chain: { ok: true, events: 0, drift: [], unchained: [], code: null }, filter: { scope: 'all', key: null, removed: false } }),
-    sessionProfiles: { resolveCwd: () => 'C:/workspace', list: () => [], remove: () => true },
+    sessionProfiles: { resolveCwd: () => '\x43:/workspace', list: () => [], remove: () => true },
     recordSpawnIntent: answer('recordSpawnIntent', { sequence: 1, eventHash: 'h' }),
     recordSpawnOutcome: noop,
     recordSessionEnd: noop,
     bindAgentOwner: noop,
-    // Required since an earlier commit; inert (no phase functions), nothing here asks for one.
+    // Required since 2a942239; inert (no phase functions), nothing here asks for one.
     taskTopologyAdmission: Object.freeze({}),
     agentOrgRecord: {
       read: answer('orgRead', { ok: true, org: { revision: 1, agents: [] } }),
@@ -102,7 +102,7 @@ function machineDeps(record) {
     MAX_AGENT_SESSIONS: 8,
     MAX_SESSION_ID_LENGTH: 64,
     AGENT_EFFORT_VALUES: ['low', 'medium', 'high'],
-    WORKSPACE_ROOT: 'C:/workspace',
+    WORKSPACE_ROOT: '\x43:/workspace',
   }
 }
 

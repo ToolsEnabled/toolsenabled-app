@@ -7,8 +7,8 @@
  *
  * EVERY CONTROL HERE IS BACKED BY A CALL THAT EXISTS, and that is the whole
  * standard this file is held to. src/orchestration-controls.js states the house
- * rule -- never claim a control, such as temperature, that the product cannot
- * actually set -- and the failure it names is a control that looks wired, reports success, and
+ * rule in the owner's words -- "dont lie like we cant control temperature" --
+ * and the failure it names is a control that looks wired, reports success, and
  * changes nothing. So each of the three is defined as exactly what the bridge
  * call it makes actually does, and is named for that rather than for the fleet
  * verb it resembles:

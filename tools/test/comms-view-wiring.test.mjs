@@ -26,7 +26,7 @@ test('the workspace follows shared theme tokens and adapts to the width left by 
   assert.match(css, /@container \(max-width: 560px\)/)
   assert.match(css, /prefers-reduced-motion/)
   /* The page keeps a 16px gutter at the least and widens it to 40px on a wide window
-     (approved Messages pass), still a share of the width the side
+     (owner-approved Messages pass, 2026-09-23), still a share of the width the side
      panel leaves, with the viewport part divided by the Text size zoom. */
   assert.match(css, /width: calc\(100% - 2 \* clamp\(16px, 3vw \/ var\(--zoom, 1\), 40px\)\)/)
 })

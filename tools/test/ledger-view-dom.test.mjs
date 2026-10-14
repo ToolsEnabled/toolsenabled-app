@@ -350,7 +350,7 @@ const SAVED_TREES = Object.freeze({
   trees: [{ id: 'tree-1-9f0a1b2c-3d4e-4f50-8617-28394a5b6c7d', name: null, createdAt: STAMP, updatedAt: STAMP }],
   nodes: [
     { id: 'node-1-1a2b3c4d-5e6f-4708-8912-a3b4c5d6e7f8', treeId: 'tree-1-9f0a1b2c-3d4e-4f50-8617-28394a5b6c7d', parentId: null, role: 'coordinator', message: 'Plan the week', status: 'running', sessionId: 'chat-11111111', createdAt: STAMP, updatedAt: STAMP },
-    { id: 'node-2-0b5e0c0a-0000-4000-8000-000000000002', treeId: 'tree-1-9f0a1b2c-3d4e-4f50-8617-28394a5b6c7d', parentId: 'node-1-1a2b3c4d-5e6f-4708-8912-a3b4c5d6e7f8', role: 'manager', message: '', status: 'draft', sessionId: null, createdAt: STAMP, updatedAt: STAMP },
+    { id: 'node-2-6c518599-05aa-4c77-a154-cefe49b278ed', treeId: 'tree-1-9f0a1b2c-3d4e-4f50-8617-28394a5b6c7d', parentId: 'node-1-1a2b3c4d-5e6f-4708-8912-a3b4c5d6e7f8', role: 'manager', message: '', status: 'draft', sessionId: null, createdAt: STAMP, updatedAt: STAMP },
     { id: 'node-3-aaa11111-2222-4333-8444-555566667777', treeId: 'tree-1-9f0a1b2c-3d4e-4f50-8617-28394a5b6c7d', parentId: 'node-1-1a2b3c4d-5e6f-4708-8912-a3b4c5d6e7f8', role: 'manager', message: '', status: 'draft', sessionId: null, createdAt: STAMP, updatedAt: STAMP },
   ],
 })
@@ -767,9 +767,10 @@ test('Complete is offered only where the store completes, and a blocked task say
 
 test('an ask answered first by its agent re-reads the list and keeps the owner\'s typed answer', async () => {
   const live = [row('A68', 'open', 'open', { kind: 'A', filedBy: 'claude', words: 'May I empty the trash folder?' })]
+  const attempts = []
   const bridge = {
     ...recordingBridge(),
-    answerAsk: async () => { throw new Error("Error invoking remote method 'mc-agent:ask-answer': Error: R_LEDGER_STATUS_INVALID") },
+    answerAsk: async request => { attempts.push(request); throw new Error("Error invoking remote method 'mc-agent:ask-answer': Error: R_LEDGER_STATUS_INVALID") },
     declineAsk: async () => ({ ok: true }),
   }
   const page = mountView({ rows: live, bridge, mode: 'a' })
@@ -779,6 +780,7 @@ test('an ask answered first by its agent re-reads the list and keeps the owner\'
     await settle()
     page.record('A68').querySelector('[data-row-editor-words]').value = 'No, keep the trash for a week.'
     page.feed([{ ...live[0], status: 'answered', state: 'answered', answer: { words: 'Answered by the agent itself.', at: '2026-09-22T12:35:44.000Z' } }])
+    page.control('A68', 'save').focus()
     page.control('A68', 'save').click()
     await settle()
     assert.equal(page.record('A68').querySelector('.ledger-line').dataset.state, 'answered', 'the row still shows the ask open')
@@ -786,6 +788,25 @@ test('an ask answered first by its agent re-reads the list and keeps the owner\'
     assert.equal(page.hint('A68'), ANSWER_ROW.gone('A68'))
     assert.match(page.record('A68').querySelector('[data-row-detail="answer"]')?.textContent || '', /Answered by the agent itself\./, 'the reloaded row does not show the stored answer')
     assert.equal(page.record('A68').querySelector('[data-row-editor-words]')?.value, 'No, keep the trash for a week.', 'the owner\'s typed answer was thrown away')
+    // T1853: the refused write removes the pressed Save during reload. The
+    // rebuilt editor must be the keyboard target, with its retained answer.
+    const editor = page.record('A68').querySelector('[data-row-editor-words]')
+    assert.equal(document.activeElement === editor, true, 'stale answer did not focus the reopened editor')
+    assert.equal(editor.disabled, false, 'the retained editor is disabled')
+    assert.equal(editor.hasAttribute('readonly'), false, 'the retained editor is read-only')
+    // The DOM stand-in has no browser text-insertion default. Deliver the
+    // edit to the actual focused field, then use the real row Save handler.
+    document.activeElement.value += ' Please check again tomorrow.'
+    document.activeElement.dispatchEvent({ type: 'input', inputType: 'insertText', data: ' Please check again tomorrow.' })
+    page.control('A68', 'save').focus()
+    page.control('A68', 'save').click()
+    await settle()
+    assert.equal(attempts.length, 2)
+    assert.equal(attempts[1].words, 'No, keep the trash for a week. Please check again tomorrow.')
+    const retained = page.record('A68').querySelector('[data-row-editor-words]')
+    assert.equal(retained?.value, attempts[1].words, 'the continued edit was lost on the next refusal')
+    assert.equal(page.hint('A68'), ANSWER_ROW.gone('A68'))
+    assert.equal(document.activeElement === retained, true, 'the next refusal lost keyboard editing focus')
   } finally { page.done() }
 })
 
@@ -979,7 +1000,7 @@ test('the Tasks tab counts tasks in their own statuses, blocked on you as waitin
   const page = mountView({ rows, bridge: recordingBridge(), mode: 't' })
   try {
     await settle()
-    /* The tiles read in triage order (Ledger status triage):
+    /* The tiles read in triage order (Ledger status triage, owner-approved 2026-09-23):
        what waits for the owner first, then the rest. Same six task tiles and counts. */
     assert.deepEqual(tilesOf(page), [
       ['blocked-external', 2, 'Waiting for you'], ['in-progress', 1, 'In progress'], ['open', 2, 'Open'],
@@ -1287,7 +1308,7 @@ test('opened from Home\'s ledger line, the Ledger lists exactly the records Home
     press(note.querySelector('[data-clear-waiting]'))
     await settle()
     /* Rows sort blocked first, then what waits for the owner (R5, and the open ask A1),
-       then the rest in their own order (Ledger status triage). */
+       then the rest in their own order (Ledger status triage, owner-approved 2026-09-23). */
     assert.deepEqual(listed(), ['R4', 'R5', 'A1', 'R1', 'T4'], 'Show the whole Ledger did not show the rest (T3 stays hidden by its own ×)')
     assert.equal(note.hidden, true)
   } finally { page.done(); globalThis.location = before }

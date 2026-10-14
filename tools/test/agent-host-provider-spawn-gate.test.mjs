@@ -191,9 +191,15 @@ async function withHostFixture(t, provider, run) {
       startProviderProbe: () => provider.label,
       providerCommandResolver: resolveProvider,
       freeMemory: () => 64 * 1024 * 1024 * 1024,
-      confinementPlanner: () => ({
-        ok: true, tier: 'unrestricted', isolated: false, threadOptions: {}, env: {},
-      }),
+      /* A Codex start needs one admitted plan naming its sign-in home and launch
+         restrictions (engine codex-process.js confinedCodexLaunchArgs); the
+         fixture home is empty, and the fake binary never reads it. */
+      confinementPlanner: () => {
+        const codexHome = join(workDir, 'codex-home')
+        mkdirSync(codexHome, { recursive: true })
+        return { ok: true, tier: 'unrestricted', isolated: false, threadOptions: {}, env: { CODEX_HOME: codexHome },
+          codexHome, codexConfig: {}, codexArgs: [] }
+      },
     })
     hosts.push(host)
     return host

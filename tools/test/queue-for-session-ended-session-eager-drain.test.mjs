@@ -2,10 +2,10 @@
  * recoverDeadSessionSend HAD, IN A SIBLING CALL SITE THIS LANE NEVER TOUCHED.
  *
  * Verifying R6b-comms-app (attempt 2 verification round). This lane's own
- * fixes (earlier commits) all landed inside recoverDeadSessionSend,
+ * fixes (293ef76, 29c92e7, aeaad75) all landed inside recoverDeadSessionSend,
  * gating each of that function's two `!ok`/in-flight branches on the same
  * question: is the session this node names actually reachable, or did the
- * app already decide it is over. an earlier commit in particular added a
+ * app already decide it is over. aeaad75 in particular added a
  * nodeSessionEnded() guard specifically because `freshAfterFailure.sessionId`
  * reads truthy for BOTH a live in-flight replacement and a resume the engine
  * already said had ENDED (resumeNodeSessionUnguarded's own ended branch
@@ -31,7 +31,7 @@
  * nodeBusy(live) = nodeIsBusy(live, sessionNodeIds) = BUSY_STATUSES.has(status)
  * && sessionIsLive(live, sessionNodeIds) (src/tree-session-liveness.js).
  * `!nodeBusy(live)` is therefore true for TWO different facts, exactly the
- * shape an earlier commit's own commit message already named for the sibling function:
+ * shape aeaad75's own commit message already named for the sibling function:
  * a genuinely idle node (never busy, or a turn that finished cleanly) --
  * where an immediate drain is correct -- and a node whose status STILL READS
  * 'starting'/'running' while sessionIsLive is false, i.e. nodeSessionEnded(live)
@@ -52,7 +52,7 @@
  * treeCardSend's slash.action === 'queue' branch (~line 9626-9639) and the
  * busy-composer's send handler (~line 3503-3505) -- so typing "/queue hi" at
  * any node whose session has already silently ended (the exact
- * resumeNodeSessionUnguarded ended-branch shape an earlier commit just fixed one call
+ * resumeNodeSessionUnguarded ended-branch shape aeaad75 just fixed one call
  * site for) reaches this gap today.
  *
  * queueForSession is closure-private inside computersView and cannot be
@@ -95,14 +95,14 @@ test('queueForSession only takes the two call sites that name it (the explicit /
 
 test('queueForSession does not eagerly drain behind a session this app already decided has ended', () => {
   const fn = slice('function queueForSession(node, text) {', 'async function drainOutboxMessage(sessionId, nodeId, entry)')
-  /* The short-circuit's CONDITION is allowed to widen -- an earlier commit added
+  /* The short-circuit's CONDITION is allowed to widen -- b6b3102b3 added
      `|| pendingModelChoice(live)` -- so pin the gate, not the exact line. */
   const busyAt = fn.search(/if \(nodeBusy\(live\)/)
   assert.notEqual(busyAt, -1, 'the nodeBusy short-circuit moved, was renamed, or was removed -- re-check this function\'s premise')
   const drainAt = fn.indexOf('drainOutboxMessage(live.sessionId, live.id, entry)')
   assert.notEqual(drainAt, -1, 'the eager-drain call moved, was renamed, or was removed -- re-check this function\'s premise')
   /* THE MISSING GUARD -- same predicate, same shape of defect, as
-     recoverDeadSessionSend's !ok branch before an earlier commit. nodeBusy(live) reads
+     recoverDeadSessionSend's !ok branch before aeaad75. nodeBusy(live) reads
      false both for a genuinely idle node and for one whose status still
      looks busy while sessionIsLive is false (nodeSessionEnded(live) true);
      queueForSession treats both as "safe to drain now". */
@@ -111,7 +111,7 @@ test('queueForSession does not eagerly drain behind a session this app already d
     'queueForSession never calls nodeSessionEnded (or sessionEndedWithApp) before treating `!nodeBusy(live)` as "safe ' +
     'to drain immediately" -- but nodeBusy is false both for a genuinely idle node AND for one whose status still ' +
     'reads \'starting\'/\'running\' while the session behind it already ended (the exact resumeNodeSessionUnguarded ' +
-    'ended-branch shape an earlier commit fixed for recoverDeadSessionSend\'s !ok branch, on the OTHER call site sharing ' +
+    'ended-branch shape commit aeaad75 fixed for recoverDeadSessionSend\'s !ok branch, on the OTHER call site sharing ' +
     'this same sessionNodeIds/nodeBusy machinery). Reachable today with no race via the explicit "/queue <text>" ' +
     'command at any node (treeCardSend\'s slash.action === \'queue\' branch, and the busy composer\'s send handler) -- ' +
     'it calls drainOutboxMessage on a dead session id, replies an optimistic "Queued" sentence before bridge.send() has ' +

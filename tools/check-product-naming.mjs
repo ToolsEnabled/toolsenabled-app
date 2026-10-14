@@ -19,8 +19,8 @@
  * for fixing this for free closes the moment those Products are created.
  *
  * WHAT THIS GUARD IS NOT. It is not a spell-checker for marketing copy, and it
- * does not decide the name. The paid product is named ToolsEnabled Anywhere,
- * and the plan names are R1229's. This only asserts that the
+ * does not decide the name. The name is the owner's: "The paid product is
+ * ToolsEnabled Anywhere." The plan names are R1229's. This only asserts that the
  * two halves still agree, because nothing else did -- tests/entitlement.js has 65
  * assertions and not one of them looks at a label, which is exactly how the two
  * drifted apart without a single test going red.
@@ -215,9 +215,10 @@ function main() {
     console.error('\nProduct naming is inconsistent:')
     for (const problem of problems) console.error(`  - ${problem}`)
     console.error(
-      '\nThe paid product name and the plan names are both adopted by council decision R1229. ' +
-      'Fix the disagreement; do not rename either to make this pass, and do ' +
-      'not re-describe the name as a personal decision without a ledger citation.'
+      '\nThe paid product name and the plan names are both R1229\'s -- adopted by a five-seat council convened ' +
+      'at the owner\'s instruction, and NOT quoted from him: "Anywhere" and "$19" each appear 0 times in ' +
+      'reports/OWNER-REQUEST-LEDGER.json. Fix the disagreement; do not rename either to make this pass, and do ' +
+      'not re-describe the name as his decision without a ledger citation.'
     )
     process.exitCode = 1
     return

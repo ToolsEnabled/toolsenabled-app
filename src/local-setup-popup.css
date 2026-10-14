@@ -1,0 +1,63 @@
+/* SET UP LOCAL MODELS -- the popup that shows only the steps still needed
+   (src/local-setup-popup.js). Same tokens as the Switch and continue dialog
+   (src/switch-and-continue.css) so it reads as the same product. */
+dialog.local-setup {
+  box-sizing: border-box; position: fixed; inset: 0; margin: auto; padding: 0;
+  width: min(620px, calc(100vw / var(--zoom, 1) - 32px));
+  max-height: calc(100dvh / var(--zoom, 1) - 32px);
+  overflow: auto; overscroll-behavior: contain;
+  border: 1px solid var(--line-2); border-radius: 14px;
+  background: var(--bg); color: var(--ink); box-shadow: 0 24px 80px #0005;
+  text-align: left; font: 14px/1.5 var(--font-ui);
+}
+dialog.local-setup::backdrop { background: #10172480; backdrop-filter: blur(4px); }
+.local-setup:not([open]) { display: none; }
+.local-setup *, .local-setup *::before, .local-setup *::after { box-sizing: border-box; }
+.local-setup-form { display: flex; flex-direction: column; gap: 12px; padding: 18px 22px 16px; }
+.local-setup-title { margin: 0; font: 600 20px/1.25 var(--font-ui); letter-spacing: -0.02em; }
+.local-setup-why { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--sheet); color: var(--ink-2); font-size: 13px; }
+.local-setup-steps { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; }
+.local-setup-steps:empty { display: none; }
+.local-setup-step { display: flex; align-items: baseline; gap: 6px; color: var(--ink-3); font-size: 13px; }
+.local-setup-step-count { font: 600 11px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.local-setup-step.is-current { color: var(--ink); }
+.local-setup-step.is-current .local-setup-step-name { font-weight: 600; }
+.local-setup-step.is-done { color: var(--ink-2); }
+.local-setup-step-done { color: var(--ink-3); font-size: 12px; }
+.local-setup-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.local-setup-lead { margin: 0; color: var(--ink); }
+.local-setup-note { margin: 0; color: var(--ink-2); font-size: 13px; }
+.local-setup-group { margin: 0; padding: 8px 10px 10px; border: 1px solid var(--line-2); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow: auto; }
+.local-setup-group legend { padding: 0 4px; font: 600 11px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.local-setup-model { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; align-items: baseline; padding: 6px 4px; border-radius: 6px; cursor: pointer; }
+.local-setup-model.is-picked { background: var(--sheet); }
+.local-setup-model.is-off { cursor: default; }
+.local-setup-model.is-off .local-setup-model-name { color: var(--ink-3); }
+.local-setup-model input[type="radio"] { margin: 0; grid-row: 1; }
+.local-setup-model-name { grid-column: 2; font-weight: 550; overflow-wrap: anywhere; }
+.local-setup-model-tag { grid-column: 3; padding: 1px 6px; border: 1px solid var(--accent); border-radius: 999px; color: var(--ink); font-size: 11px; }
+.local-setup-model small { grid-column: 2 / 4; color: var(--ink-2); font-size: 12px; }
+.local-setup-model .local-setup-model-warn { color: var(--ink); }
+.local-setup-progress { width: 100%; height: 10px; accent-color: var(--accent); }
+.local-setup-progress-line { margin: 0; color: var(--ink-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.local-setup-status { min-height: 1.5em; margin: 0; color: var(--ink-2); font-size: 13px; }
+.local-setup-status:empty { min-height: 0; }
+.local-setup-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.local-setup-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 32px; padding: 6px 12px; border: 1px solid var(--line-2); border-radius: 4px;
+  background: var(--control-bg, var(--sheet)); color: var(--ink-2); font: 550 13px/1.35 var(--font-ui); cursor: pointer;
+}
+.local-setup-btn.is-primary { color: var(--ink); border-color: var(--accent); }
+.local-setup-btn:hover:not(:disabled) { background: var(--control-hover, var(--sheet)); color: var(--ink); }
+.local-setup-btn:disabled { opacity: 0.55; cursor: default; }
+.local-setup :is(button, input):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+/* The Settings → Local models entry and the refusal's button. */
+.local-setup-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--sheet); }
+.local-setup-entry-lead { flex: 1 1 260px; margin: 0; }
+@media (max-width: 560px) {
+  .local-setup-form { padding: 14px 14px 12px; }
+  .local-setup-model { grid-template-columns: auto minmax(0, 1fr); }
+  .local-setup-model-tag { grid-column: 2; justify-self: start; }
+}
+.org-status .org-status-action { margin-left: 8px; vertical-align: baseline; }

@@ -15,7 +15,7 @@
   box-shadow: 0 3px 12px color-mix(in oklab, var(--ink) 8%, transparent);
 }
 .static-tree-chip-overlay .static-tree-chip:focus-visible:not(.as-chat) {
-  outline: 2px solid var(--rc);
+  outline: 2px solid var(--ink);
   outline-offset: 3px;
 }
 .static-tree-chip-overlay .chip-preview { height: 100%; max-height: none; }
@@ -131,8 +131,7 @@
    trade the agent's own words for its working. Mini used to be named here too
    and was the more extreme case -- it hid .cl-chat and .cl-previous outright.
    That is why Mini is the size R1207 retired: a card that shows none of what
-   the agent said is the opposite of a card's purpose, which is to inform the
-  user. */
+   the agent said is the opposite of "THE WHOLE POINT IS TO INFORM THE USER". */
 .static-tree-chip-overlay .static-tree-chip[data-context-size="small"] .cl-thinking { display: none; }
 /* THE ROW IS PAID FOR, NOT ADDED. .chip-preview-activity is flex:1 with
    overflow:hidden, so a row that does not fit is dropped with no ellipsis to
@@ -218,7 +217,7 @@
 .computers .static-tree-graph[data-node-style="boxes"] .tree-agent-box > .node-glass { border-width: 4px 2px 2px; box-shadow: 0 3px 0 color-mix(in oklab, var(--ink) 12%, transparent), 0 8px 20px color-mix(in oklab, var(--ink) 6%, transparent) !important; }
 .static-tree-graph[data-node-style="boxes"] .tree-agent-box:hover > .node-glass,
 .static-tree-graph[data-node-style="boxes"] .tree-agent-box.selected > .node-glass { border-color: var(--rc); }
-.static-tree-graph[data-node-style="boxes"] .tree-agent-box:focus-visible { outline: 2px solid var(--rc); outline-offset: 4px; }
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
 .tree-box-heading { display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 8px; }
 .static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-labels { position: static; transform: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: auto; max-width: calc(100% - 36px); min-width: 0; max-height: none; padding: 0; }
 .static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-name { padding: 0; background: none; color: var(--ink); font: 750 calc(18px * var(--tree-box-text-scale, 1))/1.15 var(--font-ui); max-width: 100%; text-align: left; }
@@ -228,7 +227,7 @@
 .static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-role { padding: 0; background: none; text-transform: uppercase; letter-spacing: .045em; font: 600 calc(12px * var(--tree-box-text-scale, 1))/1.2 var(--font-ui); color: var(--ink-2); text-align: left; }
 .tree-agent-box button { color: var(--ink-2); background: transparent; border: 0; font-family: var(--font-ui); cursor: pointer; }
 .tree-agent-box button:hover { color: var(--ink); background: color-mix(in oklab, var(--rc) 8%, transparent); }
-.tree-agent-box button:focus-visible { outline: 2px solid var(--rc); outline-offset: 2px; }
+.tree-agent-box button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .tree-agent-box .tree-box-chat { flex: none; width: 32px; height: 32px; padding: 0; border: 1.5px solid color-mix(in oklab, var(--rc) 50%, var(--ink-3)); background: var(--sheet); border-radius: 2px; font-size: 24px; font-weight: 650; line-height: 1; box-shadow: 0 2px 0 color-mix(in oklab, var(--rc) 18%, transparent); }
 .tree-agent-box .tree-box-chat:hover { color: var(--ink); background: color-mix(in oklab, var(--rc) 15%, var(--sheet)); border-color: var(--rc); }
 .tree-box-status-row { display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 8px; }
@@ -308,7 +307,7 @@
 .static-tree-graph .node .node-contact-icon { color: var(--ink-2); background: var(--sheet); border: 1.5px solid color-mix(in oklab, var(--rc) 50%, var(--ink-3)); width: 30px; height: 30px; padding: 5px; left: -8px; top: -8px; border-radius: 50%; }
 .static-tree-graph .node .node-contact-icon svg { width: 18px; height: 18px; }
 .static-tree-graph .node .node-contact-icon:hover { color: var(--ink); background: color-mix(in oklab, var(--rc) 15%, var(--sheet)); }
-.static-tree-graph .node .node-contact-icon:focus-visible { outline: 2px solid var(--rc); outline-offset: 3px; }
+.static-tree-graph .node .node-contact-icon:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .static-tree-graph[data-node-style="boxes"] .node .node-contact-icon { position: relative; left: auto; top: auto; border-radius: 2px; width: 32px; height: 32px; }
 .static-tree-graph .node .node-contact-icon[data-voice-selected="true"] { color: var(--ink); background: color-mix(in oklab, var(--c-coordinator) 22%, var(--sheet)); border-color: var(--c-coordinator); }
 .static-tree-graph .node .node-contact-icon:is([data-voice-state="listening"], [data-voice-state="speaking"]) { box-shadow: inset 0 -3px var(--c-coordinator); }
@@ -334,7 +333,7 @@
 .tree-new-workspace b { font-size: 13px; font-weight: 600; }
 .tree-new-workspace small { font-size: 11px; color: var(--ink-3); }
 .tree-new-workspace:hover { background: var(--surface); }
-.tree-picker-label { display: block; padding: 12px 10px 5px; font: 600 10px/1.3 var(--font-ui); text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); }
+.tree-picker-label { display: block; padding: 12px 10px 5px; font: 600 12.5px/1.3 var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--ink-2); }
 /* Tree selection belongs to the window; several selections share its canvas. */
 .computers .tree-window { position: relative; }
 .tree-window-select { width: 100%; padding: 3px 0; border: 0; background: transparent; color: var(--ink); font: 650 13px/1.4 var(--font-ui); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -475,9 +474,9 @@
    COMPUTERS, THE 2026-09-23 UI PASS: one control language for the bar, the
    side rail and the card buttons, spent from the foundation tokens so all
    five themes follow. Visual properties only -- no node size, no layout
-   math, no behaviour. The refusal dress (dashed edge, --ink-3, default
-   cursor) stays where computers-press-honesty pins it, in tree-graph.css,
-   and is restated below only at a weight that can outrank this block.
+   math, no behaviour. The refusal dress (45% opacity, default cursor)
+   stays where computers-press-honesty pins it, in tree-graph.css, and is
+   restated below only at a weight that can outrank this block.
    ========================================================================== */
 
 /* THE BAR. Every control is one 32px raised chip (--control-h) with the 4px control
@@ -506,19 +505,14 @@
 .computers .tree-action-bar :is(.graph-edit-btn.on, .tree-link-toggle[aria-pressed="true"]) {
   background-color: var(--selected-bg); border-color: var(--selected-border); color: var(--selected-ink);
 }
-.computers .tree-action-bar .graph-open-btn {
-  background-color: var(--selected-bg); border-color: var(--selected-border); color: var(--selected-ink);
-}
-.computers .tree-action-bar .graph-open-btn:hover {
-  background-color: color-mix(in oklab, var(--ui-accent) 15%, var(--surface-raised)); border-color: var(--selected-border); color: var(--ink);
-}
-:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .computers .tree-action-bar .graph-open-btn:hover {
-  background-color: color-mix(in oklab, var(--ui-accent) 24%, transparent);
-}
-/* dead in this state: it says so with its face (the pinned dress), flat */
+.computers .tree-action-bar .graph-open-btn { background-color: var(--surface-base); border-color: var(--line-strong); color: var(--ink); }
+.computers .tree-action-bar .graph-open-btn:hover { background-color: var(--control-hover); border-color: var(--line-strong); color: var(--ink); }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .computers .tree-action-bar .graph-open-btn:hover { background-color: var(--control-hover); }
+/* dead in this state: it says so with its face (the pinned dress): the
+   section 4 secondary button at 45% opacity, flat, no pointer */
 .computers .tree-action-bar :is(.graph-edit-btn, .graph-roles-btn, .graph-open-btn):is([disabled], [aria-disabled="true"]),
 .computers .tree-action-bar :is(.graph-edit-btn, .graph-roles-btn, .graph-open-btn):is([disabled], [aria-disabled="true"]):hover {
-  color: var(--ink-3); background-color: transparent; border-color: var(--border-strong); box-shadow: none; cursor: default;
+  color: var(--ink); background-color: var(--bg-surface); border-color: var(--line-strong); box-shadow: none; opacity: .45; cursor: default;
 }
 .computers .tree-action-bar :is(.graph-edit-btn, .graph-roles-btn, .graph-open-btn, .tree-window-add, .tree-link-toggle):focus-visible,
 .computers .tree-action-bar .tree-display-controls select:focus-visible,
@@ -592,7 +586,7 @@
 .computers .rail .tree-rail-close:hover { color: var(--ink); background: var(--state-hover); }
 .computers .rail .tree-rail-close:focus-visible { outline: var(--focus-outline); outline-offset: 0; }
 /* The panel's name is a title, not a micro-label: sentence case in full
-   ink. The row's fixed 116px side slots (defect 6) leave a 1280px
+   ink. The row's fixed 116px side slots (owner defect 6) leave a 1280px
    window's rail little room for it, so a long name breaks into two even
    lines rather than a long line and an orphan. */
 .computers .rail .rail-title { font-size: var(--text-md); letter-spacing: 0; text-transform: none; color: var(--ink); font-weight: var(--weight-semibold); line-height: var(--leading-snug); }
@@ -724,3 +718,71 @@
 .static-tree-graph[data-node-style="boxes"][data-card-size]:not([data-card-size="mini"]) .tree-agent-box .tree-box-actions .tree-box-add-agent { width: 32px; height: 32px; }
 /* The computer's tab shares its row with Accounts: one 36px height (35 before). */
 .computers .tabs > .tab { box-sizing: border-box; min-height: var(--control-h-lg); }
+
+/* Stage B: one readable toolbar tier; wrapping spends space, never type size.
+   These consumer overrides leave the shared Home workspace untouched. */
+.computers:not(.home-agent-workspace) .tree-action-bar { align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.computers:not(.home-agent-workspace) .tree-action-bar .tree-display-controls { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 100%; }
+.computers:not(.home-agent-workspace) .tree-action-bar .tree-display-controls select,
+.computers:not(.home-agent-workspace) .tree-action-bar :is(.graph-edit-btn, .graph-roles-btn, .graph-open-btn, .tree-window-add, .tree-link-toggle),
+.computers:not(.home-agent-workspace) .tree-action-bar .graph-zoomer button {
+  box-sizing: border-box; height: 28px; min-height: 28px; max-width: 100%;
+  padding: 0 10px; font: 550 13.5px/1.4 var(--font-ui); box-shadow: none;
+}
+.computers:not(.home-agent-workspace) .tree-action-bar .tree-display-controls select { border: 1px solid var(--field-border); background: var(--bg-surface); color: var(--ink); border-radius: var(--radius-sm); }
+.computers:not(.home-agent-workspace) .tree-action-bar .graph-zoomer { height: 28px; min-height: 28px; border: 0; overflow: visible; background: var(--bg-subtle); box-shadow: none; }
+.computers:not(.home-agent-workspace) .tree-action-bar .graph-zoomer button { border: 1px solid var(--line-strong); background: var(--bg-surface); color: var(--ink); }
+.computers:not(.home-agent-workspace) .tree-action-bar .graph-zoomer :is(.gz-out, .gz-in, .graph-fit) { font: 550 13.5px/1.4 var(--font-ui); }
+.computers:not(.home-agent-workspace) .tree-action-bar .graph-zoomer button + button { border-left: 0; }
+.computers:not(.home-agent-workspace) .tree-action-bar .graph-zoomer button:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.computers:not(.home-agent-workspace) .tree-action-bar .graph-zoomer button:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.computers:not(.home-agent-workspace) .tree-action-bar .graph-zoomer .gz-level { font: 550 12.5px/1.4 var(--font-ui); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.computers:not(.home-agent-workspace) .tree-action-bar :is(button, select):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* A conversation names the agent before presenting its actions. A narrow
+   pane wraps the action group and the real name instead of painting over it. */
+.computers:not(.home-agent-workspace) .tree-workspace-chat { container: computers-conversation / inline-size; }
+.computers:not(.home-agent-workspace) .tree-workspace-chat-header { flex-wrap: wrap; gap: 12px; padding: 16px 20px; background: var(--bg-surface); }
+.computers:not(.home-agent-workspace) .tree-workspace-chat-header > div { flex: 1 1 220px; max-width: 100%; }
+.computers:not(.home-agent-workspace) .tree-chat-heading { font: 620 15px/1.4 var(--font-ui); overflow-wrap: anywhere; color: var(--ink); }
+.computers:not(.home-agent-workspace) .tree-preview-label { font: 450 12.5px/1.4 var(--font-ui); color: var(--ink-3); }
+.computers:not(.home-agent-workspace) .tree-chat-header-actions { flex-wrap: wrap; align-items: stretch; min-width: 0; max-width: 100%; gap: 8px; }
+.computers:not(.home-agent-workspace) .tree-chat-header-actions button { box-sizing: border-box; min-height: 32px; height: auto; min-width: 0; max-width: 100%; padding: 6px 12px; font: 550 13.5px/1.4 var(--font-ui); white-space: normal; border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--ink); box-shadow: none; }
+.computers:not(.home-agent-workspace) .tree-chat-header-actions button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@container computers-conversation (max-width: 400px) {
+  .computers:not(.home-agent-workspace) .tree-workspace-chat-header > div { flex-basis: 100%; }
+  .computers:not(.home-agent-workspace) .tree-chat-header-actions { width: 100%; }
+}
+
+/* Keep the solver's footprint, density rows and camera compensation intact. */
+.computers:not(.home-agent-workspace) .static-tree-graph[data-node-style="boxes"] .tree-agent-box > .node-glass {
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--rc);
+  border-radius: 10px; background: var(--bg-surface); box-shadow: none !important;
+}
+.computers:not(.home-agent-workspace) .static-tree-graph[data-node-style="boxes"] .tree-agent-box:is(:hover, .selected) > .node-glass {
+  border-color: var(--line-strong);
+  border-top-color: var(--rc);
+  box-shadow: none !important;
+}
+.computers:not(.home-agent-workspace) .static-tree-graph[data-node-style="boxes"][data-card-size] .tree-agent-box .node-name {
+  font: 620 calc(14px * var(--tree-box-text-scale, 1))/1.4 var(--font-ui);
+}
+.computers:not(.home-agent-workspace) .static-tree-graph[data-node-style="boxes"] .tree-agent-box .node-role {
+  font: 450 calc(12px * var(--tree-box-text-scale, 1))/1.4 var(--font-ui);
+  color: var(--ink-3); text-transform: none; letter-spacing: 0;
+}
+.computers:not(.home-agent-workspace) .static-tree-graph[data-node-style="boxes"][data-card-size] .tree-box-context > p,
+.computers:not(.home-agent-workspace) .static-tree-graph[data-node-style="boxes"] .tree-box-thinking-text {
+  font: 450 calc(13.5px * var(--tree-box-text-scale, 1))/1.5 var(--font-ui); color: var(--ink-2);
+}
+.computers:not(.home-agent-workspace) .static-tree-graph[data-node-style="boxes"][data-card-size] .tree-agent-box .tree-box-actions :is(.tree-box-chat, .tree-box-add-agent, .node-contact-icon) {
+  box-sizing: border-box; width: 28px; height: 28px; min-width: 28px; padding: 0;
+  border: 0; border-radius: 6px; color: var(--ink-2); background: transparent; box-shadow: none;
+}
+.computers:not(.home-agent-workspace) .static-tree-graph[data-node-style="boxes"][data-card-size] .tree-agent-box .tree-box-actions :is(.tree-box-chat, .tree-box-add-agent, .node-contact-icon):hover {
+  background: var(--bg-hover); color: var(--ink);
+}
+.computers:not(.home-agent-workspace) .static-tree-graph[data-node-style="boxes"] .tree-agent-box:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.computers:not(.home-agent-workspace) .tree-workspace-tabs-bar :is(.tree-home-tab, .tree-chat-tab) { font: 550 13.5px/1.4 var(--font-ui); }
+.computers:not(.home-agent-workspace) .tree-workspace-tabs-bar :is(.tree-home-tab, .tree-chat-tab, .tree-chat-add, .tree-chat-tab-close):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

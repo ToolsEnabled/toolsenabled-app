@@ -1,8 +1,8 @@
 /* T52(3) fixture: the real sheets, and each page's own shell, measured as the
    browser resolves it. Measurement only -- it builds no product behaviour.
 
-   THE POINT OF COMPARISON IS THE OTHER PAGES, not a number I chose. The report
-   was that Metrics had huge side gaps at times; "at times" is a comparison across
+   THE POINT OF COMPARISON IS THE OTHER PAGES, not a number I chose. The owner
+   said Metrics has "huge side gaps at times"; "at times" is a comparison across
    widths and across pages, so the fixture mounts four shells under the same
    navigation and reports each one's content box. A rule that made Metrics 1200px
    everywhere would satisfy a fixed-number test and still look wrong beside
@@ -61,7 +61,7 @@ window.t52Metrics = {
       left: round(box.left),
       right: round(window.innerWidth - box.right),
       /* The gap the owner sees is the sum of both sides. Reported directly so a
-         failure reads in the reported terms rather than in box coordinates. */
+         failure reads in the owner's terms rather than in box coordinates. */
       sideGap: round(box.left + (window.innerWidth - box.right)),
       declaredWidth: style.width,
       maxWidth: style.maxWidth,

@@ -1,6 +1,6 @@
 /* T158 (chat-lifecycle, Controller correction 2026-09-17) -- THE TRIGGER.
  *
- * An on-screen walk: neither chat surface offers a way to change the
+ * Worker 82's on-screen walk: neither chat surface offers a way to change the
  * MODEL on a running agent -- the tree conversation exposes Effort only. Read
  * against src/components.js's chip markup, this is because the effort chip
  * button carries no `hidden` attribute and is never gated
@@ -18,11 +18,11 @@
  * already does that) and not pressing the Actions overflow row directly
  * (t158-cross-provider-model-switch.test.mjs already does that). Between
  * them there was no case that ever asked "can a person find this at all",
- * which is exactly what was measured missing on screen.
+ * which is exactly what Worker 82 measured missing on screen.
  */
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { payloadSkip, CROSS_ROW, FROM_TIER, runningCircle, waitFor, openProviderStage, providerRowIn, providerWordOf } from './lib/t158-switch-model-harness.mjs'
+import { payloadSkip, CROSS_ROW, FROM_TIER, runningCircle, waitFor, openProviderStage, providerRowIn, providerWordOf, pressChosenContinuation, startedRequests } from './lib/t158-switch-model-harness.mjs'
 
 test('the running circle offers a model chip before any override exists, and it opens the same switch',
   { skip: payloadSkip }, async t => {
@@ -44,6 +44,12 @@ test('the running circle offers a model chip before any override exists, and it 
   const target = ctx.liveChat().querySelectorAll('.chat-actions-row').find(row => row.textContent.includes(CROSS_ROW))
   assert.notEqual(target.getAttribute('aria-disabled'), 'true', 'the cross-provider row reached through the chip is pressable')
   target.dispatch('click')
-  await waitFor(() => ctx.readNode().sessionId === ctx.NEW_SESSION, 'the switch started through the chip takes the circle over')
-  assert.equal(ctx.readNode().tier, 'astra', 'the chip-triggered switch lands on the tier that was pressed')
+  await waitFor(() => ctx.view.el.textContent.includes('Choose an account before continuing on another provider.'), 'the chip reports the required explicit account choice')
+  assert.equal(startedRequests(ctx).length, 0, 'the model chip never guesses a destination account')
+  assert.equal(ctx.readNode().sessionId, ctx.OLD_SESSION)
+  assert.equal(ctx.readNode().tier, FROM_TIER)
+  await pressChosenContinuation(ctx, CROSS_ROW)
+  await waitFor(() => ctx.readNode().sessionId === ctx.NEW_SESSION, 'the explicitly chosen continuation takes the circle over')
+  assert.equal(ctx.readNode().tier, 'astra')
+  assert.match(chip().textContent, /Astra/, 'the chip reflects the model actually started')
 })

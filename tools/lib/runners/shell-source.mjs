@@ -35,7 +35,7 @@ export function registerShellSourceChecks(sourceRoot) {
       spawnSync(command) { return { stdout: command === 'wmic' ? 'ParentProcessId ProcessId\n731 732\n' : ' TCP 127.0.0.1:31991 0.0.0.0:0 LISTENING 990\n' }; },
     };
     const fakeProcess = new EventEmitter();
-    Object.assign(fakeProcess, { execPath: 'C:\\required-runtime\\Product.exe', platform: 'win32', argv: ['Product.exe', root, '--keep-switch'],
+    Object.assign(fakeProcess, { execPath: '\x43:\\required-runtime\\Product.exe', platform: 'win32', argv: ['Product.exe', root, '--keep-switch'],
       env: { ELECTRON_RUN_AS_NODE: '1', TEST_INPUT: 'preserved' }, exit(code) { throw Object.assign(new Error('inert exit'), { inertExit: code }); } });
     const context = vm.createContext({ __dirname: root, process: fakeProcess, console,
       setTimeout() { throw new Error('source fixture may not schedule actual product work'); },

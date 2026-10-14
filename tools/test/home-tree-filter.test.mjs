@@ -1,7 +1,7 @@
 /* WATCHING BY TREE (T401) — the option list and the predicate, called with
- * values. The list: all agents, each tree as a single option, and ALL TREES,
- * which shows just the tip of each active tree (the controller, or whatever
- * is at the top).
+ * values. Owner: "we have all agents, we have each tree as a single option,
+ * then we have ALL TREES but this shows just the tip of the tree when its
+ * active so like controller or whatevers at the top."
  *
  * These assert BEHAVIOUR: what comes back for given rows and given trees, and
  * which rows a predicate keeps. Nothing here pins a spelling, an order of
@@ -17,7 +17,7 @@ import assert from 'node:assert/strict'
 import {
   agentChoices, agentFilterFor, followedRowFor, treeEntries,
   ALL_AGENTS_CHOICE, TREE_TIPS_CHOICE, treeChoiceId,
-} from '../../src/home-circle-action.js'
+} from '../../src/home-following.js'
 
 /* Two trees, as the hand test asks for: one active with a clear tip, one not.
    `orphan` belongs to no tree -- a run started outside the fleet trees, which
@@ -60,7 +60,7 @@ test('picking a tree shows that tree and nothing else', () => {
 })
 
 test('all trees shows the tip of each ACTIVE tree and nothing else', () => {
-  /* The point of the view: monitoring top-level agents.
+  /* The point of the view, in the owner's words: monitoring top-level agents.
      So it is the tips, not the members, and not the inactive tree's tip. */
   assert.deepEqual(kept(TREE_TIPS_CHOICE), ['ctl'])
   const bothActive = [CONTROLLER, { ...ARCHIVE, active: true }]

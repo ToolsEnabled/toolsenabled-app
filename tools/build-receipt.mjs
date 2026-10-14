@@ -2,7 +2,7 @@
 
 /* A BUILD IS PROVEN BY TWO THINGS, AND A WRAPPER'S EXIT CODE IS NEITHER OF THEM.
  *
- * MEASURED on the 1.0.45 Windows cut (internal report): two
+ * MEASURED on the 1.0.45 Windows cut (REPORT-CUT-1045-MANAGER-20260918): two
  * background build runs both reported "completed, exit code 0" with NOTHING
  * BUILT. The cause is mundane and will recur -- a wrapper whose last statement
  * is an ordinary shell command exits with THAT command's status, and that one

@@ -52,18 +52,15 @@
  * NATIVE-CLAUDE-TRANSPORT-CONTRACT.md sets for live turns. It is here so the
  * next lane can re-run the measurement instead of trusting this comment.
  *
- *   node tools/claude-stream-transport-probe.mjs
+ *   node tools/claude-stream-transport-probe.mjs --claude-config-dir EXISTING_HOME
+ *   Or supply ANTHROPIC_API_KEY in the environment.
  *
- * IT USES THE PERSON'S OWN SIGN-IN AND THAT IS THE COMPLIANT PATH. The recorded
- * council reading of TE-L-0006 is that launching the OFFICIAL CLI is first-party
- * use. What is fenced is @agentclientprotocol/claude-agent-acp -- a third-party
- * wrapper riding the subscription's config directory -- which is what the
- * engine's claude-process.js drives, and why that module is not a candidate for
- * this. Nothing here reads, stores or forwards a credential; it starts the
- * program and the program uses whatever account is signed in.
+ * The official CLI receives the caller-selected home in place, or the API key
+ * from the environment. The probe never reads or stages provider sign-in.
  */
 
 import { spawn } from 'node:child_process'
+import { providerLaunchEnvironment } from './lib/provider-launch-environment.cjs'
 import path from 'node:path'
 import { existsSync } from 'node:fs'
 
@@ -103,7 +100,7 @@ const child = spawn(executable, [
      TRANSPORT, and a probe about a transport must not be able to touch the
      machine it runs on. */
   '--permission-mode', 'plan',
-], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+], { env: providerLaunchEnvironment('claude', process.env), stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
 
 child.stderr.setEncoding('utf8')
 child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-4000) })

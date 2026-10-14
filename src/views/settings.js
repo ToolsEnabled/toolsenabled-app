@@ -1,9 +1,5 @@
 import { createSavedDataMaintenanceSettings } from '../saved-data-maintenance-controls.js'
 import { THEME_CHOICES, currentTheme } from '../theme-choice.js'
-import {
-  HOME_CIRCLE_STYLES, DEFAULT_HOME_CIRCLE_STYLE, currentHomeCircleStyle, setHomeCircleStyle,
-  HOME_CIRCLE_MOTIONS, DEFAULT_HOME_CIRCLE_MOTION, currentHomeCircleMotion, setHomeCircleMotion,
-} from '../home-circle-choice.js'
 import { HOME_STATUS_COLOR_SETTINGS, currentHomeStatusColor, resolvedHomeStatusColor, setHomeStatusColor } from '../home-status-colors.js'
 import '../home-status-colors.css'
 // /settings — progressively disclosed preferences plus the first-run system
@@ -39,6 +35,7 @@ import {
   textZoom,
 } from '../text-size.js'
 import {
+  DEFAULT_FONT,
   FONT_CHOICES,
   FONT_STORAGE_KEY,
   applyFontChoice,
@@ -64,13 +61,12 @@ import { WRITE_ACTION_FLAGS, isWriteEnabled, setWriteEnabled } from '../write-fl
    under this page's own `mc.set.<id>` keys and puts them back at launch, and
    the drawer's copy of the same two controls writes through it as well. */
 import {
-  GLOW_SETTING_ID,
   REDUCE_MOTION_SETTING_ID,
   applyAppearance,
   rememberAppearance,
 } from '../appearance-persistence.js'
 import { createLedgerArchiveController, postBridgeAction } from '../mission-bridge.js'
-/* WHAT EVERY ROW GRANTS AND WHAT IT RISKS, stated separately (R1529).
+/* WHAT EVERY ROW GRANTS AND WHAT IT RISKS, stated separately (owner, R1529).
    The statements are data in src/permission-guidance.js and the markup is
    src/guided-step.js, so this page asks for a row's explanation rather than
    carrying ninety of them itself. A row the declarations do not cover is drawn
@@ -78,9 +74,10 @@ import { createLedgerArchiveController, postBridgeAction } from '../mission-brid
 import { guidanceMarkup } from '../guided-step.js'
 import { describeSubject } from '../permission-guidance.js'
 import { CAPABILITY_PROBE_EVENT, probe, refreshCapabilityProbes } from '../capability-probes.js'
+import { focusKeeper } from '../focus-keep.js'
 import { createFleetProfileSettings } from '../fleet-profile-settings.js'
 /* The first-run walkthrough's settings. They are a SECTION here rather than a
-   screen of their own because the requirement has two halves: the
+   screen of their own because the owner's requirement has two halves: the
    walkthrough may infer, and every inferred setting must stay visible and
    editable afterwards. A profile only the walkthrough could edit would satisfy
    the first half and fail the second. */
@@ -118,8 +115,8 @@ import {
 } from '../research-settings.js'
 /* THE MISSING HALF OF SIGNING UP, AND WHY IT IS ON THIS PAGE AT ALL.
  *
- * After signing up, a user could not see how to connect their computer.
- * The website's account page asks for a code beginning TC-; nothing
+ * "as a user I dont even see how after signing up that I now connect my
+ * computer." The website's account page asks for a code beginning TC-; nothing
  * in this application had ever shown one. Every other piece existed -- the
  * account service, the box on the website, the client inside the installed
  * application -- and there was no screen where a person met their code.
@@ -222,6 +219,8 @@ import '../this-computer-settings.css'
 /* Last: the 2026-09-23 refinement layer (row anatomy, buttons, quick strip). */
 import '../settings-refine.css'
 import { landOnRow, visibleBoxOf } from '../settings-landing.js'
+import '../local-setup-popup.css'
+import { localSetupEntryElement, openLocalModelSetup } from '../local-setup-popup.js'
 
 const SECTIONS = SETTINGS_GROUPS.flatMap(group => group.sections)
 
@@ -241,8 +240,9 @@ const SECTIONS = SETTINGS_GROUPS.flatMap(group => group.sections)
  * group head prints `group.sections` while it is CLOSED, and that line is the
  * page's whole answer to "find something without opening anything". A section
  * outside the model is not in that array, so the closed 'Start here' line read
- * "Home screen · Setup · System" and never said the words a person would use:
- * connecting a computer after signing up. A second placement mechanism did not move the section; it moved
+ * "Home screen · Setup · System" and never said the words the owner used:
+ * "as a user I dont even see how after signing up that I now connect my
+ * computer". A second placement mechanism did not move the section; it moved
  * the section out of the sentence that advertises it.
  */
 /* SEVENTY-FOUR ROWS WERE REMOVED FROM THIS CATALOGUE ON 2026-08-20, and the
@@ -263,8 +263,8 @@ const SECTIONS = SETTINGS_GROUPS.flatMap(group => group.sections)
  * thread memory span, a simulation tick bias -- do not exist anywhere in this
  * tree, so "wiring them up" would mean building them.
  *
- * THE WORDING IS NOT LOST. Every removed definition is kept verbatim in the
- * design notes, with a dated header saying
+ * THE WORDING IS NOT LOST. Every removed definition is kept verbatim in
+ * docs/design/UNBUILT-SETTINGS-ROWS-2026-08-20.md, with a dated header saying
  * they are unbuilt intentions, so nobody has to re-invent a reviewed sentence
  * when one of these features is actually built.
  *
@@ -304,8 +304,8 @@ const notificationBlockedReason = () => {
 export const SETTINGS = [
   /* "THIS COMPUTER": THE FIVE ROWS THAT REPLACED A PAGE.
    *
-   * The "What this copy needs" page moved into Settings, simpler and more
-   * useful. The page said
+   * The owner: "can we get rid of the what this copy needs page and put it
+   * nicely into settings and make it more simple and useful". The page said
    * everything at once, in three paragraphs per subject, at an address nothing
    * else in the product was a stop on. These five rows say the same true things
    * in the place a person already goes to change what this copy does.
@@ -337,7 +337,7 @@ export const SETTINGS = [
      instead, which costs one door to the setup screen -- recorded in REPORT.md
      rather than quietly dropped. */
   /* THE DOOR IS ABSENT WHEN THE BACKEND SAYS SO, NEVER A DEAD BUTTON -- the
-     rule for this one control, and the reason `absent` exists
+     owner's own rule for this one control, and the reason `absent` exists
      beside `blockedReason` rather than being folded into it. Everything else on
      this page that cannot succeed is drawn DISABLED with its reason beside it,
      which is the right answer for a switch. It is the wrong answer for a way to
@@ -366,22 +366,36 @@ export const SETTINGS = [
    * a setup screen with both answers labelled "Recommended", which is how it
    * ended up with no Start control anywhere. There is no correct answer here --
    * it depends on whether the person is reinstalling or leaving -- and a hint
-   * would be this file deciding for them. */
+   * would be this file deciding for them.
+   *
+   * ONLY THE WINDOWS UNINSTALLER READS THIS ANSWER, AND THE ROW SAYS SO.
+   * build/installer.nsh reads uninstall-data-policy.txt; the Linux package's
+   * maintainer script never looks at it, and apt does not remove per-user data
+   * at all. The row used to read as if "Remove everything" removed it on every
+   * platform (1.0.50 release review, release-ops F2), so a Linux reader who
+   * chose it kept their vault and signed record. The control stays usable
+   * rather than disabled: tools/account-isolation-leak-qa.mjs uses this seg as
+   * its second account-scoped subject on every platform, and a disabled seg
+   * would let that privacy probe pass on Linux without measuring anything. */
   {
     id: 'uninstall_data',
     section: 'Data & Privacy',
     name: 'When I uninstall ToolsEnabled',
-    desc: 'Uninstalling removes the program. It does not remove your saved credentials, '
+    /* The opening is conditional (REVIEW-1050 #8): the Windows uninstaller can
+       delete the data, so the row may not open by saying uninstalling keeps it. */
+    desc: 'Uninstalling removes the program. On Windows, the uninstaller then keeps or deletes your saved credentials, '
       + 'your linked accounts, the signed record of every action taken, your agent history '
-      + 'or your settings — those stay on this computer so a reinstall picks up where you '
-      + 'left off. Choose what should happen to them.',
+      + 'and your settings. Choose what the Windows uninstaller does with them; kept, they let '
+      + 'a reinstall pick up where you left off. '
+      + 'On Linux, removing the package always keeps them; to delete them, use '
+      + 'Remove this program’s data on the Account page before you uninstall.',
     depth: 1,
     type: 'seg',
     options: [['ask', 'Ask me then'], ['keep-my-data', 'Keep my data'], ['remove-everything', 'Remove everything']],
     def: 'ask',
   },
 
-  /* THE PERSON'S ENCRYPTED CREDENTIAL VAULT, MANAGED FROM SETTINGS.
+  /* THE OWNER'S ENCRYPTED CREDENTIAL VAULT, MANAGED FROM SETTINGS.
    *
    * A 'custom' ROW, LIKE THE "This computer" ROW ABOVE IT, AND FOR THE SAME
    * REASON: it stores no preference. The vault IS the store, and every honest
@@ -416,11 +430,10 @@ export const SETTINGS = [
    * tools/test/vault-credentials-settings.test.mjs. */
   { id: 'vault_credentials', section: 'Data & Privacy', name: 'Credentials stored on this computer', desc: 'The names of the records in this computer’s encrypted vault. What they hold is never shown here.', depth: 1, type: 'custom', mount: 'vault-credentials', disclosure: false, def: null },
 
-  { id: 'theme', section: 'Appearance', name: 'Theme', desc: 'Choose a light surface, warm charcoal, or a deep red or blue glow.', depth: 1, type: 'seg', options: THEME_CHOICES.map(choice => [choice.id, choice.label]), def: 'white' },
-  /* The choices live in src/font-choice.js (R1523); each option's
+  { id: 'theme', section: 'Appearance', name: 'Theme', desc: 'Choose a light or dark surface, with warm red or cool blue tints.', depth: 1, type: 'seg', options: THEME_CHOICES.map(choice => [choice.id, choice.label]), def: 'white' },
+  /* The choices live in src/font-choice.js (owner, R1523); each option's
      button is written in the font it applies, here and in the drawer. */
-  { id: 'ui_font', section: 'Appearance', name: 'Font', desc: 'Compare the letter shapes, then choose what feels easiest to read. Source Sans 3 is a good starting point for longer reading. Code keeps its monospace font.', depth: 1, type: 'seg', options: FONT_CHOICES.map(choice => [choice.id, choice.label]), def: 'plex' },
-  { id: 'home_circle_style', section: 'Appearance', name: 'Home circle', desc: 'Classic is the original still ring with a soft side glow and lower power use. Blob adds an animated fluid character that responds to your agents.', depth: 1, type: 'seg', options: HOME_CIRCLE_STYLES.map(choice => [choice.id, choice.label]), def: DEFAULT_HOME_CIRCLE_STYLE },
+  { id: 'ui_font', section: 'Appearance', name: 'Font', desc: 'Compare the letter shapes, then choose what feels easiest to read. Source Sans 3 is a good starting point for longer reading. Code keeps its monospace font.', depth: 1, type: 'seg', options: FONT_CHOICES.map(choice => [choice.id, choice.label]), def: DEFAULT_FONT },
   ...HOME_STATUS_COLOR_SETTINGS.map(setting => ({ ...setting, section: 'Appearance', depth: 1, type: 'color', def: 'auto' })),
   { id: 'tree_style', section: 'Appearance', name: 'Agent tree style', desc: 'Circles show separate context cards. Boxes put the context inside each agent. Both use the same tree controls.', depth: 1, type: 'seg', options: [['circles', 'Circles'], ['boxes', 'Boxes']], def: 'boxes' },
   { id: 'tree_cards', section: 'Appearance', name: 'Circle context cards', desc: 'Show context cards beside circle nodes. Click a card for side chat; double-click a circle to open its conversation.', depth: 1, type: 'toggle', def: true },
@@ -428,8 +441,6 @@ export const SETTINGS = [
   { id: 'text_size', section: 'Text & Reading', name: 'Text size', desc: 'Make everything bigger or smaller without changing the layout.', depth: 1, type: 'seg', options: TEXT_SIZE_OPTIONS, def: '1' },
 
   { id: 'reduce_motion', section: 'Motion & Effects', name: 'Reduce motion', desc: 'Turn animation off: things move instantly and nothing pulses in the background.', depth: 1, type: 'toggle', def: false },
-  { id: 'home_circle_motion', section: 'Motion & Effects', name: 'Home circle motion', desc: 'For Standard: System follows your device preference, Animate lets the blob move, and Still stops it. Reduce motion always pauses it. Simple stays still with any choice.', depth: 1, type: 'seg', options: HOME_CIRCLE_MOTIONS.map(choice => [choice.id, choice.label]), def: DEFAULT_HOME_CIRCLE_MOTION },
-  { id: 'glow', section: 'Motion & Effects', name: 'Glow intensity', desc: 'How brightly the glowing status lights shine.', depth: 1, type: 'range', min: 0, max: 200, step: 1, unit: '%', def: 100 },
 
   /* WHAT THIS CONTROL DOES, IN THE ENGINE'S OWN TERMS. Its first draft said a
      second click "moves exactly that list into the archive"; the engine
@@ -442,13 +453,13 @@ export const SETTINGS = [
      A cloud agent diffs against a MIRROR -- a private repository holding the
      tree it works from -- and a dispatch with none registered refuses
      CLOUD_MIRROR_NOT_REGISTERED, correctly. The person enters the dedicated
-     private GitHub repository, and the dialog proves that exact repository is
-     also the one the selected Cloud environment reports. */
-  { id: 'cloud_mirror_setup', section: 'App permissions', name: 'Cloud mirror', desc: 'Cloud work runs from a private copy of a folder on this computer, so your own work is left as it is. Enter the dedicated private GitHub repository and choose the Cloud environment bound to that same repository. Public or mismatched destinations are refused.', depth: 1, type: 'action', action: 'cloud-mirror-setup', actionLabel: 'Set up a mirror', def: null },
+     private GitHub repository and its Cloud environment ID. The dialog verifies
+     the private destination and explains the unconfirmed environment binding. */
+  { id: 'cloud_mirror_setup', section: 'App permissions', name: 'Cloud mirror', desc: 'Cloud work runs from a private copy of a folder on this computer, so your own work is left as it is. Enter the dedicated private GitHub repository and its Cloud environment ID. ToolsEnabled cannot confirm that the environment points at that repository. Public or mismatched destinations are refused.', depth: 1, type: 'action', action: 'cloud-mirror-setup', actionLabel: 'Set up a mirror', def: null },
 
-  /* THE HAND OVERRIDE OF WHAT AN AGENT WROTE. A basic diff editing screen: the
-     original file and the new file, split, in a pop-up window, so a user can
-     pull up, review and modify diffs easily. It is a
+  /* THE HAND OVERRIDE OF WHAT AN AGENT WROTE. The owner asked for "a basic diff
+     editing screen ... the original file and the new file; split; in a popup
+     window ... so a user can pull up review and modify diffs easily". It is a
      row here rather than a stop on the ring because it is a person-initiated
      tool with no state of its own, which is what this page already hosts (the
      mirror dialog above opens exactly this way), and because adding a second
@@ -460,8 +471,8 @@ export const SETTINGS = [
   /* 'offline_fallback' was removed 2026-08-13 rather than left as a row: it was
      declared here and read by NOTHING in the tree, so the toggle moved and
      changed no behavior — a control that looks real and is not, the exact
-     defect class the standing rule covers (a user setting needs a registry
-     row, enforcement, and a control, or it is a lie). If a demonstration fallback
+     defect class the owner has ruled on ("a user setting needs registry,
+     enforcement, and a control, or it's a lie"). If a demonstration fallback
      for unreadable live data is ever wanted, it gets built first and its row
      returns with a reader. */
   /* ONE ROW WHERE SEVEN WERE, AND THE SWITCH POINTS THE OTHER WAY.
@@ -501,8 +512,9 @@ export const SETTINGS = [
      state line says the current truth first and the shipped default after. */
   /* THE NOTIFICATIONS, AND WHY THEY SHIP OFF.
    *
-   * The requirement: the app makes sure notifications are delivered, and each
-   * one is a setting the user picks. So every
+   * The owner asked for this in these words: "we need to make sure in the app
+   * that notifications are delivered", and decided how it is controlled in
+   * these: "settings -> all of these are just settings a user picks". So every
    * trigger is a row here and nothing notifies that a person did not switch on.
    *
    * DEFAULT OFF IS THE RULE, NOT A CAUTIOUS CHOICE. This product does not opt
@@ -663,23 +675,11 @@ function readValue(setting) {
   /* Like theme: the applied state on the root element is the truth, not a
      stored copy (src/font-choice.js reads the inline --font-ui property). */
   if (setting.id === 'ui_font') return currentFontChoice()
-  if (setting.id === 'home_circle_style') return currentHomeCircleStyle()
-  if (setting.id === 'home_circle_motion') return currentHomeCircleMotion()
   if (setting.type === 'color') return currentHomeStatusColor(setting.status)
   /* Same rule for the size: read the applied zoom back through the module
      that applied it (src/text-size.js), rather than keeping a second list of
      which sizes exist here. */
   if (setting.id === 'text_size') return String(normalizeTextSize(textZoom()) ?? DEFAULT_TEXT_SIZE)
-  if (setting.id === 'glow') {
-    /* The applied value lives on the root element; the drawer's slider is a
-       COPY of it and only exists once the drawer has rendered (it is built
-       per page since R1520), so the variable is the source and the slider
-       only a fallback. */
-    const applied = parseFloat(document.documentElement.style.getPropertyValue('--glow'))
-    if (Number.isFinite(applied)) return Math.round(applied * 100)
-    const drawerValue = Number(document.getElementById('set-glow')?.value)
-    return Number.isFinite(drawerValue) ? drawerValue : setting.def
-  }
   if (setting.id === 'reduce_motion') return document.body.classList.contains('reduce-motion')
   return readStored(setting)
 }
@@ -921,7 +921,7 @@ export function rowMarkup(setting, searchResult = false) {
  * "everything · 0 more" INSIDE its opened tier, because nothing lives at depth
  * 3 or 4 anywhere on this page any more.
  *
- * The report was that the nesting is cluttered. A control offering to
+ * The owner's report was that the nesting is messy. A control offering to
  * unfold an empty fold is the page claiming a level it does not have, on the
  * screen whose whole complaint is about levels -- and it is the same family as
  * the six titled-but-empty headings removed on 2026-08-20, one rung down.
@@ -1154,8 +1154,8 @@ function requestedSetting(query) {
      turns it from a program on one machine into the product: the row is not in
      SETTINGS -- it is the installed application's business, like the research
      rows above -- so the best any link could do was drop somebody at the top of
-     this page. The report was that, after signing up, a user could not see
-     how to connect their computer. The id is read from
+     this page. The owner's words were "as a user I dont even see how after
+     signing up that I now connect my computer". The id is read from
      src/device-claim-flow.js, which is also what the row stamps on itself, so
      the link and the landing cannot drift apart. */
   if (id === CONNECT_SETTING_ID) return { id, section: CONNECT_SECTION, depth: 1 }
@@ -1164,9 +1164,10 @@ function requestedSetting(query) {
 
 /* THE CATEGORY ON SCREEN IS ONE OF TWELVE PAGES, AND THE ADDRESS SAYS WHICH.
  *
- * The rule: each settings category is its own fully separate page, so
- * pressing one in the list on the left brings up just that category and no
- * other.
+ * The owner: "the settings categories should be THEIR OWN SEPERATED FULLY
+ * SEPERATE PAGES FOR EACH SECTION so when i press one on the list on the left
+ * hand side it pulls up just that category of settings and no other categories
+ * from the list."
  *
  * So the rail is navigation, not a table of contents, and a press changes the
  * address the way every other move in this product does -- `#/settings` is one
@@ -1264,6 +1265,7 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
   let draftRevision = 0
   let updateDraftStatus = () => {}
   const draft = createSettingsDraft({ onChange: () => { draftRevision += 1; updateDraftStatus() } })
+  const categoryFocus = focusKeeper()
   const numericEdits = new Map()
   const stageWrite = (key, value, write, options) => draft.stage(key, value, write, options)
   const transcriptController = createTranscriptSettings({ draft })
@@ -1299,6 +1301,7 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
   const treeContextController = createTreeContextSettings({ draft, stageWrite })
   const researchController = createResearchSettings({ shell: productDraftBridge,
     onRender: ({ loaded = false } = {}) => {
+      placeLocalSetupEntry()
       if (loaded && query.trim()) {
         const expected = PRODUCT_SECTIONS.filter(section => researchController.matches(query, section))
         const displayed = [...sectionsNode.querySelectorAll('[data-product-section]')].map(node => node.dataset.productSection)
@@ -1310,6 +1313,20 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
   })
   const connectController = createConnectComputerSettings()
   const remoteComputerController = createRemoteComputerSettings()
+
+  /* SET UP LOCAL MODELS, UNDER THE LOCAL MODELS HEADING. The rows are drawn
+     by the product-settings controller, which repaints its section whole; the
+     entry is put back after every paint, right under the section's
+     description, so a person looking for local models meets the one button
+     that gets them working before the rows that tune them. */
+  function placeLocalSetupEntry() {
+    for (const section of sectionsNode.querySelectorAll('[data-local-models-settings]')) {
+      if (section.querySelector('[data-local-setup-entry]')) continue
+      const anchor = section.querySelector('.settings-category-description') || section.querySelector('.settings-section-title') || section.querySelector('.settings-prefix')
+      if (!anchor) continue
+      anchor.insertAdjacentElement('afterend', localSetupEntryElement(document))
+    }
+  }
 
   /* "This computer" IS BUILT THE FIRST TIME IT IS DRAWN, AND NOT BEFORE.
    *
@@ -1352,9 +1369,9 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
     isBlocked: () => maintenanceBusy,
     onSavedProfileChange: () => permissionController.repaint(),
   })
-  /* THE OTHER QUICK SLIDERS (a few sliders for changing different
-     things quickly, easily reachable on the Settings landing page, each with
-     about five or six options). Same draft, same
+  /* THE OTHER QUICK SLIDERS (owner, 2026-09-15: "a few sliders for different
+     things to be changed quickly ... easily accessible on the settings landing
+     page", then "the sliders need like 5-6 options each"). Same draft, same
      bridge, same Save; a stop sets the rows it names and no others. */
   const quickSlidersController = createQuickSliders({ draft, productSettings: productDraftBridge,
     onStaged: () => { renderCurrent(); workingProfileController.sync() },
@@ -1610,6 +1627,7 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
     setupController.afterRender(root)
     chatboxController.afterRender(root)
     researchController.afterRender(root)
+    placeLocalSetupEntry()
     connectController.afterRender(root)
     updateController.afterRender(root)
     void roleColorController.afterRender(root)
@@ -1645,7 +1663,7 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
    *
    * Same rule and same reason as ensureThisComputer above: building it asks the
    * main process to run a PowerShell program against the encrypted store, and
-   * somebody who opened Appearance has asked nothing about their credentials. So
+   * somebody who opened Appearance has asked nothing about his credentials. So
    * the controller is constructed the first time the Data & Privacy socket is
    * in the column, and a visit that never opens that category never touches the
    * vault.
@@ -1733,8 +1751,8 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
 
   /* THE QUICK STRIP BELONGS TO THE LANDING PAGE, NOT TO EVERY CATEGORY.
    *
-   * The sliders are easily reachable on the Settings landing page. The landing
-   * page is the section Settings opens on
+   * Owner, 2026-09-15: the sliders should be "easily accessible on the
+   * settings landing page". The landing page is the section Settings opens on
    * -- DEFAULT_CATEGORY, "This computer" -- and that is the whole of the ask.
    *
    * MEASURED, which is why this is a rule and not a preference. Drawn above
@@ -1853,6 +1871,7 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
   function renderCategory() {
     root.dataset.settingsSearch = 'false'
     root.dataset.settingsLanding = landing ? 'true' : 'false'
+    categoryFocus.hold(sectionsNode)
     sectionsNode.innerHTML = sectionNodeMarkup(activeSection)
     // `inert` is the primary guard; the explicit tabindex pass keeps closed
     // tiers unreachable in older engines while preserving the CSS reveal.
@@ -1864,6 +1883,7 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
     updateFooter()
     syncRail()
     markLanding()
+    categoryFocus.restore(sectionsNode)
   }
 
   function renderSearch() {
@@ -2011,10 +2031,6 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
       localStorage.setItem(FONT_STORAGE_KEY, value)
       applyFontChoice(value)
       setDrawerSegment('#font-seg', 'font', value)
-    } else if (setting.id === 'home_circle_style') {
-      value = setHomeCircleStyle(value)
-    } else if (setting.id === 'home_circle_motion') {
-      value = setHomeCircleMotion(value)
     } else if (setting.type === 'color') {
       value = setHomeStatusColor(setting.status, value, { theme: colorTheme })
     } else if (setting.id === 'text_size') {
@@ -2032,19 +2048,6 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
       localStorage.setItem(TEXT_SIZE_KEY, value)
       applyTextSize(normalized)
       setDrawerSegment('#text-seg', 'text', value)
-    } else if (setting.id === 'glow') {
-      const number = clampNumber(setting, value)
-      /* WRITTEN DOWN, NOT ONLY APPLIED. Without this the slider moved, the page
-         changed, and the choice was gone at the next launch. */
-      rememberAppearance(GLOW_SETTING_ID, number)
-      document.documentElement.style.setProperty('--glow', String(number / 100))
-      const drawerRange = document.getElementById('set-glow')
-      if (drawerRange) {
-        drawerRange.value = number
-        const percent = ((number - Number(drawerRange.min)) / (Number(drawerRange.max) - Number(drawerRange.min))) * 100
-        drawerRange.style.setProperty('--fill', `${percent}%`)
-      }
-      value = number
     } else if (setting.id === 'reduce_motion') {
       value = Boolean(value)
       rememberAppearance(REDUCE_MOTION_SETTING_ID, value)
@@ -2090,6 +2093,12 @@ export function settingsView({ query: routeQuery = null, navigate = hash => { lo
   }
 
   sectionsNode.addEventListener('click', event => {
+    /* The popup saves through mcSettings.setMany; the rows re-read what it
+       saved once a Local agent can start. */
+    if (event.target.closest('button[data-local-setup-open]')) {
+      openLocalModelSetup({ onReady: () => { void researchController.refreshSaved() } })
+      return
+    }
     /* The one one-press section control. It goes through applyValue, the
        same door every individual switch uses, so the write, the store and the
        row repaint are exactly what a row-by-row walk would have done. (Data &

@@ -174,7 +174,7 @@ async function main() {
   })
   vm.runInNewContext(mainSource.slice(navigationStart, navigationEnd), {
     window: win, inputOwner: owner, accessibilityApp: adapter, accessibilityHost: host, voiceHost,
-    screenControlHost: screenHost,
+    screenControlHost: screenHost, videoBoxHost: { close() {} },
     handCameraOwners: new Set([owner]), treeNodeCommandBroker: { rendererReloaded: async () => {} },
   })
   let fullDocumentStarts = 0

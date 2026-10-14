@@ -15,6 +15,11 @@
  *      the half a unit test cannot reach -- a real window, closed and reopened,
  *      with the choice made by a mouse on the actual controls.
  *
+ *      1.0.50 retired the Glow slider from the drawer and from the settings
+ *      page (DESIGN-ADDENDUM item 5): a saved `mc.set.glow` value is kept but
+ *      never applied, and that is the unit suite's to check. This drive no
+ *      longer looks for the slider and measures reduce motion alone.
+ *
  *   2  THE RESET IN THE RESEARCH PAGE'S "EDIT LAYOUT" COULD NOT BE CLICKED. The
  *      components tray belongs to the shared layout engine and carries
  *      `margin-top: -20px` so it tucks under the METRICS filter row, which is
@@ -172,9 +177,7 @@ async function completeFirstRun(window) {
 }
 
 const APPLIED = `({
-  glow: getComputedStyle(document.documentElement).getPropertyValue('--glow').trim(),
   reduceMotion: document.body.classList.contains('reduce-motion'),
-  storedGlow: localStorage.getItem('mc.set.glow'),
   storedMotion: localStorage.getItem('mc.set.reduce_motion'),
 })`
 
@@ -190,7 +193,7 @@ async function main() {
   const profile = path.join(scratch, 'profile')
   let window = null
   try {
-    console.log('\nGLOW AND REDUCE MOTION, SET FROM THE GEAR DRAWER')
+    console.log('\nREDUCE MOTION, SET FROM THE GEAR DRAWER')
     window = await openWindow(staged.executable, profile)
     await completeFirstRun(window)
     note(`at launch: ${JSON.stringify(await window.evaluate(APPLIED))}`)
@@ -199,23 +202,11 @@ async function main() {
     await delay(1200)
     /* WAITED FOR, NOT SAMPLED ONCE. The drawer slides in, and a window opened
        with show:false is not compositing, so its transition work is deferred:
-       the slider read `offscreen` at 1.2s and was on the glass a second later. */
-    let slider = await at(window, '#set-glow')
-    for (let wait = 0; wait < 20 && slider?.state !== 'visible'; wait += 1) {
+       a control read `offscreen` at 1.2s and was on the glass a second later. */
+    let toggle = await at(window, 'label:has(#set-motion), .set-row:has(#set-motion) .toggle')
+    for (let wait = 0; wait < 20 && toggle?.state !== 'visible'; wait += 1) {
       await delay(300)
-      slider = await at(window, '#set-glow')
-    }
-    if (slider?.state !== 'visible') {
-      check('the drawer offers a glow slider', false, `the slider is ${slider?.state}`)
-    } else {
-      /* A point a fifth of the way along the track, the way a person nudges it. */
-      const x = slider.left + slider.width * 0.2
-      for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
-        await window.session.send('Input.dispatchMouseEvent', { type, x, y: slider.y, button: type === 'mouseMoved' ? 'none' : 'left', clickCount: type === 'mouseMoved' ? 0 : 1 })
-        await delay(50)
-      }
-      await delay(500)
-      check('the drawer offers a glow slider', true)
+      toggle = await at(window, 'label:has(#set-motion), .set-row:has(#set-motion) .toggle')
     }
     const motionOn = await changeMotion(window, {
       inputSelector: '#set-motion',
@@ -225,8 +216,7 @@ async function main() {
     })
     note(`reduce motion on: ${JSON.stringify(motionOn)}`)
     const set = await window.evaluate(APPLIED)
-    note(`after pressing both: ${JSON.stringify(set)}`)
-    check('the drawer writes the glow down', set.storedGlow !== null, `stored ${set.storedGlow}`)
+    note(`after pressing: ${JSON.stringify(set)}`)
     check('the drawer turns reduce motion on and writes it down',
       motionOn.changed && motionOn.after.disabled === false && motionOn.after.bodyClass === true && motionOn.after.key === 'true',
       JSON.stringify(motionOn))
@@ -240,7 +230,6 @@ async function main() {
     window = await openWindow(staged.executable, profile)
     const back = await window.evaluate(APPLIED)
     note(`at launch: ${JSON.stringify(back)}`)
-    check('the glow survives a restart', String(set.glow) === String(back.glow), `${set.glow} -> ${back.glow}`)
     check('reduce motion survives a restart', set.reduceMotion === back.reduceMotion, `${set.reduceMotion} -> ${back.reduceMotion}`)
 
     console.log('\nTHE SETTINGS PAGE READS THE SAME CHOICE')
@@ -249,14 +238,11 @@ async function main() {
     } else {
       check('the settings page can be reached by pressing the arrow', true)
       await delay(1500)
-      /* Glow and reduce motion are two rows on ONE category page, and every
-         category is its own page now, so the page is opened by its address
-         before the two presses below look for their controls. */
+      /* Reduce motion is a row on its own category page, and every category
+         is its own page now, so the page is opened by its address before the
+         press below looks for its control. */
       await window.evaluate(`location.hash = '#/settings?category=motion-effects'`)
-      await delay(900)
-      const shown = await window.evaluate(`document.querySelector('[data-setting-id="glow"] input[type="range"]')?.value ?? null`)
-      check('the settings page shows what the drawer set', String(shown) === String(back.storedGlow), `row ${shown} vs stored ${back.storedGlow}`)
-      await delay(1200)
+      await delay(2100)
       const off = await changeMotion(window, {
         inputSelector: '[data-setting-id="reduce_motion"] input[type="checkbox"]',
         hitSelector: '[data-setting-id="reduce_motion"] label.settings-toggle',

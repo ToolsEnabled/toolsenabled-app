@@ -32,7 +32,7 @@ function themeTokens(css, theme) {
   return tokens
 }
 
-/* THE WARN CHIP GROUND IS A PER-THEME TOKEN: --s-warn-wash
+/* THE WARN CHIP GROUND IS A PER-THEME TOKEN (owner review 2026-09-23): --s-warn-wash
    is a color-mix declared in theme-refinements.css, on :root for the dark sheets and
    again on White and Tan. Resolve it the way the cascade does: :root first, then the
    theme's own block. */

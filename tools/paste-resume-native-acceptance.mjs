@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-export const pair = {app:'a'.repeat(40),engine:'b'.repeat(40)};
+export const pair = {app:'07091006f633d8e452ea9b6a27d0281c88f6249b',engine:'f3d8bb3d81fb6a1868a13b2c4f1dbb1dafd0544c'};
 export const cases = ['paste-agent-first','paste-agent-continue','paste-session-first','paste-session-continue','capture-mcp','resume-codex-claude','resume-claude-codex','resume-codex-codex','resume-claude-claude','resume-legacy'];
 export function template() { return {schema:1, mode:'unexecuted', pair, controllerRun:'', disposableProfile:'', cases:cases.map(id=>({id,evidence:[],observed:{}}))}; }
 export function validate(doc, root) {

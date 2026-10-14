@@ -1,31 +1,33 @@
 /* Setup uses the application theme and a single reading column. Native choice
    buttons keep the complete permission wording available to pointer, keyboard,
    touch and assistive technology users. */
-.setup-page { display: flex; }
-.setup-page > .setup-shell {
-  max-width: min(var(--page-max), 840px);
+.setup-page { display: flex; height: max(0px, calc(100% - var(--fleet-profile-notice-clearance, 0px))); }
+body[data-navigation] .view-pad.setup-page:has([data-setup-section]) > .setup-shell {
+  max-width: 720px;
   margin-block: auto;
   padding-block: var(--s5);
+  margin-inline: auto;
+  container: setup-shell / inline-size;
 }
-.setup-section {
+.setup-page [data-setup-section].setup-section {
   container: setup-content / inline-size;
-  padding: clamp(var(--s3), 4vw, calc(var(--s5) * 2));
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-lg);
-  background: var(--sheet);
-  box-shadow: var(--elev-1);
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  box-shadow: none;
 }
-.setup-header {
+.setup-page [data-setup-section] .setup-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: var(--s3);
   margin-bottom: var(--s5);
 }
-.setup-brand { color: var(--ink); font-size: 14px; font-weight: 640; }
-.setup-brand > span { margin-left: var(--s2); color: var(--ink-3); font-weight: 400; }
-.setup-progress { color: var(--ink-2); font-size: 12.5px; white-space: nowrap; }
-.setup-steps {
+.setup-page [data-setup-section] .setup-brand { color: var(--ink); font-size: 14px; font-weight: 650; }
+.setup-page [data-setup-section] .setup-brand > span { margin-left: var(--s2); color: var(--ink-3); font-weight: 400; }
+.setup-page [data-setup-section] .setup-progress { color: var(--ink-3); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.setup-page [data-setup-section] .setup-steps {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--s2);
@@ -34,104 +36,142 @@
   margin: 0 0 var(--s5);
   border-bottom: 1px solid var(--line-2);
 }
-.setup-steps li { display: flex; align-items: flex-start; gap: var(--s2); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
-.setup-steps small { display: block; font-size: 12.5px; font-weight: 400; }
-.setup-step-number {
+.setup-page [data-setup-section] .setup-steps li { display: flex; align-items: flex-start; gap: var(--s2); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; font-weight: 550; }
+.setup-page [data-setup-section] .setup-steps li { position: relative; flex-direction: column; font-weight: 550; }
+.setup-page [data-setup-section] .setup-steps li:not(:last-child)::before { content: ''; position: absolute; top: 11px; left: 22px; right: calc(-1 * var(--s2)); border-top: 1.5px solid var(--line-strong); }
+.setup-page [data-setup-section] .setup-steps li.is-complete::before { border-color: var(--ink); }
+.setup-page [data-setup-section] .setup-steps small { display: block; font-size: 12.5px; font-weight: 400; }
+.setup-page [data-setup-section] .setup-step-number {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border: 1px solid var(--line-2);
   border-radius: 50%;
   font-size: 12.5px;
+  border-color: var(--field-border);
+  color: var(--ink-2);
+  background: var(--bg-surface);
 }
-.setup-steps [aria-current='step'] { color: var(--ink); font-weight: 640; }
-.setup-steps [aria-current='step'] .setup-step-number { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
-.setup-steps .is-complete .setup-step-number { border-color: var(--ink-3); color: var(--ink-2); }
-.setup-title { margin: 0 0 var(--s3); color: var(--ink); font-size: clamp(22px, 3vw, 28px); font-weight: 640; line-height: 1.25; letter-spacing: -0.02em; }
-.setup-title:focus { outline: none; }
-.setup-lede { margin: 0 0 var(--s5); color: var(--ink-2); font-size: 14px; line-height: 1.6; }
-.setup-subtitle { margin: var(--s5) 0 var(--s2); color: var(--ink-2); font-size: 13px; font-weight: 640; line-height: 1.5; }
-.setup-choices { display: grid; gap: var(--s3); }
-.setup-choice-card {
+.setup-page [data-setup-section] .setup-steps [aria-current='step'] { color: var(--ink); font-weight: 600; }
+.setup-page [data-setup-section] .setup-steps [aria-current='step'] .setup-step-number { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-ink); }
+.setup-page [data-setup-section] .setup-steps .is-complete .setup-step-number { border-color: var(--ink-3); color: var(--ink-2); }
+.setup-page [data-setup-section] .setup-title { margin: 0 0 var(--s3); color: var(--ink); font-size: 28px; font-weight: 650; line-height: 1.2; letter-spacing: -0.012em; }
+.setup-page [data-setup-section] .setup-title:focus:not(:focus-visible) { outline: none; }
+.setup-page [data-setup-section] .setup-lede { margin: 0 0 var(--s5); color: var(--ink-2); font-size: 14.5px; line-height: 1.5; max-width: 60ch; }
+.setup-page [data-setup-section] .setup-subtitle { margin: var(--s5) 0 var(--s2); color: var(--ink-2); font-size: 13px; font-weight: 640; line-height: 1.5; }
+.setup-page [data-setup-section] .setup-choices { display: grid; gap: var(--s3); }
+.setup-page [data-setup-section] .setup-choice-card {
   display: flex;
-  gap: var(--s3);
+  gap: 12px;
   align-items: flex-start;
   width: 100%;
-  padding: var(--s4);
+  padding: 16px;
   color: var(--ink);
   background: var(--sheet);
   border: 1px solid var(--line-2);
-  border-radius: var(--r-md);
+  border-radius: 10px;
   font: inherit;
   text-align: left;
   cursor: pointer;
+  border-color: var(--line);
 }
-.setup-choice-card .settings-copy { display: block; min-width: 0; }
-.setup-choice-card .settings-name { display: block; margin-bottom: var(--s1); font-size: 14px; line-height: 1.5; }
-.setup-choice-card .settings-desc { display: block; font-size: 13px; line-height: 1.6; }
+.setup-page [data-setup-section] .setup-choice-card .settings-copy { display: block; min-width: 0; }
+.setup-page [data-setup-section] .setup-choice-card .settings-name { display: block; margin-bottom: var(--s1); font-size: 14px; line-height: 1.5; font-weight: 600; }
+.setup-page [data-setup-section] .setup-choice-card .settings-desc { display: block; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
 .settings-desc[hidden] { display: none; }
-.setup-choice-card:hover { border-color: var(--ink-3); }
-.setup-choice-card[aria-pressed='true'] { border-color: var(--ink-2); background: var(--seg-bg); }
-.setup-choice-mark { flex: 0 0 18px; height: 18px; margin-top: var(--s1); border: 1px solid var(--ink-3); border-radius: 50%; display: grid; place-items: center; }
-.setup-choice-card[aria-pressed='true'] .setup-choice-mark::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
-.setup-choice-card:disabled { cursor: wait; opacity: 0.65; }
-.setup-choice-card:focus-visible,
-.setup-section summary:focus-visible,
-.setup-section .ctl-btn:focus-visible,
-.setup-skip:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
-.setup-badge { display: inline-block; margin-left: var(--s1); padding: 0 var(--s2); border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--sheet); color: var(--ink-2); font-size: 12.5px; font-weight: 400; vertical-align: middle; }
-.setup-choice { grid-template-columns: minmax(0, 1fr); align-items: start; }
-.setup-consequence { margin-top: var(--s1); padding-left: var(--s2); border-left: 2px solid var(--s-warn); color: var(--s-warn-text, var(--s-warn)); }
-.setup-question { border-top: none; padding-top: 0; }
+.setup-page [data-setup-section] .setup-choice-card:hover { border-color: var(--field-border); }
+.setup-page [data-setup-section] .setup-choice-card[aria-pressed='true'] { border: 1px solid var(--line); background: var(--bg-subtle); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.setup-page [data-setup-section] .setup-choice-mark { flex: 0 0 18px; height: 16px; margin-top: var(--s1); border: 1px solid var(--ink-3); border-radius: 50%; display: grid; place-items: center; flex-basis: 16px; border-color: var(--field-border); }
+.setup-page [data-setup-section] .setup-choice-card[aria-pressed='true'] .setup-choice-mark::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); }
+.setup-page [data-setup-section] .setup-choice-card:disabled { cursor: not-allowed; opacity: .45; }
+.setup-page [data-setup-section] .setup-choice-card:focus-visible,
+.setup-page [data-setup-section].setup-section summary:focus-visible,
+.setup-page [data-setup-section].setup-section .ctl-btn:focus-visible,
+.setup-page [data-setup-section] .setup-skip:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
+.setup-page [data-setup-section] .setup-badge { display: inline-block; margin-left: var(--s1); padding: 0 var(--s2); border: 1px solid var(--line-2); border-radius: 11px; background: var(--status-idle-soft); color: var(--status-idle); font-size: 12px; font-weight: 550; vertical-align: middle; min-height: 22px; box-sizing: border-box; }
+.setup-page [data-setup-section] .setup-choice { grid-template-columns: minmax(0, 1fr); align-items: start; }
+.setup-page [data-setup-section] .setup-consequence { margin-top: var(--s1); padding-left: var(--s2); border-left: 2px solid var(--s-warn); color: var(--ink); }
+.setup-page [data-setup-section] .setup-question { border-top: none; padding-top: 0; }
 
-.setup-question .fleet-profile-fields {
+.setup-page [data-setup-section] .setup-question .fleet-profile-fields {
   width: 100%;
   max-width: 100%;
 }
-/* THE EDGE OF AN ACCOUNT FIELD MEETS 3:1 IN EVERY THEME (T1564). --line-2 is a
-   divider tone (about 1.4:1 light and 1.6:1 dark), so a field drawn with it
-   read as a row line or as nothing. The fourth ink is 3.7:1 or more on the
-   light sheets; on the dark ones it is not, so they take the third. */
-.setup-page { --setup-field-edge: var(--ink-4); }
-:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .setup-page { --setup-field-edge: var(--ink-3); }
-.setup-question .fleet-profile-input {
-  box-sizing: border-box;
-  min-height: 40px;
-  padding: var(--s2) var(--s3);
-  border: 1px solid var(--setup-field-edge);
-  border-radius: var(--r-sm);
-  background: var(--control-bg, var(--sheet));
-  color: var(--ink);
-}
-.setup-question .fleet-profile-input:hover:not(:disabled) { border-color: var(--ink-3); }
-.setup-question .fleet-profile-input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.setup-question .fleet-profile-input:disabled { cursor: not-allowed; opacity: .6; }
-/* The signed-out Account page draws the same fields; they are boxed the same way. */
-.setup-page [data-account-section] .fleet-profile-input {
+/* THE EDGE OF AN ACCOUNT FIELD MEETS 3:1 IN EVERY THEME (T1564). The field
+   edge is the 3:1 --field-border token (src/tokens.css). tokens.css is
+   loaded after this sheet from src/main.js, so a tree that draws this sheet
+   without it (a fixture, an import order slip) falls back to the ink that
+   token maps from: --ink-4 on the light sheets (3.7:1 or more), --ink-3 on
+   the dark ones. */
+.setup-page { --setup-field-edge: var(--field-border, var(--ink-4)); }
+:root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .setup-page { --setup-field-edge: var(--field-border, var(--ink-3)); }
+/* First-run fields: 36px, the onboarding control height (DESIGN §4 buttons:
+   36 for dialogs and onboarding), so they share a height with the 36px
+   Continue/Back buttons on the same card and keep the thumb-sized target the
+   320px walk relies on (setup-account-field-visibility.test.mjs). */
+.setup-page .setup-question .fleet-profile-input {
   box-sizing: border-box;
   min-height: 36px;
-  padding: var(--s1) var(--s2);
+  padding: 0 10px;
   border: 1px solid var(--setup-field-edge);
   border-radius: var(--r-sm);
-  background: var(--control-bg, var(--sheet));
+  background: var(--bg-surface, var(--sheet));
   color: var(--ink);
 }
-.setup-page [data-account-section] .fleet-profile-input:hover:not(:disabled) { border-color: var(--ink-3); }
-.setup-page [data-account-section] .fleet-profile-input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.setup-page [data-account-section] .fleet-profile-input:disabled { cursor: not-allowed; opacity: .6; }
-.setup-section .settings-desc { overflow-wrap: anywhere; }
-.setup-section .settings-row { min-width: 0; }
-.setup-section .settings-control { min-width: 0; }
-.setup-section .settings-row:has(.seg) { grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
-.setup-section .settings-row:has(.seg) .settings-control { justify-self: start; max-width: 100%; }
-.setup-section .fleet-profile-status { margin-block: var(--s3); line-height: 1.6; }
-.setup-disclosure { margin-top: var(--s3); border-top: 1px solid var(--line-2); padding-top: var(--s2); }
-.setup-disclosure > summary { padding-block: var(--s3); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; }
-.setup-disclosure > summary > span { margin-left: var(--s2); color: var(--ink-3); font-size: 12.5px; font-weight: 400; }
-.setup-section .ctl-btn { min-height: 36px; padding: var(--s2) var(--s3); white-space: normal; height: auto; }
-.setup-actions {
+.setup-page .setup-question .fleet-profile-input:hover:not(:disabled) { border-color: var(--ink-3); }
+.setup-page .setup-question .fleet-profile-input:focus-visible { outline: var(--focus-outline, 2px solid var(--focus-ring)); outline-offset: var(--focus-offset, 2px); }
+.setup-page .setup-question .fleet-profile-input:disabled { cursor: not-allowed; opacity: .45; }
+/* The signed-out Account page draws the same fields; they are boxed the same
+   way, at the 32px input height the rest of that page's controls use. */
+.setup-page [data-account-section] .fleet-profile-input {
+  box-sizing: border-box;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--setup-field-edge);
+  border-radius: var(--r-sm);
+  background: var(--bg-surface, var(--sheet));
+  color: var(--ink);
+}
+.setup-page [data-account-section] .fleet-profile-input:hover:not(:disabled):not(:focus) { border-color: var(--field-border-hover, var(--ink-3)); }
+.setup-page [data-account-section] .fleet-profile-input:focus-visible { outline: var(--focus-outline, 2px solid var(--focus-ring)); outline-offset: var(--focus-offset, 2px); }
+.setup-page [data-account-section] .fleet-profile-input:disabled { opacity: .45; cursor: not-allowed; }
+.setup-page [data-setup-section].setup-section .settings-desc { overflow-wrap: anywhere; }
+.setup-page [data-setup-section].setup-section .settings-row { min-width: 0; }
+.setup-page [data-setup-section].setup-section .settings-control { min-width: 0; }
+.setup-page [data-setup-section].setup-section .settings-row:has(.seg) { grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
+.setup-page [data-setup-section].setup-section .settings-row:has(.seg) .settings-control { justify-self: start; max-width: 100%; }
+.setup-page [data-setup-section].setup-section .fleet-profile-status {
+  --setup-notice-tone: var(--field-border);
+  position: relative;
+  margin-block: var(--s3);
+  padding: 12px 16px 12px 44px;
+  border: 1px solid var(--setup-notice-tone);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.setup-page [data-setup-section] .fleet-profile-status.is-serious { --setup-notice-tone: var(--status-error); }
+.setup-page [data-setup-section] .fleet-profile-status.is-good { --setup-notice-tone: var(--status-working); }
+.setup-page [data-setup-section] .fleet-profile-status::before {
+  content: ''; position: absolute; top: 14px; left: 16px; width: 16px; height: 16px;
+  background: var(--setup-notice-tone);
+  mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27black%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Cpath d=%27M12 7v6m0 4h.01%27/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.setup-page [data-setup-section] .fleet-profile-status strong { color: var(--ink); font-size: 13.5px; font-weight: 600; }
+.setup-page [data-setup-section] .fleet-profile-status span { color: var(--ink-2); font-size: 13.5px; }
+.setup-page [data-setup-section] .setup-disclosure { margin-top: var(--s3); border-top: 1px solid var(--line-2); padding-top: var(--s2); }
+.setup-page [data-setup-section] .setup-disclosure > summary { padding-block: var(--s3); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; }
+.setup-page [data-setup-section] .setup-disclosure > summary > span { margin-left: var(--s2); color: var(--ink-3); font-size: 12.5px; font-weight: 400; }
+.setup-page [data-setup-section].setup-section .ctl-btn { min-height: 36px; padding: 0 12px; white-space: nowrap; height: 36px; font-size: 13.5px; font-weight: 550; }
+.setup-page [data-setup-section] .setup-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -140,40 +180,52 @@
   padding-top: var(--s4);
   border-top: 1px solid var(--line-2);
 }
-.setup-actions-spacer { flex: 1 1 auto; }
-.setup-actions .ctl-btn { height: var(--control-h-lg, 36px); min-height: var(--control-h-lg, 36px); padding-inline: var(--s4); }
-.setup-actions [data-setup-continue],
-.setup-actions [data-setup-account-submit],
-.setup-actions:not(:has([data-setup-account-submit])) [data-setup-next] { background: var(--ink); color: var(--sheet); border-color: var(--ink); font-weight: 600; }
+.setup-page [data-setup-section] .setup-actions-spacer { flex: 1 1 auto; }
+.setup-page [data-setup-section] .setup-actions .ctl-btn { height: var(--control-h-lg, 36px); min-height: var(--control-h-lg, 36px); padding-inline: var(--s4); }
+.setup-page [data-setup-section] .setup-actions [data-setup-continue],
+.setup-page [data-setup-section] .setup-actions [data-setup-account-submit],
+.setup-page [data-setup-section] .setup-actions:not(:has([data-setup-account-submit])) [data-setup-next] { background: var(--primary-bg); color: var(--primary-ink); border-color: var(--primary-bg); font-weight: 550; }
 /* A shut Continue drew as a grey filled primary (the ink fill at 60%), which
    still reads as pressable. It takes the one disabled look every .ctl-btn has. */
-.setup-actions .ctl-btn:disabled { opacity: 1; color: var(--control-disabled-ink); background: var(--control-disabled-bg); border-color: var(--border-hairline); box-shadow: none; cursor: not-allowed; }
-.setup-skip { min-height: 40px; padding: var(--s2) 0; border: 0; background: none; color: var(--ink-3); font: inherit; font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-.setup-skip:hover { color: var(--ink); }
-.setup-root { display: flex; align-items: center; gap: var(--s2); padding: var(--s3); border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--seg-bg); }
-.setup-root-path { flex: 1 1 auto; min-width: 0; color: var(--ink); font-family: var(--font-mono); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
-.setup-hint { display: block; color: var(--ink-3); font-size: 12.5px; line-height: 1.6; }
-.setup-readiness-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); margin-block: var(--s3); }
-.setup-docker-guidance { margin-block: var(--s3); }
-.setup-docker-guidance summary { cursor: pointer; }
-.setup-docker-addresses { margin-block: var(--s2); }
-.setup-docker-addresses dd { margin: 0 0 var(--s2); overflow-wrap: anywhere; }
-.setup-section [data-sandbox-action] { min-height: 40px; padding: var(--s2) var(--s3); margin: var(--s1); font: inherit; color: var(--ink); border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--seg-bg); cursor: pointer; }
-.setup-section [data-sandbox-action]:disabled { opacity: 0.6; cursor: default; }
+.setup-page [data-setup-section] .setup-actions .ctl-btn:disabled { opacity: .45; box-shadow: none; cursor: not-allowed; }
+.setup-page [data-setup-section] .setup-skip { box-sizing: border-box; height: 36px; min-height: 36px; padding: 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 13.5px; font-weight: 550; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.setup-page [data-setup-section] .setup-skip:hover { color: var(--ink); }
+.setup-page [data-setup-section] .setup-root { display: flex; align-items: center; gap: var(--s2); padding: var(--s3); border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--seg-bg); }
+.setup-page [data-setup-section] .setup-root-path { flex: 1 1 auto; min-width: 0; color: var(--ink); font-family: var(--font-mono); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.setup-page [data-setup-section] .setup-hint { display: block; color: var(--ink-3); font-size: 12.5px; line-height: 1.6; }
+.setup-page [data-setup-section] .setup-readiness-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); margin-block: var(--s3); }
+.setup-page [data-setup-section] .setup-docker-guidance { margin-block: var(--s3); }
+.setup-page [data-setup-section] .setup-docker-guidance summary { cursor: pointer; }
+.setup-page [data-setup-section] .setup-docker-addresses { margin-block: var(--s2); }
+.setup-page [data-setup-section] .setup-docker-addresses dd { margin: 0 0 var(--s2); overflow-wrap: anywhere; }
+.setup-page [data-setup-section].setup-section [data-sandbox-action] { height: 36px; min-height: 36px; padding: 0 12px; margin: var(--s1); font: inherit; font-size: 13.5px; font-weight: 550; color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--control-bg); cursor: pointer; }
+.setup-page [data-setup-section].setup-section [data-sandbox-action]:disabled { opacity: .45; cursor: not-allowed; }
 body.first-run .topbar { display: none; }
 body.first-run.in-shell #stage,
 body.first-run #stage { padding-top: 0; }
 body.first-run .fleet-profile-notice:not(.is-serious) { display: none; }
 @media (max-width: 620px) {
-  .setup-page .setup-steps li { flex-direction: column; gap: var(--s1); overflow-wrap: anywhere; }
-  .setup-page .setup-steps { gap: 0; }
-  .setup-page .setup-choice-card { padding: var(--s3); gap: var(--s2); }
-  .setup-page .setup-disclosure > summary > span { display: block; margin-left: 0; }
+  .setup-page [data-setup-section] .setup-steps li { flex-direction: row; gap: var(--s3); }
+  .setup-page [data-setup-section] .setup-steps { grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
+  .setup-page [data-setup-section] .setup-steps li:not(:last-child)::before { top: 11px; bottom: calc(-1 * var(--s3) - 11px); left: 10.5px; right: auto; border-top: 0; border-left: 1.5px solid var(--line-strong); }
+  .setup-page [data-setup-section] .setup-choice-card { padding: var(--s3); gap: var(--s2); }
+  .setup-page [data-setup-section] .setup-disclosure > summary > span { display: block; margin-left: 0; }
+}
+@container setup-content (max-width: 540px) {
+  .setup-page [data-setup-section] .setup-steps { grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
+  .setup-page [data-setup-section] .setup-steps li { flex-direction: row; gap: var(--s3); font-weight: 550; }
+  .setup-page [data-setup-section] .setup-steps li:not(:last-child)::before { top: 11px; bottom: calc(-1 * var(--s3) - 11px); left: 10.5px; right: auto; border-top: 0; border-left: 1.5px solid var(--line-strong); }
+}
+@container setup-shell (max-width: 640px) {
+  .setup-page [data-setup-section].setup-section { padding: var(--s5); }
+}
+@container setup-content (max-width: 620px) {
+  .setup-page [data-setup-section].setup-section .ctl-btn { height: auto; min-height: calc(var(--s3) * 3); padding-block: calc(var(--s3) / 2); white-space: normal; }
 }
 @media (forced-colors: active) {
-  .setup-choice-card[aria-pressed='true'] { outline: 2px solid Highlight; outline-offset: -2px; }
-  .setup-choice-card[aria-pressed='true'] .setup-choice-mark::after { background: Highlight; forced-color-adjust: none; }
-  .setup-steps [aria-current='step'] { text-decoration: underline; }
+  .setup-page [data-setup-section] .setup-choice-card[aria-pressed='true'] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .setup-page [data-setup-section] .setup-choice-card[aria-pressed='true'] .setup-choice-mark::after { background: Highlight; forced-color-adjust: none; }
+  .setup-page [data-setup-section] .setup-steps [aria-current='step'] { text-decoration: underline; }
 }
 
 /* The review can have a narrow column inside a wide or zoomed window. Base
@@ -221,6 +273,10 @@ body.first-run .fleet-profile-notice:not(.is-serious) { display: none; }
      same 288px column, in a flex row with no wrap. The spacer takes a full line
      instead of a flexible one, so the exit keeps its own line and the two
      buttons keep theirs. */
-  .setup-page .setup-actions { flex-wrap: wrap; }
-  .setup-page .setup-actions .setup-actions-spacer { flex-basis: 100%; }
+  .setup-page [data-setup-section] .setup-actions { flex-wrap: wrap; }
+  .setup-page [data-setup-section] .setup-actions .setup-actions-spacer { flex-basis: 100%; }
+}
+.setup-page [data-setup-section] .setup-steps li.is-complete::before { border-color: var(--ink); }
+@media (forced-colors: active) {
+  .setup-page [data-setup-section] .fleet-profile-status::before { background: CanvasText; forced-color-adjust: none; }
 }

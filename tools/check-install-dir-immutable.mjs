@@ -4,7 +4,7 @@
  *
  * THE DEFECT THIS GATE EXISTS FOR, measured on the real per-user install at
  * %LOCALAPPDATA%\Programs\toolsenabled on 2026-08-11. The packaged app had been
- * installed and run once. Within half an hour its own installation directory
+ * installed at 04:47 and run once. By 05:14 its own installation directory
  * contained, written by the running product:
  *
  *     resources/capability/state/mission-bridge-token.json      a live bearer
@@ -385,7 +385,7 @@ function firstTextContent(result) {
 
 /* A profile that has never seen this project: no checkout to fall back on and
    no existing state anywhere. TOOLSENABLED_STATE_ROOT IS STATED, pointing into
-   this profile's own roaming application data, because since an earlier engine commit a
+   this profile's own roaming application data, because since engine 81b14e15 a
    packaged payload given no root anchors its state to the Windows account that
    owns the installation -- resolved from the process token, never from APPDATA
    or USERPROFILE -- and the engine's runtime-state-root unit test pins that
@@ -406,9 +406,9 @@ function sterileEnvironment(profile) {
     NUMBER_OF_PROCESSORS: base.NUMBER_OF_PROCESSORS,
     PROCESSOR_ARCHITECTURE: base.PROCESSOR_ARCHITECTURE,
     Path: [
-      path.join(base.SystemRoot || 'C:\\Windows', 'System32'),
-      base.SystemRoot || 'C:\\Windows',
-      path.join(base.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0'),
+      path.join(base.SystemRoot || '\x43:\\Windows', 'System32'),
+      base.SystemRoot || '\x43:\\Windows',
+      path.join(base.SystemRoot || '\x43:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0'),
     ].join(';'),
     LOCALAPPDATA: profile.localAppData,
     APPDATA: profile.appData,
@@ -576,7 +576,7 @@ async function runGuiSession(executable, userDataDirectory, stateRoot, profile) 
      exported as 1, and an Electron binary that inherits it starts as plain
      Node, reads stdin, hits EOF and exits 0 with no window -- a silent
      non-start that reads exactly like a product crash. And every HOME is
-     pointed into this run's scratch profile: measured 2026-08-22,
+     pointed into this run's scratch profile: measured 2026-08-22 at 16:40:55,
      this very phase -- a fresh --user-data-dir but the builder's LOCALAPPDATA
      -- read the builder's machine record and rewrote the builder's workspace
      `.mcp.json` to point at the build under test, the run after the packaged
@@ -643,7 +643,7 @@ async function main() {
      and checked in the finally below: the builder's machine record and every
      workspace `.mcp.json` it names are snapshotted, and a difference fails the
      check however clean the install directory came back. This is the fence
-     that would have caught the rewrite this file's phase B produced. */
+     that would have caught the 16:40:55 rewrite this file's phase B produced. */
   const fence = createOutsideWriteFence({ appDirectory: unpacked, label: 'the install-directory check' })
   await fence.arm()
 

@@ -48,3 +48,23 @@ for (const count of [1, 2]) {
     assert.match(graph.panHint.textContent, new RegExp('^[0-9]+ of ' + count + ' ' + (count === 1 ? 'agent' : 'agents') + ' in view'))
   })
 }
+
+test('FIX-C 11: the pan hint steps aside while a node card sits under it, and returns when the card moves off', async t => {
+  const graph = await mountedGraph(t, 2, { nodeStyle: 'boxes' })
+  const rect = (left, top, width, height) => ({ left, top, right: left + width, bottom: top + height, width, height, x: left, y: top })
+  graph.panHint.getBoundingClientRect = () => rect(12, 700, 320, 20)
+  const [controller, worker] = [...graph.nodes.values()]
+  controller.el.getBoundingClientRect = () => rect(0, 0, 200, 100)
+  worker.el.getBoundingClientRect = () => rect(100, 650, 260, 120)
+  graph._syncPanHintCover()
+  assert.equal(graph.panHint.hasAttribute('data-covered'), true, 'a card under the hint did not send it aside: its status row is hidden')
+  worker.el.getBoundingClientRect = () => rect(100, 400, 260, 120)
+  graph._syncPanHintCover()
+  assert.equal(graph.panHint.hasAttribute('data-covered'), false, 'the hint stayed hidden after the card moved off it')
+  graph.panHint.getBoundingClientRect = () => rect(0, 0, 0, 0)
+  worker.el.getBoundingClientRect = () => rect(0, 0, 260, 120)
+  graph._syncPanHintCover()
+  assert.equal(graph.panHint.hasAttribute('data-covered'), false, 'an unmeasurable hint is never treated as covered')
+  const css = (await import('node:fs')).readFileSync(new URL('../../src/tree-graph.css', import.meta.url), 'utf8')
+  assert.match(css, /\.tree-pan-hint\[data-covered\]\s*\{[^}]*visibility:\s*hidden/, 'the covered state has no style, so the attribute hides nothing')
+})

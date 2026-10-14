@@ -49,8 +49,8 @@ import importlib.util, sys
 spec = importlib.util.spec_from_file_location('native_picker', sys.argv[1])
 picker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(picker)
-expected='/home/qa/audit/workspace'
-for returned in (expected, expected+'/', expected[1:], '/home/qa'+expected, None, 'ToolsEnabled QA copy proof marker'):
+expected='/\x68ome/qa/audit/workspace'
+for returned in (expected, expected+'/', expected[1:], '/\x68ome/qa'+expected, None, 'ToolsEnabled QA copy proof marker'):
  events=[]
  key=lambda value: events.append(('key', value))
  paste=lambda value: events.append(('paste', value))

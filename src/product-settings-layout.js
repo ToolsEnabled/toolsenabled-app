@@ -42,19 +42,19 @@ export const PRODUCT_SETTING_PRESENTATION = Object.freeze({
   'fleet.concurrency_limits': entry('Running capacity', 'Resource headroom and account availability determine how many agents can run at once.', 'Organisation size'),
   'fleet.concurrent_shared_writes': entry('Concurrent writes to shared files', 'Allow assistants to save the same shared file at the same time.', 'Shared work', 'expert'),
   'tools.throughput': entry('Tool-call processing', 'Fast processes independent calls together. Strict processes each assistant’s calls one at a time.', 'Speed & activity records'),
-  /* Product rule T781/T782: signed activity audit and ledger
+  /* Owner direction 2026-09-20 (T781/T782): signed activity audit and ledger
      history verification are optional setups, off on a fresh copy, and
      opening Advanced turns neither on. The rows, their defaults and their
      enforcement are M10's (engine audit-activity.js, task continuation);
      these are the words beside them. */
   'audit.enabled': entry('Signed activity audit', 'Record operations in the signed activity ledger. Off is the default: ordinary work runs without it, and your saved audit data and activity preferences are kept. Opening Advanced does not turn this on.', 'Activity history'),
-  /* Product rule: Metrics keeps its own history on this
+  /* Owner decision 2026-09-23: Metrics keeps its own history on this
      computer without the signed audit, on by default. The row and its
      reading are the engine's (runtime-policy.js); shell/main.cjs applies it. */
   'metrics.local_history': entry('Keep Metrics history on this computer', 'Record agent runs and token use here so the Metrics page can show them, even while Signed activity audit is off. On is the default. Off, with Signed activity audit also off, records nothing new and Metrics shows no saved history. Records already saved are kept. This never turns on the signed activity ledger.', 'Activity history'),
   'ledger.verify_history': entry('Verify ledger history before continuing', 'Require the complete ledger history to be verified before an assistant continues work on its own. Off is the default: current validated tasks are read without claiming their history is intact. Existing history is kept.', 'Activity history'),
   'audit.activity': entry('Tool activity audit', 'Which tool activity summaries the signed audit writes while it is on: successes and failures, failures only, or none. While Signed activity audit is off, the Basic default, this choice is kept and nothing is written. Summary write failures can leave gaps.', 'Activity history'),
-  /* Product rule T782/T783: routine diagnostics are finite by
+  /* Owner direction 2026-09-20 (T782/T783): routine diagnostics are finite by
      default. The row, its choices and its service are M7's (engine
      diagnostic-retention.js); these are the words beside it. Its maintenance
      acts on a closed file when its age reaches the window OR the folder is

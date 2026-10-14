@@ -263,7 +263,7 @@ test('the builder shows and reapplies literal source and exposure paths without 
 })
 
 
-// Reviewer finding: a segment containing
+// Reviewer finding (Worker 6, per Manager 3's scope-addition message; reviewer/REVIEW.md was not located in this worktree to cite directly): a segment containing
 // whitespace, a quote or a bracket character must round-trip losslessly
 // through the field text, never silently trimmed or refused. The dotted
 // form is unsafe for these because the whole text is trimmed once before

@@ -1,6 +1,6 @@
 /* THE MOMENT OF CHOOSING FULL ACCESS: the words, and the gate that shows them.
  *
- * Rule X4, on the one configuration in which this
+ * The owner's ruling (X4, 2026-08-15) on the one configuration in which this
  * product lets an AI agent reach the whole computer -- the `unrestricted`
  * permission level -- is four clauses, and this module is where they live:
  *

@@ -1,4 +1,4 @@
-/* T180: a main process's last main-lag.log entry was the last word, and nothing
+/* T180: pid 44348's last main-lag.log entry was 19:28:38.757Z, and nothing
  * after it said why the process went away. Two things are tested here with
  * real, unmodified modules and real values -- never a spelling pin against
  * this file's own implementation:
@@ -6,11 +6,11 @@
  *  1. shell/exit-record.cjs's writer actually persists a durable, readable
  *     record (trigger, initiator, open windows, in-flight continuations) --
  *     this is the gate with the mutation check quoted in the report.
- *  2. Driving the REAL provider-limit checkpoint writer (shell/node-recovery-
+ *  2. Driving the REAL explicit continuation checkpoint writer (shell/node-recovery-
  *     store.cjs's createNodeRecoveryStore, the module T180 names as the
  *     "node-recovery handoff" writer) for three sessions at once, using the
- *     REAL handoff text builder (shell/account-session-recovery.cjs's
- *     recoveryHandoff), completes without throwing and leaves the exit-record
+ *     REAL handoff text builder (src/manual-account-continuation.js's
+ *     manualAccountHandoff), completes without throwing and leaves the exit-record
  *     file untouched -- the app stays alive and writes no exit record.
  *
  * The Electron main process cannot be booted in a unit test (the same
@@ -29,7 +29,7 @@ import { testScratchRoot } from '../lib/test-scratch-root.mjs'
 const require_ = createRequire(import.meta.url)
 const { createExitRecordWriter } = require_('../../shell/exit-record.cjs')
 const { createNodeRecoveryStore } = require_('../../shell/node-recovery-store.cjs')
-const { recoveryHandoff, createRecoveryState, rememberRecoveryText } = require_('../../shell/account-session-recovery.cjs')
+import { manualAccountHandoff } from '../../src/manual-account-continuation.js'
 
 test('createExitRecordWriter.writeExitRecord persists trigger, initiator and the counts it was given', () => {
   const file = testScratchRoot('.toolsenabled-t180-exit-record-mechanism.log')
@@ -61,7 +61,7 @@ test('createExitRecordWriter.writeExitRecord persists trigger, initiator and the
   try { rmSync(file, { force: true }) } catch {}
 })
 
-test('a provider-limit rollover of three sessions at once completes and writes no exit record', async () => {
+test('three explicitly chosen continuations at once complete and write no exit record', async () => {
   const recoveryDirectory = testScratchRoot('.toolsenabled-t180-node-recovery')
   const exitRecordFile = testScratchRoot('.toolsenabled-t180-exit-record-rollover.log')
   try { rmSync(recoveryDirectory, { recursive: true, force: true }) } catch {}
@@ -73,26 +73,21 @@ test('a provider-limit rollover of three sessions at once completes and writes n
   // real wiring never calls it from the recovery path either.
   const exitRecord = createExitRecordWriter({ file: exitRecordFile })
 
-  const threeSessionsRollingOverAtOnce = ['node-3-00000003', 'node-26-00000026', 'node-7-00000007'].map(nodeId => {
-    const state = createRecoveryState()
-    rememberRecoveryText(state, 'person', 'ROLE: IMPLEMENTER working on T180.')
-    rememberRecoveryText(state, 'assistant', 'Reached a provider limit mid-turn.')
+  const threeChosenContinuations = ['node-3-0c35f697', 'node-26-15884fbb', 'node-7-da02fefa'].map(nodeId => {
+    const node = { id: nodeId, sessionId: `session-${nodeId}`, message: 'ROLE: IMPLEMENTER working on T180.' }
+    const transcript = { lines: [{ who: 'agent', text: 'Reached a provider limit mid-turn.' }] }
     return store.save({
       computerId: 'computer-under-test',
       nodeId,
-      record: { v: 1, handoff: recoveryHandoff(state) },
+      record: { v: 1, handoff: manualAccountHandoff(node, transcript) },
     })
   })
 
-  const results = await Promise.all(threeSessionsRollingOverAtOnce)
+  const results = await Promise.all(threeChosenContinuations)
   for (const result of results) assert.equal(result.ok, true, JSON.stringify(result))
 
-  // The rollover ran to completion (the assertions above), which is what
-  // "stays alive" means for a mechanism with no window or quit path of its
-  // own to observe; shell/exit-record.cjs's own module never appears in
-  // shell/node-recovery-store.cjs or shell/account-session-recovery.cjs
-  // (read separately in the T180 report), so nothing here can call it.
-  assert.equal(existsSync(exitRecordFile), false, 'a provider-limit rollover must write no exit record')
+  // All three explicit handoff checkpoints completed without recording an exit.
+  assert.equal(existsSync(exitRecordFile), false, 'an explicitly chosen continuation must write no exit record')
 
   try { rmSync(recoveryDirectory, { recursive: true, force: true }) } catch {}
   try { rmSync(exitRecordFile, { force: true }) } catch {}

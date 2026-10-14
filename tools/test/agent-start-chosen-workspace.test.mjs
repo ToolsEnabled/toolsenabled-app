@@ -70,11 +70,11 @@ test('an unaddressed start is anchored on the chosen workspace BEFORE the spawn 
 test('the chosen folder is the answer, and it is prepared so a deleted folder self-heals', () => {
   const mkdirs = []
   const resolve = makeResolver({
-    state: { ok: true, available: true, configured: true, chosen: true, roots: ['C:\\People\\Documents\\AI Workspace'] },
+    state: { ok: true, available: true, configured: true, chosen: true, roots: ['\x43:\\People\\Documents\\AI Workspace'] },
     mkdirs,
   })
-  assert.equal(resolve(), 'C:\\People\\Documents\\AI Workspace')
-  assert.deepEqual(mkdirs, ['C:\\People\\Documents\\AI Workspace'],
+  assert.equal(resolve(), '\x43:\\People\\Documents\\AI Workspace')
+  assert.deepEqual(mkdirs, ['\x43:\\People\\Documents\\AI Workspace'],
     'the chosen folder is not re-created, so deleting it strands every future start')
 })
 
@@ -83,7 +83,7 @@ test('a folder nobody was ever asked about is NOT the answer — the fallback st
      shown; `chosen` is the flag that a person answered. A default nobody saw
      must not become the fence anchor. */
   const unasked = makeResolver({
-    state: { ok: true, available: true, configured: true, chosen: false, roots: ['C:\\People\\Documents\\AI Workspace'] },
+    state: { ok: true, available: true, configured: true, chosen: false, roots: ['\x43:\\People\\Documents\\AI Workspace'] },
   })
   assert.equal(unasked(), null)
 })

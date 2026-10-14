@@ -1,7 +1,9 @@
 /* A REPLY'S LINE BREAKS, KEPT ON EVERY CHAT SURFACE -- NOT JUST ONE OF THEM.
  *
- * Chat formatting was messy and needed fixing, including the
- * formatting of inline responses, which was part of the same issue.
+ * Owner, 2026-09-03: "chat formatting needs to be fixed - its messy right
+ * now", and a minute later, "try your best to make it formatted cleanly in
+ * your inline response since thats exactly part of the messy issue i meant
+ * earlier".
  *
  * That defect had two parts (src/chat-markdown.js's own header names them):
  * no markdown rendering, and ".turn-text carried no white-space rule, so

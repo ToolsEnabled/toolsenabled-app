@@ -46,7 +46,7 @@ test('strip-build-diagnostics refuses when the expected diagnostic is absent', a
 /* IDEMPOTENCY. A cut re-runs the chain after every fix, and this step refused on
  * the second pass -- "Refusing to pass without expected diagnostic" -- because the
  * file it strips was already gone. Measured in the D1 chain run: the first call
- * removed builder-debug.yml, the second died, and a resumed cut hits this on its second
+ * removed builder-debug.yml, the second died, and Lane A hits this on its second
  * pass.
  *
  * THE TEETH MUST SURVIVE THE FIX, which is the whole difficulty. Fail-closed is

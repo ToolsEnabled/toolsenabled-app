@@ -125,7 +125,7 @@ test('a failed append refuses its receipt and does not strand later writes or fl
 test('host queues terminal usage and drains it after agents close during shutdown', () => {
   const main = fs.readFileSync(new URL('../../shell/main.cjs',import.meta.url),'utf8')
   assert.match(main,/getUsageRecorder\(\)\.recordTurnAsync\(/)
-  // The quit path also seals transcript capture between the two (an earlier commit); what matters is
+  // The quit path also seals transcript capture between the two (e0c49804d); what matters is
   // that the usage flush is awaited in the same quit path, after every agent has closed.
   const start = main.indexOf('async function closeAgentSessionsForQuit()')
   const quit = main.slice(start, main.indexOf('\n}\n', start))

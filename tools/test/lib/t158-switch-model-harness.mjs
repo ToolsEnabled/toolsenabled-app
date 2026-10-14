@@ -13,6 +13,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { register, createRequire } from 'node:module'
 import { fleetTreesStorageKey } from '../../../src/fleet-trees.js'
+import { LAUNCH_TIERS } from '../../../src/orchestration-controls.js'
 import { canonicalRootForTests } from '../../canonical-root.mjs'
 
 /* Registered here, once, before the dynamic import below pulls in anything
@@ -115,8 +116,12 @@ export async function runningCircle(t, handlers, { fromTier = FROM_TIER, provide
   liveCase.start = async request => {
     calls.push({ call: 'start', sessionId: request.sessionId, request })
     starts += 1
-    if (starts === 1) return { ok: true, sessionId: OLD_SESSION, ...(handlers.initialThreadId ? { threadId: handlers.initialThreadId } : {}), ...(initialAccount ? { account: initialAccount } : {}) }
-    return handlers.replacementStart(request, NEW_SESSION)
+    if (starts === 1) return { ok: true, sessionId: OLD_SESSION, provider, ...(handlers.initialThreadId ? { threadId: handlers.initialThreadId } : {}), ...(initialAccount ? { account: initialAccount } : {}) }
+    const result = await handlers.replacementStart(request, NEW_SESSION)
+    // The real host identifies the provider and the explicitly selected account.
+    // Keep deliberately mismatched/refused receipts supplied by individual cases.
+    return { provider: LAUNCH_TIERS.find(row => row.id === request.tier)?.provider || provider,
+      ...(request.treeAccount ? { account: request.treeAccount } : {}), ...result }
   }
   liveCase.close = async request => {
     calls.push({ call: 'close', sessionId: request?.sessionId, request })
@@ -198,8 +203,8 @@ export async function runningCircle(t, handlers, { fromTier = FROM_TIER, provide
  * therefore measures a circle that holds a live session and is doing nothing.
  * The helper's NAME is what hid that: "running" there means it has a session,
  * not that a turn is in flight, so each case reads as a running-circle test
- * while measuring the idle one. The requirement is mid-session switching, and
- * mid-session is the state nothing was pressing.
+ * while measuring the idle one. The owner's words were "mid session", and mid
+ * session is the state nothing was pressing.
  *
  * THE STATE HELD HERE is a turn started and never completed: the person's
  * message goes in through the composer exactly as they send it, the fixture
@@ -267,6 +272,47 @@ export async function pressContinueRow(ctx, rowLabel) {
   target.dispatch('click')
   await settle(8)
   return target
+}
+
+/* Exercise a cross-provider continuation through the person's explicit account
+ * choice. The simple model menu intentionally cannot select an account in 1.0.50.
+ * Same-provider cases keep exercising that menu. No global account is switched. */
+export async function pressChosenContinuation(ctx, rowLabel) {
+  const tier = LAUNCH_TIERS.find(row => rowLabel === `Continue on ${row.label} · ${providerWordOf(rowLabel)}`
+    && row.provider === providerWordOf(rowLabel).toLowerCase())
+  assert.ok(tier, 'the requested continuation names a catalog model')
+  const sourceProvider = LAUNCH_TIERS.find(row => row.id === ctx.readNode().tier)?.provider
+  if (tier.provider === sourceProvider) return pressContinueRow(ctx, rowLabel)
+  const account = `chosen-${tier.provider}-${ctx.NODE_ID}`
+  const priorProviders = window.mcProviders
+  const priorCatalog = sharedBridge.startableTiers
+  window.mcProviders = { ...priorProviders, accounts: async () => {
+    const prior = await priorProviders?.accounts?.()
+    return { ok: true, accounts: [...(prior?.accounts || []),
+      { name: account, provider: tier.provider, signedIn: true }] }
+  }, accountSwitch: async () => assert.fail('a scoped continuation must not switch the global account') }
+  if (!priorCatalog) sharedBridge.startableTiers = async () => ({ ok: true, tiers: LAUNCH_TIERS.map(row => row.id) })
+  try {
+    const chat = ctx.liveChat(); chat.openActions()
+    const action = chat.querySelectorAll('.chat-actions-row').find(row => /Switch and continue/.test(row.textContent))
+    assert.ok(action); action.dispatch('click')
+    await waitFor(() => document.body.querySelector('.switch-continue'), 'the explicit continuation chooser')
+    const dialog = document.body.querySelector('.switch-continue')
+    for (const [selector, value] of [['[data-switch-provider]', tier.provider], ['[data-switch-model]', tier.id], ['[data-switch-account]', account]]) {
+      const input = dialog.querySelectorAll(selector).find(row => row.value === value)
+      assert.ok(input, `the chooser offers ${selector}`)
+      assert.equal(input.disabled, false, 'the explicit choice remains available while a turn runs')
+      input.checked = true; input.dispatch('change')
+    }
+    const submit = dialog.querySelector('[data-switch-continue]')
+    assert.equal(submit.disabled, false, 'the chosen provider, model and account can continue')
+    submit.dispatch('click')
+    await settle(8)
+    return { account, tier: tier.id }
+  } finally {
+    if (priorProviders) window.mcProviders = priorProviders; else delete window.mcProviders
+    if (priorCatalog) sharedBridge.startableTiers = priorCatalog; else delete sharedBridge.startableTiers
+  }
 }
 
 export const startedRequests = ctx => ctx.calls.filter(entry => entry.call === 'start')

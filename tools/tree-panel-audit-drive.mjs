@@ -3,9 +3,10 @@
 /* THE RIGHT PANEL ON PAGE 2, PHOTOGRAPHED IN EVERY STATE, BEFORE ANYONE
  * SIMPLIFIES IT.
  *
- * The right panel on page 2 was still so complicated that
- * folder-picking, which does exist somewhere in the panel, could not be found.
- * That suspicion is itself the
+ * The owner, tonight (2026-08-19): "ther right panel on page 2 is still so
+ * complicated i think its in there maybe somewhere." The half-sentence in the
+ * middle is about the folder feature — he suspects folder-picking exists
+ * somewhere in the panel and cannot find it. That suspicion is itself the
  * finding this drive exists to make concrete: BEFORE any editing, capture the
  * panel in each of its states on the staged packaged build, with an inventory
  * of every control a person could press, so the simplification that follows

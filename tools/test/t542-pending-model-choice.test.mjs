@@ -1,4 +1,4 @@
-// T731 / T542: recovered B6 and sibling-branch pending-choice behaviors, driven
+// T731 / T542: recovered B6 and Manager 2 pending-choice behaviors, driven
 // through the mounted current view. Prior backend/F1 receipt controls remain
 // in their existing suites; this file qualifies the changed UI paths.
 import assert from 'node:assert/strict'
@@ -23,7 +23,7 @@ function test(...args) {
 }
 import {
   payloadSkip, FROM_TIER, TO_TIER, CROSS_ROW, SAME_ROW,
-  runningCircle, busyCircle, sharedBridge, sharedOrgWindow, liveCase, waitFor, pressContinueRow, startedRequests,
+  runningCircle, busyCircle, sharedBridge, sharedOrgWindow, liveCase, waitFor, pressContinueRow, pressChosenContinuation, startedRequests,
   openProviderStage, providerWordOf,
 } from './lib/t158-switch-model-harness.mjs'
 
@@ -72,22 +72,11 @@ const CROSS_TARGET = CROSS_ROW.replace('Continue on ', '')
 const SAME_TARGET = SAME_ROW.replace('Continue on ', '')
 const rowFor = (chat, target) => chat.querySelectorAll('.chat-actions-row').find(row => row.textContent.includes(target))
 
-test('a mid-turn choice is taken, nothing is applied or stopped while the turn runs, and it applies once on the chosen tier at the boundary',
+test('an explicit mid-turn provider and account choice is taken, nothing is applied or stopped while the turn runs, and it applies once on the chosen tier at the boundary',
   { skip: payloadSkip }, async t => {
   const ctx = await busyCircle(t, { replacementStart: async (request, newSession) => ({ ok: true, sessionId: newSession }) })
 
-  const chat = ctx.liveChat()
-  chat.openActions()
-  chat.querySelectorAll('.chat-actions-row').find(row => /Switch model/.test(row.textContent)).dispatch('click')
-  /* Provider, then model (1.0.48): the provider stage first. */
-  await openProviderStage(ctx.liveChat(), providerWordOf(CROSS_TARGET))
-  await waitFor(() => ctx.liveChat().querySelectorAll('.chat-actions-row').some(row => row.textContent.includes(CROSS_TARGET)),
-    'the model stage to open on a mid-turn circle')
-
-  const cross = rowFor(ctx.liveChat(), CROSS_TARGET)
-  assert.notEqual(cross.getAttribute('aria-disabled'), 'true',
-    'the choice is SELECTABLE while the agent works -- this is the assertion that fails today')
-  cross.dispatch('click')
+  await pressChosenContinuation(ctx, CROSS_ROW)
   await settleTurns()
 
   /* HELD, NOT APPLIED, AND THE TURN UNHARMED. */
@@ -102,7 +91,7 @@ test('a mid-turn choice is taken, nothing is applied or stopped while the turn r
   assert.equal(startedRequests(ctx)[0].request.tier, TO_TIER, 'and applied on the tier the person actually chose')
 })
 async function chooseBusyModel(ctx, label = CROSS_ROW) {
-  await pressContinueRow(ctx, label)
+  await pressChosenContinuation(ctx, label)
   assert.match(ctx.liveChat().querySelector('.chat-chip-model').textContent, /Pending:/,
     'the current model remains visible beside the pending choice')
 }
@@ -128,9 +117,8 @@ test('keeping the current model cancels the pending selection without stopping t
   const ctx = await busyCircle(t, { replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) })
   await chooseBusyModel(ctx)
   const chat = ctx.liveChat()
-  /* The choice was made on a provider's stage; Keep stands on the first
-     stage, one Back away. */
-  chat.querySelector('.chat-actions-back').dispatch('click')
+  chat.openActions()
+  chat.querySelectorAll('.chat-actions-row').find(row => /Switch model/.test(row.textContent)).dispatch('click')
   await settleTurns()
   const keep = chat.querySelectorAll('.chat-actions-row').find(row => /Keep/.test(row.textContent))
   assert.ok(keep); keep.dispatch('click')
@@ -420,7 +408,7 @@ test('already queued owner message drains once after newer native choice replace
   const { list } = await import('../../src/session-outbox.js')
   const ctx = await busyCircle(t, { replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) },
     { fromTier: 'astra', provider: 'codex' })
-  await pressContinueRow(ctx, 'Continue on Sonnet (latest) · Claude')
+  await pressChosenContinuation(ctx, 'Continue on Sonnet (latest) · Claude')
   ctx.liveChat().querySelector('.chat-input textarea').value = 'queued before native replacement'
   ctx.liveChat().querySelector('.chat-send').dispatch('click')
   await waitFor(() => list(ctx.OLD_SESSION).length === 1, 'queued owner intent')
@@ -895,9 +883,10 @@ for(const attribution of ['provider','configured','unknown','reason-only']) {
       policy:{autoRecoverOnLimit:true}})}
     await pickBusyDialog(ctx,{effort:'high'});completeBusy(ctx)
     await waitFor(()=>starts>0,'returned refusal');await settleTurns()
-    assert.equal(startedRequests(ctx).length,attribution==='provider'?2:1,
-      'only trusted provider attribution can enter opted-in account continuation')
-    if(attribution!=='provider')assert.equal(ctx.calls.filter(row=>row.call==='send').length,0)
+    assert.equal(startedRequests(ctx).length,1,
+      'a legacy keep-trying policy never authorizes an automatic account continuation')
+    assert.equal(ctx.calls.filter(row=>row.call==='send').length,0)
+    assert.equal(ctx.readNode().sessionId,ctx.OLD_SESSION)
   })
 }
 
@@ -921,7 +910,7 @@ test('returned provider account refusal cannot continue after Keep',{skip:payloa
 })
 
 for (const shape of ['thrown', 'returned']) {
-  test('provider-limit ' + shape + ' completes tracked handoff and binds successor thread', { skip: payloadSkip }, async t => {
+  test('provider-limit ' + shape + ' preserves the predecessor and requires a new explicit account choice', { skip: payloadSkip }, async t => {
     let starts = 0
     sharedBridge.startableTiers = async () => ({ ok: true, tiers: [FROM_TIER] })
     t.after(() => { delete sharedBridge.startableTiers; delete globalThis.mcProviders })
@@ -944,16 +933,13 @@ for (const shape of ['thrown', 'returned']) {
     const { createTranscriptStore } = await import('../../src/session-transcript-store.js')
     const transcripts = createTranscriptStore({ computerId: ctx.COMPUTER_ID,
       storage: { read: key => JSON.parse(ctx.world.storage.getItem(key) || 'null'), write: (key, value) => ctx.world.storage.setItem(key, JSON.stringify(value)) } })
-    await waitFor(() => transcripts.get(ctx.NODE_ID)?.threadId === 'fixture-completed-provider-thread', 'completed handoff thread binding')
+    await waitFor(() => starts === 1, 'the requested resume receives its provider-limit refusal')
     await settleTurns()
-    assert.equal(startedRequests(ctx).length, 2)
-    assert.equal(ctx.readNode().sessionId, ctx.NEW_SESSION)
-    const deliveries = ctx.calls.filter(row => row.call === 'send')
-    assert.equal(deliveries.length, 1)
-    assert.equal(deliveries[0].channel, 'automatic')
-    assert.equal(deliveries[0].sessionId, ctx.NEW_SESSION)
-    assert.ok(deliveries[0].request.text, 'handoff has actual transcript content')
-    assert.equal(ctx.calls.filter(row => row.call === 'close' && row.sessionId === ctx.NEW_SESSION).length, 0)
+    assert.equal(startedRequests(ctx).length, 1, 'the removed keep-trying policy cannot start a backup account')
+    assert.equal(ctx.readNode().sessionId, ctx.OLD_SESSION)
+    assert.equal(transcripts.get(ctx.NODE_ID)?.threadId, 'fixture-provider-origin', 'the saved thread remains the original one')
+    assert.equal(ctx.calls.filter(row => row.call === 'send').length, 0, 'no automatic handoff is sent')
+    assert.equal(ctx.calls.filter(row => row.call === 'close' && row.sessionId === ctx.OLD_SESSION).length, 0)
   })
 }
 

@@ -1,11 +1,11 @@
 /* THE NEXT ASSIGNMENT A RESUME CAN CARRY (T1792).
  *
- * MEASURED on a development tree: when every agent was asked to be working, a
- * controller resumed its idle agents. agent.resume could carry
+ * MEASURED 2026-09-24 (LIVE .47): after the owner asked for every agent to be
+ * working, Controller 1 resumed 15 idle agents. agent.resume could carry
  * nothing but the circle and its session, and the resumed first turn told each
  * one to report finished work and stop, so every one of them confirmed its old
- * task was done and most went idle after one turn. The next assignment then
- * had to travel as a separate message to an idle agent, and several of those were
+ * task was done and eight went idle after one turn. The next assignment then
+ * had to travel as a separate message to an idle agent, and five of those were
  * set aside within seconds (T1743).
  *
  * So agent.resume takes an optional bounded assignment. The engine checks it

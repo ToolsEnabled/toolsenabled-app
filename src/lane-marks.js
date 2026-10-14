@@ -1,7 +1,7 @@
 /* THE SWARM BOX AND THE DRIFT LIGHT — the only two things a cloud lane may
  * add to a node on page 2's tree.
  *
- * Rule: the tree itself does not change. No rim tint (tried,
+ * Owner, 2026-08-24: the tree itself does not change. No rim tint (tried,
  * and the feedback was that it wasn't good), no new geometry. Two overlays:
  *
  *   THE SWARM BOX — nine dots in a 3×3, riding the bottom-right of whichever
@@ -31,7 +31,7 @@
  */
 
 /* Static burn thresholds, in tokens. A FIRST CUT awaiting calibration
- * against real lane runs — the anchor is that red is the 100+ class.
+ * against real lane runs — the owner's anchor is "red is the 100+ class".
  * An unreported count is NOT mapped to blue: blue claims light burn, and
  * nobody measured that. It renders neutral instead (the "outcome nobody
  * measured keeps the neutral edge" rule the action rows already follow). */

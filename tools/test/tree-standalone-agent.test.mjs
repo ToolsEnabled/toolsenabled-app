@@ -15,8 +15,13 @@ import { setWriteEnabled } from '../../src/write-flags.js'
 import { holdForSend, list as outboxList } from '../../src/session-outbox.js'
 import { QUEUE_PANEL, effortChoicesFor, roleLabel, tierChoicesFor } from '../../src/fleet-tree-copy.js'
 import { LAUNCH_TIERS } from '../../src/orchestration-controls.js'
+import { OTHER_MODEL_VALUE } from '../../src/model-picker.js'
 import { createFleetTreeStore, nodeDisplayName } from '../../src/fleet-trees.js'
 import { adoptStandaloneIntoTree } from '../../src/tree-standalone-adoption.js'
+
+// Capture the selected preload retention contract before any case changes env.
+const retainFixtures = process.env.TOOLSENABLED_TEST_RETAIN_FIXTURES === '1'
+  || process.env.TOOLSENABLED_TEST_STRICT === '1'
 
 const settle = async () => { for (let i = 0; i < 6; i++) await new Promise(resolve => setTimeout(resolve, 0)) }
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==', 'base64')
@@ -122,7 +127,7 @@ function environment(t, { enabled = true, start = null, paste = null, send: send
     for (const adapter of mounts) adapter.dispose()
     await settle()
     resetLiveSessionForTest()
-    if (root) rmSync(root, { recursive: true, force: true })
+    if (root && !retainFixtures) rmSync(root, { recursive: true, force: true })
     if (storage) Object.defineProperty(globalThis, 'localStorage', storage); else delete globalThis.localStorage
     restore()
   })
@@ -504,9 +509,9 @@ test('the chat Halt control DISCARDS its streaming bubble and the next message c
      transcript still holds the turn that produced them. */
   assert.equal(panel.adapter.snapshot().transcript.find(row => row.who === 'agent').turnStamp, 'turn-1')
   /* RE-POINTED (T335): this used to assert the abandoned bubble SURVIVED the
-     halt and merely stopped being busy. That was rejected -- the person's
-     input goes in first and the agent's partial work is DISCARDED, no
-     grace period -- so the behaviour it pinned is the behaviour we were asked to
+     halt and merely stopped being busy. The owner rejected that in those words
+     -- his input goes in first and the agent's partial work is DISCARDED, no
+     grace period -- so the behaviour it pinned is the behaviour he asked us to
      remove. MEASURED on the packaged fix build, one agent row in a fresh chat,
      the partial's own text as the fingerprint: gone 120ms after the press, still
      gone at 400ms and 900ms, and still gone after leaving the tab and coming
@@ -806,9 +811,9 @@ test('a placed agent explicitly respawns with its current tree identity and awai
   assert.deepEqual(env.calls.filter(([kind]) => kind === 'close').map(([, value]) => value.sessionId), [firstId, nextId])
 })
 
-/* T286/T88: solo agents from + select a provider and a model, and on
-   2026-09-17 the standalone agent could not pick a model or effort level. A
-   standalone agent used to call bridge.start({ sessionId }) and
+/* T286/T88, the owner twice: "solo agents from the + must select a provider and
+   a model", and on 2026-09-17 "your agent cant even pick a model or effort
+   level". A standalone agent used to call bridge.start({ sessionId }) and
    nothing else, so the host planned it on its own default -- Codex -- and no
    choice the person made could reach it.
 
@@ -832,6 +837,107 @@ test('a solo agent starts on the program and effort the person picked, not on a 
   assert.equal(started.requestKeys, undefined, 'a solo agent still carries no tree insertion')
 })
 
+test('changing the standalone tier rechecks availability and keeps the selected provider', async t => {
+  const env = environment(t)
+  const seen = []
+  env.bridge.availability = async request => {
+    seen.push(request)
+    return request?.tier === 'claude-sonnet'
+      ? { ok: true, tier: request.tier }
+      : { ok: false, code: 'AGENT_TIER_NO_SIGNED_IN_ACCOUNT' }
+  }
+  const panel = env.mount('solo-availability')
+  await settle()
+  assert.ok(seen.length >= 1, 'mount performs an availability read')
+  assert.equal(panel.adapter.chooseStart({ tier: 'claude-sonnet', effort: 'medium' }).ok, true)
+  await settle()
+  assert.deepEqual(seen.at(-1), { tier: 'claude-sonnet' })
+  await send(panel, 'start on Claude')
+  const started = env.calls.find(([kind]) => kind === 'start')?.[1]
+  assert.equal(started?.tier, 'claude-sonnet')
+})
+
+test('a pending A to B choice waits for B readiness before dispatch', async t => {
+  const env = environment(t)
+  let releaseA = null, releaseB = null
+  const availabilityRequests = []
+  env.bridge.availability = request => {
+    availabilityRequests.push(request)
+    return new Promise(resolve => {
+      if (request?.tier === 'claude-sonnet') releaseB = () => resolve({ ok: true, tier: request.tier })
+      else releaseA = () => resolve({ ok: true, tier: request?.tier || 'astra' })
+    })
+  }
+  const panel = env.mount('solo-pending-selection')
+  try {
+    await settle()
+    assert.equal(typeof releaseA, 'function', 'the initial selected tier must be read')
+    const input = panel.input()
+    input.value = 'start after the selected provider is ready'
+    input.dispatch('input')
+    panel.chat().querySelector('.chat-send').click()
+    await settle()
+
+    assert.equal(panel.adapter.chooseStart({ tier: 'claude-sonnet', effort: 'medium' }).ok, true)
+    await settle()
+    assert.equal(typeof releaseB, 'function', 'the changed tier must trigger its own readiness read')
+    releaseB()
+    await settle()
+    await settle()
+
+    const started = env.calls.find(([kind]) => kind === 'start')?.[1]
+    assert.equal(started?.tier, 'claude-sonnet',
+      'a send waiting on A must follow the latest B readiness without waiting for stale A')
+    assert.deepEqual(availabilityRequests.at(-1), { tier: 'claude-sonnet' })
+  } finally {
+    releaseA?.()
+    releaseB?.()
+  }
+})
+
+test('a post-ready selection change is revalidated before the final start dispatch', async t => {
+  const env = environment(t)
+  let releaseOwner = null, ownerEntered = null
+  const ownerStarted = new Promise(resolve => { ownerEntered = resolve })
+  const ownerGate = new Promise(resolve => { releaseOwner = resolve })
+  const availabilityRequests = []
+  env.bridge.availability = async request => {
+    availabilityRequests.push(request)
+    return request?.tier === 'claude-sonnet'
+      ? { ok: false, code: 'AGENT_TIER_NO_SIGNED_IN_ACCOUNT' }
+      : { ok: true, tier: request?.tier || 'astra' }
+  }
+  env.bridge.ownerContext = async () => {
+    ownerEntered()
+    await ownerGate
+    return { version: 1, ownerId: 'standalone-fixture-owner', currentEpoch: 'fixture-epoch', kind: 'local' }
+  }
+  const panel = env.mount('solo-post-ready-selection')
+  try {
+    await settle()
+    const input = panel.input()
+    input.value = 'hold while the owner read is pending'
+    input.dispatch('input')
+    panel.chat().querySelector('.chat-send').click()
+    await ownerStarted
+    assert.equal(panel.adapter.chooseStart({ tier: 'claude-sonnet', effort: 'medium' }).ok, true)
+    await settle()
+    assert.deepEqual(availabilityRequests.at(-1), { tier: 'claude-sonnet' })
+    releaseOwner()
+    await settle()
+    await settle()
+
+    assert.equal(env.calls.some(([kind]) => kind === 'start'), false,
+      'a newly unavailable selected tier must not start after an earlier tier was ready')
+    assert.equal(panel.host.querySelector('[data-session-start]').disabled, true,
+      'a refused final selection must leave the actual start gate disabled')
+    assert.match(panel.host.textContent, /refused|unavailable|not ready/i,
+      'the final refusal remains visible instead of reviving Start')
+  } finally {
+    releaseOwner?.()
+  }
+})
+
 test('the solo picker offers the same programs and models as a tree agent, Claude among them', async t => {
   const env = environment(t)
   const panel = env.mount('solo-catalog')
@@ -851,7 +957,7 @@ test('the program a solo agent will start on is visible before the first send, a
   const panel = env.mount('solo-visible')
   /* NOT 'no default' -- a VISIBLE one. The surface opens on the same row the
      compose panel opens on and says which it is, so nothing starts on a
-     program the person never saw. That was the complaint: not that a
+     program the person never saw. That was the owner's complaint: not that a
      default existed, but that it was unreachable and unnamed. */
   const opening = panel.adapter.chosenStart()
   assert.ok(opening && opening.tier, 'the surface must name the program it will start on, before any send')
@@ -865,9 +971,9 @@ test('the program a solo agent will start on is visible before the first send, a
   assert.equal(env.calls.find(([kind]) => kind === 'start')[1].tier, opening.tier, 'it starts on what it showed')
 })
 
-/* T286 ITEM 3, STEP 1: THE COMPOSER CONTROLS. Once the tools confusion was
-   cleared up, what was missing was not the agent's tools but the user's tools
-   and chat surface. Attach and mention are the two a person
+/* T286 ITEM 3, STEP 1: THE COMPOSER CONTROLS. The owner, after the tools
+   confusion was cleared up: "its not the agents tools that were missing. Its
+   the users tools / chat surface". Attach and mention are the two a person
    reaches for first, and mountAgentSessionSurface passed neither -- so the +
    surface, the agent page and the home chat takeover all lacked them while the
    tree conversation had them.
@@ -912,13 +1018,12 @@ test('a surface whose bridge cannot attach or mention shows no control for it, r
     'a bridge with no pickMention must draw no mention control')
 })
 
-/* DESIGN RULE for the + agent page: + should open a pop-up menu
-   that chooses what to spawn, and the tab should then use the standard chat
-   interface -- the page was missing buttons and functionality while adding
-   buttons where they did not belong -- and the chat surface must be reused,
-   not rebuilt.
+/* THE OWNER, 2026-09-17, looking at the + agent page: a pop-up menu should
+   select what to spawn, and then the standard chat interface should open; the
+   page was missing functionality and had buttons where they did not belong.
+   The chat surface must be reused.
 
-   The two selects once put in the chat header were those misplaced buttons. The
+   The two selects I put in the chat header were those buttons. The
    choice belongs in a pop-up on +, before the chat exists; the chat is then the
    same surface a tree agent gets, with nothing added to it. */
 
@@ -1019,9 +1124,9 @@ test('what the pop-up chose is what the agent starts on', async t => {
   assert.equal(record.session.chosenStart().tier, 'claude-opus', 'the chosen program is what the agent will start on')
 })
 
-/* 1.0.48: PROVIDER, THEN MODEL, IN THE + POP-UP. Owner decision: every
-   model a provider offers is selectable, chosen as provider first, then
-   model (for example Opus 5 and Sonnet 5).
+/* 1.0.48: PROVIDER, THEN MODEL, IN THE + POP-UP. The owner, verbatim: "users
+   need to be able to select all the models from the providers. it should be
+   provider, then model choice. Becuasee for example I need opus5 and sonnet5".
 
    The pop-up asks whose model first, and its Model menu then lists that
    provider's rows only. The Provider menu is a filter: the pop-up still hands
@@ -1045,7 +1150,7 @@ test('the + pop-up asks for the provider first, then lists only that provider\'s
     'providers read as words a person knows, never as keys')
   for (const id of optionIds(provider)) {
     pickSpawn(notice, id)
-    assert.deepEqual(optionIds(tier), LAUNCH_TIERS.filter(row => row.provider === id).map(row => row.id),
+    assert.deepEqual(optionIds(tier), [...LAUNCH_TIERS.filter(row => row.provider === id).map(row => row.id), OTHER_MODEL_VALUE],
       `the Model menu under ${id} lists that provider's models, in table order, and nobody else's`)
   }
   pickSpawn(notice, 'claude')
@@ -1181,7 +1286,7 @@ test('the + agent is offered every model a tree agent is, the ones with no dispa
   assert.equal(env.calls.find(([kind]) => kind === 'start')[1].tier, 'grok-4-6')
 })
 
-/* T286 ITEM 4 + THE CHAT HALF. The ruling: reuse the chat surface,
+/* T286 ITEM 4 + THE CHAT HALF. The owner: the chat surface must be reused,
    and the controls ruling: the chat that opens from the pop-up is the TREE
    CONVERSATION's chat, served by the tree's own builder rather than by options
    copied one at a time into the shared mount.
@@ -1224,7 +1329,7 @@ test('a standalone mount with no host builder still opens its chat, so the tab i
   assert.ok(panel.input(), 'with its composer')
 })
 
-/* WORKER 82 ON SCREEN AT an earlier commit: attach and mention were enabled, their
+/* WORKER 82 ON SCREEN AT 0e50eabb: attach and mention were enabled, their
    bridge methods were functions, and pressing either did nothing -- no picker,
    no sentence, no change. Two of my own lines did that. `.catch(() => null)`
    turned every refusal into silence, and an early `if (!sessionId) return null`
@@ -1241,7 +1346,7 @@ test('a refused pick leaves the person a sentence instead of silence', async t =
   /* COMPARED BEFORE AND AFTER, not asserted against a non-empty chat. A first
      version checked textContent matched /\w/, which is true of any chat and
      stayed green while attach still swallowed its refusal -- the same shape of
-     weak assertion that let an earlier commit pass review and fail on screen. */
+     weak assertion that let 0e50eabb pass review and fail on screen. */
   const before = panel.chat().textContent
   panel.chat().querySelector('[data-chat-attach]').click(); await settle()
   const afterAttach = panel.chat().textContent
@@ -1265,7 +1370,7 @@ test('a picker is asked even before the first send, so the control is never iner
  *
  * Declaring the seat (already landed) is what puts the agent in the org
  * record. It is NOT what tells the host which agent a session belongs to.
- * `treeIdentity` carries selfName and managerName only; measured at an earlier commit,
+ * `treeIdentity` carries selfName and managerName only; measured at 88bc31ae,
  * the single route by which an agentId reaches shell/main.cjs is the
  * `roleBinding` field of the start, and shell/screen-control-host.cjs refuses
  * SCREEN_ROLE_UNAVAILABLE when readBinding(agentId) finds nothing. So a solo
@@ -1399,7 +1504,7 @@ test('the workspace hands the page its seat and its binder, so the whole chain r
 
 /* THE SEAT WAS NEVER ACTUALLY DECLARED, AND NOTHING SAID SO.
  *
- * Found on a built candidate at an earlier commit by calling the page's own
+ * Found on a built candidate at 3d93d991 by calling the page's own
  * declareSeat: `standalone:<uuid>` came back
  * MC_FLEET_PROFILE_ACTION_FAILED / "A seat id must be a lowercase declared
  * agent id.", while `standalone-<uuid>` was declared. The colon is the whole
@@ -1461,7 +1566,7 @@ test('the id a new solo agent is given is one the seat store will actually accep
 
 /* SERVING THE TREE'S CHAT MUST NOT BORROW THE TREE'S REASON FOR NOT SENDING.
  *
- * Found on a built candidate at an earlier commit, on screen: with a real seat the +
+ * Found on a built candidate at 9c090ce9, on screen: with a real seat the +
  * chat finally gets the tree conversation's own configuration -- Actions,
  * attach, mention, /goal, /loop, the subtitle -- and its composer went dead.
  * Measured in the running window: input.disabled true, send.disabled true, and
@@ -1512,7 +1617,7 @@ test('a solo agent served the tree chat can still send, even while the tree woul
 
 /* EACH CONTROL IN THE POP-UP OWNS ITS OWN NAME.
  *
- * On screen at an earlier commit the panel had no layout rules at all, so its two
+ * On screen at 4ad57e6b the panel had no layout rules at all, so its two
  * labelled selects and its two buttons flowed as inline content and wrapped
  * wherever the panel ran out of room: "Program and model [select] Effort"
  * ended one line and "[select] [Open agent tab] [Cancel]" began the next. A
@@ -1574,12 +1679,12 @@ test('the Provider and Model menus sit side by side, and stack on the phone canv
 
 /* WHAT THIS AGENT RUNS ON, WHERE THE PERSON IS LOOKING.
  *
- * A page-2 sweep: nothing on the + chat says which program or
+ * Worker 82's page-2 sweep: nothing on the + chat says which program or
  * effort the agent runs on -- the only way to find out was to ask the agent.
  * The choice is made once in the pop-up and then becomes invisible, which is
  * the same complaint the pop-up itself was built for, one step later.
  *
- * It is also the last of (a). Measured in the running window at an earlier commit with
+ * It is also the last of (a). Measured in the running window at d2c5c2fc with
  * both surfaces holding a real transcript, the + chat was missing exactly
  * data-chat-chip and data-chat-header-status against the tree conversation.
  * The chips do not come from treeChatConfigFor for a solo agent and cannot:
@@ -1636,7 +1741,7 @@ test('the chip is the door to changing it, and the host is asked rather than a s
     start: { tier: 'claude-opus', effort: 'high' },
     /* The host owns the chooser: the pop-up already exists, is already the
        one the person used to open this tab, and a second menu here would be
-       exactly the misplaced-button problem the
+       exactly the out-of-place buttons the
        inline selects were removed for. */
     onChangeStart: (current, apply) => { asked.push(current); apply({ tier: 'claude-sonnet', effort: 'low' }) },
   })
@@ -2115,7 +2220,7 @@ test('B25: closing the tab whose chooser is open closes the chooser too', async 
   for (const row of plusMenuRows(owner)) assert.equal(row.hidden, false)
 })
 
-/* T300. A + agent's turns were written NOWHERE: a measurement found three
+/* T300. A + agent's turns were written NOWHERE: Worker 82 measured three
    replies from + agents landing in zero files under the state root while
    tree-agent replies resolved to node.json and .text files. The shell's
    capture already records both halves of every turn, and both halves begin
@@ -2185,7 +2290,7 @@ test('a solo agent with no transcript bridge keeps the draft and closes its unbo
   assert.equal((await panel.adapter.releaseTranscript(sessionId)).released, false)
 })
 
-/* T292. On screen: open a + / New agent tab while the "running
+/* T292. Worker 85, on screen: open a + / New agent tab while the "running
    agents" master switch is OFF, turn it ON, and the tab stays header-only --
    no chat, no composer -- until it is closed and a new one opened. The switch
    being thrown in SETTINGS is the part that makes it stick: the tab's own
@@ -2257,13 +2362,13 @@ const queueRows = panel => [...(queueStrip(panel)?.querySelectorAll('.chat-queue
 const queueTexts = panel => queueRows(panel).map(row => row.querySelector('.chat-queue-text')?.textContent)
 const sentTexts = env => env.calls.filter(([kind]) => kind === 'send').map(([, value]) => value.text)
 
-/* T294. On screen: Halt and Send now DO render on the + chat while
+/* T294. Worker 85, on screen: Halt and Send now DO render on the + chat while
    it is busy, but Send next, Unqueue and the queue strip never appear, and a
    second message sent while the first was running was not queued at all -- it
    was lost. `queue` is a buildChat option and the + surface supplied none,
    because treeChatConfigFor early-returns a no-session configuration for any
-   node whose sessionId is null, which a seat always is. The standard for this
-   surface is that it is the same agent system. */
+   node whose sessionId is null, which a seat always is. The owner's standard
+   for this surface was "its the same agent system". */
 test('a message sent to a busy + agent waits in the strip instead of vanishing', async t => {
   const env = environment(t)
   const panel = env.mount('Queue-A')
@@ -2381,7 +2486,7 @@ test('a host that supplies its own queue keeps it', async t => {
  * SEND_NOW_RELEASE_BUDGET on the row, the + chat drew no `.chat-queue-state`
  * at all and its send door still read "Send now" -- the row went quietly back
  * to looking like an ordinary waiting message. That is the same silent hold
- * an earlier commit was written to remove, surviving on the surface whose stop does not
+ * f5463e67 was written to remove, surviving on the surface whose stop does not
  * wait for idle in the first place.
  *
  * Asserted through what a person sees: the sentence on the row and the label

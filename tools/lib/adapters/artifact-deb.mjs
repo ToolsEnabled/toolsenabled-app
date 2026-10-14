@@ -61,8 +61,19 @@ function packagePolicy(appRoot) {
       linux?.category !== 'Development' || deb?.packageName !== 'toolsenabled' || !boundedText(deb.maintainer) ||
       deb?.afterInstall !== 'build/linux/deb-maintainer.sh' || deb?.afterRemove !== deb.afterInstall ||
       deb?.appArmorProfile !== 'build/linux/toolsenabled-customer.apparmor') blocked('Debian product/source policy differs from the maintained package');
-  if (Object.keys(linux).some(key => !['executableName', 'icon', 'syncDesktopName', 'category', 'target'].includes(key)) ||
-      Object.keys(deb).some(key => !['packageName', 'maintainer', 'depends', 'appArmorProfile', 'afterInstall', 'afterRemove'].includes(key)) ||
+  /* THE CONTROL FILE'S SUMMARY, SECTION AND VENDOR ARE DECLARED, NOT LEFT TO
+     THE BUILDER (1.0.50 release review, release-ops F11). Without them the
+     builder wrote an empty one-line Description, "Section: default" (not a
+     Debian section) and the maintainer's address as Vendor. electron-builder
+     merges build.linux with build.deb and hands fpm `synopsis + "\n " +
+     description`, `--vendor` and `--category`; fpm's deb template writes them
+     as the first Description line, Vendor and Section. The synopsis is
+     refused if it holds a quote, because the builder rewrites quotes into
+     typographic ones and the accounting below compares bytes. */
+  if (!boundedText(linux.synopsis) || /['"]/.test(linux.synopsis) || !boundedText(linux.vendor) ||
+      !/^[a-z][a-z0-9+.-]*$/.test(deb.packageCategory ?? '')) blocked('Debian summary, vendor or section is not declared');
+  if (Object.keys(linux).some(key => !['executableName', 'icon', 'syncDesktopName', 'category', 'synopsis', 'vendor', 'target'].includes(key)) ||
+      Object.keys(deb).some(key => !['packageName', 'maintainer', 'packageCategory', 'depends', 'appArmorProfile', 'afterInstall', 'afterRemove'].includes(key)) ||
       pkg.build.protocols || pkg.build.fileAssociations || pkg.build.buildNumber) blocked('Debian package options have no reviewed archive accounting');
   if (!Array.isArray(deb.depends) || !deb.depends.length || deb.depends.some(value => !debianDependencyIsWellFormed(value)) ||
       new Set(deb.depends).size !== deb.depends.length) blocked('Debian dependency declaration is ambiguous');
@@ -118,6 +129,9 @@ function assertProtected(entries, { control = false } = {}) {
 function assertDirectories(entries, expectedFiles) {
   const expected = new Set(['.']);
   for (const name of expectedFiles) for (let parent = path.posix.dirname(name); parent !== '.'; parent = path.posix.dirname(parent)) expected.add(parent);
+  // Every ancestor is exact, including the shared ./opt/ record (platform
+  // review L1): dpkg reference-counts shared directories, and without the record
+  // ./opt/ToolsEnabled/ cannot be unpacked wherever /opt is missing.
   const actual = entries.filter(entry => entry.type === 'directory').map(entry => entry.name).sort();
   if (JSON.stringify(actual) !== JSON.stringify([...expected].sort())) blocked('Debian directories are missing or outside the exact payload');
 }
@@ -157,10 +171,10 @@ export function inspectDebianPackage({ appRoot, stageRoot, controlTar, dataTar }
       !Number.isFinite(Date.parse(timestamp.trim()))) blocked('Debian changelog build timestamp is malformed');
   const fields = controlFields(readControl('control'));
   const expectedFields = { Package: 'toolsenabled', Version: policy.version, License: policy.pkg.license,
-    Vendor: policy.pkg.build.deb.maintainer, Architecture: 'amd64', Maintainer: policy.pkg.build.deb.maintainer,
+    Vendor: policy.pkg.build.linux.vendor, Architecture: 'amd64', Maintainer: policy.pkg.build.deb.maintainer,
     'Installed-Size': String(Math.floor(data.totalBytes / 1024)), Depends: policy.pkg.build.deb.depends.join(', '),
-    Recommends: 'libappindicator3-1', Section: 'default', Priority: 'optional', Homepage: policy.pkg.homepage,
-    Description: '\n ' + policy.pkg.description };
+    Recommends: 'libappindicator3-1', Section: policy.pkg.build.deb.packageCategory, Priority: 'optional', Homepage: policy.pkg.homepage,
+    Description: policy.pkg.build.linux.synopsis + '\n ' + policy.pkg.description };
   if (digestRecord(fields) !== digestRecord(expectedFields)) blocked('Debian control identity, dependencies or metadata differs from source');
   const md5 = decode(readControl('md5sums'));
   if (!md5.endsWith('\n')) blocked('Debian md5sums is incomplete');

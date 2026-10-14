@@ -1,7 +1,7 @@
 /* PROVIDER, THEN MODEL, THE WAY A PERSON PICKS THEM (1.0.48).
  *
- * Owner decision: every model a provider offers is selectable, chosen as
- * provider first, then model. Since then the start
+ * The owner: "users need to be able to select all the models from the
+ * providers. it should be provider, then model choice". Since then the start
  * panel draws two menus on one row: Provider ([data-compose-field="provider"])
  * and Model ([data-compose-field="tier"]). The Model menu holds ONE provider's
  * rows at a time, and a provider change lands it on that provider's default

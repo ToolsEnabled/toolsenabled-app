@@ -1,8 +1,10 @@
 /* AN AGENT'S TURN, DRAWN AS THE AGENT WROTE IT -- ON EVERY buildChat() WINDOW,
  * NOT JUST THE ONE ON THE HOME PAGE.
  *
- * Chat formatting was messy and needed fixing, including the
- * formatting of inline responses, which was part of the same issue.
+ * Owner, 2026-09-03: "chat formatting needs to be fixed - its messy right
+ * now", and a minute later, "try your best to make it formatted cleanly in
+ * your inline response since thats exactly part of the messy issue i meant
+ * earlier".
  *
  * tools/test/chat-msg-text-newlines.test.mjs pinned the first half of this
  * defect on this surface: a reply's own line breaks now survive on every
@@ -181,7 +183,7 @@ test('a code block scrolls inside itself instead of widening the panel', () => {
 
 /* MEASURED gap, round 2 of the code-and-preformatted lane: `.md-pre` got the
    scroll-not-widen test above the day it was built; `.md-table-wrap` got the
-   identical CSS (same commit, an earlier commit -- "overflow-x: auto; max-width: 100%;
+   identical CSS (same commit, f08715d -- "overflow-x: auto; max-width: 100%;
    margin: 0 0 0.62em;") but no test ever pinned it. A table is exactly as
    capable of widening the panel as a code block -- a row of long paths in
    cells is the table analogue of a long code line -- so it needs the same

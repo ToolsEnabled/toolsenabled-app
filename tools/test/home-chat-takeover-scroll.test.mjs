@@ -1,12 +1,14 @@
-/* THE HYPOTHESIS: home-chat-takeover.js's rebuild, already suspected in the
- * composer-loss half, also remounts the log and resets its scroll -- the home
- * chat's log is replaced by a rebuild rather than re-rendered in place.
+/* CONTROLLER 3's HYPOTHESIS (L6, 2026-09-07): "Worker 2 is diagnosing
+ * home-chat-takeover.js's rebuild for the composer-loss half; Controller
+ * suspects that rebuild also remounts the log and resets its scroll. If you
+ * find the home chat's log is replaced by a rebuild rather than re-rendered
+ * in place, STOP and tell me."
  *
  * home-chat-takeover.js's own mountChatTakeover().show() DOES call
  * host.replaceChildren() and rebuild on every subject change -- expected,
  * a new subject is new content. For the coordinator subject specifically
- * (the takeover's DEFAULT, and the one the design names -- the coordinator
- * chat window), the takeover does NOT draw its own transcript: it hands the
+ * (the takeover's DEFAULT, and the one the owner named -- "that coordinator
+ * chat window"), the takeover does NOT draw its own transcript: it hands the
  * host to renderTranscript, which home.js supplies as paintSubject.
  * paintSubject does `host.appendChild(feed)` -- MOVING the SAME `feed`
  * element the collapsed panel already uses, not cloning or rebuilding it --
@@ -31,7 +33,7 @@ import { fixture, mount, settle, restoreGlobals } from './helpers/home-view-harn
 
 test.after(() => restoreGlobals())
 
-test('opening the takeover onto the coordinator (the named default) moves the real panel rather than cloning it', async () => {
+test('opening the takeover onto the coordinator (the owner-named default) moves the real panel rather than cloning it', async () => {
   const { view } = await mount()
   try {
     const expand = view.el.querySelector('[data-chat-expand]')

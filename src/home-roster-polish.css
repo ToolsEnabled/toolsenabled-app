@@ -22,8 +22,9 @@
 .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-readable .home-roster-actions button { display: block; margin-left: auto; min-width: 64px; min-height: 29px; padding: 3px 8px; }
 .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-details { margin-top: 4px; border: 1px solid var(--line-2); border-radius: 7px; background: transparent; color: var(--ink-2); font: 500 12px/1.4 var(--font-ui); cursor: pointer; }
 .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-details:hover, .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-details[aria-expanded="true"] { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
-/* Chat on a roster row is plain like Details (design rule: the roster uses
-   the plain style; a list of tinted Chats was the last of the filled look). */
+/* Chat on a roster row is plain like Details (owner review, 2026-09-23: the
+   owner asked for the plain roster style; nine tinted Chats in one list was
+   the last of the filled look). */
 .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-actions .home-roster-chat { border: 1px solid var(--line-2); border-radius: 7px; background: transparent; color: var(--ink-2); font: 500 12px/1.4 var(--font-ui); }
 .home :is(.home-feed-wrap, .home-chat-pane-body) .home-roster-actions .home-roster-chat:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
 .home :is(.home-feed-wrap, .home-chat-pane-body) :is(.home-roster-tools input, .home-roster-tools select, .home-roster-details, [data-roster-reset]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }

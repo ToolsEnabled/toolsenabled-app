@@ -10,7 +10,7 @@ test('R114 historical baseline retains the pre-correction late-drain witnesses',
   const report = await runAcceptance()
   t.after(() => fs.rmSync(report.directory, { recursive: true, force: true }))
   assert.equal(report.cases.length, 5)
-  assert.equal(report.app, 'a'.repeat(40))
+  assert.equal(report.app, '07091006f633d8e452ea9b6a27d0281c88f6249b')
   assert.equal(report.baselineSourceRef, report.app)
   assert.match(report.mode, /Historical pre-correction/)
   assert.deepEqual(report.observations.map(item => item.code), [

@@ -167,7 +167,7 @@ test('the example control refuses an impossible change, explains why, and enable
   /* AN UNREADABLE STORE NO LONGER REACHES THIS ROW, AND THAT IS THE POINT.
      This case used to make localStorage throw and then paint, because the old
      exampleWasStored() swallowed the throw and answered "nothing is stored".
-     an earlier commit replaced that contract deliberately: a store which EXISTS and
+     3eb039d replaced that contract deliberately: a store which EXISTS and
      cannot be read is could-not-tell, never absence, so the resolve now
      rejects with DATA_SOURCE_READ_UNAVAILABLE instead of settling a source
      (the rule and its mutation proof live in tools/test/data-source.test.mjs).
@@ -272,7 +272,7 @@ test('open public Settings re-asks a changed host and keeps an unreachable host 
   try {
     await settle()
     /* A HOST SEAM THAT IS PRESENT BUT UNREACHABLE IS STILL A HOST.
-       an earlier commit ("Keep unavailable hosted workspaces on their real source") made
+       c5baa6dc ("Keep unavailable hosted workspaces on their real source") made
        resolveDataSource() answer 'relay' whenever the desktop seam or the
        account seam EXISTS, even when its first offer throws, because on
        2026-08-22 somebody with the app installed and a computer connected was

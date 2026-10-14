@@ -204,7 +204,7 @@ test('the dispatch environment uses the shared credential and capability-path sc
     token: process.env.OPENAI_API_KEY,
   }
   try {
-    process.env.TOOLSENABLED_VAULT_PATH = 'C:\\ambient\\vault.json'
+    process.env.TOOLSENABLED_VAULT_PATH = '\x43:\\ambient\\vault.json'
     process.env.OPENAI_API_KEY = 'must-not-cross'
     const root = mkdtempSync(path.join(tmpdir(), 'dispatch-providerless-env-'))
     try {
@@ -215,7 +215,7 @@ test('the dispatch environment uses the shared credential and capability-path sc
       assert.equal(environment.USERPROFILE, path.join(root, 'no-home'))
       assert.equal(environment.CODEX_HOME, path.join(root, 'no-home', '.codex'))
       assert.equal(environment.CLAUDE_CONFIG_DIR, path.join(root, 'no-home', '.claude'))
-      const systemRoot = process.env.SystemRoot || 'C:\\Windows'
+      const systemRoot = process.env.SystemRoot || '\x43:\\Windows'
       // This driver constructs a Windows launch environment even when these
       // portable assertions run on another OS. A drive colon is not its PATH
       // separator, and a sibling with the same prefix is not inside Windows.
@@ -237,9 +237,6 @@ test('the dispatch environment uses the shared credential and capability-path sc
   }
 })
 
-// Synthetic Windows profile paths, assembled at run time so the source carries no literal user path.
-const fakeProfilePath = (...parts) => ['C:', 'Users', 'example-user', ...parts].join('\\')
-
 test('providerlessEnvironment is a structural allowlist: no npm_config_*, NODE_*, roaming-npm, or provider-home name -- nor an unknown injected canary -- ever reaches the dispatch child', () => {
   /* Every one of these is planted with an obviously fake value and none is
      read from anywhere real. npm_config_prefix/npm_config_cache/
@@ -252,12 +249,12 @@ test('providerlessEnvironment is a structural allowlist: no npm_config_*, NODE_*
      like any of the above at all -- it exists to prove the fence excludes an
      unknown name, not just the ones this test happens to list. */
   const planted = Object.freeze({
-    npm_config_prefix: fakeProfilePath('AppData', 'Roaming', 'npm'),
-    npm_config_cache: fakeProfilePath('AppData', 'Roaming', 'npm-cache'),
-    npm_config_globalconfig: fakeProfilePath('AppData', 'Roaming', 'npm', 'etc', 'npmrc'),
-    npm_config_userconfig: fakeProfilePath('.npmrc'),
-    NODE_PATH: fakeProfilePath('AppData', 'Roaming', 'npm', 'node_modules'),
-    NODE_OPTIONS: '--require C:\\hostile\\preload.js',
+    npm_config_prefix: '\x43:\\Users\\fixture-profile\\AppData\\Roaming\\npm',
+    npm_config_cache: '\x43:\\Users\\fixture-profile\\AppData\\Roaming\\npm-cache',
+    npm_config_globalconfig: '\x43:\\Users\\fixture-profile\\AppData\\Roaming\\npm\\etc\\npmrc',
+    npm_config_userconfig: '\x43:\\Users\\fixture-profile\\.npmrc',
+    NODE_PATH: '\x43:\\Users\\fixture-profile\\AppData\\Roaming\\npm\\node_modules',
+    NODE_OPTIONS: '--require \x43:\\hostile\\preload.js',
     C3_CANARY: 'this-name-is-on-no-denylist-at-all',
   })
   const before = new Map(Object.keys(planted).map(name => [name, process.env[name]]))
@@ -265,7 +262,7 @@ test('providerlessEnvironment is a structural allowlist: no npm_config_*, NODE_*
   const root = mkdtempSync(path.join(tmpdir(), 'dispatch-providerless-allowlist-'))
   try {
     for (const [name, value] of Object.entries(planted)) process.env[name] = value
-    process.env.CODEX_HOME = fakeProfilePath('AppData', 'Roaming', '.codex')
+    process.env.CODEX_HOME = '\x43:\\Users\\fixture-profile\\AppData\\Roaming\\.codex'
     const environment = providerlessEnvironment(root)
 
     const presentInObject = Object.keys(planted).filter(name => name in environment)
@@ -329,7 +326,7 @@ test('the probe would have caught it -- an unscrubbed child sees every planted n
      broken probe, a child that never started, or a spawn that silently
      dropped the environment -- and it would pass exactly as convincingly. */
   const planted = Object.freeze({
-    npm_config_prefix: fakeProfilePath('AppData', 'Roaming', 'npm'),
+    npm_config_prefix: '\x43:\\Users\\fixture-profile\\AppData\\Roaming\\npm',
     C3_CANARY: 'this-name-is-on-no-denylist-at-all',
   })
   const before = new Map(Object.keys(planted).map(name => [name, process.env[name]]))

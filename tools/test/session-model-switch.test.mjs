@@ -47,8 +47,9 @@ test('a Codex conversation may switch between Codex models', () => {
   }
 })
 
-// T137: a model switch, including across providers, continues in a fresh
-// session with the context handed over. So the rows the thread cannot switch to IN PLACE
+// OWNER REQUEST T137 (2026-09-16 02:58Z): "switch models still doesnt work. and
+// it should work for even different providers because we can just hand the
+// context to the next agent." So the rows the thread cannot switch to IN PLACE
 // are no longer refusals: each is offered as a CONTINUATION -- a fresh session
 // on that tier, started from the same handoff "Continue on another account"
 // sends. `enabled` keeps its old meaning (a real per-turn override) and

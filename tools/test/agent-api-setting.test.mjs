@@ -412,8 +412,8 @@ test('a conflict reported on opening never replaces stored choices with the reje
   assert.ok(Object.values(ui.discovery).every(row => !row.input.disabled && row.input.checked))
 })
 
-test('the engine support rows read as one plain sentence set: Optimized works with Claude only', () => {
-  // The exact rows the engine's optimizedApiSupport() returns after the Codex decision.
+test('the engine support rows read as one plain sentence set: Optimized works with Claude only (rc-0922)', () => {
+  // The exact rows the engine's optimizedApiSupport() returns after the rc-0922 Codex decision.
   const claudeOnly = { scope: 'installation', appliesTo: 'new-sessions', providers: [
     { provider: 'claude', status: 'supported', nativeTools: ['Glob', 'Grep', 'Skill', 'TodoWrite', 'ToolSearch'],
       reason: 'Claude sessions add file search, skills, planning and tool search, within the existing role and permission limits.' },

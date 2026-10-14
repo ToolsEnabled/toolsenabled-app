@@ -93,7 +93,7 @@ test('copied CLI preserves 0, 1, 2, and update/1 across shell-free process bound
  * Every case above writes a synthetic src/components.js into a scratch root and
  * derives from that, so the suite has been green while deriveControls() threw
  * on the real file: "SETUP ERROR: dynamic data-chat setAttribute owner".
- * Measured at assembly base an earlier commit and at every tip since. The gate was also
+ * Measured at assembly base 234a2e8f and at every tip since. The gate was also
  * wired into no chain, so nothing ran it. A check that cannot run is not a
  * check that passed, and a suite that only ever sees its own fixture cannot
  * tell you that.
@@ -121,7 +121,7 @@ test('the gate derives from the real src/components.js, not only from fixtures',
    standalone surface ever grows a buildChat of its own, or computersView stops
    handing its builder down, the two surfaces can diverge again and a person
    gets a different chat depending on where the agent came from -- which is the
-   whole of the objection. */
+   whole of what the owner objected to. */
 
 test('the + surface and the tree conversation take their chat from one builder', async () => {
   const mount = await readFile(new URL('../../src/tree-standalone-agent.js', import.meta.url), 'utf8')

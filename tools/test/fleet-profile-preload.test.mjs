@@ -128,7 +128,7 @@ function loadPreload({ fleetBootstrap = { ok: true, profile: { name: 'Home fleet
     if (originalSetTimeout === undefined) delete globalThis.setTimeout
     else Object.defineProperty(globalThis, 'setTimeout', { configurable: true, writable: true, value: originalSetTimeout })
   }
-  return { bridge: exposed.get('mcFleetProfile'), account: exposed.get('mcAccount'), nativeStop: exposed.get('mcNativeStop'), calls, listeners, appended, prepended, htmlClasses, bodyClasses }
+  return { bridge: exposed.get('mcFleetProfile'), account: exposed.get('mcAccount'), nativeStop: exposed.get('mcNativeStop'), videoBox: exposed.get('mcVideoBox'), calls, listeners, appended, prepended, htmlClasses, bodyClasses }
 }
 
 test('shell/fleet-profile-preload.cjs preserves both a ready bootstrap and a read failure with its reason', () => {
@@ -204,6 +204,7 @@ test('the injected titlebar strip pushes the home takeover clear too, not only #
 
   assert.deepEqual([...harness.htmlClasses], ['in-shell'])
   assert.equal(harness.prepended[0]?.id, 'shell-titlebar', 'the shell drag strip must be installed')
+  assert.equal(harness.prepended[0].textContent, '', 'the native drag strip leaves branding to the sidebar')
   assert.equal(harness.appended.length, 1, 'exactly one stylesheet carries every in-shell offset')
 
   const css = harness.appended[0].textContent
@@ -255,4 +256,24 @@ test('the loaded native preload exposes only the private Stop readiness and one-
   await nativeStop.complete({ ...key, savedState: 'recorded' })
   assert.equal(calls.at(-1).channel, 'mc-native-stop:complete')
   assert.equal(Object.hasOwn(nativeStop, 'start'), false)
+})
+
+/* 1.0.49 video box: a frozen bridge of exactly six fixed channels. The page
+   passes its one request object and nothing else; main owns window ids. */
+test('the video bridge exposes exactly its six fixed channels and forwards only the caller request', async () => {
+  const { videoBox, calls } = loadPreload()
+  assert.equal(Object.isFrozen(videoBox), true)
+  assert.deepEqual(Object.keys(videoBox).sort(), ['arm', 'clear', 'forget', 'remember', 'saved', 'sources'])
+  const request = { token: 'a'.repeat(32), nodeId: 'node-a' }
+  for (const [method, channel, args] of [
+    ['sources', 'mc-video-box:sources', []],
+    ['arm', 'mc-video-box:arm', [request]],
+    ['forget', 'mc-video-box:forget', [{ nodeId: 'node-a' }]],
+    ['saved', 'mc-video-box:saved', []],
+    ['remember', 'mc-video-box:remember', [{ nodeId: 'node-a' }]],
+    ['clear', 'mc-video-box:clear', []],
+  ]) {
+    await videoBox[method](...args, { extra: 'must not travel' })
+    assert.deepEqual(calls.at(-1), { kind: 'async', channel, args }, `${method} forwarded more than its request`)
+  }
 })

@@ -1,6 +1,6 @@
 /* THE ENGINE ROW ON A TREE NODE'S PANEL NAMES WHAT THIS BUILD REALLY STARTS.
  *
- * THE SENTENCE THIS GUARDS, and the report about it. The node panel's
+ * THE SENTENCE THIS GUARDS, and the owner's report about it. The node panel's
  * Setup box carried two hardcoded strings in src/views/computers.js:
  *
  *     Engine: Codex
@@ -129,11 +129,11 @@ test('the view holds no hardcoded engine name', () => {
     'the engine row stopped naming the providers it filtered from the shell answer')
   /* The list the row reads must be the one the SHELL filled, not the
      pessimistic default left standing because nobody assigned it.
-     Two pins rather than one since an earlier commit: that commit split the reading in
+     Two pins rather than one since 906ea9d0: that commit split the reading in
      two so a row could tell "the shell said no launcher" from "the shell never
      spoke", and the single expression this used to match
      (`startableTierIdList = startableTierIds(reply)`, computers.js at
-     an earlier commit) no longer exists. The requirement did not change and neither did
+     a96ca17e) no longer exists. The requirement did not change and neither did
      the strength of the check -- the reply still has to be read, and its tiers
      still have to be the thing assigned -- so both halves are pinned. */
   assert.match(code, /const answer = startableTierAnswer\(reply\)/,

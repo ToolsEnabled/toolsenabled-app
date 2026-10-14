@@ -401,8 +401,8 @@ function standaloneBridge(f, { holdAdoption = false } = {}) {
 async function openStandalone(view) {
   view.el.querySelector('.tree-chat-add').click()
   view.el.querySelector('.tree-new-agent').click()
-  /* + now opens the spawn chooser first (T286: + opens a pop-up menu that
-     chooses what to spawn), so the real path is press, choose, open.
+  /* + now opens the spawn chooser first (T286, the owner: "Give it a pop up
+     menu to select what to spawn"), so the real path is press, choose, open.
      The default program is already selected; this presses Open agent tab. */
   view.el.querySelector('.tree-agent-continue').click(); await settle(8)
   const chat = view.el.querySelector('.tree-standalone-agent .chat')

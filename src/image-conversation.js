@@ -3,7 +3,7 @@ import { createImageQueueClient } from './image-queue-client.js'
 import { createImageQueueDrain } from './image-queue-drain.js'
 
 // A mounted conversation keeps admission separate from host-owned dispatch.
-export function createImageConversation({ bridge, sessionId, isCurrent, mayDrain, subscribeReady, interrupt, ownerClient = null, readinessRevision = () => null }) {
+export function createImageConversation({ bridge, sessionId, isCurrent, mayDrain, mayDrainAutomatically = () => true, subscribeReady, interrupt, ownerClient = null, readinessRevision = () => null }) {
   function requestQueue(request) {
     if (typeof bridge?.imageQueue !== 'function') {
       throw Object.assign(new Error('The native image queue is unavailable.'), { code: 'IMAGE_QUEUE_BRIDGE_UNAVAILABLE' })
@@ -142,7 +142,8 @@ export function createImageConversation({ bridge, sessionId, isCurrent, mayDrain
     const lifecycle = drainLifecycle
     let currentDrain = null
     currentDrain = createImageQueueDrain({ bridge, owner, ownerContext: captured,
-      conversationId, sessionId, isCurrent: current, mayDrain: () => !suspended && mayDrain(),
+      conversationId, sessionId, isCurrent: current, mayDrain: ({ explicit = false } = {}) => !suspended && mayDrain()
+        && (explicit || mayDrainAutomatically()),
       readinessRevision,
       onState: state => {
         if (!current() || !owner.isCurrent(captured) || bindingId !== conversationId
@@ -230,7 +231,7 @@ export function createImageConversation({ bridge, sessionId, isCurrent, mayDrain
   async function signalReady() {
     // This is a lifecycle authorization, separate from a read or reopen.
     await refresh()
-    if (!suspended && current() && displayedOwner && owner.isCurrent(displayedOwner) && mayDrain() && drain) return drain.drain()
+    if (!suspended && current() && displayedOwner && owner.isCurrent(displayedOwner) && mayDrain() && mayDrainAutomatically() && drain) return drain.drain()
     return { state: 'held', code: 'IMAGE_QUEUE_NOT_READY' }
   }
   function matchesView(view, captured) {
@@ -585,7 +586,7 @@ export function createImageConversation({ bridge, sessionId, isCurrent, mayDrain
   const removeOwner = ownerClient?.subscribe(ownerChanged)
   const ready = owner.capture() ? Promise.resolve(owner.snapshot()) : owner.start()
   const current = () => !disposed && isCurrent()
-  const removeReady = subscribeReady?.(() => { if (current() && mayDrain()) void signalReady() })
+  const removeReady = subscribeReady?.(() => { if (current() && mayDrain() && mayDrainAutomatically()) void signalReady() })
   async function connectDestination(admitted) {
     if (!current() || !owner.isCurrent(admitted.ownerContext)) return false
     const common = { ownerContext: admitted.ownerContext, conversationId: admitted.conversationId }
@@ -696,7 +697,9 @@ export function createImageConversation({ bridge, sessionId, isCurrent, mayDrain
         try { await interrupt() } catch { /* Host dispatch still owns readiness. */ }
       }
       await refresh()
-      if (current() && mayDrain()) void drain.drain()
+      // This Send owns only the envelope it just admitted. Older held rows
+      // need their own explicit action when automatic delivery is blocked.
+      if (current() && mayDrain()) void drain.drain({ explicit: true, targetEnvelopeId: admitted.entry.envelopeId })
       return { ...admitted, state: 'queued', isCurrent: () => current() && owner.isCurrent(captured) }
     },
     dispose() {

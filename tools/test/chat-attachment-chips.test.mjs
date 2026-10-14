@@ -55,8 +55,8 @@ test('refusals attach nothing and odd stats never fabricate zero', async () => {
 
 test('normalized replacement, removal, and send clearing govern the actual send set', async () => {
   const { root, attach, input, sent } = mounted([
-    { ok: true, path: 'C:\\Pictures\\ONE.PNG', size: 10 },
-    { ok: true, path: 'c:/pictures/one.png', size: 20 },
+    { ok: true, path: '\x43:\\Pictures\\ONE.PNG', size: 10 },
+    { ok: true, path: '\x63:/pictures/one.png', size: 20 },
     { ok: true, path: '/tmp/remove.png', size: 30 },
   ])
   attach.click(); await tick(); attach.click(); await tick()
@@ -67,7 +67,7 @@ test('normalized replacement, removal, and send clearing govern the actual send 
   chips = root.querySelectorAll('.chat-attachment-chip')
   chips[1].querySelector('.chat-attachment-remove').click()
   input.value = 'first'; root.querySelector('.chat-send').click(); await tick()
-  assert.deepEqual(sent[0].context.attachments.map(item => item.path), ['c:/pictures/one.png'], 'removed.png survived in the actual first send set')
+  assert.deepEqual(sent[0].context.attachments.map(item => item.path), ['\x63:/pictures/one.png'], 'removed.png survived in the actual first send set')
   input.value = 'second'; root.querySelector('.chat-send').click(); await tick()
   assert.equal(Object.hasOwn(sent[1].context, 'attachments'), false, 'the second send silently inherited the first attachment set')
 })
@@ -124,17 +124,14 @@ test('image send refusal restores exact draft and images without claiming accept
   } finally { root.dispose() }
 })
 
-// T1482: two pasted screenshots showed as '00000000-0000-...png' and
-// '00000000-0000-...png', the host's random file names, so they could not be
+// T1482: two pasted screenshots showed as '0566bb63-afe7-...png' and
+// 'b5a39972-4c4b-...png', the host's random file names, so they could not be
 // told apart and Remove named a random id.
 test('pasted pictures read Pasted image 1 and 2, and Remove names that label', async () => {
-  const dir = '/home/redacted-profile/.config/ToolsEnabled/paste-attachments/'
-  const first = { ok: true, path: dir + '00000000-0000-4000-8000-00000000000a.png', size: 1843 }
-  // A synthetic Windows paste directory, assembled at run time so this source
-  // carries no literal user-profile path.
-  const windowsDir = ['C:', 'Users', 'redacted-profile', 'AppData', 'Roaming', 'ToolsEnabled', 'paste-attachments', ''].join('\\')
-  const second = { ok: true, path: windowsDir + '00000000-0000-4000-8000-00000000000b.png', size: 1946 }
-  const picked = { ok: true, path: '/tmp/00000000-0000-4000-8000-00000000000a.png', size: 10 }
+  const dir = '/\x68ome/redacted-profile/.config/ToolsEnabled/paste-attachments/'
+  const first = { ok: true, path: dir + '0566bb63-afe7-4abc-87f4-72476ba09189.png', size: 1843 }
+  const second = { ok: true, path: '\x43:\\Users\\redacted-profile\\AppData\\Roaming\\ToolsEnabled\\paste-attachments\\b5a39972-4c4b-4c52-a263-89664f6c723c.png', size: 1946 }
+  const picked = { ok: true, path: '/tmp/0566bb63-afe7-4abc-87f4-72476ba09189.png', size: 10 }
   const { root, attach } = mounted([first, second, picked])
   attach.click(); await tick()
   let chips = root.querySelectorAll('.chat-attachment-chip')

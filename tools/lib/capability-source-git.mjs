@@ -88,14 +88,13 @@ export function readCapabilitySourceSetting(repoRoot) {
  *
  * MEASURED 2026-09-03. `git -C <source> rev-parse --show-toplevel` resolves
  * every 8.3 short-name segment in `source` to its long form before printing
- * it -- confirmed directly: a fixture built under the Dev account's own
- * os.tmpdir() (`<drive>:\Users\<SHORT~1>\AppData\Local\Temp\...`) came back
- * from Git as `<drive>:/Users/<long account name>/AppData/Local/Temp/...`.
- * `path.resolve(source)` does no such resolution -- it is a lexical join, not a
- * filesystem lookup -- so the two sides of the comparison below were two
- * different spellings of the identical directory, and every one of them
- * failed with "capability source must be the root of its Git repository".
- * Six tests in
+ * it -- confirmed directly: a fixture built under this machine's own
+ * os.tmpdir() (`<profile-root>/TOOLSE~1\AppData\Local\Temp\...`) came back from Git
+ * as `<profile-root>/fixture-profile/AppData/Local/Temp/...`. `path.resolve(source)`
+ * does no such resolution -- it is a lexical join, not a filesystem lookup --
+ * so the two sides of the comparison below were two different spellings of the
+ * identical directory, and every one of them failed with "capability source
+ * must be the root of its Git repository". Six tests in
  * tools/test/capability-source-git.test.mjs were red for this and only this:
  * every one of them builds its fixture the same way, under os.tmpdir(), and
  * every one of them hit this line before reaching the check it meant to

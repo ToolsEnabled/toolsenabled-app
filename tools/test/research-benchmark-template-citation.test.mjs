@@ -3,7 +3,7 @@
 // methods, replicate dispersion, interval notes, and the statistics corrections from root's
 // 2026-09-11 stats audit (F1 design-arm Bonferroni family, F2 primary-population headline,
 // F7 rounded abstract). The export-side half is research-benchmark-template-citation-export.
-// WS1.
+// Worker 19, WS1.
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'

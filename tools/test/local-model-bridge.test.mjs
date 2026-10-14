@@ -1,7 +1,7 @@
 /* THE THREE NEW VERBS ON THE SAME window.mcProviders BRIDGE: detectLocal(),
  * installRuntime(), pullModel() (exposed to the renderer as pullLocalModel).
  * Added to shell/provider-login.cjs rather than a parallel bridge, on the
- * product rule that a local runtime extends the existing
+ * owner ruling (via fleet-B) that a local runtime should extend the existing
  * provider surface, never duplicate it -- confirmed necessary by three
  * concrete misfits in the EXISTING verbs:
  *
@@ -108,7 +108,7 @@ function fakeLocalNodeRuntime({ detectResult = null, detectError = null } = {}) 
 /* These fictional files exhaust the explicitly completed fixture search.
    Incomplete snapshots below must never mean an absent installer/runtime. */
 function completeSearchPath({ env, platform }) {
-  const fallback = platform === 'win32' ? 'C:/fixture/programs' : '/fixture/programs'
+  const fallback = platform === 'win32' ? '\x43:/fixture/programs' : '/fixture/programs'
   return Object.freeze({
     directories: Object.freeze((env.PATH || fallback).split(platform === 'win32' ? ';' : ':').filter(Boolean)),
     complete: true,
@@ -128,7 +128,7 @@ function harness({ files = [], links = [], env = {}, platform = 'win32', localNo
     spawnHidden: (command, args, options) => { spawns.push({ command, args, options }); return child },
     openTerminal: () => {},
     providerSpawnRefused: () => false,
-    env: { APPDATA: 'C:/u/AppData/Roaming', SystemRoot: 'C:/Windows', PATH: '', PATHEXT: '.COM;.EXE;.BAT;.CMD', ...env },
+    env: { APPDATA: '\x43:/u/AppData/Roaming', SystemRoot: '\x43:/Windows', PATH: '', PATHEXT: '.COM;.EXE;.BAT;.CMD', ...env },
     platform,
     readSearchPath,
     statSync: target => {
@@ -143,10 +143,10 @@ function harness({ files = [], links = [], env = {}, platform = 'win32', localNo
   return { service, spawns, child }
 }
 
-const WINGET = 'C:/Windows/System32/winget.exe'
-const OLLAMA = 'C:/u/AppData/Roaming/ollama.exe'
-const PIP = 'C:/u/AppData/Roaming/pip.exe'
-const ROAMING_PATH = { PATH: 'C:/u/AppData/Roaming' }
+const WINGET = '\x43:/Windows/System32/winget.exe'
+const OLLAMA = '\x43:/u/AppData/Roaming/ollama.exe'
+const PIP = '\x43:/u/AppData/Roaming/pip.exe'
+const ROAMING_PATH = { PATH: '\x43:/u/AppData/Roaming' }
 
 test('an incomplete Windows search keeps local installer absence unknown', () => {
   const { service, spawns } = harness({ readSearchPath: incompleteSearchPath })
@@ -162,7 +162,7 @@ test('an incomplete Windows search keeps local runtime absence unknown', () => {
 
 test('an incomplete Windows search still accepts a known local installer and runtime', () => {
   const { service, spawns, child } = harness({
-    files: [WINGET, OLLAMA], env: { PATH: 'C:/Windows/System32;C:/u/AppData/Roaming' },
+    files: [WINGET, OLLAMA], env: { PATH: '\x43:/Windows/System32;\x43:/u/AppData/Roaming' },
     readSearchPath: incompleteSearchPath,
   })
   assert.equal(service.installRuntime('ollama', () => {}).ok, true)
@@ -282,7 +282,7 @@ const wingetLine = id => ['install', '--id', id, '--exact', '--source', 'winget'
   '--scope', 'user', '--disable-interactivity', ...WINGET_UNATTENDED_ARGS]
 
 test('installRuntime spawns winget for this user, by exact package id, with its unattended flags, on win32', () => {
-  const { service, spawns } = harness({ files: [WINGET], env: { PATH: 'C:/Windows/System32' } })
+  const { service, spawns } = harness({ files: [WINGET], env: { PATH: '\x43:/Windows/System32' } })
   const answer = service.installRuntime('ollama', () => {})
   assert.equal(answer.ok, true)
   assert.equal(spawns.length, 1)
@@ -292,7 +292,7 @@ test('installRuntime spawns winget for this user, by exact package id, with its 
 
 test('every winget runtime installs for this user only, never for the whole computer', () => {
   for (const [runtime, id] of [['ollama', 'Ollama.Ollama'], ['lm-studio', 'ElementLabs.LMStudio'], ['llama-cpp', 'ggml.llamacpp']]) {
-    const { service, spawns, child } = harness({ files: [WINGET], env: { PATH: 'C:/Windows/System32' } })
+    const { service, spawns, child } = harness({ files: [WINGET], env: { PATH: '\x43:/Windows/System32' } })
     assert.equal(service.installRuntime(runtime, () => {}).ok, true, runtime)
     assert.deepEqual(spawns[0].args, wingetLine(id), runtime)
     assert.ok(!spawns[0].args.includes('machine'), `${runtime} must never ask for a machine-wide install`)
@@ -301,8 +301,8 @@ test('every winget runtime installs for this user only, never for the whole comp
 })
 
 test('installRuntime finds winget through the Windows app execution alias it normally is', () => {
-  const alias = 'C:/u/AppData/Local/Microsoft/WindowsApps/winget.exe'
-  const { service, spawns } = harness({ links: [alias], env: { PATH: 'C:/u/AppData/Local/Microsoft/WindowsApps' } })
+  const alias = '\x43:/u/AppData/Local/Microsoft/WindowsApps/winget.exe'
+  const { service, spawns } = harness({ links: [alias], env: { PATH: '\x43:/u/AppData/Local/Microsoft/WindowsApps' } })
   const answer = service.installRuntime('ollama', () => {})
   assert.equal(answer.ok, true, `winget behind an app execution alias must be found, got ${answer.code}`)
   assert.equal(spawns.length, 1)
@@ -312,7 +312,7 @@ test('installRuntime finds winget through the Windows app execution alias it nor
 
 test('installRuntime never runs pip for vLLM: it shows the command as text and changes no Python', () => {
   // pip is right there on PATH; the person's first Python is still not ours to change.
-  const { service, spawns } = harness({ files: [PIP, WINGET], env: { PATH: 'C:/u/AppData/Roaming;C:/Windows/System32' } })
+  const { service, spawns } = harness({ files: [PIP, WINGET], env: { PATH: '\x43:/u/AppData/Roaming;\x43:/Windows/System32' } })
   const answer = service.installRuntime('vllm', () => {})
   assert.equal(answer.ok, false)
   assert.equal(answer.code, 'LOCAL_MODEL_INSTALL_UNSUPPORTED')
@@ -326,7 +326,7 @@ test('installRuntime runs only a winget install from the table; any other comman
   const runtime = fakeLocalNodeRuntime()
   runtime.RUNTIMES.ollama = { ...runtime.RUNTIMES.ollama, installCommand: 'powershell -c irm https://ollama.com/install.ps1 | iex' }
   runtime.RUNTIMES['lm-studio'] = { ...runtime.RUNTIMES['lm-studio'], installCommand: 'winget install ElementLabs.LMStudio --scope machine' }
-  const { service, spawns } = harness({ files: [WINGET, 'C:/Windows/System32/powershell.exe'], env: { PATH: 'C:/Windows/System32' }, localNodeRuntime: runtime })
+  const { service, spawns } = harness({ files: [WINGET, '\x43:/Windows/System32/powershell.exe'], env: { PATH: '\x43:/Windows/System32' }, localNodeRuntime: runtime })
   for (const id of ['ollama', 'lm-studio']) {
     const answer = service.installRuntime(id, () => {})
     assert.equal(answer.ok, false, id)
@@ -337,7 +337,7 @@ test('installRuntime runs only a winget install from the table; any other comman
 })
 
 test('installRuntime refuses a second install for the same runtime while one is already running', () => {
-  const { service } = harness({ files: [WINGET], env: { PATH: 'C:/Windows/System32' } })
+  const { service } = harness({ files: [WINGET], env: { PATH: '\x43:/Windows/System32' } })
   assert.equal(service.installRuntime('ollama', () => {}).ok, true)
   const again = service.installRuntime('ollama', () => {})
   assert.equal(again.ok, false)
@@ -345,7 +345,7 @@ test('installRuntime refuses a second install for the same runtime while one is 
 })
 
 test('installRuntime for one runtime does not block installRuntime for a different one', () => {
-  const { service } = harness({ files: [WINGET], env: { PATH: 'C:/Windows/System32' } })
+  const { service } = harness({ files: [WINGET], env: { PATH: '\x43:/Windows/System32' } })
   assert.equal(service.installRuntime('ollama', () => {}).ok, true)
   assert.equal(service.installRuntime('lm-studio', () => {}).ok, true, 'a second, DIFFERENT runtime install must not be blocked by the first')
 })
@@ -359,7 +359,7 @@ test('installRuntime answers LOCAL_MODEL_UNAVAILABLE with no engine module, and 
 })
 
 test('installRuntime forwards bounded, colour-stripped lines and an exit code through fly()', () => {
-  const { service, child } = harness({ files: [WINGET], env: { PATH: 'C:/Windows/System32' } })
+  const { service, child } = harness({ files: [WINGET], env: { PATH: '\x43:/Windows/System32' } })
   const events = []
   service.installRuntime('ollama', event => events.push(event))
   child.stdout.emit('data', 'Downloading Ollama...\n')
@@ -436,7 +436,7 @@ test('pullModel refuses a second download of the SAME model while it is running,
 })
 
 test('pullModel does not collide with installRuntime\'s flight key for the same runtime', () => {
-  const { service } = harness({ files: [WINGET, OLLAMA], env: { PATH: 'C:/Windows/System32;C:/u/AppData/Roaming' } })
+  const { service } = harness({ files: [WINGET, OLLAMA], env: { PATH: '\x43:/Windows/System32;\x43:/u/AppData/Roaming' } })
   assert.equal(service.installRuntime('ollama', () => {}).ok, true)
   assert.equal(service.pullModel({ runtime: 'ollama', model: 'qwen2.5:3b-instruct' }, () => {}).ok, true,
     'an install in flight for ollama must not block a pull for ollama -- they are different flight keys')
@@ -448,7 +448,7 @@ test('pullModel does not collide with installRuntime\'s flight key for the same 
 // ------------------------------------------------------------------
 
 test('the existing generic stop() and stopAll() already cover local-model flights, by construction', () => {
-  const { service, child } = harness({ files: [WINGET], env: { PATH: 'C:/Windows/System32' } })
+  const { service, child } = harness({ files: [WINGET], env: { PATH: '\x43:/Windows/System32' } })
   service.installRuntime('ollama', () => {})
   assert.equal(service.running('local-install:ollama'), true)
   const stopped = service.stop('local-install:ollama')
@@ -458,7 +458,7 @@ test('the existing generic stop() and stopAll() already cover local-model flight
 })
 
 test('stopAll kills a running local-model flight the same as a CLI-provider one', () => {
-  const { service, spawns } = harness({ files: [WINGET, OLLAMA], env: { PATH: 'C:/Windows/System32;C:/u/AppData/Roaming' } })
+  const { service, spawns } = harness({ files: [WINGET, OLLAMA], env: { PATH: '\x43:/Windows/System32;\x43:/u/AppData/Roaming' } })
   service.installRuntime('ollama', () => {})
   service.pullModel({ runtime: 'ollama', model: 'qwen2.5:3b-instruct' }, () => {})
   assert.equal(spawns.length, 2)

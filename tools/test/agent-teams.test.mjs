@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module'
 /* TEAMS — the three things that make this feature honest rather than plausible.
  *
  *   1. ANTI-DRIFT. Both bounds a team obeys are restated in the renderer,
@@ -64,21 +65,11 @@ function assertSeatPoolMatchesEngine(tier, pool, engineSeats) {
    --------------------------------------------------------------- */
 
 test('every tier draws on the seat pool the engine gives it', () => {
-  const source = read(ACTIONS)
-  const start = source.indexOf('const TIERS = Object.freeze({')
-  assert.ok(start >= 0, 'engine TIERS table not found — this test is checking air')
-  const block = source.slice(start, source.indexOf('});', start))
+  const require = createRequire(path.join(engineRoot, 'package.json'))
+  const { TIERS } = require('./src/lib/mission-bridge/actions.js')
+  const engine = new Map(Object.entries(TIERS).map(([id, row]) => [id, [...row.seats]]))
 
-  const engine = new Map()
-  for (const match of block.matchAll(/'?([a-z0-9-]+)'?:\s*Object\.freeze\(\{([^}]*)\}\)/g)) {
-    const seats = /seats:\s*Object\.freeze\(\[([^\]]*)\]\)/.exec(match[2])
-    if (seats) engine.set(match[1], [...seats[1].matchAll(/'([a-z0-9_-]+)'/g)].map(seat => seat[1]))
-  }
-
-  /* If the engine ever goes back to one identity per tier, engine.size is 0 and
-     this fails LOUDLY rather than passing on an empty comparison. That is the
-     failure this suite exists for: the renderer restating a bound the engine
-     has since changed. */
+  // Compare the declared runtime data, including every seat in each pool.
   assert.equal(engine.size, LAUNCH_TIERS.length,
     `engine declares ${engine.size} tiers, the team builder knows ${LAUNCH_TIERS.length}`)
   for (const [tier, seats] of engine) {
@@ -192,7 +183,7 @@ test('a team of a lead plus the fan-out cap is dispatchable; the seats now outnu
 })
 
 test('a fifth member under one lead is refused before anything is dispatched (width four, 2026-09-11)', () => {
-  /* The recorded decision: ship with width four.
+  /* The owner's decision: "ok it sounds like shipping with 4 width is best."
      A team's members are tree children under the lead, and the tree seats
      four under one parent, so the planner refuses a fifth and names the
      number. Literal on purpose: TEAM_BOUNDS drifting back to eight must turn

@@ -4,7 +4,7 @@
 
 .research-page { scrollbar-gutter: stable; }
 .research-page :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--ink); }
-/* 2026-09-10 rebuild, by hand: a research notebook.
+/* 2026-09-10 rebuild, by hand with the owner directing: a research notebook.
    Reading type first: 15 px on 1.6 in full ink; the page spans the workspace
    beside the side navigation instead of sitting in a centred column. */
 .research-shell {
@@ -23,8 +23,8 @@
   align-items: end;
   justify-content: space-between;
   gap: var(--s4);
-  padding-bottom: var(--s4);
-  border-bottom: 1px solid var(--line-2);
+  padding-bottom: 24px;
+  border-bottom: 0;
 }
 .research-eyebrow,
 .research-source {
@@ -41,9 +41,9 @@
 .research-mast h1 {
   margin: 0;
   color: var(--ink);
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 650;
-  letter-spacing: -0.02em;
+  letter-spacing: -.012em;
   line-height: 1.2;
 }
 .research-source {
@@ -148,12 +148,12 @@
 }
 .research-report-meta div { display: flex; gap: var(--s2); }
 .research-report-meta dt {
-  color: var(--ink-4);
+  color: var(--ink-2);
   font-family: var(--font-ui);
-  font-size: 10px;
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .research-report-meta dd { margin: 0; }
 
@@ -272,7 +272,11 @@
 .research-register-list small { color: var(--ink-3); font-size: 12.5px; }
 
 @media (max-width: 760px) {
-  .research-mast { align-items: start; flex-direction: column; }
+  .research-mast { align-items: start; flex-direction: column;
+  padding-bottom: 24px;
+
+  border-bottom: 0;
+}
   .research-section-head,
   .research-register-row { grid-template-columns: 1fr; }
   .research-report-head { grid-template-columns: 1fr; gap: var(--s2); }
@@ -321,20 +325,20 @@
   padding: 12px 14px;
   background: var(--sheet);
   border: 1px solid var(--line-2);
-  border-radius: 3px;
-  box-shadow: 0 26px 60px -20px color-mix(in oklab, var(--ink) 34%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
 }
 .research-module-dropdown { display: inline-block; position: relative; flex: 0 0 auto; }
 .research-project-dropdown { position: relative; flex: 0 1 auto; min-width: 0; max-width: min(460px, 100%); }
-.research-project-dropdown > button { display: flex; align-items: center; gap: 6px; max-width: 100%; min-height: 38px; text-align: left; white-space: nowrap; }
+.research-project-dropdown > button { display: flex; align-items: center; gap: 6px; max-width: 100%; min-height: 32px; text-align: left; white-space: nowrap; }
 .research-project-dropdown [data-project-name] { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.research-module-dropdown > button { min-height: 38px; }
+.research-module-dropdown > button { min-height: 32px; }
 .research-project-options {
   position: absolute; inset: calc(100% + 4px) 0 auto auto; z-index: 45;
   box-sizing: border-box; width: 580px; max-width: calc(100vw / var(--zoom, 1) - 48px);
   max-height: calc(70vh / var(--zoom, 1)); overflow: auto; padding: 20px; background: var(--sheet);
-  border: 1px solid var(--line-2); border-radius: 3px;
-  box-shadow: 0 6px 18px -9px color-mix(in oklab, var(--ink) 28%, transparent);
+  border: 1px solid var(--line-2); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
 }
 .research-project-options[hidden] { display: none !important; }
 .research-project-options > h2 { margin: 0; font: 600 17px var(--font-ui); }
@@ -350,15 +354,17 @@
   position: absolute; inset: calc(100% + 4px) 0 auto auto; margin: 0;
   width: 290px; min-width: 0; max-width: calc(100vw / var(--zoom, 1) - 36px);
   max-height: min(calc(60vh / var(--zoom, 1)), 520px); overflow-y: auto;
-  box-shadow: 0 6px 18px -9px color-mix(in oklab, var(--ink) 28%, transparent);
+  box-shadow: var(--shadow-popover);
+
+  border-radius: var(--radius-lg);
 }
 .research-popover h3 {
   margin: 0 0 8px;
-  font-size: 11px;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-25);
-  font-weight: 650;
+  font-size: 12.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+  font-weight: 600;
 }
 .research-popover-list { display: flex; flex-direction: column; gap: 6px; }
 .research-popover-row {
@@ -380,12 +386,14 @@
 .research-popover-all button {
   padding: 3px 10px;
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--ink-2);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
+
+  min-height: 28px;
 }
 .research-popover-all button:hover { color: var(--ink); border-color: var(--ink-3); }
 
@@ -403,7 +411,7 @@
   margin-bottom: var(--s3);
   padding: 12px;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 .research-queue-form input,
 .research-queue-form textarea {
@@ -412,22 +420,22 @@
   color: var(--ink);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: 6px 8px;
   resize: vertical;
 }
 .research-queue-form input:focus-visible,
-.research-queue-form textarea:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.research-queue-form textarea:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .research-queue-form-row { display: flex; align-items: center; gap: 10px; }
 .research-queue-form-row button {
   padding: 4px 12px;
   font-family: var(--font-ui);
-  font-size: 12.5px;
-  font-weight: 640;
+  font-size: 13.5px;
+  font-weight: 550;
   color: var(--ink-2);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .research-queue-form-row button:hover { color: var(--ink); border-color: var(--ink-3); }
@@ -436,11 +444,11 @@
 .research-queue-controls button {
   padding: 2px 10px;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--ink-3);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .research-queue-controls button:hover { color: var(--ink); border-color: var(--ink-3); }
@@ -462,13 +470,13 @@
   color: var(--ink-3);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 14px; line-height: 1; font-family: var(--font-ui);
-  transition: color .22s var(--ease), border-color .22s var(--ease);
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
 .research-queue-x:hover { color: var(--ink); border-color: var(--ink-3); }
-.research-queue-x:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.research-queue-x:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .research-queue-x[data-armed="true"] { color: var(--ink); border-color: var(--ink-3); }
 .research-report[data-queue-hidden] .research-report-body > :not(.research-report-head) { opacity: .55; }
 .research-report[data-queue-hidden] h3 { opacity: .55; }
@@ -491,8 +499,10 @@
   color: var(--ink);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: 3px 6px;
+
+  min-height: 36px;
 }
 .research-designer-hint {
   margin: 0;
@@ -510,7 +520,9 @@
 .research-designer-rows { display: flex; flex-direction: column; gap: 6px; align-self: stretch; }
 .research-designer-rows:empty { display: none; }
 .research-designer-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.research-designer-row input[data-axis-values] { flex: 1; min-width: 180px; }
+.research-designer-row input[data-axis-values] { flex: 1; min-width: 180px;
+  min-height: 36px;
+}
 .research-row-btn {
   padding: 2px 10px;
   font-family: var(--font-ui);
@@ -518,7 +530,7 @@
   color: var(--ink-3);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .research-row-btn:hover { color: var(--ink); border-color: var(--ink-3); }
@@ -549,16 +561,34 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 10px;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 12px;
-  color: var(--ink-2);
+  color: var(--status-idle);
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-pill);
+
+  background: var(--status-idle-soft);
+
+  font-weight: 550;
+
+  min-height: 22px;
 }
-.research-cell.is-running { border-color: color-mix(in oklab, var(--c-coordinator) 45%, transparent); }
-.research-cell.is-finished { color: var(--ink); }
-.research-cell.is-failed { border-style: dashed; color: var(--ink-3); }
-.research-cell.is-queued { border-style: dotted; color: var(--ink-2); }
+.research-cell.is-running { border-color: var(--status-working);
+  background: var(--status-working-soft);
+
+  color: var(--status-working);
+}
+.research-cell.is-finished { color: var(--status-idle);
+  background: var(--status-idle-soft);
+}
+.research-cell.is-failed { border-style: dashed; color: var(--status-error);
+  background: var(--status-error-soft);
+
+  border-color: var(--status-error);
+}
+.research-cell.is-queued { border-style: dotted; color: var(--status-idle);
+  background: var(--status-idle-soft);
+}
 .research-project-bar { display: inline-flex; align-items: center; gap: var(--s2); }
 .research-assign-control { display: inline-flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 .research-run-drill { border: 1px solid var(--line); border-radius: 6px; padding: var(--s1) var(--s2); margin: var(--s1) 0; }
@@ -566,7 +596,7 @@
 .research-run-drill-body { padding-top: var(--s1); }
 .research-run-drill-files { margin: var(--s1) 0 0; padding-left: var(--s4); color: var(--ink-2); }
 .research-chart-pick { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.85em; }
-.research-finding-id { font-family: var(--font-mono); font-size: 11px; opacity: 0.75; }
+.research-finding-id { font-family: var(--font-mono); font-size: 12.5px; opacity: 0.75; }
 .research-result-chart { height: 220px; margin-top: var(--s2); }
 .research-results-exp { padding: var(--s3) 0; border-top: 1px solid var(--line); }
 .research-results-exp:first-child { border-top: none; }
@@ -580,12 +610,14 @@
 .research-results-table th {
   text-align: left;
   padding: 4px 10px 4px 0;
-  color: var(--ink-25);
-  font-size: 10px;
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   border-bottom: 1px solid var(--line-2);
+
+  background: var(--bg-subtle);
 }
 .research-results-table td {
   padding: 6px 10px 6px 0;
@@ -601,7 +633,7 @@ li[data-research-experiment] h3 { cursor: pointer; }
   margin-top: var(--s3);
   padding: var(--s3);
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 .research-gathered h4 {
   margin: 0;
@@ -612,11 +644,11 @@ li[data-research-experiment] h3 { cursor: pointer; }
 .research-gathered-block { margin-top: var(--s3); }
 .research-gathered-block h5 {
   margin: 0 0 6px;
-  color: var(--ink-25);
-  font-size: 10px;
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .research-exp-templates { align-items: center; margin: 0 0 var(--s2); }
 .research-finding-form { margin-top: var(--s2); }
@@ -628,12 +660,16 @@ li[data-research-experiment] h3 { cursor: pointer; }
   overflow: auto;
 }
 
-/* Workflow navigation is a view over the existing saved module arrangement. */
+/* Workflow navigation is a view over the existing saved module arrangement.
+   It is the DESIGN section 4 segmented control: a --bg-subtle track with a
+   2px inset, 28px segments, the selected one on the surface with the 4%
+   shadow at weight 600. The selected page is a position in a track, not a
+   second filled button: "Open folder" is the view's only primary. */
 .research-workflow { padding: var(--s3) 0; border-bottom: 1px solid var(--line-2); }
-.research-workflow-nav { display: flex; flex-wrap: wrap; gap: 4px; }
-.research-workflow-nav button,
-.research-workflow-nav button { min-width: 86px; font-weight: 600; }
-.research-workflow-nav button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.research-workflow-nav { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border-radius: 8px; background: var(--bg-subtle); }
+.research-workflow-nav button { min-width: 86px; min-height: 28px; padding: 0 12px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink-2); font-weight: 550; box-shadow: none; }
+.research-workflow-nav button:hover { color: var(--ink); }
+.research-workflow-nav button[aria-pressed="true"] { background: var(--bg-surface); color: var(--ink); border-color: transparent; font-weight: 600; box-shadow: var(--shadow-segmented); }
 @media (forced-colors: active) {
   .research-workflow-nav button[aria-pressed="true"] {
     text-decoration: underline;
@@ -643,7 +679,7 @@ li[data-research-experiment] h3 { cursor: pointer; }
 }
 .research-workflow button:focus-visible,
 .research-workflow [tabindex]:focus-visible,
-.research-page h2[tabindex]:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.research-page h2[tabindex]:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .research-workflow-description { margin: 12px 0; color: var(--ink-3); font-size: 13px; line-height: 1.5; }
 .research-page [data-mc][hidden],
 .research-page .m-srow[hidden],
@@ -656,17 +692,27 @@ li[data-research-experiment] h3 { cursor: pointer; }
 .research-page .research-bar { flex-wrap: wrap; }
 .research-page .research-project-bar { flex: 1 1 340px; min-width: 0; flex-wrap: wrap; }
 .research-page .research-project-bar > label { min-width: 0; max-width: 100%; }
-.research-page .research-project-bar select { min-width: 0; max-width: 100%; }
+.research-page .research-project-bar select { min-width: 0; max-width: 100%;
+  min-height: 36px;
+}
 .research-page .research-project-bar > label { font-weight: 600; color: var(--ink); }
-.research-page .research-project-bar select { min-height: 38px; min-width: min(220px, calc(50vw / var(--zoom, 1))); font: 15px var(--font-ui); padding: 6px 10px; border: 1px solid var(--ink-4); border-radius: 3px; background: var(--sheet); }
+.research-page .research-project-bar select { min-height: 36px; min-width: min(220px, calc(50vw / var(--zoom, 1))); font: 15px var(--font-ui); padding: 6px 10px; border: 1px solid var(--ink-4); border-radius: var(--radius-sm); background: var(--sheet); }
 .research-page [data-project-status]:not(:empty) { flex-basis: 100%; overflow-wrap: anywhere; }
 .research-page .research-envelope-unavailable { text-align: left; font-family: var(--font-ui); gap: 6px; }
 .research-page .research-envelope-unavailable span { font-size: 13px; }
 @media (max-width: 600px) {
-  .research-module-dropdown > .research-popover { left: 0; right: auto; }
+  .research-module-dropdown > .research-popover { left: 0; right: auto;
+  box-shadow: var(--shadow-popover);
+
+  border-radius: var(--radius-lg);
+}
   .research-page .research-bar { display: grid; grid-template-columns: 1fr auto; }
   .research-page .research-project-dropdown { grid-column: 1; }
-  .research-page .research-project-options { left: 0; right: auto; }
+  .research-page .research-project-options { left: 0; right: auto;
+  box-shadow: var(--shadow-popover);
+
+  border-radius: var(--radius-lg);
+}
   .research-page .research-bar > [data-research-pulse] { grid-column: 1 / -1; }
   .research-page .research-bar > .spacer { display: none; }
   .research-page .research-bar > button { min-height: 44px; }
@@ -697,19 +743,22 @@ li[data-research-experiment] h3 { cursor: pointer; }
 }
 
 /* ---- the pages are the navigation ----
-   The page row sits under the title; the modules line under it. Plain
-   bordered buttons, the current page filled. */
+   The page row sits under the title; the modules line under it. One
+   segmented control (the rule above); the current page is its selected
+   segment. */
 .research-shell { display: flex; flex-direction: column; }
 .research-shell > .research-mast { order: -3; }
 .research-shell > .research-workflow { order: -2; }
 .research-shell > .research-bar { order: -1; }
 .research-workflow { padding: 16px 0 14px; }
-.research-workflow-nav { gap: 8px; }
-.research-workflow-nav button { min-height: 40px; padding: 8px 16px; border-radius: 3px; border-color: var(--ink-4); color: var(--ink); font-size: 15px; font-weight: 500; }
-.research-workflow-nav button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 600; }
+.research-workflow-nav button { font-size: 13.5px; }
 .research-workflow-description { margin: 12px 0 0; color: var(--ink-2); font-size: 15px; line-height: 1.6; max-width: 90ch; }
 .research-bar { padding: 10px 0 12px; }
-.research-bar .m-edit-btn, .research-bar button { font-size: 14px; }
+.research-bar .m-edit-btn, .research-bar button { font-size: 13.5px;
+  min-height: 32px;
+
+  font-weight: 550;
+}
 
 /* ---- the Library page's lists read at the page's size ----
    Queue cards, method notes and the working lists: 15 px text, plain meta
@@ -724,16 +773,18 @@ li[data-research-experiment] h3 { cursor: pointer; }
 .research-register-row > h3 { font-size: 15px; color: var(--ink); }
 .research-register-list span { font-size: 14px; color: var(--ink-2); }
 .research-unavailable, .research-observed-empty { font-family: var(--font-ui); font-size: 15px; color: var(--ink-2); }
-.research-queue-form input, .research-queue-form textarea { font-size: 15px; min-height: 39px; border-color: var(--ink-4); }
-.research-queue-form-row button, .research-queue-controls button, .research-popover-all button { min-height: 36px; font-size: 14px; color: var(--ink); border-color: var(--ink-4); }
+.research-queue-form input, .research-queue-form textarea { font-size: 15px; min-height: 36px; border-color: var(--ink-4); }
+.research-queue-form-row button, .research-queue-controls button { min-height: 32px; font-size: 13.5px; color: var(--ink); border-color: var(--ink-4); }
 .research-queue-form-status { font-size: 14px; color: var(--ink-2); }
 
 /* ---- the experiment designer reads like the builder ----
    No box around the form; 15 px labels and controls; the example starters,
    the tier checkboxes and the row buttons at reading size. */
 .research-queue-form { padding: 0; border: 0; border-radius: 0; gap: 14px; margin: 16px 0 24px; }
-.research-queue-form select { margin-left: 0; font-size: 15px; min-height: 39px; padding: 8px 10px; border-color: var(--ink-4); }
-.research-queue-form input, .research-queue-form textarea { max-width: 100%; }
+.research-queue-form select { margin-left: 0; font-size: 15px; min-height: 36px; padding: 8px 10px; border-color: var(--ink-4); }
+.research-queue-form input, .research-queue-form textarea { max-width: 100%;
+  min-height: 36px;
+}
 .research-queue-form input:not([type=checkbox]) { width: min(100%, 720px); }
 .research-queue-form textarea { width: min(100%, 960px); min-height: 96px; }
 .research-designer-hint { font-size: 15px; color: var(--ink-2); line-height: 1.6; max-width: 90ch; }
@@ -742,7 +793,7 @@ li[data-research-experiment] h3 { cursor: pointer; }
 .research-designer-tiers input[type=checkbox] { width: 18px; height: 18px; }
 .research-designer-group { gap: 8px; }
 .research-designer-row { gap: 10px; }
-.research-designer-row input[data-axis-values] { min-height: 39px; }
+.research-designer-row input[data-axis-values] { min-height: 36px; }
 .research-row-btn { min-height: 36px; padding: 6px 12px; font-size: 14px; color: var(--ink); border-color: var(--ink-4); }
 .research-exp-templates { gap: 10px; font-size: 15px; color: var(--ink-2); }
 .research-exp-preview { padding: 12px 0; font-size: 15px; gap: 10px; }
@@ -750,5 +801,5 @@ li[data-research-experiment] h3 { cursor: pointer; }
 .research-designer-advanced summary { font-size: 15px; color: var(--ink-2); padding: 8px 0; }
 .research-queue-form-row { gap: 14px; }
 .research-queue-form-row label { font-size: 15px; color: var(--ink); }
-.research-queue-form-row button { min-height: 38px; padding: 8px 14px; font-size: 15px; font-weight: 500; }
+.research-queue-form-row button { min-height: 36px; padding: 8px 14px; font-size: 15px; font-weight: 500; }
 .research-runboard-exp h3 { font-size: 16px; font-weight: 650; }

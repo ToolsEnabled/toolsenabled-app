@@ -1,3 +1,4 @@
+import { startExplicitContinuation } from './lib/explicit-continuation.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -98,7 +99,7 @@ function refusedHandoffBridge(world) {
   }
   bridge.start = async request => {
     starts.push({ sessionId: request.sessionId, replacesSessionId: request.replacesSessionId })
-    return { ok: true, sessionId: successor, threadId: 't839-refused-thread' }
+    return { ok: true, sessionId: successor, threadId: 't839-refused-thread', account: request.treeAccount }
   }
   bridge.send = async () => ({ ok: true, turnId: 'synthetic-person-turn' })
   bridge.sendAutomatic = async () => {
@@ -196,14 +197,8 @@ test('a definite refused handoff never installs image draining before an idle su
   world.storage.setItem('mc.write.agent-session', 'enabled')
   view = await mountView(world, { computerId: COMPUTER_ID })
   assert.ok(view.el.classList.contains('computers'), 'the real Computers view must mount')
-  image.emit({
-    sessionId: predecessor,
-    event: {
-      type: 'account_recovery_needed',
-      recoveryId: 't839-refused-handoff-recovery',
-      handoff: 'Continue synthetic refused words and image custody.',
-    },
-  })
+  await startExplicitContinuation({ computerId: COMPUTER_ID, nodeId,
+    sessionId: predecessor, emit: image.emit })
   await until(() => image.starts.length === 1, 'the real coordinator never started the successor')
   await until(() => image.handoffAttempts === 1, 'the real coordinator never attempted the handoff')
   assert.equal(image.busy, false, 'the native synthetic world is idle only after definite handoff refusal')

@@ -86,7 +86,7 @@ function view({ fetchFleet, readOrg = async () => ({}), initialSource = 'local',
     const TIER_CHOICES = [], TREE_DEFAULT_STARTABLE_TIERS = []
     let machineChoices, railRuns, railRunsSupported, startableTierChoices, startableTierIdList
     /* mountMockFleet() clears this alongside the two tier lists above it, so the
-       harness has to own it too. It arrived with the tier-probe retry (
+       harness has to own it too. It arrived with the tier-probe retry (906ea9d0,
        computers.js:11509) and without it the real mountMockFleet() this test
        executes throws ReferenceError under 'use strict' before any assertion. */
     let tierAnswerMissing

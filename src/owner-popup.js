@@ -282,9 +282,9 @@ function renderPurchase(documentRef, prompt, callbacks, surface) {
     /* THE REFERENCE NUMBER COMES OFF BEFORE THE NAME GOES ON THE SCREEN.
        The engine stamps provenance onto the front of the description as text --
        "[From your words: R1234] " -- and this row used to print the whole string.
-       That put one of our own record numbers on the surface where they decide
+       That put one of our own record numbers on the surface where he decides
        about money. The FACT is worth keeping and gets its own row below in
-       words; the number is not theirs to have to read. */
+       words; the number is not his to have to read. */
     const from = readProvenance(item.description)
     row.dataset.provenance = from.provenance
     setAttributes(row, { 'aria-label': `${from.text}, ${formatExactAmount(item.amountCents, item.currency)}` })
@@ -295,8 +295,8 @@ function renderPurchase(documentRef, prompt, callbacks, surface) {
     merchant.append(element(documentRef, 'span', 'owner-popup-meta-label', 'Merchant'), element(documentRef, 'span', '', item.merchant))
     const purpose = element(documentRef, 'div', 'owner-popup-item-meta')
     purpose.append(element(documentRef, 'span', 'owner-popup-meta-label', 'Purpose'), element(documentRef, 'span', '', item.purpose))
-    /* WHOSE IDEA THIS LINE WAS, in words. A line can be stamped as nobody's
-       idea, and until now that stamp was
+    /* WHOSE IDEA THIS LINE WAS, in words. One of the twenty lines on his real
+       cart today is stamped as nobody's idea, and until now that stamp was
        buried inside the description text at the front of the item name. */
     const origin = element(documentRef, 'div', 'owner-popup-item-meta owner-popup-item-origin')
     origin.append(element(documentRef, 'span', 'owner-popup-meta-label', 'Whose idea'), element(documentRef, 'span', '', from.label))
@@ -346,7 +346,7 @@ function renderPurchase(documentRef, prompt, callbacks, surface) {
   // on a screen would be a lie. Dismissing the popup submits the defaults, so
   // closing it really does deny. Navigating away from the screen submits
   // NOTHING; the prompt stays pending until it is decided or expires, which is
-  // the whole point of a queue they visit on their own time.
+  // the whole point of a queue he visits on his own time.
   defaultRule.append(element(documentRef, 'span', '', surface === 'screen'
     ? 'Any line you leave undecided is denied when you submit. Leaving this screen submits nothing and decides nothing.'
     : 'Any line left undecided is denied. Closing this window denies every line.'))
@@ -386,7 +386,7 @@ function renderNotice(documentRef, prompt, callbacks) {
  * `options.surface` selects which container this card is going into and
  * changes NOTHING about how a line item looks. 'popup' (the default, so every
  * existing caller and test is untouched) is the interrupting modal. 'screen'
- * is the approvals queue the owner navigates to themselves: same card, same rows,
+ * is the approvals queue the owner navigates to himself: same card, same rows,
  * same classes, but it is not a modal, so it must not claim to be one. A
  * role="dialog" with aria-modal="true" sitting inertly in a list tells a
  * screen reader the rest of the page is inaccessible when it is not, and a
@@ -421,13 +421,13 @@ export function renderOwnerPrompt(documentRef, prompt, callbacks, options = {}) 
   /* WHEN THIS DIES, AND THAT DYING IS A REFUSAL.
    *
    * `expiresAt` has been on every request since the beginning. This module
-   * validated it and drew it nowhere, so a live shopping list could reach
-   * its date with nothing on any screen having said the
+   * validated it and drew it nowhere, so both of the owner's live shopping
+   * lists could reach their date with nothing on any screen having said the
    * date existed. The engine drops a request the moment its expiry passes and
    * files it with the default decision, and the default decision is deny. So
    * silence is not neutral, and the second sentence here says which way it
    * falls. It is on every kind of request, not only on the shopping lists:
-   * the soonest to expire can be a question, not a cart. */
+   * the two that expire soonest on his real queue are questions, not carts. */
   const expiry = expiryOf(prompt, nowMs)
   const deadline = setAttributes(element(documentRef, 'div', 'owner-popup-deadline'), { role: 'note' })
   deadline.dataset.expired = String(expiry.expired)
@@ -753,10 +753,10 @@ export function createOwnerPromptController({
 // DELIBERATELY NOT SELF-MOUNTING.
 //
 // This module used to end by finding #owner-popup-root and starting the
-// controller, which made any prompt in the queue interrupt the person wherever
-// they were. That design was replaced: instead of a pop-up, the purchase list
-// is a screen the user visits in their own time to approve whatever is
-// queued. Approvals now live at
+// controller, which made any prompt in the queue interrupt the owner wherever
+// he was. The owner replaced that design: "instead of a popup maybe the
+// purchase list is just a screen and the user navigates to that screen on
+// their own time and approves whatevers in que." Approvals now live at
 // #/approvals (src/ledger-prompt-queue.js), which imports the renderer below.
 //
 // The modal path is kept because it is tested, correct, and the only surface

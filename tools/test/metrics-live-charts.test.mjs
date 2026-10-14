@@ -48,6 +48,7 @@ import {
   isMeasuredOption,
   liveWindow,
   outcomeOption,
+  providerOfModelKey,
   refusalOption,
   routingFlows,
   routingOption,
@@ -58,6 +59,7 @@ import {
   turnsInWindow,
 } from '../../src/metrics-live-charts.js'
 import { LOCAL_USAGE_COPY, usageByAccount, usageByAgent, usageByProvider } from '../../src/local-metrics.js'
+import { LAUNCH_TIERS as LAUNCH_TIERS_FOR_TEST } from '../../src/orchestration-controls.js'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SOURCE_ROOT = path.join(REPO_ROOT, 'src')
@@ -562,4 +564,21 @@ test('the measured charts label their host every time they draw', () => {
   const source = readFileSync(new URL('../../src/metrics-live-charts.js', import.meta.url), 'utf8')
   assert.match(source, /import \{ labelChart \} from '\.\/metrics-chart-summary\.js'/)
   assert.match(source, /instance\.setOption\(option, \{ notMerge: true \}\)\n\s*\/\/[^\n]*\n\s*labelChart\(host, option\)/, 'a chart can be drawn without its text alternative')
+})
+
+/* 1.0.50 REVIEW-1050 #20. CM-4 keys a typed model's usage as `typed:<provider>:<name>` (or `typed-other`), and the
+   Metrics "By model" panel coloured each row by providerOfTier(row.key), which knows only row ids: a typed Codex
+   model was drawn in the "not recorded" grey while the same tokens showed in Codex's colour under By provider. */
+test('a typed model\'s usage row is coloured by the provider its key names', () => {
+  assert.equal(providerOfModelKey('typed:codex:my-typed-model'), 'codex')
+  assert.equal(providerOfModelKey('typed:claude:some-model'), 'claude')
+  assert.equal(providerOfModelKey('typed::nameless-provider'), null)
+  assert.equal(providerOfModelKey('typed-other'), null)
+  assert.equal(providerOfModelKey('unrecorded'), null)
+  assert.equal(providerOfModelKey(null), null)
+  const row = LAUNCH_TIERS_FOR_TEST[0]
+  assert.equal(providerOfModelKey(row.id), row.provider, 'a model row keeps its own provider')
+  const metrics = readFileSync(new URL('../../src/views/metrics.js', import.meta.url), 'utf8')
+  assert.match(metrics, /byModel\.rows\.map\(row => \(\{[^}]*provider: providerOfModelKey\(row\.key\) \|\| 'unrecorded'/,
+    'the By model panel colours its rows from the model key')
 })

@@ -1,8 +1,8 @@
-// THE TWO THINGS SEEN ON PAGE 2, PROVED WITH VALUES.
+// THE TWO THINGS THE OWNER SAW ON PAGE 2, PROVED WITH VALUES.
 //
-// On page 2 the rings around the workers sometimes disappeared, and their
-// timers were not always accurate to the time they ran -- sometimes they
-// logged time they were not running.
+// "sometimes the rings disappear on pg2 around the workers and their timeers
+//  not always accurate to their time ran - sometimes it logs time they werent
+//  running"
 //
 // They are separate defects with separate mechanisms, so they are separate
 // halves of this file:

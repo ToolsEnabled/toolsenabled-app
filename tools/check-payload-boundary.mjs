@@ -51,7 +51,7 @@
 //
 // THE SECOND WAY THE SAME MODULES LEAK: A SOURCE PUBLISH (`--source`).
 //
-// Everything above guards the installer PAYLOAD. The rule is that
+// Everything above guards the installer PAYLOAD. The owner's ruling is that
 // people may take either road -- download the installer from the site, or take
 // the source from GitHub -- and that only the free part travels either one.
 // Guarding one road is not guarding the boundary. `git push` to a public
@@ -261,7 +261,7 @@ function parseNamespace(parsed, label) {
     //
     // "The owner has decided" and "these items are undecided" cannot both be
     // true. Making that contradiction a hard error is the mechanism that turns
-    // the decision into enforcement: flipping status to owner-ratified is
+    // his decision into enforcement: flipping status to owner-ratified is
     // impossible until every pending path has been moved into open, paid or
     // excluded. Nothing can be ratified by being overlooked.
     if (parsed.status === STATUS_RATIFIED && pending.size > 0) {
@@ -375,7 +375,32 @@ async function walk(directory, root, visit) {
   entries.sort((left, right) => left.name.localeCompare(right.name));
 
   for (const entry of entries) {
-    if (entry.name === ".git" || entry.name === "node_modules") continue;
+      /* NOTHING IS SKIPPED, AND THIS WALKER USED TO SKIP `.git` AND `node_modules`.
+       *
+       * Those skips are right over a SOURCE TREE, where both are scaffolding. Over a
+       * PAYLOAD they are precisely backwards: a `.git` directory inside a shipped tree
+       * is itself a defect, and a vendored `node_modules` is shipped content --
+       * pack-capability-layer's own error text for an external dependency tells the
+       * developer to vendor it into the payload, which is exactly how such a path comes
+       * to exist through an honest change.
+       *
+       * MEASURED before removal, over a five-file fixture payload holding a `paid`
+       * module at node_modules/x/src/lib/entitlement.js and a builder path under
+       * docker/agent-sandbox/node_modules/:
+       *     Files seen: 2 (informational ...)
+       *     Payload boundary: clean. Nothing paid, excluded or unclassified is present.
+       *     exit 0
+       * The control proves the walker rather than the manifest was the cause: the same
+       * bytes at src/lib/entitlement.js give "PAYLOAD BOUNDARY VIOLATION -- 1 file(s).
+       * This build must not ship." So the file was not misclassified, it was never
+       * reported -- no red, no warning, no transcript line. The only symptom was the
+       * informational count reading 2 for five files, which is the argument for
+       * printing a count nothing asserts on.
+       *
+       * check-artifact-private.mjs already carries twenty-two lines diagnosing this
+       * exact skip in this exact language, found by its own nested `.git/config`
+       * fixture. It was fixed there, and not here, and not in check-no-owner-data.mjs.
+       * One defect, three gates, two of them missed. */
     const entryPath = path.join(directory, entry.name);
     // A symlink in a payload is a file whose real content this guard cannot
     // classify from its name. Refusing is the only fail-closed answer: following
@@ -818,9 +843,9 @@ async function main() {
   if (boundary.status === STATUS_PROPOSED) {
     // WHAT THIS STATUS DOES AND DOES NOT MEAN.
     //
-    // This note used to claim a ratification was outstanding. That was false
-    // and it was expensive: every open question was decided, and many of
-    // those decisions have been
+    // This note used to read "has not been ratified by the owner ... once the
+    // owner has ruled". That was false and it was expensive: the owner ruled on
+    // every open question, and twenty-three of those decisions have been
     // executed. A reader hitting that sentence goes looking for a decision that
     // was already made, while the actual blocker is that six files still ship.
     //
@@ -832,8 +857,8 @@ async function main() {
     // that gets granted at 2am to unblock a build.
     console.log(
       "\nNOTE: this boundary is enforced exactly as written, and the \"pending\" paths named below " +
-        "are still shipping. The status is not waiting on a decision -- every entry has been " +
-        `decided. It becomes ${JSON.stringify(STATUS_RATIFIED)} when nothing is pending, and this ` +
+        "are still shipping. The status is not waiting on a decision -- the owner has ruled on " +
+        `every entry. It becomes ${JSON.stringify(STATUS_RATIFIED)} when nothing is pending, and this ` +
         "guard refuses that status while anything still is. So the way to change this line is to " +
         "stop shipping the files, not to ask anyone.",
     );
@@ -850,7 +875,7 @@ async function main() {
   // WHY THERE ARE TWO VERDICTS, AND WHY BOTH ALWAYS PRINT.
   //
   // The default verdict deliberately tolerates `pending`, and that is correct.
-  // pending means "a lane proposes removing this, it has been decided, and it
+  // pending means "a lane proposes removing this, the owner has ruled, and it
   // still ships today". Failing every build until that work lands would make this
   // guard an obstacle to ordinary development, and a guard that blocks every build
   // gets switched off. So a dev build stays green while the report says plainly,

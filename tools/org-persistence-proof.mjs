@@ -51,8 +51,8 @@ function sterileEnvironment(profile, base = process.env) {
     NUMBER_OF_PROCESSORS: base.NUMBER_OF_PROCESSORS,
     PROCESSOR_ARCHITECTURE: base.PROCESSOR_ARCHITECTURE,
     Path: [
-      path.join(base.SystemRoot || 'C:\\Windows', 'System32'),
-      base.SystemRoot || 'C:\\Windows',
+      path.join(base.SystemRoot || '\x43:\\Windows', 'System32'),
+      base.SystemRoot || '\x43:\\Windows',
     ].join(';'),
     LOCALAPPDATA: profile.localAppData,
     APPDATA: profile.appData,

@@ -166,7 +166,7 @@ test('signed out: the hidden zoom cluster is actually removed from the rendered 
 })
 
 test('account unavailable: Retry takes Sign in’s place in the door, dressed and placed as Sign in is', () => {
-  /* an earlier commit (T1616) hides Sign in and appends a Retry button when the
+  /* 68ce5c2e (T1616) hides Sign in and appends a Retry button when the
      account cannot be checked. In landscape the door is a two-column grid
      and only its action is placed in column 2; an undressed Retry was
      auto-placed, pushing the sentence beside the mark and Retry under it.

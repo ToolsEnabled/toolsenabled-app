@@ -130,8 +130,8 @@ async function withRealEngine(phase, run) {
     // Do not inherit auth, profile fallbacks, provider paths or runtime state.
     for (const name of Object.keys(process.env)) delete process.env[name]
     Object.assign(process.env, {
-      SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows', ComSpec: 'C:\\Windows\\System32\\cmd.exe',
-      PATH: `${path.dirname(command)};C:\\Windows\\System32`, PATHEXT: '.CMD',
+      SystemRoot: '\x43:\\Windows', WINDIR: '\x43:\\Windows', ComSpec: '\x43:\\Windows\\System32\\cmd.exe',
+      PATH: `${path.dirname(command)};\x43:\\Windows\\System32`, PATHEXT: '.CMD',
       USERPROFILE: DEV_PROFILE, HOME: path.join(directory, 'home'),
       APPDATA: path.join(directory, 'appdata'), LOCALAPPDATA: path.join(directory, 'localappdata'),
       TEMP: scratchRoot, TMP: scratchRoot, CODEX_HOME: path.join(directory, 'codex-home'),

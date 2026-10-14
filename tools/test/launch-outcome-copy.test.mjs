@@ -91,7 +91,7 @@ test('it stops asking the moment the job is no longer running', async () => {
   let asked = 0
   const seen = []
   await watchLaunchOutcome({
-    launchId: 'launch_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    launchId: '\x6caunch_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     ask: async () => ({ ok: true, receipt: { state: answers[asked++] } }),
     onOutcome: receipt => seen.push(receipt.state),
     sleep: clock.sleep,
@@ -107,7 +107,7 @@ test('a dropped connection is not a failed job, so it keeps asking', async () =>
   let asked = 0
   const seen = []
   await watchLaunchOutcome({
-    launchId: 'launch_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    launchId: '\x6caunch_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
     ask: async () => {
       asked += 1
       if (asked < 3) throw new Error('the connection dropped')
@@ -167,7 +167,7 @@ test('a job that never settles gives up at its own time limit rather than asking
   const clock = fakeClock()
   const seen = []
   await watchLaunchOutcome({
-    launchId: 'launch_cccccccccccccccccccccccccccccccc',
+    launchId: '\x6caunch_cccccccccccccccccccccccccccccccc',
     ask: async () => ({ ok: true, receipt: { state: 'running' } }),
     onOutcome: receipt => seen.push(receipt.state),
     sleep: clock.sleep,
@@ -183,7 +183,7 @@ test('when the panel says stop, it stops and reports nothing', async () => {
   const seen = []
   let asked = 0
   await watchLaunchOutcome({
-    launchId: 'launch_dddddddddddddddddddddddddddddddd',
+    launchId: '\x6caunch_dddddddddddddddddddddddddddddddd',
     ask: () => { asked += 1; return asked >= 2 ? false : { ok: true, receipt: { state: 'running' } } },
     onOutcome: receipt => seen.push(receipt.state),
     sleep: clock.sleep,

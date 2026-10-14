@@ -6,7 +6,8 @@ import { readPhoneCanvasEnvironment, startPhoneCanvas } from '../../src/phone-ca
 
 const CANVAS_SOURCE = readFileSync(new URL('../../src/phone-canvas.js', import.meta.url), 'utf8')
 
-/* THE HEIGHT-CONTRACT FIX (approved, following a raw A/B measurement): innerHeight / visualViewport.height /
+/* THE HEIGHT-CONTRACT FIX (owner-approved, following the raw A/B measurement
+ * fleet-A took on release #2): innerHeight / visualViewport.height /
  * documentElement.clientHeight all read the whole browser window, which is
  * the SAME number standalone and site-mounted. #stage's own box is not --
  * app-fit.css (the site) gives it `calc(100% - var(--site-hero-h))`, and the

@@ -1,12 +1,13 @@
 /* THE EXAMPLE FLEET AT WORK (src/sample-simulation.js), driven by hand.
  *
- * The example fleet simulates its different states in what looks
- * like a very active environment, an upgrade to the simulation. These tests run the real script over the real example
+ * Owner, 2026-09-11: "have the example fleet simulate its different states in
+ * a seemingly very acive environment (this will essentially be an upgrade on
+ * the simulation)". These tests run the real script over the real example
  * store (sample-trees.js, the real store over memory) with a clock the test
  * owns, and hold the promises the page relies on:
  *   - the tree has the product's shape and every tier is a real launch tier;
  *   - the page joins with most of the tree busy, and the loop never stops;
- *   - every required state actually happens, in order;
+ *   - every state the owner asked to see actually happens, in order;
  *   - every write goes through the store's own API and none is refused;
  *   - only example session ids ever exist, and a finished agent holds none;
  *   - the same seed and clock give the same run;
@@ -105,7 +106,7 @@ test('the page joins mid-round with most of the tree busy, and every beat is acc
   for (const status of setup.store.snapshot().nodes.map(node => node.status)) assert.ok(NODE_STATUSES.includes(status))
 })
 
-test('every required state happens, in order', () => {
+test('every state the owner asked to see happens, in order', () => {
   const setup = started()
   const { events, statuses, sessionsByKey } = play(setup, SAMPLE_SIM_LOOP_MS - SAMPLE_SIM_JOIN_MS + 1000)
   const notes = key => events.filter(event => event.key === key && event.kind === 'note').map(event => event.text)
@@ -126,16 +127,22 @@ test('every required state happens, in order', () => {
   assert.match(verdicts[0], /^Changes requested/)
   assert.match(verdicts[1], /^Accepted/)
 
-  // A usage limit, the Wait-for-resets countdown, and the automatic retry.
+  // Usage-limit stops remain visible until the scripted person chooses to continue.
   assert.ok(statuses.get('totals').join(' ').includes('running turn-failed running finished'))
   const waiting = notes('totals')
-  assert.match(waiting[0], /reached its usage limit\. This turn waits for the reset, then retries by itself\./)
-  assert.match(waiting[1], /reset\. Retrying the turn automatically/)
+  assert.match(waiting[0], /usage limit/)
+  assert.match(waiting[0], /paused/)
+  assert.doesNotMatch(waiting.join(' '), /automatically|by itself/)
+  const retryChoice = events.findIndex(event => event.key === 'totals' && event.kind === 'owner' && /Retry this turn/.test(event.text))
+  const resumed = events.findIndex(event => event.key === 'totals' && event.kind === 'note' && /You chose to retry/.test(event.text))
+  assert.ok(retryChoice >= 0 && resumed > retryChoice, 'the example must record the person’s retry choice before continuing')
 
-  // Keep trying accounts: a new sign-in, a compact handoff, and not the same conversation.
   const moved = notes('pdf').join('\n')
-  assert.match(moved, /Keep trying accounts is on, so this moves to Personal/)
-  assert.match(moved, /compact handoff .* This is a new conversation, not the same one\./)
+  assert.match(moved, /usage limit/)
+  assert.doesNotMatch(moved, /Keep trying accounts|automatically/)
+  const accountChoice = events.findIndex(event => event.key === 'pdf' && event.kind === 'owner' && /Personal/.test(event.text))
+  const handoff = events.findIndex(event => event.key === 'pdf' && event.kind === 'note' && /compact handoff/.test(event.text))
+  assert.ok(accountChoice >= 0 && handoff > accountChoice, 'a new account must follow the person’s explicit choice')
   assert.equal(sessionsByKey.get('pdf').size, 2, 'the handoff did not start a second conversation')
   assert.ok(statuses.get('pdf').join(' ').includes('turn-failed starting running finished'))
 
@@ -167,7 +174,7 @@ test('only example sessions ever exist, and an agent whose turn is over holds no
     if (['finished', 'interrupted', 'failed'].includes(node.status)) assert.equal(node.sessionId, null, `${node.id} kept a session after its turn`)
     else if (node.sessionId) assert.ok(setup.run.liveSessions.has(node.sessionId))
   }
-  assert.equal(isSampleSimSession('01900000-0000-7000-8000-000000000002'), false)
+  assert.equal(isSampleSimSession('019c0a2b-1234-7abc-8def-0123456789ab'), false)
 })
 
 test('the same seed and clock give the same run; the seed changes only the rhythm', () => {
@@ -220,7 +227,7 @@ test('the module owns no timers, storage, network or drawing, and imports only t
   assert.deepEqual(imports, ['./fleet-tree-copy.js'])
 })
 
-test('Wait for resets counts down on the agent itself, second by second, then retries', () => {
+test('the reset countdown keeps work paused until the scripted person chooses to retry', () => {
   const setup = started()
   const totals = setup.seeded.ids.get('totals')
   const noteAt = loopSec => {
@@ -228,8 +235,12 @@ test('Wait for resets counts down on the agent itself, second by second, then re
     const node = setup.store.getNode(totals)
     return `${node.status} | ${node.statusNote}`
   }
-  assert.match(noteAt(40), /^turn-failed \| .*retrying automatically in 0:38\.$/)
-  assert.match(noteAt(60), /^turn-failed \| .*retrying automatically in 0:18\.$/)
-  assert.match(noteAt(77.5), /^turn-failed \| .*retrying automatically in 0:01\.$/)
+  for (const [at, left] of [[40, '0:38'], [60, '0:18'], [77.5, '0:01']]) {
+    const note = noteAt(at)
+    assert.match(note, /^turn-failed/)
+    assert.ok(note.includes(left), 'the reset time must remain visible while paused')
+    assert.match(note, /paused/)
+    assert.doesNotMatch(note, /automatically|by itself/)
+  }
   assert.match(noteAt(79), /^running \| $/)
 })

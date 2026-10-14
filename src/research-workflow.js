@@ -2,9 +2,10 @@
 // module preferences, or write the saved arrangement. Browser Back remains
 // page navigation; a return/reload remembers only the last area, never inputs.
 export const RESEARCH_WORKFLOW_KEY = 'mc.research.workflow'
-/* THE PAGES. Each page has one job, so no page is crowded, and the last page
-   is where a study is finished: generated, run and reviewed. The builder's
-   eleven steps are split across them (research-benchmark.css shows a page's own steps; the view
+/* THE PAGES. Owner, 2026-09-10: "seperate the pages cleanly instead of bunching
+   too much per page, and then have a final generation/run/review page for
+   finalizing". Each page has one job and the builder's eleven steps are split
+   across them (research-benchmark.css shows a page's own steps; the view
    lands the builder on one of them when the page changes). 'run' is the
    finalising page: analysis, generate and export, run, review. */
 export const RESEARCH_AREAS = Object.freeze([

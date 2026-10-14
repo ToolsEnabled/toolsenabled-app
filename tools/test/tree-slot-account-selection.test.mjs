@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url)
 const engineRoot = canonicalRootForTests({ warn: () => {} })
 const rotation = require(path.join(engineRoot, 'src/lib/multi-account/rotation.js'))
 const { STATUS } = require(path.join(engineRoot, 'src/lib/multi-account/health.js'))
-const { readState, activeFor } = require(path.join(engineRoot, 'src/lib/multi-account/switcher.js'))
+const { switchTo, readState, activeFor } = require(path.join(engineRoot, 'src/lib/multi-account/switcher.js'))
 const main = fs.readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf8')
 function extract(name, async = false) {
   const at = main.indexOf((async ? 'async ' : '') + 'function ' + name + '(')
@@ -57,7 +57,7 @@ function machine() {
 }
 test('explicit account selection leaves the recorded computer choice and history unchanged', async () => {
   const m = machine()
-  assert.equal((await rotation.resolveAccountForSession({ ...m.base, preferred: 'primary' })).account?.name, 'primary')
+  assert.equal((await switchTo({ registry: { accounts: [{ name: 'primary', provider: 'codex' }] }, selector: 'primary', probe: m.probe, statePath: m.statePath, fsImpl: m.fsImpl })).account, 'primary')
   const before = m.files.get(m.statePath)
   const selected = await rotation.resolveAccountForSession({ ...m.base, preferred: 'chosen', persistSelection: false })
   assert.equal(selected.account?.name, 'chosen')
@@ -70,7 +70,7 @@ test('ordinary selection still records its account with the default options', as
 })
 test('a deferred slot selection cannot redirect or overwrite a concurrent ordinary start', async () => {
   const m = machine()
-  await rotation.resolveAccountForSession({ ...m.base, preferred: 'primary' })
+  await switchTo({ registry: { accounts: [{ name: 'primary', provider: 'codex' }] }, selector: 'primary', probe: m.probe, statePath: m.statePath, fsImpl: m.fsImpl })
   let entered, release
   const observed = new Promise(resolve => { entered = resolve })
   const held = new Promise(resolve => { release = resolve })
@@ -187,7 +187,7 @@ test('actual host refuses a slot selector without a saved tree identity', async 
 
 test('actual host and native resolver use the selected account without changing ordinary starts', async t => {
   const m = machine()
-  await rotation.resolveAccountForSession({ ...m.base, preferred: 'primary' })
+  await switchTo({ registry: { accounts: [{ name: 'primary', provider: 'codex' }] }, selector: 'primary', probe: m.probe, statePath: m.statePath, fsImpl: m.fsImpl })
   const before = m.files.get(m.statePath)
   const resolve = shellResolver({ ...rotation,
     resolveAccountForSession: args => rotation.resolveAccountForSession({ ...m.base, ...args }),
@@ -207,7 +207,7 @@ for (const [label, requested, status] of [
   ['exhausted', 'chosen', STATUS.EXHAUSTED],
 ]) test('actual resolver and host refuse a ' + label + ' slot choice without substitution', async t => {
   const m = machine()
-  await rotation.resolveAccountForSession({ ...m.base, preferred: 'primary' })
+  await switchTo({ registry: { accounts: [{ name: 'primary', provider: 'codex' }] }, selector: 'primary', probe: m.probe, statePath: m.statePath, fsImpl: m.fsImpl })
   const before = readState(m.statePath, { fsImpl: m.fsImpl })
   const resolve = shellResolver({ ...rotation,
     resolveAccountForSession: args => rotation.resolveAccountForSession({ ...m.base, ...args,
@@ -227,7 +227,7 @@ for (const [label, requested, status] of [
 
 test('saved slot account resumes its own thread without a global preference write', async t => {
   const m = machine()
-  await rotation.resolveAccountForSession({ ...m.base, preferred: 'primary' })
+  await switchTo({ registry: { accounts: [{ name: 'primary', provider: 'codex' }] }, selector: 'primary', probe: m.probe, statePath: m.statePath, fsImpl: m.fsImpl })
   const before = m.files.get(m.statePath)
   const requests = []
   const resolve = shellResolver({ ...rotation,

@@ -178,7 +178,7 @@ test('an unreadable vault is not rendered as an empty one', async () => {
   await panel.refresh()
   const rendered = panel.element.textContent
   assert.match(rendered, /could not be read/, 'the panel dropped the reason the vault could not be read')
-  assert.ok(!rendered.includes(VAULT_COPY.empty), 'the panel told the owner their vault is empty when it could not be read')
+  assert.ok(!rendered.includes(VAULT_COPY.empty), 'the panel told the owner his vault is empty when it could not be read')
   assert.equal(panel.element.querySelectorAll('[data-vault-name]').length, 0)
   panel.destroy()
 })
@@ -232,7 +232,7 @@ test('removing a credential needs the approvals surface, and nothing happens bef
   assert.equal(seam.calls.filter(entry => entry[0] === 'completeRemoval').length, 0,
     'pressing remove removed the credential before the owner was asked')
   const rendered = panel.element.textContent
-  assert.ok(rendered.includes(VAULT_COPY.removeAsked), 'pressing remove did not tell the owner their approval is needed')
+  assert.ok(rendered.includes(VAULT_COPY.removeAsked), 'pressing remove did not tell the owner his approval is needed')
   const link = panel.element.querySelector('[data-vault-approvals]')
   assert.ok(link, 'pressing remove offered no way to reach the approvals surface')
   assert.equal(link.getAttribute('href'), APPROVALS_HREF,
@@ -259,7 +259,7 @@ test('removing a credential needs the approvals surface, and nothing happens bef
   assert.ok(panel.element.textContent.includes(VAULT_COPY.removed), 'the panel did not confirm the removal')
   assert.equal(panel.awaitingRemoval(), null, 'the panel is still waiting on an approval it has already spent')
   /* AND THE LIST ON SCREEN CAUGHT UP. A panel still showing a removed record
-     is a panel telling the owner their vault holds something it does not. */
+     is a panel telling the owner his vault holds something it does not. */
   const after = panel.element.textContent
   assert.ok(!panel.element.querySelector('[data-vault-item="legacy_token"]'), 'the removed record is still drawn')
   for (const name of FAKE_NAMES.filter(candidate => candidate !== 'legacy_token')) {
@@ -306,7 +306,7 @@ test('a removal survives leaving the page to approve it', async () => {
   assert.ok(second.element.querySelector('[data-vault-finish="legacy_token"]'),
     'the rebuilt panel offers no way to finish the removal the owner already approved')
 
-  /* And finishing works on the approval they actually gave -- not a new one. */
+  /* And finishing works on the approval he actually gave -- not a new one. */
   await second.finishRemoval('legacy_token')
   assert.ok(second.element.textContent.includes(VAULT_COPY.removed), 'the removal did not complete after the reload')
   assert.ok(!(await seam.names()).names.includes('legacy_token'), 'the record is still on file')
@@ -396,11 +396,11 @@ test('a refused or unreadable answer is never drawn as an approval', async () =>
    * approved, waiting, refused and unknown. Only the first two are the owner
    * still being in the flow. The other two must draw NOTHING:
    *
-   *   REFUSED -- the person said no. Offering the approved-remove-now button on
-   *   a row they just declined is the screen telling them their own answer back
-   *   wrong, and pressing it spends a round trip to be told they did not approve it.
+   *   REFUSED -- he said no. Offering "I approved it, remove it now" on a row
+   *   he just declined is the screen telling him his own answer back wrong, and
+   *   pressing it spends a round trip to be told he did not approve it.
    *
-   *   UNKNOWN -- the prompt store could not be read. "Could not look" and "they
+   *   UNKNOWN -- the prompt store could not be read. "Could not look" and "he
    *   approved it" are different answers, and on a delete path an unreadable
    *   one must never round up. This is the same rule the seam applies when it
    *   refuses to remove; the screen must not undo it by drawing the button.

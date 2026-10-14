@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /* HAS ANYBODY ACTUALLY LOOKED AT THIS PRODUCT LATELY?
  *
- * Rule: run a deeper walkthrough every two or three cuts.
+ * Owner directive, 2026-08-17: "can we have a more intense and thorough walker
+ * every 2-3 cuts".
  *
  * The reason this is a file and not a habit: fourteen release candidates were
  * cut between 1.0.7 and 1.0.21, and the thing that found the real defects each

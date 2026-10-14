@@ -265,8 +265,8 @@ try {
     assert.deepEqual((await snapshot()).moves, state.moves)
   })
 
-  // Double-clicking the circle brings up a window, and clicking the
-  // card brings up the sidebar.
+  // Owner, 2026-09-10: "double clicking the circle should bring up a window and
+  // clicking on the card should bring up the sidebar".
   await run('circle-clicks', 'circles', async ({ page, node, metrics, settle }) => {
     const before = (await metrics()).windows[0].focus
     await node('alpha-worker').click()

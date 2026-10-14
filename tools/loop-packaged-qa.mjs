@@ -25,7 +25,7 @@
  * This harness used to suppress the app's own capability layer -- it set
  * MC_BRIDGE_PROOF_FILE so the shell would report source 'env' and vouch for no
  * origin, which left the renderer's `?bridge=` developer override free to select
- * a bridge the harness had started. an earlier commit fenced that variable out of
+ * a bridge the harness had started. Commit 17a0483 fenced that variable out of
  * packaged builds: HKCU\Environment is writable by any same-user process with no
  * elevation, so the variable was never evidence that a developer was present,
  * and honouring it sent this boot's bootstrap proof to whatever squatted a low
@@ -70,7 +70,7 @@
  * The half this deliberately does not cover -- that a spawned child is confined
  * to the installed tier -- is covered where it can be done honestly, by spawning
  * REAL child processes and reading the argv the child itself recorded:
- * the engine's tests/loop-guided-child-confinement.test.js.
+ * private-checkout/tests/loop-guided-child-confinement.test.js.
  *
  * THE THREE RULES BORROWED FROM THE HARNESSES THAT EARNED THEM.
  *
@@ -270,7 +270,7 @@ async function freePort() {
  * It also answers /v1/bootstrap for the decoy proof the harness deliberately
  * puts on MC_BRIDGE_PROOF_FILE. That pair -- an environment variable naming a
  * proof file, and a valid bridge waiting on the override -- IS the escalation
- * an earlier commit closed, reproduced here as a controlled negative. A build where the
+ * 17a0483 closed, reproduced here as a controlled negative. A build where the
  * fence regressed does not merely fail a label check; it completes the attack
  * against this decoy, and the decoy's arrival log says so. */
 function startDecoyBridge(port, decoyProof) {
@@ -454,7 +454,7 @@ async function main() {
     /* THE DECOY IS THE ATTACK, SET UP DELIBERATELY.
      *
      * A valid bridge on `?bridge=`, plus MC_BRIDGE_PROOF_FILE naming a proof
-     * file it will accept, is precisely the escalation an earlier commit closed.
+     * file it will accept, is precisely the escalation commit 17a0483 closed.
      * The harness arranges both and then requires that NOTHING arrives here. On
      * a build where the fence or the supervised pin regressed, the product
      * completes the attack against this listener and the checks below go red

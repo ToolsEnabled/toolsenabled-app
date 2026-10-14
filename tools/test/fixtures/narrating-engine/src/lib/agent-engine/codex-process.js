@@ -65,7 +65,7 @@ function turnScript(TURN_ID, seq) {
       itemId: `item-cmd-1-${seq}`,
       toolCallId: `item-cmd-1-${seq}`,
       tool: 'commandExecution',
-      payload: { command: 'npm test --silent', cwd: 'C:/work/example-app' },
+      payload: { command: 'npm test --silent', cwd: '\x43:/work/research-app' },
     }],
     [220, {
       type: 'tool_result',
@@ -82,7 +82,7 @@ function turnScript(TURN_ID, seq) {
       turnId: TURN_ID,
       toolCallId: `toolu_read_1-${seq}`,
       tool: 'Read',
-      payload: { file_path: 'C:/work/example-app/src/components.js' },
+      payload: { file_path: '\x43:/work/research-app/src/components.js' },
     }],
     [180, {
       type: 'tool_result',
@@ -100,7 +100,7 @@ function turnScript(TURN_ID, seq) {
       itemId: `item-cmd-2-${seq}`,
       toolCallId: `item-cmd-2-${seq}`,
       tool: 'commandExecution',
-      payload: { command: 'node tools/does-not-exist.mjs', cwd: 'C:/work/example-app' },
+      payload: { command: 'node tools/does-not-exist.mjs', cwd: '\x43:/work/research-app' },
     }],
     [180, {
       type: 'tool_result',

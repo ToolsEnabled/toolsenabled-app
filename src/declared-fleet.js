@@ -38,8 +38,8 @@
  * So a person who installed this product and had never pressed anything opened
  * the fleet page and found eight agents with their own names, their own roles
  * and their own pages, arranged under a controller. Nothing was running. The
- * rule this breaks: the node tree is empty unless a user has started a
- * session.
+ * owner named the rule this breaks: "the node tree should be empty unless a user
+ * has started a session".
  *
  * DECLARED IS CAPACITY. OBSERVED IS THE TREE. That distinction is not invented
  * here — this product already draws it in words on every surface that touches

@@ -60,7 +60,7 @@ function fixture(t) {
   const appFiles = [
     'package.json', 'tools/pack-capability-layer.mjs', 'tools/lib/capability-source-git.mjs',
     'tools/lib/provider-runtime-payload.mjs',
-    'tools/lib/sterile-launch.cjs', 'shell/install-profile-guard.cjs', 'shell/capability-path-environment.cjs',
+    'tools/lib/sterile-launch.cjs', 'tools/lib/provider-launch-environment.cjs', 'shell/install-profile-guard.cjs', 'shell/capability-path-environment.cjs',
     'tools/check-no-owner-data.mjs', 'private/owner-data-patterns.owner.json',
     'capability-defaults/config/agent-org.json',
   ]

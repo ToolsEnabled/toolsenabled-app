@@ -5,7 +5,7 @@ import bridgeProof from '../../shell/bridge-proof.cjs'
 import { bridgeStatus, resetBridgeSession } from '../../src/mission-bridge.js'
 
 const { readBridgeProof } = bridgeProof
-const PROOF_FILE = 'X:\\runtime\\mission-bridge-bootstrap-proof.json'
+const PROOF_FILE = '\x58:\\runtime\\mission-bridge-bootstrap-proof.json'
 const TOKEN = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ'
 const originalFetch = globalThis.fetch
 const originalWindow = globalThis.window

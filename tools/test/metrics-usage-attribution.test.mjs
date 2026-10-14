@@ -36,7 +36,7 @@ function payload({ state = 'complete', rows = [row()], tokens = 1234 } = {}) {
 
 function row(overrides = {}) {
   return {
-    pool: 'northwind-a', provider: 'gemini', role: 'worker', tokens: 1234, calls: 4,
+    pool: 'northwind21', provider: 'gemini', role: 'worker', tokens: 1234, calls: 4,
     tokenProvenance: 'MEASURED', attributionProvenance: 'MEASURED', ...overrides,
   }
 }

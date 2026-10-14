@@ -1,10 +1,11 @@
 /* THE AGENT'S ANSWER PAINTED ABOVE THE QUESTION IT ANSWERS.
  *
- * THE DEFECT (found in a hand test of a local Observer node): the transcript
- * read
+ * THE DEFECT (owner, LIVE hand test 2026-09-12, Local Observer
+ * node-16-8a2ff6c3-2ccf-4a17-9e9c-69b14106daae, evidence
+ * local-post-cut-success.json): the transcript read
  *
- *     Observer (00000001)   LOCAL_POST_CUT linux            00000000...
- *     you                   Use host.exec with command ...  00000000...
+ *     Observer (8a2ff6c3)   LOCAL_POST_CUT linux            02:05  1c3f7e96...
+ *     you                   Use host.exec with command ...  02:05  1c3f7e96...
  *
  * Both rows carry the SAME turn id and the SAME minute, and the reply is
  * above the request. A reader cannot tell what was asked.
@@ -42,13 +43,13 @@ after(() => { restore() })
 
 const { buildChat } = await import('../../src/components.js')
 
-const TURN = '00000000-0000-4000-8000-000000000001'
-const EARLIER_TURN = '00000000-0000-4000-8000-000000000002'
+const TURN = '1c3f7e96-15f7-40bf-92e4-44cdce4a67a8'
+const EARLIER_TURN = 'ca518ea0-95e6-4768-80ff-283afe872c99'
 const AT = Date.UTC(2026, 8, 12, 2, 5, 0)
 
 function chat() {
   return buildChat({
-    title: 'Observer (00000001)',
+    title: 'Observer (8a2ff6c3)',
     seed: 0,
     status: { busy: () => false, subscribe: () => () => {} },
     chips: {},
@@ -200,7 +201,7 @@ test('the exact turn id is preserved on every row the placement touches', () => 
 
 function restored(history) {
   return buildChat({
-    title: 'Observer (00000001)',
+    title: 'Observer (8a2ff6c3)',
     seed: 0,
     status: { busy: () => false, subscribe: () => () => {} },
     chips: {},
@@ -269,7 +270,7 @@ test('a tool run painted before the turn had any words is part of the turn, not 
  * assistant row. So the saved conversation can hold the inverted pair, and a
  * reload has to read correctly from a record nobody may rewrite. */
 
-const LATER_TURN = '00000000-0000-4000-8000-000000000003'
+const LATER_TURN = '7d2b41c6-0a55-4e39-bb90-16f0c4b8e2d1'
 const invertedHistory = () => [
   { who: 'you', text: 'the earlier request', at: AT - 120_000, turnStamp: EARLIER_TURN },
   { who: 'agent', text: 'the earlier answer', at: AT - 119_000, turnStamp: EARLIER_TURN },

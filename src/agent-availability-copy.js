@@ -101,14 +101,26 @@ export const MISSING_MODULE = Object.freeze({
 // Account selection is shared by every provider and by the tree, chat and
 // home screen. Keep its remedies together so an IPC refusal stays actionable.
 export const ACCOUNT_SELECTION_REFUSALS = Object.freeze({
-  ACCOUNT_NONE_USABLE: 'None of this assistant’s listed accounts is ready to run. Open Accounts to check their sign-in and remaining allowance, then start again',
-  ACCOUNT_EXHAUSTED_MANUAL: 'The selected account has reached its allowance limit and automatic switching is off. Choose an available account in Accounts, or wait for the allowance to reset',
+  ACCOUNT_NONE_USABLE: 'The selected account is unavailable. Open Accounts to check it before starting again',
+  ACCOUNT_SIGNED_OUT: 'The selected account is signed out. Open Accounts and sign in to that account before starting again',
+  ACCOUNT_NOT_PROVISIONED: 'The selected account is not set up. Open Accounts and sign in to that account before starting again',
+  ACCOUNT_EXHAUSTED: 'The selected account has reached its allowance limit. Wait for its allowance to reset, or choose another account in Accounts',
+  ACCOUNT_MISMATCH: 'The selected account is signed in as a different account. Open Accounts and sign in as the expected account before starting again',
+  ACCOUNT_STATUS_UNKNOWN: 'The selected account could not be checked. Open Accounts and check it again before starting',
+  ACCOUNT_LAUNCH_COMMIT_CONFLICT: 'The selected account changed while it was being checked. Start again to use your current choice',
+  ACCOUNT_SELECTION_UNAVAILABLE: 'The selected account is no longer registered. Open Accounts and choose an account before starting again',
+  ACCOUNT_AUTOMATIC_SWITCHING_DISABLED: 'Automatic account switching was removed. Choose an account before starting again',
+  ACCOUNT_EXHAUSTED_MANUAL: 'The selected account has reached its allowance limit. Choose an available account in Accounts, or wait for the allowance to reset',
   ACCOUNTS_REGISTRY_UNREADABLE: 'The saved account list could not be read. Open Accounts to check the list before starting another agent',
   ACCOUNT_STATE_UNREADABLE: 'The saved account selection could not be read. Open Accounts and choose an account before starting again',
-  ACCOUNT_RECOVERY_INVALID: 'The requested account recovery could not be verified. Review this agent in Computers and try Continue on another account again',
-  ACCOUNT_RECOVERY_NO_ALTERNATE: 'No other eligible account is available for this assistant. Open Accounts to add or sign in to another account, or wait for an existing account to become available',
+
+
   ACCOUNT_CLIENT_INVALID: 'The selected account does not match this assistant client. Choose a compatible account or model in Accounts',
   AGENT_ACCOUNT_UNAVAILABLE: 'The selected assistant account could not be checked. Open Accounts to check its sign-in and try again',
+  /* 1.0.50 review, accounts B: Claude Code's own folder setting names another
+     Windows account or cannot be checked, so startup set it aside instead of
+     refusing to open. Only a default Claude start reaches this. */
+  ACCOUNT_DEFAULT_CLAUDE_HOME_UNUSABLE: 'Claude Code’s own folder setting names a folder ToolsEnabled cannot safely use, so it was not used. Point it at a folder in this Windows account or on another drive, then restart ToolsEnabled. Or choose a Claude account in Accounts',
 })
 
 export const TRANSCRIPT_SEND_REFUSALS = Object.freeze({
@@ -123,8 +135,49 @@ export const TRANSCRIPT_SEND_REFUSALS = Object.freeze({
   MC_TRANSCRIPT_SEND_STOPPED: 'This message was stopped while it waited for another agent’s message to be saved, so it was not sent. Your draft is kept. Send it again when you are ready.',
 })
 
+/* SENT, BUT NOT SAVED -- the one storage answer that comes AFTER the provider
+   took the turn. shell/agent-host.cjs raises it when the accepted-prompt save
+   boundary fails once the model is already working on the message. It is kept
+   out of TRANSCRIPT_SEND_REFUSALS on purpose: every row there means "nothing
+   was sent, keep the draft and send again", and following that advice here
+   starts the same work a second time. */
+export const TRANSCRIPT_ACCEPTED_UNSAVED = Object.freeze({
+  MC_TRANSCRIPT_SENT_UNSAVED: 'This message was sent and the agent is working on it, but it is not saved yet. Do not send it again. Check the disk and its permissions, then use Retry saving.',
+})
+
 export const UNAVAILABLE_TEXT = Object.freeze({
+  MC_PREFS_SENDER_REFUSED: 'ToolsEnabled could not verify that this conversation request came from its own window, so your message was not sent. Your draft is kept. Return to this computer’s chats and try again.',
+  AGENT_SESSION_BINDING_UNCONFIRMED: 'ToolsEnabled could not confirm the connection to this conversation’s saved record. Your message was not sent and your draft is kept. Return to this computer’s chats and try again.',
+  AGENT_SESSION_BINDING_UNAVAILABLE: 'This conversation’s saved record is unavailable, so your message was not sent. Your draft is kept. Return to this computer’s chats and try again.',
+  AGENT_SESSION_BINDING_CONTEXT_UNAVAILABLE: 'ToolsEnabled could not verify who owns this conversation, so your message was not sent. Your draft is kept. Sign in to ToolsEnabled and try again.',
+  AGENT_SESSION_BINDING_STALE: 'This conversation changed while ToolsEnabled was connecting its saved record, so your message was not sent. Your draft is kept. Try again from the current chat.',
+  TRANSCRIPT_STORE_UNAVAILABLE: 'This conversation’s saved record is not open, so your message was not sent. Your draft is kept. Return to this computer’s chats and try again.',
+  TRANSCRIPT_BIND_UNAVAILABLE: 'This copy cannot connect the conversation to its saved record, so your message was not sent. Your draft is kept. Restart ToolsEnabled and try again.',
+  TRANSCRIPT_BIND_UNCONFIRMED: 'ToolsEnabled could not confirm the connection to this conversation’s saved record. Your message was not sent and your draft is kept. Return to this computer’s chats and try again.',
+  TRANSCRIPT_BIND_STALE: 'This conversation changed while ToolsEnabled was connecting its saved record, so your message was not sent. Your draft is kept. Try again from the current chat.',
+  IMAGE_OWNER_CHANGED: 'The signed-in owner changed while this message was being prepared, so it was not sent. Your draft is kept. Sign in as the owner of this conversation and try again.',
+  AGENT_RESUME_ORIGIN_STORAGE_FAILED: 'ToolsEnabled could not save the sign-in home needed to reopen this conversation, so your message was not sent. Your draft is kept. Check space and access to ToolsEnabled’s data folder, then try again.',
+  AGENT_RESUME_HOME_UNAVAILABLE: 'the original sign-in home for this saved conversation cannot be verified in this run. Your conversation is kept. Open a new agent to start another conversation',
+  AGENT_RESUME_HOME_CHANGED: 'this account now points to a different sign-in folder. Your conversation is kept. Choose the account again before resuming',
+  AGENT_RESUME_IDENTITY_UNAVAILABLE: 'this saved conversation has no verified native session identity, so it was not resumed. Your conversation and draft are kept. Open a new agent to start another conversation',
+  AGENT_RESUME_PROVIDER_MISMATCH: 'this saved conversation belongs to a different assistant program than the one chosen, so it was not resumed. Your conversation is kept. Choose the program that owns it, then resume it',
+  AGENT_RESUME_IDENTITY_MISMATCH: 'this saved conversation does not match its original agent or account, so it was not resumed. Your conversation and draft are kept. Open a new agent to start another conversation',
+  /* 1.0.50 start and resume refusals: each says what happened and what to do. */
+  AGENT_CONFINEMENT_SERVER_ENV_CONFLICT: 'two of ToolsEnabled’s own tool connections asked for different values of the same private setting, so nothing was started. Restart ToolsEnabled, then start the agent again',
+  AGENT_CODEX_CONFINEMENT_MISMATCH: 'Codex did not accept the tool limits ToolsEnabled sets for this agent, so nothing was started. Update Codex, then start the agent again',
+  AGENT_CODEX_CONFINEMENT_UNAVAILABLE: 'Codex could not report its settings, so the agent’s tool limits could not be checked and nothing was started. In a terminal, run "codex --version", then start the agent again',
+  AGENT_MODEL_INVALID: 'the model name is empty, too long or contains characters a model name cannot have, so nothing was started. Correct the name in this agent’s controls, then start it again',
+  AGENT_MODEL_EFFORT_UNSUPPORTED: 'this model does not offer the chosen thinking depth, so nothing was started. Choose another depth or Model default in this agent’s controls',
+  AGENT_MODEL_TIER_CAP_EXCEEDED: 'the chosen model or depth is above what this agent’s role allows, so nothing was started. Choose a model the role allows in this agent’s controls',
+  AGENT_MODEL_CAP_METADATA_UNAVAILABLE: 'this copy could not read the limits for the chosen model, so nothing was started. Restart ToolsEnabled, then start the agent again',
+  AGENT_MODEL_RESOLVER_UNAVAILABLE: 'this copy could not look up the chosen model, so nothing was started. Restart ToolsEnabled, then start the agent again',
+  AGENT_MODEL_TURN_UNSUPPORTED: 'this agent’s program cannot change models in the middle of a conversation, so the message was not sent. Stop the agent, choose the model, then start it again',
+  ACCOUNT_SELECTION_REQUIRED: 'no account is chosen for this agent, so nothing was started. Choose an account for it in Accounts, then start it again',
+  ACCOUNT_SELECTION_INVALID: 'the account chosen for this agent is not one this copy can use, so nothing was started. Choose an account for it in Accounts, then start it again',
+  ACCOUNT_SELECTION_UNAVAILABLE: 'the account chosen for this agent is not set up on this computer any more, so nothing was started. Choose an account for it in Accounts, then start it again',
+  AGENT_ACCOUNT_SELECTION_UNAVAILABLE: 'the account chosen for this agent is not set up on this computer any more, so nothing was started. Choose an account for it in Accounts, then start it again',
   ...TRANSCRIPT_SEND_REFUSALS,
+  ...TRANSCRIPT_ACCEPTED_UNSAVED,
   RULES_POLICY_UNAVAILABLE: refusalRemedy('RULES_POLICY_UNAVAILABLE'),
   RULES_CONTEXT_UNAVAILABLE: refusalRemedy('RULES_CONTEXT_UNAVAILABLE'),
   RULES_POLICY_CHANGED: refusalRemedy('RULES_POLICY_CHANGED'),
@@ -137,6 +190,7 @@ export const UNAVAILABLE_TEXT = Object.freeze({
   AGENT_TOOL_MODE_ROLE_CONFLICT: 'This role needs ToolsEnabled functions, but the chosen tool mode has disabled them. Enable a ToolsEnabled tool mode in Settings, then start a new agent.',
   TOOL_API_DISABLED: 'This session uses native provider tools only. ToolsEnabled API calls are disabled for it. Choose a ToolsEnabled tool mode in Settings and start a new session.',
   AGENT_ENGINE_UNAVAILABLE: 'no agent engine is configured on this installation',
+  AGENT_PROVIDER_PRESENCE_UNAVAILABLE: 'ToolsEnabled could not verify whether the selected provider is available on this computer, so the agent will not start. Check the provider installation and try again',
   /* THE ONE A BROWSER DRIVING A COMPUTER ACTUALLY HITS, and it had no entry, so
      "is my agent available?" answered with a shrug -- "this copy could not work
      out why, which is itself a fault worth reporting" -- followed by the desk
@@ -213,7 +267,9 @@ export const UNAVAILABLE_TEXT = Object.freeze({
   AGY_CLI_EXITED: 'Antigravity closed before completing this conversation. Resume the saved conversation to continue',
   ACP_AUTH_REQUIRED: 'This assistant needs its official sign-in. Open Settings, sign in to that program, then start the agent again',
   ACP_CLIENT_UNSUPPORTED: 'Google no longer supports this Gemini client for your account. Use a supported Google client or choose another assistant here',
-  ACP_MODEL_UNAVAILABLE: 'The selected model is not offered by this assistant’s official client for this account. Choose an available model',
+  /* The code alone crosses to the window, never the provider's words (shell/main.cjs rendererSafeAgentError), so
+     this says what is known and no more: the provider refused the model (1.0.50 review CM-1). */
+  ACP_MODEL_UNAVAILABLE: 'The provider refused the selected model. Choose another model, or check the model name',
   ACP_MODEL_SELECTION_UNCONFIRMED: 'The assistant did not confirm the selected model, so the session was stopped. Choose an available model and try again',
   ACP_EFFORT_UNAVAILABLE: 'The selected reasoning effort is not offered by this model. Choose an effort supported by the official client',
   ACP_EFFORT_SELECTION_UNCONFIRMED: 'The assistant did not confirm the selected reasoning effort, so the session was stopped. Choose a supported effort and try again',
@@ -363,8 +419,8 @@ export const UNAVAILABLE_TEXT = Object.freeze({
    * exactly that module. So on the build a person is holding, this code is
    * raised by the `local` tier and by nothing else, while the sentence beside it
    * went on naming Claude as the thing that could not start. The owner's hardest
-   * rule is that the product never tells them something untrue, and this was the
-   * product telling them something untrue about its own contents.
+   * rule is that the product never tells him something untrue, and this was the
+   * product telling him something untrue about its own contents.
    *
    * THE GATE IS THE ONLY PARTY THAT KNOWS WHICH ENGINE IS MISSING, and it
    * decides that per tier, per build, at the moment of the press. A frozen
@@ -421,7 +477,7 @@ export const UNAVAILABLE_TEXT = Object.freeze({
 
   /* THE COMPUTER IS FULL, WHICH IS A FACT ABOUT THE MACHINE AND NOT A FAULT.
    *
-   * MEASURED 2026-09-03 (crash investigation): one assistant is a
+   * MEASURED 2026-09-03 (REPORT-crash-20260903/evidence/C): one assistant is a
    * CLI process at 540-623 MB plus its two MCP servers at 60-65 MB each --
    * 665-748 MB of private bytes. This computer resumed nine assistants in
    * eleven minutes that evening and died.
@@ -469,7 +525,7 @@ export const UNAVAILABLE_TEXT = Object.freeze({
      MEASURED, isolated to one variable: with no Codex sign-in under USERPROFILE,
      availability answered {ok:true, AGENT_ENGINE_READY}, Start rendered ENABLED,
      and the press refused with a message that never mentioned signing in. That is
-     the refusal in a reported screenshot. Each sentence below therefore names
+     the refusal in the owner's screenshot. Each sentence below therefore names
      the ACTION, not the fault: "sign in" and "choose a folder" are things a
      person can go and do, where "confinement could not be prepared" is not.
 
@@ -490,11 +546,11 @@ export const UNAVAILABLE_TEXT = Object.freeze({
   AGENT_CONFINEMENT_HOME_UNWRITABLE: 'a folder name on the computer you are driving contains a character ToolsEnabled will not write into an assistant configuration. It will not start a session it cannot hold to your permission level. Choose a different folder in Settings',
   AGENT_CONFINEMENT_NOT_ISOLATED: 'this session was prepared for a permission level that does not match the one recorded here, so it was not started',
   AGENT_CONFINEMENT_BROWSER_TOOLS_INVALID: 'ToolsEnabled could not correctly signal whether this assistant needs browser tools, so nothing was started. Close ToolsEnabled and open it again; if it keeps refusing, reset its local agent data or reinstall from a complete build',
-  AGENT_ACCOUNT_RECOVERY_UNAVAILABLE: 'ToolsEnabled could not confirm that this account recovery still belongs to the original agent. Review the agent and its role in Computers before starting it again',
-  AGENT_ACCOUNT_RECOVERY_NO_ALTERNATE: 'No other eligible signed-in account is available for this assistant. Add or sign in to another account in Settings, or wait for the current account to have allowance again',
-  AGENT_ACCOUNT_RECOVERY_IDENTITY_MISMATCH: 'The earlier agent this recovery would replace is now in a different place in the tree, so no replacement was started. Review the agent and its role in Computers before starting it again',
-  AGENT_ACCOUNT_RECOVERY_STOPPED: 'You stopped the earlier agent, so account recovery did not start a replacement. Review the agent in Computers and start it again when you want it to run',
-  AGENT_PREDECESSOR_CLEANUP_FAILED: 'The earlier agent did not finish closing, so account recovery did not start a replacement. Use Stop on that agent in Computers, then start it again',
+
+
+
+
+  AGENT_PREDECESSOR_CLEANUP_FAILED: 'The earlier agent did not finish closing, so continuation did not start a replacement. Use Stop on that agent in Computers, then start it again',
   /* Resume and a fresh replacement finish the earlier session's close first.
      Neither sentence blames the saved conversation: it is intact in both cases
      (T1790). One is a wait; the other needs the person's Stop. */
@@ -561,8 +617,8 @@ export const UNAVAILABLE_TEXT = Object.freeze({
      bare-identifier residual: a person with a working, signed-in Codex was told
      "AGENT_SESSION_FAILED" or "not set up to run agents yet", neither of which
      is true and neither of which names a thing to do.
-     Measured on a development install, reached by following this product's
-     own second install line. */
+     Measured 2026-08-23 on the owner's machine, reached by following this
+     product's own second install line. */
   /* A REAL INCOMPATIBILITY, AND ONLY THAT. No Codex version is pinned: the
      engine refuses a start only when the installed Codex, while the session
      opens, lacks a request the session needs or answers one in a form it
@@ -607,15 +663,20 @@ export const UNAVAILABLE_TEXT = Object.freeze({
   AGENT_SWITCH_STALE: 'this conversation changed while the model switch was being prepared. Check the active session before choosing another model',
   AGENT_SWITCH_ACCOUNT_UNAVAILABLE: 'the selected account is no longer available for this model. Check Accounts and choose an available account for that provider',
   AGENT_SWITCH_NOT_STANDALONE: 'this session needs its tree’s model controls. Open it in Computers to change the model',
-  AGENT_SWITCH_ACCOUNT_INVALID: 'the selected account choice does not match this model. Choose an account for that provider or automatic selection; local models do not use subscription accounts',
+  AGENT_SWITCH_ACCOUNT_INVALID: 'the selected account choice does not match this model. Choose an account for that provider; local models do not use subscription accounts',
   AGENT_SWITCH_HISTORY_UNAVAILABLE: 'ToolsEnabled could not link this conversation to the replacement session. Keep the conversation open and check its history before trying again',
   AGENT_SWITCH_CLEANUP_REQUIRED: 'ToolsEnabled could not confirm that the model switch finished safely. Keep this conversation open and check its status before trying another switch',
   AGENT_TURN_NONE: 'there was nothing running to stop -- the session is open and idle, so a prompt is what it is waiting for',
   LOCAL_NODE_GPU_REQUIRED: 'the selected local model did not fit entirely on the GPU. Choose a smaller model or context in Settings → Local models, or explicitly allow CPU fallback there',
   LOCAL_NODE_GPU_UNVERIFIED: 'the local runtime could not verify GPU residency, so no prompt was sent. Check Ollama and try again; CPU fallback remains disabled',
   LOCAL_NODE_SETTINGS_INVALID: 'a local-model setting is invalid. Open Settings → Local models and check the model, GPU policy, context size and response mode',
-  LOCAL_NODE_MODEL_NOT_INSTALLED: 'the chosen local model is not installed at the configured runtime. Choose an installed model in Settings → Local models',
-  LOCAL_NODE_RUNTIME_UNAVAILABLE: 'the chosen local runtime is unavailable. Start it and check its address in Settings → Local models',
+  /* NOT A DEAD END ANY MORE. Both used to send a person to rows that tune a
+     runtime they did not have. "Set up local models" gets Ollama, starts it,
+     downloads a model and saves the address, showing only the steps still
+     needed; where a start is refused, the same button sits beside this
+     sentence (src/local-setup-popup.js). */
+  LOCAL_NODE_MODEL_NOT_INSTALLED: 'the chosen local model is not downloaded yet. Open Settings → Local models and press Set up local models to download it or pick another',
+  LOCAL_NODE_RUNTIME_UNAVAILABLE: 'the local model service is not ready yet. Open Settings → Local models and press Set up local models; it shows only the steps still needed',
   LOCAL_NODE_REASONING_BUDGET_EXHAUSTED: 'the local model used its answer budget on reasoning. Select Fast response mode in Settings → Local models or use a different model',
   LOCAL_NODE_THREAD_UNKNOWN: 'the saved local conversation is unavailable. Start a new session; the visible conversation excerpt is still separate from model recovery',
   AGENT_TURN_ACTIVE: 'this session is already working on a turn; stop that one first, or wait for it to finish',
@@ -633,7 +694,7 @@ export const UNAVAILABLE_TEXT = Object.freeze({
      session, then open it again" -- so a person with one wedged agent was told
      to end every OTHER agent on the tree too, losing every running turn on the
      computer, to clear one circle.
-     MEASURED 2026-09-19: a close-failed circle was cleared
+     MEASURED 2026-09-19: a close-failed circle (node-24-d7961725) was cleared
      by "Remove this agent" alone, ok:true, with the application still running
      and every other agent untouched. That control is already on this circle's
      own menu and is already enabled for it. Naming the cheap remedy that works
@@ -645,10 +706,11 @@ export const UNAVAILABLE_TEXT = Object.freeze({
      them. Continuing under a different registered account is not a fallback:
      it is a different home with no such thread. */
   AGENT_RESUME_ACCOUNT_UNAVAILABLE: 'the account that owns this saved conversation is unavailable. Open Accounts to check it, or choose Continue on another account to keep this agent and continue from its saved handoff',
+  AGENT_AUTOMATIC_TURN_START_UNCONFIRMED: 'The assistant did not confirm starting the continuation. Its session and queued messages are kept. Stop it before retrying.',
   AGENT_RESUME_SOURCE_UNAVAILABLE: 'the saved native conversation could not be verified for this agent. Close any session still using it and retry Resume',
   CODEX_RESUME_SOURCE_INVALID: 'the saved native conversation could not be bound to a new session. Update the paired app and engine before retrying Resume',
-  CODEX_RESUME_IDENTITY_MISMATCH: 'the saved file belongs to a different native conversation. The agent was not resumed',
-  CLAUDE_RESUME_IDENTITY_MISMATCH: 'the saved file belongs to a different native conversation. The agent was not resumed',
+  CODEX_RESUME_IDENTITY_MISMATCH: 'the saved file belongs to a different native conversation. The agent was not resumed. Open a new agent to start another conversation',
+  CLAUDE_RESUME_IDENTITY_MISMATCH: 'the saved file belongs to a different native conversation. The agent was not resumed. Open a new agent to start another conversation',
   /* SAY WHICH LIMIT REFUSED. This read "its configured start limit or provider
      allowance" because the code did not know which, and that one word of
      vagueness is the defect: a person told "or" cannot tell whether to wait for
@@ -663,6 +725,7 @@ export const UNAVAILABLE_TEXT = Object.freeze({
   AGENT_ROLE_TOOL_RESTRICTION_INVALID: 'the saved role has invalid function settings. No agent was started. Open the Role library, save that role again, then retry',
   AGENT_ROLE_TOOL_SERVER_UNSUPPORTED: 'this engine cannot provide the functions selected for the role. No agent was started. Install a matching app and engine update, then retry',
   AGENT_OPTIMIZED_TOOLS_UNSUPPORTED: 'Optimized works with Claude only, so this assistant was not started. Your saved tool setting is unchanged. Start it with a Claude account, or choose Only, Enabled or Disabled for Agent API in quick settings, then retry',
+  AGENT_API_MODE_UNAVAILABLE: 'the saved Agent API setting could not be read, so no agent was started. Choose Only, Optimized, Enabled or Disabled for Agent API in quick settings, then retry',
   AGENT_CONFINEMENT_STATE_PATH_TOO_LONG: 'the app data folder path is too long to start this assistant. Use a shorter supported app data location in the owning account, then retry',
   AGENT_SESSION_IDENTITY_TRANSPORT_UNAVAILABLE: 'the app-owned identity channel was not ready, so the named agent was not started. Close ToolsEnabled, open it again, then retry from this screen',
   AGENT_SESSION_ROOT_GUARD_UNAVAILABLE: 'this app and engine do not support the same final launch guard, so no agent program was started. Install a matching app and engine update, then retry',

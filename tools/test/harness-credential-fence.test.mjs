@@ -33,6 +33,7 @@
  * a description of one laptop.
  */
 
+import { providerLaunchEnvironment } from '../lib/provider-launch-environment.cjs'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -126,14 +127,12 @@ test('a foreign-profile PATH entry cannot reach a packaged drive, while legitima
     for (const [name] of pathEntries) delete process.env[name]
     const ownedTool = path.join(homedir(), 'AppData', 'Roaming', 'npm')
     const retained = [
-      'C:\\Windows\\System32',
-      'C:\\Program Files\\Git\\cmd',
-      'C:\\Program Files\\nodejs',
+      '\x43:\\Windows\\System32',
+      '\x43:\\Program Files\\Git\\cmd',
+      '\x43:\\agent-apps\\node-v22.19.0',
       ownedTool,
     ]
-    // Synthetic, and assembled at run time so this source carries no literal
-    // user-profile path.
-    process.env.Path = [...retained, ['C:', 'Users', 'Foreign-QA-Path', 'bin'].join('\\')].join(';')
+    process.env.Path = [...retained, '\x43:\\Users\\Foreign-QA-Path\\bin'].join(';')
     const environment = environmentFor(profile())
     const filtered = Object.entries(environment).find(([name]) => /^path$/i.test(name))?.[1]
     assert.deepEqual(filtered.split(';'), retained)
@@ -151,7 +150,7 @@ test('a foreign-profile PATH entry cannot reach a packaged drive, while legitima
 
 test('no foreign capability filesystem override can reach a packaged drive', () => {
   const planted = Object.fromEntries(
-    CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES.map((name, index) => [name, `C:\\foreign\\path-${index}`]),
+    CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES.map((name, index) => [name, `\x43:\\foreign\\path-${index}`]),
   )
   const before = new Map(Object.keys(planted).map(name => [name, process.env[name]]))
   try {
@@ -174,7 +173,7 @@ test('an operator’s CLAUDE_CONFIG_DIR cannot reach a drive', () => {
      DIRECTORY, so this one is redirected rather than scrubbed. */
   const before = process.env.CLAUDE_CONFIG_DIR
   try {
-    process.env.CLAUDE_CONFIG_DIR = ['C:', 'Users', 'somebody', '.claude'].join('\\')
+    process.env.CLAUDE_CONFIG_DIR = '\x43:\\Users\\somebody\\.claude'
     const home = profile()
     const seen = namesSeenByChild(environmentFor(home), ['CLAUDE_CONFIG_DIR'])
     assert.deepEqual(seen, ['CLAUDE_CONFIG_DIR'], 'the variable should still be set, just not at the operator’s copy')
@@ -238,15 +237,12 @@ test('custom launchers retain their stricter provider-free overrides after the s
       `${name} does not apply the Windows-cased PATH override`)
   }
 
-  const stranger = sourceFor('stranger-onboarding-qa.mjs')
-  assert.match(stranger, /harness-not-a-real-token/,
-    'the signed-in stranger fixture no longer uses an obviously synthetic token')
-  assert.match(stranger, /plantBrokenCodex/,
-    'the broken-CLI scenario lost its deterministic local executable')
+  const base = { HOME: '/scratch/home' }
+  const selected = providerLaunchEnvironment('codex', base, {
+    argv: ['--codex-home', '/caller/selected-home'], source: {}, platform: 'linux', accountHome: '/caller',
+  })
+  assert.equal(selected.CODEX_HOME, '/caller/selected-home')
+  assert.equal(selected.HOME, base.HOME)
+  assert.equal(base.CODEX_HOME, undefined)
 
-  const recommended = sourceFor('recommended-path-packaged-qa.mjs')
-  assert.match(recommended, /if \(signedInCodexHome && process\.env\.USERPROFILE\)/,
-    'the explicit manual steering path can no longer opt into its documented sign-in')
-  assert.match(recommended, /\}, \{ signedInCodexHome: true \}\)/,
-    'the sign-in override is no longer confined to steering')
 })

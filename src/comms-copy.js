@@ -177,7 +177,7 @@ export const emptyLine = () => 'No messages on this channel yet.'
 export const boardEmptyLine = () => 'No channels to show yet.'
 
 /* EVERY FAILURE NAMES A NEXT STEP. A sentence that ends at the failure is what
-   was filed as a finding in its own right (passive dead ends). Each
+   the owner filed as a finding in its own right ("passive dead ends"). Each
    reason below is at most 25 words a sentence, names what did not happen, and
    says the one thing that would tell the reader whether their agents are
    silent or the page is. The reader is the bridge on window.mcAgent

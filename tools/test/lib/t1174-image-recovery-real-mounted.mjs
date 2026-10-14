@@ -1,3 +1,4 @@
+import { startExplicitContinuation } from './explicit-continuation.mjs'
 import assert from 'node:assert/strict'
 import { register } from 'node:module'
 import fs from 'node:fs'
@@ -171,7 +172,7 @@ function makeBridge(world, {
       },
     })
     await gate.promise
-    return { ok: true, sessionId: T1174_SUCCESSOR, threadId: T1174_START_THREAD }
+    return { ok: true, sessionId: T1174_SUCCESSOR, threadId: T1174_START_THREAD, account: request.treeAccount }
   }
   bridge.send = async () => ({ ok: true, turnId: 't1174-person-turn' })
   bridge.sendAutomatic = async request => {
@@ -444,6 +445,7 @@ export async function runMountedImageRecovery({
     onPrepareRead: mode === 'host-replaced-during-prepare'
       ? async () => {
         if (!prepareReadArmed) return false
+        prepareReadArmed = false // inject once; the replacement mount also reads retained images
         // Same-bridge view remounts now retain their coordinator host. Replace
         // the actual bridge identity, then mount through the registration seam
         // while prepare is awaiting; the producer must not adopt that host.
@@ -464,14 +466,8 @@ export async function runMountedImageRecovery({
     view = await mountView(world, { computerId: COMPUTER_ID })
     assert.ok(view.el.classList.contains('computers'), 'the actual Computers view must mount')
     prepareReadArmed = true
-    image.emit({
-      sessionId: T1174_PREDECESSOR,
-      event: {
-        type: 'account_recovery_needed',
-        recoveryId: 't1174-image-recovery-' + mode,
-        handoff: 'Continue the synthetic retained-image conversation.',
-      },
-    })
+    const { completion } = await startExplicitContinuation({ computerId: COMPUTER_ID, nodeId: T1174_NODE,
+      sessionId: T1174_PREDECESSOR, emit: image.emit })
     const transcriptAuthorityLoss = mode === 'transcript-authority-refusal'
     const hostReplacementDuringPrepare = mode === 'host-replaced-during-prepare'
     if (!hostReplacementDuringPrepare) {
@@ -483,6 +479,7 @@ export async function runMountedImageRecovery({
         image.releaseTranscriptSave()
       }
     }
+    await completion
     const fatalImageModes = [
       'authority-refusal',
       'currentness-refusal',

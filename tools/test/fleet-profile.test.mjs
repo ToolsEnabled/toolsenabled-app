@@ -21,6 +21,12 @@ globalThis.document = {
     return {
       tagName,
       dataset: {},
+      children: [],
+      set textContent(value) { this.text = value; this.children = [] },
+      get textContent() { return this.children.length ? this.children.map(child => child.textContent).join('') : this.text || '' },
+      replaceChildren(...children) { this.children = children },
+      appendChild(child) { this.children.push(child) },
+      addEventListener() {},
       className: '',
       classList: { toggle(name, on) { this[name] = on } },
       setAttribute(name, value) { this[name] = value },

@@ -3,7 +3,7 @@
 /* DRIVE THE TWO BUTTONS THE WAY THE FIRST EXTERNAL USER WOULD HAVE USED THEM.
  *
  * WHY THIS EXISTS. The first person outside this machine to install 1.0.20 got
- * stuck exactly where predicted: the guide told them to run
+ * stuck exactly where the owner predicted: the guide told them to run
  * "codex login" in the window their install had just finished in, and that
  * window answered "'codex' is not recognized". The repair is two buttons on
  * every one of the three programs -- Install, which fetches and installs here,
@@ -19,11 +19,9 @@
  *               fix, never an npm error a stranger cannot act on.
  *   SIGNED OUT  the program is here, its home is empty. Both buttons are on the
  *               glass and the note says what a press would do.
- *   SIGNED IN   the program's own sign-in file exists (the profile's home
- *               points at this machine's real one through a junction --
- *               established practice; nothing is copied and nothing is read).
- *               The page must say so, and Sign in must stay honest about what
- *               pressing it would do.
+ *   SIGNED IN   each CLI uses its caller-selected existing home in place:
+ *               --codex-home, --claude-config-dir and --gemini-home.
+ *               No provider sign-in file is staged or linked.
  *
  * SIGN IN IS NEVER PRESSED BY THIS DRIVER, IN ANY STATE, and that is a rule
  * rather than an omission. A press now opens a real terminal window running a
@@ -52,7 +50,6 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { execFileSync } from 'node:child_process'
 
 import {
   argument,
@@ -202,11 +199,6 @@ function pathWithout(programs) {
   }).join(';')
 }
 
-function junction(linkPath, target) {
-  mkdirSync(path.dirname(linkPath), { recursive: true })
-  execFileSync('cmd.exe', ['/d', '/c', 'mklink', '/J', linkPath, target], { windowsHide: true, stdio: 'ignore' })
-}
-
 async function driveState(state, executable, appRoot) {
   console.log(`\n=== state: ${state} ===`)
   const scratch = mkdtempSync(path.join(tmpdir(), `provider-login-${state}-`))
@@ -224,14 +216,7 @@ async function driveState(state, executable, appRoot) {
       process.env.PATH = pathWithout(['codex', 'claude', 'gemini', 'npm', 'node'])
       process.env.Path = process.env.PATH
     }
-    if (state === 'signed-in') {
-      /* The junctions point the isolated home at this machine's real sign-in
-         folders. Presence answers by existence alone; nothing follows them to
-         read a byte, and removing the profile removes only the link. */
-      junction(path.join(profile, 'home', '.codex'), path.join(process.env.USERPROFILE, '.codex'))
-      junction(path.join(profile, 'home', '.claude'), path.join(process.env.USERPROFILE, '.claude'))
-    }
-    window = await openWindow(executable, profile)
+    window = await openWindow(executable, profile, { provider: state === 'signed-in' ? ['codex', 'claude', 'gemini'] : null })
     if (!(await walkToGuide(window))) return
 
     for (const provider of ['codex', 'claude', 'gemini']) {

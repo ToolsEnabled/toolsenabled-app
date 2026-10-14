@@ -10,7 +10,7 @@
  * body from the real file and runs it, so a wrong verdict is a wrong verdict
  * here, not a passing string match.
  *
- * MEASURED 2026-09-03: an earlier commit ("Agents can stop, restart and remove
+ * MEASURED 2026-09-03: commit 14ca4fb ("Agents can stop, restart and remove
  * the circles below them") taught shell/main.cjs's dispatchTreeSpawn to carry
  * a caller's action instead of the hard-coded 'create-and-start-node', taught
  * src/views/computers.js's runTreeNodeCommand to perform 'stop-node' and
@@ -45,7 +45,10 @@
  */
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { readFileSync } from 'node:fs'
+import { readFileSync, mkdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { canonicalRootForTests } from '../canonical-root.mjs'
+import { prepareRetainedSourceFixture } from './lib/source-fixture-root.mjs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -139,6 +142,60 @@ function localDispatchPayload(action, overrides = {}) {
   }
 }
 
+function researchDispatchPayload(research, overrides = {}) {
+  return localDispatchPayload('create-and-start-node', {
+    treeId: null, nodeId: null, role: 'manager', tier: 'astra',
+    effort: 'xhigh', provider: 'codex', model: 'gpt-6-astra',
+    brief: 'Coordinate source work within the delegated folder.',
+    delegationToken: Buffer.alloc(32, 87).toString('base64url'),
+    reservedNodeId: 'node-research', research, ...overrides,
+  })
+}
+
+test('restricted research spawn reaches its existing validator with the delegated inputs intact', () => {
+  const clean = loadCleanTreeNodeCommand()
+  for (const mode of ['folder', 'clean-room']) {
+    for (const access of ['read-only', 'read-write']) {
+      const research = { mode, access, prompt: 'Inspect the supplied source.',
+        ...(mode === 'folder' ? { folder: '/workspace/research' } : {}),
+        files: [{ path: 'source.txt', content: 'An isolated input.' }] }
+      const request = researchDispatchPayload(research)
+      const out = clean(request)
+      assert.ok(out, `${mode}/${access} is a supported research request`)
+      assert.deepEqual(out.research, research)
+      for (const key of ['parentSessionId', 'delegationToken', 'reservedNodeId',
+        'role', 'tier', 'effort', 'provider', 'model']) assert.equal(out[key], request[key], key)
+    }
+  }
+})
+
+test('research requests retain malformed-input and unknown-field refusals', () => {
+  const clean = loadCleanTreeNodeCommand()
+  const research = { mode: 'folder', access: 'read-only', folder: '/workspace/research', prompt: 'Inspect.' }
+  assert.ok(clean(researchDispatchPayload(research)))
+  const malformed = [null, [], {}, { ...research, mode: 'ordinary' },
+    { ...research, access: 'unrestricted' }, { ...research, prompt: '' },
+    { ...research, prompt: '   ' }, { ...research, folder: undefined },
+    { ...research, mode: 'clean-room' }, { ...research, files: {} },
+    { ...research, files: [null] }, { ...research, files: [{ path: '', content: 'text' }] },
+    { ...research, files: [{ path: 'source.txt', content: 1 }] }]
+  for (const value of malformed) assert.equal(clean(researchDispatchPayload(value)), null)
+  assert.equal(clean(researchDispatchPayload(research, { unrecognizedField: true })), null)
+  assert.equal(clean(researchDispatchPayload(research, { delegationToken: 'malformed' })), null)
+  assert.equal(clean(researchDispatchPayload(research, { reservedNodeId: undefined })), null)
+})
+
+test('research fields cannot ride lifecycle or message commands', () => {
+  const clean = loadCleanTreeNodeCommand()
+  const research = { mode: 'folder', access: 'read-only', folder: '/workspace/research', prompt: 'Inspect.' }
+  for (const action of ['fresh-start-existing-node', 'stop-node', 'remove-node', 'resume-node', 'send-to-bound-node']) {
+    const request = localDispatchPayload(action, action === 'send-to-bound-node'
+      ? { expectedSessionId: 'session-old', message: 'Hello.' } : {})
+    assert.ok(clean(request), `${action} control must be valid`)
+    assert.equal(clean({ ...request, research }), null, action)
+  }
+})
+
 /* Exactly the shape the file-spool coordinator's validateTreeNodeCommandRequest
    returns for fresh-start-existing-node: no parentSessionId, role, tier or
    brief key at all (see shell/tree-node-command.cjs). */
@@ -195,7 +252,7 @@ test('a locally dispatched remove (agent.remove) is accepted, and carries the ca
  * but this gate's action allow-list never learned the word, so a resume fell
  * through to `return null` -- the caller read MC_TREE_COMMAND_REQUEST_INVALID
  * for a request the view downstream already accepts, exactly as stop-node and
- * remove-node once did before an earlier commit. */
+ * remove-node once did before commit 14ca4fb. */
 test('a locally dispatched resume (agent.resume) is accepted, not silently dropped', () => {
   const clean = loadCleanTreeNodeCommand()
   const out = clean(localDispatchPayload('resume-node'))
@@ -388,15 +445,15 @@ test('a malformed parentSessionId on a lifecycle command is still refused, not p
 
 /* THE DEPTH, PROVIDER AND MODEL AN ASSISTANT NAMES WHEN IT ASKS FOR A CIRCLE.
  *
- * The effort level is selectable when agents are spawned. This gate is the
- * first thing on the app side that sees those three,
+ * Owner, 2026-09-19: "you NEED to be able to select effort level when you spawn
+ * agents". This gate is the first thing on the app side that sees those three,
  * and a value it drops is not a decline: pendingTreeNodeCommands never receives
  * the command, so the caller waits out the broker's five-minute completion
  * timeout reading a sentence about a request that was never refused.
  *
  * MEASURED BY MUTATION 2026-09-19: with `effort`, `provider` and `model` taken
  * back out of this gate's `allowed` set, every check in this file still passed
- * while the whole spawn path went RED (spawn-options-redgreen.mjs, 2/6). These
+ * while the whole spawn path went RED (laneB-item1-redgreen.mjs, 2/6). These
  * are the checks that close that hole. */
 const CREATE_BASE = Object.freeze({
   protocol: 'toolsenabled.tree-node-command',
@@ -483,5 +540,153 @@ test('a non-create command still cannot smuggle a real depth, provider or model'
     assert.equal(clean(localDispatchPayload(action, { effort: 'xhigh' })), null, `${action}: effort`)
     assert.equal(clean(localDispatchPayload(action, { provider: 'codex' })), null, `${action}: provider`)
     assert.equal(clean(localDispatchPayload(action, { model: 'gpt-6-astra' })), null, `${action}: model`)
+  }
+})
+
+/* Use the real token issuer and paired engine checks. No provider, session,
+   tree node or physical resource is started by this fixture. */
+function researchIssuerFixture() {
+  const require = createRequire(import.meta.url)
+  const engine = canonicalRootForTests({ requireConfigured: true })
+  const { createResearchDelegationAuthority } = require('../../shell/research-delegation-authority.cjs')
+  const { normalizeResearchDelegation } = require(path.join(engine, 'src/lib/research-delegation-request.js'))
+  const { validateResearchAccess, enforceResearchAccess } = require(path.join(engine, 'src/lib/research-access.js'))
+  const { root } = prepareRetainedSourceFixture()
+  const folder = path.join(root, 'inputs')
+  mkdirSync(folder)
+  let parent = { sessionId: 'session-parent', owner: 'principal-a',
+    agentId: 'agent-parent', nodeId: 'node-parent', treeId: 'tree-parent',
+    treeAnchors: ['tree-parent', 'node-parent'], cwd: root,
+    permissionSession: { origin: 'local', tier: 'full' } }
+  const authority = createResearchDelegationAuthority({
+    readParent: id => id === parent.sessionId ? parent : null,
+    normalizeRequest: normalizeResearchDelegation,
+    validateAccess: validateResearchAccess, enforceAccess: enforceResearchAccess,
+    roomsRoot: path.join(root, 'rooms'),
+  })
+  return { authority, folder,
+    changeParent: patch => { parent = { ...parent, ...patch } },
+    issue(mode = 'folder', access = 'read-only') {
+      const research = { mode, access, prompt: 'Inspect explicit inputs.',
+        ...(mode === 'folder' ? { folder } : { files: [{ path: 'input.txt', content: 'sample' }] }) }
+      return authority.issue(parent.sessionId, parent.owner,
+        { role: 'manager', tier: 'astra', research }, 'node-research')
+    },
+    packet: issued => researchDispatchPayload(issued.research, {
+      parentSessionId: parent.sessionId, delegationToken: issued.token,
+    }),
+    redemption: packet => ({
+      agentId: packet.reservedNodeId, tier: packet.tier,
+      agentAuthority: { roleId: packet.role }, research: packet.research,
+      requestKeys: { threadId: packet.reservedNodeId,
+        treeAnchors: [...parent.treeAnchors, packet.reservedNodeId] },
+    }),
+  }
+}
+
+test('real research issuer reaches renderer admission and bound redemption for both modes and access levels', () => {
+  const clean = loadCleanTreeNodeCommand()
+  const fixture = researchIssuerFixture()
+  for (const mode of ['folder', 'clean-room']) {
+    for (const access of ['read-only', 'read-write']) {
+      const issued = fixture.issue(mode, access)
+      try {
+        const packet = fixture.packet(issued)
+        const out = clean(packet)
+        assert.ok(out !== null, 'the host-issued research request must reach renderer admission')
+        // Never render private token bytes in a failed assertion.
+        assert.ok(out.delegationToken === issued.token, 'admission preserves the issued token')
+        for (const key of ['parentSessionId', 'reservedNodeId', 'role', 'tier', 'effort', 'provider', 'model'])
+          assert.equal(out[key], packet[key], key)
+        assert.deepEqual(out.research, issued.research)
+        const permit = fixture.authority.redeem(out.delegationToken, fixture.redemption(out), 'principal-a')
+        permit.assertStart()
+        assert.equal(permit.researchAccess.mode, mode)
+        assert.equal(permit.researchAccess.access, access)
+        assert.equal(permit.researchAccess.root, issued.access.root)
+      } finally {
+        // Finish retires this synthetic token and retains clean-room inputs.
+        fixture.authority.finish(issued.token)
+      }
+    }
+  }
+})
+
+test('research creation requires its bounded token shape and cannot borrow ordinary or lifecycle tokens', () => {
+  const clean = loadCleanTreeNodeCommand()
+  const research = { mode: 'folder', access: 'read-only', folder: '/workspace/research', prompt: 'Inspect.' }
+  const packet = researchDispatchPayload(research)
+  const token = packet.delegationToken
+  assert.ok(clean(packet) !== null)
+  for (const delegationToken of [undefined, null, '', token.slice(1), token + 'x',
+    token + '.1', token.slice(0, -1) + '!', '12345678-1234-4123-8123-123456789abc',
+    '12345678-1234-4123-8123-123456789abc.1']) {
+    assert.ok(clean({ ...packet, delegationToken }) === null, 'malformed or foreign-purpose token is refused')
+  }
+  for (const patch of [{ reservedNodeId: undefined }, { parentSessionId: null },
+    { unexpectedToken: token }, { delegationToken: token + ' ', research }]) {
+    assert.ok(clean({ ...packet, ...patch }) === null, 'missing binding or extra data is refused')
+  }
+  const { research: omitted, ...ordinary } = packet
+  assert.ok(clean(ordinary) === null, 'research tokens do not enter ordinary creation')
+  assert.ok(clean({ ...ordinary, delegationToken: '12345678-1234-4123-8123-123456789abc' }) !== null)
+  assert.ok(clean({ ...ordinary, delegationToken: undefined }) !== null, 'ordinary slot admission stays available')
+  for (const action of ['resume-node', 'fresh-start-existing-node']) {
+    const lifecycle = localDispatchPayload(action, { expectedSessionId: 'session-old',
+      reservedNodeId: 'node-1', delegationToken: token })
+    assert.ok(clean(lifecycle) === null, 'research tokens do not enter lifecycle commands')
+  }
+})
+
+test('renderer admission does not grant research authority to changed bindings or replayed tokens', () => {
+  const clean = loadCleanTreeNodeCommand()
+  const fixture = researchIssuerFixture()
+  const refused = fn => assert.throws(fn, error => error?.code === 'RESEARCH_DELEGATION_REFUSED')
+  for (const mutate of [
+    request => ({ ...request, agentId: 'different-node' }),
+    request => ({ ...request, tier: 'luna' }),
+    request => ({ ...request, agentAuthority: { roleId: 'worker' } }),
+    request => ({ ...request, research: { ...request.research, prompt: 'Different purpose.' } }),
+    request => ({ ...request, research: { ...request.research, folder: path.dirname(fixture.folder) } }),
+  ]) {
+    const issued = fixture.issue()
+    try {
+      const out = clean(fixture.packet(issued))
+      assert.ok(out !== null)
+      refused(() => fixture.authority.redeem(out.delegationToken, mutate(fixture.redemption(out)), 'principal-a'))
+    } finally { fixture.authority.finish(issued.token) }
+  }
+  for (const changedPrincipal of [false, true]) {
+    const issued = fixture.issue()
+    try {
+      const out = clean(fixture.packet(issued))
+      assert.ok(out !== null)
+      if (changedPrincipal) {
+        refused(() => fixture.authority.redeem(out.delegationToken, fixture.redemption(out), 'principal-b'))
+      } else {
+        const permit = fixture.authority.redeem(out.delegationToken, fixture.redemption(out), 'principal-a')
+        permit.assertStart()
+        refused(() => fixture.authority.redeem(out.delegationToken, fixture.redemption(out), 'principal-a'))
+      }
+    } finally { fixture.authority.finish(issued.token) }
+  }
+  const unissued = researchDispatchPayload({ mode: 'folder', access: 'read-only',
+    folder: fixture.folder, prompt: 'Inspect explicit inputs.' }, {
+    parentSessionId: 'session-parent', delegationToken: Buffer.alloc(32).toString('base64url'),
+  })
+  const shaped = clean(unissued)
+  assert.ok(shaped !== null, 'transport shape does not substitute for host authorization')
+  refused(() => fixture.authority.redeem(shaped.delegationToken, fixture.redemption(shaped), 'principal-a'))
+  for (const change of [{ cwd: fixture.folder }, { sessionId: 'different-session' }]) {
+    const issued = fixture.issue()
+    try {
+      const out = clean(fixture.packet(issued))
+      assert.ok(out !== null)
+      fixture.changeParent(change)
+      refused(() => fixture.authority.redeem(out.delegationToken, fixture.redemption(out), 'principal-a'))
+    } finally {
+      fixture.changeParent(issued.parent)
+      fixture.authority.finish(issued.token)
+    }
   }
 })

@@ -1,15 +1,15 @@
 /* T158 (re-scoped 2026-09-17, chat-lifecycle cluster) -- THE CARRIED
  * CONVERSATION ITSELF, NOT JUST THE HANDOFF LINE.
  *
- * tools/test/t158-cross-provider-model-switch.test.mjs (landed an earlier commit)
+ * tools/test/t158-cross-provider-model-switch.test.mjs (landed 21fa83ad)
  * presses the real "Continue on <model>" row and asserts the seat, the start
  * ordering and the ONE line the recovery handoff sends. None of its five
  * cases reads back the node's SAVED CONVERSATION after the switch, so a
  * change that carried the handoff sentence but dropped the turns that came
  * before it would still pass all five.
  *
- * The finding: SWITCH-MODEL must carry the transcript from the bridge read,
- * not the node record -- the node
+ * RESUME-DURABILITY-FINDING-20260917.md (Worker 85): "SWITCH-MODEL must carry
+ * the transcript from the bridge read, not the node record" -- the node
  * record (mc.fleet.trees.v1) holds only the first ask and the last reply, so
  * reading the conversation from THERE after a switch would silently drop
  * every middle turn. This file reads the node's saved conversation back the
@@ -24,14 +24,14 @@
  * from `[handoffLine]` alone -- and every turn spoken before the switch is
  * gone from the saved conversation even though the handoff sentence still
  * arrives. That is the regression this file exists to catch; see
- * an internal report for the RED/GREEN proof of this exact
+ * REPORT-T158-WORKER93-20260917.md for the RED/GREEN proof of this exact
  * mutation.
  */
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { fleetTreesStorageKey } from '../../src/fleet-trees.js'
 import { transcriptStorageKey } from '../../src/session-transcript-store.js'
-import { payloadSkip, CROSS_ROW, runningCircle, waitFor, pressContinueRow } from './lib/t158-switch-model-harness.mjs'
+import { payloadSkip, CROSS_ROW, runningCircle, waitFor, pressChosenContinuation } from './lib/t158-switch-model-harness.mjs'
 
 const savedLines = ctx => {
   const raw = ctx.world.storage.getItem(transcriptStorageKey(ctx.COMPUTER_ID))
@@ -69,7 +69,7 @@ test('a cross-provider switch carries every prior turn into the replacement, not
   assert.ok(beforeSwitchWithSecondTurn.some(line => line.who === 'you' && line.text === 'A second question before switching models.'),
     'the second turn is on the saved conversation before any switch is pressed')
 
-  await pressContinueRow(ctx, CROSS_ROW)
+  await pressChosenContinuation(ctx, CROSS_ROW)
   await waitFor(() => ctx.readNode().sessionId === ctx.NEW_SESSION, 'the circle to take over the replacement session')
   await waitFor(() => ctx.calls.some(entry => entry.call === 'send' && entry.sessionId === ctx.NEW_SESSION),
     'the handoff to be sent to the replacement')

@@ -8,8 +8,8 @@
  * the argv shell/tree-node-command.cjs BUILDS -- treeNodeCommandLaunchArgv --
  * which is the same slot table the running application PARSES. A coordinator
  * that hand-rolled the helper's command line could drift from the grammar
- * (MEASURED on a development tier: unanswered resumes, then a restart refused
- * MC_TREE_COMMAND_ARGUMENT_INVALID); one that
+ * (MEASURED 2026-09-03 and 2026-09-04 on the owner's Live tier: nine unanswered
+ * resumes, then a restart refused MC_TREE_COMMAND_ARGUMENT_INVALID); one that
  * runs this cannot.
  *
  * The profile switch the helper is given is the userData directory the request

@@ -168,7 +168,7 @@ async function runPowerShell(command) {
 // machine where several agents test in isolated temp directories, an unrelated
 // harness three folders away aborted the release chain -- and it did so at the
 // LAST step, after every other gate had passed. That is the same defect as the
-// port suites fixed in an earlier commit: a check that can only pass on a globally idle
+// port suites fixed in e92bc61: a check that can only pass on a globally idle
 // machine will fail in CI, on a laptop with the app open, and whenever a
 // colleague is testing, and a gate that cries wolf is one people learn to skip.
 //
@@ -498,7 +498,7 @@ export async function main(directory = 'release/win-unpacked', overrides = {}) {
  * supply, by accident, exactly the state a customer will not have.
  *
  * THE STATE ROOT IS STATED, not left for the payload to derive. Since engine
- * an earlier commit a packaged payload given no TOOLSENABLED_STATE_ROOT anchors its
+ * 81b14e15 a packaged payload given no TOOLSENABLED_STATE_ROOT anchors its
  * state to the Windows account that owns the installation -- resolved from the
  * process token, never from APPDATA or USERPROFILE -- and the engine's
  * runtime-state-root unit test pins that. A launch that says nothing is thus
@@ -516,9 +516,9 @@ function sterileEnvironment(profile, base = process.env) {
     NUMBER_OF_PROCESSORS: base.NUMBER_OF_PROCESSORS,
     PROCESSOR_ARCHITECTURE: base.PROCESSOR_ARCHITECTURE,
     Path: [
-      path.join(base.SystemRoot || 'C:\\Windows', 'System32'),
-      base.SystemRoot || 'C:\\Windows',
-      path.join(base.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0'),
+      path.join(base.SystemRoot || '\x43:\\Windows', 'System32'),
+      base.SystemRoot || '\x43:\\Windows',
+      path.join(base.SystemRoot || '\x43:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0'),
     ].join(';'),
     LOCALAPPDATA: profile.localAppData,
     APPDATA: profile.appData,

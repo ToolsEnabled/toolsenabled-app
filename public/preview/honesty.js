@@ -35,10 +35,10 @@
  *      banner, or injecting a badge after mount, produces the same refusal as
  *      authoring one. This is what makes it a control rather than a checklist.
  *
- * AND ONE MORE, WHICH IS THE PRODUCT'S SHAPE FOR THIS PREVIEW:
+ * AND ONE MORE, WHICH IS THE OWNER'S SHAPE FOR THIS PREVIEW:
  *
  *   5. THE PREVIEW MAY NOT PREVIEW A PAID CAPABILITY.
- *      Paid services get no preview. `PAID_GATED`
+ *      "no need for preview of paid services" (owner, 2026-08-11). `PAID_GATED`
  *      mirrors the engine's closed set (src/lib/entitlement.js GATED_CAPABILITIES
  *      — today exactly one member, `hosted-relay`). `assertUnpaid()` refuses any
  *      capability whose id is in it, and refuses an id it does not recognise at
@@ -52,7 +52,7 @@
 /** The exact sentence the disclosure banner must carry. Asserted, not
  *  suggested. Three elements, each required by the legal lane's clearance of
  *  this simulation (legal/reports/R-009-simulation-disclosure.md §2, via
- *  an internal report):
+ *  reports/lanes/preview-disclosure-two-missing-elements.md):
  *    (a) simulated, generated in the browser — no real activity anywhere;
  *    (b) WHAT it simulates: the free local product — the sentence that stops
  *        a visitor reading the simulation's fluency as a property of the

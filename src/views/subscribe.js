@@ -208,13 +208,14 @@ export function subscribeView({ query, fetchImpl, submitImpl } = {}) {
       <form class="sub-form" novalidate>
         ${anyAnnual ? `<div class="sub-period">
           <span class="sub-period-label" id="sub-period-label">Billing</span>
-          <div class="sub-seg" role="radiogroup" aria-labelledby="sub-period-label">
+          <div class="sub-seg" role="radiogroup" aria-labelledby="sub-period-label" aria-describedby="sub-error-period">
             <button type="button" class="sub-seg-btn on" data-period="monthly" role="radio" aria-checked="true">Monthly</button>
             <button type="button" class="sub-seg-btn" data-period="annual" role="radio" aria-checked="false">Annual</button>
           </div>
+          <p class="sub-field-error" id="sub-error-period" hidden></p>
         </div>` : ''}
 
-        <fieldset class="sub-plans-set">
+        <fieldset class="sub-plans-set" aria-describedby="sub-error-planId">
           <legend class="sub-plans-legend">Choose a plan</legend>
           <div class="sub-plans">${plans.map(plan => planCardMarkup(catalog, plan, period)).join('')}</div>
           <p class="sub-field-error" id="sub-error-planId" hidden></p>
@@ -277,7 +278,15 @@ export function subscribeView({ query, fetchImpl, submitImpl } = {}) {
     if (!box) return
     box.textContent = message || ''
     box.hidden = !message
-    const input = field === 'email' ? $('#sub-email') : field === 'seats' ? $('#sub-seats') : null
+    const input = field === 'email'
+      ? $('#sub-email')
+      : field === 'seats'
+        ? $('#sub-seats')
+        : field === 'planId'
+          ? [...root.querySelectorAll('.sub-plan-radio')].find(control => !control.disabled) || $('.sub-plans-set')
+          : field === 'period'
+            ? [...root.querySelectorAll('.sub-seg-btn')].find(control => control.dataset.period === flow.snapshot.fields.period)
+            : null
     if (input) {
       input.setAttribute('aria-invalid', message ? 'true' : 'false')
       if (message) input.focus()
@@ -285,11 +294,16 @@ export function subscribeView({ query, fetchImpl, submitImpl } = {}) {
   }
 
   function clearFieldErrors() {
-    for (const field of ['email', 'seats', 'planId']) {
+    for (const field of ['email', 'seats', 'planId', 'period']) {
       const box = $(`#sub-error-${field}`)
       if (box) { box.textContent = ''; box.hidden = true }
     }
-    for (const input of [$('#sub-email'), $('#sub-seats')]) input?.setAttribute('aria-invalid', 'false')
+    for (const input of [
+      $('#sub-email'),
+      $('#sub-seats'),
+      ...root.querySelectorAll('.sub-plan-radio'),
+      ...root.querySelectorAll('.sub-seg-btn'),
+    ]) input?.setAttribute('aria-invalid', 'false')
   }
 
   function renderPrices() {
@@ -420,6 +434,7 @@ export function subscribeView({ query, fetchImpl, submitImpl } = {}) {
       on(button, 'click', () => {
         period = button.dataset.period
         flow.setField('period', period)
+        clearFieldErrors()
         for (const sibling of root.querySelectorAll('.sub-seg-btn')) {
           const on_ = sibling === button
           sibling.classList.toggle('on', on_)
@@ -450,8 +465,13 @@ export function subscribeView({ query, fetchImpl, submitImpl } = {}) {
          subscriptions. */
       clearFieldErrors()
       flow.setField('period', period)
+      const attempt = flow.submitAttempt(selectedPlan())
+      /* submitAttempt changes the flow to `submitting` before it awaits the
+         configured signup adapter. Paint that state now so a reader gets live
+         pending feedback before the request resolves; the disabled button is
+         not the accessibility contract by itself. */
       render()
-      await flow.submitAttempt(selectedPlan())
+      await attempt
       if (destroyed) return
       render()
     })

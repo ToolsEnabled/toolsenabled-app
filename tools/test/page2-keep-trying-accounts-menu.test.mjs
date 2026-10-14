@@ -1,87 +1,43 @@
 import assert from 'node:assert/strict'
 import { webcrypto } from 'node:crypto'
 import test from 'node:test'
-import vm from 'node:vm'
 import { installDomStandIn } from './lib/dom-stand-in.mjs'
-import { functionSource } from './helpers/tree-rail-chat-harness.mjs'
 
-// Person's T844 wording: "The Keep trying accounts control got removed from where
-// the person used it and was supposed to be replaced with a drop-down bar." The
-// select belongs beside model/effort/mode in the open-agent chat bar; the Accounts
-// menu keeps the existing Try accounts now action and status for the same node.
-// T1027 follows the person's report that redundant Keep trying prose breaks the
-// chat layout. The same off/keep/wait policy now has compact visible choices.
+// Stored retry policies must not bring automatic account controls back into chat.
+// Account choice is explicit; the real account picker has its own DOM tests.
 const dom = installDomStandIn()
 const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto')
 Object.defineProperty(globalThis, 'crypto', { configurable: true, value: webcrypto })
-const { el, buildChat } = await import('../../src/components.js')
-const { defaultRetryProviders } = await import('../../src/manual-account-continuation.js')
+const { buildChat } = await import('../../src/components.js')
+const { movedOffParagraph } = await import('../../src/account-switcher-state.js')
 test.after(() => {
   dom.restore()
   if (cryptoDescriptor) Object.defineProperty(globalThis, 'crypto', cryptoDescriptor)
   else delete globalThis.crypto
 })
 
-test('the open-agent chat bar carries the requested retry select beside model/effort/mode', () => {
-  const rail = functionSource('showTreeNodeControls')
-  const config = functionSource('treeChatConfigFor')
-  assert.match(config, /accountRetry/)
-  assert.match(config, /onAccountRetryChange/)
-  assert.match(config, /onAccountRetryNow/)
-  const root = buildChat({ title: 'Builder 4', seed: 0, onSend() {}, chips: {
-    onOpenMode() {},
-    onOpenEffort() {},
-    model: () => ({ label: 'Model' }),
-    onOpenModel() {},
-    accountRetry: () => ({ value: 'wait', status: 'Waiting for allowance to reset.', showAction: true, actionDisabled: false }),
+for (const value of ['off', 'keep', 'wait']) test('a stored ' + value + ' retry policy offers no automatic account action', () => {
+  const changes = [], retries = []
+  const root = buildChat({ title: 'Fixture agent', seed: 0, onSend() {}, chips: {
+    model: () => ({ label: 'Fixture model' }), onOpenModel() {},
+    accountRetry: () => ({ value, status: 'Fixture saved retry status', showAction: true, actionDisabled: false }),
+    onAccountRetryChange: next => changes.push(next),
+    onAccountRetryNow: () => retries.push(true),
   } })
-  const leftChipNames = [...root.querySelectorAll('.chat-chips-left [data-chat-chip]')].map(chip => chip.dataset.chatChip)
-  assert.deepEqual(leftChipNames.slice(0, 4), ['mode', 'effort', 'model', 'account-retry'])
-  const select = root.querySelector('[data-chat-chip="account-retry"]')
-  assert.ok(select, 'the real chat component must mount a keyboard-reachable select')
-  // Person's exact requested choices are Off / Keep trying accounts / Wait for resets.
-  assert.deepEqual([...select.querySelectorAll('option')].map(option => [option.value, option.textContent]), [
-    ['off', 'Off'], ['keep', 'Keep trying accounts'], ['wait', 'Wait for resets'],
-  ])
-  assert.equal(select.value, 'wait')
-  assert.equal(root.querySelector('[data-chat-chip="account-retry-now"]').textContent, 'Try accounts now')
-  assert.equal(root.querySelector('[data-chat-chip="account-retry-status"]').textContent, 'Waiting for allowance to reset.')
-  root.dispose?.()
-  assert.doesNotMatch(rail, /data-keep-trying-accounts|data-wait-account-resets/)
-  assert.match(rail, /mountAccountRetryControls\(node\)/, 'the controls are still wired for the agent the rail opens')
+  document.body.append(root)
+  assert.equal(root.querySelector('[data-chat-chip="account-retry"]'), null)
+  assert.equal(root.querySelector('[data-chat-chip="account-retry-now"]'), null)
+  assert.doesNotMatch(root.textContent, /Keep trying accounts|Try accounts now|Wait for resets|Fixture saved retry status/)
+  assert.deepEqual(changes, [])
+  assert.deepEqual(retries, [])
+  assert.ok(root.querySelector('[data-chat-chip="model"]'))
+  root.dispose?.(); root.remove()
 })
 
-test('the controls find their host in the Accounts menu, and the rail releasing an agent removes them', () => {
-  for (const name of ['paintAccountRetryControls', 'mountAccountRetryControls']) {
-    const body = functionSource(name)
-    assert.doesNotMatch(body, /controlsPage\.querySelector\('\[data-account-retry-controls\]'\)/, `${name} must not look under the chat`)
-  }
-  assert.match(functionSource('accountRetryHost'), /accountsMenuEl\?\.querySelector\('\[data-account-retry-controls\]'\)/)
-  assert.match(functionSource('disposeRailChat'), /removeAccountRetrySection\(\)/)
-})
-
-test('the Accounts menu gains one Keep trying section, first in its settings column, for the open agent', () => {
-  const menu = el(`<div class="acct-switch"><div class="acct-menu"><div class="acct-workspace"><section class="acct-section acct-listing"></section>
-    <div class="acct-sidebar"><section class="acct-section acct-mode"></section><details class="acct-section acct-add"></details></div></div></div></div>`)
-  const context = vm.createContext({
-    el, defaultRetryProviders, accountsMenuEl: menu,
-    escapeMarkup: value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
-    treeNodeName: node => node.name,
-    LAUNCH_TIERS: [{ id: 'fixture-tier', provider: 'claude', label: 'Fixture tier' }],
-  })
-  vm.runInContext(`${functionSource('accountRetryHost')}\n${functionSource('removeAccountRetrySection')}\n${functionSource('accountRetrySection')}`, context)
-  const section = context.accountRetrySection({ id: 'n1', name: 'Builder 3', tier: 'fixture-tier' })
-  const sidebar = menu.querySelector('.acct-sidebar')
-  assert.equal(sidebar.children[0], section, 'first in the settings column')
-  assert.match(section.querySelector('.acct-section-title').textContent, /Keep trying · Builder 3/)
-  assert.ok(section.querySelector('[data-keep-trying-accounts]'), 'Keep trying accounts')
-  assert.ok(section.querySelector('[data-wait-account-resets]'), 'Wait for resets and auto retry')
-  assert.ok(section.querySelector('[data-cancel-account-retries]'))
-  assert.ok(section.querySelector('[data-account-retry-status]'))
-  assert.equal(section.querySelectorAll('[data-retry-provider]').length, 4)
-  context.accountRetrySection({ id: 'n2', name: 'Controller', tier: 'fixture-tier' })
-  assert.equal(menu.querySelectorAll('[data-account-retry-controls]').length, 1, 'one agent at a time, never two sections')
-  assert.match(menu.querySelector('.acct-section-title').textContent, /Controller/)
-  context.removeAccountRetrySection()
-  assert.equal(menu.querySelectorAll('[data-account-retry-controls]').length, 0)
+test('a previously reported different account asks for an explicit choice', () => {
+  const text = movedOffParagraph({ movedOffByProvider: { claude: { chosen: 'Chosen account', using: 'Reported account' } } })
+  assert.match(text, /Chosen account/)
+  assert.match(text, /Reported account/)
+  assert.match(text, /choose.*before continuing/i)
+  assert.doesNotMatch(text, /return.*automatically|switch.*automatically|as soon as/i)
 })

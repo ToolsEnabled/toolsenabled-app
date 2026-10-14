@@ -1,6 +1,6 @@
 /* A PASTE MADE BEFORE THE AGENT IS LIVE IN THIS RUN.
  *
- * REPRODUCED FIRST, at an earlier commit (with a local probe):
+ * REPRODUCED FIRST, at 881f003c (probe dh-c-repro-unknown-session-20260907.mjs):
  * the tree rail offers paste whenever the bridge exposes it -- never gated on
  * the session being live -- and it sends `node.sessionId`, which for a saved
  * conversation is an id minted in a PREVIOUS run of the app. main's
@@ -9,7 +9,7 @@
  * pasteRefusalSentence -- which knows only three codes and falls through for
  * everything else -- shows the person "That pasted image could not be
  * attached." No file is written. That is the never-written paste-attachments
- * directory and the reported could-not-get-the-image message, one mechanism.
+ * directory and the person's "It says it couldnt get the image", one mechanism.
  *
  * The legacy window paste can retain a file against the conversation before
  * a session exists, but that hold is no longer a grant to send its disk path.
@@ -72,7 +72,7 @@ function surfaceFixture({ sessions = new Map() } = {}) {
   })
   deps.savePasteAttachment = (mime, bytes) => {
     sequence += 1
-    const record = { path: `C:\\fake\\paste-attachments\\img-${sequence}.png`, size: bytes.length, mime }
+    const record = { path: `\x43:\\fake\\paste-attachments\\img-${sequence}.png`, size: bytes.length, mime }
     saved.push(record)
     return record
   }
@@ -192,10 +192,10 @@ test('repasting into a live session never turns the old hold into a replay grant
  * exists and was never held. This build ships at least two such things: the
  * automatic dead-session replacement (`recoverDeadSessionSend` in
  * src/views/computers.js starts a NEW session), and the model switch landed in
- * this same cut as an earlier commit, whose own message says "the session ends, a fresh
- * one starts on the chosen tier". The two reports on 2026-09-16 were that
- * switching models still did not work and that sending images did not
- * work, half an hour apart in the same sitting.
+ * this same cut as 3eb95f06, whose own message says "the session ends, a fresh
+ * one starts on the chosen tier". The owner's two reports on 2026-09-16 were
+ * "switch models still doesnt work" at 02:58Z and "sending images doesnt work"
+ * at 03:28Z, half an hour apart in the same sitting.
  *
  * THE REFUSAL ITSELF IS CORRECT AND THIS CASE DOES NOT SOFTEN IT: the
  * allowlist is the fence that stops a caller naming an arbitrary disk path for
@@ -247,7 +247,7 @@ test('a path nobody ever issued is still refused', async () => {
   const fixture = surfaceFixture()
   fixture.sessions.set('session-now-live', liveSession())
   const code = await refusal(() => fixture.surface.run('agent:send', {
-    sessionId: 'session-now-live', holdKey: 'node-7', text: 'x', images: [{ path: 'C:\\somewhere\\else.png' }],
+    sessionId: 'session-now-live', holdKey: 'node-7', text: 'x', images: [{ path: '\x43:\\somewhere\\else.png' }],
   }, windowPrincipal()))
 
   assert.equal(code, 'MC_AGENT_ATTACHMENT_UNKNOWN',

@@ -1,6 +1,6 @@
 /* AN ASYNC IPC LISTENER'S TIME, AND WHICH HALF OF IT IS A STALL.
  *
- * MEASURED on a live generation: a 4,050 ms main-thread stall was
+ * MEASURED 2026-09-06 on gen-ff2285a5: a 4,050 ms main-thread stall was
  * attributed 56 ms -- 1.4 % -- and three others carried `blockers {}` empty.
  * instrument() wraps a listener as try/finally around listener.apply, so an
  * async listener's span closes when it returns its PROMISE. Everything after

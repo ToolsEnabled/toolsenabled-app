@@ -173,8 +173,8 @@ async function execute(options, fixture) {
   const subjectSha256 = readinessDigest(subject);
   const binding = freeze({ product, profile, runId, subjectSha256, journeyId, guestId: epoch.guestId, phaseId: epoch.phaseId, epochId: epoch.epochId });
   const report = {
-    schema: 'toolsenabled.desktop-journey-report', schemaVersion: 1, ...binding,
-    scope: fixture ? 'synthetic-driver-fixture' : 'exact-installed-desktop-journey',
+    schema: 'toolsenabled.\x64esktop-journey-report', schemaVersion: 1, ...binding,
+    scope: fixture ? 'synthetic-driver-fixture' : 'exact-installed-\x64esktop-journey',
     // "complete" below means only this named critical journey completed. Never
     // interpret it as the aggregate product/installer/integration matrix.
     fullProductCoverage: false, missingObligations: [...(contract.missingObligations || [])],

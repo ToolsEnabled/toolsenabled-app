@@ -504,3 +504,23 @@ test('authenticated bridge adapter uses the bounded owner-prompt read and action
     resetBridgeSession()
   }
 })
+
+/* FIX-C 6 (DESIGN.md section 3 and section 6): section labels are sentence
+   case, 12.5px/600, never tracked upper case. The text stays; only the CSS
+   changed, so a label still reads the same to a test or a screen reader. */
+function sentenceCaseRule(css, selector) {
+  const at = css.indexOf(selector + ' {')
+  assert.notEqual(at, -1, `${selector} has no rule`)
+  const body = css.slice(at, css.indexOf('}', at))
+  assert.doesNotMatch(body, /text-transform:\s*uppercase/, `${selector} is still an upper-case micro-label`)
+  assert.match(body, /(?:font:[^;]*\b|font-size:\s*)12\.5px/, `${selector} is not the 12.5px section-label size`)
+  assert.match(body, /(?:font:\s*600\b|font-weight:\s*600\b)/, `${selector} is not weight 600`)
+  return body
+}
+
+test('FIX-C 6: purchase list heads, meta labels, the total label and the changes head are sentence case', () => {
+  const ownerCss = readFileSync(new URL('../../src/owner-popup.css', import.meta.url), 'utf8')
+  sentenceCaseRule(ownerCss, '.owner-popup-list-head,\n.owner-popup-meta-label')
+  sentenceCaseRule(ownerCss, '.owner-popup-total')
+  sentenceCaseRule(ownerCss, '.approvals-changes-head')
+})

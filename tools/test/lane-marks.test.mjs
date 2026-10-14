@@ -149,8 +149,8 @@ test('a stopped swarm hides its box while its explicitly reported drift remains 
   assert.deepEqual(laneMarksView(record), { box: null, light: { stage: 'red', word: 'off course' } })
 })
 
-/* THE SWARM-BOX-ON-EVERY-NODE REGRESSION: every agent box on the Computers
- * tree showed the swarm box, permanently. The
+/* THE "SWARM BOX ON EVERY NODE" REGRESSION — reported by the owner 2026-09-16:
+ * every agent box on the Computers tree showed the swarm box, permanently. The
  * swarm box is a CLOUD LANE mark: it must ride only a node that is actually
  * running a cloud swarm, and clear the moment that swarm stops. tree-graph.js's
  * _renderLaneMarks decides one node's marks as laneMarksView(readCloudLane(

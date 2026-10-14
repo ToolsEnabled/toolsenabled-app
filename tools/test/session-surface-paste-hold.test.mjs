@@ -48,7 +48,7 @@ function recordingBridge(overrides = {}) {
     interrupt: async () => ({ ok: true }),
     pasteAttachment: async (arg) => {
       pastes.push(arg)
-      return { ok: true, path: `C:\\scratch\\held-${pastes.length}.png`, size: 3 }
+      return { ok: true, path: `\x43:\\scratch\\held-${pastes.length}.png`, size: 3 }
     },
     ...overrides,
   }
@@ -111,7 +111,7 @@ test('pressing Start sends the held picture with the very first message', async 
     assert.equal(bridge.pastes.length, 1, 'the held picture was never saved once the session existed')
     assert.equal(bridge.pastes[0].data, 'AQID', 'the bytes the person pasted are not the bytes that were saved')
     assert.equal(bridge.sends.length, 1, 'the first turn never reached the bridge')
-    assert.deepEqual(bridge.sends[0].images, [{ path: 'C:\\scratch\\held-1.png' }],
+    assert.deepEqual(bridge.sends[0].images, [{ path: '\x43:\\scratch\\held-1.png' }],
       'the first message went without the picture the person had already pasted')
   } finally { panel.dispose() }
 })

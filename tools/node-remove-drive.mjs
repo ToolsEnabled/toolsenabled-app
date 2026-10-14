@@ -2,8 +2,8 @@
 
 /* REMOVING A NODE, DRIVEN ON THE GLASS.
  *
- * THE FINDING THIS ANSWERS: there was no way to remove an old node a person
- * wanted to delete. The palette now carries the leg;
+ * THE FINDING THIS ANSWERS, the owner's words: "there was also no way to
+ * remove an old node you wanted to delete." The palette now carries the leg;
  * this drive proves the three states of the row and the whole removal on a
  * staged packaged build with real CDP input — real presses at coordinates,
  * real typing, the narrating fixture engine running a real turn through the

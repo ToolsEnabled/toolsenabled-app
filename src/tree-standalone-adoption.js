@@ -5,8 +5,8 @@ const refused = sentence => ({ ok: false, sentence })
    travel; the store bounds and validates them like any other launch choice. */
 const launchPreferences = value => {
   const tier = typeof value?.tier === 'string' ? value.tier.trim() : ''
-  if (!tier) return {}
-  return { tier, effort: typeof value.effort === 'string' ? value.effort.trim() : '' }
+  if (!tier && !Object.hasOwn(value || {}, 'model')) return {}
+  return { tier, effort: typeof value.effort === 'string' ? value.effort.trim() : '', ...(Object.hasOwn(value, 'model') ? { model: value.model ?? null } : {}) }
 }
 const reason = (result, fallback) => result?.problems?.[0] || result?.sentence || fallback
 
@@ -16,9 +16,14 @@ const reason = (result, fallback) => result?.problems?.[0] || result?.sentence |
 export async function adoptStandaloneIntoTree({ store, session, parentId = null, bridge, identityFor, bindSession, reveal, withReservation = (_node, work) => work() }) {
   const held = session.beginPlacement()
   if (!held?.ok) return refused(held?.sentence || 'Wait for this agent to finish starting, then try again.')
-  const snapshot = held.snapshot
+  let snapshot = held.snapshot
   let node = null, acknowledged = false, committed = false
   try {
+    if (session.restoredNativeConversation?.() && typeof session.settlePlacement === 'function') {
+      const settled = await session.settlePlacement()
+      if (settled?.ok !== true) return refused(settled?.sentence || 'This reopened conversation could not be stopped and saved for placement. Its original tab is still open.')
+      snapshot = session.snapshot()
+    }
     if (snapshot.sessionId && typeof bridge?.adoptTreeAddress !== 'function') {
       return refused('Reopen the current app to add this running agent to a tree.')
     }
@@ -66,7 +71,7 @@ export async function adoptStandaloneIntoTree({ store, session, parentId = null,
         /* What the session RUNS ON wins over what the tab would start next:
            the two differ when the choice was changed after the first send. */
         const running = launchPreferences(result)
-        if (running.tier && (running.tier !== node.tier || running.effort !== node.effort)
+        if ((running.tier || Object.hasOwn(running, 'model')) && (running.tier !== node.tier || running.effort !== node.effort || running.model !== node.model)
             && typeof store.setNodeLaunchPreferences === 'function') {
           const saved = store.setNodeLaunchPreferences(node.id, running)
           if (saved?.ok && saved.node) node = saved.node
@@ -75,14 +80,38 @@ export async function adoptStandaloneIntoTree({ store, session, parentId = null,
         // From here the tree owns the acknowledged session. Even navigation or a
         // late storage failure cannot turn the tab's teardown into a Stop request.
         session.commitPlacement({ nodeId: node.id })
-        session.commitPlacement({ nodeId: node.id, ...bindSession(node, result, session.snapshot()) })
+        session.commitPlacement({ nodeId: node.id, ...await bindSession(node, result, session.snapshot()) })
       } else {
         /* B4 step 10: a tab reopened after a restart and placed before any agent
            had its conversation gives that conversation to the circle. Only here,
            with no session: a running session's capture is already writing the
            circle's record. The brief above stays what was sent (T1491). */
         const restored = typeof session.restoredConversation === 'function' ? session.restoredConversation() : null
-        session.commitPlacement({ nodeId: node.id, ...bindSession(node, null, snapshot, Array.isArray(restored) && restored.length ? restored : null) })
+        const native = session.restoredNativeConversation?.()
+        if (native || (Array.isArray(restored) && restored.length)) {
+          const sentence = 'This saved conversation could not be transferred to the tree. Its original tab is still open.'
+          if (!native || typeof bridge?.adoptTreeAddress !== 'function') return refused(sentence)
+          const address = identityFor(node)
+          let result
+          try { result = await bridge.adoptTreeAddress({ nativeConversation: native, ...address }) }
+          catch { return refused(sentence) }
+          if (result?.ok !== true || result.stopped !== true || result.nodeId !== node.id
+              || result.treeKey !== address.treeKey || result.nativeSessionId !== native.nativeSessionId
+              || result.threadId !== native.threadId || result.provider !== native.provider
+              || result.account !== native.account) return refused(sentence)
+          acknowledged = true
+          // Historical identity gives the pending Resume queue an address;
+          // only a successful native start gives this circle a live session.
+          store.attachSession(node.id, result.nativeSessionId)
+          store.setNodeStatus(node.id, 'interrupted')
+          // Native ownership is already durable. Transfer tab custody before
+          // invoking renderer hooks that might belong to a departed view.
+          session.commitPlacement({ nodeId: node.id, nativeConversation: { ...result,
+            transcript: { computerId: native.sourceTranscript.computerId, nodeId: node.id } } })
+          session.commitPlacement({ nodeId: node.id, ...await bindSession(node, result, snapshot) })
+        } else {
+          session.commitPlacement({ nodeId: node.id, ...await bindSession(node, null, snapshot) })
+        }
       }
       committed = true
       reveal?.(node)

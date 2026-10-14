@@ -1,6 +1,6 @@
 /* THE LIVE REPLY REACHES THE GLASS.
  *
- * MEASURED at an earlier app commit, before this change: a reply streamed into a full
+ * MEASURED at app ec82f690, before this change: a reply streamed into a full
  * conversation painted an EMPTY bubble, and the presentation sheet then hid
  * the empty row outright, so a person watching an agent answer saw nothing
  * until the turn completed. src/chat-readable-stream.js withheld any prose
@@ -108,10 +108,10 @@ test('a live answer keeps its thinking reachable, in one group, and never folds 
 })
 
 test('thinking stays open through the thinking phase and folds, still expandable, when the reply speaks', () => {
-  /* THE RULE, the intended choreography.
+  /* THE RULE, accepted by the Controller as the intended choreography.
      Thinking is visible for the whole thinking phase; the moment the reply's
      words begin, the run folds -- folded, not gone, and the reader can open
-     it again. This is an earlier commit's own rule, "fold once readable speech
+     it again. This is d8f09572's own rule, "fold once readable speech
      arrives", finally applied to speech that actually arrives: while prose was
      withheld, the first word never made speech visible, so the fold never
      fired at the moment a person was reading.

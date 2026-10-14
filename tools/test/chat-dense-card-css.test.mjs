@@ -1,10 +1,10 @@
 /* SIX ADDITIONS SHIPPED WITH NO RULE ANYWHERE IN THIS SHEET.
  *
- * an earlier commit added .chat-search, .chat-search-toggle, .chat-new-below,
+ * commit 35068a4 added .chat-search, .chat-search-toggle, .chat-new-below,
  * .working-step, .turn-stamp and the multi-attach strip (.chat-attach-strip)
  * to src/components.js's markup with zero matching CSS -- every one of them
  * rendered as a bare browser default (an unstyled <button>, a borderless
- * <input>), which is why the old chat still showed after the JS
+ * <input>), which is why the owner "still saw the old chat" after the JS
  * shipped. This pins that each one now has a REAL rule, not merely that the
  * selector string appears somewhere in a comment or an unrelated .as-chat-full
  * override list (styles.css already referenced .chat-attach-strip in such a

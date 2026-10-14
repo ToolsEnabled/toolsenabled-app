@@ -50,7 +50,7 @@ function machineCarrying(commands) {
   return {
     platform: 'linux',
     env: { PATH: '/programs' },
-    homedir: () => '/home/somebody',
+    homedir: () => '/\x68ome/somebody',
     searchPath: { directories: ['/programs'], complete: true },
     statSync: candidate => {
       if (!present.has(candidate)) throw Object.assign(new Error('nothing here'), { code: 'ENOENT' })

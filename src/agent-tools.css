@@ -53,26 +53,26 @@
 .tools-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--s4) var(--s6, 32px);
-  padding: var(--s3) 0 var(--s5);
+  padding: 0 0 24px;
 }
 .tools-title { flex: 1 1 28rem; min-width: 0; }
 .tools-page .tools-eyebrow {
   margin: 0 0 var(--s2);
-  font-size: var(--text-caps, 11px);
-  font-weight: var(--weight-semibold, 600);
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
 }
 .tools-page .tools-h1 {
   margin: 0;
-  font-size: 36px;
-  font-weight: 610;
-  line-height: 1.15;
-  letter-spacing: -.035em;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -.012em;
   color: var(--ink);
 }
 .tools-lede {
@@ -82,6 +82,7 @@
   line-height: 1.6;
   color: var(--ink-2);
 }
+.tools-page .tools-lede a { color: var(--status-info); margin-inline-start: 4px; text-underline-offset: 2px; }
 
 /* ---- the cards ---- */
 .tools-panel {
@@ -102,8 +103,8 @@
 }
 .tools-page .tools-panel-title {
   margin: 0;
-  font-size: var(--text-xl, 17px);
-  font-weight: var(--weight-semibold, 600);
+  font-size: 13.5px;
+  font-weight: 620;
   line-height: 1.25;
   letter-spacing: var(--tracking-title, -.01em);
   color: var(--ink);
@@ -178,7 +179,7 @@
 .tools-page .tools-search input {
   box-sizing: border-box;
   width: 100%;
-  height: 34px;
+  height: var(--control-h);
   margin: 0;
   padding: 0 10px;
   border: 1px solid var(--field-border, var(--line-2));
@@ -199,7 +200,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 34px;
+  height: var(--control-h);
   padding: 0 14px;
   font-size: var(--text-sm, 12.5px);
   line-height: 1.2;
@@ -227,12 +228,12 @@
   border-top: 1px solid var(--tools-rule);
   border-bottom: 1px solid var(--tools-edge);
   background: var(--tools-well);
-  font-size: var(--text-caps, 11px);
-  font-weight: 640;
+  font-size: 12.5px;
+  font-weight: 600;
   line-height: 1.35;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-25);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
 }
 
 /* A family heading: the part of the name before the first dot, and how many
@@ -272,7 +273,7 @@
   min-width: 0;
   margin: 0;
   font-family: var(--font-mono);
-  font-size: var(--text-sm, 12.5px);
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: 0;
@@ -325,7 +326,7 @@
 .tools-page .tools-seg button:disabled:not(.on) { opacity: .75; }
 .tools-page .tools-seg button:focus-visible {
   outline: var(--focus-outline, 2px solid var(--focus-ring));
-  outline-offset: 0;
+  outline-offset: 2px;
   box-shadow: none;
 }
 
@@ -366,11 +367,11 @@
 }
 .tools-page .tools-aside-title {
   margin: 0 0 var(--s3);
-  font-size: var(--text-caps, 11px);
-  font-weight: var(--weight-semibold, 600);
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-25);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
 }
 .tools-answers { display: grid; gap: 0; margin: 0; border-top: 1px solid var(--tools-edge); }
 .tools-answers > div { padding: var(--s3) 0; border-bottom: 1px solid var(--tools-rule); }
@@ -395,7 +396,7 @@
 
 .tools-page :is(button, input, summary, a):focus-visible {
   outline: var(--focus-outline, 2px solid var(--focus-ring));
-  outline-offset: var(--focus-offset, 2px);
+  outline-offset: 2px;
 }
 
 /* ---- widths. The side column needs a wide page; below that it moves under
@@ -444,10 +445,10 @@
   .tools-body > .tools-table-head { display: none; }
   .tools-bulk, .tools-page .tools-search { flex-basis: 100%; max-width: none; }
   .tools-bulk-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .tools-page .tools-bulk .ctl-btn { height: auto; min-height: 34px; padding: 6px 6px; white-space: normal; text-align: center; }
+  .tools-page .tools-bulk .ctl-btn { height: var(--control-h); min-height: var(--control-h); padding: 6px 6px; white-space: normal; text-align: center; }
 }
 @container tools-shell (max-width: 520px) {
-  .tools-page .tools-h1 { font-size: 30px; }
+  .tools-page .tools-h1 { font-size: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -463,8 +464,8 @@ body.reduce-motion .tools-page .tools-row { transition: none; }
 /* CRAFT (2026-09-23): the Tools cards are the base layer on the
    foundation's soft lift with no drawn edge, and each card's title row sits
    on a band. Rows, the answer segments and every hook are unchanged. */
-.tools-page .tools-panel { border-color: transparent; box-shadow: var(--shadow-lift); }
+.tools-page .tools-panel { border-color: var(--line); box-shadow: none; }
 .tools-page .tools-panel-head { background: var(--craft-band); border-radius: var(--tools-radius) var(--tools-radius) 0 0; }
 @media (forced-colors: active) {
-  .tools-page .tools-panel { border-color: CanvasText; }
+  .tools-page .tools-panel { border-color: var(--line); }
 }

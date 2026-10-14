@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { readFile, writeFile, mkdir, mkdtemp, rm, readdir } from 'node:fs/promises'
@@ -33,7 +34,8 @@ if (judging && model === 'judge-codex') {
   if (mode === 'empty') result = ''
   if (mode === 'timeout') await new Promise(resolve => setTimeout(resolve, 3000))
 }
-if (surface === 'claude-cli') console.log(JSON.stringify({ result, usage: { input_tokens: 9, output_tokens: 1 }, modelUsage: { [model]: {} } }))
+if (surface === 'claude-cli' && judging && model === 'judge-claude' && mode === 'refusal') console.log(JSON.stringify({ result: "API Error: Sonnet 5 can't help with this.", is_error: true, stop_reason: 'refusal', usage: { input_tokens: 9, output_tokens: 1 }, modelUsage: { [model]: {} } }))
+else if (surface === 'claude-cli') console.log(JSON.stringify({ result, usage: { input_tokens: 9, output_tokens: 1 }, modelUsage: { [model]: {} } }))
 else if (surface === 'codex-cli') { writeFileSync(get('-o'), result); console.log(JSON.stringify({ type: 'thread.started', model })); console.log(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 9, output_tokens: 1 } })) }
 else console.log(JSON.stringify({ response: result, stats: { models: { [model]: {} } } }))
 if (mode === 'bad-canary' && !judging && model === 'judge-codex') process.exitCode = 1
@@ -63,7 +65,10 @@ async function fixture(t, { canary = true } = {}) {
   }
   await runProject(root, { output: join(root, 'results') })
   const run = script => spawnSync(process.execPath, [join(root, 'harness', script)], { cwd: root, encoding: 'utf8', timeout: 30000,
-    env: { ...process.env, HOME: join(root, 'unused-profile'), USERPROFILE: join(root, 'unused-profile'), APPDATA: join(root, 'unused-appdata'), JUDGE_CONTROL: control, JUDGE_LOG: log } })
+    env: { ...process.env,
+      // Only synthetic executables run here; satisfy the API-key-only contract
+      // without reading or copying a native subscription sign-in.
+      ANTHROPIC_API_KEY: randomUUID(), CODEX_API_KEY: randomUUID(), OPENAI_API_KEY: randomUUID(), GEMINI_API_KEY: randomUUID(), HOME: join(root, 'unused-profile'), USERPROFILE: join(root, 'unused-profile'), APPDATA: join(root, 'unused-appdata'), JUDGE_CONTROL: control, JUDGE_LOG: log } })
   const calls = async () => { try { return (await readFile(log, 'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse) } catch (error) { if (error.code === 'ENOENT') return []; throw error } }
   const records = async () => {
     const directory = join(root, 'results/judges'), names = (await readdir(directory)).filter(name => /^[a-f0-9]{64}\.json$/.test(name))
@@ -116,6 +121,20 @@ for (const [mode, reason] of [['quota','provider-blocked'], ['truncated','judge-
     assert.equal((await f.calls()).length, 6)
   })
 }
+
+// A Claude refusal (stop_reason "refusal", measured on the 2.1.281 CLI) is
+// never a verdict; it was a judge-error, it is now named for what it is.
+test('a judge refusal is retained as an incomplete provider refusal, never a verdict', async t => {
+  const f = await fixture(t, { canary: false }); await writeFile(f.control, 'refusal')
+  const result = f.run('judge.mjs'); assert.equal(result.status, 2, result.stderr)
+  const refused = (await f.records()).filter(({ value }) => value.judge.requestedModel === 'judge-claude')
+  assert.equal(refused.length, 2)
+  for (const { value } of refused) {
+    assert.equal(value.verdict, null); assert.equal(value.parsed, null)
+    assert.deepEqual(value.completion, { status: 'incomplete', reason: 'provider-refusal' })
+    assert.equal(value.harness.evidence.providerRefusal, 'refusal')
+  }
+})
 
 test('failed repeat canary revokes the judge certificate and prevents calls', async t => {
   const f = await fixture(t)

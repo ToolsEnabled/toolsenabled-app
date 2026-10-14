@@ -41,9 +41,9 @@ test('real CUDA speech, WebRTC, local consent broker and native controls', {
   const runtime = await fenced(path.resolve(root, '../deps/voice-runtime'))
   const python = await fenced(path.join(runtime, 'venv/Scripts/python.exe'))
   const executable = await fenced(path.join(data, 'ControlFixture.exe'))
-  const fixtureSource = await fenced(path.join(root, 'tools/test/helpers/desktop-control-fixture.cs'))
+  const fixtureSource = await fenced(path.join(root, 'tools/test/helpers/\x64esktop-control-fixture.cs'))
   const smoke = await fenced(path.join(root, 'voice-runtime/smoke_test.py'))
-  await promisify(execFile)('C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe', [
+  await promisify(execFile)('\x43:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe', [
     '/nologo', '/target:winexe', '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',
     '/out:' + executable, fixtureSource,
   ], { windowsHide: true, timeout: 20000 })

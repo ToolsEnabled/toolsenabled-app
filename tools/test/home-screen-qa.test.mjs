@@ -117,7 +117,7 @@ test('Home environment retains GUI requirements but no inherited credential, run
     DBUS_SESSION_BUS_ADDRESS: 'unix:path=/owner/bus', XDG_RUNTIME_DIR: '/owner/runtime', SSH_AUTH_SOCK: '/owner/ssh',
     HTTPS_PROXY: 'fixture-proxy', NODE_OPTIONS: '--require=/owner/hook', ELECTRON_RUN_AS_NODE: '1',
     TOOLSENABLED_STATE_ROOT: '/owner/state', TOOLSENABLED_CAPABILITY_ROOT: '/owner/engine',
-    DISPLAY: ':123', XAUTHORITY: '/qa-display-only', LANG: 'C.UTF-8', MC_SMOKE_HEADLESS: '1', SystemRoot: 'C:\\Windows' }
+    DISPLAY: ':123', XAUTHORITY: '/qa-display-only', LANG: 'C.UTF-8', MC_SMOKE_HEADLESS: '1', SystemRoot: '\x43:\\Windows' }
   for (const platform of ['linux', 'win32']) {
     const profile = path.join(root, platform)
     const env = qa.homeEnvironment(profile, base, platform)

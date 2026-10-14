@@ -366,9 +366,10 @@ export const SOURCE_COMMAND_ACTIONS = freeze({
     },
     {
       id: 'engine:auth-duo-runner', isolatedRunner: true, command: ['node', 'tests/auth.duo/run.js'], reporter: 'engine:auth-duo-runner',
-      measuredInputs: [],
+      measuredInputs: ['tools/duo-\x64esktop-approve.ps1', 'tools/institution-login.js'],
       leafReports: [
         { file: 'tests/auth.duo/duo-desktop.js', markers: [{ exact: 'Duo Desktop provider tests passed.' }] },
+        { file: 'tests/auth.duo/institution-sso.js', markers: [{ exact: 'institutional SSO Duo Desktop tests passed.' }] },
       ],
     },
     {
@@ -562,6 +563,174 @@ export const SOURCE_MANIFESTS = freeze({
   "app": {
     "inventory": [
       {
+        "file": "tools/test/account-choice-correctness.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/agent-chosen-account-mounted.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/agent-exact-model.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/any-model-picker.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/any-model-switch.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/c6d1-halt-completion-race.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/cloud-tasks-input.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/default-claude-home.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/legacy-signin-cleanup.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/linux-installed-measurement-staging.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/linux-installed-measurement.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/linux-qualification-rpc.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/linux-qualification-scenarios.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/linux-qualification-transport-bindings.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/linux-qualification-artifact-staging.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/linux-installed-lifecycle-adapters.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/node-action-menu.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/openai-account-selection.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/permission-profile-cycle.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/provider-safety-host.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/computers-safety-hold.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/provider-safety-admission.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/offpage-safety-host.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/provider-safety-refusal-stop.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/resume-home-availability.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/rewind-origin-atomic.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/running-adoption-model.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/script-hidden-field-guard.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/standalone-legacy-identity-restore.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/standalone-reopen-binding.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/stop-resume-conversation.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/stopped-conversation-adoption-guards.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/stopped-native-adoption.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/tree-conversation-navigation-mounted.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/tree-conversation-navigation.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/tree-legacy-default-resume.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/ui-ai-disclosure.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/ui-exact-model-id.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/ui-model-id-input.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/update-runtime-version.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/artefact-walkers-skip-nothing.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/shell-static-path-boundary.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/code-signing-linux.test.mjs",
         "reason": null
       },
@@ -646,6 +815,30 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/b38-route-swap-in-flight.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/b36-team-first-turn-failed.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/plugin-catalogue.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/plugins-markup.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/plugins-view.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/owner-host-start-order.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/metrics-turn-count-grammar.test.mjs",
         "reason": null
       },
@@ -683,6 +876,26 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/native-session-presence.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/native-theme-seed.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/static-font-license.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/profile-notice-clearance.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/home-integration-layout.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/claude-usage-limit-hold.test.mjs",
         "reason": null
       },
       {
@@ -786,19 +999,27 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/transcript-accepted-unsaved-send.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/transcript-sent-unsaved.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/tree-handoff-accepted-unsaved.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/a11y-name-and-focus.test.mjs",
         "reason": null
       },
       {
-        "file": "tools/test/a11y-reparse-probe-diagnostics.test.mjs",
+        "file": "tools/test/accessibility-\x64esktop-blocked-names.test.mjs",
         "reason": null
       },
       {
-        "file": "tools/test/accessibility-desktop-blocked-names.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/accessibility-desktop-streams.test.mjs",
+        "file": "tools/test/accessibility-\x64esktop-streams.test.mjs",
         "reason": null
       },
       {
@@ -827,14 +1048,6 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/accessibility-ui.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/account-allowance-buckets-layout.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/account-allowance-buckets.test.mjs",
         "reason": null
       },
       {
@@ -890,7 +1103,15 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/account-registry-confined-copies.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/account-registry-list-async.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/gemini-allowance.test.mjs",
         "reason": null
       },
       {
@@ -909,14 +1130,8 @@ export const SOURCE_MANIFESTS = freeze({
         "file": "tools/test/account-reset-platform-guidance.test.mjs",
         "reason": null
       },
-      {
-        "file": "tools/test/account-retry-effective-policy.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/account-retry-regressions.test.mjs",
-        "reason": null
-      },
+
+
       {
         "file": "tools/test/account-session-recovery.test.mjs",
         "reason": null
@@ -951,6 +1166,14 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/action-permission-profile-host.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/action-permission-recovery-host.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/action-permission-recovery-mounted.test.mjs",
         "reason": null
       },
       {
@@ -1266,6 +1489,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/agent-selected-tier-preload.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/agent-session-surface.test.mjs",
         "reason": null
       },
@@ -1327,6 +1554,14 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/agent-turn-options.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/agent-video-controls.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/agent-video-sources.test.mjs",
         "reason": null
       },
       {
@@ -1519,6 +1754,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/bridge-retry.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/browser-cursor-payload.test.mjs",
         "reason": null
       },
       {
@@ -2290,31 +2529,11 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tools/test/corona-gl.test.mjs",
-        "reason": null
-      },
-      {
         "file": "tools/test/crash-dumps.test.mjs",
         "reason": null
       },
       {
         "file": "tools/test/create-and-start-node.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/crescent-field.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/crescent-mount.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/crescent-render.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/crescent-worker.test.mjs",
         "reason": null
       },
       {
@@ -2426,7 +2645,7 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tools/test/desktop-session-nonce-roundtrip-renderer.test.mjs",
+        "file": "tools/test/\x64esktop-session-nonce-roundtrip-renderer.test.mjs",
         "reason": null
       },
       {
@@ -2938,14 +3157,6 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tools/test/helpers/account-buckets-electron.cjs",
-        "reason": "imported-fixture-helper"
-      },
-      {
-        "file": "tools/test/helpers/account-buckets-renderer.mjs",
-        "reason": "imported-fixture-helper"
-      },
-      {
         "file": "tools/test/helpers/account-field-contrast-electron.cjs",
         "reason": "imported-fixture-helper"
       },
@@ -2985,14 +3196,8 @@ export const SOURCE_MANIFESTS = freeze({
         "file": "tools/test/helpers/role-studio-empty-renderer.mjs",
         "reason": "imported-fixture-helper"
       },
-      {
-        "file": "tools/test/helpers/t844-retry-layout-electron.cjs",
-        "reason": "imported-fixture-helper"
-      },
-      {
-        "file": "tools/test/helpers/t844-retry-layout-renderer.mjs",
-        "reason": "imported-fixture-helper"
-      },
+
+
       {
         "file": "tools/test/helpers/setup-account-fields-electron.cjs",
         "reason": "imported-fixture-helper"
@@ -3078,31 +3283,15 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tools/test/home-circle-action.test.mjs",
+        "file": "tools/test/home-following.test.mjs",
         "reason": null
       },
       {
-        "file": "tools/test/home-circle-choice.test.mjs",
+        "file": "tools/test/home-dashboard.test.mjs",
         "reason": null
       },
       {
-        "file": "tools/test/home-circle-finish.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/home-circle-fluid-cadence.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/home-circle-motion-measure.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/home-circle-motion-runtime.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/home-circle-picture-measure.test.mjs",
+        "file": "tools/test/home-status-palette-tokens.test.mjs",
         "reason": null
       },
       {
@@ -3118,6 +3307,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/home-directory-clean.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/home-feed-dense-tokens.test.mjs",
         "reason": null
       },
@@ -3126,11 +3319,19 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/home-glance-current-events.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/home-glance-figures.test.mjs",
         "reason": null
       },
       {
         "file": "tools/test/home-glance-mounted.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/home-glance-persisted-reader.test.mjs",
         "reason": null
       },
       {
@@ -3151,6 +3352,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/home-panel-chat.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/home-panel-real-layout.test.mjs",
         "reason": null
       },
       {
@@ -3406,15 +3611,15 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tools/test/fix-large-thinking.test.mjs",
+        "file": "tools/test/lanew-fix-large-thinking.test.mjs",
         "reason": null
       },
       {
-        "file": "tools/test/fix-stream-follow.test.mjs",
+        "file": "tools/test/lanew-fix-stream-follow.test.mjs",
         "reason": null
       },
       {
-        "file": "tools/test/t20-unqueue-returns-text.test.mjs",
+        "file": "tools/test/lanew-t20-unqueue-returns-text.test.mjs",
         "reason": null
       },
       {
@@ -3578,6 +3783,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/linux-installed-admission.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/linux-installed-manifest.test.mjs",
         "reason": null
       },
@@ -3642,6 +3851,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/local-model-setup-service.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/local-models-address-field.test.mjs",
         "reason": null
       },
@@ -3663,6 +3876,14 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/local-models-settings.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/local-setup-popup.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/t1701-local-setup-io-boundaries.test.mjs",
         "reason": null
       },
       {
@@ -4150,10 +4371,6 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tools/test/page2-native-provider-identity.test.mjs",
-        "reason": null
-      },
-      {
         "file": "tools/test/page2-native-replacement-evidence.test.mjs",
         "reason": null
       },
@@ -4182,10 +4399,6 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tools/test/palette-keyboard-qa.test.mjs",
-        "reason": null
-      },
-      {
         "file": "tools/test/palette-rows.test.mjs",
         "reason": null
       },
@@ -4207,6 +4420,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/pasted-picture-shows-in-your-own-bubble.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/payload-boundary-reconcile-source-ref.test.mjs",
         "reason": null
       },
       {
@@ -4354,6 +4571,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/product-account-set-aside.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/product-account-surface.test.mjs",
         "reason": null
       },
@@ -4399,6 +4620,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/provider-image-support.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/provider-launch-environment.test.mjs",
         "reason": null
       },
       {
@@ -4926,6 +5151,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/research-benchmark-journal.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/research-benchmark-layer-map.test.mjs",
         "reason": null
       },
@@ -5382,6 +5611,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/research-pipeline-http-transport.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/research-pipeline-ui.test.mjs",
         "reason": null
       },
@@ -5567,6 +5800,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/resume-assignment.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/resume-command-result-transport.test.mjs",
         "reason": null
       },
       {
@@ -5766,7 +6003,7 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tools/test/screen-control-desktop-custody.test.mjs",
+        "file": "tools/test/screen-control-\x64esktop-custody.test.mjs",
         "reason": null
       },
       {
@@ -6405,10 +6642,7 @@ export const SOURCE_MANIFESTS = freeze({
         "file": "tools/test/t124-account-limit-failover-loop.test.mjs",
         "reason": null
       },
-      {
-        "file": "tools/test/t1343-draft-retry-policy.test.mjs",
-        "reason": null
-      },
+
       {
         "file": "tools/test/t1308-engine-presence.test.mjs",
         "reason": null
@@ -6511,6 +6745,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/t180-exit-record.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/t1860-settings-saved-read-consumer.test.mjs",
         "reason": null
       },
       {
@@ -6689,22 +6927,10 @@ export const SOURCE_MANIFESTS = freeze({
         "file": "tools/test/t843-navigation-continuity.test.mjs",
         "reason": null
       },
-      {
-        "file": "tools/test/t844-retry-compact.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/t844-retry-durability.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/t844-retry-keyboard-readonly.test.mjs",
-        "reason": null
-      },
-      {
-        "file": "tools/test/t844-retry-layout.test.mjs",
-        "reason": null
-      },
+
+
+
+
       {
         "file": "tools/test/tap-file-level-failure.test.mjs",
         "reason": null
@@ -6962,11 +7188,23 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/tree-courier-custody-status.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/tree-courier-handoff-backoff.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/tree-courier-late-read.test.mjs",
         "reason": null
       },
       {
         "file": "tools/test/tree-courier-main-lag-attribution.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/tree-courier-read-receipt-retry.test.mjs",
         "reason": null
       },
       {
@@ -7059,6 +7297,14 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/tree-graph.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/tree-handoff-admission-cap.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/tree-handoff-receipt-hold.test.mjs",
         "reason": null
       },
       {
@@ -7166,6 +7412,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/tree-read-receipt-resync.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/tree-removal-postimage-branch-guard.test.mjs",
         "reason": null
       },
@@ -7179,6 +7429,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/tree-predecessor-inbox.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/tree-predecessor-read-position.test.mjs",
         "reason": null
       },
       {
@@ -7362,6 +7616,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tools/test/tree-uncertain-steer-reconcile.test.mjs",
+        "reason": null
+      },
+      {
         "file": "tools/test/tree-width-four.test.mjs",
         "reason": null
       },
@@ -7479,6 +7737,18 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tools/test/verify-version-transition.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/video-box-broker.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/video-box-electron.test.mjs",
+        "reason": null
+      },
+      {
+        "file": "tools/test/video-box-host.test.mjs",
         "reason": null
       },
       {
@@ -7617,6 +7887,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/account-choice-correctness.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/account-choice-proven-before-recorded.test.js",
         "reason": null
       },
@@ -7630,6 +7904,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/account-profile-zero-probe.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/account-selection-explicit.test.js",
         "reason": null
       },
       {
@@ -7817,6 +8095,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/agent-comms/local-read-receipt-terminal-gap.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/agent-comms/local-runtime-refusals.test.js",
         "reason": null
       },
@@ -7833,6 +8115,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/agent-comms/owner-journal-circle-identity.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/agent-comms/provider-refusals.test.js",
         "reason": null
       },
@@ -7845,7 +8131,15 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/agent-comms/refusal-code-retention.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/agent-comms/relay-edge.js",
+        "reason": null
+      },
+      {
+        "file": "tests/agent-comms/terminal-dead-letter-settlement.test.js",
         "reason": null
       },
       {
@@ -8053,6 +8347,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/agent-engine/claude-block-identity.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/agent-engine/claude-cli-adapter-refusals.test.js",
         "reason": null
       },
@@ -8105,6 +8403,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/agent-engine/claude-subagent-parent.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/agent-engine/claude-subscription-credential-fence.test.js",
         "reason": null
       },
@@ -8142,6 +8444,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/agent-engine/codex-process.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/agent-engine/codex-reconnect-window.test.js",
         "reason": null
       },
       {
@@ -8185,6 +8491,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/agent-engine/local-node-activity-timer.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/agent-engine/local-node-adapter.test.js",
         "reason": null
       },
@@ -8202,6 +8512,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/agent-engine/root-admission.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/agent-engine/stop-resume-native-home.test.js",
         "reason": null
       },
       {
@@ -8665,6 +8979,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/auth.duo/institution-sso.js",
+        "reason": null
+      },
+      {
         "file": "tests/auth.duo/run.js",
         "reason": "runner"
       },
@@ -8679,6 +8997,10 @@ export const SOURCE_MANIFESTS = freeze({
       {
         "file": "tests/auth.google/run.js",
         "reason": "runner"
+      },
+      {
+        "file": "tests/b38-tree-start-failed-retryable.test.js",
+        "reason": null
       },
       {
         "file": "tests/backup-duty.test.js",
@@ -8853,6 +9175,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/canvas-session-preflight.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/capability-elevation-policy.test.js",
         "reason": null
       },
@@ -8974,6 +9300,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/claude-confined-home.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/claude-default-home.test.js",
         "reason": null
       },
       {
@@ -9157,6 +9487,14 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/codex-dispatcher-command-line.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/codex-dispatcher-timeout-containment.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/codex-dispatcher.test.js",
         "reason": null
       },
@@ -9178,6 +9516,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/configured-project-boundary.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/confined-empty-path-argument.test.js",
         "reason": null
       },
       {
@@ -9529,10 +9871,6 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tests/credential-refresh-broker.test.js",
-        "reason": null
-      },
-      {
         "file": "tests/custom-role-store-refusals.test.js",
         "reason": null
       },
@@ -9546,6 +9884,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/customer-model-local-load.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/customer-model-openai-contract.test.js",
         "reason": null
       },
       {
@@ -9729,7 +10071,15 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/duo-desktop-refusals.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/duo-desktop.js",
+        "reason": null
+      },
+      {
+        "file": "tests/duo-owner-relay.test.js",
         "reason": null
       },
       {
@@ -9856,14 +10206,8 @@ export const SOURCE_MANIFESTS = freeze({
         "file": "tests/evidence/run.js",
         "reason": "runner"
       },
-      {
-        "file": "tests/failover-setting-error-boundary.test.cjs",
-        "reason": "Canonical regression body imported by its selected .test.js wrapper."
-      },
-      {
-        "file": "tests/failover-setting-error-boundary.test.js",
-        "reason": null
-      },
+
+
       {
         "file": "tests/file-tool-invocation.test.js",
         "reason": null
@@ -9939,10 +10283,6 @@ export const SOURCE_MANIFESTS = freeze({
       {
         "file": "tests/fixtures/fake-provider.test.js",
         "reason": null
-      },
-      {
-        "file": "tests/fixtures/gemini-quota-sdk-preload.mjs",
-        "reason": "Synthetic network and storage preload for the real pinned SDK worker; assertions belong to tests/providers/gemini-quota-sdk-native.test.js."
       },
       {
         "file": "tests/fixtures/legacy-dotted-ledger.js",
@@ -10761,6 +11101,14 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/institution-sso-credential-interaction-required.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/institution-sso.js",
+        "reason": null
+      },
+      {
         "file": "tests/intent-check-starvation.js",
         "reason": null
       },
@@ -11021,6 +11369,14 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/ledger-compact-apply-safety.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/ledger-compact.js",
+        "reason": null
+      },
+      {
         "file": "tests/ledger-gate-names-an-unreadable-settings-layer.test.js",
         "reason": null
       },
@@ -11042,6 +11398,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/legacy-dotted-migration.js",
+        "reason": null
+      },
+      {
+        "file": "tests/legacy-signin-cleanup.test.js",
         "reason": null
       },
       {
@@ -11209,6 +11569,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/linux-vault-access-log-rotation-marker.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/linux-vault-access-log-rotation.test.js",
         "reason": null
       },
@@ -11234,6 +11598,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/local-node-reasoning-answer.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/local-node-reasoning-content-field.test.js",
         "reason": null
       },
       {
@@ -11409,6 +11777,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/mission-bridge-agent-api-mode-dispatch.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/mission-bridge-agent-lane-dispatch-refusals.test.js",
         "reason": null
       },
@@ -11449,6 +11821,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/mission-bridge-host-header.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/mission-bridge-killswitch.test.js",
         "reason": null
       },
@@ -11482,6 +11858,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/mission-bridge-owner-tier-refresh.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/mission-bridge-queue-lock-release.test.js",
         "reason": null
       },
       {
@@ -11557,6 +11937,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/model-local-timeout-is-a-timeout.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/model-picker.js",
         "reason": null
       },
@@ -11574,6 +11958,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/models/cli-session-usage.js",
+        "reason": null
+      },
+      {
+        "file": "tests/models/exact-model-ids.test.js",
         "reason": null
       },
       {
@@ -11660,14 +12048,8 @@ export const SOURCE_MANIFESTS = freeze({
         "file": "tests/multi-account/rotation.behavior.test.js",
         "reason": null
       },
-      {
-        "file": "tests/multi-account/selection-modes.test.js",
-        "reason": null
-      },
-      {
-        "file": "tests/multi-account/switcher.test.js",
-        "reason": null
-      },
+
+
       {
         "file": "tests/multi-account/usage-windows.test.js",
         "reason": null
@@ -11685,6 +12067,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/native-agent-objective-argv.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/native-agent-probe-shell.test.js",
         "reason": null
       },
@@ -11694,6 +12080,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/native-agent-worker-refusals.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/native-cloud-confidentiality.test.js",
         "reason": null
       },
       {
@@ -12185,6 +12575,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/owner-request-store-bak-link.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/owner-request-store-read-memo.test.js",
         "reason": null
       },
@@ -12325,6 +12719,34 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/plugin-activation.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/plugin-host-grants.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/plugin-host-identity.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/plugin-host-manifest.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/plugin-host-tools.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/plugin-host.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/plugin-role-projection.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/policy-authorizations-refusals.test.js",
         "reason": null
       },
@@ -12413,7 +12835,15 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/provider-output-confidentiality.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/provider-safety.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/provider-session-isolation-claude-auth.test.js",
         "reason": null
       },
       {
@@ -12465,7 +12895,15 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": "runner"
       },
       {
+        "file": "tests/providers.gateway/cli-provider-gateway-output.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/providers.gateway/cli-provider-gateway-state.js",
+        "reason": null
+      },
+      {
+        "file": "tests/providers.gateway/gemini-agentic-output.test.js",
         "reason": null
       },
       {
@@ -12685,6 +13123,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/providers/duo-desktop-approval.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/providers/durable-worker-runtime.test.js",
         "reason": null
       },
@@ -12694,22 +13136,6 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/providers/gemini-account-usage.test.js",
-        "reason": null
-      },
-      {
-        "file": "tests/providers/gemini-quota-identity.test.js",
-        "reason": null
-      },
-      {
-        "file": "tests/providers/gemini-quota-probe.test.js",
-        "reason": null
-      },
-      {
-        "file": "tests/providers/gemini-quota-sdk-native.test.js",
-        "reason": null
-      },
-      {
-        "file": "tests/providers/gemini-quota-storage.test.js",
         "reason": null
       },
       {
@@ -12802,6 +13228,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/r-ledger-refusals.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/r-ledger-words-safe-ids.test.js",
         "reason": null
       },
       {
@@ -13285,6 +13715,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/servercontrol-mechanical-connect.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/service-control-listener-liveness.test.js",
         "reason": null
       },
@@ -13426,6 +13860,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/source-license-drift.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/spawn-env-scrub-baseline-ratchet.test.js",
         "reason": null
       },
       {
@@ -13625,6 +14063,10 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
+        "file": "tests/t-ledger-review-signal.test.js",
+        "reason": null
+      },
+      {
         "file": "tests/t545-permission-provider-separation.test.js",
         "reason": null
       },
@@ -13718,6 +14160,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/token-savings-benchmark.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/tool-allowlist-composition.test.js",
         "reason": null
       },
       {
@@ -13877,10 +14323,6 @@ export const SOURCE_MANIFESTS = freeze({
         "reason": null
       },
       {
-        "file": "tests/usage/allowance-buckets.test.js",
-        "reason": null
-      },
-      {
         "file": "tests/usage/claude-cached-utilization.js",
         "reason": null
       },
@@ -13894,10 +14336,6 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/usage/dispatch-readiness.js",
-        "reason": null
-      },
-      {
-        "file": "tests/usage/gemini-quota.test.js",
         "reason": null
       },
       {
@@ -14002,6 +14440,10 @@ export const SOURCE_MANIFESTS = freeze({
       },
       {
         "file": "tests/vault-read-cache.test.js",
+        "reason": null
+      },
+      {
+        "file": "tests/vault-read-reliability.test.js",
         "reason": null
       },
       {
@@ -14187,7 +14629,7 @@ export const SOURCE_MANIFESTS = freeze({
     "aliases": {
       "posttest": "node tools/check-chain-runner.js --name posttest --then --id dashboard-task-port-guard node tests/run-isolated.js tests/dashboard-task-port-guard.js --then --id test-ratchet npm run test:ratchet:check",
       "pretest": "node tools/check-chain-runner.js --name pretest --then --id naming-ratchet node tools/check-naming.js --then node tools/invocation-guard.js --then node tests/run-isolated.js tests/invocation-guard.test.js tests/iphone-handoff-runtime-boundary.test.js tests/gemini-fleet.js tests/owner-identity-purpose-gate.js tests/coordinator-backup-age-status.test.js --then --id unwired-campaign-suites node tests/run-isolated.js --continue tests/fork-ledger.test.js tests/lane-territory-gate.test.js tests/pkg.tree/package-check-baseline.js tests/settings-registry-cache.test.js tests/settings-registry.test.js tests/settings-surface-readonly.test.js tests/settings.test.js tools/launch-readiness/branch-disposal-audit.selftest.mjs tools/launch-readiness/clean-env-launch.selftest.mjs tools/launch-readiness/electron-run-as-node-guard.selftest.mjs tools/launch-readiness/installer-identity-audit.selftest.mjs tools/launch-readiness/toolchain-independence-audit.selftest.mjs --from tests/suites/page2-runtime-regressions.txt --then --id adversarial-orphans npm run test:adversarial --then --id test-chain-short-circuit node tests/run-isolated.js tests/test-chain-short-circuit.test.js --then --id red-gates-orphans npm run test:red-gates-orphans --then --id test-run-reconciliation node tests/run-isolated.js tests/test-run-reconciliation.test.js --then npm run test:dependency-acceptance --then npm run test:repo-protocol --then npm run test:claude-credential-fence --then npm run test:agent-engine --then npm run test:agent-engine:process --then npm run test:agent-engine:backpressure --then --id research-subsystem npm run test:research-subsystem --then --id orphans-wired-0905 node tests/run-isolated.js --continue --from tests/suites/orphans-wired-0905.txt",
-      "test": "node tools/check-chain-runner.js --name test --then --id root-suite node tests/run-isolated.js --from tests/suites/root-suite.txt --then --id agent-comms-orphans node tests/run-isolated.js --from tests/suites/agent-comms-orphans.txt --then --id agent-roster-orphans node tests/run-isolated.js --from tests/suites/agent-roster-orphans.txt --then --id agent-wake-orphans node tests/run-isolated.js --from tests/suites/agent-wake-orphans.txt --then --id build-queue-orphans node tests/run-isolated.js --from tests/suites/build-queue-orphans.txt --then --id coordinator-backup-orphans node tests/run-isolated.js --from tests/suites/coordinator-backup-orphans.txt --then --id fleet-supervisor-orphans node tests/run-isolated.js --from tests/suites/fleet-supervisor-orphans.txt --then --id luna-worktree-orphans node tests/run-isolated.js --from tests/suites/luna-worktree-orphans.txt --then --id link-bus-orphans node tests/run-isolated.js --from tests/suites/link-bus-orphans.txt --then --id online-surface-orphans node tests/run-isolated.js --from tests/suites/online-surface-orphans.txt --then --id remote-surface-orphans node tests/run-isolated.js --from tests/suites/remote-surface-orphans.txt --then --id special-session-orphans node tests/run-isolated.js --from tests/suites/special-session-orphans.txt --then --id ledger-and-evidence-orphans node tests/run-isolated.js --from tests/suites/ledger-and-evidence-orphans.txt --then --id entitlement-redteam-orphans node tests/run-isolated.js --from tests/suites/entitlement-redteam-orphans.txt --then --id intent-and-council-orphans node tests/run-isolated.js --from tests/suites/intent-and-council-orphans.txt --then --id controller-and-model-orphans node tests/run-isolated.js --from tests/suites/controller-and-model-orphans.txt --then --id usage-orphans node tests/run-isolated.js --from tests/suites/usage-orphans.txt --then --id process-visibility-orphans node tests/run-isolated.js --from tests/suites/process-visibility-orphans.txt --then --id package-tree-orphans node tests/run-isolated.js --from tests/suites/package-tree-orphans.txt --then --id surface-policy-orphans node tests/run-isolated.js --from tests/suites/surface-policy-orphans.txt --then --id local-node-orphans node tests/run-isolated.js --from tests/suites/local-node-orphans.txt --then --id workstation-and-launch-orphans node tests/run-isolated.js --from tests/suites/workstation-and-launch-orphans.txt --then --id google-suite-orphans node tests/run-isolated.js --from tests/suites/google-suite-orphans.txt --then --id zed-terminal-orphans node tests/run-isolated.js --from tests/suites/zed-terminal-orphans.txt --then npm run test:fra --then npm run test:coverage-audit --then npm run test:settings-registry-explanations --then npm run test:invocation-orphans --then --id orphans-wired-0823 npm run test:orphans-wired-0823 --then npm run test:generated-mirrors --then --id capability-index npm run test:capability-index --then --id capability-recall npm run test:capability-recall --then npm run test:idle-cpu --then npm run test:spawn-env-scrub --then npm run test:shipped-registry-boundary --then npm run test:role-library --then --id retrieval-orphans npm run test:retrieval --then --id finished-queue-orphans npm run test:finished-queue --then --id key-custody npm run test:key-custody --then --id plan-identities npm run test:plan-identities --then --id system-binaries node tests/run-isolated.js tests/system-binaries-resolve-under-system-root.test.js --then --id orphans-wired-0824 node tests/run-isolated.js --from tests/suites/orphans-wired-0824.txt --then --id orphans-wired-0826 node tests/run-isolated.js --from tests/suites/orphans-wired-0826.txt --then --id orphans-wired-0826b node tests/run-isolated.js --from tests/suites/orphans-wired-0826b.txt --then --id tools-coverage-0826 node tests/run-isolated.js --from tests/suites/tools-coverage-0826.txt --then --id orphans-wired-0901 node tests/run-isolated.js --from tests/suites/orphans-wired-0901.txt --then --id orphans-wired-0903 node tests/run-isolated.js --from tests/suites/orphans-wired-0903.txt --then --id orphans-wired-0907 node tests/run-isolated.js --from tests/suites/orphans-wired-0907.txt --then --id orphans-wired-0911 node tests/run-isolated.js --from tests/suites/orphans-wired-0911.txt --then --id orphans-wired-0916 node tests/run-isolated.js --from tests/suites/orphans-wired-0916.txt --then --id config-integrity-guard npm run test:config-integrity-guard",
+      "test": "node tools/check-chain-runner.js --name test --then --id root-suite node tests/run-isolated.js --from tests/suites/root-suite.txt --then --id agent-comms-orphans node tests/run-isolated.js --from tests/suites/agent-comms-orphans.txt --then --id agent-roster-orphans node tests/run-isolated.js --from tests/suites/agent-roster-orphans.txt --then --id agent-wake-orphans node tests/run-isolated.js --from tests/suites/agent-wake-orphans.txt --then --id build-queue-orphans node tests/run-isolated.js --from tests/suites/build-queue-orphans.txt --then --id coordinator-backup-orphans node tests/run-isolated.js --from tests/suites/coordinator-backup-orphans.txt --then --id fleet-supervisor-orphans node tests/run-isolated.js --from tests/suites/fleet-supervisor-orphans.txt --then --id luna-worktree-orphans node tests/run-isolated.js --from tests/suites/luna-worktree-orphans.txt --then --id link-bus-orphans node tests/run-isolated.js --from tests/suites/link-bus-orphans.txt --then --id online-surface-orphans node tests/run-isolated.js --from tests/suites/online-surface-orphans.txt --then --id remote-surface-orphans node tests/run-isolated.js --from tests/suites/remote-surface-orphans.txt --then --id special-session-orphans node tests/run-isolated.js --from tests/suites/special-session-orphans.txt --then --id ledger-and-evidence-orphans node tests/run-isolated.js --from tests/suites/ledger-and-evidence-orphans.txt --then --id entitlement-redteam-orphans node tests/run-isolated.js --from tests/suites/entitlement-redteam-orphans.txt --then --id intent-and-council-orphans node tests/run-isolated.js --from tests/suites/intent-and-council-orphans.txt --then --id controller-and-model-orphans node tests/run-isolated.js --from tests/suites/controller-and-model-orphans.txt --then --id usage-orphans node tests/run-isolated.js --from tests/suites/usage-orphans.txt --then --id process-visibility-orphans node tests/run-isolated.js --from tests/suites/process-visibility-orphans.txt --then --id package-tree-orphans node tests/run-isolated.js --from tests/suites/package-tree-orphans.txt --then --id surface-policy-orphans node tests/run-isolated.js --from tests/suites/surface-policy-orphans.txt --then --id local-node-orphans node tests/run-isolated.js --from tests/suites/local-node-orphans.txt --then --id workstation-and-launch-orphans node tests/run-isolated.js --from tests/suites/workstation-and-launch-orphans.txt --then --id google-suite-orphans node tests/run-isolated.js --from tests/suites/google-suite-orphans.txt --then --id zed-terminal-orphans node tests/run-isolated.js --from tests/suites/zed-terminal-orphans.txt --then npm run test:fra --then npm run test:coverage-audit --then npm run test:settings-registry-explanations --then npm run test:invocation-orphans --then --id orphans-wired-0823 npm run test:orphans-wired-0823 --then npm run test:generated-mirrors --then --id capability-index npm run test:capability-index --then --id capability-recall npm run test:capability-recall --then npm run test:idle-cpu --then npm run test:spawn-env-scrub --then npm run test:shipped-registry-boundary --then --id plugin-host npm run test:plugin-host --then npm run test:role-library --then --id retrieval-orphans npm run test:retrieval --then --id finished-queue-orphans npm run test:finished-queue --then --id key-custody npm run test:key-custody --then --id plan-identities npm run test:plan-identities --then --id system-binaries node tests/run-isolated.js tests/system-binaries-resolve-under-system-root.test.js --then --id orphans-wired-0824 node tests/run-isolated.js --from tests/suites/orphans-wired-0824.txt --then --id orphans-wired-0826 node tests/run-isolated.js --from tests/suites/orphans-wired-0826.txt --then --id orphans-wired-0826b node tests/run-isolated.js --from tests/suites/orphans-wired-0826b.txt --then --id tools-coverage-0826 node tests/run-isolated.js --from tests/suites/tools-coverage-0826.txt --then --id orphans-wired-0901 node tests/run-isolated.js --from tests/suites/orphans-wired-0901.txt --then --id orphans-wired-0903 node tests/run-isolated.js --from tests/suites/orphans-wired-0903.txt --then --id orphans-wired-0907 node tests/run-isolated.js --from tests/suites/orphans-wired-0907.txt --then --id orphans-wired-0911 node tests/run-isolated.js --from tests/suites/orphans-wired-0911.txt --then --id orphans-wired-0916 node tests/run-isolated.js --from tests/suites/orphans-wired-0916.txt --then --id config-integrity-guard npm run test:config-integrity-guard",
       "test:action-permission-profiles": "node tests/run-isolated.js tests/action-permission-profiles.test.js",
       "test:adversarial": "node tests/run-isolated.js --continue --from tests/suites/adversarial.txt",
       "test:agent-comms-transport": "node tests/run-isolated.js tests/agent-comms/transport-adapter-conformance.js",
@@ -14223,7 +14665,7 @@ export const SOURCE_MANIFESTS = freeze({
       "test:config-integrity-guard": "node tests/run-isolated.js --from tests/suites/config-integrity-guard.txt",
       "test:controller": "node tests/controller/run.js",
       "test:coordinator": "node tests/run-isolated.js tests/coordinator-heartbeat.test.js tests/coordinator-duty-registry.test.js tests/coordinator-duty-host.test.js tests/coordinator-escalation-policy.test.js tests/coordinator-escalation-sink.test.js tests/argv-drift.test.js tests/fleet-supervisor-startup-refusal.test.js tests/managed-processes.test.js tests/process-visibility-refresh.test.js tests/scheduled-task-registrars.test.js tests/health-observer.test.js",
-      "test:coverage-audit": "node tests/run-isolated.js tests/agent-activity-contracts.js tests/grepsaver-orient.js tests/iphone-handoff.js tests/owner-chat.js tests/owner-directive-inbox.js tests/owner-prompt-theme.test.js tests/owner-public-prompts.test.js tests/owner-prompt-provenance.test.js tests/purchase-recording.test.js tests/owner-prompt-purchase-wiring.test.js tests/owner-form-contract.js tests/owner-prompt-queue.js tests/provider-untrusted-content.js tests/terminal-suppression.test.js tests/unified-agent-p04-boundaries.js tests/unified-agent-p06-contracts.js tests/unified-agent-p07-identifiers.js tests/unified-agent-p08-provenance.js tests/unified-agent-p09-redaction.js tests/unified-agent-p10-evidence.js tests/unified-agent-p11-audit.js tests/unified-agent-p12-capability-manifests.js tests/unified-agent-p15-error-taxonomy.js",
+      "test:coverage-audit": "node tests/run-isolated.js tests/agent-activity-contracts.js tests/grepsaver-orient.js tests/iphone-handoff.js tests/institution-sso.js tests/owner-chat.js tests/owner-directive-inbox.js tests/owner-prompt-theme.test.js tests/owner-public-prompts.test.js tests/owner-prompt-provenance.test.js tests/purchase-recording.test.js tests/owner-prompt-purchase-wiring.test.js tests/owner-form-contract.js tests/owner-prompt-queue.js tests/provider-untrusted-content.js tests/terminal-suppression.test.js tests/unified-agent-p04-boundaries.js tests/unified-agent-p06-contracts.js tests/unified-agent-p07-identifiers.js tests/unified-agent-p08-provenance.js tests/unified-agent-p09-redaction.js tests/unified-agent-p10-evidence.js tests/unified-agent-p11-audit.js tests/unified-agent-p12-capability-manifests.js tests/unified-agent-p15-error-taxonomy.js",
       "test:crossrepo": "node tools/check-chain-runner.js --name test:crossrepo --then node tests/online-fra-relay-shell.js --then node tests/online-fra-web-client.js --then node tests/online-fra-renewal.test.js --then node tests/online-fra-relay-shell-solo.js",
       "test:delegation": "node tests/delegation/run.js",
       "test:delegation-adapters": "node tests/run-isolated.js tests/delegation-contracts.js tests/delegation-adapter-contracts.js tests/delegation-fake-adapters.js tests/delegation-task-projection.js tests/delegation-task-observation.js tests/delegation-task-attempt-projection.js",
@@ -14238,12 +14680,11 @@ export const SOURCE_MANIFESTS = freeze({
       "test:finished-queue": "node tests/run-isolated.js --continue tests/build-queue-provenance.test.js tests/build-queue-provenance-live.test.js",
       "test:firebase": "node tests/run-isolated.js tests/firebase-account-login.js",
       "test:fleet": "node tests/fleet/run.js",
-      "test:fra": "node tests/run-isolated.js tests/direct-link.test.js tests/startup-policy.test.js tests/fra-audit-admission-cache.js tests/fra-capability-manifest.js tests/fra-doctor.js tests/fra-endpoint-manifests.js tests/fra-keeper-heartbeat-log.js tests/fra-lifecycle-guards.js tests/fra-machine-identity.js tests/fra-manifest-permission-tier.test.js tests/fra-manifest-repin.js tests/fra-lifecycle-tunnel-notice.js tests/fra-peer-heartbeat.js tests/fra-readiness-gates.js tests/fra-real-ledger-slo.js tests/fra-root-access-control.js tests/fra-root-access.js tests/fra-runtime-integrity.js tests/fra-secure-session.js tests/fra-secure-session-boundary.test.js tests/fra-token-enrollment-lifecycle.js tests/fra-token-enrollment-operator.js tests/fra-token-enrollment-protocol.js tests/fra-token-enrollment-vault.js tests/fra-transport-binding.js tests/fra-vault-key-binding.js tests/fra-workspace-handles.js tests/fra-listing-isolation.test.js tests/fra-exact-workspace-resource.test.js tests/fra-workspace-resource-guards.test.js tests/fra-workspace-policy.test.js tests/fra-workspace-security-regressions.test.js tests/fra-workspace-security-socket.test.js tests/full-remote-access-bridge.js tests/full-remote-access-control-contract.js tests/full-remote-access-enroll-peer.js tests/full-remote-access-enroll-token.js tests/full-remote-access-lifecycle.js tests/full-remote-access-mcp-proxy.js tests/full-remote-access-preflight.js tests/full-remote-access-release-enroll.js tests/fra-surface-security.js tests/online-fra-web-client-lease-deadline.test.js",
+      "test:fra": "node tests/run-isolated.js tests/direct-link.test.js tests/startup-policy.test.js tests/fra-audit-admission-cache.js tests/fra-capability-manifest.js tests/fra-doctor.js tests/fra-endpoint-manifests.js tests/fra-keeper-heartbeat-log.js tests/fra-lifecycle-guards.js tests/fra-machine-identity.js tests/fra-manifest-permission-tier.test.js tests/fra-manifest-repin.js tests/fra-lifecycle-tunnel-notice.js tests/fra-peer-heartbeat.js tests/fra-readiness-gates.js tests/fra-real-ledger-slo.js tests/fra-root-access-control.js tests/fra-root-access.js tests/fra-runtime-integrity.js tests/fra-secure-session.js tests/fra-secure-session-boundary.test.js tests/fra-token-enrollment-lifecycle.js tests/fra-token-enrollment-operator.js tests/fra-token-enrollment-protocol.js tests/fra-token-enrollment-vault.js tests/fra-transport-binding.js tests/fra-vault-key-binding.js tests/fra-workspace-handles.js tests/fra-listing-isolation.test.js tests/fra-exact-workspace-resource.test.js tests/fra-workspace-resource-guards.test.js tests/fra-workspace-policy.test.js tests/fra-workspace-security-regressions.test.js tests/fra-workspace-security-socket.test.js tests/full-remote-access-bridge.js tests/full-remote-access-control-contract.js tests/full-remote-access-enroll-peer.js tests/full-remote-access-enroll-token.js tests/full-remote-access-lifecycle.js tests/full-remote-access-mcp-proxy.js tests/full-remote-access-preflight.js tests/full-remote-access-release-enroll.js tests/fra-surface-security.js tests/servercontrol-mechanical-connect.test.js tests/online-fra-web-client-lease-deadline.test.js",
       "test:gateway": "node tests/run-isolated.js tests/playwright-gateway.js",
       "test:gcloud": "node tests/run-isolated.js tests/gcloud-account-inspector.js tests/gcloud-account-login.js tests/firebase-account-login.js",
       "test:gemini-agentic": "node tests/run-isolated.js tests/gemini-agentic.js",
       "test:gemini-fleet-selection": "node tools/gemini-fleet.test.js",
-      "test:gemini-quota": "node tests/run-isolated.js tests/usage/allowance-buckets.test.js tests/usage/gemini-quota.test.js",
       "test:generated-mirrors": "node tools/check-chain-runner.js --name test:generated-mirrors --then node tools/generate-mirrors.js --check",
       "test:grepsaver": "node tests/grepsaver/run.js",
       "test:health-invariants": "node tests/run-isolated.js tests/health-invariants.test.js",
@@ -14271,6 +14712,7 @@ export const SOURCE_MANIFESTS = freeze({
       "test:personal-calendar": "node tests/run-isolated.js tests/personal-calendar.js",
       "test:pkg.tree": "node tests/run-isolated.js tests/pkg.tree/package-manifest-contract.js tests/pkg.tree/package-manifest-contract-adversarial.js tests/pkg.tree/package-check.js tests/pkg.tree/package-check-adversarial-g8.js",
       "test:plan-identities": "node tests/run-isolated.js tests/entitlement-reserved-plans.test.js",
+      "test:plugin-host": "node tests/run-isolated.js --from tests/suites/plugin-host.txt",
       "test:proc-run": "node tests/proc-run.js",
       "test:provider-release": "npm run test:providers && npm run test:providers.billing && npm run test:providers.gateway && npm run test:providers.github && npm run test:providers.google.suite && npm run test:providers.infrastructure && npm run test:providers.iphone.handoff && npm run test:providers.launch && npm run test:providers.misc && npm run test:providers.research && npm run test:providers.sandbox && npm run test:providers.web",
       "test:provider-session-isolation": "node tests/run-isolated.js tests/provider-session-isolation.test.js",
@@ -14306,7 +14748,7 @@ export const SOURCE_MANIFESTS = freeze({
       "test:secrets": "node tests/secrets/run.js",
       "test:settings-registry-explanations": "node tests/run-isolated.js tests/settings-registry-explanations.test.js",
       "test:shipped-registry-boundary": "node tests/run-isolated.js tests/shipped-registry-boundary.test.js",
-      "test:spawn-env-scrub": "node tests/run-isolated.js tests/spawn-env-scrub-gate.test.js",
+      "test:spawn-env-scrub": "node tests/run-isolated.js tests/spawn-env-scrub-gate.test.js tests/spawn-env-scrub-baseline-ratchet.test.js",
       "test:spawn-hygiene": "node tests/run-isolated.js tests/spawn-hygiene.test.js",
       "test:spawn-record": "node tests/run-isolated.js tests/spawn-record.js",
       "test:standing-orders-git-destructive": "node tests/run-isolated.js tests/standing-orders-hook-git-destructive.test.js",

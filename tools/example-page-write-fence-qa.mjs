@@ -45,7 +45,7 @@
 //
 // Without the live half, this suite could be satisfied by deleting the feature,
 // which is the cheapest wrong way to make a safety test green and would drop a
-// shipped capability that must not be dropped. With it, the only
+// shipped capability the owner has said must not be dropped. With it, the only
 // way to pass is the actual invariant: real controls on the real page, no real
 // controls on the demonstration page.
 //
@@ -298,7 +298,7 @@ const READ_PAGE = `(() => {
 
 /* THE SECOND EXAMPLE SURFACE, and the one this harness did not cover.
  *
- * an earlier commit fenced the example AGENT page and its own commit message said the
+ * dd01899 fenced the example AGENT page and its own commit message said the
  * simulated COMPUTERS board still built the same real dispatch, team and loop
  * boxes, gated on nothing but the dispatch write flag. So the example copy of
  * page 2 could start a real agent while the app-wide notice on screen said the
@@ -525,7 +525,7 @@ try {
   /* THE LIVE PAGE CARRIES THE LIVE BANNER, ASKED BY KIND AND NOT BY SENTENCE.
    *
    * This required the exact words "Declared topology read from this computer".
-   * an earlier commit -- the pass that made every rendered word beginner-readable
+   * Commit cf0aaf2 -- the pass that made every rendered word beginner-readable
    * -- rewrote that line to "Read from the team record saved on this computer."
    * six hours after this file was written, and this check has been red ever
    * since on a page that is behaving exactly as it should. A fence suite that

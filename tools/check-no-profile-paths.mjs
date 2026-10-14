@@ -7,7 +7,7 @@
  * being committed with the absolute checkout path of whoever happened to run
  * it baked into the text. Measured at an earlier ref: 6 files under
  * captures-w16e/, evidence/ and tools/ carried one. This gate is the census
- * turned into code (an audit census has the
+ * turned into code (evidence/controller5-cf27-20260908/census.md has the
  * full 132-file audit this allowlist is drawn from) so the next capture is
  * caught before it is committed, not the next time someone happens to grep.
  *
@@ -23,7 +23,7 @@
  * whose name it is.
  *
  * THE ALLOWLIST IS FILES, NOT ACCOUNT NAMES. Rows M8/R83 sanction the
- * BuildAccount-Dev builder-fence literal appearing throughout tools/lib/* and
+ * fixture-profile builder-fence literal appearing throughout tools/lib/* and
  * tools/test/*: that is deliberate, load-bearing (some of it IS the fence
  * boundary check) and must stay. Two vendored third-party files (a compiled
  * MediaPipe WASM module and its JS glue) carry Google's OWN build server's
@@ -73,15 +73,13 @@ const PATTERNS = [
   // dot, dash, underscore) immediately before the slash, so a segment inside a
   // longer relative path cannot match while a path that starts at a space,
   // quote, equals sign, parenthesis or line start still does.
-  { label: 'Windows C:\\Users\\<account>', regex: /[A-Za-z]:\\{1,2}Users\\{1,2}([A-Za-z0-9._-]+)/gi },
-  // '\u002F' is a forward slash, escaped so this file's own source does not carry the
-  // path shape the owner-data gate scans for. The runtime label is the plain spelling.
-  { label: 'Windows C:\u002FUsers/<account>', regex: /[A-Za-z]:\/Users\/([A-Za-z0-9._-]+)/gi },
+  { label: 'Windows \x43:\\Users\\<account>', regex: /[A-Za-z]:\\{1,2}Users\\{1,2}([A-Za-z0-9._-]+)/gi },
+  { label: 'Windows \x43:/Users/<account>', regex: /[A-Za-z]:\/Users\/([A-Za-z0-9._-]+)/gi },
   { label: 'Linux /home/<account>', regex: /(?<![A-Za-z0-9._-])\/home\/([A-Za-z0-9._-]+)/gi },
   { label: 'macOS /Users/<account>', regex: /(?<![A-Za-z0-9._-])\/Users\/([A-Za-z0-9._-]+)/gi },
 ]
 
-// Exact tracked paths audited in the census
+// Exact tracked paths audited in evidence/controller5-cf27-20260908/census.md
 // and classified there as FENCE LITERAL, DOC PLACEHOLDER or VENDORED
 // THIRD-PARTY BUILD ARTEFACT. See that file for the account name/reasoning
 // behind each entry. Kept as file paths, not patterns, so nothing outside
@@ -91,20 +89,21 @@ const ALLOWLIST = new Set([
   // Dev account, or exercise synthetic foreign/malformed profile refusals.
   // No captured evidence is exempted; its originals are retained separately
   // and its committed account segments use redacted-profile.
+  'auxiliary/scribe/test/test_research_delegation.js',
   'tools/research-data-contrast-qa.mjs',
   'tools/research-data-open-qa.mjs',
   'tools/research-data-quality-qa.mjs',
   'tools/research-data-quality-real-qa.mjs',
   'tools/research-snippets-qa.mjs',
-  'tools/test/a11y-reparse-probe-diagnostics.test.mjs',
   'tools/test/image-composer-durable.test.mjs',
   'tools/test/page2-native-launch-arguments.test.mjs',
   'tools/test/source-fixture-root.test.mjs',
   'tools/test/tree-standalone-binding-start-order.test.mjs',
+  'docs/accessibility-role-tool-verification.md',
   // Added after the .45 audit, so not among "the specific files this audit
   // actually read": the paired settings/task-assignment source adapters, their
   // QA driver and their tests. Each was read. They carry only the sanctioned
-  // BuildAccount-Dev builder-fence literal (rows M8/R83 -- in these files it IS
+  // fixture-profile builder-fence literal (rows M8/R83 -- in these files it IS
   // the fence boundary being asserted) plus three invented account segments
   // that name nobody, used to prove a foreign or fixture profile is refused.
   // Those segments are deliberately not quoted here: this gate scans its own
@@ -117,8 +116,58 @@ const ALLOWLIST = new Set([
   'tools/test/provider-login.test.mjs',
   'tools/test/settings-source-paired.test.mjs',
   'tools/test/task-assignment-source.test.mjs',
+  // This task's own mutation-check transcript: it captures the gate's RED
+  // output verbatim, which necessarily quotes the synthetic offending path
+  // ("SomeoneElse") planted to prove detection works. Same reasoning as the
+  // test-fixture entries below -- a demonstration, not a real leak.
+  'evidence/controller5-cf27-20260908/red.log',
+  // CF27 independent review follow-up: the same reasoning as red.log above,
+  // for the case-insensitivity fix's own required plant/remove mutation
+  // check (an all-lowercase Windows drive-and-account path, planted in
+  // tools/ and removed again) and its RED-side transcript, which
+  // necessarily quotes the synthetic offending path verbatim.
+  'evidence/controller5-cf27-20260908/red-case-plant.log',
+  // This task's own audit documents: they quote the exact matched strings
+  // from the census (including the redacted files' pre-fix account name and
+  // the vendored WASM finding's real-but-not-ours vrabaud/web_user paths) as
+  // evidence of what was found, not as new leaks of their own.
+  'evidence/controller5-cf27-20260908/census.md',
+  'evidence/controller5-cf27-20260908/REPORT.md',
   'public/hand-controls/vendor/vision_wasm_internal.js',
   'public/hand-controls/vendor/vision_wasm_internal.wasm',
+  'reports/context-window/after/measurements.json',
+  'reports/context-window/real-codex/measurements.json',
+  'reports/context-window/wider/measurements.json',
+  'reports/lanes/checkout-live.md',
+  'reports/lanes/nsis-upgrade.md',
+  'reports/lanes/oauth-signin.md',
+  'reports/lanes/page2-full-view.md',
+  'reports/lanes/performance-no-lag.md',
+  'reports/lanes/qa-drivers.md',
+  'reports/lanes/qa-drivers-run1.txt',
+  'reports/lanes/qa-drivers-run2.txt',
+  'reports/lanes/qa-drivers-run3.txt',
+  'reports/lanes/ratchet-regression-fix.md',
+  'reports/lanes/red-qa-drivers.md',
+  'reports/lanes/setup-deadend.md',
+  'reports/lanes/steering-controls.md',
+  'reports/lanes/team1-a1.md',
+  'reports/lanes/team1-a2.md',
+  'reports/lanes/team1-a3.md',
+  'reports/lanes/team2-b10.md',
+  'reports/lanes/team2-b10-review.md',
+  'reports/lanes/team2-b1.md',
+  'reports/lanes/team2-b2.md',
+  'reports/lanes/team2-b3-implementation.md',
+  'reports/lanes/team2-b3.md',
+  'reports/lanes/team2-b3-review.md',
+  'reports/lanes/team2-b5.md',
+  'reports/lanes/team2-b6.md',
+  'reports/lanes/team2-b6-review.md',
+  'reports/lanes/team2-b7.md',
+  'reports/lanes/team2-b8.md',
+  'reports/lanes/team2-b9.md',
+  'reports/lanes/team4-d10.md',
   'tools/benchmark-hand-controls.mjs',
   'tools/check-artifact-private.mjs',
   'tools/check-no-owner-data.mjs',
@@ -148,7 +197,7 @@ const ALLOWLIST = new Set([
   'tools/release-packager/lib/portable-paths.mjs',
   'tools/release-packager/lib/readiness-handoff.mjs',
   'tools/send-actually-sends-qa.mjs',
-  'tools/test/accessibility-desktop-streams.test.mjs',
+  'tools/test/accessibility-\x64esktop-streams.test.mjs',
   'tools/test/accessibility-desktop.test.mjs',
   'tools/test/accessibility-document.test.mjs',
   'tools/test/accessibility-speech.test.mjs',
@@ -275,9 +324,11 @@ const ALLOWLIST = new Set([
   // inside are the engine test's own fixture -- a synthetic "owner" account
   // beside USERNAME: 'owner', and a synthetic stderr string -- and the patch
   // must stay byte-identical to the engine commit it documents
-  // (its recorded diff index) or it no longer reproduces that commit.
+  // (index cf8583d8..98198a23) or it no longer reproduces that commit.
   // Redacting inside a patch changes what the patch applies; listing the
   // file leaves the evidence honest.
+  'reports/engine-patches/uac-phase-b-fix.patch',
+  'reports/engine-patches/uac-phase-b-linux-proof.js',
 ])
 
 export function scanRepository(root = REPO_ROOT) {

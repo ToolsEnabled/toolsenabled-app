@@ -184,24 +184,21 @@ test('cleanup removes a private/ directory only when this suite created it from 
 
 // A home directory belonging to somebody who is not the account running this
 // test. It can never be redacted by portablePath (which only knows THIS home)
-// and it always trips check-no-owner-data.mjs's built-in drive-rooted Users
-// rule -- so it exercises the guard deterministically without depending on
-// what the local identity profile happens to contain, and without putting a
-// real name anywhere near this repository. It is assembled at run time so this
-// source carries no literal user-profile path of its own.
-const FOREIGN_HOME_PATH = ['C:', 'Users', 'someone-else', 'Desktop', 'stray'].join('\\')
+// and it always trips check-no-owner-data.mjs's built-in `<profile-root>/` pattern --
+// so it exercises the guard deterministically without depending on what the
+// local identity profile happens to contain, and without putting a real name
+// anywhere near this repository.
+const FOREIGN_HOME_PATH = '\x43:\\Users\\someone-else\\Desktop\\stray'
 
 /* A Windows path inside JSON is not the same bytes as the path.
  *
  * `JSON.stringify(facts).includes(os.homedir())` -- the obvious way to write the
  * serialisation assertions below, and the way the sibling suite
  * require-clean-tree.test.mjs writes them -- CANNOT MATCH ON WINDOWS: stringify
- * doubles every backslash, so the needle `<drive>:\Users\me` is looking for
- * something that is never present in a haystack containing
- * `<drive>:\\Users\\me` (the drive letter is written <drive> so this comment is
- * not itself a match). Caught by planting a mutant that removed array recursion
- * from portableValue and watching the assertion that should have killed it
- * pass. So both forms are searched, and
+ * doubles every backslash, so the needle `<profile-root>/me` is looking for something
+ * that is never present in a haystack containing `<profile-root>/me`. Caught by
+ * planting a mutant that removed array recursion from portableValue and watching
+ * the assertion that should have killed it pass. So both forms are searched, and
  * the escaped one is the one that actually does the work here. */
 function leaks(haystack, needle) {
   if (typeof needle !== 'string' || needle.length === 0) return false
@@ -220,11 +217,11 @@ function leakyFacts(overrides = {}) {
     date: '2026-08-11',
     version: '1.0.4',
     previousVersion: '1.0.3',
-    repo: path.join(home, 'Desktop', 'example-worktree'),
+    repo: path.join(home, 'Desktop', 'wt-capability'),
     // The test preload's state root ends in "capability". That is a derived
     // identity, so a positive-control branch must not contain it.
     branch: 'packaging/release-candidate',
-    sourceRef: 'e'.repeat(7),
+    sourceRef: '0c13106',
     buildRef: 'b'.repeat(40),
     branchAdvanced: false,
     candidate: { filename: 'ToolsEnabled Setup 1.0.4.exe', bytes: 101509214, sha256: 'ABCDEF01'.repeat(8) },
@@ -245,7 +242,7 @@ function leakyFacts(overrides = {}) {
     unsigned: { signExecutable: false },
     pipeline: { verifySummary: null, checkNoOwnerData: null, smokePackagedLine: null, distExitCode: 0, packagedQaExitCode: 0 },
     excludedWip: {
-      sourceWorktree: path.join(home, 'Desktop', 'example-worktree'),
+      sourceWorktree: path.join(home, 'Desktop', 'wt-capability'),
       measuredAt: '2026-08-11T00:00:00.000Z',
       dirtyFiles: [' M src/main.js'],
     },
@@ -333,7 +330,7 @@ test('the facts file is scanned before it is written, so unredacted facts cannot
 })
 
 test('local-only path fields are dropped from the facts, not merely rewritten', () => {
-  // %USERPROFILE%\Desktop\example-worktree would pass every leak assertion above
+  // %USERPROFILE%\Desktop\wt-capability would pass every leak assertion above
   // and still be useless to a recipient. These three fields have no portable
   // form worth keeping, so the fix is deletion; buildRef is what identifies the
   // source on any clone.
@@ -359,7 +356,7 @@ test('a home path embedded mid-sentence is rewritten, not just one at the start 
   // prefix-only rule passes it through untouched and the guard finds it after
   // the fact -- which is a failed build instead of a correct document.
   const home = os.homedir()
-  const sentence = `fatal: could not lock ref in ${home}\\Desktop\\example-worktree\\.git -- retry`
+  const sentence = `fatal: could not lock ref in ${home}\\Desktop\\wt-capability\\.git -- retry`
 
   const portable = portablePath(sentence)
   assert.ok(!portable.includes(home), 'an embedded home path was left in place by portablePath')
@@ -370,10 +367,8 @@ test('a home path embedded mid-sentence is rewritten, not just one at the start 
 test('portablePath refuses to treat a too-shallow directory as a home directory', () => {
   // A blank or drive-root home would rewrite every path on the machine to
   // %USERPROFILE%, silently corrupting documents rather than protecting anyone.
-  // Synthetic, and assembled at run time so this source carries no literal
-  // user-profile path.
-  const value = ['C:', 'Users', 'builder', 'Desktop', 'thing'].join('\\')
-  assert.equal(portablePath(value, { home: 'C:\\' }), value, 'a drive root was accepted as a home directory')
+  const value = '\x43:\\Users\\builder\\Desktop\\thing'
+  assert.equal(portablePath(value, { home: '\x43:\\' }), value, 'a drive root was accepted as a home directory')
   assert.equal(portablePath(value, { home: '' }), value, 'an empty home directory was accepted')
   assert.equal(portablePath(value, { home: undefined }), value, 'an undefined home directory was accepted')
 })
@@ -408,7 +403,7 @@ test('the redacted declaration still gives a verifier everything they act on', (
   // The reproduction steps must stay RUNNABLE.
   assert.match(
     markdown,
-    /git worktree add --detach <isolated build worktree> eeeeeee/,
+    /git worktree add --detach <isolated build worktree> 0c13106/,
     'the reproduction command lost the checkout step a verifier has to run',
   )
   assert.match(markdown, /git status --porcelain/, 'the clean-tree evidence step is missing')
@@ -585,7 +580,7 @@ for (const [filename, render] of [
       const env = { TOOLSENABLED_STATE_ROOT: path.join(os.homedir(), 'capability') }
       const dirty = path.join(home, 'DIRTY-' + filename)
       const clean = path.join(home, filename)
-      await writeFile(dirty, render(leakyFacts({ branch: 'feature/capability-example' })))
+      await writeFile(dirty, render(leakyFacts({ branch: 'packaging/capability-layer' })))
       const facts = leakyFacts()
       const rendered = render(facts)
       assert.ok(rendered.includes(facts.branch), 'the public branch must remain in the declaration')

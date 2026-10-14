@@ -170,7 +170,7 @@ test('the ledger shows on a phone unless the person turned it off', async () => 
  * 'auto' meant off, so the only way to the ledger was following /app/?ledger=1
  * from the mobile page. Every person who typed the domain on a phone got the
  * canonical agent tree squeezed onto a phone instead -- the owner included,
- * looking at their own site, at the surface they had chosen and been told was
+ * looking at his own site, at the surface he had chosen and been told was
  * live. The design was built and shipped and sat behind a flag that no visible
  * control sets.
  *

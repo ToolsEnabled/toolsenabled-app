@@ -46,8 +46,8 @@ test('the actual settings writer changes the engine reader through both visible 
   try {
     await tick()
     const auditRow = rows.get('audit.activity'), speedRow = rows.get('tools.throughput')
-    // The Basic default for audit.activity is Off (product rule T782): a
-    // fresh copy paints Off selected, not Full.
+    // The Basic default for audit.activity is Off (owner direction 2026-09-20,
+    // T782): a fresh copy paints Off selected, not Full.
     assert.equal(auditRow.buttons.find(item => item.pressed === 'true')?.dataset.auditChoice, 'Off')
     /* THE MASTER GATE (root 2026-09-21). The engine's runtime-policy makes a
        saved audit.activity a DORMANT preference until Signed activity audit is

@@ -3,9 +3,9 @@
 /* THE TWO PANELS THE OWNER COULD NOT READ, ON REAL GLASS, IN EVERY STATE THAT
  * MATTERS, REACHED BY CLICKING.
  *
- * The findings: the Codex Cloud panel was nearly impossible for a person to
- * make sense of (item 8), and the R-ledger panel was not human-friendly
- * (item 11).
+ * His findings, verbatim: the Codex Cloud panel is "almost impossible for a
+ * human to make any meaning of" (item 8), and the R-ledger panel "is a mess
+ * (not human friendly)" (item 11).
  *
  * WHAT THIS ANSWERS THAT A SOURCE SUITE CANNOT. Both defects are properties of
  * the COMPOSED screen -- the same refusal in two adjacent boxes, an empty-state
@@ -675,7 +675,7 @@ async function main() {
 
         const duplicates = reading.everySentence.filter((value, index, all) => all.indexOf(value) !== index)
         led.check(`${state.id}: no sentence is on this panel twice`, duplicates.length === 0, duplicates.join(' || '))
-        /* THE FINDING, MEASURED. Two 47-word paragraphs saying the same
+        /* THE OWNER'S FINDING, MEASURED. Two 47-word paragraphs saying the same
            thing are not byte-identical -- they were "Accounts unavailable · X"
            and "Environments unavailable · X" -- so this measures the SHARED
            SENTENCE rather than the whole string. */

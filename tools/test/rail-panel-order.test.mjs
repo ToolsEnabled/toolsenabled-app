@@ -1,7 +1,8 @@
 // WHERE THE FOLDER IS ON THE RAIL, HELD IN PLACE.
 //
-// Choosing a folder for each tree seemed to be missing, somewhere in
-// the crowded right panel on page 2. It WAS in there. Driven on the packaged
+// Owner, 2026-08-19: "also what happened to sessions and choosing a folder for
+// each tree and such? ther right panel on page 2 is still so complicated i
+// think its in there maybe somewhere". It WAS in there. Driven on the packaged
 // build (tools/rail-inventory-drive.mjs, 2026-08-20) before this change:
 //
 //   overview rail, 1440x900   "Session profiles" 1152px down a 1524px scroll
@@ -12,7 +13,7 @@
 //
 // Below the fold at every width this product supports, under two headings --
 // "Session profiles" and "Setup > Works in" -- neither of which contains the
-// word they were hunting for.
+// word he was hunting for.
 //
 // WHY A SOURCE TEST BESIDE A DRIVER. The driver measures pixels on real glass
 // and is the evidence; it also needs a packaged build, five minutes and a
@@ -68,8 +69,8 @@ function treeNodeTemplate() {
 }
 
 test('the overview rail names a folder, in a heading with the word in it', () => {
-  assert.match(copy, /overviewTitle: '[^']*[Ff]olders?[^']*'/, 'PROFILE_PANEL.overviewTitle must say "folder" -- "Session profiles" is what they could not find')
-  assert.match(copy, /nodeTitle: '[^']*[Ff]olders?[^']*'/, 'PROFILE_PANEL.nodeTitle must say "folder" -- "Works in" is what they could not find')
+  assert.match(copy, /overviewTitle: '[^']*[Ff]olders?[^']*'/, 'PROFILE_PANEL.overviewTitle must say "folder" -- "Session profiles" is what he could not find')
+  assert.match(copy, /nodeTitle: '[^']*[Ff]olders?[^']*'/, 'PROFILE_PANEL.nodeTitle must say "folder" -- "Works in" is what he could not find')
   assert.ok(
     overviewTemplate().includes('PROFILE_PANEL.overviewTitle'),
     'the overview rail must head its folder section with PROFILE_PANEL.overviewTitle',
@@ -270,7 +271,7 @@ function composeProfileFixture() {
     refreshTreeStartControls: () => {}, refreshLaunchStatus: () => {},
     startDraftFlight: createSingleFlight(), createTreeLaunchQueue, nodeLaunchQueues: new Map(),
     startingNodeIds: new Set(), draftStartEffort, identityRoleForTreeNode, tierEffortOf: () => 'medium',
-    // The real account choice for the start (reusable tree slots, an earlier app commit), not a stand-in.
+    // The real account choice for the start (reusable tree slots, app a8aee112a), not a stand-in.
     slotAccountStartOptions, LAUNCH_TIERS,
     ensureSeatForNode: async () => ({ ok: true }),
     roleBindingForStart: id => ({ ok: true, binding: { agentId: id } }),

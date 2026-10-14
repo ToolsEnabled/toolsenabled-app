@@ -20,8 +20,8 @@
  * So one subject id can be written through the rich pair and then through the
  * text-only pair. write REPLACES the whole record, so the attachments and caret
  * go with it, and write(id, empty) DELETES a record writeDraft deliberately
- * keeps when attachments remain. The complaint this sits under is that
- * occasional UI redraws erased what a person was typing --
+ * keeps when attachments remain. The owner complaint this sits under is
+ * "theres occassionally really annoying UI redraws and they erase my typing" --
  * an attachment silently dropped by a redraw is that complaint one layer down.
  *
  * The rule pinned here: text-only write may only ever change the TEXT.

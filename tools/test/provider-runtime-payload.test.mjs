@@ -6,14 +6,14 @@ import path from 'node:path'
 import { createHash } from 'node:crypto'
 import { collectProviderRuntimePayload, readPinnedRuntimeFile } from '../lib/provider-runtime-payload.mjs'
 
-const declarations = [{ id: 'gemini-quota', manifest: 'config/gemini-quota-runtime.json' }]
+const declarations = [{ id: 'fixture-runtime', manifest: 'config/fixture-runtime-runtime.json' }]
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'provider-runtime-payload-'))
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))
   const data = Buffer.from('export const sdk = true;\n')
-  const file = 'provider-runtimes/gemini-quota/sdk.mjs'
+  const file = 'provider-runtimes/fixture-runtime/sdk.mjs'
   const pin = { bytes: data.length, sha256: createHash('sha256').update(data).digest('hex') }
-  const manifest = { schemaVersion: 1, id: 'gemini-quota', version: '0.58.0', runtimePath: 'provider-runtimes/gemini-quota', entrypoint: 'sdk.mjs', files: { 'sdk.mjs': pin } }
+  const manifest = { schemaVersion: 1, id: 'fixture-runtime', version: '1.2.3', runtimePath: 'provider-runtimes/fixture-runtime', entrypoint: 'sdk.mjs', files: { 'sdk.mjs': pin } }
   fs.mkdirSync(path.join(root, path.dirname(file)), { recursive: true })
   fs.mkdirSync(path.join(root, 'config'))
   fs.writeFileSync(path.join(root, file), data)

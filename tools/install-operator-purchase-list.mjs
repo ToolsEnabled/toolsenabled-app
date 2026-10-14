@@ -5,8 +5,8 @@
  * The checkout screen shows a shopping list: what to buy to launch this, what breaks
  * without each line, and why you wanted it. That list is a document about you, so it is
  * not part of the product. It used to be, and the consequence was measured: every
- * installer carried the author's own list -- internal paths, internal request ids,
- * second-person notes, and a written admission that the installer is unsigned --
+ * installer carried the author's own list -- internal paths, internal request ids, his
+ * own second-person notes, and a written admission that the installer is unsigned --
  * and #/checkout put it one click back from home on a stranger's fresh install.
  *
  * So the list now lives in two places and neither is the payload:

@@ -35,7 +35,7 @@ test('compose layout consumes requested candidate CSS without claiming exact-can
     { exact: 0, instrumented: 1, unclassified: 0 },
     'a passing layout fixture must never contribute exact-artifact evidence')
   const source = toolSource(entry.name)
-  assert.deepEqual(releaseArgumentsFor(source, 'C:\\candidate'), ['--release', 'C:\\candidate'])
+  assert.deepEqual(releaseArgumentsFor(source, '\x43:\\candidate'), ['--release', '\x43:\\candidate'])
   assert.deepEqual(releaseArgumentsFor(source, null), [],
     'without an explicit release the fixture is not bound to a candidate')
   assert.match(source, /readComposeLayoutCss\(\{ argv: process\.argv, repoRoot: ROOT \}\)/)

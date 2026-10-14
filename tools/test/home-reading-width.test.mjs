@@ -1,7 +1,7 @@
 /* THE READING WIDTH, DRIVEN RATHER THAN READ.
  *
- * R1206: when a user resizes the chat window, the text uses all the space
- * rather than stopping short of full width.
+ * R1206, the owner: "in the chat window when a user resizes it we should use
+ * up all the space, right now the text doesnt expand ato full size."
  *
  * src/home-chat.css already carried the wide mode --
  * `.home-takeover[data-reading-width="wide"]` fills the window and drops

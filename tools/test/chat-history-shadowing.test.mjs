@@ -1,7 +1,7 @@
 /* THREE WAYS A CONVERSATION WAS LOST WITHOUT ANYBODY BEING TOLD.
  *
- * On the preview build, messages in history disappeared or merged into each
- * other, and a screenshot showed a panel with one YOU bubble over a
+ * Owner, on the preview build: "the messages in history disappear or combine
+ * into each other", and a screenshot of a panel showing one YOU bubble over a
  * node that had held a five-line conversation.
  *
  * WHAT THIS FILE CAN MEASURE. src/views/computers.js reaches three stylesheets,
@@ -33,7 +33,7 @@ test('an append seeds window memory from the record before it adds a word', () =
      `if (!history.length)`, and deliberately never seeds the map. So the map
      and the record were two independent histories, and the FIRST line appended
      into an empty map permanently shadowed a five-line saved record for the
-     life of the window -- a reported screenshot exactly: a panel showing only
+     life of the window -- the owner's screenshot exactly: a panel showing only
      the latest YOU bubble. Reading is reading; the WRITE side is where the two
      halves have to become one. */
   const append = view.slice(view.indexOf('function transcriptAppend'), view.indexOf('function persistTranscript'))
@@ -138,7 +138,7 @@ test('a completion for the turn that is open files what that turn said', () => {
 })
 
 test('a completion arriving AFTER the next turn started does not take its words', () => {
-  /* THE SYNTHETIC REPRO, and it is messages merging into each other, from
+  /* THE SYNTHETIC REPRO, and it is the owner's "combine into each other" from
      the other side. The completion branch read sessionTurnStatus, which
      carries the status and NOT the turn id, and filed whatever was in the
      accumulator. Order the two events like this --

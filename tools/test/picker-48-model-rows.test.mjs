@@ -1,8 +1,8 @@
 /* 1.0.48 PROVIDER-THEN-MODEL PICKER: THE TABLE AND THE LOGIC UNDER IT.
  *
- * Owner decision for 1.0.48: every model a provider offers is selectable,
- * chosen as provider first, then model (for example Opus 5 and Sonnet 5 on
- * Claude).
+ * Owner, verbatim: "users need to be able to select all the models from the
+ * providers. it should be provider, then model choice. Becuasee for example I
+ * need opus5 and sonnet5 for the claude red im approved for."
  *
  * The wire stays one row id (decision D1). What this suite pins is what that
  * row now carries and what every start computes from it:
@@ -31,6 +31,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { canonicalRootForTests } from '../canonical-root.mjs'
 import { findingsInText } from '../check-plain-language.mjs'
 import { DISPATCH_TIERS, LAUNCH_TIERS, launchTier, scopedEffort, tierDefaultEffort, tierEffortIds } from '../../src/orchestration-controls.js'
 import {
@@ -49,6 +50,7 @@ import { defaultStandaloneStart, standaloneStartFrom } from '../../src/tree-stan
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const require_ = createRequire(import.meta.url)
+const ENGINE_ROOT = canonicalRootForTests({ requireConfigured: true })
 
 const ids = choices => choices.map(choice => choice.id)
 const defaultOf = choices => choices.filter(choice => choice.isDefault).map(choice => choice.id)
@@ -105,7 +107,7 @@ test('every offered depth is one the copy module can name, with the provider sen
 test('the Claude rows: aliases first, then one row per served model, each pinned and dispatchable', () => {
   const claude = LAUNCH_TIERS.filter(row => row.provider === 'claude').map(row => row.id)
   assert.deepEqual(claude, ['claude-fable', 'claude-sonnet', 'claude-opus',
-    'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-fable-5-1', 'claude-fable-5', 'claude-haiku-4-5',
+    'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-fable-5-1', 'claude-fable-5', 'claude-haiku-4-5',
     'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6'])
   for (const id of claude.slice(3)) {
     const row = launchTier(id)
@@ -186,7 +188,7 @@ test('a start refused for an unknown saved model reads a plain sentence with som
    --------------------------------------------------------------- */
 
 const CONFINED_ENGINE = path.join(ROOT, 'tools/test/fixtures/confined-engine/src/lib/agent-engine/codex-process.js')
-const CLAUDE_ADAPTER = path.join(ROOT, 'capability/src/lib/agent-engine/claude-cli-adapter.js')
+const CLAUDE_ADAPTER = path.join(ENGINE_ROOT, 'src/lib/agent-engine/claude-cli-adapter.js')
 const TEST_FREE_MEMORY = () => 64 * 1024 * 1024 * 1024
 
 test('a Claude pinned row at "Model default" starts with --model <its CLI name> and no --effort', {
@@ -217,7 +219,7 @@ test('a Claude pinned row at "Model default" starts with --model <its CLI name> 
     const engine = require_(CONFINED_ENGINE)
     host = createAgentHost({ freeMemory: TEST_FREE_MEMORY, enginePath: CONFINED_ENGINE, defaultCwd: workdir,
       providerCommandResolver: () => 'claude-fixture', rLedgerLoader: () => null, ownerRequestStoreLoader: () => null })
-    for (const tier of ['claude-opus-5', 'claude-sonnet-5']) {
+    for (const tier of ['claude-opus-5', 'claude-sonnet-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']) {
       const row = launchTier(tier)
       /* What the compose panel and the + chooser hand the start when nobody
          touched the depth: the effort the start computes is "no effort", so
@@ -263,7 +265,7 @@ test('a Claude pinned row at "Model default" starts with --model <its CLI name> 
    one answer: for every dispatch row, the depths the packed engine applies
    as named are exactly the depths this table offers. Claude's `ultra` is the
    one mapped word (it runs as max) and is checked as such. */
-const PACKED_REGISTRY = path.join(ROOT, 'capability/src/lib/tool-registry.js')
+const PACKED_REGISTRY = path.join(ENGINE_ROOT, 'src/lib/tool-registry.js')
 test('the packed engine accepts, for every dispatch row, exactly the depths the app offers', {
   skip: existsSync(PACKED_REGISTRY) ? false : 'no packed engine in this checkout: agent.spawn is not here to ask',
 }, () => {

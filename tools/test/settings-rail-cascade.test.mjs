@@ -144,3 +144,42 @@ test('the wide-window rail is still the card the settings page gave it', () => {
   assert.equal(computed('gap', 1200), 'var(--s2)',
     'the desktop rail lost its own spacing')
 })
+
+/* FIX-C 8: the row a link lands on (`.is-landed`, settings.css) is a 2px rule
+   AND a --s3 inset. The row anatomy in settings-refine.css sets `padding:
+   var(--s4) 0` with an :is(*, :has(...)) argument that lifts it to (0,7,0),
+   which silently zeroed the inset. The inset must be restated at a
+   specificity that wins, later in the cascade. */
+function specificity(selector) {
+  let a = 0, b = 0, c = 0
+  let rest = selector
+  // :where() contributes nothing; :is()/:not()/:has() contribute their most specific argument.
+  rest = rest.replace(/:where\((?:[^()]|\([^()]*\))*\)/g, '')
+  const nested = /:(?:is|not|has)\(((?:[^()]|\([^()]*\))*)\)/
+  let match
+  while ((match = nested.exec(rest)) !== null) {
+    const best = match[1].split(',').map(part => specificity(part.trim())).sort((x, y) => y.join() < x.join() ? -1 : 1)[0]
+    a += best[0]; b += best[1]; c += best[2]
+    rest = rest.slice(0, match.index) + rest.slice(match.index + match[0].length)
+  }
+  a += (rest.match(/#[\w-]+/g) || []).length
+  b += (rest.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) || []).length
+  c += (rest.match(/(?:^|[\s>+~(])[a-zA-Z][\w-]*/g) || []).length
+  return [a, b, c]
+}
+const outranks = (x, y) => x[0] !== y[0] ? x[0] > y[0] : x[1] !== y[1] ? x[1] > y[1] : x[2] >= y[2]
+
+test('FIX-C 8: the landed settings row keeps its --s3 inset beside its 2px rule', () => {
+  assert.deepEqual(specificity('.view-pad.settings-page .settings-shell .settings-layout .settings-row:is(*, :has(> .settings-disclosure .guided-summary))'), [0, 7, 0], 'the helper counts the :is(:has()) argument the way a browser does')
+  assert.deepEqual(specificity('.settings-row.is-landed'), [0, 2, 0])
+  const refine = readFileSync(path.join(SRC, 'settings-refine.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const rules = parse(refine).filter(rule => !rule.media)
+  const anatomyAt = rules.findIndex(rule => /\.settings-row:is\(\*, :has\(/.test(rule.selector) && /(?:^|;)\s*padding\s*:\s*var\(--s4\)\s+0\s*(?:;|$)/.test(rule.body))
+  assert.notEqual(anatomyAt, -1, 'the row anatomy rule that zeroes the side padding is no longer where this test expects it; re-derive the cascade')
+  const anatomy = specificity(rules[anatomyAt].selector)
+  const landed = rules.map((rule, index) => ({ rule, index }))
+    .filter(({ rule }) => /\.settings-row\.is-landed/.test(rule.selector) && declaration(rule.body, 'padding-left') === 'var(--s3)')
+  assert.ok(landed.length > 0, 'no rule in settings-refine.css restores the landed row inset (padding-left: var(--s3))')
+  assert.ok(landed.some(({ rule, index }) => index > anatomyAt && outranks(specificity(rule.selector), anatomy)),
+    `the landed inset rule loses to the row anatomy at ${anatomy.join(',')}: the text sits flush against the 2px rule`)
+})

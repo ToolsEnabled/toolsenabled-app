@@ -1,4 +1,4 @@
-// EVERY PATH A PERSON CAN TAKE THROUGH PAYING FOR A SUBSCRIPTION.
+// EVERY PATH A PERSON CAN TAKE THROUGH "I WANT TO PAY YOU".
 //
 // The states here are the ones a customer actually hits: already subscribed,
 // lapsed, declined, refused, offline, the back button, and the double press.
@@ -46,7 +46,7 @@ test('an empty address is refused before a round trip', () => {
 })
 
 test('the address check is shallow on purpose and accepts real addresses', () => {
-  for (const address of ['a@b.co', 'first.last+tag@sub.example.co.uk', "o'brien@example.com", 'ünïcode@exämple.de']) {
+  for (const address of ['person-80305c9b@example.com', 'person-35d77d50@example.com', "o'brien@example.com", 'person-4c2e9e59@example.com']) {
     assert.equal(emailProblem(address), null, `${address} must be accepted`)
   }
 })
@@ -55,7 +55,7 @@ test('the address check refuses only what is certainly wrong', () => {
   assert.match(emailProblem('nope'), /needs one @/)
   assert.match(emailProblem('a@@b.com'), /needs one @/)
   assert.match(emailProblem('a@b'), /needs a dot/)
-  assert.match(emailProblem('a b@c.com'), /cannot contain spaces/)
+  assert.match(emailProblem('a person-7ffac562@example.com'), /cannot contain spaces/)
   assert.match(emailProblem(`${'x'.repeat(250)}@example.com`), /too long/)
 })
 

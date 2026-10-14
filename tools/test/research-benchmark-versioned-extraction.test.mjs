@@ -53,11 +53,11 @@ async function archivedStudy() {
   const attempt = run.events.find(event => event.type === 'finished' && event.status === 'completed')
   return { project, events: run.events, files, attempt, attemptId }
 }
-// Provenance on demand: with EXTRACTION_EVIDENCE_DIR set, write a manifest of the bundle this file builds --
+// Provenance on demand: with RP5A_C3_EVIDENCE set, write a manifest of the bundle this file builds --
 // what it pins, what it archives and what the two extractors make of the reply -- so a reviewer can see
 // how the fixture was produced without the bundle being checked in and going stale against the runtime.
 async function retain(subject) {
-  const root = process.env.EXTRACTION_EVIDENCE_DIR
+  const root = process.env.RP5A_C3_EVIDENCE
   if (!root) return
   const { mkdir, writeFile } = await import('node:fs/promises')
   const { dirname, resolve } = await import('node:path')
@@ -77,7 +77,7 @@ async function retain(subject) {
     whatTheExtractorImportedNowMakesOfTheReply: currentReading,
     files: Object.fromEntries(await Promise.all(Object.entries(subject.files).map(async ([key, value]) => [key, await sha256(value)]))),
   }
-  const target = resolve(root, 'versioned-extraction-red-bundle-manifest.json')
+  const target = resolve(root, 'rp5a-c3-red-bundle-manifest.json')
   await mkdir(dirname(target), { recursive: true })
   await writeFile(target, JSON.stringify(manifest, null, 2) + '\n')
 }

@@ -1,7 +1,7 @@
 /* THE AGENT WORKSPACE MOUNT, DRIVEN THROUGH THE REAL COMPUTERS VIEW.
  *
- * The defect named in src/home-chat-composer-draft.js's own header: occasional
- * UI redraws erased what a person was typing.
+ * Owner, verbatim, quoted in src/home-chat-composer-draft.js's own header:
+ * "theres occassionally really annoying UI redraws and they erase my typing."
  *
  * tools/test/home-agent-workspace.test.mjs and home-chat-composer-draft-
  * store.test.mjs are the only suites that drive mountHomeAgentWorkspace, and

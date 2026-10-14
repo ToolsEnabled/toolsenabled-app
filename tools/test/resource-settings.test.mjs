@@ -583,7 +583,7 @@ test('accepted resource polls and refusals notify the global profile even withou
   } finally { f.controller.destroy() }
 })
 
-/* BASIC IS BASIC (product rule T782). A working profile hands
+/* BASIC IS BASIC (owner direction 2026-09-20, T782). A working profile hands
    this panel pacing values only; whether admission is enforced is the person's
    own setup. Staging a profile therefore keeps the saved -- or pending -- mode
    exactly, and a host that reports no mode is shown All off rather than being

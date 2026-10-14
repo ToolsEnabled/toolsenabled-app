@@ -10,8 +10,8 @@ test('the module exports no ready-made subscription control', async () => {
    * It used to assert that SUBSCRIPTION_CONTROL was disabled, carried its
    * reason, kept the label "Subscriptions coming soon" and pointed at
    * #/subscribe. Every one of those assertions was correct about a control that
-   * should not have existed: the product rule is that the product does not
-   * advertise subscriptions, and an exported ready-made control is what the
+   * should not have existed: the owner asked, 2026-08-26, that the product stop
+   * advertising subscriptions, and an exported ready-made control is what the
    * next surface reaches for. views/home.js dropped its copy on that ruling and
    * the account page kept one, which is precisely how the advert survived.
    *

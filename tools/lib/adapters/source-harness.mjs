@@ -25,6 +25,8 @@ const COMPONENTS = Object.freeze([
   'adapters/artifact-files.mjs',
   'adapters/artifact-source.mjs',
   'transport/owned-job.mjs',
+  'transport/owned-job-files.mjs',
+  'transport/owned-execution-admission.mjs',
   'transport/registered-toolchain.mjs',
   'runners/shell-source.mjs',
   'runners/native-custody-source.mjs',

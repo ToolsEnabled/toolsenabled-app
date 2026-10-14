@@ -103,7 +103,7 @@ function report() {
   }
   /* Two passes: the page's surface eases between themes, so a single
      next-frame read sampled the OLD colour whenever the transition won the
-     race — the caption buttons were seen stuck on the previous theme.
+     race — the owner saw the caption buttons stuck on the previous theme.
      The settle pass re-reads after the ease and always wins. */
   requestAnimationFrame(send)
   clearTimeout(settleTimer)
@@ -126,10 +126,8 @@ function injectTitlebar() {
     #shell-titlebar {
       position: fixed; top: 0; left: 0; right: 0; height: ${TB}px;
       z-index: 200; -webkit-app-region: drag;
-      display: flex; align-items: center; justify-content: center;
       border-bottom: 1px solid var(--line, rgba(128,128,128,0.18));
-      font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
-      color: var(--ink-3, #888); user-select: none;
+      user-select: none;
     }
     /* Chromium inherits app-region through the renderer hit-test tree. Keep
        native and ARIA controls out of a draggable ancestor so a mouse press is
@@ -160,7 +158,7 @@ function injectTitlebar() {
   document.head.appendChild(style)
   const bar = document.createElement('div')
   bar.id = 'shell-titlebar'
-  bar.textContent = 'TOOLSENABLED'
+  // Branding lives in the sidebar; keep this strip clear for native dragging.
   document.body.prepend(bar)
 }
 

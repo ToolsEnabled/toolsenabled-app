@@ -147,7 +147,7 @@ test('a protected-head read that stops answering remains bounded', async () => {
  * reading it could not take -- `gaps.length >= 20` -- and that is the right
  * design. What it cannot do is tell a release gate the difference between "the
  * main thread stalled" and "this machine was too busy to run a 10 ms timer".
- * MEASURED 2026-09-07 at an earlier app commit, whole-suite run with three other test
+ * MEASURED 2026-09-07 at app 4ba0ceac, whole-suite run with three other test
  * runs in progress: 12 ticks where 20 are needed, reported as a failure.
  *
  * So the assertions are untouched and it runs in full under

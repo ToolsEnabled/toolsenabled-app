@@ -1,29 +1,4 @@
-/* SWITCH AND CONTINUE: one dialog on the circle for account, model and depth.
- *
- * T381: after a close and reopen, or when an agent stops, it
- * restarts without issues; if the account cannot continue, a switch pops up
- * that lets the person change account, model (and provider) and effort so
- * they can continue, as easily as possible.
- *
- * WHAT THIS FILE OWNS. The choice, its route and the words on the dialog. The
- * three continuation mechanisms the choice lands on already exist and are not
- * duplicated here:
- *   - a native resume of the saved thread (src/views/computers.js
- *     resumeNodeSession): same account, same provider, any model or depth
- *     that provider offers. Nothing is re-sent, nothing is charged.
- *   - the account continuation (continueNodeOnAnotherAccount): a fresh session
- *     on another account carrying the saved conversation as a handoff.
- *   - the model continuation (continueNodeOnAnotherModel): a fresh session on
- *     another tier, same handoff.
- *
- * WHY THE ROUTE IS A PURE FUNCTION. shell/agent-host.cjs refuses a start that
- * names both a provider thread and continueFromAccount ("Continuing on another
- * account requires a fresh tree replacement without a provider thread"), and
- * "a native thread belongs to the home that made it". So a thread can only be
- * RESUMED on its own account and provider; any other account or provider is a
- * handoff. That rule lives in continuationRouteFor, asserted by value, and the
- * dialog's cost line is drawn from it so the person is told before pressing.
- */
+
 import { SWITCH_PANEL, EFFORT_SWITCH, PROVIDER_CHOICES, PROVIDER_WORDS, effortChoicesFor, providerDefaultTier, tierProvider } from './fleet-tree-copy.js'
 import { offeredEffort } from './orchestration-controls.js'
 import { mountTranscriptHistory } from './node-transcript-history.js'
@@ -45,7 +20,7 @@ const targetWords = copy => ({ ...TARGET_COPY, ...Object.fromEntries(Object.entr
    handing an older copy object still gets a readable group. */
 const PROVIDER_COPY = Object.freeze({
   provider: SWITCH_PANEL.provider || 'Provider',
-  anyAccount: SWITCH_PANEL.anyAccount || 'Any signed-in account',
+
   modelDefaultKept: EFFORT_SWITCH.modelDefaultKept,
 })
 const providerWords = copy => ({ ...PROVIDER_COPY, ...Object.fromEntries(Object.entries(copy || {}).filter(([key, value]) => key in PROVIDER_COPY && typeof value === 'string' && value)) })
@@ -59,8 +34,8 @@ export const SWITCH_OPEN_REASON = Object.freeze({ byHand: 'by-hand', accountRefu
 
 /* THE CONVERSATION BESIDE THE MENU.
  *
- * T775: the pop-up shows the chat next to the menu so the user
- * knows which agent is being restarted. The dialog opens
+ * OWNER (T775, 2026-09-21): "in the popup we need to show the chat next to
+ * the menu so the user knows what agent is being restarted." The dialog opens
  * by itself when a saved account is refused, so the person may be looking at
  * a different circle when it appears; a menu with no name and no words on it
  * cannot tell them whose conversation the choice carries on.
@@ -133,8 +108,8 @@ function mountTargetConversation({ document: doc, host, conversation, words, isC
 
 /* WHICH MODELS THIS DIALOG OFFERS -- ASKED, NOT DECIDED HERE.
  *
- * R1238: the switch-model row is always present and works, for Codex, Claude,
- * local, Grok and Gemini.
+ * OWNER (R1238): "why cant i choose to switch models between codex or claude
+ * or local or grok or gemini mid session ... why does the button hide now".
  * What stood here dropped the local node and every tree-only row outright:
  * `.filter(row => row.provider !== 'local' && !row.treeOnly)`. Grok, gemini and
  * local were therefore not refused, they were ABSENT, which from the outside is
@@ -159,7 +134,7 @@ function mountTargetConversation({ document: doc, host, conversation, words, isC
  * The row the circle ALREADY runs on is never refused: it is the "keep this
  * model" option, and a circle must be able to keep what it has. */
 /* WHY TWO SENTENCES AND NOT ONE. This file's first draft sent EVERY refused row
-   to the model chip. A review found that false for the local node: the
+   to the model chip. Builder 7's review found that false for the local node: the
    chip's own list comes from sessionModelChoices, whose startability test falls
    back to `tier.provider !== 'local'` whenever nobody has asked the shell -- and
    src/views/computers.js declares `let startableTierAnswered = false`, so the
@@ -281,13 +256,13 @@ function providersOf(models) {
    so, while "Not now" still closes it. `onClose` fires exactly once whenever
    the dialog leaves the document, by any path; `dispose()` is the owner's
    idempotent teardown for a view that is going away. */
-export function mountSwitchAndContinueDialog({ document = globalThis.document, host, copy = SWITCH_PANEL, reason = '', refusalSentence = '', choices, current = {}, tiers = [], target = null, conversation = null, onChoose = () => {}, onCancel = () => {}, onClose = () => {} } = {}) {
+export function mountSwitchAndContinueDialog({ document = globalThis.document, host, copy = SWITCH_PANEL, reason = '', refusalSentence = '', choices, current = {}, tiers = [], target = null, conversation = null, onChoose = () => {}, onWait = null, onCancel = () => {}, onClose = () => {} } = {}) {
   if (!document || !host || !choices) return null
   const tierList = tiers.length ? tiers : choices.models
   const words = targetWords(copy)
   const pwords = providerWords(copy)
-  /* PROVIDER FIRST (1.0.48, owner decision: provider first,
-     then model). A Provider group stands before Account, Model and Depth and
+  /* PROVIDER FIRST (1.0.48, owner: "it should be provider, then model
+     choice"). A Provider group stands before Account, Model and Depth and
      narrows all three: the accounts of that provider, its models, and the
      depths the picked model takes. It is a filter over the one row id the
      choice still carries (D1), so every model keeps its own input -- one
@@ -340,7 +315,6 @@ export function mountSwitchAndContinueDialog({ document = globalThis.document, h
       <fieldset class="switch-group"><legend>${escapeMarkup(copy.account)}</legend>
         <label class="switch-row" data-switch-keep-account><input type="radio" name="switch-account" data-switch-account value="" checked${providers.length ? '' : ' autofocus'}> <span>${escapeMarkup(copy.keepAccount)}</span>${current.account ? ` <small>${escapeMarkup(current.account)}</small>` : ''}</label>
         ${radioRows('switch-account', choices.accounts.filter(row => row.name !== current.account), { value: row => row.name, label: row => row.name, note: row => row.refused ? copy.refused : '', checked: () => false, extra: row => `data-provider="${escapeMarkup(row.provider)}"${row.refused ? ' data-refused="true"' : ''}`, rowExtra: row => `data-provider="${escapeMarkup(row.provider)}"` })}
-        <label class="switch-row" data-switch-any-account hidden><input type="radio" name="switch-account" data-switch-account data-switch-any value=""> <span>${escapeMarkup(pwords.anyAccount)}</span></label>
         <p class="switch-note" data-switch-no-accounts>${escapeMarkup(copy.noAccounts)}</p>
       </fieldset>
       <fieldset class="switch-group"><legend>${escapeMarkup(copy.model)}</legend>
@@ -351,6 +325,7 @@ export function mountSwitchAndContinueDialog({ document = globalThis.document, h
           rowExtra: row => `data-provider="${escapeMarkup(row.provider)}"` })}
       </fieldset>
       <fieldset class="switch-group" data-switch-effort-group><legend>${escapeMarkup(copy.effort)}</legend></fieldset>
+      ${current.account && typeof onWait === 'function' ? `<fieldset class="switch-group"><legend>Wait for this account</legend><p class="switch-note">Continue on this account and model after the reset time you choose. Stop cancels the wait.</p><label class="switch-row">Reset time <input type="datetime-local" data-switch-reset-time></label><button type="button" class="switch-cancel-btn" data-switch-wait>Wait and continue</button></fieldset>` : ''}
       <output class="switch-cost" data-switch-cost aria-live="polite"></output>
       <div class="switch-actions">
         <button type="button" class="switch-continue-btn" data-switch-continue>${escapeMarkup(copy.continue)}</button>
@@ -363,7 +338,7 @@ export function mountSwitchAndContinueDialog({ document = globalThis.document, h
      radioRows already refuses to mark a refused row checked, so on a freshly
      mounted dialog the two agree. They stop agreeing the moment anything sets
      `checked` without consulting `available` -- a form or session restore, or
-     the next obvious feature here, "remember the last pick". A review drove
+     the next obvious feature here, "remember the last pick". Builder 7 drove
      exactly that by value and the dialog handed back the tier it had just drawn
      as unpickable. Reading `disabled` makes the answer depend on what the dialog
      PAINTED rather than on nobody ever writing checked. */
@@ -448,12 +423,10 @@ export function mountSwitchAndContinueDialog({ document = globalThis.document, h
     }
     const keeps = !homeProvider || provider === homeProvider
     const keepLabel = root.querySelector('[data-switch-keep-account]')
-    const anyLabel = root.querySelector('[data-switch-any-account]')
     if (keepLabel) keepLabel.hidden = !keeps
-    if (anyLabel) anyLabel.hidden = keeps
     let listed = 0
     for (const input of root.querySelectorAll('[data-switch-account]')) {
-      if (input.parentNode === keepLabel || input.parentNode === anyLabel) {
+      if (input.parentNode === keepLabel) {
         if (input.parentNode.hidden) input.checked = false
         continue
       }
@@ -463,7 +436,7 @@ export function mountSwitchAndContinueDialog({ document = globalThis.document, h
       else listed += 1
     }
     if (!picked('[data-switch-account]')) {
-      const fallback = (keeps ? keepLabel : anyLabel)?.querySelector('input')
+      const fallback = (keeps ? keepLabel : null)?.querySelector('input')
       if (fallback) fallback.checked = true
     }
     /* "No other signed-in account is registered" is about THIS provider's
@@ -472,7 +445,7 @@ export function mountSwitchAndContinueDialog({ document = globalThis.document, h
        contradiction (review P11), so it is shown only while the account can
        be kept. */
     const note = root.querySelector('[data-switch-no-accounts]')
-    if (note) note.hidden = listed > 0 || !keeps
+    if (note) note.hidden = listed > 0
     paintEfforts()
   }
   /* ONE LISTENER FOR THE WHOLE MENU, because the depth rows are redrawn and a
@@ -570,8 +543,27 @@ export function mountSwitchAndContinueDialog({ document = globalThis.document, h
        named on a Codex start would be refused. */
     const keptAccount = !homeProvider || choice.provider === homeProvider ? current.account || null : null
     const chosen = { ...choice, account: choice.account || keptAccount, route: route.route }
+    if (choice.provider !== 'local' && choice.provider !== homeProvider && !chosen.account) {
+      const cost = root.querySelector('[data-switch-cost]')
+      if (cost) cost.textContent = 'Choose an account for this provider before continuing.'
+      return
+    }
     close()
     onChoose(chosen)
+  })
+  root.querySelector('[data-switch-wait]')?.addEventListener('click', async () => {
+    if (stale || closed) return
+    const value = root.querySelector('[data-switch-reset-time]')?.value
+    const at = value ? Date.parse(value) : NaN
+    const cost = root.querySelector('[data-switch-cost]')
+    if (!Number.isFinite(at) || at <= Date.now()) {
+      if (cost) cost.textContent = 'Choose a future reset time for this account.'
+      return
+    }
+    try {
+      if (await onWait(at) === true) close()
+      else if (cost) cost.textContent = 'The reset wait could not be saved. Review this conversation before trying again.'
+    } catch (error) { if (cost) cost.textContent = error.message || 'The reset wait could not be saved.' }
   })
   root.querySelector('[data-switch-cancel]').addEventListener('click', () => { close(); onCancel() })
   root.addEventListener('cancel', () => { close(); onCancel() })

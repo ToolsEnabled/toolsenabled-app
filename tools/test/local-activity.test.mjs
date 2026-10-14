@@ -179,6 +179,15 @@ test('work summaries count turn records without multiplying running session tota
  * and 1,200 tokens, and 2 turns did not finish." Asserted on the composed
  * sentence rather than on the fields, because the sentence is the thing a
  * person is holding when the arithmetic stops being possible. */
+/* 1.0.50 review CM-4: a run on a typed model name is named by it, or "Other model" when the record could not
+   keep it, never by the default row it started on. */
+test('a run on a typed model is named by that model, not the default row', () => {
+  const run = extra => summariseRunWork([{ basis: 'turn', tier: 'astra', totalTokens: 10, status: 'completed', ...extra }])
+  assert.equal(run({ model: 'my-typed-model', modelChoice: 'typed' }).model, 'my-typed-model')
+  assert.equal(run({ model: null, modelChoice: 'typed' }).model, 'Other model')
+  assert.equal(run({}).model, 'GPT-6-Astra')
+})
+
 test('a run never reports more unfinished turns than turns', () => {
   const work = summariseRunWork([
     { basis: 'turn', tier: 'codex', totalTokens: 1_200, status: 'error' },

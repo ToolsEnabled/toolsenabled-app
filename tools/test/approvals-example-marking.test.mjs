@@ -1,6 +1,6 @@
 /* THE APPROVALS SCREEN MARKS ITS DEMONSTRATION, THE WAY EVERY OTHER SCREEN DOES.
  *
- * The paid lane's walk of the vendored simulation build (their an earlier commit,
+ * The paid lane's walk of the vendored simulation build (their commit 36010d5,
  * reassigned to this repository by legal's launch delivery): every landing view
  * labels its own example data -- home's "Example, not your data" badge, the
  * metrics face and its "made-up numbers" note, research's source line -- and

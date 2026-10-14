@@ -96,7 +96,7 @@ test('failed archive copy retains original history and failed entry replacement 
     rename: async () => { throw new Error('replace denied') },
   } })
   await assert.rejects(failing.archive({ computerId: 'c', nodeId: 'n' }), /copy denied/)
-  /* Since an earlier commit (T1628, "preserve refused transcript writes") a refused
+  /* Since 9e29fdd5 (T1628, "preserve refused transcript writes") a refused
      write is HELD, not thrown: any writer error -- not only an OS code --
      keeps the accepted entry in memory and answers that it is not durable,
      naming the storage refusal. The replacement is held; the bytes on disk
@@ -144,7 +144,7 @@ test('main capture keeps live deltas without a renderer and drains its timer on 
   })
   capture.bind({ sessionId: 'session', computerId: 'c', nodeId: 'n' })
   await capture.recordAcceptedTranscriptSend({ sessionId: 'session', text: 'user request', turnId: 'turn' })
-  /* Since an earlier commit (T1628, "hold transcript producers") packet() is the
+  /* Since 138dab29 (T1628, "hold transcript producers") packet() is the
      producer's storage boundary: packets queue behind one another and the
      native producer awaits each one before parsing the next (main.cjs's
      agent event listener awaits it). flushNode flushes what was admitted; it

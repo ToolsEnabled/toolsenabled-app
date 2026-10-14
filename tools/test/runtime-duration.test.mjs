@@ -16,7 +16,7 @@ import { durationLabel, durationSpoken, runtimePhrase, NO_RUNTIME } from '../../
 const SECOND = 1000, MINUTE = 60 * SECOND, HOUR = 60 * MINUTE, DAY = 24 * HOUR
 
 test('a duration can never be read as a clock time', () => {
-  /* The exact figures from a reported screenshot, which is the point. */
+  /* The exact figures from the owner's screenshot, which is the point. */
   assert.equal(durationLabel(19 * HOUR + 29 * MINUTE + 53 * SECOND), '19h 29m 53s')
   assert.equal(durationLabel(16 * HOUR + 27 * MINUTE + 58 * SECOND), '16h 27m 58s')
   assert.equal(durationLabel(11 * HOUR + 45 * MINUTE + 26 * SECOND), '11h 45m 26s')

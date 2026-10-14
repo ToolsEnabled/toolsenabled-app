@@ -4,7 +4,7 @@
  * UNCLOSED FENCE is held, until its closing fence lands.
  *
  * It used to hold unfinished prose too -- until a sentence ended AND a space
- * followed it -- and the requirement is the opposite: a live reply has
+ * followed it -- and the owner's requirement is the opposite: a live reply has
  * to be visible while it streams. That hold made a short or sentence-final
  * answer paint nothing for its entire live turn, and it cost six tests in four
  * suites (desktop-sessions-renderer, chat-stream-code-blocks,

@@ -6,14 +6,15 @@ export const isResourceHold = code => code === 'AGENT_MEMORY_LOW' || /^AGENT_RES
 
 /* A HOLD IS RETRIED A SMALL, NAMED NUMBER OF TIMES, THEN ABANDONED OUT LOUD.
  *
- * MEASURED in a development signed spawn record (agent-spawn-records.jsonl):
- * one node was refused AGENT_RESOURCE_PRESSURE hundreds of times in one hour,
- * about a second and a half apart. The branch below that
+ * MEASURED in the owner's signed spawn record (agent-spawn-records.jsonl),
+ * 2026-09-14T09Z: one node was refused AGENT_RESOURCE_PRESSURE 558 times in
+ * one hour, median 1.46 s apart, 648 times in all. The branch below that
  * unshifts a held node back onto `pending` had no attempt counter, no
  * growing wait (the clamp reads as a back-off and is not one) and no terminal
  * state, so a computer that stays short of memory or CPU re-asks the same
  * question for ever and the person sees a "waiting" line that never resolves.
- * The symptom: one agent tried to sign in to Claude 40 times (ledger T395).
+ * The owner's words: "why is one of your agents trying to sign into claude
+ * 40 times" (ledger T395).
  *
  * The rule now: each node gets MAX_RESOURCE_HOLD_ATTEMPTS starts. The wait
  * between them doubles from HOLD_BACKOFF_BASE_MS up to HOLD_BACKOFF_MAX_MS,

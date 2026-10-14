@@ -7,9 +7,9 @@ import { installDomStandIn } from './lib/dom-stand-in.mjs'
 
 /* The full-window chat expansion, the braces, and the top-row spacing.
  *
- * WHAT WAS ASKED FOR, and the rule that shaped the implementation: when the
- * chat expands it covers the tree fully, and the tree keeps working behind it.
- * The later shared-tab design keeps that invariant:
+ * WHAT THE OWNER ASKED FOR, and the sentence that shaped the implementation:
+ * "when the chat expands it just covers the tree fully -- the tree keeps
+ * working behind it." The later shared-tab design keeps that invariant:
  * Trees and agent conversations share a workspace, while returning to Trees
  * retains the mounted chats and their drafts. Only explicit tab closure
  * disposes a chat. These lifecycle checks drive the real graph/workspace

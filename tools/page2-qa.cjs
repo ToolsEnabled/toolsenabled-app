@@ -17,9 +17,9 @@ const DIST = RENDERER.dist
 /* THE EXAMPLE BOARD HAS TWELVE TREE NODES, AND THIS CONSTANT HAS NOW BEEN STALE
    TWICE FOR THE SAME REASON.
 
-   It was nine (the retired declared-fleet seats), then five when an earlier commit
+   It was nine (the retired declared-fleet seats), then five when 485addf2
    removed them: src/sample-trees.js seeded three frozen trees with 2 + 2 + 1
-   nodes. On 2026-09-11 an earlier commit ("Play the example fleet's working tree through
+   nodes. On 2026-09-11 f2f65558 ("Play the example fleet's working tree through
    the states the product shows") made the page's own store ask for the
    simulation -- src/views/computers.js:4950 passes `simulation: true` -- and
    createSampleTreeStore then keeps only 'can you open chrome' and seeds
@@ -304,7 +304,7 @@ async function run() {
        callback. It is emitted at error level, but the spec defines it as the
        loop-breaker working as designed, and on this page it appears under
        machine load alone: on 2026-08-19, with the packaged suite churning the
-       machine, the PREVIOUS confirming tree an earlier commit -- green on its own
+       machine, the PREVIOUS confirming tree a3e9f85 -- green on its own
        confirming run -- went red on exactly this message 7 runs out of 7
        (3 sequential + 4 concurrent), same driver bytes, same dist recipe.
        A check that reds on an unchanged, previously-green product is
@@ -430,9 +430,9 @@ async function run() {
      transform moves every sampled rect and the idle check reads
        layoutMovedWhileIdle=true
        anywhereOnThePage=["div.view CSSTransition opacity","div.view CSSTransition transform"]
-     -- which is exactly the red an earlier confirming run produced at an
-     earlier commit, and exactly what this harness reproduced ON THE PREVIOUS GREEN
-     TREE an earlier commit by making the lift-frame arrive at mount+2150ms in a
+     -- which is exactly the red the 2026-08-19 confirming run produced at
+     0485034, and exactly what this harness reproduced ON THE PREVIOUS GREEN
+     TREE a3e9f85 by making the lift-frame arrive at mount+2150ms in a
      worktree build (layoutMovedWhileIdle=true, same two transitions named).
      The entry motion is a ONE-SHOT: the page still reaches idle and stays
      there, which is the invariant the check states. So the instrument waits
@@ -478,7 +478,7 @@ async function run() {
        at no less than one physical pixel on the display running the gate.
 
        THE AUTHORED HALF USED TO BE THE LITERAL 1.5px, AND THAT WAS STALE.
-       An earlier colour commit made
+       b9074f5e ("Refine agent circle colors across themes and tree sizes") made
        the rim scale with the tree: the rule now declares --circle-stroke as
        clamp(0.85px, calc(1.75px * ...), 3px) and sets border to
        var(--circle-stroke) solid var(--rc), so no px literal survives in the
@@ -636,7 +636,7 @@ async function run() {
   check('every node carries an accessible identity naming its role',
     labels.nodeCount > 0 && labels.unlabelled.length === 0,
     JSON.stringify(labels.unlabelled))
-  /* an earlier commit made this probe honest: nothing measures a whole graph frame, so
+  /* 6c75763 made this probe honest: nothing measures a whole graph frame, so
      null means unmeasured. Zero would claim an instantaneous frame that no
      instrument observed. Actual idleness remains measured independently by
      the settle, rAF and animation checks immediately below. */
@@ -786,7 +786,7 @@ async function run() {
   window.hide()
 
   // A context card opens the side rail; double-clicking its circle opens the
-  // conversation. The conversation is the only
+  // conversation (owner, 2026-09-10). The conversation is the only
   // context-label size motion.
   const chipAgent = await webContents.executeJavaScript(`document.querySelector('.static-tree-chip.screen-chip-visible')?.dataset.agentId || null`)
   await pressVisibleControl(webContents, `.static-tree-chip.screen-chip-visible[data-agent-id=${JSON.stringify(chipAgent)}]`)
@@ -819,8 +819,8 @@ async function run() {
      now what the name always claimed — the chat is ON SCREEN, inside the
      canvas, and reachable by a pointer.
 
-     an earlier commit made the braces the COLLAPSED monitor's costume only, at the
-     request. The two elements remain in the card's DOM because the
+     6ddd6cd made the braces the COLLAPSED monitor's costume only, at the
+     owner's request. The two elements remain in the card's DOM because the
      same chip can collapse again, but an open chat must show zero of them. */
   const chatOpened = await webContents.executeJavaScript(`(() => {
     const chip = document.querySelector('.tree-conversation')
@@ -858,7 +858,7 @@ async function run() {
     document.querySelector('.tree-home-tab')?.getAttribute('aria-selected') === 'true'
       && document.querySelectorAll('.static-tree-node').length === ${EXPECTED_EXAMPLE_TREE_NODES}`))
 
-  // Current workspace gestures: a single circle click only
+  // Current workspace gestures (owner, 2026-09-10): a single circle click only
   // selects; a single box click opens the side rail (a box is its own card);
   // double-clicking a circle opens its conversation tab; Shift+Enter opens the
   // rail. The delayed single click and the native double-click race are both
@@ -946,7 +946,7 @@ async function run() {
   /* RECONCILED 2026-08-11. These three checks used to demand a LIVE launch box
      on the simulated board -- the tier dropdown offering the engine tiers, the
      printed argv, the run-cap control, the unsupported-control citations. That
-     is exactly the control an earlier commit removed and tools/example-page-write-fence-qa.mjs
+     is exactly the control dd01899 removed and tools/example-page-write-fence-qa.mjs
      (green) forbids on the example copy of page 2, whose own banner says nothing
      on it is real: a Dispatch/tier control here reaches the audited bridge from a
      demonstration screen. The launch box's real content is proven on the LIVE
@@ -1100,10 +1100,10 @@ async function run() {
     frameMs: window.__graphFrameMs,
     rerooting: Boolean(document.querySelector('.node.rerooting')),
   })`)
-  /* R1198: the 680ms re-root glide is gone. The rule is no required
+  /* R1198: the 680ms re-root glide is gone. The owner asked for no required
      motion, and that glide re-ran the chip placement search on every frame to
      decorate a click. The drill now lands immediately, so the assertion is
-     that it settles at once. frameMs stays null because an earlier commit stopped
+     that it settles at once. frameMs stays null because 6c75763 stopped
      reporting an unmeasured whole-frame cost as zero; null is part of the
      honesty contract, not a failed timing. */
   check('drill-down lands immediately and settles', drillState.root === drillId && drillState.returnVisible && drillState.frameMs === null && !drillState.rerooting, JSON.stringify(drillState))

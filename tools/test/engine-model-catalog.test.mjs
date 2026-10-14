@@ -136,8 +136,8 @@ test('a reconnected catalog remains session scoped and supersedes an older pendi
 
 /* T830: a session the host does not hold answers the same way every time it
    is asked, and every refused read is an Electron handler stack in the host's
-   log (hundreds of them within half an hour on a development install, from
-   the saved-session sweep; the catalog forgot its refusals the same way). The
+   log (303 of them in 27 minutes on the 2026-09-21 LIVE generation, from the
+   saved-session sweep; the catalog forgot its refusals the same way). The
    refusal arrives as the sentence Electron wraps a rejected invoke in. */
 test('a session the host does not hold is asked about once; a transport failure is still retried', async () => {
   const catalog = createEngineModelCatalog()

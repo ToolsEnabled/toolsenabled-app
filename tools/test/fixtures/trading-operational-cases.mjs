@@ -1,5 +1,5 @@
 // Hand-authored lifecycle controls. These synthetic rules and named policy
-// alternatives are test contracts, not approved study atoms.
+// alternatives are test contracts, not owner-approved study atoms.
 import { compilePrompt } from '../../../src/benchmark/prompts.mjs'
 // PROMPT B: the operational roles are declared beside their own contract now.
 import { OPERATIONAL_STRATEGY_ROLES as ROLES } from '../../../src/benchmark/trading-ir.mjs'

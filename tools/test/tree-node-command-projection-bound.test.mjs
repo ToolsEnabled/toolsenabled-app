@@ -1,15 +1,15 @@
 /* THE WAIT ON `projectionReady` INSIDE runTreeNodeCommand MUST BE BOUNDED.
  *
- * Ported from an earlier commit (app repo, "computers: wait for the projection a tree
- * command needs, not only the first boot") onto live an earlier commit, which already
+ * Ported from 4d3cfab9 (app repo, "computers: wait for the projection a tree
+ * command needs, not only the first boot") onto live 6d4b47e7, which already
  * carries its OWN independent fix for the reload-window defect that commit
  * describes: `projectionReady` / `resolveProjectionReady` / `finishProjectionLoad`
  * already exist here and `runTreeNodeCommand` already does
  * `await bootPromise; await projectionReady;` before its gates. MEASURED
- * (2026-09-07, internal report):
+ * (Worker 14, 2026-09-07, REPORT-rebase-check-4d3cfab9-on-6d4b47e7-20260907.md):
  * that existing wait has no bound at all, so a fleet read that never answers
  * parks a tree command forever rather than refusing it -- the exact
- * unbounded-timeout failure an earlier commit's own suite exists to rule out, just not
+ * unbounded-timeout failure 4d3cfab9's own suite exists to rule out, just not
  * yet ruled out HERE. Only test 3 of that file is ported (the bound case);
  * tests 1 and 2 in that file pin the reload-window defect itself, which this
  * tree does not have -- see the report above for how that was confirmed
@@ -154,7 +154,7 @@ async function installWorld(gate) {
 
 /* AND THE WAIT ITSELF IS BOUNDED, for the read that never comes back at all.
  *
- * Ported from an earlier commit's third test, unchanged in intent: the clock is mocked
+ * Ported from 4d3cfab9's third test, unchanged in intent: the clock is mocked
  * rather than waited out, so this pins a half-minute bound in about a
  * millisecond. Enabled only after the view has mounted, so nothing about the
  * mount depends on a fake clock.

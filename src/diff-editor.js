@@ -1,27 +1,28 @@
 /**
  * THE SPLIT COMPARE WINDOW.
  *
- * A basic diff editing screen: the original file and the new file, split, in a
- * pop-up window with easy text editing over both and a save-this-version under
- * each, so a user can pull up, review and modify diffs easily. A full code
- * editor such as Monaco is not needed.
+ * The owner: "i think we should offer a basic diff editing screen... All we
+ * want though -- it might not make sense to use monaco -- is the original file
+ * and the new file; split; in a popup window with easy text editing over both
+ * and a save this version under both, so a user can pull up review and modify
+ * diffs easily."
  *
- * TWO TEXTAREAS, AND NO EDITOR LIBRARY. The obvious dependency is the wrong
- * one: a code editor component is several megabytes of
+ * TWO TEXTAREAS, AND NO EDITOR LIBRARY. He doubted the obvious dependency and
+ * he was right about it: a code editor component is several megabytes of
  * third-party code entering a build whose publication boundary is decided file
  * by file, to draw two boxes a person types in. The product already has the
  * idiom this needs -- `ctl-textarea`, in src/cloud.css and the standing-rules
  * panel -- so the panes are two of those and nothing else.
  *
- * THE SAVE IS A DELIBERATE OVERRIDE, NOT A THING TO REFUSE. The user is warned
- * that the file may be stale (only advanced users use this), with a checkbox not
- * to show the warning again, and then does it themselves -- this is their
- * manual override of the agent.
+ * THE SAVE IS A DELIBERATE OVERRIDE, NOT A THING TO REFUSE. The owner again:
+ * "warn the user about the staleness possibility - only advanced users will use
+ * this anyway. and let them have a check box not to show them the warning again.
+ * then let them do it themselves - this is their manual override of the agent."
  * So the warning states plainly that the file may have moved since the agent
  * produced this version and that saving replaces it, offers to stop asking, and
  * then gets out of the way. There is no freshness token and no refusal on a
  * changed file anywhere in this path, and adding one later would be reversing a
- * decision they made in words.
+ * decision he made in words.
  *
  * WHY TYPING DOES NOT REDRAW THIS WINDOW. src/cloud-mirror-setup.js re-renders
  * its whole dialog on every input event and restores the caret afterwards,
@@ -362,7 +363,7 @@ export function refusalCode(result) {
 }
 
 /* THE WARNING, IN THE THREE STATES IT CAN HONESTLY BE IN. The first sentence is
-   the staleness point and is said every time. The second is what this
+   the owner's staleness point and is said every time. The second is what this
    window actually measured a moment ago, and "we could not tell" is a real
    answer that gets its own line rather than being rounded to either of the
    others. */
@@ -951,7 +952,7 @@ export function createDiffEditor({ documentRef, files, prefs, onClose = null, ex
     render()
   }
 
-  /* A close that would throw away hand edits asks once. The rule is
+  /* A close that would throw away hand edits asks once. The owner's ruling is
      about the SAVE being the person's own decision; it says nothing about
      losing an hour of editing to a stray Escape, and this window is the only
      place those edits exist. */

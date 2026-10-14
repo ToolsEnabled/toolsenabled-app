@@ -1,5 +1,5 @@
-/* THE VIEW COMES TO THE HAND. It was sometimes hard to pull an agent
- * far enough right to drop it on another agent's tree.
+/* THE VIEW COMES TO THE HAND. Owner, 2026-09-15: "sometime on the tree its
+ * hard to pull a agent far enough right to drop it on another agents tree."
  *
  * A pointer cannot leave the pane, so a drop target past the pane's edge was
  * unreachable: the held node stopped at the glass, and the only way on was to
@@ -132,8 +132,8 @@ test('an offered slot counts as somewhere to drop, so the pan keeps going for it
 /* AND A TARGET THAT HAS NOT ARRIVED YET IS THE REASON TO KEEP GOING.
  *
  * The first version of the guard above read the view AFTER the step, so a
- * drag whose only target was still off screen -- the reported case exactly,
- * pulling an agent far enough right to drop it on another agent's tree --
+ * drag whose only target was still off screen -- the owner's case exactly,
+ * "pull an agent far enough right to drop it on another agents tree" --
  * stopped on its first frame with nothing in view and never fetched anything.
  * Caught by hand in the real app, not by the suite, which is why it is here.
  * The rule is: do not pan PAST the last target, not: do not pan while none

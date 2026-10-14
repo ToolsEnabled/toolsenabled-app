@@ -6,7 +6,7 @@
  * nine hours after that screen shipped its own. The two were byte-identical and
  * home was never switched over, so from that hour there were two readers of one
  * record and no test anywhere on either of them. The cost arrived with the
- * first widening: the activity list is to show what each agent
+ * first widening: the owner asked the activity list to show what each agent
  * SAID, `reply` was already sitting on the node, and both readers took `role`
  * and `message` and dropped everything else.
  *
@@ -77,7 +77,7 @@ test('the join hands over the answer, not only the question', () => {
   assert.equal(said.role, 'helper', 'the metrics join lost the field it was extracted for')
   assert.equal(said.asked, 'Assist the coordinator and check in first.')
   assert.equal(said.reply, 'Checked in and started on the log.',
-    'the answer is on the node and the reader drops it, which is the report unfixed')
+    'the answer is on the node and the reader drops it, which is the owner’s report unfixed')
   assert.equal(said.status, 'finished')
   assert.equal(said.tier, 'claude-sonnet')
   assert.equal(said.nodeId, 'node-a')

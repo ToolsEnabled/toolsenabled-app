@@ -2,9 +2,9 @@
 
 /* DRIVE THE PROVIDER SIGN-IN SCREEN, AND THEN TRY TO START A CLAUDE AGENT.
  *
- * WHY THIS EXISTS RATHER THAN A UNIT TEST. The standard is that nothing counts
- * as working until it has been clicked through, and that is right about this
- * product specifically: this tree has had a green suite while the
+ * WHY THIS EXISTS RATHER THAN A UNIT TEST. The owner's standard is "I refuse to
+ * believe you that anything works until you click through it", and he is right
+ * about this product specifically: this tree has had a green suite while the
  * computers page could not draw, and green while a control that a hand could not
  * reach was reported as working. A suite asserts that a module returns the right
  * value. It cannot see a section that renders off the bottom of the window, a

@@ -1,6 +1,6 @@
 /* THE ADDRESS: A VALUE THE PERSON TYPES.
  *
- * The engine added a control class for exactly this -- `text`, meaning a
+ * The engine lane added a control class for exactly this -- `text`, meaning a
  * value typed rather than chosen -- and moved `model.endpoint` onto it. It
  * validates identically to the chooser class; what differs is what this window
  * draws for it, which is this file's subject. A field, not a chooser, and never

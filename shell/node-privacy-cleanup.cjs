@@ -45,7 +45,7 @@ function heldListOf(value) {
     : []
 }
 
-function createNodePrivacyCleanup({ prefs, org, transcripts, recoveryHandoffs = null, ownerGone: ownerGoneAction = null, finalizeOwnerGone = null, makeOperationId = () => `privacy-${crypto.randomUUID()}` }) {
+function createNodePrivacyCleanup({ prefs, org, transcripts, recoveryHandoffs = null, videoSources = null, ownerGone: ownerGoneAction = null, finalizeOwnerGone = null, makeOperationId = () => `privacy-${crypto.randomUUID()}` }) {
   const checked = answer => {
     if (!answer?.ok) throw new Error('Node privacy cleanup could not finish: ' + (answer?.error?.message || answer?.message || 'storage is unavailable'))
     return answer
@@ -66,6 +66,14 @@ function createNodePrivacyCleanup({ prefs, org, transcripts, recoveryHandoffs = 
   const clearRecoveryHandoffs = async () => {
     if (typeof recoveryHandoffs?.clearForPrivacy !== 'function') return
     await recoveryHandoffs.clearForPrivacy()
+  }
+  /* The saved video choices (agent-video-sources.cjs) name each agent's
+     window by title, so they go with the nodes, and by the transcripts' rule:
+     only after the org reset succeeded. The quit also closes the store, so a
+     late save cannot put a title back. Older isolated callers inject none. */
+  const clearVideoSources = ({ close = false } = {}) => {
+    if (typeof videoSources?.clearForPrivacy !== 'function') return
+    videoSources.clearForPrivacy({ close })
   }
   let committed = null
   /* The operation recover() found it may not continue in this process (B22).
@@ -102,7 +110,8 @@ function createNodePrivacyCleanup({ prefs, org, transcripts, recoveryHandoffs = 
     const readback = typeof prefs.confirmNodePrivacyCleanup === 'function'
       ? checked(prefs.confirmNodePrivacyCleanup())
       : null
-    if (!readback || readback.durable !== true || readback.sourceBytesAbsent !== true) {
+    if (!readback || readback.durable !== true || readback.sourceBytesAbsent !== true
+        || (typeof videoSources?.confirmCleared === 'function' && videoSources.confirmCleared() !== true)) {
       throw new Error('Node privacy cleanup bytes could not be durably read back. The owner-gone barrier remains active.')
     }
     return ledgerChecked(finalizeOwnerGone({
@@ -127,6 +136,7 @@ function createNodePrivacyCleanup({ prefs, org, transcripts, recoveryHandoffs = 
       committed = runOwnerGone(marker)
       checked(prefs.prepareNodePrivacyCleanup())
       checked(org.resetOrg())
+      clearVideoSources({ close: true })
       return committed
     },
     complete() {
@@ -169,6 +179,7 @@ function createNodePrivacyCleanup({ prefs, org, transcripts, recoveryHandoffs = 
       checked(org.resetOrg())
       await transcripts.clearForPrivacy()
       await clearRecoveryHandoffs()
+      clearVideoSources()
       finalize(marker)
       checked(prefs.remove(PENDING_KEY))
       committed = null

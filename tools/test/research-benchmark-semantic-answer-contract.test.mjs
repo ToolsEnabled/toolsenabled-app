@@ -9,7 +9,7 @@ import { leanInformationFixture } from './fixtures/research-benchmark-informatio
 
 const compile = (spec, task = spec.tasks[0]) => compileTask(spec, task, { requireReview: false, requireTaskReview: false })
 // Golden prompt identities were read by portable compilation from sealed
-// preparation-stage an earlier commit. No interpreter,
+// preparation-stage 9b7eaf38343c54c4a874736154c8d6e19946d3b4. No interpreter,
 // native engine, provider or candidate was executed to obtain them.
 const legacyHashes = {
   synchronous: '0a5db1edf39adc329d6cf0067d4423104369be2a5755d4e71367dd9d57419189',

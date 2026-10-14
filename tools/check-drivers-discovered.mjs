@@ -11,7 +11,7 @@
 // Two of the twenty-eight -- provider-login-drive and provider-guide-drive --
 // are the only drivers that exercise getting an assistant program and signing
 // in to it, which is the first thing a customer does. No cut had ever checked
-// it, and it was found the way customers do: a machine with Codex and
+// it, and the owner found out the way customers do: a machine with Codex and
 // Claude installed and signed in, told by the product that they were not
 // installed and to go and install them.
 //

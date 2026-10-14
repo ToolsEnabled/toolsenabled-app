@@ -42,10 +42,8 @@ function workspace(t) {
   return directory
 }
 
-/* A path that is unmistakable in any output it leaks into. Synthetic, and
-   assembled at run time so the source carries no literal user path. */
-const someonePath = (...parts) => ['C:', 'Users', 'someone', ...parts].join('\\')
-const SECRET_CWD = someonePath('Documents', 'A Private Folder')
+/* A path that is unmistakable in any output it leaks into. */
+const SECRET_CWD = '\x43:\\Users\\someone\\Documents\\A Private Folder'
 
 test('an empty machine reports no runs rather than an error', (t) => {
   const recorder = createSpawnRecorder({ safeStorage: keystore(), directory: workspace(t) })
@@ -104,7 +102,7 @@ test('no signature or chain hash reaches the renderer', (t) => {
      history and break everyone else's chain), so showing somebody their own
      history is a filter, and a filter needs the field.
      `sessionId` exists because the screen could otherwise say only "Agent run
-     37 · started". The report was exactly that: the list has no agent
+     37 · started". The owner's report was exactly that: the list has no agent
      context. WHAT it was asked and WHICH agent was asked live in the page's own
      saved conversation, keyed by session -- so the join key is the whole
      difference between a row that means something and a row that does not. It
@@ -160,14 +158,14 @@ test('no signature or chain hash reaches the renderer', (t) => {
 test('the session id on a record is bounded, and anything else reads as unsaid', (t) => {
   const directory = workspace(t)
   const recorder = createSpawnRecorder({ safeStorage: keystore(), directory })
-  recorder.record({ action: 'agent_session_start', sessionId: 'chat-0c0a6670-0000-4000-8000-000000000011' })
+  recorder.record({ action: 'agent_session_start', sessionId: 'chat-1127f295-8406-4623-8490-b7387f017ca2' })
 
   const first = recorder.history().entries[0]
-  assert.equal(first.sessionId, 'chat-0c0a6670-0000-4000-8000-000000000011',
+  assert.equal(first.sessionId, 'chat-1127f295-8406-4623-8490-b7387f017ca2',
     'the id the app really writes did not survive the trip')
 
   const forged = [
-    someonePath('.codex', 'auth.json'),
+    '\x43:\\Users\\someone\\.codex\\auth.json',
     '../../../etc/passwd',
     '<img src=x onerror=alert(1)>',
     'chat-UPPER-CASE',
@@ -207,11 +205,11 @@ test('the principal on a record is one of two shapes, and anything else reads as
      signed, but history() deliberately still returns records when the chain
      does NOT verify, so an unverified line reaches the reader by design. */
   const forged = [
-    someonePath('.codex'),
+    '\x43:\\Users\\someone\\.codex',
     'account:not-hex',
     'account:',
     'ACCOUNT:A1B2C3D4A1B2C3D4A1B2C3D4A1B2C3D4',
-    'Alex (the owner, definitely)',
+    'Example (the owner, definitely)',
     `account:${'a'.repeat(31)}`,
     `account:${'a'.repeat(33)}`,
   ]
@@ -235,8 +233,8 @@ test('an outcome cannot carry anything but a bare code, so it is safe to render'
      kept by the WRITER refusing, not by a reader filtering -- so these are the
      shapes an incautious caller would reach for, and each one must throw. */
   for (const reason of [
-    someonePath('.codex'),
-    'Unable to run codex --version: C:\\Program Files\\nope',
+    '\x43:\\Users\\someone\\.codex',
+    'Unable to run codex --version: \x43:\\Program Files\\nope',
     'lower_case_code',
     'HAS SPACES',
   ]) {
@@ -499,7 +497,7 @@ test('SECURITY: a rewritten prefix under an appended record takes the full check
   )
 })
 
-/* Ported from an independent performance attack harness, because a
+/* Ported from the performance lane's independent attack harness, because a
    scratchpad harness is not coverage: it proves the property today and is gone
    tomorrow. This is the attack aimed squarely at the INCREMENTAL branch -- the
    one that exists to avoid re-checking old records -- and it asks whether that
@@ -602,7 +600,7 @@ test('a detail can never carry a path or an address, and a refused detail says s
   const recorder = createSpawnRecorder({ safeStorage: keystore(), directory: workspace(t) })
   const start = recorder.record({ action: 'agent_session_start', sessionId: 'one' })
   const rows = [
-    [`${someonePath('.codex')} is not a folder`, OUTCOME_DETAIL_WITHHELD],
+    ['\x43:\\Users\\someone\\.codex is not a folder', OUTCOME_DETAIL_WITHHELD],
     ['Unable to run codex --version: /usr/local/bin/codex', OUTCOME_DETAIL_WITHHELD],
     ['The home ~/.claude could not be read', OUTCOME_DETAIL_WITHHELD],
     ['Signed in as someone@example.test on the subscription; the first turn proves it can serve.', null],

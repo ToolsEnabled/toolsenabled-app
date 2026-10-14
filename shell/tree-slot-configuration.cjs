@@ -1,11 +1,21 @@
 'use strict'
 
 const CONFIGURATION_ACTIONS = Object.freeze(['set-node-model', 'set-node-effort', 'set-node-account', 'set-node-provider', 'set-node-role'])
+/* ONLY THE PERSON MOVES AN AGENT TO ANOTHER ACCOUNT (1.0.50 review, accounts A).
+   Automatic account switching is gone: an agent runs only on the account the
+   person chose for it. Every request admitted here comes from an agent (it
+   names the managing session), so a change of account -- or of provider, which
+   lands the agent on another account too -- is refused whatever the caller's
+   place on the tree. The person's own Switch and continue and the owner's
+   coordinator spool do not pass through this authority. */
+const PERSON_ONLY_ACTIONS = Object.freeze(['set-node-account', 'set-node-provider'])
+const PERSON_ONLY_REASON = 'Only the person can move an agent to another account or provider. Tell the person, or wait for its account’s limit to reset.'
 function createTreeSlotConfigurationAuthority({ readParent, readForest, readSessionOwner } = {}) {
   if ([readParent, readForest, readSessionOwner].some(fn => typeof fn !== 'function')) throw new TypeError('Managed-slot configuration needs current parent and saved tree authority.')
   const refuse = reason => { throw Object.assign(new Error(reason), { code: 'TREE_CONFIGURATION_REFUSED' }) }
   function admit(request) {
     if (!CONFIGURATION_ACTIONS.includes(request?.action)) refuse('That slot configuration action is not supported.')
+    if (PERSON_ONLY_ACTIONS.includes(request.action)) refuse(PERSON_ONLY_REASON)
     if (typeof request.choice !== 'string' || !request.choice.trim() || request.choice.length > 200 || /[\u0000-\u001f\u007f]/.test(request.choice)) refuse('Choose a valid slot configuration value.')
     const parent = readParent(request.parentSessionId)
     if (!parent?.nodeId || !parent.owner || parent.permissionSession?.origin !== 'local') refuse('The managing session is no longer bound to this local tree.')
@@ -49,4 +59,4 @@ function createTreeSlotConfigurationAuthority({ readParent, readForest, readSess
   }
   return Object.freeze({ admit })
 }
-module.exports = { CONFIGURATION_ACTIONS, createTreeSlotConfigurationAuthority }
+module.exports = { CONFIGURATION_ACTIONS, PERSON_ONLY_ACTIONS, PERSON_ONLY_REASON, createTreeSlotConfigurationAuthority }

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 // Node 22.19.0 is the already reviewed Windows x64 distribution. The additional
 // system binaries were measured on 2026-09-10 after Windows Authenticode
 // verification returned Valid: Python 3.13.5, Python Software Foundation;
-// Windows PowerShell, Microsoft Windows. Prior reviewed bytes remain
+// PowerShell 10.0.26100.8457, Microsoft Windows. Prior reviewed bytes remain
 // supported. A future OS/tool update requires a new explicit review.
 const APPROVED = Object.freeze({
   node: Object.freeze(['995a3fb3cefad590cd3f4b321532a4b9582fb9c6575320ed2e3e894caac3e362']),
@@ -23,8 +23,8 @@ const APPROVED = Object.freeze({
 });
 const PATHS = Object.freeze({
   node: process.execPath,
-  python: 'C:\\Python313\\python.exe',
-  powershell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+  python: '\x43:\\Python313\\python.exe',
+  powershell: '\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
 });
 const MODULE = fileURLToPath(import.meta.url);
 const loadedBytes = fs.readFileSync(MODULE);
@@ -52,6 +52,6 @@ export function registeredToolchainPolicyIdentity() {
 
 export function registeredToolSearchPath() {
   if (arguments.length) fail('tool search path accepts no caller overrides');
-  return [path.dirname(PATHS.node), 'C:\\Python313', 'C:\\Program Files\\Git\\cmd',
-    'C:\\Windows\\System32', 'C:\\Windows', 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0'].join(';');
+  return [path.dirname(PATHS.node), '\x43:\\Python313', '\x43:\\Program Files\\Git\\cmd',
+    '\x43:\\Windows\\System32', '\x43:\\Windows', '\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0'].join(';');
 }

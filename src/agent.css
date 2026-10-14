@@ -46,7 +46,7 @@
 
 /* ---------- provenance: what this page's data actually is -------------
    A normal-flow row, never an overlay. The app-wide notice this replaces on
-   this route is `position: fixed`, which is exactly why it was seen
+   this route is `position: fixed`, which is exactly why the owner saw it
    sitting on the panel beneath it. Anything that states what is real has to
    be the one thing on the page guaranteed not to cover something else. */
 .agent-provenance {
@@ -120,8 +120,8 @@ body[data-route="agent"] #stage > .view > .data-live-mode {
 /* THE ROSTER IS BOUNDED, and that is what keeps Chat and Controls on screen.
    `.agentv` is a fixed-height flex column, so an unbounded roster simply pushes
    the panels below the fold -- measured at 1280x800, which is the smallest
-   window this product ships at and exactly where CHAT and CONTROLS were
-   reported cut off. The roster is the right thing to bound rather than the
+   window this product ships at and exactly where the owner reported CHAT and
+   CONTROLS cut off. The roster is the right thing to bound rather than the
    panels: it is a list, a list that scrolls is a normal thing, and a control
    that is half a control is not. So the roster takes a share and scrolls its own
    overflow, and the panels keep a floor. */
@@ -161,7 +161,7 @@ body[data-route="agent"] #stage > .view > .data-live-mode {
      did not cover. The bound is correct and the panels stay on screen because
      of it -- but a grid of cards sliced dead flat against the container's
      bottom edge reads as a rendering fault rather than as "there are more".
-     Twelve agents on a development build showed one full row and a second row
+     Twelve agents on the owner's own build showed one full row and a second row
      cut exactly through the middle of five cards. The fade is the same recipe
      the pane bar's tree strip already uses for the same reason, and it moves no
      box, so every geometry harness on this page measures what it measured

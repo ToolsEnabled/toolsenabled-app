@@ -56,8 +56,20 @@ test.after(() => rmSync(SCRATCH, { recursive: true, force: true }))
 /* The bound the host applies. Mirrored here rather than imported: the host
    does not export it, and a test that read the number back from the module it
    is checking would pass whatever the number became. */
-const TREE_HANDOFF_ATTEMPTS = 3
+const TREE_HANDOFF_ATTEMPTS = 5
 const POLL_MS = 150
+/* THE RETRY HAS A TIME BUDGET (T1743). A refused offer is retried 5, 10, 20
+   and then 30 seconds later, so five offers span at least a minute. The suite
+   moves the host's clock across each wait instead of sleeping through it:
+   Date.now is the host's only clock for that schedule. The courier's own
+   ticks, and every wait in this file, still run on real time. */
+const TREE_HANDOFF_FIRST_RETRY_MS = 5_000
+const TREE_HANDOFF_RETRY_MAX_MS = 30_000
+const realNow = Date.now
+let clockSkew = 0
+Date.now = () => realNow() + clockSkew
+test.after(() => { Date.now = realNow })
+const advanceHostClock = ms => { clockSkew += ms }
 
 function plan(workdir) {
   return {
@@ -73,8 +85,8 @@ function plan(workdir) {
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 async function waitFor(predicate, timeoutMs = 4_000) {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
+  const deadline = realNow() + timeoutMs
+  while (realNow() < deadline) {
     const value = predicate()
     if (value) return value
     await sleep(20)
@@ -232,6 +244,9 @@ test('a hand-off the engine refuses once, on a session that is still ready, is o
     engine.pendingTurns.length = 0
     engine.control.holdTurns = false
     held.reject(transientRefusal())
+    /* The retry waits out its first backoff; move the host's clock across it. */
+    await sleep(POLL_MS * 2)
+    advanceHostClock(TREE_HANDOFF_FIRST_RETRY_MS)
 
     const again = await waitFor(() => handOffsOf(engine, /^Worker: refused once\./).length === 2, 3_000)
     assert.ok(again,
@@ -285,8 +300,13 @@ test('a hand-off refused every time is offered a bounded number of times, then s
       senderAgentId: directory.agentIdForSession('child-session'),
       body: 'Worker: refused always.',
     })
-    /* Long enough for many more ticks than the bound allows. */
-    await sleep(POLL_MS * (TREE_HANDOFF_ATTEMPTS + 6))
+    /* Long enough for many more offers than the bound allows: each step lets
+       the courier tick, then moves the host's clock past the longest backoff. */
+    for (let step = 0; step < TREE_HANDOFF_ATTEMPTS + 6; step++) {
+      await sleep(POLL_MS * 2)
+      advanceHostClock(TREE_HANDOFF_RETRY_MAX_MS)
+    }
+    await sleep(POLL_MS * 2)
     const offers = handOffsOf(engine, /^Worker: refused always\./).length
     assert.equal(offers, TREE_HANDOFF_ATTEMPTS,
       `a message the engine refuses every time was offered ${offers} time(s); the rule is exactly ${TREE_HANDOFF_ATTEMPTS} (one is a silent drop, more is a queue held hostage)`)
@@ -624,7 +644,7 @@ for (const [label, mode] of [['refuses', 'refuse'], ['throws', 'throw']]) {
   })
 }
 
-/* T837 (STALLS-01). Two 9 s main-thread stalls on a live generation ran in the courier's delivery path --
+/* T837 (STALLS-01). Two 9 s main-thread stalls on gen-ca97a363 ran in the courier's delivery path --
    takeTreeBatch and the join, messageDeliveryDecision, and the synchronous part of the hand-off --
    and no timed span covered it. Three SIBLING spans now do, each carrying the batch size; sibling,
    because main-lag keeps only the single worst span and a nested outer one would hide the inner.

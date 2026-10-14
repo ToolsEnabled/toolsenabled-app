@@ -71,7 +71,7 @@ test('the Reports-to Save refuses under mock, before it reads the picker', () =>
 })
 
 test('the drag stays locked by the same truth: onReparent is null under mock', () => {
-  // an earlier commit also refuses renderer-side reparenting of the authoritative tree.
+  // 2443f5d0 also refuses renderer-side reparenting of the authoritative tree.
   assert.match(VIEW, /onReparent:\s*!mockSource\(\)\s*&&\s*!authoritativeTreeSnapshot\s*&&\s*orgReady\(\)\s*\?\s*handleReparent\s*:\s*null/,
     'mountGraph no longer nulls onReparent for the example — the drag becomes a fourth door with its own policy')
 })

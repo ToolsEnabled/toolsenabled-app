@@ -1,3 +1,4 @@
+// REPORT-C4-surface-rail-chat-tab.md
 //
 // The computers rail Chat tab is a distinct chat mount, so this pin identifies
 // it by its own host and follows the value returned by buildChat to the append.

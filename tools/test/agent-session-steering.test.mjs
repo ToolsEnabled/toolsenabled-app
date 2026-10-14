@@ -249,7 +249,7 @@ test('an idle control over a dead session never borrows the pending face', () =>
 test('every control names what it does, not the fleet verb it resembles', () => {
   const state = sessionControlAvailability({ live: true, agentId: 'a', session: record({ agentId: 'a', phase: 'working' }) })
   /* Pause is an interrupt, so it must not promise to resume. This is the
-     never-claim-a-control-that-cannot-be-set rule applied to a word. */
+     "dont lie like we cant control temperature" rule applied to a word. */
   assert.doesNotMatch(state.pause.reason, /resume|continue where|pick up/i)
   assert.match(state.pause.reason, /Stops the turn/)
   assert.match(state.respawn.reason, /lost/, 'respawn destroys the transcript and must say so')

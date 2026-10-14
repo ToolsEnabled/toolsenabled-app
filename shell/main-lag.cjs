@@ -2,11 +2,13 @@
 
 /* WHAT STOPPED THE MAIN THREAD, WRITTEN DOWN WHILE IT IS STILL TRUE.
  *
- * WHY THIS EXISTS. Windows recorded this application as hung: an AppHangB1
- * ("stopped interacting with Windows and was closed") and several
- * AppHangTransient events. WER wrote NO dump for any of them (the report
- * folder held only Report.wer and no LocalDumps entry covered this app), so
- * there is no stack to walk and no way to ask, after the fact,
+ * WHY THIS EXISTS. Windows recorded this application as hung four times on
+ * 2026-09-03 -- AppHangB1 at 17:12:58 ("stopped interacting with Windows and
+ * was closed", hang signature a92d7b805a6725e35747c68ed2f88d34) and
+ * AppHangTransient at 17:12:13, 19:12:44 and 20:57:38. WER wrote NO dump for
+ * any of them (the report folder holds Report.wer and nothing else, and
+ * HKLM\...\Windows Error Reporting\LocalDumps has entries only for NVIDIA and
+ * SolidWorks), so there is no stack to walk and no way to ask, after the fact,
  * which piece of work held the loop. AppHangB1 is a statement about exactly one
  * thing: the process that owns the window stopped pumping its message queue.
  * In Electron that is this process, and the only way it happens is that
@@ -32,7 +34,7 @@
  *
  * THE SINGLE-WORST-SPAN QUESTION IS NOT THE ONLY ONE, AND A RETRY LOOP THAT
  * NEVER YIELDS IS WHERE IT STOPS BEING ENOUGH. On the previous generation's
- * own record, a stall of lagMs 6544 was attributed
+ * own record (gen-6bfe1887, pid 20464), a stall of lagMs 6544 was attributed
  * to agent-event:forward with blockerMs 0, and eleven of the twelve recorded
  * stalls carried a blockerMs far below their lagMs: many small synchronous
  * spans under one label, none individually the longest thing seen that tick,
@@ -345,8 +347,8 @@ function createMainLagMonitor({
        *
        * A stall says the loop did not come back on time. It does not say why,
        * and the two reasons need opposite fixes: code that HELD the thread, or
-       * a thread that was not SCHEDULED. Measured 2026-09-06 on a development machine,
-       * both were live at once -- more runnable threads than logical processors, and
+       * a thread that was not SCHEDULED. Measured 2026-09-06 on this machine,
+       * both were live at once -- 8 logical processors, a run queue of 9, and
        * a durable-write path known to run in the app's own main process.
        * Argued from CPU figures taken at some other moment, the question just
        * changes answer with the weather.

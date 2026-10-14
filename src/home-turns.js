@@ -94,7 +94,7 @@ export const TURN_FOLD_CHARS = 1200
  * Null for an ordinary turn, so an ordinary turn keeps exactly the markup it
  * had. NOTHING IS HIDDEN BY DEFAULT: the fold ships open, and it exists so a
  * reader can put a wall away, not so the product can decide they did not want
- * to read it. The product's rule, and this screen's own: never gate the person.
+ * to read it. Owner's rule, and this screen's own: never gate the person.
  */
 export function turnFold(text) {
   const source = String(text == null ? '' : text)

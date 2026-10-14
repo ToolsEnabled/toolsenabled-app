@@ -5,7 +5,7 @@
 // right on screen:
 //
 //   1. A new store on a fresh computer holds NOTHING. The owner's first
-//      sentence about this surface is that the tree is empty until they have
+//      sentence about this surface is that the tree is empty until he has
 //      started something, and seed data is the kind of helpfulness that shows a
 //      person a structure they did not build.
 //   2. Saved state that is broken in any way reads back as NO trees, never as
@@ -499,7 +499,7 @@ test('an agent is added under a parent, at the top of a tree, or in a new one', 
 })
 
 /* PINNED AT 12,000, NOT MERELY "SOME NUMBER OVER 4,000". MEASURED 2026-09-03
- * (internal report): this is the same
+ * (REPORT-controller-2-tree-spawn-regression-20260903.md): this is the same
  * ceiling engine/src/lib/tool-registry.js's MAX_TREE_BRIEF_CHARS enforces for
  * a create-and-start-node brief BEFORE anything is drawn, and the two "MUST
  * move together" by that file's own comment -- a brief the engine accepts and
@@ -637,7 +637,7 @@ test('a cross-tree move clears its ordinal with the destination tree, not the on
 })
 
 test('a cross-tree move keeps the ordinal a node already registered when nothing collides, and still clears it when something does', () => {
-  /* MEASURED 2026-09-03: the fix directly above this test (an earlier commit) called
+  /* MEASURED 2026-09-03: the fix directly above this test (a6683d5) called
      nextNameOrdinal() unconditionally for every moved node, on every
      cross-tree move -- not only the ones that actually collided.
      nextNameOrdinal() always hands back the SMALLEST FREE number, not the
@@ -881,7 +881,7 @@ test('removing a live agent is refused with the words the palette shows', () => 
 // that does not exist and cannot be stopped — the person is told to do a thing
 // no button on any screen can do, and the row is stuck forever.
 //
-// The motivating case was the root of a new tree: an
+// The motivating case is node-1-11bbb999, root of tree-1-71d7d19a: an
 // INVESTIGATOR contract that never started. Reachable through this store's own
 // API, not hand-built — setNodeStatus guards 'running' against a null session
 // and deliberately does not guard 'starting'.
@@ -1402,7 +1402,7 @@ test('a circle keeps the name it registered when a same-role sibling is added', 
   assert.equal(nodeDisplayName(reloaded.nodes.find(node => node.id === second.id), reloaded.nodes, names), 'Manager 2')
 })
 
-/* AUDIT gap closed: an earlier app commit froze a
+/* AUDIT (page2/tree-store, wave 4) gap closed: app commit cd2748b froze a
    blank role's ordinal the same way a named role's already was, but its own
    test (tools/test/tree-edges-name-stability.test.mjs) only ever drove the
    LIVE store's nextNameOrdinal() — one of the three places that commit
@@ -1452,14 +1452,14 @@ test('a blank-role circle keeps its registered ordinal across a reload, after a 
 
 test('a legacy record with blank-role agents and no saved ordinals gets them assigned in saved order, one pool per tree', () => {
   // This is the literal shape every blank-role agent was saved in before app
-  // an earlier commit: nextNameOrdinal() used to refuse a role, so nameOrdinal
+  // commit cd2748b: nextNameOrdinal() used to refuse a role, so nameOrdinal
   // was always absent on a blank-role entry. The migration loops below the
   // reader (see 'MIGRATE OLD RECORDS IN MEMORY, DETERMINISTICALLY' in
   // src/fleet-trees.js) are what a person's very first launch after
   // upgrading runs against a real saved file, and they used to skip a
   // blank-role node outright (`if (!node.role || node.nameOrdinal === null)
   // continue`), leaving it permanently ordinal-less and back on the unstable
-  // live-count fallback -- the exact defect an earlier commit fixed for the live store,
+  // live-count fallback -- the exact defect cd2748b fixed for the live store,
   // left standing for anyone reopening an old save.
   const raw = record({
     trees: [{ id: 'tree-1', name: 'Front desk', createdAt: 'a', updatedAt: 'a' }],
@@ -1506,7 +1506,7 @@ const NAME_WORDS = {
    these assertions run against a key a person would actually be shown. */
 const productShapedIds = (offset = 0) => {
   let count = 0
-  const uuids = ['0b5e0c0a-0000-4000-8000-000000000002', '2f6a9c3e-1111-4222-8333-444455556666', '3c3c3c3c-3333-4333-8333-333333333333', 'fd0fd0fd-4444-4444-8444-444444444444']
+  const uuids = ['6c518599-05aa-4c77-a154-cefe49b278ed', '2f6a9c3e-1111-4222-8333-444455556666', 'aa11bb22-cc33-4dd4-8ee5-ff6677889900', 'bb22cc33-dd44-4ee5-8ff6-001122334455']
   return kind => {
     count += 1
     return `${kind}-${count}-${uuids[(count - 1 + offset) % uuids.length]}`
@@ -1525,8 +1525,8 @@ test('a scope key is answered with the words a person reads, by node id and by s
 
   assert.equal(names.get(root.id), 'Coordinator')
   /* THE FIRST SIBLING KEEPS THE BARE ROLE WORD. This assertion read 'Manager 1'
-     when it was written, which was true of the naming rule then. A later
-     tree-store commit froze the name a circle registers WITH: a circle that was
+     when it was written, which was true of the naming rule then. page2/tree-
+     store's cd2748b froze the name a circle registers WITH: a circle that was
      called "Manager" when it joined is still called "Manager" after a same-role
      sibling arrives, because renaming a running agent underneath the person
      watching it is the defect that commit closed (see 'a circle keeps the name
@@ -1585,8 +1585,8 @@ test('two saved records are read together, and the first to name a key keeps it'
  * A session dies with the application; its record does not. A child left
  * `starting`/`running` by a shutdown kept its seat for ever, so the next spawn
  * under that parent was refused by a child that no longer existed. Measured
- * 2026-09-19 from a report: an agent said it could not spawn more because it
- * hit the limit, while the children actually alive were below the cap.
+ * 2026-09-19 from the owner's question: an agent "says it can't spawn more
+ * because it hit the limit" while the children actually alive are below the cap.
  *
  * `ownedSessions` is the caller's set of sessions THIS APP RUN opened. These
  * drive the real store with values rather than pinning how the rule is spelled.

@@ -1,6 +1,6 @@
 /* OPENING AN AGENT THAT HAS ALREADY TALKED SHOWS WHAT IT SAID.
  *
- * Resume is part of the chat lifecycle. A walk found the
+ * The owner named resume as part of the chat lifecycle. Worker 82 found the
  * Agent page showing an EMPTY transcript for an agent with a full
  * conversation. mountAgentSessionSurface starts its transcript empty and only
  * ever fills it from live deltas, so the tree chat and the right rail -- which

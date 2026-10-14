@@ -1,7 +1,7 @@
 /* THE SETTINGS SECTION THAT SHOWS A PERSON THEIR CODE.
  *
- * After signing up, a user could not see how to connect their computer.
- * They signed up on the website; its account page asks them for a
+ * "as a user I dont even see how after signing up that I now connect my
+ * computer." They signed up on the website; its account page asks them for a
  * code; nothing in this application had ever shown them one. This section is
  * that missing half. src/device-claim-flow.js holds the rules and the states;
  * this holds the words, the markup, the calls and the ONE timer.
@@ -459,7 +459,7 @@ function noteMarkup(state) {
  *
  * The value and the placeholder used to be the identical string, so a box
  * carrying a real, submittable name read as an empty box wearing a hint --
- * and everybody left it alone. Two computers both enrolled as "My
+ * and everybody left it alone. The owner's two computers both enrolled as "My
  * Windows computer", and the account page then drew two identical rows
  * distinguishable only by date, next to a destructive button. A placeholder
  * that shows only when the box is EMPTY, and shows something nobody would
@@ -623,7 +623,7 @@ function webDriveMarkup(webDrive) {
 
 /* THE QUESTION, ASKED ONCE, AT THE MOMENT IT BECOMES MEANINGFUL.
  *
- * The rule: the prompt belongs at the moment the switch starts to
+ * The owner's ruling: the prompt belongs at the moment the switch starts to
  * matter, which is the moment this computer lands on an account. That moment
  * is precisely located -- `serviceConfirmed` is true only in the controller
  * that saw the poll come back `connected` (src/device-claim-flow.js), and every
@@ -1033,7 +1033,7 @@ export function createConnectComputerSettings({
     return `<section class="settings-section connect-section" data-settings-section="${esc(CONNECT_SECTION)}" data-connect-settings data-connect-phase="${esc(shownPhase)}">
       ${searchResult ? `<div class="settings-prefix">${relay.viaRelay ? 'Connect the computer you are driving to your account' : 'Connect this computer to your account'}</div>` : ''}
       <h2 class="settings-section-title">${esc(CONNECT_SECTION)}</h2>
-      <p class="settings-section-note" data-fra-testing-notice>FRA is only for testing purposes. It has not been independently tested yet.</p>
+      <p class="settings-section-note" data-fra-testing-notice>Full Remote Access (FRA), which lets you reach a computer from another device through your account, is only for testing purposes. It has not been independently tested yet.</p>
       <p class="settings-section-note host-absent-body">You signed up on the website, and its account page asks for a code. This is the screen that gives you one.</p>
       ${claimStatus}
       ${reservationMarkup(reservation, { deciding: decisionInFlight, refusal: decisionRefusal })}

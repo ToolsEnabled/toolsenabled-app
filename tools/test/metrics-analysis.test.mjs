@@ -187,3 +187,14 @@ test('every quiet Metrics panel asks whether auditing is off before it words an 
     /const runsWindowAbsence = \(\) => \{\s*if \(!records\?\.sessions\?\.readable\) return quietRecordNote\(records\?\.sessions, LOCAL_METRICS_COPY\.unreadable\)/,
     'the Run activity panel must use the short audit-off note rather than copying the source explanation')
 })
+
+/* 1.0.50 review CM-4. The Metrics table and its CSV name a typed model by its own name, "Other model" when the
+   record could not keep it, and the model row otherwise -- never the default row's name for a typed turn. */
+test('usage rows name a typed model, Other model, or the model row', () => {
+  const rows = usageAnalysis([
+    { sessionId: 'a', tier: 'astra', model: 'my-typed-model', modelChoice: 'typed', status: 'completed', totalTokens: 10, input: 6, output: 4 },
+    { sessionId: 'b', tier: 'astra', model: null, modelChoice: 'typed', status: 'completed', totalTokens: 10, input: 6, output: 4 },
+    { sessionId: 'c', tier: 'astra', status: 'completed', totalTokens: 10, input: 6, output: 4 },
+  ]).rows
+  assert.deepEqual(rows.map(row => [row.model, row.provider]), [['my-typed-model', 'codex'], ['Other model', 'codex'], ['GPT-6-Astra', 'codex']])
+})

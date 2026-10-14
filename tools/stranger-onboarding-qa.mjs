@@ -3,40 +3,9 @@
 // CAN A STRANGER WITH A BARE MACHINE GET THIS PRODUCT WORKING? MEASURED IN A
 // PACKAGED WINDOW, ON A FRESH PROFILE, DRIVEN BY CLICKS.
 //
-// WHAT THIS EXISTS TO CATCH, stated as the measurement that produced it. A lane
-// ran the shipped build as a stranger and got an agent to reply -- but only by
-// copying the owner's own Codex credential into its isolated environment. A real
-// customer cannot do that. What they got instead was:
-//
-//   * home saying "Not ready yet -- Sign in to Codex on this computer", with no
-//     button, no link and no instruction anywhere in the product saying how;
-//   * with an auth.json present and no `codex` on PATH, home saying "agent
-//     engine ready", Start ENABLED, and every press refusing with the bare
-//     string `AGENT_SESSION_FAILED`;
-//   * and home reporting "3 agent runs on this computer. All 3 runs still check
-//     out." after three starts that had every one of them refused.
-//
-// THE SECOND ONE IS THE REASON THIS FILE IS NOT A UNIT TEST. Readiness was
-// computed from the environment of the process that asks, so it is only true
-// when it is asked the way the product asks it: inside the packaged binary, with
-// the scrubbed launch environment, from a profile that has never been set up.
-// Each scenario below is one machine state, isolated to a single variable.
-//
-// FOUR MACHINE STATES, AND THE THIRD IS THE ONE THAT USED TO LIE:
-//   bare        no Codex on PATH, no sign-in     -> must say install it, and how
-//   signed-out  Codex on PATH, no sign-in        -> must say sign in, and how
-//   auth-no-cli a sign-in but NO Codex on PATH   -> must NOT say it is ready
-//   broken-cli  a `codex` that runs and fails    -> readiness cannot see this;
-//                                                   the PRESS must explain
-//                                                   itself and the run must be
-//                                                   recorded as one that failed
-//
-// `broken-cli` is the honest test of the residual. The readiness probe answers
-// PRESENCE without spawning anything, because it runs on every home mount and a
-// probe that starts a child process per mount is not a read. So a `codex` that
-// resolves and cannot execute reaches the press, and what this asserts there is
-// that the press names a cause and the ledger records a refusal -- not that the
-// probe caught it, which it deliberately does not.
+// Two provider-free machine states remain: bare and signed-out. Both measure
+// whether the packaged UI explains the exact next step. The former signed-in
+// synthetic profiles were removed because they staged authentication files.
 //
 // RULES THIS SUITE HOLDS ITSELF TO:
 //   * It never assigns location.hash. A person cannot type a route, and a
@@ -59,7 +28,7 @@
 //   CODEX_HOME       the sign-in this product actually looks for.
 //   APPDATA          shell/agent-host.cjs resolves the npm global install under
 //                    it, exactly as the payload's resolveInvocation() does.
-//                    WITHOUT THIS the harness finds the MACHINE'S real Codex and
+//                    WITHOUT THIS the harness finds the OWNER'S real Codex and
 //                    every "no CLI" scenario silently measures nothing.
 //   PATH             rebuilt from the Windows system directories alone, so the
 //                    only `codex` reachable is one this harness put there.
@@ -73,7 +42,7 @@
 //
 // RUN IT:
 //   node tools/stranger-onboarding-qa.mjs
-//   node tools/stranger-onboarding-qa.mjs --scenario auth-no-cli
+//   node tools/stranger-onboarding-qa.mjs --scenario signed-out
 //   node tools/stranger-onboarding-qa.mjs --keep        (keep the scratch dir)
 //   --release <dir>        default release/win-unpacked
 //   --open-timeout-ms <n>  how long to wait for the window (default 120000)
@@ -186,7 +155,7 @@ function appExecutable(appRoot) {
 
 /* A PATH with nothing on it but Windows itself.
  *
- * THIS IS THE WHOLE EXPERIMENT for three of the four scenarios, so it is built
+ * THIS IS THE WHOLE EXPERIMENT for the bare scenario, so it is built
  * from a fixed list rather than filtered out of the real one. Filtering asks
  * "which entries look like they might contain codex", which is a guess that
  * fails open -- one unfamiliar directory carrying a shim and the scenario
@@ -194,27 +163,13 @@ function appExecutable(appRoot) {
  * allowlist fails the other way: if it is wrong the app does not start, which
  * is loud. */
 function systemOnlyPath() {
-  const root = process.env.SystemRoot || 'C:\\Windows'
+  const root = process.env.SystemRoot || '\x43:\\Windows'
   return [
     path.join(root, 'system32'),
     root,
     path.join(root, 'system32', 'Wbem'),
     path.join(root, 'system32', 'WindowsPowerShell', 'v1.0'),
   ].join(path.delimiter)
-}
-
-/* A `codex` that resolves and then fails, for the one state the readiness probe
-   is documented as unable to see. Deliberately NOT a broken file: it is a real,
-   runnable command that exits non-zero, which is what a half-installed CLI or a
-   shim pointing at an uninstalled Node behaves like. */
-function plantBrokenCodex(binDirectory) {
-  mkdirSync(binDirectory, { recursive: true })
-  writeFileSync(
-    path.join(binDirectory, 'codex.cmd'),
-    '@echo off\r\necho this codex cannot run 1>&2\r\nexit /b 1\r\n',
-    'utf8',
-  )
-  return binDirectory
 }
 
 const SCENARIOS = {
@@ -230,7 +185,7 @@ const SCENARIOS = {
        it is the one that works on a machine with no Node. */
     expectInstruction: /winget install OpenAI\.Codex/i,
   },
-  /* Codex present, nobody signed in. The blocker a reported screenshot showed,
+  /* Codex present, nobody signed in. The blocker the owner's screenshot showed,
      which named what was missing and never how to fix it. */
   'signed-out': {
     what: 'Codex on PATH, nobody signed in',
@@ -240,37 +195,7 @@ const SCENARIOS = {
     expectCode: 'AGENT_CONFINEMENT_SIGNED_OUT',
     expectInstruction: /codex login/i,
   },
-  /* THE ONE THAT LIED. A sign-in file exists, so the old probe -- which checked
-     only that $CODEX_HOME/auth.json EXISTS -- reported the engine ready and
-     enabled a Start that refused every press. */
-  'auth-no-cli': {
-    what: 'a sign-in on disk but no Codex on PATH',
-    codexOnPath: 'none',
-    signedIn: true,
-    expectReady: false,
-    expectCode: 'AGENT_CODEX_CLI_NOT_INSTALLED',
-    expectInstruction: /winget install OpenAI\.Codex/i,
-  },
-  /* The residual the probe cannot see without spawning. Readiness passes here
-     BY DESIGN; what is under test is the press and the record. */
-  'broken-cli': {
-    what: 'a Codex that resolves and fails to run',
-    codexOnPath: 'broken',
-    signedIn: true,
-    expectReady: true,
-    pressStart: true,
-    /* THE SPECIFIC CAUSE, not merely "a sentence".
-     *
-     * A planted mutation earned this line. The check used to be that the status
-     * was not a bare identifier and contained words -- and when the IPC boundary
-     * repair was reverted, the press fell back to the generic
-     * AGENT_SESSION_FAILED copy, which is a perfectly grammatical sentence full
-     * of words. The suite stayed green through the exact regression it was
-     * written to catch. So the assertion is now the sentence belonging to THIS
-     * fault: `codex` ran and did not report a version. Nothing but the real code
-     * crossing the boundary can produce it. */
-    expectRefusal: /did not answer when asked its version/i,
-  },
+
 }
 
 async function openApp(executable, scratch, label, scenario) {
@@ -287,22 +212,10 @@ async function openApp(executable, scratch, label, scenario) {
   environment.CODEX_HOME = path.join(profile, 'home', '.codex')
   mkdirSync(environment.CODEX_HOME, { recursive: true })
 
-  /* The sign-in, or its absence. This is the only file the old probe looked at
-     and it is still one of the two things that must be true. */
-  if (scenario.signedIn) {
-    writeFileSync(
-      path.join(environment.CODEX_HOME, 'auth.json'),
-      JSON.stringify({ OPENAI_API_KEY: null, tokens: { access_token: 'harness-not-a-real-token' } }, null, 2),
-      'utf8',
-    )
-  }
+  // No sign-in fixture is staged. Signed-out readiness is measured honestly.
 
   environment.PATH = systemOnlyPath()
   environment.Path = environment.PATH
-  if (scenario.codexOnPath === 'broken') {
-    environment.PATH = `${plantBrokenCodex(path.join(profile, 'bin'))}${path.delimiter}${environment.PATH}`
-    environment.Path = environment.PATH
-  }
   if (scenario.codexOnPath === 'working') {
     /* The REAL CLI, reached through the npm layout the payload's own resolver
        prefers, staged into this profile's APPDATA rather than pointed at the

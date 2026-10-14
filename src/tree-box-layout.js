@@ -30,6 +30,9 @@ export function liveContextSize(size) {
 }
 export const TREE_BOX = TREE_CONTEXT_SIZES.medium.box
 export const TREE_STYLE_KEY = 'mc.set.tree_style'
+/* The graph says so on the page whenever Boxes/Circles or edit mode changes.
+   The Video section (1.0.49) listens, to say why no panel shows. */
+export const TREE_VIEW_CHANGE_EVENT = 'mc-tree-view-change'
 export const TREE_CARDS_KEY = 'mc.set.tree_cards'
 export const TREE_CONTEXT_SIZE_KEY = 'mc.set.tree_context_size'
 
@@ -58,9 +61,50 @@ export function readTreeStyle(storage = globalThis.localStorage) {
   catch { return 'boxes' }
 }
 
+/* THE VIDEO UNDER A BOX (1.0.49). A 16:9 panel as wide as the box hangs 8px
+   under it, so a rank that holds a video needs that much more room below it
+   before the next rank starts. Only such ranks pay: a uniform lane would leave
+   a blank band under every box when one leaf has video, and fold a deep tree
+   far sooner. Mini 137, Small 162, Medium 180, Large 236. */
+export const BOX_VIDEO_GAP = 8
+export function boxVideoExtent(width) {
+  return Object.freeze({ gap: BOX_VIDEO_GAP, height: Math.round(width * 9 / 16) })
+}
+/** The extra room a box with a video takes below itself: gap plus panel. */
+export function boxVideoLane(box) {
+  const extent = boxVideoExtent(box.width)
+  return extent.gap + extent.height
+}
+function videoIdSet(videoIds) {
+  if (!videoIds) return null
+  const ids = new Set(videoIds)
+  return ids.size ? ids : null
+}
+// The ranks (in rowOf's numbering) that hold a drawn box with a video.
+function videoRanksOf(videoIds, rowOf, culled) {
+  const ranks = new Set()
+  if (!videoIds) return ranks
+  for (const id of videoIds) {
+    const rank = rowOf.get(id)
+    if (Number.isInteger(rank) && !culled?.has(id)) ranks.add(rank)
+  }
+  return ranks
+}
+/* Rank centres, each one pitch below the last plus a video lane under every
+   rank above it that holds a video. With no video this is exactly the old
+   `first + rank * pitch`: nothing is added, not even a zero. */
+function rankYs(first, count, pitch, lane, videoRanks) {
+  let lanes = 0
+  return Array.from({ length: count }, (_, rank) => {
+    const y = lanes ? first + rank * pitch + lanes * lane : first + rank * pitch
+    if (videoRanks.has(rank)) lanes++
+    return y
+  })
+}
+
 // Separate trees may use separate canvas rows. Each tree moves as a whole:
 // its subtree placement and connectors keep the original layout's geometry.
-function packBoxForest(result, box, W, H) {
+function packBoxForest(result, box, W, H, videoIds = null) {
   if (result.slots.size < 2) return result
   const heads = new Map([...result.slots.keys()].map(id => [id, id]))
   const find = id => {
@@ -101,23 +145,34 @@ function packBoxForest(result, box, W, H) {
   const fit = (width, height) => Math.min(1, availableW / width, availableH / height)
   const width = Math.max(...trees.map(tree => tree.right)) - Math.min(...trees.map(tree => tree.left))
   const firstRank = Math.min(...trees.map(tree => tree.firstRank)), lastRank = Math.max(...trees.map(tree => tree.lastRank))
-  let bestFit = fit(width, box.height + (lastRank - firstRank) * pitch), best = null
+  /* Each rank that holds a video is one video lane taller, the last rank
+     included: its panel still hangs below the forest. */
+  const lane = videoIds ? boxVideoLane(box) : 0
+  const videoRanks = videoRanksOf(videoIds, result.rowOf, result.culled)
+  const withLanes = (height, count) => count ? height + count * lane : height
+  let bestFit = fit(width, withLanes(box.height + (lastRank - firstRank) * pitch, videoRanks.size)), best = null
   // A view that already fits at natural size needs no packing change. Trying
   // wider rows first also keeps ties stable and avoids needless extra rows.
   if (bestFit >= 1) return result
   for (let columns = trees.length; columns >= 1; columns--) {
-    const rows = []
+    const rows = [], packedVideoRanks = new Set()
     let packedWidth = 0, rankCount = 0
     for (let start = 0; start < trees.length; start += columns) {
       const rowTrees = trees.slice(start, start + columns)
       const rowWidth = rowTrees.reduce((sum, tree) => sum + tree.right - tree.left, 0) + (rowTrees.length - 1) * gap
       const ranks = Math.max(...rowTrees.map(tree => tree.lastRank - tree.firstRank + 1))
       rows.push({ trees: rowTrees, width: rowWidth, rank: rankCount })
+      for (const tree of rowTrees) for (const rank of videoRanks) {
+        if (rank >= tree.firstRank && rank <= tree.lastRank
+          && tree.ids.some(id => videoIds.has(id) && result.rowOf.get(id) === rank && !result.culled?.has(id))) {
+          packedVideoRanks.add(rankCount + rank - tree.firstRank)
+        }
+      }
       packedWidth = Math.max(packedWidth, rowWidth)
       rankCount += ranks
     }
-    const score = fit(packedWidth, box.height + (rankCount - 1) * pitch)
-    if (score > bestFit + 1e-9) { bestFit = score; best = { rows, rankCount } }
+    const score = fit(packedWidth, withLanes(box.height + (rankCount - 1) * pitch, packedVideoRanks.size))
+    if (score > bestFit + 1e-9) { bestFit = score; best = { rows, rankCount, videoRanks: packedVideoRanks } }
   }
   if (!best) return result
   const offsets = new Map()
@@ -128,7 +183,7 @@ function packBoxForest(result, box, W, H) {
       left += tree.right - tree.left + gap
     }
   }
-  const rowYs = Array.from({ length: best.rankCount }, (_, rank) => result.rowYs[0] + rank * pitch)
+  const rowYs = rankYs(result.rowYs[0], best.rankCount, pitch, lane, best.videoRanks)
   const rowOf = new Map([...result.rowOf].map(([id, rank]) => [id, rank + offsets.get(id).rank]))
   const slots = new Map([...result.slots].map(([id, point]) => [id, { x: point.x + offsets.get(id).dx, y: rowYs[rowOf.get(id)] }]))
   return { ...result, slots, rowYs, rowOf }
@@ -139,7 +194,10 @@ function packBoxForest(result, box, W, H) {
 // fitter from shrinking this footprint or reflowing branches on a window resize.
 // The box already contains its labels, so its vertical pitch uses its actual
 // height with a clear connector lane between ranks.
-export function layoutBoxTree({ nodes = [], edges = [], W = 800, H = 600, contextSize = 'medium' } = {}) {
+//
+// videoIds: the agents whose box shows a video panel. Only the ranks that hold
+// one get the extra lane; with none, the result is exactly the old layout.
+export function layoutBoxTree({ nodes = [], edges = [], W = 800, H = 600, contextSize = 'medium', videoIds = null } = {}) {
   const box = treeBoxSize(contextSize)
   const footprint = Math.max(box.width, box.height)
   const layoutNodes = (Array.isArray(nodes) ? nodes : []).map(node => ({ ...node, r: footprint / 2 }))
@@ -149,19 +207,25 @@ export function layoutBoxTree({ nodes = [], edges = [], W = 800, H = 600, contex
     const worldHeight = 320 + (result.rowYs.length - 1) * (footprint + TREE_LABEL_STACK + 7)
     result = layoutTree({ ...options, H: worldHeight })
   }
-  const rowYs = result.rowYs.map((y, index) => result.rowYs[0] + index * (box.height + box.rowGap))
+  const video = videoIdSet(videoIds)
+  const rowYs = rankYs(result.rowYs[0], result.rowYs.length, box.height + box.rowGap,
+    video ? boxVideoLane(box) : 0, videoRanksOf(video, result.rowOf, result.culled))
   const slots = new Map([...result.slots].map(([id, point]) => [id,
     { x: point.x, y: rowYs[result.rowOf.get(id)] ?? point.y }]))
   return packBoxForest({
     ...result, slots, rowYs, W, H,
     radii: new Map([...result.radii.keys()].map(id => [id, box.height / 2])),
-  }, box, W, H)
+  }, box, W, H, video)
 }
 
-export function boxPort(from, to, scale = 1, contextSize = 'medium') {
+// below: extra height under the box (its video panel), so a direct link meets
+// the outline of the box and panel together rather than cutting across the video.
+export function boxPort(from, to, scale = 1, contextSize = 'medium', below = 0) {
   const box = treeBoxSize(contextSize)
+  if (below > 0) from = { x: from.x, y: from.y + below / 2 }
+  const height = below > 0 ? box.height * scale + below : box.height * scale
   const dx = to.x - from.x, dy = to.y - from.y
   const factor = Math.min(dx ? box.width * scale / 2 / Math.abs(dx) : Infinity,
-    dy ? box.height * scale / 2 / Math.abs(dy) : Infinity)
+    dy ? height / 2 / Math.abs(dy) : Infinity)
   return Number.isFinite(factor) ? { x: from.x + dx * factor, y: from.y + dy * factor } : { x: from.x, y: from.y }
 }

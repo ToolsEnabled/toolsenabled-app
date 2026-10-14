@@ -1,10 +1,12 @@
 /* WHAT ONE AGENT SAYS TO ANOTHER IS NOT WHAT THE PERSON'S CHAT IS FOR.
  *
- * Tree rule R1203: messages between agents go to the Messages page, where the
- * user can track agent comms; they do not appear in the chat window where the
- * user chats with the agents.
+ * The person's own words, filed as tree rule R1203: "in chat windows, agents
+ * comms are seen in chat windows for the user. Messages inbetween agents are
+ * supposeed to go to messages page so the user can track the agent comms from
+ * there. Those messages should not appear in the chat window where users chat
+ * with the agents."
  *
- * MEASURED BEFORE THIS WAS WRITTEN, on the base an earlier app commit. A durable
+ * MEASURED BEFORE THIS WAS WRITTEN, on the base app 8d89678e. A durable
  * arrival is read off the payload inbox by shell/agent-host.cjs
  * (pumpTreeSessionOnce) and put on the person-visible event stream by
  * showIncoming(), shaped as the engine's own `assistant_text_delta` -- its own
@@ -74,7 +76,7 @@ test.after(() => rmSync(SCRATCH, { recursive: true, force: true }))
 const { sessionEventText } = await import('../../src/agent-session-events.js')
 const { createTranscriptStore } = await import('../../src/session-transcript-store.js')
 
-const SIBLING_SAYS = 'Worker 8: the gate is green at 1f2e3d4c and the log is on disk.'
+const SIBLING_SAYS = 'Worker 8: the gate is green at 5c649e68 and the log is on disk.'
 const AGENT_REPLIES = 'I read that and I am folding it into the report now.'
 const PERSON_TYPED = 'Show me what came back from the other circle.'
 

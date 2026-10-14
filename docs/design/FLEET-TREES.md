@@ -1,6 +1,6 @@
 # More than one tree per computer
 
-**Requirement:** a computer can hold more than one tree,
+**Owner's words:** "they should also be able to have more than 1 tree per computer",
 alongside: the tree is empty until a session is started, empty nodes are drawn and
 pressed to extend the structure, and pressing one opens a right-side panel for role
 and message.
@@ -28,14 +28,15 @@ concept, and nothing below needs one.
    that cap engage. The engine's eight is the BACKSTOP for every nested launch —
    teams, loops and grids — and is unchanged.
    **The tree's own width is four** (`TREE_BOUNDS.maxChildren` in `src/fleet-trees.js`),
-   below that backstop, by a recorded decision: ship with width four, and defer
-   the 8:1 implementation and its research. Depth stays the engine's. A tree saved while the tree's width was eight
+   below that backstop, by the owner's decision of 2026-09-11: "ok it sounds like
+   shipping with 4 width is best. we will defer the 8:1 implementation and research
+   for now". Depth stays the engine's. A tree saved while the tree's width was eight
    can hold more than four live children under one parent; it loads, draws, moves
    and resumes as saved, and only a new seat under that parent is refused until it
    drops below four. One kind of tree is exempt: the tree a local research grid
    builds for itself is created `kind: 'experiment'` and seats the engine's eight
-   (`EXPERIMENT_TREE_MAX_CHILDREN`), because loops and grids do not need to be
-   tied together or to any of this. Loops never take a
+   (`EXPERIMENT_TREE_MAX_CHILDREN`), because "loops and grids dont even need to be
+   tied together or to any of this" (the owner, 2026-09-11). Loops never take a
    tree seat at all: their runs are engine launches.
 
 3. **Dispatch takes a fixed set of fields.** `actions.js` `dispatch` calls
@@ -229,7 +230,7 @@ What that store already gets right, and what this design relies on:
   emptied tree is removed). The earlier refusal guarded against a drag silently
   re-treeing a branch; the measured first run made the case for the reversal:
   every agent begins as its own single-node tree, so connecting two agents IS a
-  cross-tree move, and that move is a supported request;
+  cross-tree move, and the owner asked for it in words;
 - `removeTree()` takes its agents with it rather than orphaning them;
 - every refusal is a sentence, not a code.
 
@@ -290,9 +291,9 @@ made, and here, where the feature is specified.
 ## 8. Session profiles: a tree can own its folder (limitation retired 2026-08-14)
 
 **This section recorded a limitation — every agent on this computer ran in one shared
-folder — until the feature that retires it (iteration 5, W6: separate onboardings
-caused problems for work outside ToolsEnabled).
-That limitation is now retired.**
+folder — until the owner ordered the feature that retires it (iteration 5, W6:
+"different onboardings cause me a lot of issues when doing non toolsenabled work").
+The old text's own closing line said the owner decides; he did.**
 
 ### What is true today, measured
 

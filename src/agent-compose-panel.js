@@ -1,7 +1,7 @@
 /* THE PANEL THAT ASKS A PERSON WHAT THE NEW AGENT IS AND WHAT IT SHOULD DO.
  *
- * Pressing an empty node in the fleet tree lets a person assign the role, the
- * message and the rest from the right side panel.
+ * Owner, on pressing an empty node in the fleet tree: "then they should be able
+ * to assign role and message and such from the right side panel".
  *
  * So this is two fields and two buttons. The whole design argument is about what
  * it deliberately does NOT do, because every one of those omissions is a lie
@@ -77,6 +77,9 @@ import {
 } from './fleet-tree-copy.js'
 import { railTitleRowElement } from './rail-title.js'
 import { controlState, pastedImageFromClipboard } from './components.js'
+import { offersLocalSetup } from './local-setup-popup.js'
+import { offeredEffort, tierDefaultEffort } from './orchestration-controls.js'
+import { OTHER_MODEL_VALUE, OTHER_MODEL_LABEL, MODEL_NAME_HELP, customModelTier, modelIdProblem, modelEffortRow, createModelNameField } from './model-picker.js'
 
 const asText = value => (typeof value === 'string' ? value : '')
 const asTrimmed = value => asText(value).trim()
@@ -149,8 +152,8 @@ export function assignableRoles(source = ROLE_CHOICES) {
 /**
  * The role a draft actually carries, out of what the menu is offering.
  *
- * THE ROLE IS OPTIONAL AND THIS IS WHAT MAKES THAT SAFE. Users are not forced
- * to choose a role. The panel no longer refuses a
+ * THE ROLE IS OPTIONAL AND THIS IS WHAT MAKES THAT SAFE. Owner, 2026-08-19:
+ * "users shouldnt be forced to choose a role". The panel no longer refuses a
  * draft with no role -- so the question stopped being "may this press through"
  * and became "what does this draft say the role is", which is a different
  * function and belongs in its own.
@@ -177,8 +180,8 @@ export function composeDraftRole(role = '', roles = ROLE_CHOICES) {
  * form that a screenshot never proves and a unit test proves exactly. Returns an
  * empty list when the draft may be handed over.
  *
- * THE ROLE IS NOT ONE OF THEM ANY MORE (users are not forced to choose a
- * role). It is not softened, not deferred and not hidden
+ * THE ROLE IS NOT ONE OF THEM ANY MORE (owner, 2026-08-19: "users shouldnt be
+ * forced to choose a role"). It is not softened, not deferred and not hidden
  * behind a hover -- the refusal is gone, and START_PANEL.needRole went with it.
  * A start with no role is a real start: fleet-trees.js stores an empty role by
  * design, startingLine() and runningLine() drop the role clause rather than
@@ -194,8 +197,9 @@ export function composeDraftRole(role = '', roles = ROLE_CHOICES) {
  *
  * @returns [{ field: 'message', sentence: string }]
  */
-export function composeDraftProblems({ message = '' } = {}) {
+export function composeDraftProblems({ message = '', model = null } = {}) {
   const problems = []
+  if (model != null && modelIdProblem(model)) problems.push({ field: 'model', sentence: modelIdProblem(model) })
 
   if (!asTrimmed(message)) {
     problems.push({ field: 'message', sentence: START_PANEL.needMessage })
@@ -206,8 +210,10 @@ export function composeDraftProblems({ message = '' } = {}) {
 
 /* THE FIVE PARAGRAPHS THAT TAUGHT, AND WHERE THEY WENT.
  *
- * The page 2 right panel read as cluttered, so some of the tips show only on
- * hover, in a clean box in theme, after a slightly longer delay (about 1s).
+ * Owner, 2026-08-19, on this panel for the second time: "pg 2 right pnel STILL
+ * reads ugly and messy. Make some of the tips only show on hover (give it a
+ * nice clean box in theme and give it a slightly longer delay like 1s) so it
+ * isnt so messy".
  *
  * THE LINE THIS DRAWS, AND IT IS THE ONLY ONE THAT MATTERS HERE. A tip EXPLAINS
  * a control: it is true on every computer, it says the same thing whatever this
@@ -226,8 +232,8 @@ export function composeDraftProblems({ message = '' } = {}) {
  *                   the progress line, the brief's refusal, and every tier row
  *                   that says nobody is signed in or the program is not here
  *   VISIBLE (kept)  the intro and the empty-tree suggestion: one short line
- *                   each, they orient rather than teach, and SOME of the tips
- *                   were asked for. The chosen role's summary stays too
+ *                   each, they orient rather than teach, and the owner asked
+ *                   for SOME of the tips. The chosen role's summary stays too
  *                   -- it appears only after a deliberate choice and is the
  *                   answer to that choice.
  *
@@ -328,7 +334,7 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
   root.setAttribute('tabindex', '-1')
 
   /* The nav row first, so Cancel sits in the SAME back slot every rail page
-     puts its back button in (defect 6: no mouse travel between pages).
+     puts its back button in (owner defect 6: no mouse travel between pages).
      Cancel keeps its honest word -- this button discards a draft, it does not
      merely navigate -- but it lives where the going-back muscle memory already
      points. Same element, same data attribute, same disable wiring as when it
@@ -350,7 +356,7 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
      The rail is a fixed box (`.rail { overflow: hidden }`) whose pages are
      `position: absolute; inset: 0`, so this panel can never make the rail
      taller -- it can only overflow it and be clipped. That is exactly what
-     happened: the report was that Start could not be reached by scrolling,
+     happened: the owner reported "I cant scroll down to even press start",
      because this panel wants ~810px and the rail gives 560-700 on an
      ordinary window. The previous answer was to buy 30px by deleting a
      heading, and the next feature (the effort row) spent it 3.6x over.
@@ -423,8 +429,8 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
    * press could do about them, and a control that cannot work is worse than the
    * sentence alone.
    *
-   * NOTHING IS WRITTEN UNTIL IT IS PRESSED. The rule for this flag is
-   * that their recorded answer stands until they change it themselves, so no render,
+   * NOTHING IS WRITTEN UNTIL IT IS PRESSED. The owner's rule for this flag is
+   * that his recorded answer stands until he changes it himself, so no render,
    * no mount and no open touches it -- only this click handler, and only
    * through the caller's own `run`, which owns the write. */
   const unavailableAction = doc.createElement('button')
@@ -436,6 +442,18 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
   unavailableAction.setAttribute('data-compose-unavailable-action', 'panel')
   unavailableAction.setAttribute('hidden', 'hidden')
   body.appendChild(unavailableAction)
+
+  /* THE WAY OUT OF A LOCAL MODEL THAT IS NOT SET UP. Drawn only when the
+     caller can open "Set up local models" AND this computer has said the Local
+     model cannot start yet -- by a refused Local start, or by the answer read
+     when Local was picked. Same vocabulary as the button above. */
+  const localSetupAction = doc.createElement('button')
+  localSetupAction.type = 'button'
+  localSetupAction.className = 'ctl-btn agent-compose-enable'
+  localSetupAction.setAttribute('data-compose-local-setup', 'panel')
+  localSetupAction.setAttribute('hidden', 'hidden')
+  localSetupAction.textContent = START_PANEL.localSetupButton
+  body.appendChild(localSetupAction)
 
   const roleField = doc.createElement('div')
   roleField.className = 'agent-compose-field'
@@ -455,8 +473,8 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
      something selected, and pre-selecting a real role would answer the panel's
      own question for the person and let a role nobody chose through on one
      press. So the first row is the copy module's own row for no role and its
-     value is empty. It used to be refused on Start; since 2026-08-19 (users
-     are not forced to choose a role) it starts, and the row says
+     value is empty. It used to be refused on Start; since 2026-08-19 (owner:
+     "users shouldnt be forced to choose a role") it starts, and the row says
      what it leaves the agent as rather than telling a person to choose. */
   const placeholder = doc.createElement('option')
   placeholder.value = ''
@@ -481,8 +499,8 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
   roleSummary.setAttribute('data-compose-summary', 'role')
   roleSummary.setAttribute('hidden', 'hidden')
   /* NO PROBLEM LINE UNDER THIS FIELD. There was one, and it carried exactly one
-     sentence -- "Pick a role first, then press Start." -- which was
-     retired. An alert element that nothing can ever fill is not
+     sentence -- "Pick a role first, then press Start." -- which the owner
+     retired on 2026-08-19. An alert element that nothing can ever fill is not
      harmless: it is a slot the next lane finds and fills with something this
      flow never proofread, and it keeps a marked-invalid state alive for a
      control that can no longer be wrong. */
@@ -497,8 +515,8 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
   roleField.appendChild(roleSummary)
   body.appendChild(roleField)
 
-  /* PROVIDER, THEN MODEL (1.0.48). Owner decision: every model of every
-   * provider is selectable, chosen as provider first, then model.
+  /* PROVIDER, THEN MODEL (1.0.48). Owner: "users need to be able to select all
+   * the models from the providers. it should be provider, then model choice".
    *
    * THE PROVIDER MENU IS A FILTER, NOT A SECOND ANSWER. The draft still carries
    * one model row id (`tier`) and never a provider: the provider is read off
@@ -581,6 +599,12 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
       option.disabled = choice.enabled === false
       tierSelect.appendChild(option)
     }
+    const other = doc.createElement('option')
+    other.value = OTHER_MODEL_VALUE
+    other.textContent = OTHER_MODEL_LABEL
+    const defaultRow = tiers.find(choice => choice.id === customModelTier(provider))
+    other.disabled = !defaultRow || defaultRow.enabled === false
+    tierSelect.appendChild(other)
   }
   /* THE OPENING MODEL: DEFAULT_TIER when this computer can start it; otherwise
      the DEFAULT of the first provider that can start one (review P8). Falling
@@ -601,8 +625,21 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
   modelPair.appendChild(providerField)
   modelPair.appendChild(tierField)
 
-  /* EFFORT RIDES BESIDE THE MODEL (iteration 5: effort levels must be
-     choosable when starting an agent, as in VS Code). The
+  const { field: modelField, input: modelInput } = createModelNameField(doc, { attribute: 'data-compose-field', className: 'agent-compose-field' })
+  modelInput.className = 'agent-compose-select'
+  const modelHelp = doc.createElement('small')
+  modelHelp.textContent = MODEL_NAME_HELP
+  modelField.appendChild(modelHelp)
+  const modelProblem = doc.createElement('p')
+  modelProblem.className = 'agent-compose-problem'
+  modelProblem.setAttribute('role', 'alert')
+  modelProblem.hidden = true
+  modelField.appendChild(modelProblem)
+  tierField.appendChild(modelField)
+  const selectedLaunchTier = () => tierSelect.value === OTHER_MODEL_VALUE ? customModelTier(providerSelect.value) : tierSelect.value
+
+  /* EFFORT RIDES BESIDE THE MODEL (owner, iteration 5: "I need to be able to
+     choose effort levels when starting an agent … just like vscode"). The
      menu re-defaults to the model's own depth whenever the model changes, so
      an untouched row means the model's judgment — a person only overrides it
      by choosing. */
@@ -624,7 +661,8 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
      every model and default a Claude row to `medium`, one level below Sonnet
      5's and Opus 5's own default of high. */
   const fillEfforts = (tierId) => {
-    const choices = effortChoicesFor(tierId)
+    modelField.hidden = tierSelect.value !== OTHER_MODEL_VALUE
+    const choices = effortChoicesFor(tierSelect.value === OTHER_MODEL_VALUE ? modelEffortRow(selectedLaunchTier(), modelInput.value) : tierId)
     effortSelect.textContent = ''
     for (const choice of choices) {
       const option = doc.createElement('option')
@@ -663,7 +701,7 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
 
   /* THE FOLDER THIS TREE'S AGENTS WORK IN, ASKED AT THE MOMENT THE TREE STARTS.
    *
-   * See START_PANEL.folderLabel in src/fleet-tree-copy.js for the wording
+   * See START_PANEL.folderLabel in src/fleet-tree-copy.js for the owner's words
    * and why this is drawn for a NEW TREE ONLY. `newTree` is the same flag the
    * "This agent will work under ..." line already keys off, so there is one
    * answer in this panel to "is a tree being created", not two.
@@ -848,8 +886,8 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
   body.appendChild(effortField)
 
   /* START DOES NOT SCROLL. IT IS THE POINT OF THE PANEL.
-     Reported twice, months apart: Start could not be reached by scrolling, and
-     then there was no way to start an agent. The first was answered by making
+     Owner, twice, months apart: "I cant scroll down to even press start" and
+     then "there is no way to start an agent". The first was answered by making
      the form scroll -- which fixed reachability and NOT visibility, because the
      button went into the scroller with everything else. Measured on the
      installed 1.0.21: the form wants about 765px, the rail gives 560-700, so
@@ -862,8 +900,8 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
      without changing a single visible pixel in a unit test. */
   const actions = doc.createElement('div')
   actions.className = 'agent-compose-actions'
-  /* TWO PRESSES, PERSON-CHOSEN (Set and Start are both offered as options).
-     One submit button used to be built here, its WORD flipped
+  /* TWO PRESSES, PERSON-CHOSEN (owner: "ITS SUPPOSED TO HAVE SET OR START AS
+     OPTIONS"). One submit button used to be built here, its WORD flipped
      between "Set" and "Start" by whether the caller's tree had already begun
      -- so a person composing the first node of a fresh tree could only Set
      it, never Start it immediately, with nothing on the panel offering the
@@ -902,7 +940,7 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
 
   /* WHAT THE SESSION THIS BUTTON STARTS WOULD BE ALLOWED TO DO.
      UNDER Start and never above it. The comment on the action row above records
-     Start being pushed below the fold as a reported defect twice, and a
+     Start being pushed below the fold as an owner-reported defect twice, and a
      block added ahead of the button moves the button down by exactly its own
      height. Under it, the button does not move at all -- and this is still
      outside the scroller, so it cannot be scrolled away from the control it
@@ -934,7 +972,7 @@ function buildPanel(doc, { choices, newTree, underLine, tiers = TIER_CHOICES, fo
 
   /* folderSelect is null for a start under an existing agent -- every reader of
      it is written for that, so a missing folder menu is a state, not a fault. */
-  return { root, roleSelect, providerSelect, tierSelect, effortSelect, showProvider, showModel, showEfforts: fillEfforts, folderSelect, workspaceSelect, projectSelect, updateWorkspace, updateFolders, messageInput, roleSummary, messageProblem, notice, unavailableAction, confinement, status, setBtn, startBtn, cancel }
+  return { root, roleSelect, providerSelect, tierSelect, modelInput, modelProblem, selectedLaunchTier, effortSelect, showProvider, showModel, showEfforts: fillEfforts, folderSelect, workspaceSelect, projectSelect, updateWorkspace, updateFolders, messageInput, roleSummary, messageProblem, notice, unavailableAction, localSetupAction, confinement, status, setBtn, startBtn, cancel }
 }
 
 /**
@@ -988,6 +1026,11 @@ export function mountAgentComposePanel({
      when the caller can really undo that absence -- see the note on the button
      itself. `run` owns the write and answers `true` when the reason is gone. */
   unavailableAction = null,
+  /* `{ needed, open }`, or null. `needed()` answers whether the Local model
+     cannot start on this computer yet; `open()` opens "Set up local models"
+     and settles true once a Local agent can start. Without it no local setup
+     button is ever drawn. */
+  localSetup = null,
   /* THE ENGINE ROWS, WHICH THIS FILE NO LONGER DECIDES. They arrive already
      labelled from src/fleet-tree-copy.js tierChoicesFor(), because only the
      shell knows which engines this payload can actually start and only the
@@ -1047,6 +1090,19 @@ export function mountAgentComposePanel({
   let nodes = null
   let destroyed = false
   let busy = false
+  /* Why the local setup button is showing: 'tier' (Local was picked and this
+     computer said it cannot start yet), 'refusal' (a Local start was refused
+     for that), or null. Kept outside `nodes` so a repaint keeps it. */
+  let localSetupShown = null
+  let localSetupCheck = 0
+  /* The Local row this computer was last asked about, while it stays picked.
+     One pick can raise more than one change: choosing the Local provider puts
+     the Model menu on its row, and choosing that same row again is a second
+     event for the same pick. Cleared when another model is picked and when
+     the panel opens again. */
+  let localSetupAskedFor = null
+  const canSetUpLocal = isRecord(localSetup) && typeof localSetup.open === 'function'
+  const isLocalTier = tierId => tierProvider(tierId) === 'local'
   /* WHETHER THIS PANEL IS ALREADY ON THE PAGE, kept beside `nodes` rather than
      read from it. render() takes the old root off before it builds the new one,
      so `nodes` is null half-way through EVERY re-render and cannot tell a panel
@@ -1088,22 +1144,27 @@ export function mountAgentComposePanel({
     if (!nodes) return
     setLine(nodes.messageProblem, '')
     markInvalid(nodes.messageInput, false)
+    setLine(nodes.modelProblem, '')
+    markInvalid(nodes.modelInput, false)
   }
 
   /* ONE FIELD CAN BE REFUSED, so this reads the map rather than assuming the
      shape: composeDraftProblems() still answers `{ field, sentence }` and a
      future refusal about another field would arrive the same way. What it does
      NOT do any more is paint the role, because that refusal was retired with
-     the requirement. */
+     the requirement (owner, 2026-08-19). */
   const paintProblems = (problems) => {
     if (!nodes) return
     const byField = new Map(problems.map(problem => [problem.field, problem.sentence]))
+    setLine(nodes.modelProblem, byField.get('model') || '')
+    markInvalid(nodes.modelInput, byField.has('model'))
+    if (byField.has('model')) nodes.modelInput.focus?.()
     setLine(nodes.messageProblem, byField.get('message') || '')
     markInvalid(nodes.messageInput, byField.has('message'))
     /* Focus goes to the field a person has to fix. A refusal a keyboard user
        has to go looking for is a refusal they will read as the button being
        broken. */
-    if (byField.has('message')) nodes.messageInput.focus?.()
+    if (!byField.has('model') && byField.has('message')) nodes.messageInput.focus?.()
   }
 
   const paintRoleSummary = () => {
@@ -1118,7 +1179,7 @@ export function mountAgentComposePanel({
     if (!nodes) return
     const stopped = current.unavailableReason ? true : working
     const startStopped = Boolean(current.startUnavailableReason) || stopped
-    const tierRefused = current.tiers.find(choice => choice.id === nodes.tierSelect.value)?.enabled === false
+    const tierRefused = current.tiers.find(choice => choice.id === nodes.selectedLaunchTier())?.enabled === false
     /* Set never carries the tier refusal -- see the note where these buttons
        are built. Start does, because Start is the press that actually needs
        this computer to run that tier right now. */
@@ -1127,6 +1188,7 @@ export function mountAgentComposePanel({
     nodes.roleSelect.disabled = stopped
     nodes.providerSelect.disabled = stopped
     nodes.tierSelect.disabled = stopped
+    nodes.modelInput.disabled = stopped
     nodes.effortSelect.disabled = stopped
     /* Null for a start under an existing agent -- there is no folder menu on
        that panel, and switching off a control that is not there is not an
@@ -1152,7 +1214,7 @@ export function mountAgentComposePanel({
      this computer cannot run yet blocks launching it, never recording it. */
   const paintStart = () => {
     if (!nodes) return
-    const choice = current.tiers.find(entry => entry.id === nodes.tierSelect.value)
+    const choice = current.tiers.find(entry => entry.id === nodes.selectedLaunchTier())
     nodes.startBtn.disabled = busy || Boolean(current.unavailableReason) || Boolean(current.startUnavailableReason) || choice?.enabled === false
   }
 
@@ -1174,7 +1236,7 @@ export function mountAgentComposePanel({
       modelNotice = ''
       return
     }
-    const choice = current.tiers.find(entry => entry.id === nodes.tierSelect.value)
+    const choice = current.tiers.find(entry => entry.id === nodes.selectedLaunchTier())
     if (choice?.enabled === false && choice.label) {
       showNotice(choice.label, 'status')
       modelNotice = choice.label
@@ -1186,12 +1248,12 @@ export function mountAgentComposePanel({
 
   const currentDraft = (mode) => ({
     /* WHICH PRESS THIS WAS, 'set' or 'start' -- the one new fact the caller
-       needs so the panel can offer both Set and Start without
+       needs to answer "ITS SUPPOSED TO HAVE SET OR START AS OPTIONS" without
        this panel deciding anything on its own behalf. Every other field below
        is unchanged. THE CALLER SIDE OF THIS IS NOT YET WIRED: src/views/
        computers.js's submitCompose still computes its own willStart from
        treeHasStarted() and does not read draft.mode -- that change lands
-       separately, after this panel change, with the routing change. Until
+       separately, after this panel change, on B4's routing-law lane. Until
        then this field rides along unread, and existing behaviour (whichever
        outcome treeHasStarted() picks) is unchanged by this panel alone. */
     mode,
@@ -1204,7 +1266,8 @@ export function mountAgentComposePanel({
        first row. The fallback below is for a hand-broken DOM only, and it
        falls back to the same default the engine would apply, never to
        nothing. */
-    tier: asTrimmed(nodes?.tierSelect?.value) || DEFAULT_TIER,
+    tier: nodes?.selectedLaunchTier() || DEFAULT_TIER,
+    ...(nodes?.tierSelect?.value === OTHER_MODEL_VALUE ? { model: nodes.modelInput.value } : {}),
     /* The effort key rides beside the tier; an untouched menu carries the
        tier's own default, so this is never an invented fifth value. */
     effort: asTrimmed(nodes?.effortSelect?.value) || null,
@@ -1241,6 +1304,51 @@ export function mountAgentComposePanel({
     return { ...current, startUnavailableReason: reason, unavailableAction: null }
   }
 
+  function paintLocalSetup() {
+    if (!nodes?.localSetupAction) return
+    if (canSetUpLocal && localSetupShown) nodes.localSetupAction.removeAttribute('hidden')
+    else nodes.localSetupAction.setAttribute('hidden', 'hidden')
+  }
+
+  /* PICKING LOCAL ASKS THE COMPUTER, ONCE PER PICK. A late answer for a tier
+     the person has since left is dropped, and a read that cannot answer
+     leaves the panel as it was: Start still says what happened if it refuses. */
+  async function checkLocalTier() {
+    if (!nodes || !canSetUpLocal || typeof localSetup.needed !== 'function') return
+    const tierId = nodes.selectedLaunchTier()
+    if (isLocalTier(tierId) && localSetupAskedFor === tierId) return
+    const check = ++localSetupCheck
+    if (!isLocalTier(tierId)) {
+      localSetupAskedFor = null
+      if (localSetupShown === 'tier') {
+        localSetupShown = null
+        if (nodes.notice.textContent === START_PANEL.localNotReady) showNotice('')
+        paintLocalSetup()
+      }
+      return
+    }
+    localSetupAskedFor = tierId
+    let needed = false
+    try { needed = await localSetup.needed() === true } catch { needed = false }
+    if (destroyed || !nodes || check !== localSetupCheck || nodes.selectedLaunchTier() !== tierId || !needed) return
+    if (localSetupShown !== 'refusal') localSetupShown = 'tier'
+    if (!nodes.notice.textContent || nodes.notice.hasAttribute?.('hidden')) showNotice(START_PANEL.localNotReady, 'status')
+    paintLocalSetup()
+  }
+
+  async function runLocalSetup() {
+    if (!nodes || destroyed || !canSetUpLocal) return
+    nodes.localSetupAction.disabled = true
+    let ready = false
+    try { ready = await localSetup.open() === true } catch { ready = false }
+    if (destroyed || !nodes) return
+    nodes.localSetupAction.disabled = false
+    if (!ready) return
+    localSetupShown = null
+    showNotice('')
+    paintLocalSetup()
+  }
+
   /* Draw the way out, or draw nothing. Re-read from `current` on every render
      so a panel reopened after the switch was thrown does not keep a stale
      button beside a reason that no longer applies. */
@@ -1268,7 +1376,7 @@ export function mountAgentComposePanel({
    *
    * The panel is REOPENED rather than navigated away from: the person pressed a
    * switch and the control they were told about appears where the switch was.
-   * That is the property that was asked for -- no restart, no second journey. */
+   * That is the property the owner asked for -- no restart, no second journey. */
   async function runUnavailableAction() {
     if (!nodes || destroyed) return
     const action = current.unavailableAction
@@ -1317,6 +1425,12 @@ export function mountAgentComposePanel({
          into one. A refusal that arrives with no words gets the flow's own
          sentence for a start that failed and said nothing. */
       showNotice(asTrimmed(outcome.message) || START_REFUSAL.noReasonGiven, 'alert')
+      /* A Local start refused because nothing local is set up gets the way
+         out beside the sentence, not only the sentence. */
+      if (offersLocalSetup(outcome.code)) {
+        localSetupShown = 'refusal'
+        paintLocalSetup()
+      }
       return
     }
     close()
@@ -1337,7 +1451,7 @@ export function mountAgentComposePanel({
        the same reason setBtn's own disabled state (above) never carries this
        refusal either. A Start attempted against the same tier still has to
        stop here, unchanged from before this panel had two buttons. */
-    const tierChoice = current.tiers.find(choice => choice.id === nodes.tierSelect.value)
+    const tierChoice = current.tiers.find(choice => choice.id === nodes.selectedLaunchTier())
     if (mode === 'start' && tierChoice?.enabled === false) {
       showNotice(tierChoice.label, 'alert')
       return
@@ -1407,7 +1521,7 @@ export function mountAgentComposePanel({
     const opening = !onPage
     // Readiness replies repaint this same form while a person types or starts
     // an agent. Keep its draft and in-flight attempt; a new parent resets both.
-    const fields = ['roleSelect', 'providerSelect', 'tierSelect', 'effortSelect', 'folderSelect', 'workspaceSelect', 'projectSelect', 'messageInput']
+    const fields = ['roleSelect', 'providerSelect', 'tierSelect', 'modelInput', 'effortSelect', 'folderSelect', 'workspaceSelect', 'projectSelect', 'messageInput']
     const saved = preserveDraft && nodes ? Object.fromEntries(fields
       .filter(key => nodes[key]).map(key => [key, nodes[key].value])) : null
     const focused = saved ? fields.find(key => nodes[key] === doc.activeElement) : null
@@ -1456,10 +1570,14 @@ export function mountAgentComposePanel({
       if (offers(nodes.tierSelect, saved.tierSelect) && nodes.tierSelect.value !== saved.tierSelect) {
         nodes.showModel(saved.tierSelect)
       }
+      if (saved.modelInput !== undefined) {
+        nodes.modelInput.value = saved.modelInput
+        nodes.showEfforts(nodes.tierSelect.value)
+      }
       for (const [key, value] of Object.entries(saved)) {
         if (key === 'providerSelect' || key === 'tierSelect') continue
         const field = nodes[key]
-        if (field && (key === 'messageInput' || offers(field, value))) {
+        if (field && (key === 'messageInput' || key === 'modelInput' || offers(field, value))) {
           field.value = value
         }
       }
@@ -1500,14 +1618,26 @@ export function mountAgentComposePanel({
       nodes.showProvider(nodes.providerSelect.value)
       paintStart()
       paintModelNotice()
+      void checkLocalTier()
     })
     /* A NEW MODEL RE-DEFAULTS THE DEPTH to that model's own, from the depths
        that model takes, and re-reads Start. */
     nodes.tierSelect.addEventListener('change', () => {
       nodes.showEfforts(nodes.tierSelect.value)
+      if (nodes.tierSelect.value === OTHER_MODEL_VALUE) nodes.modelInput.focus?.()
       paintStart()
       paintModelNotice()
+      void checkLocalTier()
     })
+    nodes.modelInput.addEventListener('input', () => {
+      const effort = nodes.effortSelect.value
+      nodes.showEfforts(nodes.tierSelect.value)
+      const row = modelEffortRow(nodes.selectedLaunchTier(), nodes.modelInput.value)
+      nodes.effortSelect.value = offeredEffort(row, effort) || tierDefaultEffort(row)
+      setLine(nodes.modelProblem, '')
+      markInvalid(nodes.modelInput, false)
+    })
+    nodes.localSetupAction.addEventListener('click', () => { void runLocalSetup() })
     /* A refusal about a field stops being true the moment the person edits that
        field. Leaving it on screen teaches people to ignore the red line. */
     nodes.messageInput.addEventListener('input', () => {
@@ -1542,6 +1672,11 @@ export function mountAgentComposePanel({
     modelNotice = ''
     if (!unavailable) paintModelNotice()
     paintUnavailableAction()
+    paintLocalSetup()
+    if (opening) {
+      localSetupAskedFor = null
+      void checkLocalTier()
+    }
     paintRoleSummary()
     if (focused && nodes[focused] && !nodes[focused].disabled) {
       nodes[focused].focus?.({ preventScroll: true })

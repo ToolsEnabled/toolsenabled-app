@@ -1,5 +1,5 @@
-/* THE LAST UNTESTED CANDIDATE FOR TYPING ERASED BY A REDRAW: does the feed
- * panel's own composer keep its VALUE, and stay
+/* THE LAST UNTESTED CANDIDATE FOR "redraws erase my typing" (Controller 3,
+ * 2026-09-07): does the feed panel's own composer keep its VALUE, and stay
  * the SAME ELEMENT, across a home-view refresh -- a data-source event,
  * describeHome re-answering, a fleet change -- with the takeover both
  * closed and open?

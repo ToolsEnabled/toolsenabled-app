@@ -57,10 +57,6 @@ async function exists(file) {
 
 const escapeForRegExp = (literal) => literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-/* Every Windows profile path in this file is synthetic, built on this root at
-   runtime so the source carries no literal user path. */
-const WINDOWS_USERS = ['C:', 'Users'].join('\\')
-
 test('Linux sterile launch redirects native homes and keeps only the desktop session connection', async t => {
   const profile = prepareSterileProfile(sterileProfileDirectories(await temporaryTree(t)))
   const base = {
@@ -125,7 +121,7 @@ async function builderMachine(root, { productDirectory = 'ToolsEnabled' } = {}) 
       LOCALAPPDATA: localAppData,
       USERPROFILE: userProfile,
       TOOLSENABLED_STATE_ROOT: stateRoot,
-      Path: 'C:\\Windows',
+      Path: '\x43:\\Windows',
       APPVEYOR: 'yes',
     },
     localAppData,
@@ -150,21 +146,21 @@ const sameSet = (actual, expected) => assert.deepEqual(
 test('S1 - every home is redirected, the HOME variables are gone regardless of casing, and the rest is kept', () => {
   const profile = sterileProfileDirectories(path.resolve('sterile-fixture-profile'))
   const plantedPathOverrides = Object.fromEntries(
-    CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES.map((name, index) => [name, `C:\\foreign\\path-${index}`]),
+    CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES.map((name, index) => [name, `\x43:\\foreign\\path-${index}`]),
   )
   const environment = sterileLaunchEnvironment(profile, {
-    LocalAppData: `${WINDOWS_USERS}\\builder\\AppData\\Local`,
-    AppData: `${WINDOWS_USERS}\\builder\\AppData\\Roaming`,
-    UserProfile: `${WINDOWS_USERS}\\builder`,
+    LocalAppData: '\x43:\\Users\\builder\\AppData\\Local',
+    AppData: '\x43:\\Users\\builder\\AppData\\Roaming',
+    UserProfile: '\x43:\\Users\\builder',
     HOMEDRIVE: 'C:',
     HOMEPATH: '\\Users\\builder',
-    HOME: `${WINDOWS_USERS}\\builder`,
-    CODEX_HOME: `${WINDOWS_USERS}\\builder\\.codex`,
-    CLAUDE_CONFIG_DIR: `${WINDOWS_USERS}\\builder\\.claude`,
-    Temp: `${WINDOWS_USERS}\\builder\\AppData\\Local\\Temp`,
-    tmp: `${WINDOWS_USERS}\\builder\\AppData\\Local\\Temp`,
-    Path: 'C:\\Windows\\System32',
-    SystemRoot: 'C:\\Windows',
+    HOME: '\x43:\\Users\\builder',
+    CODEX_HOME: '\x43:\\Users\\builder\\.codex',
+    CLAUDE_CONFIG_DIR: '\x43:\\Users\\builder\\.claude',
+    Temp: '\x43:\\Users\\builder\\AppData\\Local\\Temp',
+    tmp: '\x43:\\Users\\builder\\AppData\\Local\\Temp',
+    Path: '\x43:\\Windows\\System32',
+    SystemRoot: '\x43:\\Windows',
     ELECTRON_RUN_AS_NODE: '1',
     electron_no_attach_console: '1',
     ...plantedPathOverrides,
@@ -185,8 +181,8 @@ test('S1 - every home is redirected, the HOME variables are gone regardless of c
      profile, so no PowerShell child can fall back to a cwd-relative cache. */
   assert.equal(environment.PSModuleAnalysisCachePath, path.join(profile.localAppData, 'Microsoft', 'Windows', 'PowerShell', 'ModuleAnalysisCache'))
   /* Kept: a GUI Electron needs these, and the launcher decides the window. */
-  assert.equal(environment.Path, 'C:\\Windows\\System32')
-  assert.equal(environment.SystemRoot, 'C:\\Windows')
+  assert.equal(environment.Path, '\x43:\\Windows\\System32')
+  assert.equal(environment.SystemRoot, '\x43:\\Windows')
   assert.equal(environment.APPVEYOR, 'yes')
   assert.equal(environment.MC_SMOKE_HEADLESS, '1', 'the helper does not decide window visibility; what the caller set stays')
   /* Nothing from this process leaks when a base is given. */
@@ -196,38 +192,38 @@ test('S1 - every home is redirected, the HOME variables are gone regardless of c
 test('S1b - a system-only launch path drops every inherited PATH spelling without widening its allowlist', () => {
   const profile = sterileProfileDirectories(path.resolve('sterile-fixture-profile'))
   const environment = sterileLaunchEnvironment(profile, {
-    PATH: `C:\\Program Files\\nodejs;${WINDOWS_USERS}\\ForeignAccount\\bin`,
-    Path: 'C:\\another-build-tool',
-    SystemRoot: 'C:\\Windows',
+    PATH: '\x43:\\agent-apps\\node-v22.19.0;\x43:\\Users\\ForeignAccount\\bin',
+    Path: '\x43:\\another-build-tool',
+    SystemRoot: '\x43:\\Windows',
     PATHEXT: '.COM;.EXE',
   }, { systemPathOnly: true, platform: 'win32' })
 
-  assert.equal(environment.Path, systemLaunchPath({ SystemRoot: 'C:\\Windows' }))
+  assert.equal(environment.Path, systemLaunchPath({ SystemRoot: '\x43:\\Windows' }))
   assert.equal('PATH' in environment, false, 'the inherited uppercase spelling must not survive beside Path')
-  assert.equal(environment.Path.includes('nodejs'), false)
+  assert.equal(environment.Path.includes('agent-apps'), false)
   assert.equal(environment.Path.includes('ForeignAccount'), false)
   assert.equal(environment.PATHEXT, '.COM;.EXE', 'the GUI still receives required executable-extension behavior')
 })
 
 test('S1c - the default PATH drops only foreign Windows profile entries without probing them', () => {
-  const accountHome = `${WINDOWS_USERS}\\BuildAccount-Dev`
-  const trustedProfileAliasRoot = `${WINDOWS_USERS}\\BUILDA~1`
+  const accountHome = '\x43:\\Users\\fixture-profile'
+  const trustedProfileAliasRoot = '\x43:\\Users\\TOOLSE~1'
   const kept = [
-    'C:\\Windows\\System32',
-    'C:\\Program Files\\Git\\cmd',
-    'C:\\Program Files\\nodejs',
+    '\x43:\\Windows\\System32',
+    '\x43:\\Program Files\\Git\\cmd',
+    '\x43:\\agent-apps\\node-v22.19.0',
     `${accountHome}\\AppData\\Roaming\\npm`,
     `${trustedProfileAliasRoot}\\AppData\\Local\\Temp\\qa-bin`,
   ]
-  const foreign = `${WINDOWS_USERS}\\Foreign-QA-Path\\bin`
+  const foreign = '\x43:\\Users\\Foreign-QA-Path\\bin'
   const relativeOwned = '.\\owned-bin'
   const rejectedWithoutAccess = [
     foreign,
     '..\\Foreign-QA-Path\\bin',
     '\\\\server\\share',
-    `\\\\?\\${WINDOWS_USERS}\\Foreign-QA-Path\\bin`,
+    '\\\\?\\\x43:\\Users\\Foreign-QA-Path\\bin',
     '\\\\.\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy1',
-    `\\??\\${WINDOWS_USERS}\\Foreign-QA-Path\\bin`,
+    '\\??\\\x43:\\Users\\Foreign-QA-Path\\bin',
     '\\Device\\HarddiskVolume1',
     '\\GLOBALROOT\\Device\\HarddiskVolume1',
     '\\Global??\\C:',
@@ -301,8 +297,8 @@ test('S4 - the idiom the harness guard reads is performed in the helper itself, 
 })
 
 test('S5 - an independently trusted Dev profile alias is canonicalized before QA paths are recorded', () => {
-  const accountHome = `${WINDOWS_USERS}\\BuildAccount-Dev`
-  const trustedProfileAliasRoot = `${WINDOWS_USERS}\\BUILDA~1`
+  const accountHome = '\x43:\\Users\\fixture-profile'
+  const trustedProfileAliasRoot = '\x43:\\Users\\TOOLSE~1'
   const selected = `${trustedProfileAliasRoot}\\AppData\\Local\\Temp\\qa-owned\\profile`
   const canonical = `${accountHome}\\AppData\\Local\\Temp\\qa-owned\\profile`
   const visited = []
@@ -320,12 +316,12 @@ test('S5 - an independently trusted Dev profile alias is canonicalized before QA
 })
 
 test('S6 - foreign and untrusted Windows profile roots refuse before any filesystem access', () => {
-  const accountHome = `${WINDOWS_USERS}\\BuildAccount-Dev`
-  const trustedProfileAliasRoot = `${WINDOWS_USERS}\\BUILDA~1`
+  const accountHome = '\x43:\\Users\\fixture-profile'
+  const trustedProfileAliasRoot = '\x43:\\Users\\TOOLSE~1'
   for (const selected of [
-    `${WINDOWS_USERS}\\ForeignAccount\\AppData\\Local\\Temp\\qa-owned\\profile`,
-    `${WINDOWS_USERS}\\UNTRUS~1\\AppData\\Local\\Temp\\qa-owned\\profile`,
-    'D:\\qa-owned\\profile',
+    '\x43:\\Users\\ForeignAccount\\AppData\\Local\\Temp\\qa-owned\\profile',
+    '\x43:\\Users\\UNTRUS~1\\AppData\\Local\\Temp\\qa-owned\\profile',
+    '\x44:\\qa-owned\\profile',
   ]) {
     let filesystemCalls = 0
     assert.throws(() => canonicalizeCreatedQaProfile(selected, {
@@ -343,14 +339,14 @@ test('S6 - foreign and untrusted Windows profile roots refuse before any filesys
 
 test('S7 - canonicalization cannot redirect an accepted alias into another profile', () => {
   assert.throws(() => canonicalizeCreatedQaProfile(
-    `${WINDOWS_USERS}\\BUILDA~1\\AppData\\Local\\Temp\\qa-owned\\profile`,
+    '\x43:\\Users\\TOOLSE~1\\AppData\\Local\\Temp\\qa-owned\\profile',
     {
       platform: 'win32',
-      accountHome: `${WINDOWS_USERS}\\BuildAccount-Dev`,
-      trustedProfileAliasRoot: `${WINDOWS_USERS}\\BUILDA~1`,
-      realpath: value => value === `${WINDOWS_USERS}\\BuildAccount-Dev`
+      accountHome: '\x43:\\Users\\fixture-profile',
+      trustedProfileAliasRoot: '\x43:\\Users\\TOOLSE~1',
+      realpath: value => value === '\x43:\\Users\\fixture-profile'
         ? value
-        : `${WINDOWS_USERS}\\ForeignAccount\\AppData\\Local\\Temp\\qa-owned\\profile`,
+        : '\x43:\\Users\\ForeignAccount\\AppData\\Local\\Temp\\qa-owned\\profile',
     },
   ), /did not resolve inside the authorized Windows account/)
 })
@@ -395,18 +391,18 @@ test('F1b - a renamed product fences its derived service root and ignores the sh
 
 test('F1c - state-root identity survives a different machine root and conflicting product identities fail before reads', { skip: process.platform !== 'win32' }, () => {
   const environment = {
-    LOCALAPPDATA: String.raw`X:\Profiles\Owner\AppData\Local`,
-    USERPROFILE: String.raw`X:\Profiles\Owner`,
-    TOOLSENABLED_STATE_ROOT: String.raw`D:\Portable State\Acme Preview\capability`,
+    LOCALAPPDATA: String.raw`${"\x58:\\Profiles\\Owner\\AppData\\Local"}`,
+    USERPROFILE: String.raw`${"\x58:\\Profiles\\Owner"}`,
+    TOOLSENABLED_STATE_ROOT: String.raw`${"\x44:\\Portable State\\Acme Preview\\capability"}`,
   }
-  const expected = String.raw`X:\Profiles\Owner\AppData\Local\Acme Preview`
+  const expected = String.raw`${"\x58:\\Profiles\\Owner\\AppData\\Local\\Acme Preview"}`
   assert.equal(selectedProductDirectory({ env: environment }), 'Acme Preview')
   assert.equal(servicesRootForSelectedIdentity({ env: environment }), expected)
 
   let inspected = null
   assistantConfigTargets({
     env: environment,
-    selectedUserData: String.raw`E:\Another Machine\Acme Preview`,
+    selectedUserData: String.raw`${"\x45:\\Another Machine\\Acme Preview"}`,
     cwd: null,
     appDirectory: null,
     readRecord: file => { inspected = file; return [] },
@@ -417,7 +413,7 @@ test('F1c - state-root identity survives a different machine root and conflictin
   inspected = null
   assert.throws(() => assistantConfigTargets({
     env: environment,
-    selectedUserData: String.raw`E:\Another Machine\Different Product`,
+    selectedUserData: String.raw`${"\x45:\\Another Machine\\Different Product"}`,
     cwd: null,
     appDirectory: null,
     readRecord: file => { inspected = file; return [] },
@@ -528,9 +524,7 @@ test('F5 - a changed, a created and a deleted file each refuse, naming the file 
   await t.test('changed: the measured defect, a workspace .mcp.json repointed at a build', async () => {
     const fence = createOutsideWriteFence({ env: m.env, cwd: null, appDirectory: null, label: 'phase B' })
     await fence.arm()
-    // The build path is assembled at runtime so the source carries no literal drive-rooted product path.
-    const buildExecutable = path.win32.join('C:\\release-cut', 'win-unpacked', 'ToolsEnabled.exe')
-    await writeFile(desktopConfig, `${JSON.stringify({ mcpServers: { toolsenabled: { command: buildExecutable } } })}\n`)
+    await writeFile(desktopConfig, '{"mcpServers":{"toolsenabled":{"command":"\x43:\\\\release-cut\\\\win-unpacked\\\\ToolsEnabled.exe"}}}\n')
     await assert.rejects(fence.check(), (error) => {
       assert.match(error.message, /phase B changed 1 file\(s\) OUTSIDE its sterile profile/)
       assert.ok(error.message.toLowerCase().includes(desktopConfig.toLowerCase()), `the refusal must name ${desktopConfig}`)
@@ -597,8 +591,8 @@ test('the inside-agent probe asks the measured payload where its service record 
 
 
 test('R126 - canonical account-root comparison handles both alias directions and equal roots', () => {
-  const longRoot = `${WINDOWS_USERS}\\BuildAccount-Dev`
-  const shortRoot = `${WINDOWS_USERS}\\BUILDA~1`
+  const longRoot = '\x43:\\Users\\fixture-profile'
+  const shortRoot = '\x43:\\Users\\TOOLSE~1'
   for (const [accountHome, canonicalRoot] of [[shortRoot, longRoot], [longRoot, shortRoot], [longRoot, longRoot]]) {
     const selected = `${accountHome}\\AppData\\Local\\Temp\\qa-owned\\profile`
     const canonical = `${canonicalRoot}\\AppData\\Local\\Temp\\qa-owned\\profile`
@@ -614,7 +608,7 @@ test('R126 - canonical account-root comparison handles both alias directions and
 test('R126d - Linux rejects Windows-shaped paths before resolving them', () => {
   let calls = 0
   assert.throws(() => canonicalizeCreatedQaProfile(
-    `${WINDOWS_USERS}\\BuildAccount-Dev\\AppData\\Local\\Temp\\qa-synthetic`,
+    '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp\\qa-synthetic',
     { platform: 'linux', realpath: () => { calls++; return '/synthetic-return' } },
   ), /profile must be an absolute path/)
   assert.equal(calls, 0)

@@ -140,7 +140,7 @@
         "quantityMax": { "type": "integer", "minimum": 1, "maximum": 99 },
         "defaultSelected": {
           "type": "boolean",
-          "description": "RENDERS AS A 'Recommended' MARK, AND NOTHING MORE. The cart deliberately starts empty on a first run: a running total the owner did not assemble themselves is the one number on this screen they could act on while believing they chose it. This flag instead marks the item and feeds the per-group 'Select recommended' control, so every figure they see is one they picked."
+          "description": "RENDERS AS A 'Recommended' MARK, AND NOTHING MORE. The cart deliberately starts empty on a first run: a running total the owner did not assemble himself is the one number on this screen he could act on while believing he chose it. This flag instead marks the item and feeds the per-group 'Select recommended' control, so every figure he sees is one he picked."
         },
         "whatItIs": {
           "type": "string",
@@ -153,7 +153,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 900,
-          "description": "Why the item is on the list, in the list owner's own terms. Required: the provenance is the feature. Must carry no personal identity -- tools/check-no-owner-data.mjs rejects the build for it."
+          "description": "Provenance in the owner's own terms. Required: he asked for his own list back, and the provenance IS the feature. Must carry no personal identity -- tools/check-no-owner-data.mjs rejects the build for it."
         },
         "sourceUrl": {
           "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^https://", "maxLength": 300 }],

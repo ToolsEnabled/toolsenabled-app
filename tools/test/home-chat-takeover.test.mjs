@@ -1,10 +1,10 @@
 /* The home page's full-page chat: the rules, not the pixels.
  *
- * Three of these pin a design rule directly, so they are written against the
- * rule rather than against the implementation:
- *   - the main trees are offered, not every subtree
- *   - one view at a time
- *   - the page 2 chat surface is replicated -- by REUSE, proven by mounting a
+ * Three of these pin an owner instruction directly, so they are written
+ * against the sentence rather than against the implementation:
+ *   - "not every subtree needs to be included just the main trees"
+ *   - "ONLY 1 view at a time"
+ *   - "replicate the page 2 chat surface" -- by REUSE, proven by mounting a
  *     real agent subject and observing the agent-session module run, not by
  *     comparing markup (copied markup would pass a markup test and still be
  *     the second renderer the rule forbids).
@@ -288,8 +288,8 @@ test('the expand and collapse controls are named for what they do', () => {
 })
 
 test('on the simulation the coordinator subject mounts the REAL chat surface, not the feed', () => {
-  /* The question: why the chat surface, already built and finished, was not
-     showing up. Because buildChat
+  /* The owner's question, verbatim: "the chat surface which is already built
+     and finished - its not showing up yet is it? why not?" Because buildChat
      was mounted only by page 3. The takeover DEFAULTS to the coordinator, so
      the simulation must open onto the finished surface in its own labelled
      demonstration mode -- not the read-only feed, and never a blank. This
@@ -322,8 +322,8 @@ test('on a LIVE fleet the coordinator hands the page back to the real painter', 
    * describeHome already answers panel.kind "conversation" with context -- the
    * COLLAPSED panel on page one is a working coordinator surface. So expanding
    * it replaced a real conversation with an empty, disabled one reading "The
-   * coordinator cannot be messaged yet": the door built because the first page
-   * had no chat opened onto that very complaint.
+   * coordinator cannot be messaged yet": the door built to answer the owner's
+   * "there is no chat on the first page" opened onto that very complaint.
    * Two independent verifiers reproduced it; the second drove the whole home
    * view in the repo's own Electron and pressed the real button.
    *

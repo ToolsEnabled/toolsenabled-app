@@ -51,14 +51,14 @@ updated. The isolated new-dependency audit reported zero vulnerabilities.
 
 ## Verification
 
-Evidence was retained with the review.
+Evidence: `/home/redacted-profile/chat-formatting-20260908/evidence`.
 
 - Chat/Home/Messages/tree/rail/history regressions: **730 passed, zero failed,
   four existing skips** (`final-regressions.log`). The skips cover existing
   scope-chip/mention and agent panelization work. Updated legacy tests assert
   the shared CSS and real code toolbar, replacing obsolete pseudo-element
   expectations. Two pre-existing VM fixture omissions were reproduced on base
-  an earlier commit and supplied with their missing
+  `dab95ccc1906a01545e8671c103d1ff5d108ee46` and supplied with their missing
   environment bindings (`baseline-harness-errors.log`).
 - Real Chromium functional review: seven surface scenarios passed, including
   exact clipboard content, clipboard refusal, streaming selection/focus/draft
@@ -104,5 +104,5 @@ The full repository qualification cannot run here because the isolated checkout
 lacks `capability/`, `private/capability-source.owner.json`, and
 `private/owner-data-patterns.owner.json`. The normal input guard reports these
 with exit 3 (`final-test-inputs.log`); it was not bypassed. Final integration,
-native qualification, and the actual LIVE runtime receipt remain with the
-promotion step.
+native qualification, and the actual LIVE runtime receipt remain with promotion
+session `01a07f97-9ab9-73c1-b2b8-608b8661be3b`.

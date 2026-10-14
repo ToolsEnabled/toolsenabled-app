@@ -3,7 +3,7 @@ const { createHash, randomUUID } = require('node:crypto')
 const { limitReason } = require('./account-session-recovery.cjs')
 const { thinkingTranscriptId, thinkingSummary } = require('./thinking-transcript.mjs')
 
-/* A USAGE LIMIT SAYS WHEN IT ENDS (T1509). When thirty-seven Codex
+/* A USAGE LIMIT SAYS WHEN IT ENDS (T1509). On 2026-09-22 thirty-seven Codex
    turns stopped on a weekly limit and every saved conversation said only "No
    safe failure detail was recorded": the engine had classified the ending,
    but only in a sentence this file does not read. The engine now also says it
@@ -69,7 +69,17 @@ function providerFailureSummary(event) {
 
 // Terminal diagnostics are not assistant speech. Persist only product-owned
 // outcome sentences, never provider messages, stacks, codes, or credentials.
-function terminalOutcomeText(event, now = Date.now()) {
+/* WHAT TO DO AT A USAGE LIMIT, PER AGENT (1.0.50 review, accounts E). This line
+   used to send the person to the Accounts menu, which changes the account NEW
+   agents use and cannot move this one: a stopped agent resumes on its saved
+   account and a running one keeps its process. Switch and continue moves this
+   agent. A New agent tab (a `standalone-` seat) offers it after Add to tree. */
+function usageLimitNextStep(standalone) {
+  return standalone
+    ? 'use Add to tree and then Switch and continue to move this agent to another account. New agents use the account chosen in Accounts.'
+    : 'use Switch and continue to move this agent to another account.'
+}
+function terminalOutcomeText(event, now = Date.now(), { standalone = false } = {}) {
   // Codex preserves completed; Claude CLI/local use success; the ACP Claude
   // adapter preserves end_turn. Unknown future statuses are not proof of success.
   if (event.type === 'turn_completed' && ['completed', 'success', 'end_turn'].includes(event.status)) return null
@@ -81,8 +91,8 @@ function terminalOutcomeText(event, now = Date.now()) {
        not finish", cut to the rail's width, and a prefix that repeats the row's
        own words left only "Turn did not finish: the provid…" in view. */
     return usage.resetsAt === null
-      ? 'Account usage limit reached. Wait for it to reset or choose another account in the Accounts menu.'
-      : `Account usage limit reached. It resets ${resetWords(usage.resetsAt, now)}. Until then, choose another account in the Accounts menu.`
+      ? `Account usage limit reached. Wait for it to reset, or ${usageLimitNextStep(standalone)}`
+      : `Account usage limit reached. It resets ${resetWords(usage.resetsAt, now)}. Until then, ${usageLimitNextStep(standalone)}`
   }
   const reason = limitReason({
     type: 'turn_completed', status: 'failed',
@@ -480,7 +490,7 @@ function createNodeTranscriptCapture({ store, sessionMetadata = () => null, onEr
       for (const entry of batch.thoughts.values()) if (entry.state === 'working') { entry.state = 'unknown'; entry.dirty = true }
       flush(key)
       batches.delete(key)
-      const text = terminalOutcomeText(event, now())
+      const text = terminalOutcomeText(event, now(), { standalone: typeof binding.nodeId === 'string' && binding.nodeId.startsWith('standalone-') })
       if (text) {
         const id = 'terminal:' + createHash('sha256').update(JSON.stringify([sessionId, event.turnId])).digest('hex')
         const request = { ...binding, entries: [{ id, who: 'action', kind: 'turn', tool: 'Turn', state: 'undone', text, at: Date.now(), turnStamp: event.turnId }] }

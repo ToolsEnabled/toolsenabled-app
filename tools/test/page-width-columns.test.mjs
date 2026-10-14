@@ -3,8 +3,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-/* Rule: on the Everything page the text must use the available width instead
- * of leaving wide empty margins, and the same holds on page 2.
+/* LANE W28, owner R9 (2026-09-04T16:08:49Z), verbatim: "the everything page
+ * ... the text does not go even near the boarder of the screen we are
+ * wasting a lot of width. In notice the same issues on page 2".
  *
  * This repository has no DOM in its node tests (see
  * tools/test/mobile-size-floor.test.mjs), so what follows does what that
@@ -19,14 +20,17 @@ import { fileURLToPath } from 'node:url'
  * The rendered ground truth this test's bounds are drawn from is
  * tools/page-width-measure.ps1, a headless-Chrome-over-CDP render of this
  * repo's own dev server (no jsdom/puppeteer/playwright is vendored here),
- * measured at a maximized 2560px-wide window.
+ * measured at the owner's own persisted window
+ * (AppData/Roaming/ToolsEnabled-Live/shell-state.json: width 2559, height
+ * 1048, maximized true) -- see t5-m6-REPORT-w28-page-width-fix.md for the
+ * RED/GREEN transcript that script produced.
  */
 
 const read = relative => readFileSync(fileURLToPath(new URL(`../../${relative}`, import.meta.url)), 'utf8')
 const homeCss = read('src/home.css')
 const stylesCss = read('src/styles.css')
 
-const VIEWPORT = 2560 // a maximized 2560px-wide window
+const VIEWPORT = 2560 // the owner's own persisted window (shell-state.json), rounded up from 2559
 
 /* The computers cap is read through one function rather than three copies of a
    regular expression, because it is now two facts and not one: the number, and
@@ -68,7 +72,7 @@ test('at the owner\'s window, the Everything page (page 1) box reaches most of t
   const contentWidth = Math.min(capPx, VIEWPORT)
   const gutterPerSide = (VIEWPORT - contentWidth) / 2
   assert.ok(contentWidth >= 1700,
-    `the Everything page content box is only ${contentWidth}px wide at a ${VIEWPORT}px window -- the complaint, still true`)
+    `the Everything page content box is only ${contentWidth}px wide at a ${VIEWPORT}px window -- the owner's complaint, still true`)
   assert.ok(gutterPerSide <= 450,
     `the Everything page wastes ${gutterPerSide}px of bare page on each side at a ${VIEWPORT}px window`)
 })
@@ -81,14 +85,14 @@ test('at the owner\'s window, the Computers page (page 2) box reaches most of th
   const contentWidth = Math.min(pageMaxPx, VIEWPORT - 2 * pageGutterPx)
   const gutterPerSide = (VIEWPORT - contentWidth) / 2
   assert.ok(contentWidth >= 1900,
-    `the Computers page content box is only ${contentWidth}px wide at a ${VIEWPORT}px window -- the same width issue on page 2, still true`)
+    `the Computers page content box is only ${contentWidth}px wide at a ${VIEWPORT}px window -- the owner's "same issue on page 2", still true`)
   assert.ok(gutterPerSide <= 350,
     `the Computers page wastes ${gutterPerSide}px of bare page on each side at a ${VIEWPORT}px window`)
 })
 
-/* The ledger route was left on the base --page-max while the other
+/* LANE W53. The ledger route was left on the base --page-max while the other
    two were widened, so it wasted MORE of the window than page 1 ever did.
-   Measured on the staged dev server at a 2560px window
+   Measured on the staged dev server at the owner's own 2560px window
    (tools/ledger-page-measure.ps1): .ledger-shell painted 1240px wide at x=656,
    1,320px of bare page, 51.6% of the screen. Same arithmetic as the two tests
    above, on the route's own mechanism -- .ledger-shell is
@@ -99,7 +103,7 @@ test('at the owner\'s window, the Ledger page box reaches most of the screen', (
   const contentWidth = Math.min(Number(declared[1]), VIEWPORT)
   const gutterPerSide = (VIEWPORT - contentWidth) / 2
   assert.ok(contentWidth >= 1900,
-    `the Ledger page content box is only ${contentWidth}px wide at a ${VIEWPORT}px window -- the ledger layout issue, still true`)
+    `the Ledger page content box is only ${contentWidth}px wide at a ${VIEWPORT}px window -- the owner's layout complaint, still true`)
   assert.ok(gutterPerSide <= 350,
     `the Ledger page wastes ${gutterPerSide}px of bare page on each side at a ${VIEWPORT}px window`)
 })

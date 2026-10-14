@@ -1,7 +1,7 @@
 /* THE SCREEN THAT SHOWS A PERSON THEIR CODE, HELD STILL.
  *
- * After signing up, a user could not see how to connect their computer.
- * The account page on the website asks for a code; nothing in this
+ * "as a user I dont even see how after signing up that I now connect my
+ * computer." The account page on the website asks for a code; nothing in this
  * application had ever shown one. src/device-claim-flow.js is the state machine
  * behind the screen that now does, and src/connect-computer-settings.js draws
  * it.
@@ -944,8 +944,9 @@ test('the section is placed inside a group rather than left to fall off the end'
    * the group head prints `group.sections` while CLOSED, and that line is the
    * page's whole answer to "find something without opening anything". A section
    * outside the model is not in that array, so the closed 'Start here' line
-   * read "Home screen · Setup · System" and never said the words a person
-   * would use: connecting a computer after signing up. */
+   * read "Home screen · Setup · System" and never said the words the owner
+   * used: "as a user I dont even see how after signing up that I now connect
+   * my computer". */
   const group = groupOfSection(CONNECT_SECTION)
   assert.ok(group, `${CONNECT_SECTION} is in no group and would render below every group`)
   assert.equal(group.id, 'start', 'the connect step belongs to the first-visit group')

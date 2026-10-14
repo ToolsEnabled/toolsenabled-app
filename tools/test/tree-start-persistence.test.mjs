@@ -84,7 +84,7 @@ function fixture({ before = null, after = null, result = { ok: true }, leaveDuri
     imageConversationFor: () => null, /* the image outbox the tree's image work reads per node; not under test here */
     publishProviderModeEvent: () => {}, // Provider menus are independent of persistence in this fixture.
     createTranscriptStore: () => null, createChatDiffHistoryStore: () => null, markTreeStoreLive: () => () => {}, syncTreeBranchAddresses: () => {}, /* T138 publish watch. Stubbed like syncTreeBranchAddresses beside it: this fixture keeps its naming layer deliberately shallow (treeNodeName is current => current.id), so running the real scan would compose nothing and guarantee nothing. refreshTreeNames above IS lifted real, which is why renamedCircles is bound for it. The real watch is covered in fleet-tree-persistence-view. */ syncRenamedCircles: () => {},
-    startingNodeIds: new Set(), sessionNodeIds, sessionEfforts: new Map(), sessionThreadIds: new Map(), sessionAccountNames: new Map(),
+    startingNodeIds: new Set(), sessionNodeIds, sessionEfforts: new Map(), sessionThreadIds: new Map(), sessionAccountNames: new Map(), sessionAccountRecords: new Map(),
     sessionTranscripts: new Map(), sessionTurnLog: new Map(), sessionCompletedTurnIds: new Map(), nodeReplies: new Map(), transcriptStore: null,
     chatSurfaces: new Map(), chatSpeech: new WeakMap(),
     mockSource: () => false, isWriteEnabled: () => true, START_CONTROL_FLAG: 'start', START_REFUSAL: {},
@@ -128,10 +128,13 @@ function fixture({ before = null, after = null, result = { ok: true }, leaveDuri
     registerChatSurface: () => {}, treeCardSend: (current, text) => { sent.push({ sessionId: current.sessionId, text }) },
     outboxClearSession: () => 0, outboxMoveSession: () => 0, resetSessionMetrics: () => {}, stopStillOwnsNode,
     orgStatusElement: status, orgStatusTimer: 0, treePersistenceProblem: '', orgStatusPrimary: null,
-    /* The view's own initial value (src/views/computers.js `let transcriptPersistenceProblem = ''`, an earlier commit):
+    /* The view's own initial value (src/views/computers.js `let transcriptPersistenceProblem = ''`, e7a52e8d):
        renderOrgStatus reads it beside treePersistenceProblem. */
     transcriptPersistenceProblem: '',
     markRefusalCode: () => {},
+    /* renderOrgStatus offers "Set up local models" beside a Local refusal
+       (src/local-setup-popup.js); none of the refusals here is one. */
+    offersLocalSetup: () => false,
     sessionTurnText: new Map(), sessionOpenTurns: new Map(), sessionActions: new Map(), sessionPendingApprovals: createPendingApprovals(),
     confirmedRefusals: new Map(),
     standaloneSettledTurns: new Map(), chatSpeechMounts: new Map(),

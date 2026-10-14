@@ -1,4 +1,4 @@
-/* T736: it was reported the latest assistant reply appearing in the tree
+/* T736: the owner reported the latest assistant reply appearing in the tree
    card but not in the selected chat. This mounts the REAL Computers view
    (tools/test/lib/tree-command-real-mount.mjs, the team's shared real-source
    harness) and drives one session through a stream delta then a final

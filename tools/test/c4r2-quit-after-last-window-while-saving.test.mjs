@@ -104,6 +104,8 @@ function quitFixture({ windows = [], date = Date } = {}) {
     BrowserWindow: { getAllWindows: () => windows },
     dialog: { showMessageBox(options) { const answer = Promise.withResolvers(); prompts.push({ options, answer }); return answer.promise } },
     exitRecord: { writeExitRecord() {} },
+    // U1: an accepted update's installer waits on this quit; a refused quit cancels it.
+    installerAfterQuit: { cancels: 0, cancel() { this.cancels++ } },
     app: {
       on(name, callback) { assert.equal(name, 'before-quit'); beforeQuit = callback },
       quit() { calls.push('app.quit'); const event = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true } }; beforeQuit(event) },
@@ -181,6 +183,7 @@ test('c5 B35: a window opened after the refused quit (the person came back) canc
   await pause(600)
   assert.equal(f.appShutdown.started, false, 'the app quit behind a window the person had just opened')
   assert.equal(f.prompts.length, 0)
+  assert.equal(f.context.installerAfterQuit.cancels, 1, 'U1: an update installer waiting on the called-off quit is cancelled')
 })
 
 test('c5 B35: the window\'s X while a first message is being saved shows no disk notice, and the window closes once saved', async () => {
@@ -261,6 +264,7 @@ test('c5 B35: the system quits while the X-close notice is up; "Keep ToolsEnable
   f.prompts[0].answer.resolve({ response: 1 }) // Keep ToolsEnabled open: the notice goes, the system's quit stands
   await waitFor(() => f.appShutdown.started, 1500)
   assert.equal(f.appShutdown.started, true, `the system's quit was dropped (calls: ${f.calls.join(', ')})`)
+  assert.equal(f.context.installerAfterQuit.cancels, 1, 'U1: "Keep ToolsEnabled open" calls off an update installer; the system quit alone installs nothing')
 })
 
 /* c5 real-window run (pre-existing; the build without the B35 fix lost it the

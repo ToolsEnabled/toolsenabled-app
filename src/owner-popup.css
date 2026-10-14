@@ -85,12 +85,12 @@
 .owner-popup-kicker,
 .owner-popup-list-head,
 .owner-popup-meta-label {
-  font-size: 11px;
+  font-size: 12.5px;
   line-height: 1;
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--op-ink-25);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--op-ink-2);
 }
 
 .owner-popup-heading h2 {
@@ -268,11 +268,11 @@
   justify-content: flex-end;
   gap: var(--op-space4);
   padding: var(--op-space3) var(--op-space2) 0;
-  color: var(--op-ink-25);
-  font-size: 11px;
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  color: var(--op-ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .owner-popup-total strong {
   min-width: 130px;
@@ -376,14 +376,14 @@
    THE DEADLINE, AND WHAT THE DEADLINE DOES.
 
    Directly under the title, above everything a person would scroll past, and
-   not in the footer: the whole defect this repairs is that a live shopping
-   list has a date on which every line is refused, and no
-   surface in the product had ever drawn it. A fact that decides their money by
+   not in the footer: the whole defect this repairs is that both of the owner's
+   live shopping lists have a date on which every line is refused, and no
+   surface in the product had ever drawn it. A fact that decides his money by
    default does not belong below the fold.
 
    It borrows the default-rule's serious accent rather than inventing a colour,
    because it is the same class of statement: something the product will do if
-   they do not act. No new colour, type scale or spacing value is introduced.
+   he does not act. No new colour, type scale or spacing value is introduced.
    --------------------------------------------------------------------------- */
 .owner-popup-deadline {
   display: flex;
@@ -424,7 +424,8 @@
 
 /* A line nobody asked for. The engine already knows which lines are traceable
    to the owner's own words and which are not; until now that was buried in the
-   text at the front of the item name. A real cart can hold such lines. */
+   text at the front of the item name. One of the twenty lines on his real cart
+   is in this state. */
 .owner-popup-item[data-provenance="agent"] .owner-popup-item-origin,
 .owner-popup-item[data-provenance="unknown"] .owner-popup-item-origin {
   color: var(--op-serious);
@@ -439,7 +440,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   WHAT CHANGED WHILE THEY WERE LOOKING.
+   WHAT CHANGED WHILE HE WAS LOOKING.
 
    Quiet by construction. It sits between the figures and the requests, it is
    hidden entirely when there is nothing to say, and it never uses the serious
@@ -453,12 +454,12 @@
 .approvals-changes[hidden] { display: none; }
 .approvals-changes-head {
   margin: 0 0 var(--op-space2);
-  font-size: 11px;
+  font-size: 12.5px;
   line-height: 1;
-  font-weight: 640;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--op-ink-25);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--op-ink-2);
 }
 .approvals-changes-list {
   margin: 0;

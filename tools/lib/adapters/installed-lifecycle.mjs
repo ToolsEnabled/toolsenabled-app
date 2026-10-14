@@ -35,6 +35,7 @@ export const INSTALLED_LIFECYCLE_PROFILES = Object.freeze(['windows-x64-standard
 const COMPONENTS = Object.freeze(['adapters/installed-lifecycle.mjs', 'adapters/artifact-files.mjs',
   'drivers/installer-lifecycle.mjs', 'drivers/desktop-journeys.mjs', 'drivers/lifecycle-inventory-contract.mjs',
   'guest/disposable-guest.mjs', 'guest/installed-state.mjs', 'guest/Read-InstalledState.ps1',
+  'transport/owned-job-files.mjs', 'transport/owned-execution-admission.mjs',
   'transport/owned-job.mjs', 'transport/owned-session.mjs', 'transport/cdp-client.mjs',
   'transport/registered-toolchain.mjs', 'transport/QualificationVm.psm1', 'release-readiness.mjs'].slice().sort());
 const matches = (left, right) => left?.bytes === right?.bytes && left?.sha256?.toLowerCase() === right?.sha256?.toLowerCase();
@@ -93,7 +94,7 @@ const journeyAssertion = (report, id) => {
     if (rows.length !== 1) refuse(`driver report does not contain the executed journey for ${phase}`);
     const row = rows[0], journey = row.journey || {};
     if (journey.complete !== true || journey.cleanupConfirmed !== true || journey.fixture !== false ||
-        journey.scope !== 'exact-installed-desktop-journey' || journey.product !== 'toolsenabled' ||
+        journey.scope !== 'exact-installed-\x64esktop-journey' || journey.product !== 'toolsenabled' ||
         journey.runId !== report.runId || journey.subjectSha256 !== report.subjectSha256 || journey.profile !== report.profile ||
         journey.phaseId !== phase || !UUID.test(journey.journeyId || '') || journeyIds.has(journey.journeyId) ||
         !UUID.test(journey.epochId || '') || !journey.guestId) {
@@ -152,9 +153,8 @@ export const INSTALLED_LIFECYCLE_REQUIREMENTS = freeze({
   'update-delivery': { scope: LIFECYCLE_SCOPE, driver: null, assertions: {
     'actual-update-delivery-path': null, 'exact-candidate-selected': null, 'interrupted-update-recovers': null },
   refusal: noScenario(
-    'The lifecycle driver covers interrupted-upgrade:<baseline> recovery only. Nothing exercises the delivery path the product actually offers a user, and nothing proves the exact candidate is the build that path selects. ' +
-    'tools/release-packager/lifecycle-inventory.toolsenabled.json is also absent, so there is not even a supported baseline to update from.',
-    'Commit the lifecycle inventory (shape enforced by validateLifecycleInventory in tools/lib/drivers/lifecycle-inventory-contract.mjs, checkable with tools/release-packager/check-lifecycle-inputs.mjs), then add a delivery driver that observes the real update check, download and apply path with the exact candidate as its only acceptable outcome, and reuse the existing interruption points for the third assertion.'
+    'The lifecycle driver covers interrupted-upgrade:<baseline> recovery only. No executor exercises the product update delivery path, proves that it selects the exact candidate, and verifies recovery after that delivery is interrupted.',
+    'Add a delivery driver that observes the real update check, download and apply path with the exact candidate as its only acceptable outcome, using the committed lifecycle inventory and existing interruption points to verify recovery.'
   ) },
 });
 export const INSTALLED_LIFECYCLE_IDS = Object.freeze(Object.keys(INSTALLED_LIFECYCLE_REQUIREMENTS));

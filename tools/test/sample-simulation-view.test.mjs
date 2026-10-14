@@ -28,7 +28,7 @@ const view = readFileSync(new URL('../../src/views/computers.js', import.meta.ur
 const strip = text => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1')
 
 function section() {
-  const start = view.indexOf('  /* THE EXAMPLE, AT WORK (')
+  const start = view.indexOf('  /* THE EXAMPLE, AT WORK (owner, 2026-09-11')
   const end = view.indexOf('  /* Open the saved trees for one computer.', start)
   assert.ok(start > 0 && end > start, 'the example simulation section moved')
   return strip(view.slice(start, end))

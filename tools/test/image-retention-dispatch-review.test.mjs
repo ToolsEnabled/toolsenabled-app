@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import Module, {createRequire} from 'node:module'
+import { canonicalRootForTests } from '../canonical-root.mjs'
 import {readFileSync,writeFileSync,mkdtempSync,realpathSync,existsSync,readdirSync} from 'node:fs'
 import path from 'node:path'
 import {randomUUID,createHash} from 'node:crypto'
@@ -21,12 +22,13 @@ const body=source.slice(callback.start,callback.end)
 const runNode=ast.body.find(n=>n.type==='FunctionDeclaration'&&n.id.name==='runImageQueue')
 assert.ok(runNode,'actual queue implementation must exist')
 const queueBody=source.slice(runNode.start,runNode.end)
-const functions=['agentIpcError','agentPayload','boundedAgentString','parseAgentSend','assertTrustedAgentSender','windowPrincipal'].map(name=>{
+const functions=['agentIpcError','agentPayload','boundedAgentString','boundedAgentModel','parseAgentSend','assertTrustedAgentSender','windowPrincipal'].map(name=>{
  const n=ast.body.find(n=>n.type==='FunctionDeclaration'&&n.id.name===name)
  assert.ok(n,name);return source.slice(n.start,n.end)
 }).join('\n')
 const limitCode=ast.body.filter(n=>n.type==='VariableDeclaration').flatMap(n=>n.declarations).filter(n=>['MAX_SESSION_ID_LENGTH','MAX_TURN_TEXT_LENGTH'].includes(n.id.name)).map(n=>'const '+source.slice(n.start,n.end)+';').join('\n')
-const helpers=new Function('trustedFleetProfileSender',limitCode+'\n'+functions+';return {agentIpcError,agentPayload,parseAgentSend,assertTrustedAgentSender,windowPrincipal}')(event=>event.trusted===true)
+// parseAgentSend validates an exact model through the paired engine (boundedAgentModel), as main.cjs does.
+const helpers=new Function('trustedFleetProfileSender','require','resolveCapabilityRoot',limitCode+'\n'+functions+';return {agentIpcError,agentPayload,parseAgentSend,assertTrustedAgentSender,windowPrincipal}')(event=>event.trusted===true,require,()=>canonicalRootForTests())
 const {createAgentCommandSurface,REQUIRED_DEPS}=require('./agent-command-surface.cjs')
 const sha=value=>createHash('sha256').update(value).digest('hex')
 const tracked=['agent-host.cjs','main.cjs','agent-command-surface.cjs','image-retention-service.cjs','durable-image-custody.cjs','image-outbox.cjs']

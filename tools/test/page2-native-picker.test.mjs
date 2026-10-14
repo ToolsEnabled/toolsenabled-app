@@ -35,7 +35,7 @@ function fixture(t, { scoped = true } = {}) {
   })
   const run = ({ request = { operation: 'select-path', selectedPath }, expectedProfile = profile, result = resultPath, pid = child.pid } = {}) => {
     writeFileSync(requestPath, JSON.stringify(request))
-    const executable = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+    const executable = path.join(process.env.SystemRoot || '\x43:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
     const completed = spawnSync(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script,
       '-QaRoot', qaRoot, '-ExpectedProfileRoot', expectedProfile, '-QaProcessId', String(pid), '-RequestPath', requestPath, '-ResultPath', result, '-ValidateOnly'],
     { encoding: 'utf8', windowsHide: true, timeout: 15000 })

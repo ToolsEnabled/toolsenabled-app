@@ -364,9 +364,9 @@ function writeAssistantConfig(record, modules, { targetDirectory = null } = {}) 
  * Code, Cursor and others) keep a person's own project servers there. Setup and
  * every launch-time refresh wrote the generated document over it wholesale --
  * the person's servers gone, no copy kept, nothing said -- and a failed write
- * then removed the file outright. Rule: the product never writes aggressively
- * over a person's own paths, and this was the one place it rewrote a file of
- * the person's.
+ * then removed the file outright. That is the "aggressive write over a user's
+ * paths" the owner asked about on 2026-09-22, and it was the one place this
+ * product rewrote a file of the person's.
  *
  * THE RULE NOW. ToolsEnabled owns the entries it writes (the catalogue names:
  * toolsenabled-readonly, toolsenabled, playwright) and nothing else in the

@@ -1,9 +1,9 @@
-/* T52(2). Rule: scrolled page text must never show in the band above the
- * header.
+/* T52(2). "THERE IS A SMALL GAP AT THE TOP SO AS YOU SCROLL YOU SEE TEXT ABOVE
+ * THE HEADER." — the owner, 2026-09-15.
  *
  * WHAT WAS ACTUALLY WRONG, and it was not the first suspect. The D1/D2 change
- * (an earlier commit) touched only `left` and `transform`. `top: 14px` has been on
- * `.topbar` since the rule was written (an earlier commit), and the strip declares
+ * (`7a9df357`) touched only `left` and `transform`. `top: 14px` has been on
+ * `.topbar` since the rule was written (`1752bbc0`), and the strip declares
  * `background: none` with no backdrop-filter, while the page shells in
  * src/sidebar-pages.css are `padding-top: 0`. So a scrolled page ran straight
  * through the 14px band above the bar — and behind the controls as well.
@@ -12,7 +12,7 @@
  * keeps `pointer-events: none` so it does not begin swallowing clicks that used
  * to reach the page, which means hit-testing looks straight through it and
  * reports the page text as the top element whether it is painted or not. Only
- * the painted result answers the requirement, so this reads the window's
+ * the painted result answers the owner's sentence, so this reads the window's
  * pixels.
  *
  * THE BAND IS THE 14px ABOVE THE CONTROLS, not the whole header. The 44px the
@@ -107,7 +107,7 @@ test('a full-width cover reaches the very top of the window', () => {
   }
 })
 
-/* THE REQUIREMENT, MEASURED. */
+/* THE OWNER'S SENTENCE, MEASURED. */
 test('nothing from the page is ever painted above the header, at any width or scroll offset', () => {
   for (const row of rows()) {
     assert.ok(row.band.sampledRows > 0, `no pixels were sampled at ${row.requestedWidth}px`)

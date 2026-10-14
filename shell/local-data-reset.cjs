@@ -92,7 +92,7 @@ const USER_DATA_NAMED_ENTRIES = Object.freeze([
   { rel: path.join('capability', 'config', 'accounts.json'), what: 'the provider accounts and sign-in folders listed on this computer' },
   { rel: path.join('capability', 'state', 'r-ledger', 'owner-capture-spool'), what: 'the messages your agents were handed to file as standing rules' },
   { rel: path.join('capability', 'state', 'r-ledger'), what: 'the standing rules filed on this computer' },
-  /* The one canonical ledger and what rides beside it:
+  /* The one canonical ledger (owner, 2026-09-02) and what rides beside it:
      every request and standing rule of every tier, the copy kept before the
      last change, the marker set while it is being written, and the history of
      every change. The person's own words live in the first and the fourth. */

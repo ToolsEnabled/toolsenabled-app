@@ -173,15 +173,15 @@ export async function runBaselineAcceptance({ parent } = {}) {
   const observations = []
   const cases = []
   const refs = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' })
-  const report = { backlog: 'R114', directory, app: refs.stdout.trim(),
-    expectedBase: 'a'.repeat(40),
-    engine: 'b'.repeat(40), engineExecuted: false,
+  const report = { backlog: 'R114 / original item 13', directory, app: refs.stdout.trim(),
+    expectedBase: '07091006f633d8e452ea9b6a27d0281c88f6249b',
+    engine: 'f3d8bb3d81fb6a1868a13b2c4f1dbb1dafd0544c', engineExecuted: false,
     runtime: process.version, platform: process.platform,
     mode: 'synthetic Node disk + shipped VM blocks; no native window acceptance',
     sourceHashes: Object.fromEntries(['shell/main.cjs', 'shell/fleet-profile-preload.cjs', 'public/durable-storage.js',
       'shell/node-recovery-store.cjs', 'shell/renderer-prefs.cjs', 'src/recovery-handoff-store.js', 'src/settings-recovery-notice.js']
       .map(file => [file, hash(fs.readFileSync(path.join(root, file)))])),
-    cases, observations, acceptance: 'OPEN: native acceptance required',
+    cases, observations, acceptance: 'OPEN: Controller native acceptance required',
   }
   const baseline = corpus(21)
   writeJSON(path.join(directory, 'seed-21.json'), { origin, entries: baseline })
@@ -330,7 +330,7 @@ export async function runBaselineAcceptance({ parent } = {}) {
 
 // This preparation records the pre-correction defect. Preserve that historical
 // witness after integration, separately from the current late-drain regressions.
-const BASELINE_REF = 'a'.repeat(40)
+const BASELINE_REF = '07091006f633d8e452ea9b6a27d0281c88f6249b'
 const BASELINE_FILES = ['shell/main.cjs', 'shell/fleet-profile-preload.cjs',
   'public/durable-storage.js', 'shell/node-recovery-store.cjs', 'shell/renderer-prefs.cjs',
   'src/recovery-handoff-store.js', 'src/settings-recovery-notice.js']

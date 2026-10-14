@@ -1,6 +1,6 @@
 // THE SETUP WALKTHROUGH: does it stay few, safe, visible, and reversible?
 //
-// The first run is to behave like twenty questions -- a small
+// The owner asked for a first run that behaves like twenty questions -- a small
 // number of maximally informative questions landing on the right profile -- and
 // named four properties the result has to have. Each section below is one of
 // them, because each is a way this feature can be built, demoed, and still be
@@ -146,7 +146,9 @@ test('one answer moves ten settings, which is what earns it a step', () => {
   const movedFlags = WRITE_IDS.filter(id => observing.writeFlags[id] !== acting.writeFlags[id])
   const movedIntent = PROFILE_INTENT.filter(field => observing.intent[field.id] !== acting.intent[field.id])
   assert.equal(movedFlags.length, WRITE_IDS.length, 'the autonomy answer does not reach every write-action flag')
-  assert.equal(movedIntent.length, PROFILE_INTENT.length, 'the autonomy answer does not reach every cross-lane setting')
+  assert.deepEqual(movedIntent.map(field => field.id).sort(), PROFILE_INTENT.filter(field => field.id !== 'failover').map(field => field.id).sort(), 'the autonomy answer must reach each adjustable cross-lane setting')
+
+
   assert.ok(movedFlags.length + movedIntent.length >= 10, 'one question moving fewer than ten settings has not earned a step')
 })
 
@@ -289,8 +291,9 @@ test('the ceiling clamps the cross-lane settings too, and says that it did', () 
   assert.equal(guided.intent.attach, 'mirror', 'the beginner level allowed taking over a live editor session')
   assert.equal(guided.intent.approvals, 'stop')
   assert.equal(guided.intent.ideImport, 'none')
-  assert.equal(guided.intent.failover, 'manual')
-  assert.equal(guided.clampedIntent.length, 4, 'four settings were clamped and fewer than four were reported')
+
+  assert.equal(guided.clampedIntent.length, 3, 'the three adjustable settings must report their clamps')
+
 
   const standard = derive({ autonomy: 'autonomous' }, 'standard')
   assert.equal(standard.intent.ideImport, 'ask', 'the standard level imported every editor session it could find')
@@ -434,57 +437,7 @@ test('each recorded setting says truthfully whether it is acted on yet', () => {
   assert.match(VIEW, /INTENT_BANNER_BODY/, 'the review page stopped printing the banner that says what these rows do')
 })
 
-test('the failover answer is the one the account switching actually reads', async () => {
-  /* THE ANTI-DECORATION CHECK. `enforced: true` is a string in a file; what
-     makes it true is that the main process passes this answer to the module
-     that switches accounts. This asserts the wiring exists rather than
-     trusting the flag, because the flag is exactly what a mistake would set
-     without doing the work. */
-  /* Since 2026-09-02 the answer reaches switching through ONE record: a change
-     to it is mirrored into the accounts registry's selectionMode (the page-2
-     menu's own rule), and main hands that recorded mode to the engine on every
-     start. The main process no longer reads the answer itself, so what is
-     asserted is each hop of that path rather than a word. */
-  const PROFILE = read('src/setup-profile.js')
-  assert.doesNotMatch(PROFILE, /mirrorFailoverAnswer/, 'saving an in-progress walkthrough must not write runtime account policy')
-  const { applySetupIntentChanges } = await import('../../src/setup-intent-commit.js')
-  const choices = []
-  for (const next of ['manual', 'auto']) {
-    await applySetupIntentChanges({ approvals: 'stop', ideImport: 'none', failover: next === 'auto' ? 'manual' : 'auto' },
-      { approvals: 'stop', ideImport: 'none', failover: next },
-      { mcProviders: { accountPolicy: async request => { choices.push(request); return { ok: true } } } })
-  }
-  assert.deepEqual(choices, [{ selectionMode: 'manual' }, { selectionMode: 'priority' }], 'only the selection mode is changed; account thresholds are preserved')
-  const MAIN = read('shell/main.cjs')
-  const start = MAIN.indexOf('async function resolveSessionAccount(')
-  const end = MAIN.indexOf('\n}', start)
-  assert.ok(start > 0 && end > start)
-  let policy
-  const calls = []
-  const resolve = new Function('loadRotation', 'selectionPolicyFromRegistry', 'resolveServicesRootForAccounts', 'ACCOUNT_HOME_DIR',
-    'PROVIDER_ISOLATION_REQUESTED', 'ACCOUNT_REGISTRY_FILE',
-    MAIN.slice(start, end + 2) + '; return resolveSessionAccount;')(
-    () => ({ resolveAccountForSession: async request => { calls.push(request); return { rotated: true } } }),
-    () => policy, () => 'fixture-services', 'fixture-owning-home', false, 'fixture-registry')
-  for (const selectionMode of ['manual', 'priority', 'most-available', 'least-available', 'even', 'dynamic', 'resets-soonest']) {
-    policy = { selectionMode, reservePercent: 20, rankWindow: 'weekly' }
-    await resolve({ provider: 'claude' })
-    assert.equal(calls.at(-1).selectionMode, selectionMode, 'ordinary starts must preserve the recorded choice')
-    assert.equal(calls.at(-1).reservePercent, 20)
-    assert.equal(calls.at(-1).rankWindow, 'weekly')
-    await resolve({ provider: 'claude', excludeAccounts: ['spent-account'] })
-    assert.equal(calls.at(-1).selectionMode, selectionMode === 'manual' ? 'priority' : selectionMode)
-    assert.deepEqual(calls.at(-1).excludeAccounts, ['spent-account'])
-    await resolve({ provider: 'claude', preferred: 'original-account', exact: true })
-    assert.equal(calls.at(-1).selectionMode, 'manual', 'resume must retain its exact account')
-    assert.equal(calls.at(-1).preferred, 'original-account')
-  }
-  policy = null
-  await resolve({ provider: 'claude' })
-  assert.equal(Object.hasOwn(calls.at(-1), 'selectionMode'), false, 'an absent policy must not invent a choice')
-  assert.doesNotMatch(MAIN, /failoverModeFromProfile/, 'a second reader of the walkthrough answer came back; the registry is the one record')
-  assert.match(MAIN, /accountResolver/, 'the account choice is never handed to the thing that starts a session')
-})
+
 
 /* WHAT THIS ASSERTED FIRST, AND WHY THAT WAS THE WRONG PROPERTY.
  *
@@ -569,11 +522,11 @@ function modelCopy() {
 
 /* THE COPY MODULE IS WALKED AS DATA TOO, AND IT WAS NOT WALKED AT ALL.
  *
- * src/setup-copy.js was created (an earlier commit) to hold the sentences whose BRANCHES
+ * src/setup-copy.js was created (2318d72) to hold the sentences whose BRANCHES
  * had gone false, precisely so a suite could ask what a person reads. Nothing
  * asked. renderedCopy() below finds copy by regexing `>text<` out of view
  * source, so the moment a sentence moves into a module and the view interpolates
- * it, this scanner stops seeing it -- and every sentence an earlier commit moved went dark
+ * it, this scanner stops seeing it -- and every sentence 2318d72 moved went dark
  * on the same day it was written. Measured when this was added: four absolute
  * claims were sitting in there unregistered, including "Nothing on this computer
  * is created or changed before you press it", which is the replacement for a
@@ -771,7 +724,7 @@ const PINNED_ABSOLUTE_CLAIMS = Object.freeze([
     kind: 'pinned',
     pinnedBy: 'the recommended answer requests report-read, agent-session, dispatch and cloud-launch, and every one of those is a control a person presses; asserted by the recommended-answer test, which fails if decision, queue or thread-reply are ever switched on by it',
   },
-  /* The standing-requests brief. These two sentences
+  /* The standing-requests brief (owner, 2026-08-19). These two sentences
      describe the owner's request commands, not a state of this product, and
      each was verified verbatim against the request skills' own SKILL.md
      before it was written -- the source of truth the owner names for these
@@ -1104,11 +1057,11 @@ test('the folder question refuses to answer before the permission level does', (
    someone's disk and no record to show for them. */
 test('every folder is checked before any folder is created', () => {
   const { modules, calls } = fakeModules({
-    refuse: candidate => (candidate === 'C:\\Windows'
+    refuse: candidate => (candidate === '\x43:\\Windows'
       ? { ok: false, code: 'SETUP_WORKSPACE_DRIVE_ROOT_REFUSED', message: 'That is the top of a whole drive.', resolved: candidate }
       : null),
   })
-  const result = SETUP_RECORD.recordWorkspaces(['C:\\Fine', 'C:\\AlsoFine', 'C:\\Windows'], { modules })
+  const result = SETUP_RECORD.recordWorkspaces(['\x43:\\Fine', '\x43:\\AlsoFine', '\x43:\\Windows'], { modules })
   assert.equal(result.ok, false)
   assert.equal(result.code, 'SETUP_WORKSPACE_DRIVE_ROOT_REFUSED')
   assert.equal(calls.provisioned.length, 0, 'folders were created before the whole list was known to be allowed')
@@ -1316,7 +1269,8 @@ test('every new setup channel is behind the same sender check as the level', () 
 test('the model and the flag lists cannot drift apart', () => {
   for (const field of PROFILE_INTENT) {
     assert.equal(intentField(field.id), field)
-    assert.ok(field.order.length >= 2, `${field.id} is not a choice`)
+    if (field.id === 'failover') assert.deepEqual(field.order, ['manual'], 'setup must not offer automatic account selection')
+    else assert.ok(field.order.length >= 2, `${field.id} is not a choice`)
     for (const value of field.order) {
       assert.equal(typeof field.labels[value], 'string', `${field.id} has no label for ${value}`)
     }
@@ -1404,14 +1358,7 @@ test('replacing the working folder says which folders it dropped', () => {
 /* T1583: THE "IF AN ACCOUNT RUNS OUT" ROW SAYS WHAT ITS TWO ANSWERS DO. Its
    description was a disclosure about the Account step, so the row that decides
    whether agents move between provider accounts explained nothing about that. */
-test('the account switching row explains both of its answers instead of the Account step', async () => {
-  const { PROFILE_INTENT } = await import('../../src/setup-profile.js')
-  const row = PROFILE_INTENT.find(field => field.id === 'failover')
-  assert.match(row.desc, /reaches its limit/)
-  assert.match(row.desc, new RegExp(`${row.labels.manual}: the agent stops, and you pick the next account in the Accounts menu on Computers`))
-  assert.match(row.desc, new RegExp(`${row.labels.auto}: the agent carries on with another signed-in account`))
-  assert.doesNotMatch(row.desc, /The account setup asks for is an account on this computer/, 'the row still explains the Account step')
-})
+
 
 /* T1553: THE ROW IS NAMED FOR ITS QUESTION. It was headed "Acting on its own"
    above a lit "Act when I start it", which reads as the opposite answer. The
@@ -1426,4 +1373,34 @@ test('the autonomy row is named for its question, not for one of its answers', (
   const guidance = read('src/permission-guidance.js')
   assert.doesNotMatch(guidance, /Setup → Acting on its own/, 'guidance still sends people to a row that is not there')
   assert.match(guidance, /Settings → Setup → How much it does without asking/)
+})
+
+test('old setup switching and future policy fields load cleanly and are dropped on the next save', () => {
+  const scope = fakeStorage(JSON.stringify({ schemaVersion: PROFILE_SCHEMA_VERSION, status: 'complete',
+    answers: { autonomy: 'assisted', screens: 'live', approvals: 'stop', failover: { old: 'rotate' }, futurePolicy: { enabled: true } },
+    accountPolicyDeferred: { reason: 'Synthetic retired policy' }, futureSetting: true }))
+  const profile = readStoredProfile(scope)
+  assert.equal(profile.status, 'complete')
+  assert.equal(profile.answers.autonomy, 'assisted')
+  assert.equal(profile.answers.approvals, 'stop')
+  assert.equal(Object.hasOwn(profile.answers, 'failover'), false)
+  assert.equal(Object.hasOwn(profile.answers, 'futurePolicy'), false)
+  assert.equal(writeStoredProfile(profile, scope).status, 'complete')
+  const saved = JSON.parse(scope.localStorage.getItem(PROFILE_STORAGE_KEY))
+  assert.equal(Object.hasOwn(saved.answers, 'failover'), false)
+  assert.equal(Object.hasOwn(saved.answers, 'futurePolicy'), false)
+  assert.equal(Object.hasOwn(saved, 'accountPolicyDeferred'), false)
+  assert.equal(Object.hasOwn(saved, 'futureSetting'), false)
+})
+
+/* 1.0.50 REVIEW, ACCOUNTS F. Automatic account switching left Setup with the
+   'failover' row (cc6986c38), but Setup and Settings still said account
+   switching is applied when you save, and Settings counted four consent rows. */
+test('setup no longer describes account switching as a saved setting, and counts its consent rows', async () => {
+  const { PROFILE_INTENT } = await import('../../src/setup-profile.js')
+  assert.doesNotMatch(INTENT_BANNER_BODY, /account switching/i)
+  assert.match(INTENT_BANNER_BODY, /Permission questions and editor imports are applied when you save\./)
+  const settings = readFileSync(new URL('../../src/setup-profile-settings.js', import.meta.url), 'utf8')
+  const count = ['no', 'one', 'two', 'three', 'four', 'five'][PROFILE_INTENT.length]
+  assert.match(settings, new RegExp(`the action switches and ${count} consent rows in Setup`))
 })

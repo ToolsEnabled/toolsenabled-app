@@ -24,9 +24,12 @@ function appControlWorld(request) {
       || element.getAttribute('title') || element.getAttribute('placeholder')
       || (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' ? element.name : element.textContent) || element.tagName).trim().slice(0, 240)
   }
+  // The video section, its window list and each video panel carry
+  // data-video-box-controls: an agent that can press them and screenshot the
+  // app could open any window on this computer (1.0.49 spike, REPORT.md).
   function allowed(element) {
     if (!element?.isConnected || element.disabled || element.readOnly || !element.getClientRects().length
-        || element.closest('[data-accessibility-root],.board-roles-box')) return false
+        || element.closest('[data-accessibility-root],.board-roles-box,[data-video-box-controls]')) return false
     if (['password', 'file', 'hidden'].includes(element.type)) return false
     const style = getComputedStyle(element)
     if (style.visibility !== 'visible' || style.display === 'none' || Number(style.opacity) === 0 || element.closest('[inert],[aria-hidden="true"]')) return false
@@ -65,7 +68,7 @@ function appControlWorld(request) {
       if (controls.length >= 150) break
     }
     return { route: location.hash.slice(1) || '/', controls,
-      limitations: 'Visible main-frame controls only. Known credential, consent, role-editing and agent-start controls are filtered. This is not an arbitrary-app sandbox. Use assigned agent functions for agent operations.' }
+      limitations: 'Visible main-frame controls only. Known credential, consent, role-editing, agent-start and video controls are filtered. This is not an arbitrary-app sandbox. Use assigned agent functions for agent operations.' }
   }
   const target = state.targets.get(request.targetId)
   const element = target?.element.deref()

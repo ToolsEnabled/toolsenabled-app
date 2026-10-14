@@ -190,7 +190,7 @@ test('turning the example off on a public page invalidates its old verdict until
   assert.equal(source.previewWithoutHost(), true, 'a genuine no-host answer still disables the impossible choice')
 })
 
-/* THE SIGNED-OUT SIMULATION DEFAULT (product rule).
+/* THE SIGNED-OUT SIMULATION DEFAULT (owner ruling 2026-08-26).
  *
  * The property under test is NOT "a stranger sees mock data" -- they always
  * did, because no transport answers them. It is that the example becomes a
@@ -361,8 +361,8 @@ test('signing in clears the simulation seed that being signed out created', asyn
    * real action hidden behind a badge -- with no way back except turning the
    * simulation off by hand or reloading the page.
    *
-   * The simulation-on-for-signed-out visitors is deliberate and was asked
-   * for. Staying there after signing in is the defect.
+   * The simulation-on-for-signed-out visitors is deliberate and the owner asked
+   * for it. Staying there after signing in is the defect.
    *
    * `reask` already existed for this exact moment; its own doc says "sign-in just
    * happened". It reached only the transport probe, forty lines past a
@@ -379,7 +379,7 @@ test('signing in clears the simulation seed that being signed out created', asyn
 
   await resolveDataSource()
   assert.equal(isExampleMode(), true,
-    'a signed-out visitor no longer gets the simulation, which is the behaviour asked for')
+    'a signed-out visitor no longer gets the simulation, which is the behaviour the owner asked for')
   const askedWhileSignedOut = asked
 
   signedIn = true

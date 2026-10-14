@@ -20,11 +20,11 @@ import test from 'node:test'
 
 import { assertQualificationContextLocations } from '../release-packager/cut-release-candidate.mjs'
 
-const APP = path.join(os.tmpdir(), 'cqa-build-dir')
+const APP = path.join(os.tmpdir(), 'w54-build-dir')
 const STAGE = path.join(APP, 'release', 'win-unpacked')
-const HARNESS = path.join(os.tmpdir(), 'cqa-harness')
-const EVIDENCE = path.join(os.tmpdir(), 'cqa-evidence')
-const ENGINE = path.join(os.tmpdir(), 'cqa-engine')
+const HARNESS = path.join(os.tmpdir(), 'w54-harness')
+const EVIDENCE = path.join(os.tmpdir(), 'w54-evidence')
+const ENGINE = path.join(os.tmpdir(), 'w54-engine')
 
 function expected(overrides = {}) {
   return {
@@ -85,7 +85,7 @@ test('a wrong harnessRoot refuses and names the field, the value found and the v
 })
 
 test('a wrong sourceRoots.app refuses and names that field, not a generic one', async () => {
-  const wrong = path.join(os.tmpdir(), 'cqa-some-other-landing')
+  const wrong = path.join(os.tmpdir(), 'w54-some-other-landing')
   const message = await refusal(context({ sourceRoots: { app: wrong, engine: ENGINE } }))
   assert.match(message, /sourceRoots\.app/)
   assert.ok(message.includes(wrong))
@@ -93,7 +93,7 @@ test('a wrong sourceRoots.app refuses and names that field, not a generic one', 
 })
 
 test('a wrong stageRoot refuses -- naming the durable staging root is not the unpacked stage', async () => {
-  const wrong = path.join(os.tmpdir(), 'cqa-stage-20260916')
+  const wrong = path.join(os.tmpdir(), 'w54-stage-20260916')
   const message = await refusal(context({ stageRoot: wrong }))
   assert.match(message, /stageRoot/)
   assert.ok(message.includes(wrong))
@@ -101,7 +101,7 @@ test('a wrong stageRoot refuses -- naming the durable staging root is not the un
 })
 
 test('a wrong evidenceRoot refuses', async () => {
-  const wrong = path.join(os.tmpdir(), 'cqa-other-evidence')
+  const wrong = path.join(os.tmpdir(), 'w54-other-evidence')
   const message = await refusal(context({ evidenceRoot: wrong }))
   assert.match(message, /evidenceRoot/)
   assert.ok(message.includes(wrong))
@@ -142,7 +142,7 @@ test('a relative derived location refuses rather than comparing something the la
 })
 
 test('the check reads the file it is given, from disk, not a caller-supplied object', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'cqa-t154-'))
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'w54-t154-'))
   const file = path.join(dir, 'qualification-context.json')
   await writeFile(file, JSON.stringify(context(), null, 2))
   assert.equal(await assertQualificationContextLocations(file, expected()), true)

@@ -24,19 +24,9 @@
  *                        board has no computer and the compose panel refuses
  *                        every start BY DESIGN, for Codex too. Two lanes read
  *                        that refusal as a Claude defect.
- *   the Codex sign-in    copied, never pointed at. shell/agent-host.cjs plans a
- *                        confined home for EVERY isolated level and links the
- *                        Codex credential into it, so a start of any tier
- *                        refuses without one. See the claude-only profile
- *                        below, which is this run's measurement of exactly that.
- *   the Claude sign-in   copied, never pointed at, and the file is never opened
- *                        by this process. The engine spawns the official binary
- *                        and sets no CLAUDE_CONFIG_DIR, so the child reads the
- *                        home it is given -- and this run gives it a scratch
- *                        one. Without the copy the child answers "Not logged
- *                        in", which is the harness talking, not the product.
- *                        Same mechanism, same flag-gating and same reasoning as
- *                        copyClaudeSignIn() in owner-walkthrough-drive.mjs.
+ *   provider sign-ins  --codex-home and --claude-config-dir name the person's
+ *                      existing homes in place, or API keys come from the
+ *                      environment. Only the official CLIs handle sign-in.
  *   the npm global dir   junctioned into the scratch APPDATA, because
  *                        claude-cli-process.js resolves the native claude.exe
  *                        under %APPDATA%/npm and a redirected APPDATA empties
@@ -61,7 +51,8 @@
  *       not run · 3 nothing failed but something could not be exercised.
  */
 
-import { copyFileSync, existsSync, mkdirSync, rmSync, rmdirSync, symlinkSync, unlinkSync } from 'node:fs'
+import { providerLaunchEnvironment } from './lib/provider-launch-environment.cjs'
+import { existsSync, mkdirSync, rmSync, rmdirSync, symlinkSync, unlinkSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 
@@ -123,7 +114,7 @@ function baseEnvironment(profile) {
   for (const key of Object.keys(environment)) {
     if (/^(path|mission_control_engine)$/i.test(key)) delete environment[key]
   }
-  const systemRoot = process.env.SystemRoot || 'C:\\Windows'
+  const systemRoot = process.env.SystemRoot || '\x43:\\Windows'
   const systemPath = [
     path.join(systemRoot, 'system32'),
     systemRoot,
@@ -157,33 +148,6 @@ function baseEnvironment(profile) {
   if (VISIBLE) delete environment.MC_SMOKE_HEADLESS
   else environment.MC_SMOKE_HEADLESS = '1'
   return environment
-}
-
-/* The two sign-ins, copied rather than pointed at, so nothing this run does can
-   write to the owner's real home. Neither file is opened by this process. */
-function copySignIn(profile, { codex, claude }) {
-  const realHome = process.env.USERPROFILE || ''
-  const scratchHome = path.join(profile, 'home')
-  const done = { codex: false, claude: false }
-  if (codex) {
-    const from = path.join(realHome, '.codex', 'auth.json')
-    if (!existsSync(from)) throw new HarnessError(`no Codex sign-in at ${from}; run \`codex login\``)
-    mkdirSync(path.join(scratchHome, '.codex'), { recursive: true })
-    copyFileSync(from, path.join(scratchHome, '.codex', 'auth.json'))
-    done.codex = true
-  }
-  if (claude) {
-    const from = path.join(realHome, '.claude', '.credentials.json')
-    if (!existsSync(from)) throw new HarnessError(`no Claude sign-in at ${from}; run \`claude\` and sign in`)
-    mkdirSync(path.join(scratchHome, '.claude'), { recursive: true })
-    copyFileSync(from, path.join(scratchHome, '.claude', '.credentials.json'))
-    /* The onboarding record too, or the CLI treats this as a first run and
-       stops to ask questions no harness can answer. */
-    const settings = path.join(realHome, '.claude.json')
-    if (existsSync(settings)) copyFileSync(settings, path.join(scratchHome, '.claude.json'))
-    done.claude = true
-  }
-  return done
 }
 
 /* ------------------------------------------------------------- the window -- */
@@ -596,7 +560,7 @@ const TERMINAL_STATUSES = new Set(['finished', 'failed'])
  *                    the budget itself. There is no retry ladder here on
  *                    purpose: waitForTerminal takes ONE overall budget, polls
  *                    within it, holds nothing while it waits, and returns.
- *                    An earlier run measured the other shape -- a synchronous retry
+ *                    Lane A measured the other shape -- a synchronous retry
  *                    ladder multiplying a per-probe timeout into a 485-second
  *                    freeze where the old code failed in 5s.
  *
@@ -863,13 +827,12 @@ async function main() {
     check('the staged payload carries the Claude engine', existsSync(engineFile), engineFile)
     if (!existsSync(engineFile)) throw new HarnessError('nothing below would be about a build that ships the Claude engine')
 
-    /* ---------- profile A: a signed-in machine, both sign-ins ---------- */
+    /* ---------- profile A: the owner's own machine, both sign-ins ---------- */
     console.log('\nITEM 1  pressing Start on a Claude tier, with a real hand')
     const profileA = path.join(scratch, 'profile-a')
     mkdirSync(profileA, { recursive: true })
-    const environmentA = baseEnvironment(profileA)
-    const copied = copySignIn(profileA, { codex: true, claude: true })
-    note(`sign-ins copied into the scratch home: ${JSON.stringify(copied)} (neither file is opened by this process)`)
+    const environmentA = providerLaunchEnvironment(['codex', 'claude'], baseEnvironment(profileA))
+    note('provider CLIs use caller-selected homes in place or environment API keys')
     seedMachineRecord(profileA, staged.appRoot)
 
     open = await openApp(staged.executable, profileA, environmentA)
@@ -903,15 +866,14 @@ async function main() {
     open = null
 
     /* ---------- profile B: Claude installed, no Codex sign-in ---------- */
-    /* THE MACHINE THE REQUIREMENT IS ABOUT: adding Claude, Codex and Gemini CLI
-       subscriptions. A person may well arrive with only one. Availability was
+    /* THE MACHINE THE OWNER ASKED ABOUT: "add Claude and Codex and Gemini CLI
+       subscriptions". A person may well arrive with only one. Availability was
        repaired for exactly this case; whether the PRESS survives it is a
        different question and it has never been asked. */
     console.log('\nEXTRA   a machine with Claude signed in and no Codex sign-in at all')
     const profileB = path.join(scratch, 'profile-b')
     mkdirSync(profileB, { recursive: true })
-    const environmentB = baseEnvironment(profileB)
-    copySignIn(profileB, { codex: false, claude: true })
+    const environmentB = providerLaunchEnvironment('claude', baseEnvironment(profileB))
     seedMachineRecord(profileB, staged.appRoot)
     open = await openApp(staged.executable, profileB, environmentB)
     if (!(await waitForView(open))) throw new HarnessError('the claude-only launch never mounted a view')

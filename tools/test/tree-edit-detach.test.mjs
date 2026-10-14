@@ -325,8 +325,8 @@ test('a missing detach callback leaves edit selection and topology unchanged', t
 })
 
 test('an already selected head dropped on the new-tree "+" is a plain move: no detach, no duplicate tree', t => {
-  // A tree head is already its own tree, so that "+" asks for nothing new
-  // (agents move freely to the right, where the + slots are).
+  // A tree head is already its own tree, so that "+" asks for nothing new (owner, 2026-09-10:
+  // agents must move freely to the right, "which is where the + are").
   const selected = ['root']
   let detached = 0
   const { graph, agents, record, drop } = editingGraph(t, { rootIds: selected,

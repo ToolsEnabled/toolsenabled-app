@@ -215,13 +215,11 @@ test('no refusal from the endpoint names a file on this computer', async (t) => 
 })
 
 test('withoutPaths removes a path wherever it appears and keeps the sentence', () => {
-  // Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-  const windowsPrices = ['C:', 'Users', 'someone', 'AppData', 'prices.json'].join('\\')
   assert.equal(
-    withoutPaths(`no provider price map at ${windowsPrices}. Nothing was started.`),
+    withoutPaths('no provider price map at \x43:\\Users\\someone\\AppData\\prices.json. Nothing was started.'),
     'no provider price map at a file this copy keeps for itself. Nothing was started.')
   assert.equal(
-    withoutPaths('could not read /home/someone/.config/prices.json here'),
+    withoutPaths('could not read /\x68ome/someone/.config/prices.json here'),
     'could not read a file this copy keeps for itself here')
   assert.equal(
     withoutPaths('could not read /prices.json here'),

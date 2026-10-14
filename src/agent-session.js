@@ -14,7 +14,8 @@ import { createImageOwnerClient } from './image-owner-client.js'
 import { arrayBufferToBase64, buildChat, controlState, createChatDiffOpenHandler, el, pastedImageFromClipboard } from './components.js'
 import { createCompareFilesDoor } from './diff-editor.js'
 import { createConfirmedFileChangeBuffer } from './session-change-patches.js'
-import { messageAriaLabel, messagePlaceholder } from './chat-copy.js'
+import { agentAccountCopy, messageAriaLabel, messagePlaceholder } from './chat-copy.js'
+import { observeAccountNames, sessionAccountDisplayRecord } from './account-switcher-state.js'
 import { mentionRefusalSentence } from './fleet-tree-copy.js'
 
 /* THE ONE ATTRIBUTE IN THIS FILE THAT INTERPOLATES A REASON.
@@ -36,17 +37,18 @@ const esc = value => String(value ?? '')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;')
-import { refusalCode, TRANSCRIPT_SEND_REFUSALS, unavailableReason } from './agent-availability-copy.js'
+import { refusalCode, TRANSCRIPT_SEND_REFUSALS, unavailableReason, UNAVAILABLE_TEXT } from './agent-availability-copy.js'
 import { confinementNote, CONFINEMENT_SUBJECT_HERE, CONFINEMENT_SUBJECT_REMOTE } from './agent-confinement-copy.js'
 import { currentDataSource } from './data-source.js'
 import { readerRemedy } from './refusal-copy.js'
 import { isWriteEnabled, setWriteEnabled, WRITE_FLAGS_EVENT } from './write-flags.js'
-import { completionSettlesOpenTurn, createActionBuffer, sessionActivityEvent, sessionEndedEvent, createSessionTextReader, sessionEventTurnId, sessionNoProgressEvent, sessionPersonTurn, sessionTurnCancelled, sessionTurnFailureText, sessionTurnStatus, sessionTurnSucceeded } from './agent-session-events.js'
+import { completionSettlesOpenTurn, createActionBuffer, sessionActivityEvent, sessionEndedEvent, createSessionTextReader, sessionEventTurnId, sessionNoProgressEvent, sessionPersonTurn, sessionTurnCancelled, sessionTurnFailureText, sessionSafetyRefusal, sessionModelRefusal, sessionTurnStatus, sessionTurnSucceeded } from './agent-session-events.js'
 import { answerWithinBound, createPendingApprovals } from './approval-answer.js'
 import { createLiveSessionPublisher } from './agent-session-registry.js'
+import { createTurnInterrupts } from './turn-interrupts.js'
 import { START_CONTROL_ON, startControlOffBecause } from './setup-profile.js'
 /* What turning this on would grant and what it would risk, from the one place
-   those statements live (R1529). */
+   those statements live (owner, R1529). */
 import { withheldMarkup } from './guided-step.js'
 /* The same words the tree's own chat rows use for what an agent DID, so a
    command run from this surface and a command run from the tree read as the
@@ -65,8 +67,10 @@ import {
   enqueue as outboxEnqueue,
   holdForSend as outboxHoldForSend,
   list as outboxList,
+  markHeld as outboxMarkHeld,
   moveSession as outboxMoveSession,
   promoteFront as outboxPromoteFront,
+  releaseHeld as outboxReleaseHeld,
   replace as outboxReplace,
   requeueFront as outboxRequeueFront,
   takeNext as outboxTakeNext,
@@ -88,6 +92,8 @@ import { QUEUE_PANEL, movedFrontSentence } from './fleet-tree-copy.js'
    allow-lists lines calling unavailableReason()/refusalRemedy()/
    refusalSentence() directly, has a name of its own to allow-list too. */
 const readerSafeReason = code => readerRemedy(unavailableReason(code), { viaRelay: currentDataSource() === 'relay' })
+const readerSafeBindingReason = code => readerSafeReason(Object.hasOwn(UNAVAILABLE_TEXT, code)
+  ? code : 'AGENT_SESSION_BINDING_UNCONFIRMED')
 
 /* WHAT THIS CONTROL SAYS ABOUT THE SESSION IT IS ABOUT TO START.
  *
@@ -168,8 +174,8 @@ let sessionSurfaces = 0
 /* "NOT YET" IS NOT "NO", AND THEY WANT DIFFERENT BEHAVIOUR.
  *
  * T289. A start held by the resource guard sat six minutes across eight manual
- * attempts with no progress and no retry (page 2; reproduced on a second
- * window). The guard is right -- these codes are the computer saying it
+ * attempts with no progress and no retry (Worker 82, page 2; reproduced on my
+ * own window). The guard is right -- these codes are the computer saying it
  * cannot take another assistant yet, and starting anyway is how the machine
  * dies -- but the surface painted "not yet" as "refused" and then did nothing,
  * so a person creating their first agent watched six minutes of silence.
@@ -351,6 +357,23 @@ const PASTE_HELD_LOST = 'That picture could not be attached, so your message was
    never given. */
 const RESPAWN_WITHOUT_PICTURE = 'Respawn sent your words again without the pasted picture. Paste it again to include it.'
 
+/* Did this turn end on an account usage limit? The same reading as the tree's
+   fence (src/account-recovery-coordinator.js observePacket) -- the shell's
+   verdict or a limit code -- plus the engine's own usage-limit marker. A
+   permission, policy or sign-in refusal is never a limit. */
+const ACCOUNT_LIMIT_HOLD = 'ACCOUNT_LIMIT_HELD'
+/* REVIEW-1050 #10: a tab's queue held after a model refusal says why, in the tab's
+   own words. A tab's running session keeps its model and the tab draws no Respawn,
+   so the way on is Unqueue, another model, Stop, and a new send. */
+const MODEL_REFUSED_TAB_HOLD = 'PROVIDER_MODEL_REFUSED_TAB'
+const ACCOUNT_LIMIT_CODE = /quota|usage.limit|rate.limit|ACCOUNT_LIMIT|ACCOUNT_EXHAUSTED/i
+function accountLimitTurn(event, status) {
+  if (!event || !['failed', 'error'].includes(status)) return false
+  const code = String(event.code || event.error?.code || '')
+  if (/(?:PERMISSION|POLICY|AUTH|IDENTITY)/i.test(code)) return false
+  return event.failureReason === 'account-limit' || event.payload?.limit === 'usage' || ACCOUNT_LIMIT_CODE.test(code)
+}
+
 export function mountAgentSessionSurface(root, options = {}) {
   /* THE `live` FENCE IS ASKED FIRST AND ONCE, before either branch below, and
      it is the only question whose answer is "render nothing at all". Everything
@@ -389,7 +412,7 @@ export function mountAgentSessionSurface(root, options = {}) {
   }
   /* THE SWITCH CAN BE THROWN SOMEWHERE ELSE, AND THIS SURFACE HAS TO NOTICE.
    *
-   * T292, measured on screen and reproduced here by driving the
+   * T292, measured on screen by Worker 85 and reproduced here by driving the
    * same sequence: open a + / New agent tab while "running agents" is off, turn
    * it on in SETTINGS, come back. The tab keeps the switched-off surface
    * forever -- no chat, no composer, only the enable control -- and returning
@@ -455,7 +478,7 @@ function mountSessionSwitchedOff(root, {
         <output data-action-output role="status"></output>
         <button type="button" data-session-enable${bridgeControl.disabled ? ` disabled title="${esc(bridgeControl.why)}"` : ''}>${START_CONTROL_ON.label}</button>
         ${/* WHAT IT WOULD GIVE AND WHAT IT WOULD COST, beside the button that
-              gives it (R1529). This surface already said what is off and
+              gives it (owner, R1529). This surface already said what is off and
               where the switch is; a person deciding whether to press it was
               still missing the other half, and a switch offered with only its
               benefit named is the kind of nudge this directive is against. The
@@ -553,9 +576,9 @@ function switchedOffReason() {
      by itself, and where the switch is. One idea per sentence is the whole of
      the change; not a word of meaning was dropped.
 
-     THEN ONE OF THE THREE WENT, because the open agent detail was cluttered.
+     THEN ONE OF THE THREE WENT, on the owner's "open agent detail is a mess".
      "Nothing runs on this computer until you turn it on" is the first sentence
-     said twice: `because` has already stated that the answer they recorded
+     said twice: `because` has already stated that the answer he recorded
      switches starting off. The Settings route stays HERE, unlike on the fleet
      page's panel, because this surface is also where somebody comes to turn the
      thing back off again and that lives in Settings. */
@@ -584,6 +607,9 @@ function mountSessionControls(root, {
   onSessionEnd = null,
   onSessionChange = null,
   getStartOptions = null,
+  getStartSelection = null,
+  getAvailabilityOptions = null,
+  resumeConversation = null,
   getImageComposer = null,
   retainSessionOnDispose = () => false,
   retainChatOnDetach = false,
@@ -665,6 +691,7 @@ function mountSessionControls(root, {
   const statusId = `agent-session-status-${sessionSurfaces += 1}`
   const surface = el(`<section class="write-surface agent-session-surface" aria-label="Agent session">
     <header><strong>Agent session</strong><span data-session-status id="${statusId}" role="status">checking…</span></header>
+    <p class="rail-prose" data-session-account role="note" aria-label="Account: not started yet">Account: not started yet</p>
     <div class="write-surface-grid">
       <form class="write-form" data-session-form>
         <span class="write-form-title">Start an agent</span>
@@ -709,6 +736,7 @@ function mountSessionControls(root, {
   const prompt = form.elements.text
   if (chatComposer) {
     surface.setAttribute('data-chat-composer', '')
+    surface.querySelector('[data-session-account]').hidden = true
     surface.querySelector('header strong').textContent = chatTitle
     form.hidden = true
     form.insertAdjacentElement('beforebegin', output)
@@ -763,7 +791,25 @@ function mountSessionControls(root, {
   // The no-progress line last shown in activeStep, so only it is taken back.
   let quietStep = ''
   let placementLocked = false, sending = false, steering = 0
-  let threadId = null, account = null, replyAt = null, lastTurnStatus = null
+  const haltTurns = createTurnInterrupts()
+  let retainedConversation = resumeConversation
+  let threadId = resumeConversation?.threadId || null, account = resumeConversation?.account || null
+  // Keep the last acknowledged account through Stop. Pending model/account
+  // choices are not evidence of the account that actually ran.
+  let accountRecord = resumeConversation ? { started: true, provider: resumeConversation.provider,
+    ...(Object.hasOwn(resumeConversation, 'account') ? { account: resumeConversation.account } : {}) } : { started: false }
+  const accountNameScope = typeof window === 'undefined' ? globalThis : window
+  // modelRefused (1.0.50 review CM-2): the provider refused this session's model; queued messages wait until a
+  // turn on it succeeds.
+  let replyAt = null, lastTurnStatus = null, safetyRefused = false, modelRefused = false
+  /* THE ACCOUNT-LIMIT FENCE, FOR A NEW AGENT TAB (1.0.50 review, accounts D).
+     A circle's queue already waits while its account is at a usage limit
+     (src/views/computers.js, the fourth gate). A tab's own queue did not: each
+     waiting message went to the spent account, failed, and left the queue as
+     delivered. After a turn that failed on an account limit the tab's queue now
+     waits too, and says so on each row, until a turn succeeds -- the person's
+     own next message after the reset. */
+  let limitHeld = false
   let transcript = []
   // Tool events do not declare the executing worker's filesystem platform.
   let actionBuffer = createActionBuffer()
@@ -772,6 +818,12 @@ function mountSessionControls(root, {
   let pasteSequence = 0
 
   const notifyChatStatus = () => {
+    const accountFact = surface.querySelector('[data-session-account]')
+    if (accountFact) {
+      const copy = agentAccountCopy(sessionAccountDisplayRecord(accountRecord, accountNameScope))
+      accountFact.textContent = copy.text
+      accountFact.setAttribute('aria-label', copy.ariaLabel)
+    }
     for (const listener of [...chatStatusListeners]) {
       try { listener() } catch { /* one retired panel must not starve another */ }
     }
@@ -962,7 +1014,7 @@ function mountSessionControls(root, {
      canvas, and its conversation is a place to read what it said. It is wrong
      for any surface that OWNS a composer: a solo agent has no Start control
      anywhere, and its first send is what starts it. Measured on a built
-     candidate at an earlier commit: with a real seat the + chat finally received the
+     candidate at 9c090ce9: with a real seat the + chat finally received the
      tree's configuration and its composer went dead, input and Send both
      disabled, under that node's sentence.
      So the rule is: whoever owns the composer owns whether it can be used.
@@ -975,7 +1027,7 @@ function mountSessionControls(root, {
   }
   /* THE QUEUE, FOR EVERY LIVE SURFACE THAT IS NOT A TREE NODE (T294).
    *
-   * Measured on screen: Halt and Send now DO render on the + chat while it is
+   * Worker 85, on screen: Halt and Send now DO render on the + chat while it is
    * busy, but Send next, Unqueue and the strip never appear, and a second
    * message sent while the first was running was not queued at all -- it was
    * lost. `queue` is a buildChat option, and both the surfaces that could have
@@ -987,8 +1039,8 @@ function mountSessionControls(root, {
    * session id and knows nothing about trees; views/computers.js is one caller
    * of it, not its owner. So the words a person types at a + agent wait in the
    * same place, in the same order, with the same persistence, as the words they
-   * type at a tree circle. The standard for this surface is that it is the
-   * same agent system.
+   * type at a tree circle. The owner's standard for this surface was "its the
+   * same agent system".
    *
    * WHOSE QUEUE WINS. A host that already supplies one keeps it: the tree's
    * queue carries tree behaviour this surface has no business reimplementing
@@ -1042,7 +1094,9 @@ function mountSessionControls(root, {
      dropping them: the person wrote them and the order is theirs. */
   let draining = false
   const drainQueue = async () => {
-    if (draining || destroyed || working || starting || stopping || sending || !ready || !sessionId
+    if (limitHeld && !destroyed && sessionId) { outboxMarkHeld(sessionId, ACCOUNT_LIMIT_HOLD); return }
+    if (modelRefused && !destroyed && sessionId) { outboxMarkHeld(sessionId, MODEL_REFUSED_TAB_HOLD); return }
+    if (draining || safetyRefused || modelRefused || destroyed || working || starting || stopping || sending || !ready || !sessionId
       || placementLocked || steering || imagePreparing || switchPending() || endedRecovery
       || (sessionOwnerContext && !imageOwner.isCurrent(sessionOwnerContext))) return
     const entry = outboxTakeNext(sessionId)
@@ -1066,7 +1120,7 @@ function mountSessionControls(root, {
   const imageOwner = createImageOwnerClient({ bridge })
   let sessionOwnerContext = null
   let endedRecovery = null
-  let imagePreparing = false
+  let imagePreparing = false, imagePreparedForDispatch = false
   const imageRowListeners = new Set()
   let imageRowsUnsubscribe = null
   let imageConversation = null
@@ -1087,8 +1141,11 @@ function mountSessionControls(root, {
       imageConversation = createImageConversation({
         bridge, sessionId: id, ownerClient: imageOwner,
         isCurrent: () => !destroyed && sessionId === id,
+        // A usage-limit hold covers the picture queue too (REVIEW-1050 #9).
+        mayDrainAutomatically: () => !safetyRefused && !modelRefused && !limitHeld && !imagePreparing,
         mayDrain: () => !destroyed && sessionId === id && ready
-          && !working && !starting && !stopping && !placementLocked && !steering && !imagePreparing && !switchPending() && !endedRecovery,
+          && !working && !starting && !stopping && !placementLocked && !steering
+          && (!imagePreparing || imagePreparedForDispatch) && !switchPending() && !endedRecovery,
         subscribeReady: listener => sessionChatStatus.subscribe(listener),
         readinessRevision: () => sessionChatStatus.readinessRevision(),
         interrupt: () => control.pause(),
@@ -1185,6 +1242,9 @@ function mountSessionControls(root, {
       if (!prepared.ok || !prepared.isCurrent()) return prepared
       const conversation = currentImageConversation()
       if (!conversation) return { ok: false, code: 'IMAGE_QUEUE_BRIDGE_UNAVAILABLE' }
+      // Preparation remains single-flight through admission. The prepared
+      // explicit envelope may dispatch; automatic drains still wait.
+      imagePreparedForDispatch = true
       const result = await conversation.submit(prepared.value, onState)
       if (result.ok && !result.detached && prepared.isCurrent()) {
         preparedForDrain = true
@@ -1193,6 +1253,7 @@ function mountSessionControls(root, {
       }
       return result
     } finally {
+      imagePreparedForDispatch = false
       imagePreparing = false
       if (!destroyed && preparedForDrain) void imageConversation?.signalReady()
       if (!destroyed) notifyChatStatus()
@@ -1214,6 +1275,20 @@ function mountSessionControls(root, {
     chat = buildChat({
       ...chatFromHost(),
       ...(chatChips ? { chips: chatChips } : {}),
+      headerMeta: {
+        read() {
+          const supplied = chatFromHost().headerMeta
+          let facts = {}
+          try { facts = typeof supplied?.read === 'function' ? supplied.read() : supplied || {} } catch { /* Other header facts remain optional. */ }
+          return { ...facts, account: { source: 'session-account', ...sessionAccountDisplayRecord(accountRecord, accountNameScope) } }
+        },
+        subscribe(listener) {
+          chatStatusListeners.add(listener)
+          const supplied = chatFromHost().headerMeta
+          const release = typeof supplied?.subscribe === 'function' ? supplied.subscribe(listener) : null
+          return () => { chatStatusListeners.delete(listener); release?.() }
+        },
+      },
       /* Spread AFTER the host's configuration so a host that has its own queue
          keeps it, and only a surface with none is given this one. */
       ...(chatComposer && !hostChat?.queue ? { queue: ownQueue } : {}),
@@ -1225,8 +1300,8 @@ function mountSessionControls(root, {
         /* THE PERSON'S OWN COMPOSER CONTROLS. T286: these were passed by the
            tree conversation and by nothing else, so the + surface, the agent
            page and the home chat takeover -- every caller of this mount --
-           had no attach and no mention. It is the same agent system, and this
-           is the seam where it stopped being.
+           had no attach and no mention. The owner's words were "its the same
+           agent system", and this is the seam where it stopped being.
 
            EACH IS SPREAD ON THE CAPABILITY, not passed unconditionally. A
            bridge without pickAttachment draws no attach button at all, which
@@ -1239,7 +1314,7 @@ function mountSessionControls(root, {
            else, so there is no tree identity involved and a solo seat is as
            entitled to them as a placed one. */
         /* NEITHER OF THESE MAY SWALLOW WHAT HAPPENED. Measured on screen at
-           an earlier commit: both buttons were enabled, both bridge methods were
+           0e50eabb: both buttons were enabled, both bridge methods were
            functions, and pressing either did nothing at all -- no picker, no
            sentence, no change. Two of my own lines caused that. `.catch(() =>
            null)` on attach turned every refusal into silence, and the early
@@ -1293,7 +1368,7 @@ function mountSessionControls(root, {
               && ['AGENT_SESSION_NOT_READY', 'AGENT_TURN_ACTIVE', 'AGENT_SESSION_NO_PROMPT',
                 'IMAGE_OWNER_CHANGED', 'AGENT_SWITCH_PENDING'].includes(result.code))
           const code = result?.code || 'AGENT_SEND_UNKNOWN'
-          fail(readerSafeReason(code), { retract: notSent, unconfirmed: !notSent, code })
+          fail(result?.sentence || readerSafeReason(code), { retract: notSent, unconfirmed: !notSent, code })
           if (destroyed) return
           const draft = chat.exportDraft()
           if (notSent && draft && !draft.text) chat.importDraft({ ...draft, text })
@@ -1442,7 +1517,7 @@ function mountSessionControls(root, {
     sessionId, replacement: sessionSwitch ? { operationId: sessionSwitch.operationId, pending: !sessionSwitch.finished } : null,
     phase: destroyed ? 'closed' : stopping ? 'stopping' : starting ? 'starting'
       : sessionId ? working ? 'working' : 'open' : lastPrompt || terminalCode ? 'closed' : 'draft',
-    prompt: lastPrompt || chat?.exportDraft?.()?.text || '', sentPrompt: lastPrompt, threadId, account, turnId: activeTurnId, lastTurnStatus,
+    prompt: lastPrompt || chat?.exportDraft?.()?.text || '', sentPrompt: lastPrompt, threadId, account, provider: accountRecord.provider || null, accountRecord: { ...accountRecord }, turnId: activeTurnId, lastTurnStatus,
     transcript: structuredClone(transcript), currentText: turnStream ? relay.text : '',
   })
   const announce = (kind, detail = {}, required = false) => {
@@ -1484,7 +1559,7 @@ function mountSessionControls(root, {
      does not make a rejected press successful while this surface is still here.
      The id is cleared only after close answers; callers can therefore keep the
      controls honest and show the refusal when it does not. */
-  const closeSession = async () => {
+  const closeSession = async ({ requireReceipt = false } = {}) => {
     const id = sessionId
     if (!id) return { ok: true }
     stopping = true
@@ -1513,12 +1588,17 @@ function mountSessionControls(root, {
       lastTurnStatus = 'interrupted'
       try { await bridge.interrupt({ sessionId: id }) } catch { /* the turn may finish between the read and the call */ }
     }
-    try { await bridge.close({ sessionId: id }) } catch (error) {
+    try {
+      const receipt = await bridge.close({ sessionId: id })
+      if (requireReceipt && (receipt?.closed !== true || receipt.ok === false || receipt.sessionId !== id)) {
+        throw Object.assign(new Error('The host did not confirm closing this session.'), { code: 'AGENT_SESSION_CLEANUP_FAILED' })
+      }
+    } catch (error) {
       /* The child can report its own exit while close is crossing IPC. The
          terminal event has already retired this id and painted the truthful
          ended state in that case; treating the ensuing UNKNOWN_SESSION as a
          failed close would re-enable controls for a process that is gone. */
-      if (sessionId !== id) {
+      if (!requireReceipt && sessionId !== id) {
         stopping = false
         publish()
         return terminalCode
@@ -1542,6 +1622,7 @@ function mountSessionControls(root, {
     retireApprovals(id)
     sessionTextReader.clear(id)
     sessionId = null
+    haltTurns.forget(id)
     releaseImageConversation()
     working = false
     stopping = false
@@ -1583,23 +1664,87 @@ function mountSessionControls(root, {
     if (!destroyed) renderConfinement(reading)
   })()
 
-  void (async () => {
+  let availabilityRevision = 0
+  let availabilityPromise = null
+  const availabilityWaiters = new Set()
+  const wakeAvailabilityWaiters = () => {
+    for (const wake of [...availabilityWaiters]) {
+      try { wake() } catch { /* a cancelled waiter is already settling */ }
+    }
+    availabilityWaiters.clear()
+  }
+  const refreshAvailability = async () => {
+    const revision = ++availabilityRevision
+    wakeAvailabilityWaiters()
+    ready = false
+    startButton.disabled = true
+    let request
+    if (typeof getAvailabilityOptions === 'function') {
+      try {
+        const options = await getAvailabilityOptions()
+        if (options && typeof options === 'object' && typeof options.tier === 'string' && options.tier) {
+          request = { tier: options.tier }
+        }
+      } catch { request = undefined }
+    }
+    if (destroyed || revision !== availabilityRevision) return { ok: false, code: 'AGENT_SESSION_VIEW_CLOSED' }
     let available
-    try { available = await bridge.availability() }
+    try { available = await bridge.availability(request) }
     catch (error) { available = { ok: false, code: refusalCode(error) } }
-    if (destroyed) return
-    if (available?.ok !== true) {
+    if (destroyed || revision !== availabilityRevision) return available
+    // Tier availability knows sign-in presence, but not the saved account's
+    // recorded home. Let the host compare that home first for a retained
+    // conversation; it still enforces sign-in before any probe or launch.
+    const resumeNeedsHostCheck = available?.code === 'AGENT_TIER_NO_SIGNED_IN_ACCOUNT'
+      && retainedConversation?.sessionId && retainedConversation?.threadId && !retainedConversation.identityError
+    if (available?.ok !== true && !resumeNeedsHostCheck) {
       actionState(status, 'unavailable', `unavailable · ${readerSafeReason(available?.code)}`)
-      return
+      return available
     }
     if (requireRoleBinding && !roleBinding) {
       actionState(status, 'unavailable', `unavailable - ${readerSafeReason('MC_AGENT_ROLE_UNAVAILABLE')}`)
-      return
+      return available
     }
     ready = true
     actionState(status, 'ready', 'agent engine ready')
     startButton.disabled = false
-  })()
+    return available
+  }
+  const requestAvailability = () => {
+    const pending = refreshAvailability()
+    availabilityPromise = pending
+    return pending
+  }
+  const waitForLatestAvailability = async () => {
+    for (;;) {
+      if (destroyed) return
+      const pending = availabilityPromise
+      const revision = availabilityRevision
+      if (!pending) return
+      let wake
+      const changed = new Promise(resolve => {
+        wake = resolve
+        availabilityWaiters.add(resolve)
+      })
+      try { await Promise.race([pending, changed]) }
+      finally { availabilityWaiters.delete(wake) }
+      if (destroyed || (pending === availabilityPromise && revision === availabilityRevision)) return
+    }
+  }
+  const readStartSelection = () => {
+    if (typeof getStartSelection !== 'function') return null
+    try {
+      const selection = getStartSelection()
+      if (!selection || typeof selection !== 'object') return null
+      return Object.freeze({
+        tier: typeof selection.tier === 'string' && selection.tier ? selection.tier : null,
+        revision: Number.isSafeInteger(selection.revision) ? selection.revision : null,
+      })
+    } catch { return null }
+  }
+  const sameStartSelection = (left, right) => Boolean(left && right
+    && left.tier === right.tier && left.revision === right.revision)
+  void requestAvailability()
 
   /* A MESSAGE SENT TO THIS SESSION FROM A SIGNED-IN BROWSER. The computer
      accepted it as the person's turn and announces it before the turn's first
@@ -1654,6 +1799,13 @@ function mountSessionControls(root, {
   })
   function handleSessionPacket(packet) {
     if (destroyed || !sessionId) return
+    if (packet?.sessionId === sessionId && packet.event?.type === 'session_thread_changed'
+      && typeof packet.event.threadId === 'string' && packet.event.threadId) {
+      threadId = packet.event.threadId
+      if (retainedConversation?.sessionId === sessionId) retainedConversation = { ...retainedConversation, threadId }
+      publish()
+      return
+    }
     const personTurn = sessionPersonTurn(packet, sessionId)
     if (personTurn) {
       if (personTurn.via === 'remote') acceptRemotePersonTurn(personTurn)
@@ -1667,6 +1819,7 @@ function mountSessionControls(root, {
     }
     if (ended) {
       const endedSessionId = sessionId
+      haltTurns.forget(endedSessionId)
       endedRecovery = { sourceSessionId: endedSessionId, ownerContext: sessionOwnerContext,
         queueSessionId: endedRecovery?.queueSessionId || endedSessionId,
         imageSourceSessionId: endedRecovery?.imageSourceSessionId || endedSessionId }
@@ -1723,6 +1876,18 @@ function mountSessionControls(root, {
        The tree surface uses the same public event-reader guard. Nameless
        completions retain the established fallback and settle normally. */
     if (turnStatus && !completionSettlesOpenTurn(packet, sessionId, activeTurnId)) return
+    if (turnStatus) {
+      // The terminal packet can precede Halt's command-cleanup receipt. Keep
+      // the send doors busy until both have settled, including a cleanup retry.
+      // Do not return this promise to the event channel: Halt itself waits for
+      // this terminal packet at the host, independently of renderer delivery.
+      const pendingHalt = haltTurns.pending(sessionId, packetTurnId)
+      if (pendingHalt) {
+        void pendingHalt.then(() => handleSessionPacket(packet))
+        return
+      }
+      haltTurns.consume(sessionId, packetTurnId)
+    }
     /* Tool calls can precede the first word. The packet's own turn identity is
        therefore adopted for every live delta/event shape, never inferred from
        prose. A completion is validated above and never reopens an older turn. */
@@ -1791,6 +1956,17 @@ function mountSessionControls(root, {
       return
     }
     if (turnStatus) {
+      safetyRefused = safetyRefused || sessionSafetyRefusal(packet, sessionId)
+      if (sessionTurnSucceeded(turnStatus)) {
+        if (limitHeld) { limitHeld = false; outboxReleaseHeld(sessionId, ACCOUNT_LIMIT_HOLD) }
+      } else if (!sessionSafetyRefusal(packet, sessionId) && accountLimitTurn(packet.event, turnStatus)) {
+        limitHeld = true
+      }
+      if (sessionModelRefusal(packet, sessionId)) modelRefused = true
+      else if (sessionTurnSucceeded(turnStatus)) {
+        if (modelRefused) outboxReleaseHeld(sessionId, MODEL_REFUSED_TAB_HOLD)
+        modelRefused = false
+      }
       /* Flush before the status flips, so "turn completed" is never shown
          beside a transcript that is still missing that turn's last frame of
          output, and close the bubble so its busy indicator clears with it. */
@@ -1848,7 +2024,8 @@ function mountSessionControls(root, {
     return savedImages
   }
 
-  const startSession = async (text, { images = null, pastedImages = null, pictures = null, heldAttempt = 0, openOnly = false, assertImageCurrent = null, recoveryStartOptions = undefined, recoveryStartOwner = undefined, imageStartIdentity = null } = {}) => {
+  const startSession = async (text, { images = null, pastedImages = null, pictures = null, heldAttempt = 0, openOnly = false, assertImageCurrent = null, recoveryStartOptions = undefined, recoveryStartOwner = undefined, imageStartIdentity = null, fresh = false } = {}) => {
+    await waitForLatestAvailability()
     if (placementLocked || switchPending()) return placementRefusal()
     /* A HELD RETRY IS THE SAME START, STILL IN FLIGHT, so it passes the guard
        that keeps two starts apart: `starting` is deliberately still true and
@@ -1857,11 +2034,25 @@ function mountSessionControls(root, {
     if ((starting && !retryingHeld) || sessionId || !ready || destroyed) return { ok: false, code: 'AGENT_SESSION_NOT_READY' }
     if (typeof text !== 'string' || (!openOnly && text.trim() === '')) return { ok: false, code: 'AGENT_SESSION_NO_PROMPT' }
 
+    /* Capture both values before owner/image work begins. A standalone choice
+       can change while that work is awaiting the host; the final dispatch
+       below must join the newer readiness read rather than send the stale
+       choice merely because the initial read was ready. */
+    let dispatchAvailabilityRevision = availabilityRevision
+    let dispatchSelection = readStartSelection()
     const recovering = endedRecovery
+    const continuing = fresh ? null : retainedConversation
+    if (continuing && (continuing.identityError || !continuing.threadId || !continuing.sessionId)) {
+      const code = continuing.identityError === 'AGENT_RESUME_IDENTITY_MISMATCH'
+        ? 'AGENT_RESUME_IDENTITY_MISMATCH' : 'AGENT_RESUME_IDENTITY_UNAVAILABLE'
+      actionState(status, 'refused', `refused · ${readerSafeReason(code)}`)
+      return { ok: false, code, deliveryDisposition: 'not-sent' }
+    }
     let deliveryDisposition = 'not-sent'
     let owner = null
     terminalCode = null
-    threadId = null; account = null; lastTurnStatus = null
+    threadId = continuing?.threadId || null; account = continuing?.account || null
+    lastTurnStatus = null; safetyRefused = false; limitHeld = false; modelRefused = false
     starting = true
     sending = true
     setStarted(true)
@@ -1953,16 +2144,46 @@ function mountSessionControls(root, {
       if (recovering) {
         outboxMoveSession(recovering.queueSessionId, id, { preserveAll: true })
         recovering.queueSessionId = id
+        /* The ended session's model refusal is not this session's (REVIEW-1050 #10). */
+        try { outboxReleaseHeld(id, MODEL_REFUSED_TAB_HOLD) } catch { /* the label only; the rows are moved */ }
       } else {
         try { outboxMoveSession(localQueueKey, id) } catch { /* preserve ordinary start queue behavior */ }
       }
       queueKeyMoved = true
       publish()
-      if (retainedStartOptions === undefined) {
-        const choice = typeof getStartOptions === 'function' ? await getStartOptions({ sessionId: id, prompt: text }) : null
-        retainedStartOptions = choice == null ? null : structuredClone(choice)
+      const readStartOptions = async () => {
+        if (typeof getStartOptions !== 'function') return null
+        const choice = await getStartOptions({ sessionId: id, prompt: text })
+        return choice == null ? null : structuredClone(choice)
       }
-      const startOptions = retainedStartOptions
+      if (retainedStartOptions === undefined) retainedStartOptions = await readStartOptions()
+
+      /* Re-read the latest settled readiness and the latest selection at the
+         dispatch boundary. This catches both a pending A->B choice and a
+         change after A was ready but before owner/image work finished. */
+      for (;;) {
+        assertStartOwner()
+        const currentSelection = readStartSelection()
+        const selectionChanged = dispatchSelection === null || currentSelection === null
+          ? dispatchSelection !== currentSelection
+          : !sameStartSelection(dispatchSelection, currentSelection)
+        const availabilityChanged = availabilityRevision !== dispatchAvailabilityRevision
+        if (!selectionChanged && !availabilityChanged) break
+        await waitForLatestAvailability()
+        assertStartOwner()
+        if (!ready) throw Object.assign(new Error('Selected start is not ready'), { code: 'AGENT_SESSION_NOT_READY' })
+        dispatchAvailabilityRevision = availabilityRevision
+        dispatchSelection = readStartSelection()
+        if (typeof getStartOptions === 'function') retainedStartOptions = await readStartOptions()
+      }
+      const startOptions = { ...(retainedStartOptions || {}) }
+      if (continuing) {
+        delete startOptions.historyHandoff
+        Object.assign(startOptions, { resumeThreadId: continuing.threadId, resumeSessionId: continuing.sessionId,
+          ...(continuing.transcript ? { resumeTranscript: continuing.transcript } : {}),
+          ...(continuing.provider ? { resumeThreadProvider: continuing.provider } : {}),
+          ...(continuing.account ? { resumeAccount: continuing.account } : {}) })
+      }
       assertStartOwner()
       const started = await bridge.start({
         ...(startOptions || {}),
@@ -1982,6 +2203,12 @@ function mountSessionControls(root, {
       }
       threadId = typeof started?.threadId === 'string' ? started.threadId : null
       account = typeof started?.account === 'string' ? started.account : null
+      accountRecord = { started: true, provider: started?.provider,
+        ...(Object.hasOwn(started || {}, 'account') ? { account: started.account } : {}) }
+      const nativeProvider = started?.provider || continuing?.provider || null
+      if (threadId && (!nativeProvider || ['claude', 'codex', 'gemini'].includes(nativeProvider))) {
+        retainedConversation = { sessionId: id, threadId, account, provider: nativeProvider }
+      } else if (fresh || nativeProvider) retainedConversation = null
       if (destroyed) { await closeSession(); return { ok: false, code: 'AGENT_SESSION_VIEW_CLOSED', sessionId: id, deliveryDisposition } }
       /* A STOP THAT LANDED DURING THE START IS NOT SOMETHING TO PAINT OVER.
          Stop is enabled for this whole await (setStarted(true) runs before
@@ -2003,7 +2230,14 @@ function mountSessionControls(root, {
       const bindingContext = Object.freeze({ ownerContext: retainedStartOwner,
         isCurrent: () => Boolean(retainedStartOwner) && imageOwner.isCurrent(retainedStartOwner)
           && !destroyed && sessionId === id && !stopping })
-      const opened = await announce('open', { sessionId: id, bindingContext }, true)
+      let opened
+      try { opened = await announce('open', { sessionId: id, bindingContext }, true) }
+      catch (error) {
+        throw Object.assign(new Error('Session binding was not confirmed'), {
+          code: typeof error?.code === 'string' ? error.code : 'AGENT_SESSION_BINDING_UNCONFIRMED',
+          bindingUnconfirmed: true,
+        })
+      }
       assertStartOwner()
       // No send has been attempted while start/binding is pending. Preserve
       // that certainty so the composer restores this draft instead of showing
@@ -2014,6 +2248,7 @@ function mountSessionControls(root, {
       if (opened?.ok === false) {
         throw Object.assign(new Error('Session binding was not confirmed'), {
           code: typeof opened.code === 'string' ? opened.code : 'AGENT_SESSION_BINDING_UNCONFIRMED',
+          bindingUnconfirmed: true,
         })
       }
       if (recovering) {
@@ -2071,7 +2306,7 @@ function mountSessionControls(root, {
          picture that is not there. */
       lastTurnCarriedPicture = turnImages.length > 0
       /* THE PICTURE RIDES THE ENTRY, NOT JUST THE FIRST PAINT (T332). The
-         defect: images disappeared from chat right after sending. They
+         owner: "the images disappear from chat right after sending". They
          disappeared because the only copy was one optimistic DOM node, and
          every repaint -- a reopen, a remount, the mirror into a second open
          surface -- redraws from this entry. Same rule as the fields around it:
@@ -2166,15 +2401,16 @@ function mountSessionControls(root, {
         assertStartOwner()
         return await startSession(text, { images, pastedImages, pictures, heldAttempt: attempt,
           openOnly, assertImageCurrent, recoveryStartOptions: retainedStartOptions,
-          recoveryStartOwner: retainedStartOwner, imageStartIdentity })
+          recoveryStartOwner: retainedStartOwner, imageStartIdentity, fresh })
       }
       if (!recovering && deliveryDisposition === 'not-sent' && !destroyed && stillOurs && HELD_START_CODES.has(code)) {
         /* The bound is reached. Say it plainly, and give the words back rather
            than leaving somebody to wonder whether they were sent. */
         chat?.addNote?.(`This computer is still too busy to start an agent, after ${HELD_START_WAITS_MS.length} tries over about ${heldStartTotalMinutes()} minutes. Your message was not sent — send it again when the computer is quieter.`)
       }
-      if (!destroyed && stillOurs) actionState(status, 'refused', `refused · ${readerSafeReason(code)}`)
-      return { ok: false, code: (!stillOurs && terminalCode) || code, sessionId: id, deliveryDisposition }
+      const sentence = error?.bindingUnconfirmed === true ? readerSafeBindingReason(code) : readerSafeReason(code)
+      if (!destroyed && stillOurs) actionState(status, 'refused', `refused · ${sentence}`)
+      return { ok: false, code: (!stillOurs && terminalCode) || code, sessionId: id, deliveryDisposition, sentence }
     } finally {
       starting = false
       sending = false
@@ -2627,6 +2863,9 @@ function mountSessionControls(root, {
         sessionId = receipt.sessionId
         threadId = receipt.threadId ?? null
         account = receipt.account ?? null
+        accountRecord = { started: true, provider: receipt.provider,
+          ...(Object.hasOwn(receipt, 'account') ? { account: receipt.account } : {}) }
+        retainedConversation = threadId ? { sessionId, threadId, account, provider: receipt.provider } : null
         working = false
         terminalCode = null
         try { outboxMoveSession(record.sourceId, sessionId) } catch { /* The durable image destination is already verified. */ }
@@ -2658,6 +2897,7 @@ function mountSessionControls(root, {
 
   control = Object.freeze({
     snapshot,
+    refreshAvailability: requestAvailability,
     switchSession,
     submitImageIntent,
     pasteImage,
@@ -2689,6 +2929,23 @@ function mountSessionControls(root, {
       return { ok: true, snapshot: snapshot() }
     },
     cancelPlacement() { placementLocked = false; surface.inert = false; if (!destroyed) setStarted(Boolean(sessionId)) },
+    nativeConversation() { return retainedConversation ? { ...retainedConversation } : null },
+    async settlePlacement() {
+      if (!placementLocked || destroyed || starting || stopping || sending || steering || imagePreparing || switchPending()) return placementRefusal()
+      if (working) return { ok: false, code: 'AGENT_TURN_ACTIVE', sentence: 'Wait for this turn to finish before placing the conversation.' }
+      return await closeSession({ requireReceipt: true })
+    },
+    adoptStoppedConversation(receipt) {
+      if (!placementLocked || sessionId || destroyed || !receipt?.nativeSessionId || !receipt.threadId
+          || !['claude', 'codex'].includes(receipt.provider) || !receipt.transcript?.nodeId) return false
+      retainedConversation = { sessionId: receipt.nativeSessionId, threadId: receipt.threadId,
+        provider: receipt.provider, account: receipt.account ?? null, transcript: { ...receipt.transcript } }
+      threadId = receipt.threadId; account = receipt.account ?? null
+      accountRecord = { started: true, provider: receipt.provider,
+        ...(Object.hasOwn(receipt, 'account') ? { account: receipt.account } : {}) }
+      notifyChatStatus()
+      return true
+    },
     /* Stops the running TURN. The session stays open, so the transcript, the
        Stop control and the record all stay exactly where they were. */
     async pause() {
@@ -2702,7 +2959,7 @@ function mountSessionControls(root, {
       steering++
       let stopped = null
       try {
-        stopped = await bridge.interrupt({ sessionId: id })
+        stopped = await haltTurns.request(id, activeTurnId, () => bridge.interrupt({ sessionId: id }))
       } catch (error) {
         const code = refusalCode(error)
         if (!destroyed) actionState(status, 'refused', `refused · ${readerSafeReason(code)}`)
@@ -2720,6 +2977,14 @@ function mountSessionControls(root, {
         publish()
         actionState(status, 'ready', 'stopped · message not sent · session still open')
         return { ok: true, sendCancelled: true }
+      }
+      // A real terminal packet released with Halt owns the outcome. In
+      // particular, a normally completed turn must stay completed when the
+      // interrupt request lost the race. Republish after steering releases so
+      // the queued next message can drain once, through the ordinary send door.
+      if (!working && lastTurnStatus) {
+        publish()
+        return { ok: true }
       }
       /* Set here rather than waited for. The host may or may not emit a turn
          status for an interrupted turn, and a control whose effect is only
@@ -2778,7 +3043,7 @@ function mountSessionControls(root, {
         transcript = []
         chat.addOwnerMessage(text)
       }
-      const restarted = await startSession(text)
+      const restarted = await startSession(text, { fresh: true })
       /* Said AFTER the replay, and only when the turn being replayed really
          carried a picture. The words went again; the picture did not, and a
          person who is not told that reads the second answer as the agent
@@ -2798,6 +3063,7 @@ function mountSessionControls(root, {
     },
   })
   const removeQueueReady = sessionChatStatus.subscribe(() => { void drainQueue() })
+  const removeAccountNames = observeAccountNames(notifyChatStatus, accountNameScope)
   if (typeof onController === 'function') {
     try { onController(control) } catch { /* the mounted surface remains the lifecycle owner */ }
   }
@@ -2806,7 +3072,10 @@ function mountSessionControls(root, {
     retireApprovals(sessionId)
     resetLiveMetrics()
     destroyed = true
+    haltTurns.clear()
+    wakeAvailabilityWaiters()
     removeQueueReady()
+    removeAccountNames()
     releaseImageConversation()
     imageOwner.dispose()
     cancelHeldStart()

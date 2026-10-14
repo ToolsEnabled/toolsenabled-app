@@ -13,9 +13,9 @@ import { validateStudy } from '../../src/benchmark/study.mjs'
 // the advanced profile ("This collector remains an exact advanced
 // configuration.") and could only be hand-authored as expert JSON -- no command
 // field, no arguments, no environment allowlist, and no field-level refusal
-// when one of those was missing or malformed. An apparatus run's two live
-// conditions had to be written by hand in a build script, because the page
-// could not express them.
+// when one of those was missing or malformed. Measured against the apparatus
+// run that produced project efaa64a2: its two live conditions were written by
+// hand in a build script, because the page could not express them.
 
 const clone = value => structuredClone(value)
 const ordinary = () => newExperimentDraft(genericStarter(), { initializePopulation: true })
@@ -174,7 +174,7 @@ test('a collector shape the fields do not model is still retained as advanced ex
   assert.throws(() => addConditionFieldsRow(context, draft, { id: 'another', profile: 'module' }), /recorded replay, a local command or HTTPS/i)
 })
 
-// Takeover cases: strict optional-name validation, explicit list
+// Worker 13's takeover cases: strict optional-name validation, explicit list
 // removal, and complete collection retention. No command is invoked here.
 test('a selected credential variable needs a valid nonempty name while an absent one stays absent', () => {
   const context = contextFor()

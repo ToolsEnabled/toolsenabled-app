@@ -764,7 +764,7 @@ async function driveFirstLaunch(executable, scratch, tier, route, attempt = 1) {
     note(`TOTAL CLICKS from first paint to the agent page: ${totalClicks} (${clicksThroughSetup} of them are first-run setup)`)
 
     /* ---------- reaching the page is not the same as being able to use it ----------
-       The requirement is running a fleet FROM this software, and the
+       The owner's requirement is running a fleet FROM this software, and the
        control that starts an agent is fenced by BOTH a live page and the
        `agent-session` write flag. Which route the person took decides whether
        that flag is on, so this is REPORTED for both and asserted only where the

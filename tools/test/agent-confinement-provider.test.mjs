@@ -34,10 +34,11 @@ import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { canonicalRootForTests } from '../canonical-root.mjs'
 
 const require_ = createRequire(import.meta.url)
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-const PAYLOAD = path.join(REPO, 'capability')
+const PAYLOAD = canonicalRootForTests({ requireConfigured: true })
 const planner = require_(path.join(PAYLOAD, 'src', 'lib', 'agent-session-confinement.js'))
 const machineRecord = require_(path.join(PAYLOAD, 'src', 'lib', 'setup', 'machine-record.js'))
 const { confinementPlanFor } = require_(path.join(REPO, 'shell', 'agent-host.cjs'))
@@ -54,18 +55,14 @@ const fixtureTemp = planner.assertAccountProfilePath(process.platform === 'win32
 const TEST_SCRATCH_ROOT = mkdtempSync(path.join(fixtureTemp, 'mc-provider-plan-suite-'))
 test.after(() => rmSync(TEST_SCRATCH_ROOT, { recursive: true, force: true }))
 
-/* WHETHER THE PAYLOAD UNDER TEST CAN BUILD A CONFINED CLAUDE HOME. The pinned
-   payload is repacked by the coordinator, never hand-edited here, so this file
-   must be true of BOTH the payload that predates confinedClaudeSessionPlan()
-   and the one that carries it. Every Claude assertion below branches on this
-   single fact rather than on a guess about the pin. */
+/* Older staged engines may omit the native Claude tool planner. The selected
+   source is explicit; test the capabilities it actually exports. */
 const payloadBuildsToolSurface = typeof planner.claudeToolsSessionPlan === 'function'
 
 /* A whole machine, in a temporary directory: a recorded permission level, a
    workspace, and provider homes that either hold a sign-in or do not.
-   CLAUDE_CONFIG_DIR is pinned to scratch for the same reason CODEX_HOME is:
-   a payload that builds confined Claude homes links the sign-in FROM the
-   ambient claude home, and a test must never reach a real one. */
+   CLAUDE_CONFIG_DIR is pinned to scratch so native tool plans select only
+   the fixture's account home and never reach a real sign-in directory. */
 function withMachine({ tier = 'standard', codexSignedIn = false, claudeSignedIn = false }, run) {
   const scratch = mkdtempSync(path.join(TEST_SCRATCH_ROOT, 'mc-provider-plan-'))
   const localAppData = path.join(scratch, 'local')

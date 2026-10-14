@@ -14,7 +14,8 @@
  *
  * Exit code is the smoke's own. Usage:
  *   MISSION_CONTROL_ENGINE=<path to the engine module directory> \
- *   node tools/run-agent-from-ui-smoke.cjs
+ *   node tools/run-agent-from-ui-smoke.cjs --codex-home <existing provider home>
+ * Without a home argument, supply OPENAI_API_KEY or CODEX_API_KEY in the environment.
  */
 
 const path = require('node:path')
@@ -93,6 +94,7 @@ const env = providerAuthenticatedLaunchEnvironment({
   scratchRoot: path.join(userData, 'launch-environment'),
 }, process.env, {
   cwd: APP_ROOT,
+  argv: process.argv.slice(2),
 })
 env.MC_APP_ROOT = APP_ROOT
 

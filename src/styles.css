@@ -2,7 +2,7 @@
    TOOLSENABLED — clinical white · liquid glass · neon
    ============================================================
 
-   TYPE FLOOR (large enough for people with low vision).
+   TYPE FLOOR (lane C4 — "font big enough for people with vision issues").
    Three tiers, and no fourth:
 
      11px    uppercase, letterspaced micro-labels ONLY (section heads,
@@ -48,11 +48,11 @@
      options unreadable. */
   color-scheme: light;
   /* surfaces */
-  --bg: #f4f7fa;
-  --bg-2: #eef2f7;
-  --surface: #f4f7fa;
+  --bg: #f5f5f7;
+  --bg-2: #fafafc;
+  --surface: #ffffff;
 
-  /* ink — accessible grey ramp. Ratios are on white / on --bg
+  /* ink — accessible grey ramp (C4). Ratios are on white / on --bg
      (#f4f7fa, the page surface under the glass); glass cards composite
      white over --bg, so every carded surface sits between the two.
 
@@ -72,13 +72,13 @@
      --ink-3 was #93a1af (2.64:1) and --ink-4 was #b9c4cf (1.77:1) — both
      failed as text, and both are consumed by the other lanes' sheets, so
      the fix lives in the token rather than in per-rule overrides. */
-  --ink: #0e1726;
-  --ink-2: #4f5f70;
-  --ink-25: #5a6876;         /* informational small text */
-  --ink-3: #64727f;          /* greyed context text — still AA */
-  --ink-4: #808d9b;          /* decorative grey only */
-  --line: rgba(14, 23, 38, 0.07);
-  --line-2: rgba(14, 23, 38, 0.12);
+  --ink: #1d1d1f;
+  --ink-2: #48484d;
+  --ink-25: #48484d;         /* informational small text */
+  --ink-3: #6a6a6f;          /* greyed context text — still AA */
+  --ink-4: #8d8d92;          /* decorative grey only */
+  --line: #e5e5ea;
+  --line-2: var(--line);
 
   /* Role accents: muted, distinguishable hues shared with role-colors.js.
      That module owns validated per-role choices and derives theme-safe marks
@@ -101,8 +101,8 @@
   /* pulse — the live-activity accent; cool (the coordinator pair) on the
      light themes, overridden warm (ember) by the black theme's NIGHT
      CHARCOAL block */
-  --pulse: var(--g-coordinator);
-  --pulse-dim: var(--c-coordinator);
+  --pulse: var(--s-good);
+  --pulse-dim: var(--s-good);
 
   /* THE INTERACTIVE ACCENT is the coordinator's cyan, not a fourth one.
      Seven controls (selection, the send button and its lift, the chat
@@ -117,10 +117,10 @@
      below the accent at the same hue; white on the gradient's light end
      measures 3.61:1 and on its dark end 5.12:1, so the icon clears the 3:1
      non-text floor across the whole sweep (it was 2.5:1 flat). */
-  --accent-2: #007892;
+  --accent-2: #0a65d4;
   /* Interface accents may follow a theme without recoloring agent roles. */
-  --ui-accent: var(--c-coordinator);
-  --ui-accent-fill: var(--c-coordinator);
+  --ui-accent: #0a65d4;
+  --ui-accent-fill: var(--ink);
 
   /* SEVERITY TEXT — the same Carbon families as the metrics alert marks,
      stepped for readable characters. On the white page (#f7f8fa), the
@@ -149,7 +149,7 @@
   --lane-gold:  #7c6700;
   --lane-red:   #c60014;
 
-  --glow: 1;                  /* glow multiplier (settings) */
+  --glow: 0;                  /* glow multiplier (settings) */
   --pace: 1;
 
   /* THE TEXT SIZE, AS A NUMBER THE LAYOUT CAN DIVIDE BY.
@@ -194,15 +194,15 @@
   --page-gutter: 16px;
   /* The TOPBAR's own column, split from --page-max on purpose: a route may
      widen its page (computers takes 1680 for the canvas), but the two
-     chevrons are CROSS-PAGE chrome -- the rule is that clicking
+     chevrons are CROSS-PAGE chrome -- the owner's rule is that clicking
      through every page never moves the mouse, and a bar that follows the
      page's width moved the forward chevron 64px between computers and
      everywhere else (measured on the installed build). Same value as the
      base --page-max; only the base, never a route override. */
   --topbar-max: 1240px;
 
-   /* THE INTERFACE FONT IS A USER SETTING (R1523: the default font is not to
-     everyone's taste). This declaration is only the DEFAULT — IBM Plex
+  /* THE INTERFACE FONT IS A USER SETTING (owner, R1523: "the default font is
+     not my most favorite"). This declaration is only the DEFAULT — IBM Plex
      Sans, the typeface of the same Carbon system the severity palette above
      already borrows from. The live value is the inline --font-ui property the
      chooser sets on <html> (src/font-choice.js, the single register of the
@@ -211,11 +211,11 @@
      currentFontChoice() relies on stack equality to read the applied state.
      --font-mono is NOT a choice: data accents keep their mono voice under
      every interface font. */
-  --font-ui: "IBM Plex Sans Variable", "IBM Plex Sans", "Segoe UI Variable", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-ui: "Geist", "Segoe UI Variable", system-ui, -apple-system, "Noto Sans", sans-serif;
+  --font-mono: "Geist Mono", "Cascadia Mono", ui-monospace, "DejaVu Sans Mono", monospace;
 
-  --ease: cubic-bezier(0.22, 0.9, 0.26, 1);
-  --ease-spring: cubic-bezier(0.34, 1.3, 0.4, 1);
+  --ease: cubic-bezier(.16,1,.3,1);
+  --ease-spring: var(--ease);
 
   /* MOTION SCALE — three steps, and no fourth. The two easing curves above
      are unchanged; only the durations are normalised.
@@ -234,8 +234,8 @@
      and the ambient loops (2s–2.6s). The reduced-motion clamps at the foot
      of the sheet stay literal too — they are a ceiling, not a step. */
   --dur-1: 120ms;
-  --dur-2: 240ms;
-  --dur-3: 420ms;
+  --dur-2: 180ms;
+  --dur-3: 260ms;
 
   /* SPACE SCALE. Rule used when converting: nearest step, and only where
      the old value was within 2px of one; on an exact tie (6, 10, 14) round
@@ -317,8 +317,8 @@
      cream-to-tan diagonal, so tan was the only theme with washed cards
      (measured maxChannelSpan across a chart card: white 15, black 15,
      tan 31). 1 is a byte-for-byte no-op (0.3 + 0.24 == the old 0.54). */
-  --sheen: 1;
-  --sheet: #fff;
+  --sheen: 0;
+  --sheet: #ffffff;
   /* Solved, not picked: the bracket is decoration, so it has no WCAG floor of
      its own -- but it has to weigh the SAME on all three themes, and equal
      alpha does not give equal weight over three different backgrounds. Each
@@ -342,7 +342,7 @@
      darkened" has to stay TRUE, or the one indicator keyboard focus has
      drifts off the system it belongs to. Measured 4.50 white / 4.01 black /
      3.81 tan (was 4.60 / 3.93 / 3.89 — same quality, now the same hue). */
-  --focus-ring: #007d98;
+  --focus-ring: var(--ink);
 
   /* SEGMENTED CONTROL — one height and one trough for the five call sites
      (metrics range/machine, computers Tree/Physics, comms S/M/L and
@@ -378,8 +378,8 @@
      every theme, so it carries its own pair rather than riding the sheet
      ramp. It has to be themed for the same reason the shadow ink is — a
      fixed navy reads cold against tan's warm bg0_s. */
-  --bub-me-1: #1e2c3d;
-  --bub-me-2: #0e1726;
+  --bub-me-1: #fafafc;
+  --bub-me-2: #fafafc;
 }
 
 /* Keyboard bypass and screen-reader-only shell announcements. The skip link
@@ -471,8 +471,8 @@
   line-height: 1.4;
   color: var(--ink-3);
 }
-/* A SWITCHED-OFF SURFACE IS ONE COLUMN OF PROSE, NOT A FORM (2026-08-18, the
-   agent detail page was cluttered).
+/* A SWITCHED-OFF SURFACE IS ONE COLUMN OF PROSE, NOT A FORM (owner, 2026-08-18,
+   on the agent detail page: "open agent detail is a mess").
  *
  * WHAT THE MESS ACTUALLY WAS, and all three parts are this one grid. Both
  * `.write-surface-grid` and `.write-form` are two-column grids, which is right
@@ -709,7 +709,7 @@
   font-size: 12px;
 }
 
-/* THE RAIL'S PROSE VOICE (iteration 6: Details was unreadable —
+/* THE RAIL'S PROSE VOICE (iteration 6: Details was "completely unreadable" —
    a wall of one style, 13px mono, one colour). Sentences read in the UI
    face at a real line-height; mono stays for values, ids and paths, which
    is what mono is for. Long tokens wrap instead of clipping against the
@@ -781,21 +781,21 @@
    than an absence of one. Ratios on the page #f6f3ee / sheet #fffdfa are
    checked in the sweep, not guessed. */
 :root[data-theme="white"] {
-  --bg: #f6f3ee;  --bg-2: #efe9df;  --surface: #f6f3ee;
-  --sheet: #fffdfa;  --wa: 1;
-  --ink:    #1b1a17;
-  --ink-2:  #4c4741;
-  --ink-25: #57514a;
-  --ink-3:  #625c53;
-  --ink-4:  #8a8278;
-  --line:   rgba(27, 26, 23, 0.09);
-  --line-2: rgba(27, 26, 23, 0.15);
+  --bg: #f5f5f7;  --bg-2: #fafafc;  --surface: #ffffff;
+  --sheet: #ffffff;  --wa: 1;
+  --ink:    #1d1d1f;
+  --ink-2:  #48484d;
+  --ink-25: #48484d;
+  --ink-3:  #6a6a6f;
+  --ink-4:  #8d8d92;
+  --line:   #e5e5ea;
+  --line-2: var(--line);
   /* Interface accent only -- agent role colours stay as role-colors.js sets
      them, so nothing recolours an agent. */
-  --ui-accent: #1f6f5c;
-  --ui-accent-fill: #1f6f5c;
-  --accent-2: #17594a;
-  --focus-ring: #1f6f5c;
+  --ui-accent: #0a65d4;
+  --ui-accent-fill: var(--ink);
+  --accent-2: #0a65d4;
+  --focus-ring: var(--ink);
   --s-good: #1a6b34;
   --s-warn: #f4c81c;
   --s-serious: #a8201a;
@@ -814,6 +814,8 @@
   --toggle-track: rgba(14, 23, 38, 0.479);
   --scrollbar-thumb: rgba(14, 23, 38, 0.348);
   --scrollbar-thumb-hover: rgba(14, 23, 38, 0.46);
+  --bub-me-1: #fafafc;
+  --bub-me-2: #fafafc;
 }
 
 /* TAN — Gruvbox Light SOFT, the owner's Zed terminal theme (the third
@@ -822,7 +824,7 @@
      bg0_s #f2e5bc   bg1 #ebdbb2   bg0 #fbf1c7
      fg0 #282828  fg1 #3c3836  fg2 #504945  fg3 #665c54  fg4 #7c6f64 */
 :root[data-theme="tan"] {
-  --bg: #f2e5bc;  --bg-2: #ebdbb2;  --surface: #f2e5bc;
+  --bg: #f2e5bc;  --bg-2: #f6ebc3;  --surface: #fbf1c7;
   --sheet: #fbf1c7;  --wa: 0.62;
   /* the only theme whose ground is far enough from white for the card ramp
      to show as a wash — 0.4 brings a chart card's corner-to-corner span from
@@ -832,17 +834,17 @@
   --node-a: 0.72;
   --ring-track: rgba(40, 40, 40, 0.12);
   --ink:    #282828;
-  --ink-2:  #3c3836;
+  --ink-2:  #504945;
   --ink-25: #504945;
   --ink-3:  #665c54;
-  --ink-4:  #7c6f64;
+  --ink-4:  #918261;
   /* severity text — Carbon green70 / yellow70 / red70; composited on the
      tan page #f2e5bc they measure 6.14 / 6.24 / 6.20:1 */
   --s-good: #0e6027;
   --s-warn: #f2c50e;
   --s-serious: #a2191f;
-  --line:   rgba(40, 40, 40, 0.10);
-  --line-2: rgba(40, 40, 40, 0.17);
+  --line:   #e7e1d6;
+  --line-2: var(--line);
   /* same neutral the hairlines already use — navy shadows read cold
      against a warm bg0_s */
   --shadow-rgb: 40, 40, 40;
@@ -850,14 +852,18 @@
   /* and the own-message bubble for exactly the same reason: the shared navy
      was the single cold slab on an otherwise entirely warm page. Gruvbox
      fg2/fg0, the same published ramp --ink already draws from. */
-  --bub-me-1: #504945;
-  --bub-me-2: #282828;
+  --bub-me-1: #f6ebc3;
+  --bub-me-2: #f6ebc3;
   /* same warm neutral the hairlines/shadows use; alphas solved against the
      sampled tan drawer glass rgb(252,239,196) and page — navy read cold AND
      under-weighted here (track 1.28:1 before) */
   --toggle-track: rgba(40, 40, 40, 0.531);
   --scrollbar-thumb: rgba(40, 40, 40, 0.39);
   --scrollbar-thumb-hover: rgba(40, 40, 40, 0.517);
+  --focus-ring: var(--ink);
+  --accent-2: #095fc7;
+  --ui-accent: #095fc7;
+  --ui-accent-fill: var(--ink);
 }
 
 /* BLACK — clinical dark. The ink ramp inverts; --wa drops so the same
@@ -869,16 +875,16 @@
      walkthrough, the role menu). The pair below mirrors
      public/preview/preview.css:79-80, which is the already-tested shape. */
   color-scheme: dark;
-  /* Lifted from #0d0f12: near-pure black
+  /* Lifted from #0d0f12 on the owner's swatch, 2026-08-25: near-pure black
      made everything hard to see. Soft charcoal, same cool family, same
      ladder: bg < bg-2 < sheet. */
-  --bg: #212327;  --bg-2: #292b30;  --surface: #212327;
-  --sheet: #2e3136;  --wa: 0.075;
+  --bg: #1c1c1e;  --bg-2: #29292c;  --surface: #232326;
+  --sheet: #232326;  --wa: 0.075;
   /* FLAT, BY REQUEST. The sheet wash multiplies by --sheen and this block
      never set it, so black inherited the white theme's FULL-strength 1
      while tan runs 0.4 -- the brightest gloss of the three themes over the
-     darkest ground. A gloss over it made everything harder to read. Zero is
-     the honest value: the wash is
+     darkest ground. The owner: "there is like a gloss over it that makes
+     everything harder to read". Zero is the honest value: the wash is
      decoration, and --wa (which real hover fills depend on) is untouched. */
   --sheen: 0;
   --brace: rgba(255, 255, 255, 0.238);
@@ -889,9 +895,9 @@
      rather than drifting toward a lit white edge. See .node-glass. */
   --rim-role: 84%;
   --rim-hover: 95%;
-  /* NIGHT CHARCOAL — the F001 palette. Warm
+  /* NIGHT CHARCOAL — owner-picked F001 palette ("ledger at night"). Warm
      ink ramp + ember pulse over the approved 2026-08-25 charcoal ladder
-     (bg / bg-2 / sheet above — untouched). A designer may supply replacement
+     (bg / bg-2 / sheet above — untouched). Owner may supply replacement
      values; keep them all in this block.
      The ink tiers keep the ramp's contract (primary / secondary /
      small-info / AA-floor context / decoration-only); each is the warm
@@ -912,15 +918,15 @@
      defect this pair exists to prevent. */
   --pulse: #ff7767;
   --pulse-dim: #d85b4d;
-  --ink:    #f5f1ee;
-  --ink-2:  #cabdb7;
-  --ink-25: #b9aaa2;
-  --ink-3:  #a6968e;
-  --ink-4:  #80726b;
-  --line:   rgba(255, 226, 218, 0.09);
-  --line-2: rgba(255, 226, 218, 0.155);
-  --bub-me-1: #594236;
-  --bub-me-2: #47352b;
+  --ink:    #f5f5f7;
+  --ink-2:  #c7c7cc;
+  --ink-25: #c7c7cc;
+  --ink-3:  #9d9da4;
+  --ink-4:  #737378;
+  --line:   #26262a;
+  --line-2: var(--line);
+  --bub-me-1: #29292c;
+  --bub-me-2: #29292c;
   /* #0e1726 shadow on a #0d0f12 page is the same lightness as the page —
      literally invisible ink, so every card on this theme was flat. Pure
      black still has somewhere to go, and the alphas need the headroom to
@@ -943,6 +949,10 @@
   --toggle-track: rgba(255, 255, 255, 0.348);
   --scrollbar-thumb: rgba(255, 255, 255, 0.29);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.38);
+  --focus-ring: var(--ink);
+  --accent-2: #81b5ff;
+  --ui-accent: #81b5ff;
+  --ui-accent-fill: var(--ink);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -956,9 +966,11 @@ body {
      (which was never the intent) or on some ad-hoc inline value */
   font-size: 13.5px;
   color: var(--ink);
-  background: var(--bg);          /* clinically flat: one colour, no wash */
+  background: var(--bg-app, var(--bg)); /* clinically flat: one colour, no wash; --bg-app is tokens.css, --bg this sheet */
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  font-weight: 450;
+  line-height: 1.5;
 }
 
 /* the accent at the same 0.18 it always was, but as a token mix — the
@@ -966,7 +978,7 @@ body {
 ::selection { background: color-mix(in oklab, var(--c-coordinator) 18%, transparent); }
 
 /* The aurora — six drifting neon fields behind the glass — is gone.
-   The background is a clean, single colour;
+   The owner asked for a clinically clean, single-colour background;
    every surface now composites against a flat --bg instead. */
 
 /* ---------- liquid glass primitives ---------- */
@@ -1087,11 +1099,11 @@ body {
   pointer-events: none;              /* only the controls take the pointer */
 }
 
-/* T52(2). Rule: scrolled page text must never show in the band above the
-   header.
+/* T52(2). "THERE IS A SMALL GAP AT THE TOP SO AS YOU SCROLL YOU SEE TEXT ABOVE
+   THE HEADER" -- the owner, 2026-09-15.
    Two things made that true and neither was the D1/D2 centring change, which
    only ever touched `left`/`transform`: `top: 14px` has been on this rule since
-   it was written (an earlier commit), and the strip declares `background: none` with no
+   it was written (1752bbc0), and the strip declares `background: none` with no
    backdrop-filter, so the page shows in the 14px band above the bar AND behind
    the controls themselves. Nothing reserves the band either -- the page shells
    in src/sidebar-pages.css are `padding-top: 0` -- so scrolled text runs
@@ -1112,7 +1124,7 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: calc(14px + 44px);         /* the bar's own inset plus its height */
-  background: var(--bg);             /* the page token, so every theme follows */
+  background: var(--bg-app, var(--bg)); /* the page token body paints, so every theme follows */
   z-index: -1;
   pointer-events: none;
 }
@@ -1311,7 +1323,6 @@ body.frameless *, body.frameless *::before, body.frameless *::after {
 }
 @media (max-width: 900px) { .home { grid-template-columns: 1fr; } .home-feed-wrap { display: none; } }
 
-.home-ring-wrap { display: grid; place-items: center; }
 
 /* uptime ring */
 .uring { position: relative; }
@@ -1338,7 +1349,7 @@ body.frameless *, body.frameless *::before, body.frameless *::after {
 .uring-digits .n { font-size: clamp(34px, 4.6vw, 58px); color: var(--ink); line-height: 1.05; }
 /* The clock already updates every second. Keep its separators still so an
    idle home page does not continuously composite frames between updates. */
-.uring-digits .colon { font-size: clamp(26px, 3.6vw, 44px); color: var(--ink-4); padding: 0 clamp(4px, 0.7vw, 10px); transform: translateY(-4px); }
+.uring-digits .colon { font-size: clamp(26px, 3.6vw, 44px); color: var(--ink-3); padding: 0 clamp(4px, 0.7vw, 10px); transform: translateY(-4px); }
 .uring-digits .u {
   margin-top: var(--s2);
   font-size: 11px; font-weight: 550; letter-spacing: var(--track-caps); text-transform: uppercase;
@@ -1462,7 +1473,7 @@ body.frameless *, body.frameless *::before, body.frameless *::after {
 .chat-workspace [data-chat-header-path] { display: block; padding-top: 4px; font-family: var(--font-mono); overflow-wrap: anywhere; }
 .chat-head .spacer { flex: 1; }
 /* THE DENSE-CARD PASS (design/chat/picked-card.png, "Dense — light-mode
-   palette"). Six additions landed in components.js at an earlier commit. Five had no
+   palette"). Six additions landed in components.js at 35068a4. Five had no
    rule anywhere in this sheet -- .chat-search, .chat-search-toggle,
    .chat-new-below, .working-step, .turn-stamp -- and rendered as browser
    defaults: an unstyled <button>, a borderless <input>. The sixth, the
@@ -1623,7 +1634,7 @@ body.reduce-motion .chat-typing-dots i { animation: none !important; opacity: 0.
 @media (prefers-reduced-motion: reduce) {
   .chat-typing-dots i { animation: none !important; opacity: 0.5; }
 }
-/* THE GUTTER, NOT BUBBLES (approved mockup). One
+/* THE GUTTER, NOT BUBBLES (owner-approved mockup, applied 2026-08-24). One
    28px column on the left holds the speaker's mark and nothing else, and
    every row starts at the same x — that single alignment is what turns a
    stack of boxes into a conversation. The agent's words are the largest,
@@ -1970,8 +1981,8 @@ body.reduce-motion .chat-typing-dots i { animation: none !important; opacity: 0.
    convention `.settings-row + .settings-row` already uses for this exact
    shape, a column of bordered rows. */
 .chat-action-run-body > .chat-action + .chat-action { margin-top: var(--s1); }
-/* A RUN HOLDING ONE CALL IS NOT A CLUSTER TO FOLD -- tools condense more.
- * Every call is wrapped in a run, even a
+/* A RUN HOLDING ONE CALL IS NOT A CLUSTER TO FOLD -- owner, 2026-09-03:
+ * "Tools need to condense more." Every call is wrapped in a run, even a
  * lone one, so a turn that ran ONE tool drew its "1 tool call" fold-line
  * AND, nested one level under it, the row that line stood in for -- two
  * boxes sharing the exact same `.chat-action` chrome (border, left border,
@@ -2084,10 +2095,10 @@ body.reduce-motion .chat-typing-dots i { animation: none !important; opacity: 0.
   color: var(--ink-25);
 }
 .chat-action.is-bare .chat-action-body { display: none; }
-/* THE SAME MESSY-TEXT DEFECT, STILL LIVE HERE.
+/* THE SAME MESSY-TEXT DEFECT THE OWNER NAMED, STILL LIVE HERE.
  *
- * Chat formatting was messy and needed fixing -- and the fix that
- * shipped for it (src/chat-markdown.js, and the
+ * Owner, 2026-09-03: "chat formatting needs to be fixed - its messy right
+ * now" -- and the fix that shipped for it (src/chat-markdown.js, and the
  * `white-space: pre-wrap` added to `.turn-text` beside it in src/home.css)
  * covers only the ONE coordinator-thread panel on the home page.
  *
@@ -2328,15 +2339,6 @@ body.reduce-motion .chat-typing-dots i { animation: none !important; opacity: 0.
   flex-wrap: wrap;
 }
 .chat-chips-right { flex: 0 0 auto; margin-left: auto; }
-.chat-chip-account-retry-status {
-  flex: 0 1 100%;
-  min-width: 0;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  color: var(--ink-3);
-  font: 400 11px/1.4 var(--font-ui);
-}
-.chat-chip-account-retry-status:empty { display: none; }
 .chat-chip {
   flex: none;
   height: 24px;
@@ -2668,16 +2670,17 @@ body.reduce-motion .chat-typing-dots i { animation: none !important; opacity: 0.
    so the canvas) stops growing again. Measured headless with
    tools/page-width-measure.ps1 (this repo's own vite dev server + a CDP
    render, not arithmetic on the sheet) at the
-   a persisted maximized window (shell-state.json: width 2559, R9: the same
-   width issues on page 2): the box sat at x=440..2120 in a 2560px-wide viewport,
+   owner's own persisted window (AppData/Roaming/ToolsEnabled-Live/
+   shell-state.json: width 2559, maximized, owner R9: "I notice the same
+   issues on page 2"): the box sat at x=440..2120 in a 2560px-wide viewport,
    1680 wide either way — 440px of bare sheet on each side, 34.4% of the
    window outside the box, with the canvas itself unchanged from its 1920
    width (1046px) because it had nowhere left to grow into. Raised to 2120,
    returning half of that measured margin to the box (440 -> 220px of margin
-   per side at a 2560px window) and handing the rest straight to the
+   per side at the owner's window) and handing the rest straight to the
    canvas, same as the 1920 fix did. */
-/* AND AT SMALL TEXT THE CAP GAVE THE ROOM BACK, WHICH IS R1206 (page 2 takes
-   up more space) and the 1.0.44 note's "Page 2 does not yet
+/* AND AT SMALL TEXT THE CAP GAVE THE ROOM BACK, WHICH IS R1206 ("we should try
+   to take up more space on page 2") and the 1.0.44 note's "Page 2 does not yet
    use the extra room at small text sizes: there is still noticeable empty space
    around the two boxes."
 
@@ -2699,15 +2702,15 @@ body.reduce-motion .chat-typing-dots i { animation: none !important; opacity: 0.
    this one was simply missed, because the defect a viewport unit shows at Large
    (painting past the window) is invisible at Small, where it only wastes.
 
-   THE OPEN-ENDED HALF OF R1206 (page width) IS STILL OPEN. In general it
-   has no acceptance bar -- 2120 of 2560 leaves 220px of bare sheet per
+   THE OPEN-ENDED HALF OF R1206 IS STILL OPEN. "Take up more space on page 2" in
+   general has no acceptance bar -- 2120 of 2560 leaves 220px of bare sheet per
    side at Medium and nobody has said what it ought to be -- so that number is
    unchanged here. What is fixed is the half that HAD a measure: the same cap at
    every text size. */
 body[data-route="computers"] { --page-max: calc(2120px / var(--zoom, 1)); }
 /* THE LEDGER NEVER GOT THE SAME TREATMENT, and it was the worst of the three.
-   The ledger's requests worked well, but the page looked poor. Measured on
-   the ledger route at a 2560px window
+   The owner: "in ledger i see your requests and thats really working good now.
+   it doesn't look right." Measured on the ledger route at their own 2560px window
    (tools/ledger-page-measure.ps1, staged dev server, headless Chrome over CDP):
    .ledger-shell is `width: min(var(--page-max), 100%)`, --page-max was still
    the base 1240, so the rows painted 1240 wide at x=656 -- 656px of bare page
@@ -2741,6 +2744,8 @@ body[data-route="ledger"] { --page-max: 2120px; }
   box-shadow: inset 0 1px 0 rgba(255,255,255,var(--wa)), var(--elev-2);
 }
 .tab .ip { font-size: 12.5px; color: var(--ink-3); font-family: var(--font-mono); font-weight: 400; }
+.computers .tab.active .ip { color: var(--ink-2); }
+.computers .tab:hover .ip { color: var(--ink-2); }
 .tab.add { padding: var(--s2) var(--s3); font-size: 16px; color: var(--ink-25); }
 
 /* THE HAIRLINE BETWEEN TWO KINDS OF CHIP. The left group is the computers on
@@ -3031,8 +3036,8 @@ body[data-route="ledger"] { --page-max: 2120px; }
    keyframes below, so it stays literal rather than moving to --dur-3 */
 .node.enter::before { animation: frostIn .7s var(--ease) both; }  /* track the nodeIn bloom so no full-size frost disc precedes the bubble */
 @keyframes frostIn { 0% { opacity: 0; } 55% { opacity: 0.35; } 100% { opacity: 1; } }
-/* professional-pass (the neon glow read as childish rather than
-   professional). The bubble used to carry a permanent ambient bloom (two
+/* professional-pass (owner: "childish… neon glow does not scream
+   professional"). The bubble used to carry a permanent ambient bloom (two
    `0 0 Npx` glow layers at rest, on every node, all the time) plus a rainbow
    conic-gradient edge ring — the two biggest contributors to a "candy /
    game" read. Both are gone: identity now lives in a confident but muted
@@ -3292,9 +3297,9 @@ body[data-route="ledger"] { --page-max: 2120px; }
   text-overflow: clip;
 }
 /* BOTH activity lines show, each wrapped to a bounded two rows. An earlier
-   pass dropped the previous-activity line for density's sake; the opposite
-   trade has since been asked for — decently sized boxes with a good amount of
-   text — and the density problem is solved where it belongs: the graph
+   pass dropped the previous-activity line for density's sake; the owner has
+   since asked for the opposite trade — "decently sized with good amounts of
+   text" — and the density problem is solved where it belongs: the graph
    stops showing boxes entirely once the fleet passes DENSE_AT (graph.js),
    so the boxes that DO show can afford to say more. */
 .graph-canvas .chip:not(.as-chat) .chip-preview .cl:not(.cl-name) ~ .cl:not(.cl-name) {
@@ -3353,7 +3358,7 @@ body[data-route="ledger"] { --page-max: 2120px; }
 .rail-title .spacer { flex: 1; }
 /* THE FIXED NAV ROW (src/rail-title.js). Three slots whose geometry never
    depends on content: the back button's centre may not move between pages
-   (defect 6), so the columns are constant widths, the row keeps a
+   (owner defect 6), so the columns are constant widths, the row keeps a
    minimum height even with no buttons, and an absent button is an empty slot,
    not a collapsed one. 116px fits "‹ Back" and the widest forward label
    ("Actions ›") with the button's own padding at rest. */
@@ -3374,8 +3379,8 @@ body[data-route="ledger"] { --page-max: 2120px; }
 }
 .rail-back:hover { background: rgba(14,23,38,0.05); color: var(--ink); }
 .rail-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: var(--s1); }
-/* T301: THE READING WINDOW, IN THE DEFAULT DESKTOP RAIL. Measured on a
-   development build: .chat-log rendered only 339px tall for 5397px of actual
+/* T301: THE READING WINDOW, IN THE DEFAULT DESKTOP RAIL. Measured on the
+   owner's build: .chat-log rendered only 339px tall for 5397px of actual
    conversation, ~228px of the panel spent on chrome around it -- a
    six-line porthole. Not lost messages, not a scroll clamp: .chat itself
    already carries `flex: 1; min-height: 0` (this file, .chat/.chat-log), but
@@ -3383,12 +3388,12 @@ body[data-route="ledger"] { --page-max: 2120px; }
    inside, so it sized to its own content instead. .board-page and
    .home-agent-workspace already carry this exact rule for their own
    .rail-chat-body/.rail-chat-host; the plain desktop rail -- the surface
-   actually measured -- never had it. */
+   Worker 82 actually measured -- never had it. */
 .rail-chat-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .rail-chat-body[hidden] { display: none; }
 .rail-chat-host { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-/* T301: THE READING WINDOW, IN THE DEFAULT DESKTOP RAIL. Measured on a
-   development build: .chat-log rendered only 339px tall for 5397px of actual
+/* T301: THE READING WINDOW, IN THE DEFAULT DESKTOP RAIL. Measured on the
+   owner's build: .chat-log rendered only 339px tall for 5397px of actual
    conversation, ~228px of the panel spent on chrome around it -- a
    six-line porthole. Not lost messages, not a scroll clamp: .chat itself
    already carries `flex: 1; min-height: 0` (this file, .chat/.chat-log), but
@@ -3396,7 +3401,7 @@ body[data-route="ledger"] { --page-max: 2120px; }
    inside, so it sized to its own content instead. .board-page and
    .home-agent-workspace already carry this exact rule for their own
    .rail-chat-body/.rail-chat-host; the plain desktop rail -- the surface
-   actually measured -- never had it. */
+   Worker 82 actually measured -- never had it. */
 
 .stat-hero { display: flex; align-items: baseline; gap: var(--s2); margin-bottom: var(--s1); }
 .stat-hero .v { font-size: 46px; font-weight: 640; color: var(--ink); line-height: 1; }
@@ -3516,9 +3521,9 @@ body[data-route="ledger"] { --page-max: 2120px; }
    next corner from having to. */
 .ctl-btn[hidden] { display: none; }
 
-/* THE BUTTON NOBODY STYLED, measured 2026-09-10 on the LIVE build during a
-   check for completely unstyled buttons such as Browse saved conversation and
-   Full view. src/node-transcript-history.js builds its
+/* THE BUTTON NOBODY STYLED, measured 2026-09-10 on the LIVE build after the
+   owner asked to "check for totally unstyled buttons like browse saved
+   conversation and full view". src/node-transcript-history.js builds its
    "Browse saved conversation", "Earlier messages" and "Newer messages"
    buttons in script with no class, and the only rule that reaches them
    (.node-transcript-history > button in board.css) sets flex and margin --
@@ -4132,6 +4137,23 @@ body.reduce-motion * { animation-duration: 0.001s !important; transition-duratio
   --chart-cross: rgba(40, 40, 40, 0.30);
   --chart-track: rgba(40, 40, 40, 0.07);
   --chart-spark: rgba(40, 40, 40, 0.26);
+  --bg: #f2e5bc;
+  --bg-2: #f6ebc3;
+  --surface: #fbf1c7;
+  --sheet: #fbf1c7;
+  --ink: #282828;
+  --ink-2: #504945;
+  --ink-25: #504945;
+  --ink-3: #665c54;
+  --ink-4: #918261;
+  --line: #e7e1d6;
+  --line-2: var(--line);
+  --focus-ring: var(--ink);
+  --accent-2: #0a65d4;
+  --ui-accent: #0a65d4;
+  --ui-accent-fill: var(--ink);
+  --bub-me-1: #f6ebc3;
+  --bub-me-2: #f6ebc3;
 }
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) {
   --chart-grid:  rgba(255, 255, 255, 0.09);

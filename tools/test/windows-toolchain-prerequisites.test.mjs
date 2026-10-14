@@ -14,7 +14,7 @@ const diagnosticUrl = new URL('../lib/transport/windows-toolchain-prerequisites.
 const sourceUrl = new URL('../lib/adapters/artifact-source.mjs?synthetic-prerequisite-reads', import.meta.url).href;
 const filesUrl = new URL('../lib/adapters/artifact-files.mjs', import.meta.url).href;
 const key = 'windows-toolchain-prerequisites.synthetic-reads';
-const paths = { ...registeredToolPaths(), git: 'C:\\Program Files\\Git\\cmd\\git.exe' };
+const paths = { ...registeredToolPaths(), git: '\x43:\\Program Files\\Git\\cmd\\git.exe' };
 const digests = {
   node: '995a3fb3cefad590cd3f4b321532a4b9582fb9c6575320ed2e3e894caac3e362',
   python: '5341746f92483a93e44c313de830f2fba2956f0759094404a16b2fed06c9a2ed',

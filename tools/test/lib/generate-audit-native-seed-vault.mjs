@@ -1,18 +1,14 @@
-/* Generates a LOCAL, uncommitted tools/test/fixtures/audit-native-seed-vault.json
- * for this account. DPAPI output is bound to the generating account and carries
- * its master-key identifier, so the file must never be committed (.gitignore
- * lists it); without it, audit-repair-fixture.cjs lets every scenario take the
- * ordinary cold bootstrap.
+/* Regenerates tools/test/fixtures/audit-native-seed-vault.json.
  *
  * audit-repair-native.test.mjs spawns one grandchild process per scenario,
  * and each grandchild used to bootstrap its own audit signing key from
  * nothing via runtime's getOrCreateSecret -- a live powershell.exe/DPAPI
  * round trip for a container that does not exist yet. That cold-bootstrap
  * spawn is the one that goes missing under load; adding a key to a vault
- * that already has one does not. So the generated file holds one validly
+ * that already has one does not. So the fixture holds one real, validly
  * DPAPI-protected SIGNING_VAULT_KEY entry (bytes only decrypt for the
- * OS account that made them, so it must be regenerated -- run this file
- * directly -- if it ever stops decrypting for the account the tests run
+ * OS account that made them, so this must be regenerated -- run this file
+ * directly -- if the fixture ever stops decrypting for the account CI runs
  * as), and nothing else: no anchor, no audit history, no owner secrets.
  * audit-repair-fixture.cjs copies it into a fresh scratch root's
  * vault/secrets.json before the real requireRecord() call, so that call's

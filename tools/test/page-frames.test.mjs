@@ -79,7 +79,7 @@ test('every scheduling site the measurement named goes through the primitive', (
      requestAnimationFrame at one of them would leak again with no test to say
      so, so the import is what is pinned -- deliberately not the count, which
      would fail the next time someone adds a legitimate animation loop. */
-  for (const file of ['../../src/components.js', '../../src/views/comms.js', '../../src/views/home.js', '../../src/crescent-mount.js', '../../src/main.js']) {
+  for (const file of ['../../src/components.js', '../../src/views/comms.js', '../../src/views/home.js', '../../src/main.js']) {
     const text = readFileSync(new URL(file, import.meta.url), 'utf8')
     assert.match(text, /from '\.\.?\/page-frames\.js'/, `${file} must take the shared page-can-draw rule from one place`)
   }

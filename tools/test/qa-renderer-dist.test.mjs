@@ -45,7 +45,7 @@ test('renderer release arguments reject duplicate, missing and option-shaped val
 test('source-only, website and installer scenarios bind the selected archive and remain unmet proof', async t => {
   const { release, archive } = await fixture(t)
   const before = readFileSync(archive)
-  for (const name of ['ring-fidelity-qa.mjs', 'phone-signin-gate-qa.mjs', 'purchase-cart-readable-qa.cjs',
+  for (const name of ['phone-signin-gate-qa.mjs', 'purchase-cart-readable-qa.cjs',
     'write-outcome-restate-qa.cjs', 'nsis-upgrade-roundtrip-qa.mjs']) {
     const source = readFileSync(path.join(toolsRoot, name), 'utf8')
     assert.deepEqual(releaseArgumentsFor(source, release), ['--release', release])

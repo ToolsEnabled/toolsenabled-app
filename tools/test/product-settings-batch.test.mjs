@@ -17,7 +17,7 @@ const settings = require('../../shell/product-settings.cjs')
 const canonical = require('../../shell/canonical-audit.cjs')
 const options = { root: engineRoot, fresh: true }
 const initial = { revision: 9, values: { 'agent.agent_api': false,
-  'outward.reserved_from_agents': ['Posting to social media', 'fixture reservation'], 'fixture.unrelated': 'preserved' },
+  'outward.reserved_from_agents': ['Posting to social media', 'fixture reservation'], 'fixture.unrelated': 'retired', 'agent.capability_recall': false },
   provenance: { 'agent.agent_api': { source: 'user', atMs: 1, directive: null },
     'outward.reserved_from_agents': { source: 'user', atMs: 1, directive: null } }, extra: { preserved: true } }
 test.after(async t => {
@@ -40,8 +40,9 @@ test('a batch validates and atomically applies one revision with legacy and rese
     row.id === 'agent.tool_mode' ? ['agent.agent_api', 'Disabled', 10] : [row.id, row.value, 10]))
   assert.ok(result.results.every(row => row.provenance.source === 'user'))
   const stored = JSON.parse(fs.readFileSync(file))
-  assert.deepEqual(stored.extra, initial.extra)
-  assert.equal(stored.values['fixture.unrelated'], 'preserved')
+  assert.equal(Object.hasOwn(stored, 'extra'), false, 'unknown envelope fields are dropped on a person save')
+  assert.equal(Object.hasOwn(stored.values, 'fixture.unrelated'), false, 'unknown settings are retired')
+  assert.equal(stored.values['agent.capability_recall'], false, 'unrelated declared settings remain intact')
   assert.equal(stored.values['agent.agent_api'], 'Disabled')
   assert.equal(stored.values['agent.tool_mode'], 'Native tools only')
   assert.deepEqual(stored.provenance['agent.agent_api'], stored.provenance['agent.tool_mode'])
@@ -163,8 +164,8 @@ test('a native batch cannot acknowledge signed receipts while audit maintenance 
   }
 })
 
-/* THE WORKING-PROFILE RECEIPT (the reported defect: settings kept not
- * saving). A Save that is also a profile application names the profile.
+/* THE WORKING-PROFILE RECEIPT (owner, 2026-09-15: "my settings keep not
+ * saving"). A Save that is also a profile application names the profile.
  * Without that record the page cannot tell a value the profile put there from
  * one the person picked afterwards, and re-picking the profile replays the
  * preset over their own later choice. */
@@ -177,7 +178,8 @@ test('a profile application records which profile applied it, and an ordinary sa
   assert.equal(stored.workingProfile.id, 'autonomous-plus')
   assert.equal(stored.workingProfile.atMs, stored.provenance['audit.activity'].atMs)
   assert.deepEqual(settings.readProductSettings(options).workingProfile, stored.workingProfile)
-  assert.equal(stored.values['fixture.unrelated'], 'preserved', 'the receipt does not disturb the rest of the file')
+  assert.equal(stored.values['agent.capability_recall'], false, 'the receipt does not disturb unrelated declared settings')
+  assert.equal(Object.hasOwn(stored.values, 'fixture.unrelated'), false, 'retired settings are not copied forward')
 
   const later = settings.setProductSettingsMany([{ id: 'audit.activity', value: 'Off' }], options)
   assert.equal(later.ok, true, later.reason)

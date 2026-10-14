@@ -1,4 +1,4 @@
-/* Paid subscriptions are delayed. This is presentation policy, not a
+/* The owner has delayed paid subscriptions. This is presentation policy, not a
  * catalogue result: the catalogue reader still validates and fails closed on
  * its own terms. Every control that would lead to that closed surface reads the
  * same enabled-plus-reason contract so none can become a live-looking dead end. */
@@ -8,7 +8,7 @@ export const SUBSCRIPTION_DISABLED_HINT = 'Subscriptions are not open yet. The p
 /* THERE IS NO SUBSCRIPTION CONTROL OBJECT ANY MORE, and that is the point.
  *
  * It described a disabled "Subscriptions coming soon" button, and by the time
- * the product stopped advertising subscriptions it was rendered
+ * the owner asked the product to stop advertising subscriptions it was rendered
  * on the home screen AND on the account page. Removing one left the other, so
  * the object is gone rather than merely unrendered: an exported, ready-made
  * control is what the next surface reaches for.

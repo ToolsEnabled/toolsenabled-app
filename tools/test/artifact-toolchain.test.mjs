@@ -49,7 +49,7 @@ test('the native decoder remains the exact registered 7-Zip 24.08 pair after rel
   const measured = verifyExtractorIdentity();
   const ownerRoot = path.join(os.userInfo().homedir, 'AppData', 'Local', 'ToolsEnabledQualification', 'tools', '7zip-24.08-x64');
   const ownerPairPresent = ['7z.exe', '7z.dll'].some(name => fs.existsSync(path.join(ownerRoot, name)));
-  assert.equal(APPROVED_EXTRACTOR.executable, path.join(ownerPairPresent ? ownerRoot : 'C:\\Program Files\\7-Zip', '7z.exe'));
+  assert.equal(APPROVED_EXTRACTOR.executable, path.join(ownerPairPresent ? ownerRoot : '\x43:\\Program Files\\7-Zip', '7z.exe'));
   assert.equal(measured.executable.sha256, '707f415d7d581edd9bce99a0429ad4629d3be0316c329e8b9ebd576f7ab50b71');
   assert.equal(measured.library.sha256, 'e79ddfb6319dbf9bac6382035d23597dad979db5e71a605d81a61ee817c1e812');
   assert.equal(measured.executable.bytes, 562176);

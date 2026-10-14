@@ -1,10 +1,11 @@
 // The live composer (src/components.js buildChat, iteration 6): the send
 // button's two faces, the queue strip, and the actions popup. The rules being
-// pinned: Stop replaces the Send button while an agent is replying; once the
-// person types, it turns back into Send to send while the agent is working;
-// with the queue on, the message waits and a small preview shows it waiting to
-// be sent — and the popup is a clean pop-up like VS Code's, behind a button
-// next to the attachments icon.
+// pinned are the owner's, near-verbatim: "stop should be a button that
+// replaces the send button when a agent is replying, unless a user types then
+// it turns back into a send to send while the agent is working, unless the
+// have que on then it gets loaded and waits and we should [show] a little
+// preview of it waiting to be sent" — and the popup is "a clean pop up just
+// like vscode is" behind a button "next to the attachments icon".
 //
 // Source pins, deliberately: buildChat needs a DOM to run, and the harness
 // here has none. Each assertion anchors on the code shape that carries the
@@ -154,7 +155,7 @@ test('the actions button sits in the composer row and the popup closes honestly'
   /* Dispose tears the popup and the subscriptions down with the chat. */
   /* The WHOLE dispose body, located by its own closing brace. A fixed character
      window silently stopped covering the later teardown lines as dispose grew:
-     measured 2026-09-09 at an earlier app commit, statusUnsub sat at offset 1385 but
+     measured 2026-09-09 at app 6909208e, statusUnsub sat at offset 1385 but
      queueUnsub at 1467 and chipsUnsub at 1519, so a 1400 window reported
      "dispose leaks the queue subscription" while dispose unsubscribes on the
      very next line. A pin that silently stops measuring is worse than no pin. */
@@ -187,7 +188,7 @@ test('the effort stage cannot restart without the token-cost sentence', () => {
 
 /* ==================================================================
    THE ACTIONS POPUP IS A COMMAND PALETTE, which is the substance of the
-   requirement that this menu work more like VS Code and be more intuitive.
+   owner's "this menu needs to be more like vscode, much more intuitive".
 
    Measured before this: the popup's entire keyboard handler was one line for
    Escape; rows were plain buttons reachable only by Tab or mouse; the filter

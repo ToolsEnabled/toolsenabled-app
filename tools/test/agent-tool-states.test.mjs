@@ -1,7 +1,7 @@
 /* THREE STATES PER TOOL, THE UPGRADE OF AN ACCOUNT THAT HAS TWO, AND THE
  * CEILING NEITHER OF THEM MAY LIFT.
  *
- * The states are enabled / permissions required / disabled. The row that
+ * The owner asked for enabled / permissions required / disabled. The row that
  * existed was an array of the names switched OFF, which cannot hold a third
  * answer. So this suite pins the three things that make the new one real:
  *

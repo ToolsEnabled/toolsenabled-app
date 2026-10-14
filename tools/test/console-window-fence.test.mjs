@@ -280,8 +280,8 @@ test('2. every agent-engine module in the payload launches through the seam', { 
 /* THE ONE WINDOW SOMEBODY MEANT, AND HOW THE RULE TELLS IT FROM ONE SOMEBODY
  * FORGOT.
  *
- * Product rule: the Sign in button opens the person's command
- * prompt with the command printed for them. A terminal the person is meant to
+ * The owner's instruction, 2026-08-22: the Sign in button must "launch their
+ * cmd with the command printed for them". A terminal the person is meant to
  * SEE and type in is the deliberate opposite of everything this file exists to
  * prevent, and it cannot be written as `windowsHide: true` -- that flag is
  * precisely what would hide it.
@@ -294,6 +294,16 @@ test('2. every agent-engine module in the payload launches through the seam', { 
  * each of those shapes. Widening this means editing this line, which is a
  * thing a reviewer can see. */
 const DELIBERATE_WINDOW = 'TERMINAL_WINDOW_IS_THE_POINT'
+
+/* THE SECOND NAMED WINDOW: A SETUP WIZARD. The local-model setup starts
+ * Ollama's own Windows installer when the person presses Install. It is a GUI
+ * program they click through, and windowsHide: true would start it with
+ * SW_HIDE. Same three limits as the terminal: one shell file
+ * (shell/local-model-setup.cjs), defined false there, one launch. It goes
+ * through that module's spawnInstaller seam, so rule 3 does not see the call
+ * itself; rule 3d counts the constant instead. */
+const INSTALLER_WINDOW = 'INSTALLER_WINDOW_IS_THE_POINT'
+const INSTALLER_WINDOW_FILE = 'shell/local-model-setup.cjs'
 
 function consoleOffendersIn(label, rawSource) {
   const source = codeOnly(rawSource)
@@ -367,7 +377,7 @@ test('3b. RED PROOF: the rule above catches the shapes it exists to catch', () =
 test('3c. the deliberate window is one call, in one file, and it really is a window', () => {
   /* MUTATION-SAMPLED 2026-08-28. Inverting the production constant in
      shell/main.cjs from false to true makes the assertion below fail. The
-     green/red/restored-green transcript is an internal report. */
+     green/red/restored-green transcript is REPORT-C1-console-window-fence.md. */
   /* THE EXCEPTION IS ONLY SAFE WHILE IT IS SMALL. A named opt-out that spreads
      is an opt-out that has quietly become the rule, so this counts it: one
      shell file may carry the constant, it must be defined false there (a `true`
@@ -391,6 +401,31 @@ test('3c. the deliberate window is one call, in one file, and it really is a win
   assert.deepEqual(carriers, ['shell/main.cjs'],
     `the deliberate-window exception has spread beyond the one file that opens the sign-in terminal: ${carriers.join(', ')}`)
   assert.equal(uses, 1, `${uses} spawns claim the deliberate-window exception; there is one terminal to open`)
+})
+
+test('3d. the installer window is one launch, in one file, and it really is a window', () => {
+  /* Checked like 3c: the constant defined false in the one file that starts
+     the installer, and passed as windowsHide exactly once. A true would hide
+     the wizard the person pressed Install to get. */
+  const carriers = []
+  let uses = 0
+  for (const name of jsFilesIn(SHELL)) {
+    const source = codeOnly(readFileSync(path.join(SHELL, name), 'utf8'))
+    if (!source.includes(INSTALLER_WINDOW)) continue
+    carriers.push(`shell/${name}`)
+    assert.match(
+      source,
+      new RegExp(`const\\s+${INSTALLER_WINDOW}\\s*=\\s*false\\b`),
+      `shell/${name} names the installer-window constant without defining it as false; a true there hides the installer`,
+    )
+    uses += (source.match(new RegExp(`windowsHide\\s*:\\s*${INSTALLER_WINDOW}\\b`, 'g')) || []).length
+  }
+  assert.deepEqual(carriers, [INSTALLER_WINDOW_FILE],
+    `the installer-window exception has spread beyond the local-model setup: ${carriers.join(', ')}`)
+  assert.equal(uses, 1, `${uses} launches claim the installer-window exception; there is one installer to start`)
+  /* And it excuses nothing on an ordinary spawn: only the terminal constant does. */
+  assert.ok(consoleOffendersIn('probe', `spawn(exe, args, { stdio: 'ignore', windowsHide: ${INSTALLER_WINDOW} })`).length > 0,
+    'the installer-window constant excused an ordinary spawn')
 })
 
 test('4. the exemption list names only files that exist', () => {

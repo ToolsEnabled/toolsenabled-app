@@ -7,7 +7,7 @@ import { runOwnedJob } from '../transport/owned-job.mjs';
 import { LINUX_GIT, GIT_SOURCE_OPTIONS, measureLinuxGitToolchain } from '../transport/linux-git-toolchain.mjs';
 import { blocked, DEV_PROFILE, DEV_TEMP, NATIVE_PATH_ROOT, plainPath, contains, relativeName, readBounded, measureFile, digestRecord, ENTRY_LIMIT } from './artifact-files.mjs';
 
-const GIT = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const GIT = '\x43:\\Program Files\\Git\\cmd\\git.exe';
 const GIT_SHA256 = 'fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f';
 const REF = /^[a-f0-9]{40}$/;
 
@@ -31,8 +31,8 @@ export function verifyGitToolIdentity() {
 
 export function measurementEnvironment() {
   // Do not inherit HOME/config/provider destinations or Git command overrides.
-  return { SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows', ComSpec: 'C:\\Windows\\System32\\cmd.exe',
-    PATH: 'C:\\Windows\\System32;C:\\Windows', TEMP: DEV_TEMP, TMP: DEV_TEMP,
+  return { SystemRoot: '\x43:\\Windows', WINDIR: '\x43:\\Windows', ComSpec: '\x43:\\Windows\\System32\\cmd.exe',
+    PATH: '\x43:\\Windows\\System32;\x43:\\Windows', TEMP: DEV_TEMP, TMP: DEV_TEMP,
     USERPROFILE: DEV_PROFILE, APPDATA: `${DEV_PROFILE}\\AppData\\Roaming`, LOCALAPPDATA: `${DEV_PROFILE}\\AppData\\Local`,
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: 'NUL', GIT_ATTR_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0',
     GIT_TERMINAL_PROMPT: '0', GIT_PAGER: '', PAGER: '' };

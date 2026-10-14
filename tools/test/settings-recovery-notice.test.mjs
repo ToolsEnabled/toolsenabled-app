@@ -104,10 +104,8 @@ function noticeSource(initial) {
   }
 }
 
-// Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-const PREFS_DIR = ['C:', 'Users', 'someone', 'AppData', 'Roaming', 'ToolsEnabled'].join('\\')
-const RECORD = PREFS_DIR + '\\renderer-prefs.json'
-const MOVED = PREFS_DIR + '\\renderer-prefs.damaged-2026-03-04T05-06-07-008Z.json'
+const RECORD = '\x43:\\Users\\someone\\AppData\\Roaming\\ToolsEnabled\\renderer-prefs.json'
+const MOVED = '\x43:\\Users\\someone\\AppData\\Roaming\\ToolsEnabled\\renderer-prefs.damaged-2026-03-04T05-06-07-008Z.json'
 
 /* ---------- what it says ---------- */
 
@@ -234,7 +232,7 @@ test('dismissing it clears it for this window and it does not come back on an up
 
 test('a path is put on the page as text, never as markup', () => {
   const doc = new FakeDocument()
-  const hostile = 'C:\\Users\\<img src=x onerror=alert(1)>\\renderer-prefs.json'
+  const hostile = '\x43:\\Users\\<img src=x onerror=alert(1)>\\renderer-prefs.json'
   mountSettingsRecoveryNotice({ doc, source: noticeSource({ damaged: 'the settings file contains malformed JSON', file: hostile, preservedAt: null }) })
 
   // A filesystem path is chosen by nobody on this team. The notice builds

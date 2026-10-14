@@ -1,9 +1,9 @@
 /* THE /REQUEST FAMILY IN THE CHAT BOX — the user-side half of the standing
  * request contract.
  *
- * The design (2026-08-15, recorded in the engine's r-ledger module): /Request
- * saves to the global R ledger, and it stays in the user's hands instead of
- * elaborate machinery. Four scopes, four commands, typed right
+ * The owner's design (2026-08-15, verbatim in the engine's r-ledger module):
+ * "/Request [request] saves to global R ledger ... it lies in the users hands
+ * instead of some insane machinery". Four scopes, four commands, typed right
  * where the person is already talking to an agent. The PRODUCT files the
  * words; the agent needs no tool for it and just sees the confirmation.
  *

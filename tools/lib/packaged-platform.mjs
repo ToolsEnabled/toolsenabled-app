@@ -157,7 +157,7 @@ export function appExecutable(appRoot) {
 /* THE QA PROFILE LAYOUT, RESTATED FOR LINUX ONLY.
  *
  * test-account-harness has always given a child `<profile>/local`,
- * `<profile>/roaming`, `<profile>/home` and `<profile>/home/.codex`. Those four
+ * `<profile>/roaming`, `<profile>/home` and `<profile><profile-root>`. Those four
  * are a complete fence on Windows. On Linux they are not read at all by
  * anything except this product's own LOCALAPPDATA-first resolver, and the real
  * account is still reachable three other ways: HOME, the passwd entry that
@@ -375,7 +375,7 @@ export function reapProcessTree(pid, {
 
 /** ---- 5. CAN A PACKAGED ELECTRON EVEN START ON THIS HOST ---------------- */
 
-/* MEASURED on a development Linux install, against the 1.0.44 candidate's own
+/* MEASURED 2026-09-11 on this laptop, against the 1.0.44 candidate's own
  * release/cut-1.0.44/linux-unpacked tree:
  *
  *   launched directly                 exit 133, before any window
@@ -407,7 +407,7 @@ export function reapProcessTree(pid, {
  * THE INSTALLED TREE USES THAT PROFILE, NOT THE SETUID HELPER. The .deb never
  * makes chrome-sandbox setuid: build/linux/deb-maintainer.sh refuses any
  * managed path carrying a setuid, setgid, group-write or other-write bit.
- * Measured 2026-09-23 on an installed 1.0.45 package:
+ * Measured 2026-09-23 on the Linux laptop's installed 1.0.45 package:
  * /opt/ToolsEnabled/chrome-sandbox is root:root 0755, and
  * /etc/apparmor.d/toolsenabled-customer holds the source profile's bytes. The
  * kernel attaches that profile whenever the fixed path

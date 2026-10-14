@@ -29,10 +29,10 @@
 }
 .m-filter .mf-label {
   font-size: 12.5px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-25);
-  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+  font-weight: 600;
 }
 .m-filter .mf-sep {
   width: 1px;
@@ -63,11 +63,11 @@
    opacity only (composited), stilled under reduced motion */
 .m-filter .live-dot {
   display: inline-block;
-  width: 4px; height: 4px; border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background: var(--sev-good);
   margin-right: 5px;
   vertical-align: 1px;
-  animation: liveBreathe 2.8s ease-in-out infinite;
+  animation: none;
 }
 @keyframes liveBreathe { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
@@ -110,20 +110,20 @@
   align-content: start;
 }
 .stat .tl {
-  font-size: 11px;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-25);
-  font-weight: 650;
+  font-size: 12.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+  font-weight: 600;
   margin-bottom: 0;
   white-space: nowrap;
 }
 .stat .tv {
   display: flex; align-items: baseline; gap: 7px;
-  font-size: 32px; font-weight: 640; line-height: 1;
+  font-size: 28px; font-weight: 650; line-height: 1;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
-  transition: color .3s var(--ease);
+  transition: color var(--dur-1) var(--ease);
 }
 /* Failure rate alone has a defined absolute verdict (<2 / 2–5 / >5).
    These are the same text-safe theme steps as the agent table's fail column;
@@ -141,7 +141,7 @@
   font-size: 12.5px; line-height: 1.15; font-weight: 640;
   font-variant-numeric: tabular-nums;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: color .3s var(--ease);
+  transition: color var(--dur-1) var(--ease);
 }
 .stat .td.up { color: var(--s-good); }
 .stat .td.down { color: var(--s-serious); }
@@ -179,7 +179,7 @@
 .metrics .m-strip .spark { margin-top: auto; }
 
 /* count-up bump + sparkline end-point pulse (state marks, one-shot) */
-.stat .tv.bump { animation: tvBump .52s var(--ease-spring); }
+.stat .tv.bump { animation: none; }
 @keyframes tvBump {
   0%   { transform: none; }
   32%  { transform: translateY(-2px) scale(1.045); }
@@ -191,7 +191,7 @@
   opacity: 0;
   pointer-events: none;
 }
-.spark-halo.ping { animation: sparkPing .8s var(--ease) 1; }
+.spark-halo.ping { animation: none; }
 @keyframes sparkPing {
   0%   { transform: scale(1);   opacity: 0.4; }
   100% { transform: scale(3.2); opacity: 0; }
@@ -208,11 +208,11 @@
   margin-bottom: 10px;
 }
 .m-head .mt {
-  font-size: 11px;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-2);
-  font-weight: 660;
+  font-weight: 620;
   white-space: nowrap;
 }
 /* 13px, not 12.5: the sub is multi-word prose ("pools → providers →
@@ -255,8 +255,8 @@
 }
 .metrics .m-chart-scroll-hint[hidden] { display: none; }
 .metrics .echart[data-chart-scroll="true"]:focus-visible {
-  outline: 2px solid var(--ink-3);
-  outline-offset: 2px;
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 
 /* A missing live route keeps the hero's full measured slot. Two hairlines and
@@ -274,7 +274,7 @@
    One page, one way of saying it, and the reader has already learned it two
    bands up. */
 .metrics #sankey-chart.m-sankey-empty-host {
-  /* Was 430px, the diagram's own height. Design rule: the empty
+  /* Was 430px, the diagram's own height. Owner review 2026-09-23: the empty
      panel is as short as every other empty panel on the page (the quiet
      well, metrics-dashboard.css). research-view.test pins the old value. */
   min-height: 72px;
@@ -307,12 +307,12 @@
   text-align: center;
 }
 .m-sankey-empty-label {
-  color: var(--ink-25);
+  color: var(--ink-2);
   font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 660;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .m-sankey-empty-copy p {
   max-width: 62ch;
@@ -339,8 +339,8 @@
   color: var(--ink);
 }
 .m-sankey-sim:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 
 /* the caption row between the band's two panes — 11px caps micro-label
@@ -353,11 +353,11 @@
   margin-top: 4px;
   padding: 8px 2px 4px;
   border-top: 1px solid var(--line);
-  font-size: 11px;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-25);
-  font-weight: 640;
+  font-size: 12.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+  font-weight: 600;
 }
 .m-band .band-cap .bc-note { font-weight: 550; letter-spacing: 0.06em; }
 
@@ -381,8 +381,8 @@
 }
 .vhero .vh-l {
   margin-top: 5px;
-  font-size: 11px; letter-spacing: var(--track-caps); text-transform: uppercase;
-  color: var(--ink-25); font-weight: 650;
+  font-size: 12.5px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); font-weight: 600;
 }
 .vsplit { display: contents; }
 .vbar { position: relative; height: 22px; grid-column: 2; grid-row: 1; }
@@ -423,16 +423,16 @@
 .heat-key em {
   font-style: normal;
   font-size: 12.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-25);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
   font-weight: 600;
 }
 .heat-key i {
   width: 13px; height: 9px;
   border-radius: 2px;
   display: block;
-  box-shadow: inset 0 0 0 1px rgba(14, 23, 38, 0.04);
+  box-shadow: none;
 }
 
 /* ---------- optional instrument: machine heartbeat ---------- */
@@ -446,29 +446,29 @@
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   min-width: 0;
   pointer-events: none;
-  transition: opacity .22s var(--ease);
+  transition: opacity var(--dur-1) var(--ease);
 }
 .hb-meta.is-muted { opacity: 0.34; }
 .hb-name {
   display: inline-flex; align-items: center; gap: 7px;
   min-width: 0;
-  font-size: 11px; line-height: 1;
-  letter-spacing: var(--track-caps); text-transform: uppercase;
-  color: var(--ink-2); font-weight: 660;
+  font-size: 12.5px; line-height: 1;
+  letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); font-weight: 600;
   white-space: nowrap;
 }
 .hb-name i {
   width: 5px; height: 5px; flex: none; border-radius: 50%;
   background: var(--sev-good);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sev-good) 10%, transparent);
+  box-shadow: none;
 }
 .hb-meta.is-hiccup .hb-name i {
   background: var(--sev-warn);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sev-warn) 12%, transparent);
+  box-shadow: none;
 }
 .hb-last {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: var(--font-mono); font-size: 11px; line-height: 1;
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--ink-3);
 }
@@ -476,15 +476,15 @@
   position: absolute; z-index: 3; right: 0; top: -2px;
   width: 4px; height: 4px; border-radius: 50%;
   background: var(--heartbeat-ink);
-  box-shadow: 0 0 8px 2px color-mix(in oklab, var(--heartbeat-ink) 34%, transparent);
+  box-shadow: none;
   pointer-events: none;
-  transition: transform .28s var(--ease), opacity .2s var(--ease), background .2s var(--ease);
+  transition: transform var(--dur-1) var(--ease), opacity var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
   will-change: transform;
 }
 .hb-signal-tip.is-muted { opacity: 0.28; }
 .hb-signal-tip.is-hiccup {
   background: var(--sev-warn);
-  box-shadow: 0 0 8px 2px color-mix(in oklab, var(--sev-warn) 30%, transparent);
+  box-shadow: none;
 }
 
 /* ---------- optional instrument: pool burn ---------- */
@@ -501,13 +501,13 @@
   min-width: 0;
 }
 .burn-name {
-  font-family: var(--font-mono); font-size: 11px; line-height: 1;
-  letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--ink-2); font-weight: 660;
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1;
+  letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); font-weight: 600;
 }
 .burn-rate {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: var(--font-mono); font-size: 11px; line-height: 1;
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--ink-3);
 }
@@ -572,7 +572,7 @@
   border-radius: 50%;
 }
 .gate-event:hover i {
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--gate-color) 16%, transparent);
+  box-shadow: none;
   transform: translate(-50%, -50%) scale(1.22);
 }
 .gate-event.is-open:hover i,
@@ -580,19 +580,19 @@
 .gate-event.is-serious:hover i {
   transform: translate(-50%, -50%) rotate(45deg) scale(1.22);
 }
-.gate-event:focus-visible { outline: 2px solid var(--focus-ring, #0079a8); outline-offset: 2px; }
+.gate-event:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-offset); }
 .gate-axis-labels {
   display: flex; justify-content: space-between; align-items: baseline;
   padding: 0 1px;
-  font-family: var(--font-mono); font-size: 11px;
+  font-family: var(--font-mono); font-size: 12.5px;
   font-variant-numeric: tabular-nums; color: var(--ink-3);
 }
 .gate-legend {
   display: grid; grid-template-columns: repeat(3, max-content);
   justify-content: start; gap: 12px;
   margin-top: 34px;
-  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--ink-25); font-weight: 620;
+  font-size: 12.5px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); font-weight: 600;
 }
 .gate-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .gate-legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
@@ -608,8 +608,8 @@
 /* names the legend numbers as the window's sums — the axis is instantaneous
    thousands, and a cold reader shouldn't have to reconcile the two scales */
 .metrics .token-legend .ck-cap {
-  color: var(--ink-3); font-size: 11px; font-weight: 550;
-  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ink-2); font-size: 12.5px; font-weight: 600;
+  letter-spacing: 0; text-transform: none;
 }
 .metrics .token-legend .ck i { margin-right: 2px; }
 .metrics .token-legend .ck-name { color: var(--ink-3); font-weight: 550; }
@@ -629,10 +629,10 @@
   padding: var(--s2) var(--s3);
   /* the foundation's overlay layer: opaque on every theme (the old white film
      faded to nothing on the dark ones) */
-  border-radius: var(--radius-control, 4px);
+  border-radius: var(--radius-lg);
   background: var(--surface-overlay, var(--sheet));
   border: 1px solid var(--border-default, var(--line-2));
-  box-shadow: var(--shadow-popover, var(--elev-3));
+  box-shadow: var(--shadow-popover);
   font-family: var(--font-ui);
   font-size: 13px; color: var(--ink-2);
 }
@@ -644,8 +644,8 @@
   font-weight: 600;
 }
 .mtip .tt-title {
-  font-size: 11px; letter-spacing: var(--track-caps); text-transform: uppercase;
-  color: var(--ink-25); font-weight: 640; margin-bottom: var(--s1);
+  font-size: 12.5px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); font-weight: 600; margin-bottom: var(--s1);
 }
 .mtip .tt-total { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
 .tooltip .tt-row, .mtip .tt-row { display: flex; align-items: center; gap: 6px; line-height: 1.65; }
@@ -675,9 +675,9 @@
   border-radius: 2px;
   background: var(--pc);
   transform-origin: left center;
-  transition: transform .3s var(--ease);
+  transition: transform var(--dur-1) var(--ease);
 }
-.pool .meter { cursor: default; transition: box-shadow .3s var(--ease); }
+.pool .meter { cursor: default; transition: box-shadow var(--dur-1) var(--ease); }
 .pool .meter:hover {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--pc) 14%, transparent);
 }
@@ -718,13 +718,13 @@
 .metrics .mtable tbody tr:hover .trend-cell .spark path { stroke: var(--ink-2); }
 .metrics .mtable tbody tr:hover .trend-cell .spark circle { filter: drop-shadow(0 0 3px var(--ink-3)); }
 
-.mtable th.sortable { cursor: pointer; user-select: none; transition: color .22s var(--ease); }
+.mtable th.sortable { cursor: pointer; user-select: none; transition: color var(--dur-1) var(--ease); }
 .mtable th.sortable:hover { color: var(--ink-2); }
 .mtable th.sortable:focus-visible {
-  outline: 3px solid var(--focus-ring, #0079a8);
-  outline-offset: -3px;
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
   color: var(--ink);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 .mtable th .th-in { display: inline-flex; align-items: center; gap: 5px; }
 .mtable th.num .th-in { flex-direction: row-reverse; }
@@ -736,7 +736,7 @@
   opacity: 0;
   color: var(--c-coordinator);
   transform: translateY(1px) rotate(0deg);
-  transition: opacity .28s var(--ease), transform .38s var(--ease-spring);
+  transition: opacity var(--dur-1) var(--ease), transform var(--dur-1) var(--ease-spring);
 }
 .sarr svg { width: 9px; height: 9px; display: block; fill: currentColor; }
 .mtable th.sorted .sarr { opacity: 1; }
@@ -773,9 +773,9 @@
   color: var(--ink-2);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: color .22s var(--ease), border-color .22s var(--ease);
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
 /* The inline-flex rule beats the UA's `[hidden] { display: none }`; metrics.js
    ships this control hidden. Gate: tools/test/hidden-display-honesty.test.mjs. */
@@ -785,8 +785,8 @@
 .lane-clear:hover { color: var(--ink); border-color: var(--ink-3); }
 .lane-clear:hover .lc-x { color: var(--ink); }
 .lane-clear:focus-visible {
-  outline: 3px solid var(--focus-ring, #0079a8);
-  outline-offset: 1px;
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
 }
 
 /* a pools column that shares a row folds its three cards into a stack —
@@ -809,7 +809,7 @@ body.m-dragging .metrics .echart { pointer-events: none; }
 
 /* ---------- pool meter tooltip type floor ---------- */
 .metrics .tooltip { font-size: 13px; }
-.metrics .tooltip .tt-title { font-size: 11px; }
+.metrics .tooltip .tt-title { font-size: 11.5px; }
 /* ---------- reduced motion ----------
    (the engine charts read the same gate in JS: reduced() sets
    animation:false / animationDurationUpdate:0 on every setOption; the
@@ -875,11 +875,11 @@ body.reduce-motion .gate-event i { transition: none; }
   gap: var(--s2);
 }
 .metrics .m-activity-day {
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-3);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
 }
 .metrics .m-activity-cells {
   display: grid;
@@ -1099,29 +1099,30 @@ body.reduce-motion .gate-event i { transition: none; }
 .metrics .m-routing-col h4,
 .metrics .m-pool-usage h4 {
   margin: 0;
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-3);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
 }
 .metrics .m-pool-usage,
 .metrics .m-burn-usage { padding-top: var(--s2); }
 
 /* ================= telling the two faces apart =================
  *
- * THE DEFECT THIS CLOSES: simulation routing still looked like the old version,
- * and it was confusing. There were two pages that both said `live`, with a pulsing green dot, one of
+ * THE DEFECT THIS CLOSES, in the owner's own words: "simulation routing still
+ * seems to have the old version so im just confused whats happening." He was
+ * looking at two pages that both said `live`, with a pulsing green dot, one of
  * which is a demonstration built from made-up numbers. The word and the dot are
  * now the demonstration's own, in its own colour, and the measured face wears
  * the name of the thing it is actually reading. One glance decides it.
  */
 .m-filter .mf-face {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 2px 7px;
   border-radius: var(--r-sm);
   border: 1px solid currentColor;

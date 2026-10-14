@@ -183,7 +183,7 @@ test("an empty MC_IDENTITY_PROFILE_ACCOUNT is refused rather than treated as a m
 });
 
 test("built-in product patterns cannot vouch for an account", async () => {
-  // "C:\\Users" contains "user". Built-ins describe the product, not a person; if they
+  // "<profile-root>/" contains "user". Built-ins describe the product, not a person; if they
   // counted, an account named "user" would be endorsed by a profile belonging to anyone.
   await withGuardCopy(STRANGER_PROFILE, async ({ guardPath, bundle }) => {
     const result = run(guardPath, bundle, { MC_IDENTITY_PROFILE_ACCOUNT: "user" });

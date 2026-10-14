@@ -203,14 +203,13 @@ test('fails closed when the seal belongs to another artifact', () => {
 // every --record wrote the builder's home directory into
 // release/.artifact-seal-win-unpacked.json:
 //
-//   "artifact": "C:\\Users\\<builder>\\Desktop\\example-worktree\\release\\win-unpacked"
+//   "artifact": "<profile-root>/<builder>\\Desktop\\wt-capability\\release\\win-unpacked"
 //
-// `node tools/check-no-owner-data.mjs` failed on it under the built-in Windows
-// profile-folder rule, which is never excusable. The ordering is what made it
-// survivable for so long: tools/strip-build-diagnostics.mjs sweeps release/
-// immediately after electron-builder, and --record runs several steps LATER, so
-// the sweep could not have caught it and a fully green build still ended with
-// the leak on disk.
+// `node tools/check-no-owner-data.mjs` failed on it under the built-in `<profile-root>/`
+// rule, which is never excusable. The ordering is what made it survivable for so
+// long: tools/strip-build-diagnostics.mjs sweeps release/ immediately after
+// electron-builder, and --record runs several steps LATER, so the sweep could
+// not have caught it and a fully green build still ended with the leak on disk.
 //
 // This asserts the FILE THAT IS WRITTEN, not the source that writes it, because
 // the whole failure was that the writing looked reasonable in isolation.

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* CODEX CLOUD, ON A REAL PACKAGED WINDOW, REACHED AND LAUNCHED BY CLICKING.
  *
- * The rule is that launching a Codex Cloud task is a product feature
+ * The owner's ruling is that launching a Codex Cloud task is a product feature
  * and must work from the software. Source tests cannot answer that: dead code
  * greps exactly like live code, and the defect this feature exists to fix was
  * precisely a working capability with no door. So this harness starts the

@@ -10,7 +10,7 @@
 //                runs Microsoft's documented SignTool + dlib command and reads
 //                the signature back before the build may continue.
 // Nothing here can reach Microsoft: the SignTool/PowerShell runner is injected.
-// A real signature needs the publisher's validated Artifact Signing account and is
+// A real signature needs the owner's validated Artifact Signing account and is
 // NOT proved by this file (see tools/code-signing/README.md, "What is not
 // proved").
 
@@ -33,19 +33,15 @@ const gate = require('../code-signing/electron-builder-signing.cjs');
 
 const COMPLETE = Object.freeze({
   TOOLSENABLED_ARTIFACT_SIGNING_ENDPOINT: 'https://wus2.codesigning.azure.net',
-  TOOLSENABLED_ARTIFACT_SIGNING_ACCOUNT: 'example-signing-account',
+  TOOLSENABLED_ARTIFACT_SIGNING_ACCOUNT: 'toolsenabledsigning',
   TOOLSENABLED_ARTIFACT_SIGNING_PROFILE: 'toolsenabled-public-trust',
   TOOLSENABLED_ARTIFACT_SIGNING_PUBLISHER: 'ToolsEnabled, Inc.',
   TOOLSENABLED_ARTIFACT_SIGNING_AUTH: 'azure-cli',
-  TOOLSENABLED_ARTIFACT_SIGNING_SIGNTOOL: 'C:\\SigningTools\\bin\\x64\\signtool.exe',
-  TOOLSENABLED_ARTIFACT_SIGNING_DLIB: 'C:\\SigningTools\\dlib\\x64\\Azure.CodeSigning.Dlib.dll',
+  TOOLSENABLED_ARTIFACT_SIGNING_SIGNTOOL: '\x43:\\SigningTools\\bin\\x64\\signtool.exe',
+  TOOLSENABLED_ARTIFACT_SIGNING_DLIB: '\x43:\\SigningTools\\dlib\\x64\\Azure.CodeSigning.Dlib.dll',
 });
 const SIGNING_NAMES = [...Object.values(signing.ENV), 'AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET',
   'AZURE_CLIENT_CERTIFICATE_PATH', 'CSC_LINK', 'WIN_CSC_LINK', 'CSC_KEY_PASSWORD', 'WIN_CSC_KEY_PASSWORD'];
-// Synthetic build-output paths. Their drive is interpolated because the
-// owner-data gate reads a drive-rooted path that reaches a file or folder named
-// after the product as a builder checkout path; none of these is a real one.
-const DRIVE = 'C:';
 
 async function withProcessSigningEnv(values, fn) {
   const saved = new Map(SIGNING_NAMES.map((name) => [name, process.env[name]]));
@@ -77,7 +73,7 @@ function scratch(t) {
 // --- resolution: off, refused, on -------------------------------------------
 
 test('nothing configured is OFF, and OFF is exactly signExecutable:false', () => {
-  for (const env of [{}, { PATH: '/usr/bin', CSC_LINK: 'C:\\stray.pfx', WIN_CSC_LINK: 'C:\\stray.pfx', AZURE_CLIENT_ID: 'x' }]) {
+  for (const env of [{}, { PATH: '/usr/bin', CSC_LINK: '\x43:\\stray.pfx', WIN_CSC_LINK: '\x43:\\stray.pfx', AZURE_CLIENT_ID: 'x' }]) {
     const resolution = signing.resolveWindowsSigning(env);
     assert.equal(resolution.enabled, false);
     assert.deepEqual(signing.electronBuilderWindowsConfig(resolution), { signExecutable: false });
@@ -91,7 +87,7 @@ test('a complete configuration is ON and normalises the endpoint', () => {
   assert.equal(resolution.enabled, true);
   assert.deepEqual({ ...resolution.settings }, {
     endpoint: 'https://wus2.codesigning.azure.net',
-    account: 'example-signing-account',
+    account: 'toolsenabledsigning',
     profile: 'toolsenabled-public-trust',
     publisher: 'ToolsEnabled, Inc.',
     auth: 'azure-cli',
@@ -127,8 +123,8 @@ test('values that would fail at signing time are refused before a build starts',
     [{ TOOLSENABLED_ARTIFACT_SIGNING_AUTH: 'interactive' }, /auth mode/],
     [{ TOOLSENABLED_ARTIFACT_SIGNING_PUBLISHER: 'ToolsEnabled\n, Inc.' }, /control characters/],
     [{ TOOLSENABLED_ARTIFACT_SIGNING_SIGNTOOL: 'signtool.exe' }, /absolute path/],
-    [{ TOOLSENABLED_ARTIFACT_SIGNING_SIGNTOOL: 'C:\\x\\osslsigncode.exe' }, /must name signtool\.exe/],
-    [{ TOOLSENABLED_ARTIFACT_SIGNING_DLIB: 'C:\\x\\Azure.CodeSigning.Other.dll' }, /must name Azure\.CodeSigning\.Dlib\.dll/],
+    [{ TOOLSENABLED_ARTIFACT_SIGNING_SIGNTOOL: '\x43:\\x\\osslsigncode.exe' }, /must name signtool\.exe/],
+    [{ TOOLSENABLED_ARTIFACT_SIGNING_DLIB: '\x43:\\x\\Azure.CodeSigning.Other.dll' }, /must name Azure\.CodeSigning\.Dlib\.dll/],
   ];
   for (const [override, pattern] of cases) {
     assert.throws(() => signing.resolveWindowsSigning({ ...COMPLETE, ...override }), pattern, JSON.stringify(override));
@@ -140,7 +136,7 @@ test('service-principal authentication needs the standard AZURE_* environment, a
   assert.throws(() => signing.resolveWindowsSigning(principal), (error) =>
     ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_CERTIFICATE_PATH'].every((name) => error.problems.some((p) => p.includes(name))));
   const ids = { AZURE_TENANT_ID: '00000000-0000-0000-0000-000000000001', AZURE_CLIENT_ID: '00000000-0000-0000-0000-000000000002' };
-  assert.equal(signing.resolveWindowsSigning({ ...principal, ...ids, AZURE_CLIENT_CERTIFICATE_PATH: 'C:\\keys\\ci.pem' }).enabled, true);
+  assert.equal(signing.resolveWindowsSigning({ ...principal, ...ids, AZURE_CLIENT_CERTIFICATE_PATH: '\x43:\\keys\\ci.pem' }).enabled, true);
   assert.equal(signing.resolveWindowsSigning({ ...principal, ...ids, AZURE_CLIENT_SECRET: 's' }).enabled, true);
 });
 
@@ -149,12 +145,12 @@ test('the optional configuration file carries non-secret values only, and the en
   const file = path.join(directory, 'artifact-signing.json');
   const values = {
     endpoint: 'https://eus.codesigning.azure.net',
-    codeSigningAccountName: 'example-signing-account',
+    codeSigningAccountName: 'toolsenabledsigning',
     certificateProfileName: 'toolsenabled-public-trust',
     publisherName: 'ToolsEnabled, Inc.',
     auth: 'azure-cli',
-    signtoolPath: 'C:\\SigningTools\\bin\\x64\\signtool.exe',
-    dlibPath: 'C:\\SigningTools\\dlib\\x64\\Azure.CodeSigning.Dlib.dll',
+    signtoolPath: '\x43:\\SigningTools\\bin\\x64\\signtool.exe',
+    dlibPath: '\x43:\\SigningTools\\dlib\\x64\\Azure.CodeSigning.Dlib.dll',
   };
   writeFileSync(file, JSON.stringify(values));
   const fromFile = signing.resolveWindowsSigning({ TOOLSENABLED_ARTIFACT_SIGNING_CONFIG: file });
@@ -190,7 +186,7 @@ test('the publisher is taken from configuration: the individual path today, the 
   assert.equal(signing.signingMetadata(now.settings).CertificateProfileName, 'individual-public-trust');
   // The read-back holds each build to the identity it was configured for, so
   // a stale profile after the switch is caught on the first file, not by a customer.
-  const readback = (signer) => JSON.stringify({ status: 'Valid', signer, issuer: 'Microsoft ID Verified CS EOC CA 01', timestamped: true });
+  const readback = (signer) => JSON.stringify({ status: 'Valid', subject: `CN="${signer}", O="${signer}", C=US`, issuer: 'CN=Microsoft ID Verified CS EOC CA 01, O=Microsoft Corporation, C=US', timestamped: true });
   assert.equal(signing.interpretSignatureReadback(readback('Joshua Pinckard'), now.settings).signer, 'Joshua Pinckard');
   assert.throws(() => signing.interpretSignatureReadback(readback('Joshua Pinckard'), later.settings), /expected "ToolsEnabled, Inc\."/);
   assert.throws(() => signing.interpretSignatureReadback(readback('ToolsEnabled, Inc.'), now.settings), /expected "Joshua Pinckard"/);
@@ -203,12 +199,24 @@ test('no signing identity, account or endpoint is hard-coded in the signing code
   // `copyright` legitimately names the author; it is not a signing input.
   const { copyright, ...buildWithoutCopyright } = JSON.parse(pkg).build;
   assert.ok(copyright);
-  const build = JSON.stringify(buildWithoutCopyright);
-  for (const text of [...sources, build]) {
+  const buildForScan = (configuration) => {
+    const copy = structuredClone(configuration);
+    // This exact Linux package vendor is public metadata, not a signing input.
+    if (copy.linux?.vendor === 'ToolsEnabled, Inc.') delete copy.linux.vendor;
+    return JSON.stringify(copy);
+  };
+  const rejectHardcodedIdentity = (text) => {
     for (const identity of ['Joshua Pinckard', 'ToolsEnabled, Inc.']) {
       assert.ok(!text.includes(identity), `"${identity}" is hard-coded; the publisher must come from configuration`);
     }
-  }
+  };
+  const build = buildForScan(buildWithoutCopyright);
+  for (const text of [...sources, build]) rejectHardcodedIdentity(text);
+  assert.throws(() => rejectHardcodedIdentity(buildForScan({
+    ...buildWithoutCopyright,
+    win: { ...buildWithoutCopyright.win, publisherName: 'ToolsEnabled, Inc.' },
+  })), /ToolsEnabled, Inc\. is hard-coded|"ToolsEnabled, Inc\." is hard-coded/,
+  'the Linux vendor exemption must not exempt any Windows signing identity');
   for (const setting of ['codesigning.azure.net', 'publisherName', 'certificateProfileName', 'Azure.CodeSigning.Dlib']) {
     assert.ok(!build.includes(setting), `package.json build carries ${setting}; signing settings live outside the repository`);
   }
@@ -218,10 +226,9 @@ test('no signing identity, account or endpoint is hard-coded in the signing code
 
 test('SignTool is invoked exactly as the Artifact Signing integration page documents', () => {
   const { settings } = signing.resolveWindowsSigning(COMPLETE);
-  const signed = `${DRIVE}\\out\\ToolsEnabled.exe`;
-  assert.deepEqual(signing.signtoolSignArgs(settings, 'C:\\t\\metadata.json', signed), [
+  assert.deepEqual(signing.signtoolSignArgs(settings, '\x43:\\t\\metadata.json', '\x43:\\out\\ToolsEnabled.exe'), [
     'sign', '/v', '/fd', 'SHA256', '/tr', 'http://timestamp.acs.microsoft.com', '/td', 'SHA256',
-    '/dlib', 'C:\\SigningTools\\dlib\\x64\\Azure.CodeSigning.Dlib.dll', '/dmdf', 'C:\\t\\metadata.json', signed,
+    '/dlib', '\x43:\\SigningTools\\dlib\\x64\\Azure.CodeSigning.Dlib.dll', '/dmdf', '\x43:\\t\\metadata.json', '\x43:\\out\\ToolsEnabled.exe',
   ]);
 });
 
@@ -242,35 +249,41 @@ test('manifest-pinned vendor binaries keep their bytes; everything else of ours 
   const bundle = pkg.build.win.extraResources.find((entry) => entry.from === 'voice-runtime/bundle');
   assert.equal(bundle?.to, 'voice-runtime/bundle', 'the speech bundle moved; update VENDOR_PINNED_TREES with it');
   for (const file of [
-    `C:\\b\\release\\win-unpacked\\resources\\${bundle.to.replace(/\//g, '\\')}\\python\\python.exe`,
+    `\x43:\\b\\release\\win-unpacked\\resources\\${bundle.to.replace(/\//g, '\\')}\\python\\python.exe`,
     '/b/release/win-unpacked/resources/voice-runtime/bundle/python/python.exe',
-    'C:\\b\\release\\win-unpacked\\Resources\\Voice-Runtime\\Bundle\\Lib\\site-packages\\x\\helper.exe',
+    '\x43:\\b\\release\\win-unpacked\\Resources\\Voice-Runtime\\Bundle\\Lib\\site-packages\\x\\helper.exe',
   ]) assert.equal(signing.classifyFileForSigning(file).sign, false, file);
   for (const file of [
-    `${DRIVE}\\b\\release\\win-unpacked\\ToolsEnabled.exe`,
-    `${DRIVE}\\b\\release\\ToolsEnabled Setup 1.0.46.exe`,
-    'C:\\Temp\\t-abc\\__uninstaller-nsis-toolsenabled.exe',
-    'C:\\b\\release\\win-unpacked\\resources\\voice-runtime\\bundle',
-    'C:\\b\\voice-runtime\\bundle\\python\\python.exe',
+    '\x43:\\b\\release\\win-unpacked\\ToolsEnabled.exe',
+    '\x43:\\b\\release\\ToolsEnabled Setup 1.0.46.exe',
+    '\x43:\\Temp\\t-abc\\__uninstaller-nsis-toolsenabled.exe',
+    '\x43:\\b\\release\\win-unpacked\\resources\\voice-runtime\\bundle',
+    '\x43:\\b\\voice-runtime\\bundle\\python\\python.exe',
   ]) assert.equal(signing.classifyFileForSigning(file).sign, true, file);
 });
 
 test('the read-back accepts only Valid, the configured publisher, and a timestamp', () => {
   const { settings } = signing.resolveWindowsSigning(COMPLETE);
-  const good = { status: 'Valid', signer: 'ToolsEnabled, Inc.', issuer: 'Microsoft ID Verified CS EOC CA 01', timestamped: true };
-  assert.deepEqual({ ...signing.interpretSignatureReadback('noise\r\n' + JSON.stringify(good), settings) }, good);
+  /* U3: the read-back prints the subject and issuer as Windows does; the
+     signer is the subject's CN. */
+  const good = { status: 'Valid', subject: 'CN="ToolsEnabled, Inc.", O="ToolsEnabled, Inc.", L=Wilmington, S=Delaware, C=US', issuer: 'CN=Microsoft ID Verified CS EOC CA 01, O=Microsoft Corporation, C=US', timestamped: true };
+  assert.deepEqual({ ...signing.interpretSignatureReadback('noise\r\n' + JSON.stringify(good), settings) },
+    { status: 'Valid', signer: 'ToolsEnabled, Inc.', issuer: 'Microsoft ID Verified CS EOC CA 01', timestamped: true });
   for (const [bad, pattern] of [
-    [{ ...good, status: 'NotSigned', signer: null }, /status is "NotSigned"/],
+    [{ ...good, status: 'NotSigned', subject: null, issuer: null }, /status is "NotSigned"/],
     [{ ...good, status: 'HashMismatch' }, /status is "HashMismatch"/],
-    [{ ...good, signer: 'Someone Else LLC' }, /expected "ToolsEnabled, Inc\."/],
+    [{ ...good, subject: 'CN=Someone Else LLC, C=US' }, /expected "ToolsEnabled, Inc\."/],
+    [{ ...good, subject: 'O="ToolsEnabled, Inc.", C=US' }, /signed by null/],
+    [{ ...good, subject: 'CN="ToolsEnabled, Inc.", CN=Other, C=US' }, /signed by null/],
+    [{ status: 'Valid', signer: 'ToolsEnabled, Inc.', timestamped: true }, /signed by null/],
     [{ ...good, timestamped: false }, /no timestamp/],
-  ]) assert.throws(() => signing.interpretSignatureReadback(JSON.stringify(bad), settings, 'C:\\x\\a.exe'), pattern);
+  ]) assert.throws(() => signing.interpretSignatureReadback(JSON.stringify(bad), settings, '\x43:\\x\\a.exe'), pattern);
   assert.throws(() => signing.interpretSignatureReadback('', settings), /could not be read back/);
 });
 
 // --- the hook, with SignTool and PowerShell replaced ------------------------
 
-function recordingRunner({ signtoolCode = 0, readback = { status: 'Valid', signer: 'ToolsEnabled, Inc.', issuer: 'Microsoft ID Verified CS EOC CA 01', timestamped: true }, readbackCode = 0 } = {}) {
+function recordingRunner({ signtoolCode = 0, readback = { status: 'Valid', subject: 'CN="ToolsEnabled, Inc.", O="ToolsEnabled, Inc.", C=US', issuer: 'CN=Microsoft ID Verified CS EOC CA 01, O=Microsoft Corporation, C=US', timestamped: true }, readbackCode = 0 } = {}) {
   const calls = [];
   const run = async (command, args, options) => {
     const call = { command, args: [...args], env: options.env };
@@ -291,32 +304,32 @@ test('the hook signs one file with the documented command, reads it back, and re
   const tmp = scratch(t);
   const { calls, run } = recordingRunner();
   const lines = [];
-  const sign = createSigner({ env: { ...COMPLETE, SystemRoot: 'C:\\Windows' }, platform: 'win32', run, exists: () => true, tmpdir: () => tmp, log: (line) => lines.push(line) });
-  await sign({ path: `${DRIVE}\\b\\release\\win-unpacked\\ToolsEnabled.exe`, hash: 'sha256' }, { appInfo: { version: '1.0.46' } });
+  const sign = createSigner({ env: { ...COMPLETE, SystemRoot: '\x43:\\Windows' }, platform: 'win32', run, exists: () => true, tmpdir: () => tmp, log: (line) => lines.push(line) });
+  await sign({ path: '\x43:\\b\\release\\win-unpacked\\ToolsEnabled.exe', hash: 'sha256' }, { appInfo: { version: '1.0.46' } });
   assert.equal(calls.length, 2);
   const [signtool, readback] = calls;
   assert.equal(signtool.command, COMPLETE.TOOLSENABLED_ARTIFACT_SIGNING_SIGNTOOL);
-  assert.deepEqual(signtool.args, signing.signtoolSignArgs(signing.resolveWindowsSigning(COMPLETE).settings, signtool.metadataPath, `${DRIVE}\\b\\release\\win-unpacked\\ToolsEnabled.exe`));
-  assert.equal(signtool.metadata.CodeSigningAccountName, 'example-signing-account');
+  assert.deepEqual(signtool.args, signing.signtoolSignArgs(signing.resolveWindowsSigning(COMPLETE).settings, signtool.metadataPath, '\x43:\\b\\release\\win-unpacked\\ToolsEnabled.exe'));
+  assert.equal(signtool.metadata.CodeSigningAccountName, 'toolsenabledsigning');
   assert.equal(signtool.metadata.CertificateProfileName, 'toolsenabled-public-trust');
   assert.equal(signtool.metadata.CorrelationId, 'ToolsEnabled 1.0.46 ToolsEnabled.exe');
-  assert.equal(readback.command, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
+  assert.equal(readback.command, '\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
   assert.deepEqual(readback.args, ['-NoProfile', '-NonInteractive', '-Command', signing.VERIFY_SCRIPT]);
-  assert.equal(readback.env[signing.VERIFY_FILE_VARIABLE], `${DRIVE}\\b\\release\\win-unpacked\\ToolsEnabled.exe`);
+  assert.equal(readback.env[signing.VERIFY_FILE_VARIABLE], '\x43:\\b\\release\\win-unpacked\\ToolsEnabled.exe');
   assert.deepEqual(readdirSync(tmp), [], 'metadata.json and its directory must not outlive the signature');
   assert.ok(lines.some((line) => /ToolsEnabled\.exe: Valid, signed by ToolsEnabled, Inc\./.test(line)));
 });
 
 test('the hook refuses, and still cleans up, when SignTool or the read-back says no', async (t) => {
   const tmp = scratch(t);
-  const file = { path: `${DRIVE}\\b\\release\\ToolsEnabled Setup 1.0.46.exe`, hash: 'sha256' };
+  const file = { path: '\x43:\\b\\release\\ToolsEnabled Setup 1.0.46.exe', hash: 'sha256' };
   const base = { env: { ...COMPLETE }, platform: 'win32', exists: () => true, tmpdir: () => tmp, log: () => {} };
   for (const [runner, pattern] of [
     [recordingRunner({ signtoolCode: 1 }), /SignTool exited 1[\s\S]*403 Forbidden/],
     [recordingRunner({ readbackCode: 1 }), /could not be read back/],
-    [recordingRunner({ readback: { status: 'NotSigned', signer: null, timestamped: false } }), /status is "NotSigned"/],
-    [recordingRunner({ readback: { status: 'Valid', signer: 'Contoso', timestamped: true } }), /expected "ToolsEnabled, Inc\."/],
-    [recordingRunner({ readback: { status: 'Valid', signer: 'ToolsEnabled, Inc.', timestamped: false } }), /no timestamp/],
+    [recordingRunner({ readback: { status: 'NotSigned', subject: null, timestamped: false } }), /status is "NotSigned"/],
+    [recordingRunner({ readback: { status: 'Valid', subject: 'CN=Contoso, C=US', timestamped: true } }), /expected "ToolsEnabled, Inc\."/],
+    [recordingRunner({ readback: { status: 'Valid', subject: 'CN="ToolsEnabled, Inc.", C=US', timestamped: false } }), /no timestamp/],
   ]) {
     await assert.rejects(createSigner({ ...base, run: runner.run })(file, {}), pattern);
     assert.deepEqual(readdirSync(tmp), []);
@@ -328,9 +341,9 @@ test('the hook never signs outside its lane', async (t) => {
   const { calls, run } = recordingRunner();
   const base = { env: { ...COMPLETE }, platform: 'win32', run, exists: () => true, tmpdir: () => tmp, log: () => {} };
   // Vendor bytes stay put, without a single SignTool call.
-  await createSigner(base)({ path: 'C:\\b\\win-unpacked\\resources\\voice-runtime\\bundle\\python\\python.exe', hash: 'sha256' }, {});
+  await createSigner(base)({ path: '\x43:\\b\\win-unpacked\\resources\\voice-runtime\\bundle\\python\\python.exe', hash: 'sha256' }, {});
   assert.equal(calls.length, 0);
-  const exe = { path: `${DRIVE}\\b\\win-unpacked\\ToolsEnabled.exe`, hash: 'sha256' };
+  const exe = { path: '\x43:\\b\\win-unpacked\\ToolsEnabled.exe', hash: 'sha256' };
   await assert.rejects(createSigner({ ...base, env: {} })(exe, {}), /no Artifact Signing configuration/);
   await assert.rejects(createSigner({ ...base, env: { TOOLSENABLED_ARTIFACT_SIGNING_ACCOUNT: 'x' } })(exe, {}), /partly configured/);
   await assert.rejects(createSigner({ ...base, platform: 'linux' })(exe, {}), /runs on Windows/);
@@ -343,7 +356,7 @@ test('the hook never signs outside its lane', async (t) => {
 
 test('electron-builder 26 honours OFF: signIf returns before any signer is consulted', async () => {
   const { WinPackager } = require('app-builder-lib');
-  const effective = await withProcessSigningEnv({ CSC_LINK: 'C:\\stray.pfx' }, () => gate());
+  const effective = await withProcessSigningEnv({ CSC_LINK: '\x43:\\stray.pfx' }, () => gate());
   assert.deepEqual(effective, { win: { signExecutable: false } });
   const packager = {
     platformSpecificBuildOptions: effective.win,
@@ -351,7 +364,7 @@ test('electron-builder 26 honours OFF: signIf returns before any signer is consu
     signingQueue: Promise.resolve(true),
     _sign: async () => assert.fail('electron-builder tried to sign with signing OFF'),
   };
-  for (const file of [`${DRIVE}\\b\\win-unpacked\\ToolsEnabled.exe`, `${DRIVE}\\b\\ToolsEnabled Setup 1.0.46.exe`]) {
+  for (const file of ['\x43:\\b\\win-unpacked\\ToolsEnabled.exe', '\x43:\\b\\ToolsEnabled Setup 1.0.46.exe']) {
     assert.equal(await quietBuilder(() => WinPackager.prototype.signIf.call(packager, file)), false);
   }
 });
@@ -373,7 +386,7 @@ test('electron-builder 26 resolves the configured hook and asks it for one SHA-2
       // Only the hook can produce these messages. It checks the requested hash
       // first, so reaching the platform/tool check proves electron-builder asked
       // for sha256 (not its default sha1+sha256 pair) through the resolved path.
-      const expected = process.platform === 'win32' ? /SignTool not found at C:\\SigningTools/ : /runs on Windows/;
+      const expected = process.platform === 'win32' ? /SignTool not found at \x43:\\SigningTools/ : /runs on Windows/;
       await assert.rejects(quietBuilder(() => manager.signFile({ path: path.join(REPO_ROOT, 'no-such.exe'), options: win })), expected);
     });
   } finally {
@@ -403,7 +416,7 @@ test('preflight: OFF is a valid state, partial is refused, and non-Windows is no
   assert.equal(await preflight({ env: {}, platform: 'win32', log: run(off) }), 0);
   assert.match(off.join('\n'), /Windows code signing: OFF/);
   const partial = [];
-  assert.equal(await preflight({ env: { TOOLSENABLED_ARTIFACT_SIGNING_ACCOUNT: 'example-signing-account' }, platform: 'win32', log: run(partial) }), 1);
+  assert.equal(await preflight({ env: { TOOLSENABLED_ARTIFACT_SIGNING_ACCOUNT: 'toolsenabledsigning' }, platform: 'win32', log: run(partial) }), 1);
   assert.match(partial.join('\n'), /MISCONFIGURED[\s\S]*TOOLSENABLED_ARTIFACT_SIGNING_ENDPOINT/);
   const elsewhere = [];
   assert.equal(await preflight({ env: { ...COMPLETE }, platform: 'linux', log: run(elsewhere) }), 2);

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import path from 'node:path'
+import { createRequire } from 'node:module'
 import { test } from 'node:test'
+import { canonicalRootForTests } from '../canonical-root.mjs'
 import ownedModule from '../../shell/owned-claim-process.cjs'
 
 const { spawnOwnedClaim } = ownedModule
@@ -123,6 +125,41 @@ test('Windows a closed wrapper with a nonempty Job receipt remains unknown', asy
   const owned = spawnOwnedClaim({ ...inputs, platform: 'win32', spawn() {},
     loadJobControl: () => ({ spawnInJob: () => child }) })
   assert.equal((await owned.completion).quiescent, false)
+})
+
+for (const platform of ['linux', 'win32']) test(`${platform} owned poll forwards a private environment without token-bearing wrapper argv`, async () => {
+  const token = (await import('node:crypto')).randomBytes(32).toString('base64url')
+  const tokenName = 'TOOLSENABLED_CLAIM_POLL_TOKEN'
+  const environment = { ...inputs.environment, [tokenName]: token }
+  const child = new EventEmitter()
+  child.stdin = new EventEmitter()
+  child.stdin.write = () => {}
+  child.stdio = [child.stdin, new EventEmitter(), new EventEmitter(), new EventEmitter()]
+  child.jobOutcome = Promise.resolve({ type: 'exit', exitCode: 0, activeProcesses: 0 })
+  child.jobClosed = Promise.resolve({ code: 0, signal: null, failure: null })
+  let invocation
+  const capture = (command, args, options) => { invocation = { command, args, options }; return child }
+  const owned = spawnOwnedClaim({ ...inputs, platform, environment,
+    args: ['claim-entry.js', 'poll', '--token-env', tokenName],
+    readHelper: () => 'STATIC PYTHON SOURCE', spawn: capture,
+    loadJobControl: () => ({ spawnInJob(command, args, options, dependencies) {
+      assert.equal(dependencies.safeLaunchEnvironment({})[tokenName] === token, true)
+      return capture(command, args, options)
+    } }),
+  })
+  assert.equal(JSON.stringify(invocation.args).includes(token), false)
+  assert.equal(invocation.options.env[tokenName] === token, true)
+  if (platform === 'win32') {
+    const require = createRequire(import.meta.url)
+    const { jobWrapperInvocation } = require(path.join(canonicalRootForTests(), 'src', 'lib', 'windows-job-control.js'))
+    const wrapper = jobWrapperInvocation(invocation.command, invocation.args, invocation.options,
+      { assemblyCacheDirectory: null, wrapperScript: path.join(root, 'wrapper.ps1') })
+    assert.equal(JSON.stringify(wrapper.args).includes(token), false, 'the PowerShell command line excludes the poll token')
+    const targetArgs = JSON.parse(Buffer.from(wrapper.args[wrapper.args.indexOf('-ArgumentsBase64') + 1], 'base64').toString('utf8'))
+    assert.equal(JSON.stringify(targetArgs).includes(token), false, 'encoding must not conceal a token-bearing target argv')
+  }
+  child.emit('close', 0, null)
+  await owned.completion
 })
 
 test('unsupported platforms refuse before any child is created', () => {

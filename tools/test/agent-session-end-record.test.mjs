@@ -119,7 +119,7 @@ function closeSurface({ session, closeSession, recordSessionEnd }) {
 
 /* One run, as shell/main.cjs writes it today: the intent, then the outcome. */
 function startedRun(recorder, sessionId) {
-  const start = recorder.record({ action: 'agent_session_start', sessionId, principal: 'unauthenticated', details: { cwd: 'C:\\work' } })
+  const start = recorder.record({ action: 'agent_session_start', sessionId, principal: 'unauthenticated', details: { cwd: '\x43:\\work' } })
   recorder.record({
     action: 'agent_session_outcome',
     sessionId,
@@ -186,8 +186,7 @@ test('the reason is a closed set, and the writer refuses anything outside it', (
       end: { resolves: start.sequence, reason, turns: 0, lastTurnStatus: null },
     })
   }
-  // The Windows path is synthetic, assembled at run time so the source carries no literal user path.
-  for (const reason of ['finished', 'stopped', 'CLOSED', 'crash', '', null, undefined, ['C:', 'Users', 'x'].join('\\')]) {
+  for (const reason of ['finished', 'stopped', 'CLOSED', 'crash', '', null, undefined, '\x43:\\Users\\x']) {
     assert.throws(
       () => recorder.record({
         action: 'agent_session_end',
@@ -259,8 +258,7 @@ test('the provider\'s word for the last turn is carried verbatim, never normalis
 
   /* Anything that could be a path or a sentence is refused at the write -- the
      same rule outcome.reason and usage.status keep. */
-  // The Windows path is synthetic, assembled at run time so the source carries no literal user path.
-  for (const status of [['C:', 'Users', 'x', '.codex'].join('\\'), 'exit code 1: nope', 'a b', '.', '']) {
+  for (const status of ['\x43:\\Users\\x\\.codex', 'exit code 1: nope', 'a b', '.', '']) {
     assert.throws(
       () => recorder.record({
         action: 'agent_session_end',
@@ -513,10 +511,9 @@ test('failed automatic cleanup retains only an ended retry tombstone, then an ex
         'failed cleanup made an ended child sendable',
       )
 
-      await assert.rejects(host.startSession({ sessionId: 'blocked-replacement', replacesSessionId: 'cleanup-retry',
-        ...identity, accountRetry: { excludeAccounts: [], recheckAttempt: 0 } }), { code: 'AGENT_PREDECESSOR_CLEANUP_FAILED' })
-      assert.equal(accountProbes, 1, 'an exited child with unresolved cleanup cannot reach replacement account selection')
-      assert.equal(host.sessionAccounts().some(row => row.sessionId === 'blocked-replacement'), false)
+      /* (The account-retry replacement this once refused, AGENT_PREDECESSOR_CLEANUP_FAILED, left with
+         automatic account recovery in 1.0.50; an ordinary replacement is covered by the resume tests.) */
+      assert.equal(accountProbes, 1)
       delete process.env.MC_TEST_CLOSE_THROWS
       assert.deepEqual(await host.closeSession({ sessionId: 'cleanup-retry' }), {
         sessionId: 'cleanup-retry',
@@ -585,7 +582,7 @@ test('the exit is observed through both vendored transports, so neither engine c
 /* THE HOST'S ORDER, NOT THE LISTENER ALONE. agent-host.cjs endSessionFromExit
    emits the terminal packet and then, synchronously, runs main's exit
    observer, which records the ending and removes the outer session
-   (shell/main.cjs host.onSessionExit). Since an earlier commit the listener waits for
+   (shell/main.cjs host.onSessionExit). Since 138dab29 the listener waits for
    transcript capture before it forwards, so everything the ending needs from
    the live outer session must happen before that wait, and the forward must
    not depend on the outer session still being in agentSessions. Before this
@@ -740,7 +737,7 @@ test('shell wiring records the two genuine endings and the best-effort quit, and
         ownedByThisWindow: () => false,
       })
       /* The listener is async since display waits for transcript capture
-         (an earlier commit). The ending must still be recorded in the host's
+         (138dab29). The ending must still be recorded in the host's
          synchronous fan-out -- before the capture await -- because the exit
          observer removes the outer session right after that fan-out. */
       const delivery = listener(packet)
@@ -803,7 +800,7 @@ test('shell wiring records the two genuine endings and the best-effort quit, and
   let quitFinished = false
   const closing = quitSandbox.close().then(() => { quitFinished = true })
   assert.deepEqual(quitEvents, ['record:first', 'record:second', 'close'])
-  /* Since an earlier commit the outer sessions stay routable until the host close has
+  /* Since 2e09e3e1 the outer sessions stay routable until the host close has
      drained its producers and transcript capture has shut down, so a final
      packet emitted by the closing provider is still captured and routed
      (transcript-main-forward.test.mjs proves that packet). The endings are

@@ -2,8 +2,8 @@
  *
  * Run: node --test tools/test/check-dist-current.test.mjs
  *
- * TODAY'S CASE, which every other gate passed: a dist/ built from base
- * an earlier commit was packaged after the branch was rebased, hours later. The
+ * TODAY'S CASE, which every other gate passed: a dist/ built at 05:58 from base
+ * 4ba0ceac was packaged after the branch was rebased onto 8d89678e at 10:44. The
  * bundle predated two commits it claimed to contain, check-renderer-payload,
  * check-payload-current, check-payload-boundary, check-artifact-private and
  * check-no-owner-data all passed, and the artefact sealed cleanly -- because each

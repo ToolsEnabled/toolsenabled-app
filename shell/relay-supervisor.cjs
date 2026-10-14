@@ -139,7 +139,7 @@ const INHERITED_ENVIRONMENT_KEYS = Object.freeze([
   // Linux session fields are added by linuxSessionEnvironment after validation.
 ])
 
-/* THE SWITCH'S RULE: DEFAULT OFF, and asked for only after a
+/* THE SWITCH THE OWNER RULED ON: DEFAULT OFF, and asked for only after a
  * person has connected this computer to our servers and turned web access on.
  *
  * WHERE IT LIVES AND WHY. shell/renderer-prefs.cjs is the store this shell
@@ -151,7 +151,7 @@ const INHERITED_ENVIRONMENT_KEYS = Object.freeze([
  * registry row: it is the switch in the connect section of Settings
  * (src/connect-computer-settings.js, labelled by WEB_DRIVE_CONTROL_LABEL in
  * src/device-claim-flow.js), which writes this key over `mc-prefs:write` from
- * the window -- where the rule says the question gets asked, at the moment
+ * the window -- where the owner said the question gets asked, at the moment
  * the computer lands on an account. The key and the value are repeated in
  * that ESM module because it cannot import this one; the parity is pinned in
  * tools/test/relay-supervisor.test.mjs.

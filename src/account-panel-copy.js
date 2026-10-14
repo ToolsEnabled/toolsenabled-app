@@ -9,7 +9,7 @@
  * written inline is a sentence nothing measures.
  *
  * WHAT THE PANEL IS FOR. A person can hold two accounts with the same program:
- * a team one and a personal one is the ordinary case. Each keeps its sign-in
+ * a school one and a personal one is the ordinary case. Each keeps its sign-in
  * in a folder of its own. Until this panel there was no way to see that list or
  * add to it from inside the product -- the only route was hand-writing a file
  * in a directory a customer has no reason to know exists.
@@ -74,10 +74,21 @@ export const ACCOUNT_PANEL = Object.freeze({
      it LEADS with the visible word so that somebody saying "click Remove" to
      a voice driver still matches it. */
   removeAccount: (name) => `Remove ${name}`,
+  /* REMOVE IS ARMED BY ONE PRESS AND DONE BY THE NEXT (REVIEW-1050 #13), with
+     the accounts menu's own words (src/account-switcher-state.js COPY), since
+     for a folder Accounts made the second press deletes the sign-in too. The
+     accessible name keeps the visible words and the account. */
+  removeArmed: 'Press again to remove',
+  removeAccountArmed: (name) => `Press again to remove ${name}`,
+  removeArmedNote: 'If Accounts made this account’s folder, removing it also deletes the sign-in saved there.',
   
   /* WHAT REMOVE DOES, AND WHAT IT DELIBERATELY DOES NOT.
-     shell/account-registry.cjs remove() edits this list and nothing else. The
-     folder and the provider sign-in inside it are untouched -- on purpose:
+     For a folder the person named, shell/account-registry.cjs remove() edits
+     this list and nothing else (removeScope). For a folder Accounts made, it
+     also deletes the sign-in saved in that folder, and the receipt says so
+     (credentialDestroyed; removeDeletedSignIn, 1.0.50 review, accounts G).
+     A folder the person named, and the provider sign-in inside it, are
+     untouched -- on purpose:
      engine/src/lib/multi-account holds that a person's provider home is theirs,
      "their file, their terminal, their business", and deleting somebody's paid
      sign-in is not this product's to do.
@@ -87,6 +98,7 @@ export const ACCOUNT_PANEL = Object.freeze({
      their credential is not. */
   removeScope: 'Remove takes the account off this list. The folder it names, and the sign-in inside it, stay on this computer — sign out in that program if you want the sign-in gone too.',
   removeDidNothing: 'That account was not on the list, so nothing was removed. The folder and its sign-in are untouched.',
+  removeDeletedSignIn: 'Remove took the account off this list and deleted the sign-in saved in the folder Accounts made for it. The folder stays on this computer.',
 
   needBoth: 'Type a name and a folder, then press the button again.',
   refused: 'That account was not added. Pick a different name or folder, then press the button again.',
@@ -156,7 +168,7 @@ export const PROVIDER_SIGN_IN = Object.freeze({
      computer fetches the program from its maker's own channel. The sentences
      must say that plainly: the download is the provider's, not ours. */
   installButton: (program) => `Install ${program}`,
-  /* NO SECOND COPY. A program that is already here is used, not
+  /* NO SECOND COPY (rc-0922). A program that is already here is used, not
      installed again; a private copy is the person's explicit choice and goes
      into ToolsEnabled's own folder. */
   usesYours: (program) => `${program} is already on this computer, and ToolsEnabled uses it. There is nothing to install.`,

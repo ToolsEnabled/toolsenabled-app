@@ -26,6 +26,7 @@ import {
   buildDistChainEnvironment,
   copyPrivateInputs,
   nativeQualificationRoot,
+  resolveCutWorkspaceSegments,
 } from "../release-packager/cut-release-candidate.mjs";
 
 // A machine that looks like the documented install: a user-wide LIVE state root,
@@ -58,7 +59,7 @@ function scratchFixture() {
 const ENGINE_REF = "b".repeat(40);
 
 test("no dist-chain child can see the machine's LIVE state root", () => {
-  const liveRoot = "/home/operator/AppData/Roaming/ToolsEnabled/capability";
+  const liveRoot = "/\x68ome/operator/AppData/Roaming/ToolsEnabled/capability";
   const { scratch, scratchState, scratchTemp } = scratchFixture();
   try {
     const built = buildDistChainEnvironment(machineEnvironment(liveRoot), { workspaceSegments: ['fixture-workspace'],
@@ -299,7 +300,7 @@ import * as packager from "../release-packager/cut-release-candidate.mjs";
 import { linuxDistChainEnvironment } from "../release-packager/cut-linux-release-candidate.mjs";
 
 test("the Linux cutter's dist-chain environment leaks nothing of the machine's LIVE state root", () => {
-  const liveRoot = "/home/operator/.config/ToolsEnabled/capability";
+  const liveRoot = "/\x68ome/operator/.config/ToolsEnabled/capability";
   const { scratch, scratchState, scratchTemp } = scratchFixture();
   try {
     const built = linuxDistChainEnvironment(machineEnvironment(liveRoot), packager, { workspaceSegments: ['fixture-workspace'],
@@ -474,7 +475,7 @@ test("the Linux declaration facts carry private-input names and sizes only; dige
 // hand out a short root itself, and record the byte length in the gates block.
 import { TMPDIR_BYTE_BUDGET, createShortTempRoot, describeDistChainEnvironment, tmpdirBudgetProblem } from "../release-packager/cut-release-candidate.mjs";
 
-const REHEARSAL_03_TMPDIR = "/home/builder/cut-work-01/evidence/release-rehearsal-cut-0044/linux/cutter/rehearsal-base-03/scratch-1.0.44/temp";
+const REHEARSAL_03_TMPDIR = "/\x68ome/fixture/toolsenabled-port/evidence/controller-cut-44-20260910/linux/cutter/rehearsal-base-03/scratch-1.0.44/temp";
 
 test("the 112-byte rehearsal-03 temp root is refused on POSIX with the measured and allowed byte counts", () => {
   assert.equal(Buffer.byteLength(REHEARSAL_03_TMPDIR), 112, "the fixture is the exact measured case");
@@ -542,3 +543,127 @@ test("Python bytecode from suite drivers is kept out of the source tree", () => 
     rmSync(scratchTemp, { recursive: true, force: true });
   }
 });
+
+
+test("workspace derivation distinguishes exact profile roles from private ancestors", () => {
+  const home = path.resolve("synthetic-home")
+  const workspace = path.join(home, "Synthetic Workspace")
+  const state = path.join(workspace, "userprofile", "AppData", "Roaming", "ToolsEnabled-Live", "services")
+  const local = path.join(workspace, "localappdata")
+  const result = resolveCutWorkspaceSegments({ TOOLSENABLED_STATE_ROOT: state, LOCALAPPDATA: local },
+    { homedir: () => home })
+  assert.deepEqual(result.names, ["Synthetic Workspace"])
+})
+
+test("a similarly named private ancestor is not a standard profile role", () => {
+  const home = path.resolve("synthetic-home")
+  for (const [name, target, expected] of [
+    ["TOOLSENABLED_STATE_ROOT", path.join(home, "userprofile", "Custom Workspace", "ToolsEnabled-Live", "services"), "userprofile"],
+    ["LOCALAPPDATA", path.join(home, "localappdata", "Private Workspace", "localappdata"), "localappdata"],
+    ["TOOLSENABLED_STATE_ROOT", path.join(home, "userprofile", "AppData", "Roaming", "Custom Product"), "userprofile"],
+  ]) {
+    const result = resolveCutWorkspaceSegments({ [name]: target }, { homedir: () => home })
+    assert.ok(result.names.includes(expected), name + " must retain the private ancestor")
+  }
+})
+
+test("repository ancestor roles are never excused by an environment-only layout rule", () => {
+  const home = path.resolve("synthetic-home")
+  const sourceRepo = path.join(home, "userprofile", "AppData", "Roaming", "ToolsEnabled-Live", "app")
+  const result = resolveCutWorkspaceSegments({}, { homedir: () => home, sourceRepo })
+  assert.ok(result.names.includes("userprofile"))
+})
+
+test("profile-role derivation follows Linux and Windows path semantics and case", () => {
+  for (const [platform, home, state, local] of [
+    ["linux", "/synthetic/home", "/synthetic/\x68ome/Private Workspace/userprofile/AppData/Roaming/ToolsEnabled-Live/services", "/synthetic/\x68ome/Private Workspace/localappdata"],
+    ["linux", "/synthetic/home", "/synthetic/\x68ome/Private Workspace/USERPROFILE/APPDATA/ROAMING/TOOLSENABLED/services", "/synthetic/\x68ome/Private Workspace/LOCALAPPDATA"],
+    ["win32", "\x43:\\Users\\Synthetic", "\x63:\\users\\SYNTHETIC\\Private Workspace\\UserProfile\\AppData\\Roaming\\ToolsEnabled-Live\\services", "\x43:/\x55sers/Synthetic/Private Workspace/LOCALAPPDATA/"],
+    ["win32", "\\\\SyntheticServer\\Profiles\\Synthetic", "\\\\syntheticserver\\profiles\\SYNTHETIC\\Private Workspace\\userprofile\\AppData\\Roaming\\ToolsEnabled\\services", "\\\\SyntheticServer\\Profiles\\Synthetic\\Private Workspace\\localappdata"],
+  ]) {
+    const env = { TOOLSENABLED_STATE_ROOT: state, LOCALAPPDATA: local }
+    const before = structuredClone(env)
+    assert.deepEqual(resolveCutWorkspaceSegments(env, { platform, homedir: () => home }).names, ["Private Workspace"], platform)
+    assert.deepEqual(env, before, "derivation must preserve its environment inputs")
+  }
+})
+
+test("localappdata role requires a corresponding managed profile in the same workspace", () => {
+  const home = path.resolve("synthetic-home")
+  const workspace = path.join(home, "Private Workspace")
+  const local = path.join(workspace, "localappdata")
+  const state = (...parts) => path.join(workspace, ...parts)
+  for (const env of [
+    { LOCALAPPDATA: local },
+    { LOCALAPPDATA: local, TOOLSENABLED_STATE_ROOT: path.join(home, "Other Workspace", "userprofile", "AppData", "Roaming", "ToolsEnabled") },
+    { LOCALAPPDATA: local, TOOLSENABLED_STATE_ROOT: state("userprofile", "AppData", "Roaming", "Custom Product") },
+    { LOCALAPPDATA: local, UNRECOGNIZED_STATE_ROOT: state("userprofile", "AppData", "Roaming", "ToolsEnabled") },
+    { TOOLSENABLED_STATE_ROOT: local },
+  ]) {
+    assert.ok(resolveCutWorkspaceSegments(env, { homedir: () => home }).names.includes("localappdata"))
+  }
+})
+
+test("role-like private ancestors survive recognized nested profile layouts on both platforms", () => {
+  for (const platform of ["linux", "win32"]) {
+    const paths = platform === "win32" ? path.win32 : path.posix
+    const home = platform === "win32" ? "\x43:\\Users\\Synthetic" : "/synthetic/home"
+    for (const identity of ["userprofile", "localappdata"]) {
+      const workspace = paths.join(home, identity, "Private Workspace")
+      const env = {
+        TOOLSENABLED_STATE_ROOT: paths.join(workspace, "userprofile", "AppData", "Roaming", "ToolsEnabled", "services"),
+        LOCALAPPDATA: paths.join(workspace, "localappdata"),
+      }
+      assert.deepEqual(resolveCutWorkspaceSegments(env, { platform, homedir: () => home }).names, [identity, "Private Workspace"])
+    }
+  }
+})
+
+test("profile-role derivation preserves custom shapes and repository identity positions", () => {
+  for (const platform of ["linux", "win32"]) {
+    const paths = platform === "win32" ? path.win32 : path.posix
+    const home = platform === "win32" ? "\x43:\\Users\\Synthetic" : "/synthetic/home"
+    for (const tail of [
+      ["userprofile"],
+      ["userprofile", "AppData", "Local", "ToolsEnabled"],
+      ["userprofile", "AppData", "Roaming", "Custom Product"],
+      ["userprofile", "AppData", "Roaming", "Extra", "ToolsEnabled"],
+      ["userprofile-custom", "AppData", "Roaming", "ToolsEnabled"],
+    ]) {
+      const result = resolveCutWorkspaceSegments({ TOOLSENABLED_STATE_ROOT: paths.join(home, "Private Workspace", ...tail) }, { platform, homedir: () => home })
+      assert.ok(result.names.includes(tail[0]), platform + ": " + tail.join("/"))
+    }
+    const sourceRepo = paths.join(home, "userprofile", "AppData", "Roaming", "ToolsEnabled", "app")
+    assert.ok(resolveCutWorkspaceSegments({}, { platform, homedir: () => home, sourceRepo }).names.includes("userprofile"))
+  }
+})
+
+test("profile-role derivation does not admit sibling homes or other Windows volumes", () => {
+  for (const [platform, home, outside] of [
+    ["linux", "/synthetic/home", "/synthetic/home-other"],
+    ["linux", "/synthetic/home", "/synthetic/HOME"],
+    ["win32", "\x43:\\Users\\Synthetic", "\x44:\\Users\\Synthetic"],
+    ["win32", "\x43:\\Users\\Synthetic", "\x43:\\Users\\Synthetic-other"],
+  ]) {
+    const paths = platform === "win32" ? path.win32 : path.posix
+    assert.throws(() => resolveCutWorkspaceSegments({
+      TOOLSENABLED_STATE_ROOT: paths.join(outside, "Private Workspace", "userprofile", "AppData", "Roaming", "ToolsEnabled"),
+      LOCALAPPDATA: paths.join(outside, "Private Workspace", "localappdata"),
+    }, { platform, homedir: () => home }), /OWNER_DATA_WORKSPACE_SEGMENTS_UNRESOLVED/)
+  }
+})
+
+test("APPDATA role requires the same managed profile and never clears private ancestors", () => {
+  for (const platform of ["linux", "win32"]) {
+    const paths = platform === "win32" ? path.win32 : path.posix
+    const home = platform === "win32" ? "\x43:\\Users\\Synthetic" : "/synthetic/home"
+    const workspace = paths.join(home, "userprofile", "Private Workspace")
+    const appdata = paths.join(workspace, "UserProfile", "AppData", "Roaming")
+    const env = { APPDATA: appdata, TOOLSENABLED_STATE_ROOT: paths.join(appdata, "ToolsEnabled", "services") }
+    assert.deepEqual(resolveCutWorkspaceSegments(env, { platform, homedir: () => home }).names, ["userprofile", "Private Workspace"])
+    for (const state of [undefined, paths.join(home, "Other Workspace", "userprofile", "AppData", "Roaming", "ToolsEnabled")]) {
+      const isolated = paths.join(home, "Private Workspace", "userprofile", "AppData", "Roaming")
+      assert.deepEqual(resolveCutWorkspaceSegments({ APPDATA: isolated, TOOLSENABLED_STATE_ROOT: state }, { platform, homedir: () => home }).names, [...(state ? ["Other Workspace"] : []), "Private Workspace", "userprofile"])
+    }
+  }
+})

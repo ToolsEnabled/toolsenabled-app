@@ -8,6 +8,7 @@ import { createRequire } from 'node:module'
 import { installDomStandIn } from './lib/dom-stand-in.mjs'
 import { ownedFixtureTempRoot } from './lib/owned-fixture-temp.mjs'
 import { createImageConversation } from '../../src/image-conversation.js'
+import { sessionSafetyRefusal } from '../../src/agent-session-events.js'
 const require=createRequire(import.meta.url)
 const {createImageRetentionService}=require('../../shell/image-retention-service.cjs')
 const dom=installDomStandIn()
@@ -24,8 +25,15 @@ const insideAccount=selected=>{
 // use a separate owned volume to avoid that account's Git ancestors.
 const temp=ownedFixtureTempRoot({selected:insideAccount(process.env.IMAGE_TEST_TEMP)?process.env.IMAGE_TEST_TEMP
  :process.platform==='win32'?path.join(accountHome,'AppData','Local','Temp'):accountHome})
+// Each fixture root is minted directly in the account (the fallback above is
+// the account home itself when IMAGE_TEST_TEMP is outside it, as it is for a
+// strict run whose source fixture now lives in the OS temp root). Remove them
+// when the file ends, green or red; TOOLSENABLED_TEST_SOURCE_FIXTURE_KEEP=1
+// keeps them for post-mortem debugging, like the source fixture.
+const fixtureRoots=[]
 function fixture(busyInitially=false,options={}){
  const root=fs.mkdtempSync(path.join(temp,'t489-composer-durable-'))
+ fixtureRoots.push(root)
  assert.ok(insideAccount(fs.realpathSync(root)),'Native image fixtures stay within the actual OS account')
  const pngs=['iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==','iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYPj/HwADAgH/5ncLrgAAAABJRU5ErkJggg=='].map(s=>Buffer.from(s,'base64'))
  const png=pngs[0]
@@ -53,7 +61,7 @@ function fixture(busyInitially=false,options={}){
    return service.run(request.operation==='admit'&&!request.selection?{...request,selection:{model:'test-model',effort:null}}:request,request.ownerContext)
   },
  }
- const conversation=createImageConversation({bridge,sessionId:'session',isCurrent:()=>true,mayDrain:()=>!busy,
+ const conversation=createImageConversation({bridge,sessionId:'session',isCurrent:()=>true,mayDrain:()=>!busy,mayDrainAutomatically:options.mayDrainAutomatically,
   subscribeReady:listener=>{notify=listener;return()=>{}},interrupt:async()=>{busy=false;notify()}})
  const chat=buildChat({seed:0,chips:{},imageOutbox:conversation,status:{busy:()=>busy},onSend:()=>assert.fail('legacy send must not bypass durable path'),
   onImageIntent:async(draft,state)=>{const result=await conversation.submit(draft,state);options.onAdmissionReturn?.(result);return result}})
@@ -240,4 +248,37 @@ for (const mutation of ['composition', 'attachment-restore', 'refresh-only']) te
  }finally{release();f.chat.dispose();f.conversation.dispose()}
 })
 
-test.after(()=>dom.restore())
+test.after(()=>{
+ dom.restore()
+ if(process.env.TOOLSENABLED_TEST_SOURCE_FIXTURE_KEEP==='1')return
+ for(const root of fixtureRoots){try{fs.rmSync(root,{recursive:true,force:true,maxRetries:3})}catch{/* best-effort fixture cleanup */}}
+})
+
+
+for (const code of ['misalignmentPolicyViolation', 'misalignment_policy_violation']) {
+ test(`safety hold keeps retained image bytes while a deliberate new Send targets its own envelope: ${code}`,async()=>{
+  let blocked=false
+  const f=fixture(true,{mayDrainAutomatically:()=>!blocked})
+  try {
+   f.chat.importDraft({text:'Earlier synthetic image',attachments:[{path:f.paths[0]}]})
+   f.chat.querySelector('.chat-send').click()
+   await until(()=>f.read().entries.length===1&&f.chat.exportDraft().attachments.length===0)
+   const prior=structuredClone(f.read().entries[0])
+   blocked=sessionSafetyRefusal({sessionId:'session',event:{type:'turn_completed',payload:{failure:{code}}}},'session')
+   assert.equal(blocked,true)
+   f.release()
+   await tick();await f.conversation.signalReady();await tick()
+   assert.equal(f.sent.length,0)
+   assert.deepEqual(f.read().entries[0],prior)
+   f.chat.importDraft({text:'New synthetic image',attachments:[{path:f.paths[1]}]})
+   f.chat.querySelector('.chat-send').click()
+   await until(()=>f.sent.length===1&&f.chat.exportDraft().attachments.length===0)
+   assert.equal(f.sent[0].text,'New synthetic image')
+   assert.deepEqual(f.sent[0].bytes,[digest(f.pngs[1])])
+   assert.deepEqual(f.read().entries[0],prior,'new Send leaves the older held envelope intact')
+   assert.equal(f.read().entries[1].state,'accepted')
+   await f.conversation.signalReady()
+   assert.equal(f.sent.length,1)
+  }finally{f.chat.dispose();f.conversation.dispose()}
+ })
+}

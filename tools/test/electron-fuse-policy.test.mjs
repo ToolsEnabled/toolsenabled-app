@@ -22,7 +22,7 @@ test('the packaged executable blocks ambient loader injection without disabling 
 
 test('fuse hardening refuses an incomplete electron-builder context before touching a path', async () => {
   await assert.rejects(
-    afterPack.hardenPackedElectron({ appOutDir: 'C:\\not-used' }),
+    afterPack.hardenPackedElectron({ appOutDir: '\x43:\\not-used' }),
     /no product filename/i,
   )
 })

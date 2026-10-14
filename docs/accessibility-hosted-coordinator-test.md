@@ -2,8 +2,8 @@
 
 Measured 2026-09-05 in the isolated development app, not LIVE.
 
-App source: an earlier commit.
-Staged engine: an earlier commit.
+App source: `3ec3dd6e9d08f3b3ba1d6e7742d53511093d7bf5`.
+Staged engine: `54dd8a04cdd7d039eecd764f6fee4268f6b2fc6c`.
 Coordinator: Luna (`gpt-5.6-luna`), requested reasoning effort `high`.
 Controller: local. Voice: local GPU, connected to the hosted coordinator.
 The original local coordinator conversation was preserved, not overwritten.

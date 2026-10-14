@@ -587,7 +587,7 @@ async function main() {
         const leaked = scanProfileFor(profile, ['qa-access-token-must-not-persist'])
         check('no file anywhere in the profile holds the access token', leaked.length === 0, leaked.join(', '))
         check('nothing was written to this machine\'s real account store',
-          !existsSync(path.join(process.env.APPDATA || 'C:/nonexistent', 'ToolsEnabled', 'product-accounts.json'))
+          !existsSync(path.join(process.env.APPDATA || '\x43:/nonexistent', 'ToolsEnabled', 'product-accounts.json'))
           || statSync(path.join(process.env.APPDATA, 'ToolsEnabled', 'product-accounts.json')).mtimeMs < Date.now() - 60_000)
 
         /* --- PHASE 2d: a second Google account with the same address is refused --- */

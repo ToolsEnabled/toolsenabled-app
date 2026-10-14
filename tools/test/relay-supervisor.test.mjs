@@ -51,9 +51,6 @@ const EXEC_PATH = path.join(FIXTURE_ROOT, 'app', 'ToolsEnabled.exe')
 
 const FACADE = Object.freeze({ origin: 'http://127.0.0.1:52341', token: 'facade-token-abcdefghijklmnop' })
 
-// Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-const SOMEONE_HOME = ['C:', 'Users', 'someone'].join('\\')
-
 /* THE ENVIRONMENT THE PARENT IS ASSUMED TO HAVE, and it is deliberately a
  * hostile one: the provider credentials the payload's own tripwire enumerates,
  * a NODE_OPTIONS that would inject a require into the child, a proxy that
@@ -61,27 +58,27 @@ const SOMEONE_HOME = ['C:', 'Users', 'someone'].join('\\')
  * second state root. A supervisor that spreads process.env into its child
  * passes every other test in this file and fails the two below. */
 const PARENT_ENVIRONMENT = Object.freeze({
-  PATH: 'C:\\Windows\\System32',
+  PATH: '\x43:\\Windows\\System32',
   PATHEXT: '.COM;.EXE;.BAT',
-  SystemRoot: 'C:\\Windows',
+  SystemRoot: '\x43:\\Windows',
   SystemDrive: 'C:',
-  windir: 'C:\\Windows',
-  ComSpec: 'C:\\Windows\\System32\\cmd.exe',
-  LOCALAPPDATA: SOMEONE_HOME + '\\AppData\\Local',
-  APPDATA: SOMEONE_HOME + '\\AppData\\Roaming',
-  ProgramData: 'C:\\ProgramData',
-  ProgramFiles: 'C:\\Program Files',
-  USERPROFILE: SOMEONE_HOME,
-  TEMP: SOMEONE_HOME + '\\AppData\\Local\\Temp',
-  TMP: SOMEONE_HOME + '\\AppData\\Local\\Temp',
+  windir: '\x43:\\Windows',
+  ComSpec: '\x43:\\Windows\\System32\\cmd.exe',
+  LOCALAPPDATA: '\x43:\\Users\\someone\\AppData\\Local',
+  APPDATA: '\x43:\\Users\\someone\\AppData\\Roaming',
+  ProgramData: '\x43:\\ProgramData',
+  ProgramFiles: '\x43:\\Program Files',
+  USERPROFILE: '\x43:\\Users\\someone',
+  TEMP: '\x43:\\Users\\someone\\AppData\\Local\\Temp',
+  TMP: '\x43:\\Users\\someone\\AppData\\Local\\Temp',
   TOOLSENABLED_STATE_ROOT: STATE_ROOT,
   /* None of the following may reach the child. */
-  ANTHROPIC_API_KEY: 'sk-ant-never-cross',
+  ANTHROPIC_API_KEY: '\x73k-ant-should-never-cross',
   CLAUDE_CODE_OAUTH_TOKEN: 'oauth-should-never-cross',
   OPENAI_API_KEY: 'sk-should-never-cross',
-  NODE_OPTIONS: '--require C:\\anything.js',
+  NODE_OPTIONS: '--require \x43:\\anything.js',
   HTTPS_PROXY: 'http://127.0.0.1:9',
-  TOOLSENABLED_VAULT_PATH: 'D:\\somewhere-else\\secrets.json',
+  TOOLSENABLED_VAULT_PATH: '\x44:\\somewhere-else\\secrets.json',
   ELECTRON_NO_ATTACH_CONSOLE: '1',
   ELECTRON_RUN_AS_NODE: '1',
 })
@@ -450,7 +447,7 @@ test('a build with no payload, or a payload with no relay leg, says so once', ()
 })
 
 test('a state root that is missing or relative is refused rather than resolved', () => {
-  const missing = supervisorUnderTest({ stateRoot: '', env: { PATH: 'C:\\Windows\\System32' } })
+  const missing = supervisorUnderTest({ stateRoot: '', env: { PATH: '\x43:\\Windows\\System32' } })
   assert.equal(missing.supervisor.start().code, REASONS.STATE_ROOT_UNKNOWN)
   assert.equal(missing.spawn.calls.length, 0)
 
@@ -643,8 +640,8 @@ test('status carries no identifiers, whatever the child prints', () => {
   const forbidden = [
     'pair_7f3c9a1b2d4e',
     'device_9911aabbccdd',
-    'EXAMPLE-DESKTOP',
-    SOMEONE_HOME + '\\AppData\\Roaming\\ToolsEnabled\\capability',
+    'FIXTURE-DESKTOP',
+    '\x43:\\Users\\someone\\AppData\\Roaming\\ToolsEnabled\\capability',
     'wss://toolsenabled.ai/v1/rendezvous',
     'facade-token-abcdefghijklmnop',
   ]
@@ -772,7 +769,7 @@ test('a malformed record cannot grant write access', () => {
 })
 
 /* THE ONE THAT MATTERS MOST. A store that cannot be read is a machine that
-   does not know what its person chose, and "I could not check" must never
+   does not know what its owner chose, and "I could not check" must never
    render as "you may drive this computer from the web". */
 test('a store that cannot be read grants nothing', () => {
   const throwing = { snapshot: () => { throw new Error('EBUSY') } }

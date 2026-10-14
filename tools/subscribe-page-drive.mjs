@@ -8,7 +8,7 @@
  * no preload, no node integration, no shell bridge. That is what a person on the
  * website gets, and it is the context every other harness in this repo does not
  * use, which is how "functionally ready" came to be true of the app and false of
- * the website (R1260).
+ * the website (R1260 t5a).
  *
  * WHAT IT ASSERTS, AND WHY EACH ONE IS HERE
  *   A. no horizontal overflow at 1024/1280/1440/1600/1920, on all three themes
@@ -25,7 +25,7 @@
  *   F. the states: catalog gone (fails closed, controls disabled), already
  *      subscribed, declined, offline, double-submit, and the back button.
  *
- * CONFIGURATION COMES FROM THE ENVIRONMENT, NOT ARGV. Measured by R1260: a
+ * CONFIGURATION COMES FROM THE ENVIRONMENT, NOT ARGV. Measured by R1260 t5a: a
  * bare URL passed as an Electron argv makes the binary exit -1 before main runs,
  * with no stdout and no stderr -- which reads to a caller as a fast clean pass.
  *
@@ -893,12 +893,12 @@ async function run() {
 
   // ---- summary --------------------------------------------------------------
   /* The localhost port sweep this bundle performs on every page is a KNOWN,
-     separately-reported finding (R1260) and is not this page's doing;
+     separately-reported finding (R1260 t5a W3) and is not this page's doing;
      counting its CORS noise as a subscribe-page defect would make this harness
      permanently red for a reason it cannot fix. Everything else counts. */
-  /* Two exclusions, both pre-existing findings this harness does not own and
-     cannot fix inside its fence, both already on the board from R1260:
-     one (every visitor's browser sweeps its own loopback ports) and another (the
+  /* Two exclusions, both pre-existing findings this lane does not own and
+     cannot fix inside its fence, both already on the board from R1260 t5a:
+     W3 (every visitor's browser sweeps its own loopback ports) and W5 (the
      bundle ships no Content-Security-Policy). Naming them here rather than
      widening the filter, so the exclusion is auditable. */
   const ownErrors = pageErrors.filter(message =>

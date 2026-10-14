@@ -254,15 +254,13 @@ test('a folder that was never opened is not reported as files Windows had open',
      program is running, because Windows had them open. They are named below":
      a count that is zero, a cause that is wrong, a list that is empty, and a
      remedy naming no folder. */
-  // A synthetic folder, assembled at run time so the source carries no literal user path.
-  const unreadable = ['C:', 'Users', 'x', 'AppData', 'Roaming', 'ToolsEnabled'].join('/')
   const out = outcomeLines(readSweep({
     ok: true,
     swept: {
       ok: true,
       complete: false,
       remainingFiles: 0,
-      results: [{ kind: 'user-data', ok: false, reason: 'the folder could not be read', directory: unreadable }],
+      results: [{ kind: 'user-data', ok: false, reason: 'the folder could not be read', directory: '\x43:/\x55sers/x/AppData/Roaming/ToolsEnabled' }],
     },
     revoked: { ok: true, revokedSessions: true },
   }))
@@ -273,7 +271,7 @@ test('a folder that was never opened is not reported as files Windows had open',
     'the screen blamed open file handles for a folder nothing had looked inside')
   assert.match(out.detail, /could not be opened/,
     'the real cause must be stated')
-  assert.ok(out.detail.includes(unreadable),
+  assert.match(out.detail, /\x43:\/Users\/x\/AppData\/Roaming\/ToolsEnabled/,
     'the folder must be named, or the remedy is unfollowable')
   assert.match(out.detail, /the folder could not be read/,
     'what Windows said must survive to the screen')
@@ -390,9 +388,133 @@ test('the sign-out row hands the copy the sign-in method it already knows', () =
   const source = readFileSync(
     new URL('../../src/account-markup.js', import.meta.url), 'utf8')
 
-  assert.match(source, /signOutLimits\(state\.signInMethod\)/,
+  assert.match(source, /signOutLimits\(state\.signInMethod, \{ subject \}\)/,
     'the sign-out row no longer passes the sign-in method, so the copy cannot branch and a Google account '
     + 'gets wording written for somebody who has a password')
   assert.doesNotMatch(source, /esc\(SIGN_OUT_LIMITS\)/,
     'the row is rendering the method-less constant again, which is the flat sentence the branch replaced')
+})
+
+/* B32 (found by the 1.0.48 rehearsal QA triage, fixed for 1.0.49). The reset
+ * card is the one place on this screen that deletes, and it can only do so at
+ * the desk. Its title and lead were fixed strings naming "the computer you are
+ * driving", so the person sitting at this computer read words written for
+ * somebody driving it from a browser. The view already works out which of the
+ * two the reader is (src/views/account.js view(): RESET_SUBJECT_HERE at the
+ * desk, RESET_SUBJECT_REMOTE over the relay) and the survivor list followed it;
+ * the rest of the card now does too. Asserts are booleans and strings only. */
+const B32_TEXT = html => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+const B32_PHASES = Object.freeze({
+  idle: {},
+  measuring: { phase: 'measuring' },
+  confirm: {
+    phase: 'confirm',
+    plan: readPlan({
+      ok: true,
+      roots: [
+        { kind: 'user-data', directory: '/profile', guarded: true, present: true, files: 2, bytes: 1536, named: [] },
+        { kind: 'earlier-name', directory: '/earlier', guarded: true, present: false, files: 0, bytes: 0, named: [] },
+      ],
+      totals: { files: 2, bytes: 1536 }, untouched: [], conflicts: [],
+    }),
+  },
+  gone: {
+    phase: 'done',
+    sweep: readSweep({ ok: true, swept: { ok: true, complete: true, remainingFiles: 0, results: [] }, revoked: { ok: true, revokedSessions: true } }),
+  },
+  goneNoSession: {
+    phase: 'done',
+    sweep: readSweep({ ok: true, swept: { ok: true, complete: true, remainingFiles: 0, results: [] }, revoked: { ok: true, revokedSessions: false } }),
+  },
+  partial: {
+    phase: 'done',
+    sweep: readSweep({
+      ok: true,
+      swept: {
+        ok: true, complete: false, remainingFiles: 1, remainingBytes: 20,
+        results: [{ kind: 'user-data', ok: true, directory: '/profile', entries: [{ name: 'open.db', removed: false, reason: 'in use' }], remaining: { files: 1 } }],
+      },
+      revoked: { ok: true, revokedSessions: true },
+    }),
+  },
+})
+
+test('B32: at this computer every phase of the reset card names this computer, never the computer you are driving', () => {
+  for (const [name, reset] of Object.entries(B32_PHASES)) {
+    const desk = B32_TEXT(resetMarkup({ reset }))
+    assert.equal(desk.includes('the computer you are driving'), false, `${name}: the desk reader is told about a computer they are driving`)
+    assert.equal(desk.includes('Remove this program’s data from this computer'), true, `${name}: the title names this computer`)
+  }
+  const idle = B32_TEXT(resetMarkup({ reset: B32_PHASES.idle }))
+  assert.equal(idle.includes('Deleting removes what ToolsEnabled has saved on this computer:'), true)
+  assert.equal(idle.includes('It cannot be undone, and it does not uninstall the program.'), true, 'the pinned promise is kept word for word')
+  const measuring = B32_TEXT(resetMarkup({ reset: B32_PHASES.measuring }))
+  assert.equal(measuring.includes('Measuring what is on this computer right now. Nothing has been deleted.'), true)
+  const confirm = B32_TEXT(resetMarkup({ reset: B32_PHASES.confirm }))
+  assert.equal(confirm.includes('There is nothing here on this computer.'), true)
+  assert.equal(confirm.includes('There is no undo and no copy anywhere else.'), true, 'the pinned promise is kept word for word')
+  assert.equal(confirm.includes('somewhere safe on this computer'), true)
+  assert.equal(B32_TEXT(resetMarkup({ reset: B32_PHASES.gone })).includes('saved on this computer was removed'), true)
+  assert.equal(B32_TEXT(resetMarkup({ reset: B32_PHASES.gone })).includes('including any copy taken off this computer'), true)
+  assert.equal(B32_TEXT(resetMarkup({ reset: B32_PHASES.goneNoSession })).includes('any copy taken off this computer is unchanged'), true)
+  const partial = B32_TEXT(resetMarkup({ reset: B32_PHASES.partial }))
+  assert.equal(partial.includes('still on this computer in /profile'), true)
+  assert.equal(partial.includes('Closing ToolsEnabled on this computer releases them'), true)
+})
+
+test('B32: over the relay the reset card still names the computer you are driving', () => {
+  for (const [name, reset] of Object.entries(B32_PHASES)) {
+    const relay = B32_TEXT(resetMarkup({ reset: { ...reset, subject: RESET_SUBJECT_REMOTE } }))
+    assert.equal(relay.includes('Remove this program’s data from the computer you are driving'), true, `${name}: the relay title names the driven computer`)
+    assert.equal(relay.includes('this computer'), false, `${name}: the relay reader is told about "this computer"`)
+  }
+  const idle = B32_TEXT(resetMarkup({ reset: { subject: RESET_SUBJECT_REMOTE } }))
+  assert.equal(idle.includes('Deleting removes what ToolsEnabled has saved on the computer you are driving: every account on that computer,'), true)
+  const partial = B32_TEXT(resetMarkup({ reset: { ...B32_PHASES.partial, subject: RESET_SUBJECT_REMOTE } }))
+  assert.equal(partial.includes('still on the computer you are driving in /profile'), true)
+  assert.equal(partial.includes('deleting that folder on that computer finishes the job'), true)
+})
+
+test('B32: the account screen hands the reset card the reader the view worked out, in every account state', async () => {
+  const { screenMarkup } = await import('../../src/account-markup.js')
+  const signedOut = { available: true, signedIn: false, accountCount: 0, canPersistSession: true }
+  const states = [signedOut, { ...signedOut, signedIn: true, username: 'fixture', displayName: 'Fixture' },
+    { available: false, signedIn: false, reason: 'Fixture account store unavailable.' }]
+  const card = html => B32_TEXT(html.slice(html.indexOf('data-reset data-reset-phase'), html.indexOf('</article>', html.indexOf('data-reset data-reset-phase'))))
+  for (const [index, state] of states.entries()) {
+    const desk = card(screenMarkup({ state, reset: {} }))
+    const relay = card(screenMarkup({ state, subject: RESET_SUBJECT_REMOTE, reset: {} }))
+    assert.equal(desk.includes('Remove this program’s data from this computer'), true, `state ${index}: desk title`)
+    assert.equal(desk.includes('the computer you are driving'), false, `state ${index}: desk card names a driven computer`)
+    assert.equal(relay.includes('Remove this program’s data from the computer you are driving'), true, `state ${index}: relay title`)
+  }
+  /* And the view still works the reader out from where the page is read. */
+  const view = readFileSync(new URL('../../src/views/account.js', import.meta.url), 'utf8')
+  assert.equal(view.includes('subject: readingOverRelay() ? RESET_SUBJECT_REMOTE : RESET_SUBJECT_HERE,'), true)
+})
+
+/* F8 (1.0.50 release review, release-ops). B32 moved the reset card to "this
+ * computer" at the desk, and the rows around it kept "the computer you are
+ * driving": the Sign out row sat directly above "Remove this program's data
+ * from this computer". They now follow the same reader. */
+test('F8: Sign out, its limits and Change password name this computer at the desk and the driven computer over the relay', async () => {
+  const { screenMarkup } = await import('../../src/account-markup.js')
+  for (const signInMethod of ['password', 'google', 'hosted']) {
+    const state = { available: true, signedIn: true, accountCount: 1, canPersistSession: true, username: 'fixture', displayName: 'Fixture', signInMethod }
+    const desk = B32_TEXT(screenMarkup({ state, reset: {} }))
+    const relay = B32_TEXT(screenMarkup({ state, subject: RESET_SUBJECT_REMOTE, reset: {} }))
+    assert.equal(desk.includes('“Sign out” ends this sign-in on this computer.'), true, `${signInMethod}: desk sign-out row`)
+    assert.equal(desk.includes('saved sign-in taken from this computer earlier'), true, `${signInMethod}: desk sign-out row`)
+    assert.equal(desk.includes('exists only on this computer, so “everywhere” means every copy of this computer’s sign-in.'), true, `${signInMethod}: desk limits`)
+    const leaving = desk.slice(desk.indexOf('Leaving'))
+    assert.equal(leaving.includes('the computer you are driving'), false, `${signInMethod}: the desk reader's Leaving section names a driven computer`)
+    assert.equal(relay.includes('“Sign out” ends this sign-in on the computer you are driving.'), true, `${signInMethod}: relay sign-out row`)
+    assert.equal(relay.includes('saved sign-in taken from that computer earlier'), true, `${signInMethod}: relay sign-out row`)
+    assert.equal(relay.includes('exists only on the computer you are driving, so “everywhere” means every copy of that computer’s sign-in.'), true, `${signInMethod}: relay limits`)
+    if (signInMethod === 'password') {
+      assert.equal(desk.includes('Changing it signs you out on this computer.'), true, 'desk password row')
+      assert.equal(desk.includes('including any that was copied off this computer.'), true, 'desk password row')
+      assert.equal(relay.includes('Changing it signs you out on the computer you are driving.'), true, 'relay password row')
+    }
+  }
 })

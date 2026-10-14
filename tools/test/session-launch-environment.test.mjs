@@ -16,11 +16,11 @@
 //
 // WHAT IS AT STAKE, in two kinds, kept apart on purpose:
 //
-//   BILLING     When ANTHROPIC_API_KEY is persisted in the user environment,
-//               every process the person starts inherits it. Claude Code
-//               gives it PRECEDENCE over a subscription login, and this agent
-//               session can spawn a Claude CLI. That is the credential-leak
-//               failure (R1186): hours billed to a drained API
+//   BILLING     ANTHROPIC_API_KEY is set on the build machine and persisted in
+//               HKCU:\Environment, so every process the owner starts inherits
+//               it. Claude Code gives it PRECEDENCE over the Max subscription
+//               login, and this agent session can spawn a Claude CLI. That is
+//               the recorded R1186 outage: hours billed to a drained API
 //               account while `claude auth status` reported a perfect green.
 //   REDIRECTION OPENAI_BASE_URL / ANTHROPIC_BASE_URL carry no credential and
 //               take the session's prompts and file contents to an arbitrary
@@ -88,11 +88,11 @@ test.after(() => rmSync(TEST_SCRATCH_ROOT, { recursive: true, force: true }))
 // header for why the authoritative list is not duplicated here.
 const POISONED = Object.freeze({
   ANTHROPIC_API_KEY: {
-    value: 'sk-ant-fixture-metered',
+    value: '\x73k-ant-fixture-would-bill-a-metered-account',
     harm: 'takes precedence over the owner subscription login, so the session bills a metered API account',
   },
   OPENAI_API_KEY: {
-    value: 'sk-other-provider-key',
+    value: '\x73k-fixture-another-providers-metered-key',
     harm: "belongs to a DIFFERENT provider than the one being launched -- a per-provider scrub misses it, which is why the launch takes a union",
   },
   OPENAI_BASE_URL: {
@@ -100,9 +100,6 @@ const POISONED = Object.freeze({
     harm: "carries no credential and redirects the session's prompts and file contents to an arbitrary host, while the session still works",
   },
 })
-
-// Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-const FOREIGN_SENTINEL_HOME = ['C:', 'Users', 'foreign-profile-sentinel'].join('\\')
 
 const INSTALLATION_PROFILE = require(path.join(FIXTURES, 'confined-engine/src/lib/agent-session-confinement.js')).installationProfileRoot()
 const UNRESTRICTED_PLAN = Object.freeze({
@@ -183,6 +180,29 @@ async function startAndCapture(plan, sessionId) {
   }
 }
 
+
+test('a native Claude start preserves the person\'s authentication settings and profile confinement', async () => {
+  const workdir = testScratch('native-claude-')
+  const nativeEngine = require(path.join(FIXTURES, 'confined-engine/src/lib/agent-engine/claude-cli-process.js'))
+  try {
+    await withPlan(UNRESTRICTED_PLAN, async () => await withPoisonedEnvironment(async () => {
+      const before = nativeEngine.calls.length
+      const host = createAgentHost({ freeMemory: TEST_FREE_MEMORY, enginePath: CONFINED_ENGINE,
+        defaultCwd: workdir, providerCommandResolver: () => process.execPath,
+        confinementPlanner: () => UNRESTRICTED_PLAN })
+      try {
+        await host.startSession({ sessionId: 'native-auth-pass-through', tier: 'claude-sonnet' })
+        const request = nativeEngine.calls[before]
+        assert.ok(request, 'the native Claude engine was not called')
+        assert.ok(request.env.ANTHROPIC_API_KEY === POISONED.ANTHROPIC_API_KEY.value,
+          'the native Claude auth choice was scrubbed by the host')
+        assert.equal(request.env.HOME, INSTALLATION_PROFILE)
+        assert.equal(request.env.USERPROFILE, INSTALLATION_PROFILE)
+      } finally { await host.closeAll() }
+    }))
+  } finally { rmSync(workdir, { recursive: true, force: true }) }
+})
+
 /* ---------- the scrub reaches the child, at BOTH levels ---------- */
 
 for (const [label, makePlan] of [
@@ -238,7 +258,7 @@ for (const [label, makePlan] of [
       assert.equal(countEnvironmentKeys(call.env, 'PATH'), 1,
         `the child environment at ${label} does not carry exactly one PATH key. Zero means the scrub REMOVED it, which breaks the executable resolution that finds codex on Windows; more than one means the scrub emitted case-variant duplicates and which value the child resolves is then unspecified`)
       // Compared as a boolean on purpose: a value comparison prints both PATHs
-      // on failure, and a machine's PATH is full of its user's home
+      // on failure, and this machine's PATH is full of the owner's home
       // directory. Same rule as the credential assertions -- no values in logs.
       assert.equal(readEnvironmentVariable(call.env, 'PATH') === process.env.PATH, true,
         `PATH was altered at ${label}, which breaks the executable resolution that finds codex on Windows`)
@@ -340,7 +360,7 @@ test('an account pin that reintroduces a credential refuses the launch', async (
     const plan = {
       ok: true, tier: 'guided', isolated: true,
       threadOptions: { sandbox: 'read-only', approvalPolicy: 'never' },
-      env: { CODEX_HOME: path.join(workdir, 'agent-home'), ANTHROPIC_API_KEY: 'sk-ant-reintroduced' },
+      env: { CODEX_HOME: path.join(workdir, 'agent-home'), ANTHROPIC_API_KEY: '\x73k-ant-reintroduced-by-the-pin' },
     }
     withPlan(plan, () => withPoisonedEnvironment(() => {
       const before = engineCalls().length
@@ -350,7 +370,7 @@ test('an account pin that reintroduces a credential refuses the launch', async (
         (error) => {
           assert.equal(error.code, 'LAUNCH_BILLING_CREDENTIAL_PRESENT',
             'a pin that reintroduced a billing credential did not produce the refusal code that names it')
-          assert.equal(error.message.includes('sk-ant-reintroduced'), false,
+          assert.equal(error.message.includes('\x73k-ant-reintroduced-by-the-pin'), false,
             'the refusal printed the credential VALUE, which is the one thing it must never do')
           return true
         },
@@ -435,7 +455,7 @@ test('a namespaced engine in a sibling Windows profile is refused before loading
 
 test('unsupported Windows device and UNC engine paths refuse before access', { skip: process.platform !== 'win32' }, () => {
   for (const enginePath of [
-    '\\\\.\\' + FOREIGN_SENTINEL_HOME + '\\engine\\codex-process.js',
+    '\\\\.\\\x43:\\Users\\foreign-profile-sentinel\\engine\\codex-process.js',
     '\\\\localhost\\c$\\Users\\foreign-profile-sentinel\\engine\\codex-process.js',
     '\\\\?\\UNC\\localhost\\c$\\Users\\foreign-profile-sentinel\\engine\\codex-process.js',
   ]) {
@@ -448,7 +468,7 @@ test('the account fence checks cwd before the host performs a filesystem stat', 
   // Drive the real constructor and bootstrap normalizer with Windows lexical
   // paths on either OS. Every filesystem operation is a recording stand-in;
   // none of these synthetic profile paths can reach the host filesystem.
-  // Previously this supplied /Users/... on Linux, where the Windows bootstrap
+  // Previously this supplied <profile-root> on Linux, where the Windows bootstrap
   // fence correctly does not apply, and inferred an access order from ENOENT.
   const source = readFileSync(path.join(ROOT, 'shell/agent-host.cjs'), 'utf8')
   const ast = parseAst(source)
@@ -459,8 +479,8 @@ test('the account fence checks cwd before the host performs a filesystem stat', 
     assert.ok(node, `actual host declaration ${name} is required`)
     return source.slice(node.start, node.end)
   })
-  const profileRoot = 'C:\\PrecutProfileFixture\\owned'
-  const foreign = 'C:\\PrecutProfileFixture\\another\\does-not-exist'
+  const profileRoot = '\x43:\\PrecutProfileFixture\\owned'
+  const foreign = '\x43:\\PrecutProfileFixture\\another\\does-not-exist'
   const access = [], loads = []
   const fsFixture = {
     lstatSync(value) { access.push(['lstat', value]); return { isSymbolicLink: () => false } },
@@ -475,7 +495,7 @@ test('the account fence checks cwd before the host performs a filesystem stat', 
     loadRLedger() { throw Error('Unexpected ledger access') },
     loadRulesTurnSnapshot() { throw Error('Unexpected rules reader access') },
     loadOwnerRequestStore() { throw Error('Unexpected request store access') },
-    // Default for the constructor's ledgerContinuationLoader (an earlier commit).
+    // Default for the constructor's ledgerContinuationLoader (bc6c5ced).
     loadLedgerContinuation() { throw Error('Unexpected ledger continuation access') },
   }
   const host = runInNewContext(`${declarations.join('\n')}\n({ createAgentHost, normalizeCwd })`, context, { timeout: 1000 })
@@ -557,7 +577,7 @@ test('the account fence checks the final merged environment before an engine sta
   const workdir = testScratch('mc-profile-env-')
   const previous = process.env.MC_TEST_FOREIGN_PROFILE_SENTINEL
   try {
-    process.env.MC_TEST_FOREIGN_PROFILE_SENTINEL = FOREIGN_SENTINEL_HOME + '\\config'
+    process.env.MC_TEST_FOREIGN_PROFILE_SENTINEL = '\x43:\\Users\\foreign-profile-sentinel\\config'
     await withPlan(UNRESTRICTED_PLAN, async () => {
       const before = engineCalls().length
       const host = createAgentHost({ freeMemory: TEST_FREE_MEMORY, enginePath: CONFINED_ENGINE, defaultCwd: workdir })
@@ -676,7 +696,7 @@ test('a resumed thread cannot return a foreign-profile cwd into the live session
   const workdir = testScratch('mc-profile-resume-')
   const previous = process.env.MC_TEST_RESUMED_THREAD_CWD
   try {
-    process.env.MC_TEST_RESUMED_THREAD_CWD = FOREIGN_SENTINEL_HOME + '\\workspace'
+    process.env.MC_TEST_RESUMED_THREAD_CWD = '\x43:\\Users\\foreign-profile-sentinel\\workspace'
     await withPlan(UNRESTRICTED_PLAN, async () => {
       const host = createAgentHost({ freeMemory: TEST_FREE_MEMORY, enginePath: CONFINED_ENGINE, defaultCwd: workdir })
       await assert.rejects(

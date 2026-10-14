@@ -12,7 +12,8 @@
  *
  * SO THIS REMOVES EXACTLY ONE VARIABLE: THE APPLICATION. It requires the SAME
  * packed engine module the payload ships, with the SAME kind of scratch home
- * and the SAME copied sign-in, and asks it the same question directly.
+ * and the caller's existing sign-in home in place, and asks it the same question directly.
+ * Use --claude-config-dir PATH or ANTHROPIC_API_KEY from the environment.
  *
  *   it answers here  -> the engine and the CLI are fine, and the defect is in
  *                       the app layer above them (confinement env, event
@@ -24,7 +25,8 @@
  * point of running it.
  */
 
-import { copyFileSync, existsSync, mkdirSync, rmSync, symlinkSync, unlinkSync, rmdirSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, symlinkSync, unlinkSync, rmdirSync } from 'node:fs'
+import { providerLaunchEnvironment } from './lib/provider-launch-environment.cjs'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -52,12 +54,7 @@ async function main() {
   const workspace = path.join(scratch, 'workspace')
   for (const leaf of [home, roaming, workspace, path.join(home, '.claude')]) mkdirSync(leaf, { recursive: true })
 
-  /* The same two files the driver copies, for the same reason: the child reads
-     the home it is given, and this run gives it a scratch one. Never opened here. */
-  const realHome = process.env.USERPROFILE || ''
-  copyFileSync(path.join(realHome, '.claude', '.credentials.json'), path.join(home, '.claude', '.credentials.json'))
-  const settings = path.join(realHome, '.claude.json')
-  if (existsSync(settings)) copyFileSync(settings, path.join(home, '.claude.json'))
+  // The official CLI uses the caller's existing home or the API environment.
 
   /* And the npm layout, because resolveInvocation() prefers the native
      claude.exe under %APPDATA%/npm and a redirected APPDATA empties it. */
@@ -71,9 +68,7 @@ async function main() {
   env.APPDATA = roaming
   env.LOCALAPPDATA = path.join(scratch, 'local')
   delete env.ELECTRON_RUN_AS_NODE
-  /* The engine scrubs these itself; deleted here too so the control cannot
-     accidentally answer on an API key instead of the subscription. */
-  for (const name of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL', 'CLAUDE_CODE_OAUTH_TOKEN']) delete env[name]
+  Object.assign(env, providerLaunchEnvironment('claude', env))
 
   const engine = require_(ENGINE)
   log(`engine exports: ${Object.keys(engine).join(', ')}`)

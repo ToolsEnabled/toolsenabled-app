@@ -7,9 +7,10 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
+import { canonicalRootForTests } from '../canonical-root.mjs'
 
 const require = createRequire(import.meta.url)
-const policy = require('../../capability/src/lib/provider-session-isolation.js')
+const policy = require(path.join(canonicalRootForTests(), 'src/lib/provider-session-isolation.js'))
 const { createProviderLoginService } = require('../../shell/provider-login.cjs')
 const { createAccountRegistryStore } = require('../../shell/account-registry.cjs')
 const { providerCliPresence } = require('../../shell/provider-cli-presence.cjs')
@@ -25,7 +26,7 @@ function scratch(t) {
   const profile = path.join(root, 'profile')
   mkdirSync(profile, { mode: 0o700 })
   const env = {
-    PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || 'C:/Windows',
+    PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || '\x43:/Windows',
     TOOLSENABLED_PROVIDER_ISOLATION_ROOT: profile,
     TOOLSENABLED_STATE_ROOT: path.join(profile, 'userData', 'ToolsEnabled', 'capability'),
     HOME: path.join(root, 'owner'), NODE_OPTIONS: '--require owner-hook',
@@ -145,8 +146,11 @@ for (const platform of [process.platform]) {
       assert.equal(call.options.env[policy.HOME_ENV[provider]], account.directory)
       assert.equal(call.options.env.HOME, fixture.context.userProfile)
       assert.equal(call.options.env.USERPROFILE, fixture.context.userProfile)
-      assert.equal(call.options.env.OPENAI_API_KEY, undefined)
-      assert.equal(call.options.env.ANTHROPIC_API_KEY, undefined)
+      for (const key of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY']) {
+        if (provider === 'claude') assert.ok(call.options.env[key] === fixture.env[key],
+          key + ' remains available to native Claude authentication')
+        else assert.equal(call.options.env[key], undefined, key + ' must not reach another provider')
+      }
       assert.equal(call.options.env.NODE_OPTIONS, undefined)
       if (provider === 'claude') assert.equal(call.options.env.CLAUDE_SECURESTORAGE_CONFIG_DIR, account.directory)
       if (provider === 'gemini') assert.equal(call.options.env.GEMINI_FORCE_FILE_STORAGE, 'true')
@@ -175,7 +179,10 @@ for (const platform of [process.platform]) {
           const received = JSON.parse(readFileSync(path.join(fixture.context.userProfile, 'provider-env.json'), 'utf8'))
           assert.equal(received[policy.HOME_ENV[provider]], account.directory)
           assert.equal(received.HOME, fixture.context.userProfile)
-          assert.equal(received.OPENAI_API_KEY, undefined)
+          for (const key of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY']) {
+            if (provider === 'claude') assert.ok(received[key] === fixture.env[key], key + ' reaches native Claude unchanged')
+            else assert.equal(received[key], undefined, key + ' must not reach another provider')
+          }
         }
       }
     }

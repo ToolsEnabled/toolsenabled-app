@@ -134,10 +134,13 @@ function fixture({ mode = 'native', leave = null, failure = null, startRefused =
     orgReady: () => false, roleLabel: role => role, roleDisplayFor: role => role,
     drivenComputerCopy: local => local, createChatDiffHistoryStore: () => null, markTreeStoreLive: () => () => {}, syncTreeBranchAddresses: () => {}, /* T138 naming watch: stood in like syncTreeBranchAddresses beside it; naming is not this file's subject. */ syncRenamedCircles: () => {},
     orgStatusElement: status, orgStatusTimer: 0, treePersistenceProblem: '', orgStatusPrimary: null,
-    /* The view's own initial value (src/views/computers.js `let transcriptPersistenceProblem = ''`, an earlier commit):
+    /* The view's own initial value (src/views/computers.js `let transcriptPersistenceProblem = ''`, e7a52e8d):
        renderOrgStatus reads it beside treePersistenceProblem. */
     transcriptPersistenceProblem: '',
     setTimeout: () => 1, clearTimeout: () => {}, markRefusalCode: () => {},
+    /* renderOrgStatus offers "Set up local models" beside a Local refusal
+       (src/local-setup-popup.js); none of the refusals here is one. */
+    offersLocalSetup: () => false,
     sampleRun: null, sampleRunStore: null, sampleRunTimer: 0, sampleChipFrame: 0,
     sampleChips: new Set(), sampleChats: new Map(), sampleSessionText: new Map(), sessionTurnText: new Map(),
     clearInterval: () => {}, cancelAnimationFrame: () => {},
@@ -149,7 +152,7 @@ function fixture({ mode = 'native', leave = null, failure = null, startRefused =
   context.lastComposedNames = new Map()
   context.treeHeadIdsOf = vm.runInContext('(' + initializers.get('treeHeadIdsOf') + ')', context)
   for (const name of ['sessionTranscripts', 'sessionTurnLog', 'sessionUsage', 'sessionModelOverride', 'sessionPendingImages',
-    'sessionProfileIds', 'sessionEfforts', 'sessionThreadIds', 'sessionAccountNames', 'nodeActivity', 'nodeReplies', 'nodeDiffHistories']) context[name] = new Map()
+    'sessionProfileIds', 'sessionEfforts', 'sessionThreadIds', 'sessionAccountNames', 'sessionAccountRecords', 'nodeActivity', 'nodeReplies', 'nodeDiffHistories']) context[name] = new Map()
   const actual = ['createTreeRuntimeView', 'freshStartExistingNode', 'resumeNodeSession', 'retainStartingTreeStore', 'resumeNodeSessionUnguarded', 'persistTranscript', 'releaseTreeStore', 'openTreeStore',
     'refreshTreeNames', 'reportTreePersistence', 'renderOrgStatus', 'setOrgStatus', 'runPaletteAction', 'closePersonNode', 'settleStoppedSession', 'endedAgentStartOutcome',
     'cancelPendingModelChoice', 'pendingModelChoice', 'savedResearchRestrictionRefusal', 'startOutcomeReleasesCustody', 'nodeCleanupPending', 'retainTreeSessionCleanup', 'withRetainedStartIdentity', 'startCleanupSentence', 'recoveryCoordinator', 'recoveryImageContext', 'stopSampleRun',
@@ -386,7 +389,7 @@ function installRealQueue(f, t) {
   })
   vm.runInContext(functions.get('queueForSession'), f.context)
   assert.equal(completionDrains.length, 1, 'exercise the actual single completion drain, not a copied predicate')
-  vm.runInContext(`function completionDrain(sessionId, nodeId, userStopped, isHistoricalReplay = false) { ${completionDrains[0]} }`, f.context)
+  vm.runInContext(`function completionDrain(sessionId, nodeId, userStopped, isHistoricalReplay = false) { const automaticTurnsHeld = sessionNodeIds.automaticTurnsHeld?.(sessionId) === true; ${completionDrains[0]} }`, f.context)
   return { deliveries, deliveredIds, waiting: sessionId => realOutbox.list(sessionId).map(entry => entry.text) }
 }
 
@@ -1038,7 +1041,7 @@ function machineResumePopupFixture({ refusal = 'AGENT_RESUME_ACCOUNT_LIMIT', kee
   f.context.MANAGED_SLOT_ACTIONS = {}
   f.context.callerCircleRefusal = callerCircleRefusal
   f.context.resumeNodeCommandResult = resumeNodeCommandResult
-  // T839 (an earlier commit): supply the real recovery-wait dependencies of the extracted command.
+  // T839 (218bbe5c): supply the real recovery-wait dependencies of the extracted command.
   f.context.hostSessionAlive = hostSessionAlive
   f.context.settleNodeForCommand = settleNodeForCommand
   f.context.document = { body: {} }

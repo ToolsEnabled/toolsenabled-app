@@ -14,8 +14,8 @@
  * in a tree other lanes share. (The 2026-08-16 near-miss: another lane almost
  * committed a sabotaged file from exactly this kind of negative control.)
  *
- *   git worktree add --detach ..\app-mutation <commit>
- *   cd ..\app-mutation && node tools/node-remove-mutation-battery.mjs
+ *   git worktree add --detach ..\research-app-mutation <commit>
+ *   cd ..\research-app-mutation && node tools/node-remove-mutation-battery.mjs
  *
  * Exit 0 only when every mutation was killed and every restore was exact.
  */

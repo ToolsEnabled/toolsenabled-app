@@ -378,8 +378,8 @@ test('failed metrics requests expose bounded failure categories without private 
   assert.doesNotMatch(JSON.stringify(result), /private fixture|PRIVATE_FIXTURE/)
 })
 
-/* KEEP METRICS HISTORY ON THIS COMPUTER (metrics.local_history, product
-   rule). With Signed activity audit off (Basic), the setting decides
+/* KEEP METRICS HISTORY ON THIS COMPUTER (metrics.local_history, owner decision
+   2026-09-23). With Signed activity audit off (Basic), the setting decides
    whether the app keeps its own run and token records for Metrics. Off: the
    test below, nothing is opened and both reads refuse. On (the default): the
    test after it, the app-local rows are written and read back, and the

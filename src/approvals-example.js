@@ -4,7 +4,7 @@
  * "Example, not your data" badge, metrics' demonstration face and "made-up
  * numbers" note, research's source line -- and the approvals view carried no
  * marking of any kind (found by the paid lane's walk of the vendored
- * simulation build, their an earlier commit; reassigned to this repository by
+ * simulation build, their commit 36010d5; reassigned to this repository by
  * legal's launch delivery, 2026-08-18). On that build the screen showed "the
  * approvals service is unavailable" instead, which on a page whose whole job
  * is showing a stranger the product reads as a broken product -- and an

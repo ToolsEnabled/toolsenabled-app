@@ -2073,9 +2073,9 @@ export function createBenchmarkBuilder({ account, submitExported, onOpen = () =>
       // pointing at a bundle whose composition role the place cannot accept was
       // still counted and still announced -- "1 task generated from your routing"
       // and "Every row was routed" -- while the prompt pane quietly held the
-      // compiler's refusal instead of a prompt. Measured with an earlier example
-      // library: routing offered every whole-prompt variant and matching-code
-      // bundle at the root address, and every one of them landed in that state.
+      // compiler's refusal instead of a prompt. Measured with the shipped example
+      // library: routing offers all 21 T1v0 variants and 25 matching-code bundles
+      // at the root address, and every one of them lands in that state.
       // Freezing refuses them, so nothing false could ever be exported, but the
       // person is told it worked and only finds out at the end.
       //

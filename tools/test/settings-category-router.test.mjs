@@ -1,8 +1,9 @@
 /* THE SETTINGS RAIL IS A ROUTER, AND THIS IS WHAT THAT MEANS ON THE GLASS.
  *
- * The rule: each settings category is its own fully separate page, so
- * pressing one in the list on the left brings up just that category and no
- * other.
+ * The owner: "the settings categories should be THEIR OWN SEPERATED FULLY
+ * SEPERATE PAGES FOR EACH SECTION so when i press one on the list on the left
+ * hand side it pulls up just that category of settings and no other categories
+ * from the list."
  *
  * WHAT THIS SUITE HOLDS, and each of the four is a way the old page could come
  * back without anybody noticing:
@@ -504,89 +505,6 @@ test('leaving Settings discards pending values and does not write them', () => {
   assert.equal(reopened.view.beforeLeave({ name: 'home' }), true)
   reopened.view.destroy()
   delete window.confirm
-})
-
-test('the Home circle row saves a persistent style only through the shared draft', async t => {
-  stored.clear()
-  const { HOME_CIRCLE_STYLE_KEY, HOME_CIRCLE_STYLE_EVENT, currentHomeCircleStyle } = await import('../../src/home-circle-choice.js')
-  const changes = []
-  const onChange = event => changes.push(event.detail.value)
-  window.addEventListener(HOME_CIRCLE_STYLE_EVENT, onChange)
-  const { view } = open({ category: categorySlug('Appearance') })
-  t.after(() => {
-    view.destroy()
-    window.removeEventListener(HOME_CIRCLE_STYLE_EVENT, onChange)
-    delete window.confirm
-  })
-  assert.match(painted, /data-setting-id="home_circle_style"/)
-  assert.match(painted, /Home circle/)
-  /* Classic (id 'simple') is the default since the hotload 4623 delivery; Blob (id 'standard') is the saved choice. */
-  assert.match(painted, /Classic/)
-  assert.match(painted, /Blob/)
-  const choose = value => {
-    const button = { dataset: { settingValue: value }, closest: () => ({ dataset: { settingId: 'home_circle_style' } }) }
-    sections.handlers.get('click')({ target: { closest: selector => selector === 'button[data-setting-value]' ? button : null } })
-  }
-  choose('standard')
-  assert.equal(currentHomeCircleStyle(), 'simple')
-  assert.equal(stored.has(HOME_CIRCLE_STYLE_KEY), false)
-  assert.deepEqual(changes, [])
-  discard.handlers.get('click')()
-  assert.equal(stored.has(HOME_CIRCLE_STYLE_KEY), false)
-  assert.deepEqual(changes, [])
-  choose('standard')
-  window.confirm = () => true
-  await save.handlers.get('click')()
-  assert.equal(stored.get(HOME_CIRCLE_STYLE_KEY), 'standard')
-  assert.deepEqual(changes, ['standard'])
-  choose('simple')
-  assert.equal(currentHomeCircleStyle(), 'standard', 'pending default does not change the saved style')
-  await save.handlers.get('click')()
-  assert.equal(stored.has(HOME_CIRCLE_STYLE_KEY), false)
-  assert.deepEqual(changes, ['standard', 'simple'])
-})
-
-test('Home circle motion applies only after Save and can return to the device default', async t => {
-  stored.clear()
-  const { HOME_CIRCLE_MOTION_KEY, HOME_CIRCLE_MOTION_EVENT, currentHomeCircleMotion } = await import('../../src/home-circle-choice.js')
-  const changes = []
-  const onChange = event => changes.push({ value: event.detail.value, saved: currentHomeCircleMotion() })
-  window.addEventListener(HOME_CIRCLE_MOTION_EVENT, onChange)
-  const { view } = open({ setting: 'home_circle_motion' })
-  t.after(() => {
-    view.destroy()
-    window.removeEventListener(HOME_CIRCLE_MOTION_EVENT, onChange)
-    delete window.confirm
-  })
-  assert.deepEqual(sectionsInMarkup(), ['Motion & Effects'])
-  assert.match(painted, /data-setting-id="home_circle_motion"/)
-  assert.match(painted, /data-setting-value="system"/)
-  assert.match(painted, /data-setting-value="animate"/)
-  assert.match(painted, /data-setting-value="still"/)
-  const choose = value => {
-    const button = { dataset: { settingValue: value }, closest: () => ({ dataset: { settingId: 'home_circle_motion' } }) }
-    sections.handlers.get('click')({ target: { closest: selector => selector === 'button[data-setting-value]' ? button : null } })
-  }
-  choose('animate')
-  assert.equal(currentHomeCircleMotion(), 'system')
-  assert.deepEqual(changes, [])
-  discard.handlers.get('click')()
-  assert.equal(stored.has(HOME_CIRCLE_MOTION_KEY), false)
-  assert.deepEqual(changes, [])
-  choose('animate')
-  window.confirm = () => true
-  await save.handlers.get('click')()
-  assert.equal(stored.get(HOME_CIRCLE_MOTION_KEY), 'animate')
-  assert.deepEqual(changes, [{ value: 'animate', saved: 'animate' }])
-  choose('still')
-  assert.equal(currentHomeCircleMotion(), 'animate')
-  await save.handlers.get('click')()
-  assert.equal(stored.get(HOME_CIRCLE_MOTION_KEY), 'still')
-  choose('system')
-  assert.equal(currentHomeCircleMotion(), 'still')
-  await save.handlers.get('click')()
-  assert.equal(stored.has(HOME_CIRCLE_MOTION_KEY), false)
-  assert.deepEqual(changes, ['animate', 'still', 'system'].map(value => ({ value, saved: value })))
 })
 
 test('Home color drafts save to the theme they were edited for and can be discarded', async t => {

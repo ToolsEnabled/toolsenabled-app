@@ -82,7 +82,7 @@ test('axis choice without measured rows, and with nothing that varies, stays def
 })
 
 test('a line that would join simultaneous records reports how many, and a clean series reports none', () => {
-  // An option quotes shape: many contracts quoted at the same minute.
+  // Builder 3's Option quotes shape: many contracts quoted at the same minute.
   const quoteFields = [{ name: 'contract', type: 'string' }, { name: 'quoted_at', type: 'datetime' }, { name: 'bid', type: 'number' }]
   const simultaneous = [
     { values: ['A', '2026-01-01T12:00:00Z', 1] }, { values: ['B', '2026-01-01T12:00:00Z', 2] },

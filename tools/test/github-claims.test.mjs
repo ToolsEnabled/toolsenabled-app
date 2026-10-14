@@ -2,8 +2,8 @@
  *
  * tools/check-github-claims.mjs keeps the product from ever CLAIMING it uses or
  * runs on GitHub, while leaving the published-source link and the GitHub
- * connector completely alone. The rule it enforces is stated in full at the
- * top of that file.
+ * connector completely alone. The owner's ruling it enforces is quoted in full
+ * at the top of that file.
  *
  * That guard has a failure mode this repository has been bitten by in five
  * different places already: it can go GREEN BY MEASURING NOTHING. There is no
@@ -130,7 +130,7 @@ test('the five claims the owner refuses each go red', () => {
 
 test('telling a customer their files sit on somebody else\'s service goes red', () => {
   /* Not one of the five verbs, and here on judgement: it is the Filekeeper half
-     of the rule written without the word Filekeeper. */
+     of the ruling written without the word Filekeeper. */
   assert.ok(rules('Everything you write is stored on GitHub.').has('stored-on-github'))
   assert.ok(rules('Your drafts are kept on github.com.').has('stored-on-github'),
     'the domain spelling let the claim through')
@@ -157,9 +157,9 @@ test('the internal-vcs identifier is Filekeeper for this purpose', () => {
    2b · the rules do not fire on publication, or on the connector
    --------------------------------------------------------------- */
 
-test('publication passes — the link the rule explicitly keeps', () => {
-  /* The GitHub link stays, so people know the product is open source.
-     Each of these is a sentence that stays writable. */
+test('publication passes — the link the owner explicitly keeps', () => {
+  /* "we keep the github link -> we want people to know we are open source and
+     such." Each of these is a sentence he wants to stay writable. */
   assert.deepEqual(findingsInText('The source is published at github.com/ToolsEnabled/toolsenabled.'), [])
   assert.deepEqual(findingsInText('Read the source before you install it.'), [])
   assert.deepEqual(findingsInText('ToolsEnabled is free and open source.'), [])
@@ -173,7 +173,7 @@ test('publication passes — the link the rule explicitly keeps', () => {
 })
 
 test('the connector passes — connecting a person to THEIR OWN GitHub', () => {
-  /* Connecting a person to their own GitHub account stays allowed. The
+  /* "THOUGH we still WANT to be able to connect a user to their github." The
      exemption is structural: every claim pattern requires GitHub to sit directly
      after the verb, so a GitHub the READER owns can never reach one. */
   assert.deepEqual(findingsInText('Connect your GitHub account.'), [])
@@ -231,16 +231,18 @@ test('the scan reads all three user-facing surfaces and reports what it read', (
   assert.ok(result.files.length >= 100,
     `the scan found only ${result.files.length} user-facing files, so its walk has stopped matching`)
 
-  // The help page now directs readers to downloads and says the source is
-  // private. It must remain in the scan even though it no longer names GitHub.
-  // README and the organization profile retain real GitHub mentions; the
-  // wrapped-HTML fixture above separately proves extraction of those mentions.
+  // The help page says where the source is published, on GitHub, wrapped
+  // across lines around <span> elements. The scan must read it as one passage
+  // that names GitHub, and (the last test below) find no claim in it. README
+  // and the organization profile name GitHub too.
   const named = new Set(result.mentions.map(mention => mention.file))
   assert.ok(result.files.includes('public/help/getting-started.html'),
     'the shipped help page was omitted from the scan')
   const help = passagesFrom(readFileSync(new URL('../../public/help/getting-started.html', import.meta.url), 'utf8'))
-  assert.ok(help.some(passage => /source repositories are private/i.test(passage.text)),
+  assert.ok(help.some(passage => /source code is published on GitHub/i.test(passage.text)),
     'the shipped help page no longer yields its actual source-availability wording')
+  assert.ok(named.has('public/help/getting-started.html'),
+    'the help page names GitHub where it says the source is published, and the scan no longer sees it')
   assert.ok(named.has('README.md'), 'README.md names GitHub and the scan no longer sees it')
   assert.ok(result.examined.includes('docs/github-org/profile-README.md'),
     'the org profile page is a published document and was not read')

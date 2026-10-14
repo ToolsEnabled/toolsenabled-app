@@ -1,7 +1,7 @@
 // T1174, found again 2026-09-25 by the release ratchet: after an account recovery ended
 // "Recovery paused", the successor held a retained picture it never received the handoff for,
 // and the next status notice anywhere in the tree -- first a chip's background read of the
-// Accounts policy (an earlier commit) -- reached the conversation's ready listener and sent it. These
+// Accounts policy (1cde0a3f1) -- reached the conversation's ready listener and sent it. These
 // run the actual tree image conversation (computers.js imageConversationFor) against a
 // fake host queue: a notice is not readiness while paused, Send again still sends, and a
 // node that is not paused drains exactly as before.
@@ -45,11 +45,12 @@ function mount(node) {
   const prior = globalThis.window
   globalThis.window = { mcAgent: bridge }
   const args = {
+    sessionNodeIds: new Map(),
     treeStore: { getNode: () => node }, window: globalThis.window, unsubs: [], createImageConversation,
     pendingModelChoice: () => false, pendingModelDrainHolds: new Set(),
     nodeBusy: () => false, nodeSessionEnded: () => false, nodeCleanupPending: () => false, nodeReplacementFlight: { busy: () => false },
     registerNodeStatusListener: (_id, fn) => { listeners.add(fn); return () => listeners.delete(fn) },
-    recoveryPausedNode,
+    recoveryPausedNode, recoveryCoordinator: () => null,
   }
   const api = new Function(...Object.keys(args), 'let destroyed=false;\n' + body + '\nreturn { imageConversationFor }')(...Object.values(args))
   const conversation = api.imageConversationFor(node.id)

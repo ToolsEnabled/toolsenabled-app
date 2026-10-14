@@ -96,8 +96,8 @@ const SECRET_MATERIAL_BASENAMES = new Set(['.toolsenabled-local-profile.json','s
 const SECRET_MATERIAL_EXTENSIONS = new Set(['.pem', '.key', '.pfx', '.p12', '.sqlite', '.sqlite3'])
 // A SECRET CONTAINER IS RECOGNISED BY ITS SHAPE, NOT BY THE WORD "SECRET".
 //
-// Ruling R1191: the cut makes sure no private owner information leaves it.
-// The named shapes were .env / *.pem / *.key / id_rsa /
+// Owner ruling R1191: "The cut must carefully make sure my private info does not
+// make it out period." The named shapes were .env / *.pem / *.key / id_rsa /
 // keystore.* / "secrets". Five of those six are container shapes and are matched
 // here and above. The sixth -- the bare word -- is NOT matched, and that is a
 // measurement, not an omission.

@@ -26,11 +26,11 @@ export const ROLE_COLOR_NAMES = Object.freeze({
   helper: "Coordinator’s helper", shadow: 'Shadow manager (legacy)', default: 'Default', spawned: 'Agent spawned',
 })
 export const ROLE_COLOR_THEMES = Object.freeze({
-  white: ['#f7f8fa', '#eef1f5', '#ffffff'],
-  tan: ['#f2e5bc', '#ebdbb2', '#fbf1c7'],
-  black: ['#212327', '#292b30', '#2e3136'],
-  ember: ['#170d13', '#25141d', '#301b25'],
-  cobalt: ['#0b1223', '#131e35', '#1b2943'],
+  white: ['#f5f5f7', '#fafafc', '#ffffff', '#ececec'],
+  tan: ['#f2e5bc', '#f6ebc3', '#fbf1c7', '#ece1b8'],
+  black: ['#1c1c1e', '#29292c', '#232326', '#353537'],
+  ember: ['#201a1b', '#302528', '#292022', '#3a3234'],
+  cobalt: ['#191c22', '#262e3b', '#202530', '#323641'],
 })
 const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key)
 export const validRoleColorId = id => typeof id === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(id)
@@ -152,17 +152,23 @@ export function colorContrast(a, b) {
 }
 // Keep the chosen hue; move only as far toward the theme's ink as needed.
 // A saved white/yellow/black swatch must not erase a ring or a small label.
-export function roleColorTone(color, theme = 'white', minimum = 3.5) {
+function toneOnGrounds(color, grounds, dark, minimum) {
   const chosen = normalizeRoleColor(color) || ROLE_COLOR_DEFAULTS.worker
-  const grounds = ROLE_COLOR_THEMES[theme] || ROLE_COLOR_THEMES.white
   if (grounds.every(ground => colorContrast(chosen, ground) >= minimum)) return chosen
-  const channels = rgb(chosen), target = isDarkTheme(theme) ? 255 : 0
+  const channels = rgb(chosen), target = dark ? 255 : 0
   for (let step = 1; step <= 100; step += 1) {
     const candidate = '#' + channels.map(c => Math.round(c + (target - c) * step / 100).toString(16).padStart(2, '0')).join('')
     if (grounds.every(ground => colorContrast(candidate, ground) >= minimum)) return candidate
   }
-  return isDarkTheme(theme) ? '#ffffff' : '#000000'
+  return dark ? '#ffffff' : '#000000'
 }
+export function roleColorTone(color, theme = 'white', minimum = 3.5) {
+  return toneOnGrounds(color, ROLE_COLOR_THEMES[theme] || ROLE_COLOR_THEMES.white, isDarkTheme(theme), minimum)
+}
+// A CSS light-dark() fallback must cover every surface with that color-scheme,
+// even before a theme observer can reapply the saved per-theme overrides.
+const darkFallbackTone = (color, minimum) => toneOnGrounds(color,
+  Object.entries(ROLE_COLOR_THEMES).filter(([theme]) => isDarkTheme(theme)).flatMap(([, grounds]) => grounds), true, minimum)
 
 let currentColors = Object.create(null)
 let currentTheme = 'white'
@@ -173,10 +179,10 @@ export function roleColorCss(id, kind = 'accent', nodeId = null) {
   const key = validRoleColorId(id) ? id : 'default'
   if (colorNodeId(nodeId)) {
     const minimum = kind === 'text' ? 4.5 : 3.5
-    const tone = theme => roleColorTone(defaultAgentColor(nodeId, theme), theme, minimum)
+    const tone = theme => theme === 'black' ? darkFallbackTone(defaultAgentColor(nodeId, theme), minimum) : roleColorTone(defaultAgentColor(nodeId, theme), theme, minimum)
     // Only an explicit saved role choice overrides a node's own default.
     // CSS variables let existing circles follow Save/Reset and theme changes;
-    // tan and charcoal are the most demanding light and dark grounds.
+    // Tan covers the light grounds; the dark fallback covers all three dark themes.
     return `var(--role-chosen-${kind === 'text' ? 'text' : 'accent'}-${key}, light-dark(${tone('tan')}, ${tone('black')}))`
   }
   // Separate prefixes, not suffixes: a valid custom ID such as "worker-text"
@@ -184,9 +190,9 @@ export function roleColorCss(id, kind = 'accent', nodeId = null) {
   // also keep their own default, independent of the legacy Default override.
   if (!has(ROLE_COLOR_DEFAULTS, key)) {
     const color = defaultRoleColor(key), minimum = kind === 'text' ? 4.5 : 3.5
-    // Tan and charcoal are the most demanding light/dark surfaces. CSS
-    // follows color-scheme immediately, including existing painted circles.
-    const fallback = `light-dark(${roleColorTone(color, 'tan', minimum)}, ${roleColorTone(color, 'black', minimum)})`
+    // Keep the Tan light fallback; cover every dark theme before root variables
+    // exist. Saved/current-theme root variables still take precedence.
+    const fallback = `light-dark(${roleColorTone(color, 'tan', minimum)}, ${darkFallbackTone(color, minimum)})`
     return `var(--role-${kind === 'text' ? 'text' : 'accent'}-${key}, ${fallback})`
   }
   return kind === 'text'

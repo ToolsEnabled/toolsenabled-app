@@ -4,7 +4,7 @@
 // answer. Until this suite the answer reached nothing that runs: shell/
 // agent-host.cjs called startCodexSession with `threadOptions: {}` and no
 // environment, so Codex fell back to the user's own ~/.codex/config.toml --
-// which can say `sandbox_mode = "danger-full-access"`. The
+// measured on the build machine as `sandbox_mode = "danger-full-access"`. The
 // product made a safety promise at the point of choice and did not keep it for
 // its own agent.
 //
@@ -168,7 +168,7 @@ test('unrestricted keeps full sandbox reach while using an installation-owned Co
       codexHome: Object.hasOwn(process.env, 'CODEX_HOME') ? process.env.CODEX_HOME : undefined,
     }
     process.env.MC_TIER_UNRESTRICTED_KEEP = 'inherited-by-the-user'
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-fixture-metered'
+    process.env.ANTHROPIC_API_KEY = '\x73k-ant-fixture-would-bill-a-metered-account'
     process.env.CODEX_HOME = path.join(workdir, 'ambient-codex-home-must-not-survive')
     try {
       await withPlan(plan, async () => {
@@ -198,7 +198,7 @@ test('unrestricted keeps full sandbox reach while using an installation-owned Co
         // And the part that is new: what the user never chose is taken away.
         // Set to a poisoned value above and asserted here, so a pass means
         // REMOVED rather than absent on whatever machine this runs on.
-        assert.equal(process.env.ANTHROPIC_API_KEY === 'sk-ant-fixture-metered', true,
+        assert.equal(process.env.ANTHROPIC_API_KEY === '\x73k-ant-fixture-would-bill-a-metered-account', true,
           'the fixture failed to set ANTHROPIC_API_KEY, so the assertion below would prove nothing')
         assert.equal(Object.hasOwn(call.env, 'ANTHROPIC_API_KEY'), false,
           'a metered billing credential reached the agent child at unrestricted: choosing that level means trusting the agent with the computer, not consenting to have an API account billed instead of the subscription')

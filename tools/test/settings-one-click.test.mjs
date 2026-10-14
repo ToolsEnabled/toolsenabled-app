@@ -1,7 +1,7 @@
 /* THE ONE-PRESS PASS, HELD TO ITS OWN SAFETY ARGUMENT.
  *
- * The ask (first outside user): make more things one click. The boundary
- * (legal architecture): the unrestricted risk gate and
+ * The ask (first outside user, via the owner): "Can we make anything more one
+ * click". The boundary (legal architecture): the unrestricted risk gate and
  * the consent surfaces are never one-clicked past. So every press this lane
  * added is tested for BOTH halves: it does its whole job in one press, and it
  * cannot reach anything a consent surface guards.
@@ -163,7 +163,7 @@ test('the choice cards use native buttons and the shared selection handlers', ()
 })
 
 test('the review carries the quick standing-requests brief, scoped as the skills define', () => {
-  /* Rule: a QUICK brief about /Request in setup. One card on the
+  /* Owner, 2026-08-19: a QUICK brief about /Request in setup. One card on the
      review, not a step. Each scope sentence was verified against the request
      skills' own SKILL.md files rather than remembered; these pins hold the
      four scope truths and the single concrete example. */
@@ -187,15 +187,15 @@ test('the review carries the quick standing-requests brief, scoped as the skills
 })
 
 test('the review card teaches the two spoken conventions and links the guide', () => {
-   /* Alongside the /Request information, the card hands the person
-     a line such as asking the agent to use ToolsEnabled, and both user and
-     agent always know about /Request. The card
+  /* Owner, 2026-08-19, verbatim: "with the /request info we should also hand
+     them a line like 'ask the agent to use toolsenabled!'" and "i think both
+     user and agent probably need to know about /request always." The card
      stays QUICK — these pins hold the two lines and the door to the longer
      story, not a sixth paragraph. */
   const source = readFileSync(path.join(ROOT, 'src', 'views', 'setup.js'), 'utf8')
   const card = source.slice(source.indexOf('function requestBriefMarkup'), source.indexOf('function reviewMarkup'))
   assert.ok(card.includes('use ToolsEnabled and'),
-    'the tip is gone: the card must teach saying "Ok, use ToolsEnabled and …" to point an agent at this computer\'s tools')
+    'the owner\'s tip is gone: the card must teach saying "Ok, use ToolsEnabled and …" to point an agent at this computer\'s tools')
   assert.ok(card.includes('right in the chat box'),
     'the card stopped saying /Request works right in the chat box, where the person already talks to the agent')
   /* THE DOOR, BY THE CONSTANT RATHER THAN BY ITS SPELLING. The longer story
@@ -277,7 +277,7 @@ test('the recommended-answers press never writes the rule switch, or any install
       `${file} names the three-way rules choice that superseded the switch; nothing on the one-press path may`)
     assert.ok(!source.includes('rules.ask_when_unsure') && !source.includes('ask_when_unsure'),
       `${file} names the rule switch's nested sub-setting; nothing on the one-press path may`)
-    /* And the second sub-setting: whether an agent's
+    /* And the second sub-setting (owner, 2026-09-02): whether an agent's
        filing waits for the person is the person's choice alone. */
     assert.ok(!source.includes('rules.agent_filed_needs_approval') && !source.includes('agent_filed_needs_approval'),
       `${file} names the rule switch's approval sub-setting; nothing on the one-press path may`)

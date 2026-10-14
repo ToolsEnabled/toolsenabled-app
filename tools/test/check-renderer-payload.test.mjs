@@ -53,8 +53,8 @@ test('check-renderer-payload still accepts the healthy authored payload', () => 
  *
  * `operator` already kept files out of the payload, but it means "somebody's
  * private document", and the subscription price catalog is nobody's private
- * document -- it is a product surface ruled out of the launch (R1214: no
- * payments are collected at first public launch). It shipped
+ * document -- it is a product surface the owner ruled out of the launch
+ * (R1214: "we are NOT collecting payments at first public launch"). It shipped
  * because public/ ships by default, and #/subscribe and #/pricing rendered a
  * Team price and a three-seat minimum out of it. `withheld` is the record of
  * that decision, and these two tests are what makes the record load-bearing

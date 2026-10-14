@@ -70,7 +70,7 @@
 .tree-agent-notice .tree-agent-continue { border-color: var(--c-coordinator); margin-right: 6px; }
 /* THE POP-UP HAD NO LAYOUT AT ALL, so its two labelled selects and its two
    buttons flowed as inline content and wrapped wherever the panel ran out of
-   room. Measured on screen at an earlier commit and still at an earlier commit: "Program and
+   room. Measured on screen at 798ce265 and still at 4ad57e6b: "Program and
    model [select] Effort" ended one line and "[select] [Open agent tab]
    [Cancel]" began the next, which puts the word Effort beside the program
    control and the effort control beside the buttons. A person reads a label
@@ -80,11 +80,12 @@
 .tree-agent-notice { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .tree-agent-notice p { margin: 0; }
 .tree-agent-spawn-field { display: flex; flex-direction: column; gap: 4px; }
+.tree-agent-spawn-field[hidden] { display: none; }
 .tree-agent-spawn-field > span { color: var(--ink-2); }
 .tree-agent-spawn-select { width: 100%; padding: 5px 6px; border: 1px solid var(--line-2); border-radius: 3px; background: var(--sheet); color: var(--ink); font: inherit; }
 .tree-agent-notice-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
-/* PROVIDER, THEN MODEL, ON ONE ROW (1.0.48, owner decision:
-   provider first, then model). Side by side the two menus cost the one row the single
+/* PROVIDER, THEN MODEL, ON ONE ROW (1.0.48, owner: "it should be provider,
+   then model choice"). Side by side the two menus cost the one row the single
    model menu cost before; stacked, they would push the buttons down a line in
    a pop-up that opens over the canvas. 2fr/3fr because the words are that
    uneven: a provider is one short word, a model row reads "Opus (latest) ·

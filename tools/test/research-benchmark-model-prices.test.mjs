@@ -7,8 +7,8 @@ import { priceTableIdentity, priceTermsFor, validatePriceTable } from '../../src
 // R1220. The committed table is the only place a rate may come from. These tests never reach a
 // network and never assert that a rate is correct pricing: they assert the table says what it was
 // read to say, that every derivation from it is refusable, and that a missing fact is never
-// silently worth zero. Real rates were compiled from the providers' official pages; the fixture
-// below is SYNTHETIC.
+// silently worth zero. Real rates were compiled by Worker 5 from the providers' official pages
+// (evidence/manager-45-20260910/R1220/PRICE-SOURCES.json); the fixture below is SYNTHETIC.
 const table = JSON.parse(await readFile(new URL('../../src/benchmark/model-prices.json', import.meta.url), 'utf8'))
 
 const cite = { url: 'https://example.invalid/pricing', retrievedAt: '2026-09-11', contentSha256: 'f'.repeat(64), quote: 'synthetic' }

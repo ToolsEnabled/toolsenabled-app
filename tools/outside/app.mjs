@@ -1,9 +1,10 @@
 /* DRIVING THE APP FROM OUTSIDE: press its buttons, read its screen, collect
  * its errors.
  *
- * An agent may be allowed to press buttons from outside the app, as a setting
- * rather than a standard, with clean modules for testing -- this is the
- * development and test suite. So this is a library, not a script: one function
+ * Owner, 2026-09-02: "the version on my computer SHOULD allow you an agent to
+ * touch buttons from the outside and this should be a setting not a standard.
+ * ... make CLEAN modularizations for testing. This is essentially our
+ * development and test suite". So this is a library, not a script: one function
  * to find the running app (listPages), one to attach to it (openApp), and a
  * driver whose every action is a named method tested against a fake protocol
  * client in tools/test/outside-driver.test.mjs. The command line in cli.mjs is

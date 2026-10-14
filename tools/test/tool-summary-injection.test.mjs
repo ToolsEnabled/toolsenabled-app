@@ -1,6 +1,6 @@
 // DOES THE STANDARD TOOL NOTE ACTUALLY REACH THE SESSION -- BOTH WAYS.
 //
-// The requirement: agents must be told what tools exist here without
+// The owner's requirement: agents must be told what tools exist here without
 // the person teaching each one by hand, as a standard note with a setting to
 // turn it off. The engine side (derivation from the measured surface, the
 // token budget, the agent.tool_summary registry row) is proved by the engine

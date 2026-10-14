@@ -1,7 +1,7 @@
 /* STOP AND RESTART ARE ALSO "BY THE ONE ABOVE IT".
  *
- * Agents can delete, start and restart the agents under them. Three verbs,
- * one word: UNDER. The removal rule
+ * Owner, 2026-09-03: "THE AGENTS NEED TO BE ABLE TO DELETE AND START AND
+ * RESTART AGENTS UNDER THEM". Three verbs, one word: UNDER. The removal rule
  * (src/agent-removal-rule.js, executeRemoveNode) reads where the asker stands
  * from the session the application bound and refuses a circle that is not
  * below it. The stop and restart routes in runTreeNodeCommand read nothing of

@@ -1,5 +1,5 @@
 /* The home screen cannot contradict itself, repeat itself, or talk like a
- * README. Those are the three reported defects, and this file is what
+ * README. Those are the three defects the owner reported, and this file is what
  * stops each of them coming back.
  *
  * WHY THE INVARIANTS ARE WALKED EXHAUSTIVELY RATHER THAN SAMPLED.
@@ -107,7 +107,7 @@ test('three runs that all failed are not reported as three runs that are fine', 
 
   /* THE FAILURE IS STATED ON EACH ROW, NOT IN A PARAGRAPH UNDER THE LIST. The
      footer that used to carry "none of them started" is gone on every healthy
-     record (it added nothing there), so the
+     record (owner: "this little dialog box is kind of pointless"), so the
      row's own verdict is the whole of the statement and the footer is null --
      never the reassuring integrity sentence. */
   assert.equal(view.panel.footer, null, 'a healthy record grew a footer paragraph again')
@@ -195,7 +195,7 @@ const PEER_INPUTS = [
 ]
 
 /* The last five carry `undelivered`: decisions the owner already made whose
-   answer came back refused after they had navigated off #/approvals (see
+   answer came back refused after he had navigated off #/approvals (see
    src/approval-outcomes.js). They are in the reachable matrix, not in a test of
    their own, because that row has to satisfy the SAME rules as every other row
    on this screen -- no contradiction, no near-duplicate, no fourth line under
@@ -283,7 +283,7 @@ const SUBJECTS = [
       /running in a browser/i,
     ],
   },
-  /* THE THIRD SUBJECT, AND IT IS THE ONE THAT WAS REPORTED. "This is the only
+  /* THE THIRD SUBJECT, AND IT IS THE ONE THE OWNER REPORTED. "This is the only
      computer connected" used to be the first screen's only sentence carrying
      that word, and it meant the LAN fleet, on a screen a person reaches minutes
      after being asked on the website to connect a computer. The row is an
@@ -312,7 +312,7 @@ test('no reachable home screen states both sides of the same fact', () => {
 })
 
 /* NEAR-duplicates count, and this is not a refinement -- it is the defect
- * itself. What the screen showed was "No local agent fleet host detected on
+ * itself. What the owner was shown was "No local agent fleet host detected on
  * this machine" printed TWICE, and the first version of this rewrite put "No
  * agent has run here yet" in the hero next to "No agents have run here yet" in
  * the panel, which an exact-match check waves straight through and a person
@@ -386,7 +386,7 @@ test('no reachable home screen states more than three facts under the ring', () 
    2. It is written for a person.
    ------------------------------------------------------------------ */
 
-/* Verbatim from the screen that was shown, plus the rest of the register
+/* Verbatim from the screen the owner was shown, plus the rest of the register
    it came from. Each of these names a mechanism rather than a thing a person
    has. */
 const INTERNAL_VOCABULARY = [
@@ -408,8 +408,8 @@ const INTERNAL_VOCABULARY = [
   /\bfleet host\b/i,
 ]
 
-/* The punctuation of a technical document. It was named directly: symbols in
-   the writing that make it read like a README. */
+/* The punctuation of a technical document. The owner named this directly:
+   "What is with all the symbols in the writing thats a readme". */
 const README_PUNCTUATION = [
   ['·', 'interpunct used as a separator'],
   ['…', 'ellipsis'],
@@ -520,7 +520,7 @@ const DELIBERATELY_SILENT = new Set()
 
 /* WHY A REFUSED RUN NOW SAYS WHY, AND WHY IT SOMETIMES STILL DOES NOT.
  *
- * The report: "Activity on this computer" showed "Agent run 37 -
+ * The owner's report: "Activity on this computer" showed "Agent run 37 -
  * started" or "did not start" and a relative time, and nothing else. The record
  * held more than that the whole time -- the shell writes a bare refusal code
  * beside every refused outcome and readLocalSessions dropped it on the floor.
@@ -587,11 +587,12 @@ test('a run names its agent and its brief when they were saved, and degrades to 
 })
 
 /* ==================================================================
-   THE CONTEXT FLOW. On the installed build, page 1 is a context flow of all the
-   agents, showing their outputs cleanly. What it showed was a row per run carrying a number, a
+   THE CONTEXT FLOW. The owner, on the installed build: "on page 1 this is
+   supposed to be a context flow of all the agents and such we want to see their
+   outputs cleanly." What he was shown was a row per run carrying a number, a
    verb and a relative time.
 
-   It could not have shown an output however long they waited. The join read
+   It could not have shown an output however long he waited. The join read
    `role` and `message` off the saved node and stopped, and `reply` -- the field
    that exists on that node so a screen can show what the agent answered -- was
    never read by either of the two readers of that record. These tests are what
@@ -616,7 +617,7 @@ const SAVED = (over = {}) => new Map([['chat-a', {
 test('a run shows what the agent said back, from the field the answer was kept on', () => {
   const said = describeRun(RUN(), SAVED({ reply: 'Checked in with the coordinator and started on the log.' }), NOW)
   assert.equal(said.said, 'Checked in with the coordinator and started on the log.',
-    'the answer the node kept is not on the row; this is the report, unfixed')
+    'the answer the node kept is not on the row; this is the owner’s report, unfixed')
   assert.equal(said.asked, 'Assist the coordinator and check in first.')
   assert.equal(said.agent, 'helper')
   assert.equal(said.gap, '', 'a run that answered was told it had not')
@@ -780,7 +781,7 @@ test('no run claims a duration or a finished state, because no ending is recorde
     nowMs: NOW,
   })
   /* And the list no longer explains the omission in a paragraph under itself:
-     that paragraph added nothing, and it is gone on every record
+     the owner called that paragraph pointless, and it is gone on every record
      that checks out. No sentence on the screen claims a length either way. */
   assert.equal(view.panel.footer, null, 'a healthy record grew a footer paragraph again')
   for (const sentence of view.statements) {
@@ -1032,8 +1033,8 @@ test('what the local record proves is stated exactly, and its failure is not hid
   })
   /* A RECORD THAT CHECKS OUT SAYS NOTHING. The integrity sentence used to sit
      under every healthy list; it was read as a statement about the agents (it
-     once sat under three runs that all refused to start), and on a healthy
-     record the whole paragraph added nothing.
+     once sat under three runs that all refused to start), and the owner,
+     reading the whole paragraph: "this little dialog box is kind of pointless".
      So the footer is null on a healthy record, and only a record that NO
      LONGER checks out speaks. */
   assert.equal(intact.panel.footer, null, 'a healthy record grew a footer paragraph again')
@@ -1280,7 +1281,7 @@ test('one card: every row folds, remembers, and the example goes through the sam
   /* THE SUBSCRIPTION DOOR IS GONE FROM THIS SCREEN, and these assertions now
      hold it gone. They used to pin its disabled-plus-reason rendering, which
      was the right contract for a control that must exist and cannot succeed.
-     The app does not advertise subscriptions --
+     Owner, 2026-08-26: "i dont want to advertise subscriptions in the app" --
      and payments do not open during public beta, so it was never a hold with a
      date behind it. COPY.subscribeDoor stays defined: the /subscribe view
      still uses it to refuse honestly for anyone who reaches that route. */
@@ -1289,8 +1290,8 @@ test('one card: every row folds, remembers, and the example goes through the sam
 })
 
 test('the scrollbar is hidden and the region still scrolls', () => {
-  /* The scroll bar is not visible, and scrolling still works. Hidden on the one
-     scroll region, and the region keeps
+  /* Owner (verbatim): "i would want to scroll bar gone (not visible, it can
+     still function)". Hidden on the one scroll region, and the region keeps
      overflow-y: auto so wheel, touch and keys still move it. */
   const log = HOME_CSS.slice(HOME_CSS.indexOf('.home .session-log {'), HOME_CSS.indexOf('.home .session-log:focus-visible'))
   assert.match(log, /scrollbar-width: none/, 'the scrollbar is visible again')
@@ -1373,7 +1374,7 @@ test('a record is re-read only when the stream says that record changed', () => 
  * src/session-roles.js was extracted from this view's own savedConversations()
  * for the metrics page, nine hours after this screen shipped its own. The two
  * were byte-identical and this screen was never switched over, so a widening of
- * either one silently missed the other -- and the widening asked for
+ * either one silently missed the other -- and the widening the owner asked for
  * is exactly this one. */
 test('the view reads the shared conversation reader and keeps no private copy', () => {
   const body = code(HOME_JS)
@@ -1417,7 +1418,7 @@ test('the home view renders the decision rather than composing its own copy', ()
   assert.match(code(HOME_JS), /view\.composer/, 'and whether the composer exists at all')
 })
 
-test('the objected-to wording is gone from the code, not merely unused', () => {
+test('the wording the owner objected to is gone from the code, not merely unused', () => {
   const banned = [
     /Read-only projection/i,
     /audited bridge/i,
@@ -1466,17 +1467,6 @@ test('no placeholder character stands in for a value the home view does not have
       assert.ok(!facts.textContent.includes(character), name + ': ' + label + ' in the facts')
     }
   }
-})
-
-test('the clock is hidden rather than dashed when there is nothing to count', () => {
-  /* The circle's clock shows the person's local time, so the
-     digits are hidden exactly when the clock is switched off in quick settings. */
-  assert.match(code(HOME_JS), /digitsEl\.hidden = (?:true|!on)\b/, 'the view hides the digits')
-  assert.match(
-    HOME_CSS,
-    /\.uring-digits\[hidden\]\s*\{[^}]*display:\s*none/,
-    'and the stylesheet makes hidden win against the flex display, or the digits stay visible',
-  )
 })
 
 test('home suppresses the floating notice that produced the contradictory pair', () => {
@@ -1562,8 +1552,8 @@ test('the sentence about other computers is a link, in every state where it is a
 
 /* ---- THE ROW THE OWNER COULD NOT FIND A DOOR FROM ---------------------------
  *
- * After signing up, a user could not see how to connect their computer.
- * Three scouts converged on the same finding: the connect screen
+ * "as a user I dont even see how after signing up that I now connect my
+ * computer." Three scouts converged on the same finding: the connect screen
  * exists, works end to end, and had no caller anywhere in src/. The home row
  * that mentioned a second computer led to the guide, whose account content is
  * about Codex and Claude folders and which states in as many words that

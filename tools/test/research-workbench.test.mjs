@@ -8,10 +8,10 @@ import { createResearchRegistry, RESEARCH_MODULE_STORE_KEY } from '../../src/res
 const ROOT = resolve(import.meta.dirname, '..', '..')
 const read = path => readFileSync(resolve(ROOT, path), 'utf8')
 
-/* The amendment: the research page is not a chat window. Research workers
-   still spawn on tree nodes; the research page is for researchers to set up
-   experiments quickly and easily and see the results. The first test makes
-   that a fence, not a memory. */
+/* The owner's amendment, verbatim: "I dont want the research page to be a
+   chat window. Research workers still spawn on tree nodes, the research page
+   is for researchers ... to quickly and easily set up experiments and see
+   the results." The first test makes that a fence, not a memory. */
 
 test('the research page has no chat surface', () => {
   const view = read('src/views/research.js')
@@ -90,8 +90,8 @@ test('the workbench mounts the metrics layout engine with its own keys', () => {
 
 /* RE-AIMED with the source-axis cutover. This clause used to anchor
    isLiveView('research') and the per-view flag's register rows — the exact
-   machinery the rule (every simulated page IS the UI page, with mock data)
-   removed. What it guards now is the rule itself: ONE render
+   machinery the owner's ruling ("all simulated pages ARE the UI pages, just
+   mock data") removed. What it guards now is the ruling itself: ONE render
    path whose inputs come from the one source axis (src/data-source.js), a
    mock verdict that is badged as the example, and a page that re-resolves
    when the host says the world changed instead of trusting a stale verdict.

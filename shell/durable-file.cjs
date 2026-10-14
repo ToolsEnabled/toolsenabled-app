@@ -8,7 +8,7 @@
  * IPC reply, no window paint and no tree timer can run, on a machine whose
  * disk is shared with every agent this application starts.
  *
- * MEASURED 2026-09-03 (Node 22 on Windows, a development machine under
+ * MEASURED 2026-09-03 (node v22.14.0, Windows 10, 8 cores, this machine under
  * its normal agent load; tools/ipc-sync-io-bench.mjs, three runs, main-thread
  * block per call, average and p99, worst and best run):
  *

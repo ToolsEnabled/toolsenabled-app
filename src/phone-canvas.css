@@ -8,9 +8,9 @@
  * be moved by a single declaration below. tools/test/phone-canvas.test.mjs
  * fails if any selector here loses the attribute.
  *
- * THE THEME IS NOT NEGOTIABLE HERE. The look and design around that
- * functionality is largely open, but it strictly agrees with the theme. So
- * every colour, radius, space, font and letter-spacing below is a
+ * THE THEME IS NOT NEGOTIABLE HERE. The owner: "the look and design around
+ * that functionality is largely open except it must strictly agree with the
+ * theme". So every colour, radius, space, font and letter-spacing below is a
  * token — var(--ink*), var(--line*), var(--sheet), var(--s1..5),
  * var(--r-sm/md/lg), var(--font-ui/mono), var(--elev-3), var(--track-caps).
  * There is not one new hex value, not one new radius and not one invented
@@ -272,22 +272,6 @@ html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) > #stage {
   align-items: center;
   gap: var(--s2);
 }
-[data-phone-canvas="on"] .acct-limits {
-  min-width: 0;
-  grid-template-columns: minmax(0, 1fr);
-}
-/* The desktop limit row's fixed side columns exceed a compact phone at
-   Large text. Put each slider below its own name and value. */
-[data-phone-canvas="on"] .acct-limit {
-  min-width: 0;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-[data-phone-canvas="on"] .acct-limit-name { grid-area: 1 / 1; }
-[data-phone-canvas="on"] .acct-limit-figure { grid-area: 1 / 2; }
-[data-phone-canvas="on"] .acct-slider {
-  grid-area: 2 / 1 / auto / -1;
-  min-width: 0;
-}
 [data-phone-canvas="on"] .research-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -379,24 +363,7 @@ html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) > #stage {
   padding-inline: var(--s4);
 }
 
-/* The corona's transparent padding belongs to the decorative stage, not to
-   the home scroller. Voice remains outside that stage and can grow normally. */
 [data-phone-canvas="on"] .home { grid-template-columns: minmax(0, 1fr); }
-[data-phone-canvas="on"] .home-ring-wrap { min-width: 0; grid-template-columns: minmax(0, 1fr); }
-[data-phone-canvas="on"] .home-ring-stage { contain: paint; }
-[data-phone-canvas="on"] .home-ring-stage .uring {
-  width: min(100%, 320px) !important;
-  height: auto !important;
-  aspect-ratio: 1;
-}
-[data-phone-canvas="on"] .home-ring-stage .uring > svg { width: 100%; height: auto; }
-/* The visible rim is inset from the SVG box to leave room for its glow.
-   Keep the readout within that circle, including enlarged text on 320px
-   phones. Compact separators leave more space for the actual time values. */
-[data-phone-canvas="on"] .home-ring-stage .uring-inner { width: 75%; }
-[data-phone-canvas="on"] .home-ring-wrap .uring-digits .n-stack { font-size: 9.5cqw; }
-[data-phone-canvas="on"] .home-ring-wrap .uring-digits .colon { font-size: 6cqw; padding: 0; }
-[data-phone-canvas="on"] .home-ring-wrap .uring-digits .u { font-size: clamp(9px, 3.4cqw, 11px); }
 /* A native Safari select must not widen its label's row on a narrow phone. */
 [data-phone-canvas="on"] .voice-contact label {
   display: grid;
@@ -473,8 +440,8 @@ html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) > #stage {
 /* THE BAR STACKS, BECAUSE 52 FIXED PIXELS CANNOT HOLD THREE JOBS AT 390.
    The desktop bar is one 52px flex row -- name, the trees strip, the tool
    chips -- and on a phone those three fought for the same line: the strip's
-   chips drew UNDER and OVER the Start control (measured on a phone: chips
-   overlapping Start tree). Each job now takes its
+   chips drew UNDER and OVER the Start control (measured on the owner's own
+   phone, 2026-08-27, chips overlapping Start tree). Each job now takes its
    own full row: the name first, the controls a person presses second, the
    strip of trees third with its own sideways scroll. Height goes auto; the
    canvas below simply starts lower, which the slot's own flex absorbs. */
@@ -694,8 +661,8 @@ html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) > #stage {
 [data-phone-canvas="on"][data-phone-shape="landscape"] .phone-sheet-card {
   height: 100%;
 }
-/* THE PULL-UP ITSELF. The chat surface pulls up cleanly and easily; it is the
-   most important page. A sheet that is
+/* THE PULL-UP ITSELF. Owner, twice: the chat surface "needs to pull up super
+   clean and easy ... this is actually the pinnacle page". A sheet that is
    bottom-anchored, rounded only at the top and travelling its own height is the
    grammar every phone already taught; the previous 24px keyframe nudge read as
    a popup appearing, and could not play at all on the way out because `hidden`
@@ -1239,51 +1206,8 @@ html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) > #stage {
 [data-phone-canvas="on"] .phone-sheet-body .chat {
   position: static;
 }
-
-/* THE ACCOUNT RETRY CONTROLS TAKE ONE ROW ON A PHONE. an earlier commit put them under
-   the chat; stacked, they took about 236px of the sheet and squeezed the chat
-   to nothing at 568px tall (providers-qa Page 2 harness: chatNotSquashed).
-   One scrollable row of 44px targets leaves the chat its room, and the long
-   explanation stays on the desktop rail. The checkboxes' own boxes take the
-   target's height (noSquashedControls reads the input, not its label) and keep
-   section 2's width; Chromium paints the largest centred square that fits, so
-   the drawn square keeps the size section 2 chose for it. Every minimum still
-   comes from section 2's one floor rule; these rules only set heights. */
-[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls {
-  flex: none;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: var(--s2);
-  max-height: calc((var(--s5) + var(--s4) + var(--s1) + var(--s2)) / var(--zoom, 1));
-  overflow: auto;
-  touch-action: pan-x pan-y;
-  padding: 0 var(--s2);
-}
-[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls > *,
-[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls .ctl-row {
-  flex: none;
-  margin: 0;
-  white-space: nowrap;
-}
-[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls .ctl-row {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: var(--s2);
-}
-[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls > .is-dim {
-  display: none;
-}
 /* The floor already makes the summary 44px tall; one line of that height
    centres its words and keeps the disclosure marker. */
-[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls summary {
-  line-height: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1));
-}
-[data-phone-canvas="on"] .phone-sheet-body .account-retry-controls label > input[type="checkbox"]:not([hidden]) {
-  height: calc((var(--s5) + var(--s4) + var(--s1)) / var(--zoom, 1)) !important;
-  margin-block: 0;
-}
 
 /* ------------------------------------------------------------------
    8. THE PHONE LEDGER. The tree as rows, behind ITS OWN second gate.
@@ -1516,8 +1440,8 @@ html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) > #stage {
   color: var(--ink-2);
   font: 400 13px/1.5 var(--font-ui);
 }
-/* THE SIGN-IN DOOR (routing law, final rule: the house mark, one sentence,
-   sign in, nothing else). Fills the ledger's own scroller in
+/* THE SIGN-IN DOOR (routing law, owner's final ruling: "house mark, one
+   sentence, sign in, nothing else"). Fills the ledger's own scroller in
    place of rows -- src/phone-ledger.js swaps buildSignInDoor() in for the
    row list, never both at once -- so it needs no display:none pairing with
    the row rules above it. Centered rather than left-aligned like the rows:
@@ -1933,19 +1857,6 @@ html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) > #stage {
   font: 400 22px/1 var(--font-ui);
 }
 
-/* The small phone dial changes value atomically. Overlapping crossfaded
-   numerals are hard to read during every second's tick on the narrow dial. */
-[data-phone-canvas="on"] .home-ring-wrap .uring-digits .n {
-  transition: none;
-  transform: none;
-}
-[data-phone-canvas="on"] .home-ring-wrap .uring-digits .n.next {
-  opacity: 1;
-}
-[data-phone-canvas="on"] .home-ring-wrap .uring-digits .n.out {
-  opacity: 0;
-}
-
 /* Home activity keeps its native disclosure and gives each summary field
    room on phones: identity, brief, then status and time. */
 [data-phone-canvas="on"] .home .home-run .run-head {
@@ -2083,5 +1994,16 @@ html[data-phone-canvas="on"] body:has(> .fleet-profile-notice) > #stage {
    !important, and at 12px/1 the natural height was 40px BEFORE this change --
    already under that floor. 36px is still under it. The padding is internal
    slack beneath an !important floor, and it only ever shrank. */
+/* Preserve the compact top strip when generic narrow-window clearance grows. */
+html[data-phone-canvas="on"] body[data-navigation="top"] {
+  --navigation-top-clearance: var(--navigation-top-compact-clearance);
+  --navigation-top-backdrop: var(--navigation-top-compact-backdrop);
+}
+html[data-phone-canvas="on"] body[data-navigation="top"] .topbar { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+html[data-phone-canvas="on"] body[data-navigation="top"] .phone-home-link {
+  min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+  text-align: center; line-height: 1.3;
+}
+html[data-phone-canvas="on"] body[data-navigation="top"] .phone-home-link:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 [data-phone-canvas="on"] .topbar:has(.first-use-launch:not([hidden])) { grid-template-columns: auto minmax(0, 1fr) auto; }
 [data-phone-canvas="on"] .topbar:has(.first-use-launch:not([hidden])) .phone-home-link { display: block; overflow: hidden; text-overflow: ellipsis; text-align: center; padding: var(--s3) var(--s1); }

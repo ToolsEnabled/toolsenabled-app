@@ -20,8 +20,8 @@
  * grid whose `align-content` is left at `normal` STRETCHES auto rows to fill the
  * box — so every one of those four rows absorbed a quarter of the surplus. At
  * 1920 that put ~80px between a heading, a button and two status lines that
- * together need about 90px, which showed as large dead gaps.
- * `align-content: start` is the whole fix: the column keeps its
+ * together need about 90px, which is the "large dead gaps" in the owner's
+ * screenshot. `align-content: start` is the whole fix: the column keeps its
  * height, the rows keep theirs, and the difference is left at the bottom where
  * empty space belongs.
  *

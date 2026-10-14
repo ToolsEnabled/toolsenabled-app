@@ -1,6 +1,6 @@
 /* CTRL+V, IMAGE TO THE AGENT -- ON THE AGENT'S OWN PAGE.
  *
- * Reported: pasted images still did not work. Measured
+ * The owner, verbatim (2026-09-07): "pasted images still dont work". Measured
  * cause covered by this file: src/views/computers.js was the ONLY caller that
  * passed `onPasteAttachment`, and components.js attaches its paste listener
  * only when that callback exists. The agent page mounts a LIVE composer -- it
@@ -113,7 +113,7 @@ test('an image pasted on the agent page reaches the bridge with that agent\'s li
   const calls = []
   const onPaste = makeAgentPaste({
     sessionId: 'live-session-7',
-    pasteAttachment: async request => { calls.push(request); return { ok: true, path: 'C:\\fake\\pasted.png', size: 3 } },
+    pasteAttachment: async request => { calls.push(request); return { ok: true, path: '\x43:\\fake\\pasted.png', size: 3 } },
   })
   const fixture = mount(onPaste)
   fixture.input.dispatch('paste', { clipboardData: { items: [imageClipboardItem('image/png', [1, 2, 3])] } })

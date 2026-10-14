@@ -1,6 +1,6 @@
 /* THE DECLARED ORGANISATION'S OWN ROLES MUST NOT DEGRADE TO "Default"/"Agent".
  *
- * Measured, and re-measured against this commit: the
+ * Measured by Builder 4, re-measured against this commit by Controller 3: the
  * organisation's declared Role library (ENGINE_ROLES in
  * src/orchestration-controls.js) has nine roles with their own colours and
  * names in ROLE_COLOR_NAMES/ROLE_COLOR_DEFAULTS (src/role-colors.js), but

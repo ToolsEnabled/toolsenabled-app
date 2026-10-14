@@ -1,6 +1,6 @@
-# Agent voice, browser and screen controls
+# Agent voice, browser, screen and video controls
 
-On the Computers page (Page 2), press the microphone icon on an agent bubble to select its running session. The Voice & screen access panel opens with that contact selected. Start voice begins the microphone connection; selecting another contact during a call switches that connection. Voice continues when you move between pages.
+On the Computers page (Page 2), press the microphone icon on an agent bubble to select its running session. The Voice, screen & video panel opens with that contact selected. Start voice begins the microphone connection; selecting another contact during a call switches that connection. Voice continues when you move between pages.
 
 Open **Settings → App permissions → Computer control**, or use the same control on Page 2. Choose **All running agents** to include every eligible agent currently running in this local window, or **Only selected agents** to search and choose specific agents. Press **Enable computer control** (or **Update allowed agents**). Editing the choice alone does not grant access. Updating replaces the allowed set; new agents started afterward need another update.
 
@@ -24,6 +24,48 @@ Screen takeover requires the Unrestricted permission level and a role that inclu
 
 Desktop input supports Windows and Linux X11. Linux needs Python 3, libX11 and libXtst. Wayland is not supported by this native input implementation. Windows runs input at the app's existing privilege level, so control of a higher-privilege application may be refused. Native typing does not replace the person's clipboard.
 
+## Video under an agent’s box
+
+Video is off for every agent until you turn it on. Press the mic button on the agent’s box, running or not. In the Voice, screen & video panel that opens, the **Video** section sits directly under the Computer control card. It works for agents on this computer’s tree, running or not. It does not work for group boxes, New agent tabs, agents on another computer, or the example tree.
+
+Press **Turn on video…** to see thumbnails of this computer’s windows. ToolsEnabled’s own windows and DevTools are never listed. The list opens, and a video starts, only from your own click. Press a window to show it. A 16:9 panel as wide as the box appears 8 px under that agent’s box, and the tree makes room below that row only. A thumbnail can show pixels of a window covering it; the video itself shows only the window you picked.
+
+Panels appear only in Boxes view. There are none in Circles, in edit mode, on group boxes, in the paired window or on the phone. In Circles the section says: “Switch the tree to Boxes to see this video.” In edit mode it asks you to press **Done**.
+
+- **Change window…** opens the list again for the same agent.
+- **Turn off video** removes that agent’s panel and forgets its choice.
+- **Turn off all video** removes every panel and forgets every saved choice.
+- A closed source window leaves “Window closed” in the panel until you turn that video off.
+- A minimized or hidden window keeps its last frame. After a few seconds without a new frame, the panel says the window is minimized or hidden.
+- A panel that is not shown anywhere for 10 minutes stops. Press **Click to resume** on the panel, or **Resume** in the section. If that window was renamed, minimized or closed, or another window has its name, the button becomes **Pick the window again**. On Linux, a minimized window is not in the list until you restore it.
+
+The choice is saved for each agent by the window’s title and program name, never by a window id. After a restart the panel reads “Video was on for this agent. Pick the window again.” One press opens the list with the closest title first and focused. Nothing streams until you press a window. Until then the mic button says “video saved”, not “video on”. The saved choices are deleted with the other agent data when the app erases local data or deletes agent nodes on exit.
+
+Up to 6 videos can play at once. Each is at most 854 × 480. The selected or hovered box’s video runs at 10 frames a second, other visible panels at 5, and panels not drawn at 1. A large source window costs more to capture than a small one, so keep source windows near 854 × 480.
+
+ToolsEnabled does not record this video or send it to the agent. An agent you allow to take screenshots, for example with Computer control, can see the video like anything else on your screen. The window’s title is kept on this computer until you turn video off. Agent app control cannot press the Video section, the list of windows or a panel.
+
+Video needs Windows or a Linux desktop that uses X11. It is not available on a Linux Wayland desktop, in a browser or on the phone; the section says so.
+
+### A small display for a container
+
+To watch what a container draws, give it its own small X server window and show that window under the agent’s box:
+
+```sh
+Xephyr :11 -screen 854x480 -title "ROS - builder" &
+docker run --rm -e DISPLAY=:11 -v /tmp/.X11-unix/X11:/tmp/.X11-unix/X11 <your image> <your command>
+```
+
+Then press **Turn on video…** for that agent and pick “ROS - builder”. Give each agent its own display number and title. A second agent could use this, with `/tmp/.X11-unix/X12` in its container:
+
+```sh
+Xephyr :12 -screen 854x480 -title "ROS - tester" &
+```
+
+After a restart the list puts the window with the saved title first, so two windows with one title can offer the wrong one. Keep titles to plain letters, numbers, spaces and dashes. Xephyr stores its title in a way that garbles other characters in the list of windows.
+
+Never mount the host display’s socket (`/tmp/.X11-unix/X1` for `:1`) into a container: that would let the container read and type into your whole desktop. Mount only the Xephyr display’s socket.
+
 ## Agent workflow
 
 For web pages, use `browser.status`, then `browser.start` if needed. Call `browser.playwright_tools` for the installed tool schemas and navigation guide. These functions are available through ToolsEnabled in both Enabled and Only API modes, subject to the role and installation's browser policies.
@@ -40,11 +82,17 @@ Take a new screenshot after every handoff or idle expiry; previous screen coordi
 
 ## Verification
 
-Focused app tests cover voice switching, Page 2 selection/grants, graph behavior, role/session isolation, cancellation, monitor changes, indicator failure, desktop reservation handoff, shutdown ordering and shared DEV refusal. An opt-in Electron test on a disposable Xvfb desktop exercises real mouse movement, clicks, Unicode typing, shortcuts, screen capture, the moving marker, the Stop all button and the emergency shortcut:
+Focused app tests cover voice switching, Page 2 selection/grants, the Video section (`tools/test/agent-video-controls.test.mjs`), the video host, broker and panels (`video-box-host`, `video-box-broker`, `tree-graph`), graph behavior, role/session isolation, cancellation, monitor changes, indicator failure, desktop reservation handoff, shutdown ordering and shared DEV refusal. An opt-in Electron test on a disposable Xvfb desktop exercises real mouse movement, clicks, Unicode typing, shortcuts, screen capture, the moving marker, the Stop all button and the emergency shortcut:
 
 ```sh
 node --test tools/test/screen-control-host.test.mjs tools/test/screen-control-desktop-custody.test.mjs tools/test/research-shutdown.test.mjs tools/test/voice-ui.test.mjs
 MC_SCREEN_CONTROL_NATIVE_TEST=1 xvfb-run -a -s '-screen 0 1280x900x24' node --test tools/test/screen-control-native.test.mjs
+```
+
+An opt-in Electron test checks the video capture gate on its own private X server: no list of windows without a click, one capture per pick, and a reload for a capture that bypassed the pick. It needs xvfb-run, xterm, xwininfo and xprop:
+
+```sh
+MC_VIDEO_BOX_ELECTRON_TEST=1 node --test tools/test/video-box-electron.test.mjs
 ```
 
 Engine tests include the audited gateway, retained sessions, API mode enforcement, legacy target compatibility, exact-version npm cache lookup on both platforms, and native MCP output. The opt-in live browser test uses an isolated Chromium profile with the pinned `@playwright/mcp@0.0.78` package; it tests the session transport and actual browser behavior, while separate gateway tests cover audit and ownership refusals.

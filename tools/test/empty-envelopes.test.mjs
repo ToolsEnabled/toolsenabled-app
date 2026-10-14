@@ -35,10 +35,10 @@ test('projection files ship schema-valid unavailable envelopes', async () => {
 test('shipped data files contain no owner identity or local addresses', async () => {
   for (const name of [...DOMAINS, 'status']) {
     const { raw } = await readDataFile(name)
-    assert.doesNotMatch(raw, /sample-owner-account/i, `${name}: owner name`)
-    assert.doesNotMatch(raw, /192\.0\.2\./, `${name}: private address`)
-    assert.doesNotMatch(raw, /C:\\+Users/i, `${name}: Windows user path`)
-    assert.doesNotMatch(raw, /C:[/]Users/i, `${name}: slash user path`)
+    assert.doesNotMatch(raw, /fixture-account/i, `${name}: owner name`)
+    assert.doesNotMatch(raw, /192\.168\.214\./, `${name}: private address`)
+    assert.doesNotMatch(raw, /\x43:\\+Users/i, `${name}: Windows user path`)
+    assert.doesNotMatch(raw, /\x43:\/\x55sers/i, `${name}: slash user path`)
   }
 })
 

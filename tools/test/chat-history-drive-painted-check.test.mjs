@@ -4,8 +4,8 @@
  * messages as unpainted -- bg=rgba(0,0,0,0), img=none, border=0px -- which
  * read, on first sight, like the exact defect this driver's own comment
  * documents fixing once (a role with no matching style rule). It was not.
- * src/styles.css's gutter redesign ("approved mockup") deliberately moved
- * identity OFF the message box: .msg.me's
+ * src/styles.css's gutter redesign ("owner-approved mockup, applied
+ * 2026-08-24") deliberately moved identity OFF the message box: .msg.me's
  * mark is a LEFT border (never border-top, the property the OLD check
  * read), and .msg.them carries no border or background on the box at all
  * BY DESIGN -- its whole mark is a coloured dot on its own ::before

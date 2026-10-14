@@ -394,7 +394,7 @@ function type(harness, side, text) {
 }
 
 /* ------------------------------------------------------------------
-   1. THE SHAPE ASKED FOR
+   1. THE SHAPE THE OWNER ASKED FOR
    ------------------------------------------------------------------ */
 
 test('the window is two labelled panes with a save under each', () => {
@@ -409,7 +409,7 @@ test('the window is two labelled panes with a save under each', () => {
   for (const side of SIDES) {
     assert.ok(host.querySelector(`[data-diff-pane="${side}"]`), `${side} has no box to type in`)
     assert.equal(saveButton(host, side).textContent, 'Save this version',
-      `${side} has no "save this version" control, the product's wording for it`)
+      `${side} has no "save this version" control, which is the owner's own wording`)
   }
   const dialog = host.querySelector('.diff-dialog')
   assert.equal(dialog.getAttribute('role'), 'dialog')
@@ -1523,4 +1523,23 @@ test('losing old history stops only the files that were in it', async () => {
      file behind for the window to reconstruct from a chain it no longer has. */
   assert.equal(store.read().files.find(file => file.path === '/filler-0.txt'), undefined,
     'an evicted batch must not leave a file that could be wrongly reconstructed')
+})
+
+/* FIX-C 6 (DESIGN.md section 3 and section 6): section labels are sentence
+   case, 12.5px/600, never tracked upper case. The text stays; only the CSS
+   changed, so a label still reads the same to a test or a screen reader. */
+function sentenceCaseRule(css, selector) {
+  const at = css.indexOf(selector + ' {')
+  assert.notEqual(at, -1, `${selector} has no rule`)
+  const body = css.slice(at, css.indexOf('}', at))
+  assert.doesNotMatch(body, /text-transform:\s*uppercase/, `${selector} is still an upper-case micro-label`)
+  assert.match(body, /(?:font:[^;]*\b|font-size:\s*)12\.5px/, `${selector} is not the 12.5px section-label size`)
+  assert.match(body, /(?:font:\s*600\b|font-weight:\s*600\b)/, `${selector} is not weight 600`)
+  return body
+}
+
+test('FIX-C 6: the diff dialog eyebrow and the pane side labels are sentence case', () => {
+  const sheet = readFileSync(path.join(REPO, 'src', 'diff-editor.css'), 'utf8')
+  sentenceCaseRule(sheet, '.diff-eyebrow')
+  sentenceCaseRule(sheet, '.diff-split-label-side')
 })

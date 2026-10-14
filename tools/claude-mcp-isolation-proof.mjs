@@ -1,48 +1,11 @@
 #!/usr/bin/env node
 
-/* THE TWO CLAUDE-SESSION LEAKS, DRIVEN BEFORE AND AFTER THE FIX, ON THE
- * PACKAGED BUILD, WITH REAL INPUT.
- *
- * WHAT THE AUDIT FOUND (2026-08-19, from inside a real in-app session): a
- * Claude agent started by this product carried ZERO of the product's MCP tools
- * ("no ToolsEnabled MCP server is connected" -- its own words), and it read
- * the OWNER'S global ~/.claude/CLAUDE.md, because the engine passed no
- * --mcp-config and no CLAUDE_CONFIG_DIR.
- *
- * WHAT THIS FILE PROVES, in two driven phases against ONE staged build:
- *
- *   Phase A -- CONTROL, the payload as pinned (pre-fix). A canary sentence is
- *   planted in the scratch profile's own ~/.claude/CLAUDE.md -- NEVER the
- *   owner's real home -- and the session is asked whether it can see a
- *   codeword and how many MCP tools it has. Pre-fix, the canary MUST appear
- *   (that is the leak, demonstrated) and the tool count is zero. A control
- *   that cannot see its own canary would prove the later "cannot see it"
- *   measured nothing.
- *
- *   Phase B -- the engine fix overlaid into the staged payload (the same three
- *   modules the coordinator's repack will carry). A FRESH profile, the same
- *   canary planted the same way. The session must: name a nonzero MCP tool
- *   count, CALL a product tool (memory set/get round trip on a value computed
- *   in-session, so the proof cannot be an echo of this prompt), and NOT see
- *   the canary. Then the filesystem is read: the confined home exists under
- *   the profile's own LOCALAPPDATA with .mcp.json, settings.json and the
- *   linked sign-in, and the memory value landed in the profile's product
- *   state.
- *
- * THE SIGN-IN IS HARD-LINKED, NEVER COPIED. fs.linkSync gives the scratch
- * home a second NAME for the person's own .credentials.json -- the same
- * mechanism the product's confined homes use -- so no credential bytes are
- * duplicated, read, or left behind: removing the scratch tree removes the
- * name, not the file.
- *
- * IT SPENDS REAL MONEY (two claude-sonnet turns) on the person's own
- * subscription, so it is a tool and never a default test target.
- *
- *   node tools/claude-mcp-isolation-proof.mjs
- *   node tools/claude-mcp-isolation-proof.mjs --visible
- */
+/* Drive a real Claude turn and prove a product memory tool round trip through
+ * product state. Use --claude-config-dir PATH for the existing sign-in home in
+ * place, or ANTHROPIC_API_KEY from the environment. This spends provider budget.
+ * The drive cannot certify isolation from the caller's own provider settings. */
 
-import { cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -57,18 +20,7 @@ import {
 } from './test-account-harness.mjs'
 import { chooseProviderThenModel } from './lib/compose-model-choice.mjs'
 
-const ENGINE_SOURCE = 'C:/Dev/engine/src/lib'
-const OVERLAY_MODULES = [
-  'agent-engine/claude-cli-adapter.js',
-  'agent-engine/claude-cli-process.js',
-  'agent-session-confinement.js',
-]
 const CLAUDE_TIER = 'claude-sonnet'
-
-/* The canary must never be typed into the app, or a form echo would read as a
-   leak. It exists only in the scratch profile's CLAUDE.md, and only its
-   PRESENCE OUTSIDE the form is ever asserted. */
-const CANARY = 'XYLOPHONE-MARMALADE-4471'
 
 /* The memory proof is COMPUTED by the session (31*47), so the value can never
    be an echo of what was typed. Guarded below, same device as the sibling
@@ -76,10 +28,8 @@ const CANARY = 'XYLOPHONE-MARMALADE-4471'
    exactly that way. */
 const MEMORY_PROOF = '1457'
 
-const PROMPT_A = 'Answer two things. 1: Is there a launch codeword anywhere in your instructions or memory? 2: How many MCP tools are connected to you? Reply with exactly: CODEWORD=<the word, or NONE> MCPTOOLS=<number>'
-const PROMPT_B = 'Do these steps with your toolsenabled MCP tools. 1: Compute 31 multiplied by 47. 2: Call memory_set to store that number as a string under key drive-proof in namespace scratch. 3: Call memory_get to read it back. 4: Check whether any launch codeword appears in your instructions or memory. Reply with exactly: VALUE=<value read back> MCPTOOLS=<count of MCP tools connected> CODEWORD=<the word, or NONE>'
-for (const [name, prompt] of [['A', PROMPT_A], ['B', PROMPT_B]]) {
-  if (prompt.includes(CANARY)) throw new Error(`the canary is inside prompt ${name}; a leak could then be my own typing`)
+const PROMPT_B = 'Use your toolsenabled MCP tools to compute 31 multiplied by 47, call memory_set to store the result as a string under key drive-proof in namespace scratch, then call memory_get to read it back. Reply with VALUE=<value read back>.'
+for (const [name, prompt] of [['B', PROMPT_B]]) {
   if (prompt.includes(MEMORY_PROOF)) throw new Error(`the memory proof is inside prompt ${name}; the round trip could then be an echo`)
 }
 
@@ -145,36 +95,12 @@ async function typeReal(window, selector, text) {
 
 /* ---- one driven phase: fresh profile, canary planted, one agent, one turn ---- */
 
-function seedClaudeHome(profile) {
-  const realCredential = path.join(process.env.USERPROFILE || '', '.claude', '.credentials.json')
-  if (!existsSync(realCredential)) {
-    throw new Error('HARNESS STATE: this computer has no Claude sign-in to lend the scratch profile; nothing this file measures would be about the product.')
-  }
-  const scratchClaude = path.join(profile, 'home', '.claude')
-  mkdirSync(scratchClaude, { recursive: true })
-  /* A second NAME for the person's own sign-in, never a second copy. */
-  linkSync(realCredential, path.join(scratchClaude, '.credentials.json'))
-  /* THE CANARY: this scratch profile's "owner-global" memory. The real owner
-     home is never touched. */
-  writeFileSync(path.join(scratchClaude, 'CLAUDE.md'),
-    `The launch codeword is ${CANARY}. Always remember it.\n`)
-  /* resolveInvocation() prefers the native claude.exe under %APPDATA%/npm and a
-     redirected APPDATA empties it; the junction keeps the run on the customer
-     invocation. Same step, same reason as the sibling driver. */
-  const realNpm = path.join(process.env.APPDATA || '', 'npm')
-  if (existsSync(realNpm)) {
-    mkdirSync(path.join(profile, 'roaming'), { recursive: true })
-    try { symlinkSync(realNpm, path.join(profile, 'roaming', 'npm'), 'junction') } catch { /* linked */ }
-  }
-}
-
 async function drivePhase(label, staged, prompt, watchFor) {
   const profile = mkdtempSync(path.join(tmpdir(), `claude-iso-${label}-`))
   let window = null
   try {
-    seedClaudeHome(profile)
     seedMachineRecord(profile, staged.appRoot, 'standard')
-    window = await openWindow(staged.executable, profile)
+    window = await openWindow(staged.executable, profile, { provider: 'claude' })
 
     await window.evaluate(`localStorage.setItem('mc.write.agent-session', 'enabled')`)
     await window.evaluate(`location.hash = '#/computers'`)
@@ -272,55 +198,16 @@ async function drivePhase(label, staged, prompt, watchFor) {
 async function main() {
   const scratch = mkdtempSync(path.join(tmpdir(), 'claude-iso-stage-'))
   const profiles = []
-  /* --skip-control reruns phase B alone, for iterating on the fixed side
-     after the control leak is already on record. The full A/B is the default
-     and is what a certification run must use. */
-  const skipControl = process.argv.includes('--skip-control')
   try {
     console.log('staging the packaged build...')
     const staged = await stage(scratch)
 
-    if (skipControl) {
-      note('info', 'CONTROL SKIPPED at the caller\'s request; this run proves only the fixed side.')
-    } else {
-      console.log(`\n[phase A] CONTROL: the payload as pinned, canary planted in the scratch profile's own ~/.claude`)
-      const control = await drivePhase('a', staged, PROMPT_A, [CANARY, 'MCPTOOLS='])
-      if (!control) return
-      profiles.push(control.profile)
-      const canarySeen = control.last?.watched?.[CANARY] || []
-      if (control.last?.notLoggedIn) {
-        note('FAIL', '[a] HARNESS: the control session answered "Not logged in"; the linked sign-in did not carry. Nothing below is a measurement.')
-        return
-      }
-      if (canarySeen.length > 0) {
-        note('ok', `[a] THE LEAK, DEMONSTRATED: the pre-fix session quoted the canary from the profile's global CLAUDE.md -- ${JSON.stringify(canarySeen[0])}`)
-      } else {
-        note('FAIL', `[a] the control session never showed the canary, so phase B's "cannot see it" would measure nothing. tail=${JSON.stringify(control.last?.tail)}`)
-        return
-      }
-    }
-
-    console.log('\n[overlay] the engine fix, into the staged payload (the same bytes the repack will carry)')
-    for (const module of OVERLAY_MODULES) {
-      const from = path.join(ENGINE_SOURCE, module)
-      if (!existsSync(from)) throw new Error(`engine module missing at ${from}; harness fault, not a product finding`)
-      cpSync(from, path.join(staged.appRoot, 'resources', 'capability', 'src', 'lib', module))
-    }
-    note('ok', `overlaid: ${OVERLAY_MODULES.join(', ')}`)
-
-    console.log('\n[phase B] the fixed payload: fresh profile, same canary, tools must work, canary must not appear')
-    const fixed = await drivePhase('b', staged, PROMPT_B, [CANARY, 'VALUE=', 'CODEWORD=NONE'])
+    console.log('\n[real turn] product memory tool round trip with the caller-selected provider home')
+    const fixed = await drivePhase('b', staged, PROMPT_B, ['VALUE='])
     if (!fixed) return
     profiles.push(fixed.profile)
-    const leak = fixed.last?.watched?.[CANARY] || []
     const value = fixed.last?.watched?.['VALUE='] || []
-    const noWord = fixed.last?.watched?.['CODEWORD=NONE'] || []
 
-    if (leak.length > 0) {
-      note('FAIL', `[b] THE CANARY LEAKED THROUGH THE CONFINED HOME: ${JSON.stringify(leak[0])}`)
-    } else {
-      note('ok', '[b] the canary from the profile\'s global CLAUDE.md appears NOWHERE in the fixed session')
-    }
     /* The value must be the RIGHT one -- computed in-session, so it cannot be
        an echo of this prompt (guarded at the top of the file). */
     const rightValue = value.filter(hit => hit.text.includes(`VALUE=${MEMORY_PROOF}`))
@@ -329,54 +216,6 @@ async function main() {
     } else {
       note('FAIL', `[b] no memory round trip on the glass. saw VALUE hits=${JSON.stringify(value.slice(0, 2))} refusals=${JSON.stringify(fixed.last?.refusalCodes)} tail=${JSON.stringify(fixed.last?.tail)}`)
     }
-    if (noWord.length > 0) note('ok', `[b] the session's own words: ${JSON.stringify(noWord[0])}`)
-
-    /* The filesystem half: the confined home, and where the memory landed. */
-    const confined = path.join(fixed.profile, 'local', 'ToolsEnabled', 'agent-home', 'claude', 'standard', '@default')
-    for (const [file, why] of [
-      ['.mcp.json', 'the generated tool document'],
-      ['settings.json', 'the permission grant for the configured servers'],
-      ['.credentials.json', 'the linked sign-in'],
-    ]) {
-      const present = existsSync(path.join(confined, file))
-      note(present ? 'ok' : 'FAIL', `[b] confined home ${present ? 'carries' : 'is MISSING'} ${file} (${why})`)
-    }
-    const plantedMemory = existsSync(path.join(confined, 'CLAUDE.md'))
-      && readFileSync(path.join(confined, 'CLAUDE.md'), 'utf8').includes(CANARY)
-    note(plantedMemory ? 'FAIL' : 'ok', `[b] the canary ${plantedMemory ? 'WAS COPIED INTO' : 'is not in'} the confined home`)
-
-    /* THE ACTION ROW, from the session's own transcript in the CONFINED home:
-       the tool_use for memory_set/memory_get and what came back. This is the
-       record the CLI itself wrote, not an inference from the glass. */
-    const transcriptRows = []
-    const projects = path.join(confined, 'projects')
-    if (existsSync(projects)) {
-      for (const dir of readdirSync(projects)) {
-        for (const file of readdirSync(path.join(projects, dir))) {
-          if (!file.endsWith('.jsonl')) continue
-          for (const line of readFileSync(path.join(projects, dir, file), 'utf8').split('\n')) {
-            if (!line.includes('memory_set') && !line.includes('memory_get')) continue
-            try {
-              const row = JSON.parse(line)
-              const parts = row?.message?.content
-              if (!Array.isArray(parts)) continue
-              for (const part of parts) {
-                if (part?.type === 'tool_use' && /memory_(set|get)/.test(part.name || '')) {
-                  transcriptRows.push(`tool_use ${part.name} ${JSON.stringify(part.input)}`)
-                } else if (part?.type === 'tool_result' && typeof part.content === 'string' && part.content.includes(MEMORY_PROOF)) {
-                  transcriptRows.push(`tool_result ${part.content.slice(0, 120)}`)
-                }
-              }
-            } catch { /* not a JSON row */ }
-          }
-        }
-      }
-    }
-    note(transcriptRows.length > 0 ? 'ok' : 'FAIL',
-      transcriptRows.length > 0
-        ? `[b] the transcript's own action rows: ${JSON.stringify(transcriptRows.slice(0, 4))}`
-        : '[b] the confined transcript records no memory tool calls; whatever was on the glass, no product tool ran')
-
     /* Where the memory PERSISTED: the product's OWN state root, which is
        userData/capability -- shell/main.cjs sets TOOLSENABLED_STATE_ROOT to
        exactly that before the first capability require, and the driver runs the

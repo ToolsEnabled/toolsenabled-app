@@ -1,7 +1,7 @@
 /* A VIEW THAT STARTS A SESSION MUST CLOSE IT WHEN IT GOES AWAY.
  *
- * THE REPORT: after a number of agents, starts began to fail. The number is
- * eight.
+ * THE OWNER'S REPORT: "then after a bunch of agents it starts failing agents".
+ * A bunch is eight.
  *
  * WHAT WAS WRONG. The agent page has TWO things that start a session: the
  * session surface, and the Chat composer. destroy() closed the first and not
@@ -31,6 +31,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
+import { parseAst } from 'rollup/parseAst'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -85,7 +86,7 @@ test('the guard can see the page and its teardown', () => {
 
 test('the chat box starts a session, so the teardown must release it', () => {
   const body = destroyBody(CODE)
-  /* STALE PATTERN, UPDATED RATHER THAN THE PRODUCT: an earlier commit (2026-09-17,
+  /* STALE PATTERN, UPDATED RATHER THAN THE PRODUCT: 87bc4b14 (2026-09-17,
      "Resume: read the stored conversation directly") gave this page a second
      reason to mount the surface -- once immediately so the page is never
      blank, once more if a stored conversation arrives late -- so the single
@@ -109,28 +110,62 @@ test('the chat box starts a session, so the teardown must release it', () => {
     'the mounted surface teardown no longer closes the shell session it owns')
 })
 
-test('the reference is dropped as well as closed', () => {
-  /* Closing without clearing would let a second teardown close the same id
-     twice; clearing without closing is the original defect wearing a tidier
-     coat. Both, in that order. */
-  const closeStart = SESSION_SOURCE.indexOf('const closeSession = async () => {')
-  const closeEnd = SESSION_SOURCE.indexOf('\n  }\n', closeStart)
-  const close = SESSION_SOURCE.slice(closeStart, closeEnd)
-  assert.match(close, /sessionId = null/,
-    'the lifecycle owner must clear the id after close, or a later teardown closes it again')
+// Extract the current closure by its AST boundary, including optional arguments.
+// Execute its real lifecycle with an inert bridge; no provider or app is started.
+function closeFixture({ reject = false, working = false } = {}) {
+  let initializer = null
+  function find(node) {
+    if (!node || typeof node !== 'object') return
+    if (node.type === 'VariableDeclarator' && node.id.name === 'closeSession') initializer = node.init
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(find)
+      else if (value && typeof value === 'object') find(value)
+    }
+  }
+  find(parseAst(SESSION_SOURCE))
+  assert.ok(initializer, 'the real surface must expose its private session close owner')
+  const calls = [], retired = [], closed = []
+  const bridge = {
+    async interrupt(request) { calls.push(['interrupt', request.sessionId]) },
+    async close(request) {
+      calls.push(['close', request.sessionId])
+      if (reject) throw Object.assign(new Error('fixture close refused'), { code: 'CLOSE_REFUSED' })
+      return { ok: true, closed: true, sessionId: request.sessionId }
+    },
+  }
+  return new Function('bridge', 'calls', 'retired', 'closed', 'initialWorking', `
+    let sessionId = 'release-fixture', stopping = false, working = initialWorking, lastTurnStatus = null;
+    let terminalCode = null, turnStream = null;
+    const publish = () => {};
+    const refusalCode = error => error.code;
+    const retireApprovals = id => retired.push(id);
+    const sessionTextReader = { clear() {} }, haltTurns = { forget() {} };
+    const releaseImageConversation = () => {}, relay = { flushNow() {} };
+    const finishReply = () => {}, resetLiveMetrics = () => {};
+    const announce = (type, detail) => closed.push([type, detail.sessionId]);
+    const closeSession = ${SESSION_SOURCE.slice(initializer.start, initializer.end)};
+    return { close: closeSession, calls, retired, closed, session: () => sessionId };
+  `)(bridge, calls, retired, closed, working)
+}
+
+test('the reference is dropped only after a confirmed close and a second teardown cannot close it twice', async () => {
+  const f = closeFixture({ working: true })
+  assert.deepEqual(await f.close({ requireReceipt: true }), { ok: true })
+  assert.equal(f.session(), null)
+  assert.deepEqual(f.calls, [['interrupt', 'release-fixture'], ['close', 'release-fixture']])
+  assert.deepEqual(f.retired, ['release-fixture'])
+  assert.deepEqual(f.closed, [['closed', 'release-fixture']])
+  assert.deepEqual(await f.close(), { ok: true })
+  assert.equal(f.calls.length, 2, 'the second close must not contact an already released session')
 })
 
-test('the close cannot throw the rest of the teardown away', () => {
-  /* destroy() removes listeners and stops surfaces after this point. An
-     unguarded rejection here would strand all of it -- trading a session leak
-     for a listener leak. */
-  const closeStart = SESSION_SOURCE.indexOf('const closeSession = async () => {')
-  const closeEnd = SESSION_SOURCE.indexOf('\n  }\n', closeStart)
-  const close = SESSION_SOURCE.slice(closeStart, closeEnd)
-  assert.match(close, /try \{ await bridge\.close\(/,
-    'the close call is no longer guarded inside the lifecycle owner')
-  assert.match(close, /catch \(error\)/,
-    'a close rejection can now escape the fire-and-forget teardown')
+test('a refused close keeps the session reachable and returns its reason without rejecting teardown', async () => {
+  const f = closeFixture({ reject: true })
+  assert.deepEqual(await f.close(), { ok: false, code: 'CLOSE_REFUSED' })
+  assert.equal(f.session(), 'release-fixture', 'a refused close must retain its session identity')
+  assert.deepEqual(f.calls, [['close', 'release-fixture']], 'an idle session needs no interrupt')
+  assert.deepEqual(f.retired, [])
+  assert.deepEqual(f.closed, [])
 })
 
 test('there is no ceiling on running agents, so this suite guards a count rather than a cap', () => {
@@ -138,8 +173,8 @@ test('there is no ceiling on running agents, so this suite guards a count rather
      this suite still matters.
 
      It used to assert that a small global cap existed, on the reasoning that a
-     leaked session was fatal because it consumed one of eight. The ruling:
-     the cap was never supposed to exist. So a leak no
+     leaked session was fatal because it consumed one of eight. The owner's
+     ruling, 2026-09-03: the cap was never supposed to exist. So a leak no
      longer locks anybody out -- but it still makes the number a person reads
      wrong, and it still keeps a dead child's handles. Releasing a finished
      session is worth asserting for its own sake, which is what everything

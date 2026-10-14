@@ -65,7 +65,7 @@ contextBridge.exposeInMainWorld('mcShell', {
    * whole point of this file: a sandboxed preload cannot require a sibling, so
    * THIS is the composed boundary main.cjs actually loads and the other file is
    * loaded by no window. The agent bridge below carries the same note, and
-   * an earlier commit ("Put the agent bridge in the preload the app actually
+   * commit 1d44d35 ("Put the agent bridge in the preload the app actually
    * loads") is what happens when only the other file is edited: a green test
    * over a feature that does not exist on a real installation. It happened
    * again with this namespace. tools/test/preload-namespace-parity.test.mjs
@@ -138,6 +138,17 @@ contextBridge.exposeInMainWorld('mcScreenControl', Object.freeze({
   },
 }))
 
+/* 1.0.49 video box. The page holds opaque tokens and node ids only; main owns
+   every window id and title (shell/video-box-host.cjs). */
+contextBridge.exposeInMainWorld('mcVideoBox', Object.freeze({
+  sources: () => ipcRenderer.invoke('mc-video-box:sources'),
+  arm: request => ipcRenderer.invoke('mc-video-box:arm', request),
+  forget: request => ipcRenderer.invoke('mc-video-box:forget', request),
+  saved: () => ipcRenderer.invoke('mc-video-box:saved'),
+  remember: request => ipcRenderer.invoke('mc-video-box:remember', request),
+  clear: () => ipcRenderer.invoke('mc-video-box:clear'),
+}))
+
 contextBridge.exposeInMainWorld('mcVoice', Object.freeze({
   targets: () => ipcRenderer.invoke('mc-voice:targets'),
   start: request => ipcRenderer.invoke('mc-voice:start', request),
@@ -154,7 +165,7 @@ contextBridge.exposeInMainWorld('mcVoice', Object.freeze({
 }))
 
 contextBridge.exposeInMainWorld('mcAgent', Object.freeze({
-  availability: () => ipcRenderer.invoke('mc-agent:availability', {}),
+  availability: request => ipcRenderer.invoke('mc-agent:availability', request || {}),
   /* What a session started here would be CONFINED to. Read-only, starts
      nothing, and the reason the Start control can finally describe the session
      it is about to start instead of reciting a sentence written before the
@@ -228,7 +239,7 @@ contextBridge.exposeInMainWorld('mcAgent', Object.freeze({
      {ok, id, status} out, no path. Person-only, like the two above. */
   requestDecide: request => ipcRenderer.invoke('mc-agent:request-decide', request),
   /* The person's resolution of one standing request (R_LEDGER kinds
-     follow-on). {id, status, reason?} in,
+     follow-on, 2026-09-07, Controller 3 L4e). {id, status, reason?} in,
      {ok, id, status} out, no path. Person-only, like decide just above. */
   resolveStandingRequest: request => ipcRenderer.invoke('mc-agent:request-resolve', request),
   /* The Ledger page's write verbs for task and ask records (ledger kinds,
@@ -399,6 +410,22 @@ contextBridge.exposeInMainWorld('mcNotify', Object.freeze({
   watching: request => ipcRenderer.invoke('mc-notify:watching', request),
 }))
 
+/* THREE ARROWS AND NOTHING ELSE. There is deliberately no install(), no
+   update() and no path in either direction: a plugin is a folder the person put
+   in place themselves, and a path arriving from a window is a path the main
+   process would then read. A plugin is named across this bridge by its CONTENT
+   DIGEST, which is both its identity and the lookup key, so there is nothing
+   here to spoof and nothing to traverse.
+
+   grant() carries the WHOLE set of capabilities to put in force, not a change to
+   it. An add/remove pair would make "what is allowed" depend on the order two
+   clicks arrived in, and a consent screen must not have a history. */
+contextBridge.exposeInMainWorld('mcPlugins', Object.freeze({
+  list: () => ipcRenderer.invoke('mc-plugins:list'),
+  grant: request => ipcRenderer.invoke('mc-plugins:grant', request),
+  revoke: request => ipcRenderer.invoke('mc-plugins:revoke', request),
+}))
+
 /* THE THREE ASSISTANT PROGRAMS, AS THIS COMPUTER ACTUALLY HAS THEM.
  *
  * Its own name rather than a fourth method on mcAgent, because it is not about
@@ -434,16 +461,8 @@ contextBridge.exposeInMainWorld('mcProviders', Object.freeze({
   accountRemove: request => ipcRenderer.invoke('mc-accounts:remove', request),
   /* A name into the list and nothing else: the folder and its sign-in stay. */
   accountRename: request => ipcRenderer.invoke('mc-accounts:rename', request),
-  /* THREE MORE THIN ARROWS, AND STILL NO signIn(). accountSwitch() records
-     WHICH of the already-listed accounts the next start should prefer -- a name
-     into a small file, and nothing else; accountPolicy() records HOW this
-     computer picks between them when nobody names one; accountUsage() asks how
-     much of each account's hourly and weekly allowance is left. Nothing a
-     person signs in with can cross any of the three in either direction: what
-     goes out is a name and a number, and what comes back is names, statuses,
-     percentages and reset times. */
+
   accountSwitch: request => ipcRenderer.invoke('mc-accounts:switch', request),
-  accountPolicy: request => ipcRenderer.invoke('mc-accounts:policy', request),
   /* Deliberately a pull and not a subscription. It starts one short-lived
      program per Codex and per Claude account (Gemini is a file presence
      check), so it happens when a person opens the menu; a push channel here
@@ -506,7 +525,7 @@ contextBridge.exposeInMainWorld('mcProviders', Object.freeze({
     return () => { ipcRenderer.removeListener('mc-provider-login:event', forward) }
   },
   /* A MODEL ON THIS COMPUTER'S OWN HARDWARE -- the fourth arrow on this same
-     bridge (by rule: extend, do not add a parallel bridge).
+     bridge (owner ruling via fleet-B: extend, do not add a parallel bridge).
      detectLocal answers a live network probe, never a PATH check like
      presence() above; installRuntime and pullModel stream through the SAME
      onLoginEvent listener already defined above, carrying the runtime id in
@@ -516,6 +535,26 @@ contextBridge.exposeInMainWorld('mcProviders', Object.freeze({
   installRuntime: request => ipcRenderer.invoke('mc-provider-login:install-runtime', request),
   pullLocalModel: request => ipcRenderer.invoke('mc-provider-login:pull-model', request),
   stopRuntime: request => ipcRenderer.invoke('mc-provider-login:stop-runtime', request),
+  /* SET UP LOCAL MODELS, on the same bridge (shell/local-model-setup.cjs):
+     what this computer still needs, and the four actions -- get Ollama from
+     its official release with its published checksum, start it, download a
+     model through it, ask whether a Local agent can start. Progress arrives on
+     its own event channel; the unsubscribe is returned, as onLoginEvent does. */
+  localSetupStatus: () => ipcRenderer.invoke('mc-local-setup:status'),
+  localSetupInstall: () => ipcRenderer.invoke('mc-local-setup:install'),
+  localSetupCancelInstall: () => ipcRenderer.invoke('mc-local-setup:cancel-install'),
+  localSetupRunInstaller: () => ipcRenderer.invoke('mc-local-setup:run-installer'),
+  localSetupStart: () => ipcRenderer.invoke('mc-local-setup:start'),
+  localSetupStop: () => ipcRenderer.invoke('mc-local-setup:stop'),
+  localSetupPull: request => ipcRenderer.invoke('mc-local-setup:pull', request),
+  localSetupCancelPull: () => ipcRenderer.invoke('mc-local-setup:cancel-pull'),
+  localSetupCheck: () => ipcRenderer.invoke('mc-local-setup:check'),
+  onLocalSetupEvent: listener => {
+    if (typeof listener !== 'function') throw new TypeError('onLocalSetupEvent requires a listener function')
+    const forward = (_event, packet) => { listener(packet) }
+    ipcRenderer.on('mc-local-setup:event', forward)
+    return () => { ipcRenderer.removeListener('mc-local-setup:event', forward) }
+  },
 }))
 
 /* Fleet data is resolved while the renderer's module graph is evaluating. An
@@ -670,7 +709,7 @@ const setup = ipcRenderer.sendSync('mc-setup:bootstrap')
 contextBridge.exposeInMainWorld('mcSetup', Object.freeze({
   bootstrap: setup,
   platform: process.platform,
-  /* The consent rides with the level (rule X4): for the widest level it says
+  /* The consent rides with the level (owner, X4): for the widest level it says
      the risk was shown, in which words, and confirmed; the shell refuses that
      level without it. Null for every other level. */
   chooseTier: (tier, consent) => ipcRenderer.invoke('mc-setup:choose-tier', tier, consent),
@@ -795,7 +834,7 @@ contextBridge.exposeInMainWorld('mcAccount', Object.freeze({
  * and nothing else asks.
  *
  * REMOVAL IS TWO CHANNELS BECAUSE IT IS TWO ACTS. `requestRemoval` asks the owner
- * to approve one deletion on the approvals screen; `completeRemoval` acts on their
+ * to approve one deletion on the approvals screen; `completeRemoval` acts on his
  * answer. A page cannot collapse them: the second reads the decision out of the
  * prompt store, and nothing a renderer sends can put one there. */
 /* THE NICKNAME AND ACCESS CHANNELS CARRY NO VALUE IN EITHER DIRECTION.
@@ -924,10 +963,8 @@ function injectTitlebar() {
     #shell-titlebar {
       position: fixed; top: 0; left: 0; right: 0; height: ${TITLEBAR_HEIGHT}px;
       z-index: 200; -webkit-app-region: drag;
-      display: flex; align-items: center; justify-content: center;
       border-bottom: 1px solid var(--line, rgba(128,128,128,0.18));
-      font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
-      color: var(--ink-3, #888); user-select: none;
+      user-select: none;
     }
     /* Chromium inherits app-region through the renderer hit-test tree. Keep
        native and ARIA controls out of a draggable ancestor so a mouse press is
@@ -958,7 +995,7 @@ function injectTitlebar() {
   document.head.appendChild(style)
   const bar = document.createElement('div')
   bar.id = 'shell-titlebar'
-  bar.textContent = 'TOOLSENABLED'
+  // Branding lives in the sidebar; keep this strip clear for native dragging.
   document.body.prepend(bar)
 }
 

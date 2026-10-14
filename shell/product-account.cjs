@@ -431,7 +431,7 @@ function normalizeDisplayName(value, fallback) {
   /* Control characters, zero-width characters and bidi overrides are stripped
      rather than escaped. This string is shown in the interface and written into
      no markup by this file, but a name carrying a newline reads as two lines,
-     and a name carrying U+202E reads right-to-left -- so "alex<RLO>nimda" can be
+     and a name carrying U+202E reads right-to-left -- so "Example<RLO>nimda" can be
      displayed as if it said something else. In an attribution record, a name
      that renders as a different name is an impersonation primitive.
 
@@ -626,19 +626,24 @@ function createAccountStore({
       raw = fs.readFileSync(file)
     } catch (error) {
       if (error && error.code === 'ENOENT') return emptyStore()
-      throw new AccountError('ACCOUNT_STORE_UNREADABLE', 'The account file could not be read on this computer.')
+      throw new AccountError('ACCOUNT_STORE_UNREADABLE', `The account file ${path.basename(file)} could not be read on this computer.`)
     }
+    return parseAccountFile(raw, hosted)
+  }
+
+  function parseAccountFile(raw, hosted) {
+    const name = hosted ? HOSTED_ACCOUNTS_FILE : ACCOUNTS_FILE
     if (raw.length > MAX_STORE_BYTES) {
-      throw new AccountError('ACCOUNT_STORE_UNREADABLE', 'The account file is larger than this product will read.')
+      throw new AccountError('ACCOUNT_STORE_UNREADABLE', `The account file ${name} is larger than this product will read.`)
     }
     let parsed
     try {
       parsed = JSON.parse(raw.toString('utf8'))
     } catch {
-      throw new AccountError('ACCOUNT_STORE_CORRUPT', 'The account file on this computer is not readable.')
+      throw new AccountError('ACCOUNT_STORE_CORRUPT', `The account file ${name} on this computer is not readable.`)
     }
     if (!isPlainObject(parsed) || parsed.version !== STORE_VERSION || !Array.isArray(parsed.accounts)) {
-      throw new AccountError('ACCOUNT_STORE_CORRUPT', 'The account file on this computer is not in a form this version understands.')
+      throw new AccountError('ACCOUNT_STORE_CORRUPT', `The account file ${name} on this computer is not in a form this version understands.`)
     }
     const accounts = []
     for (const entry of parsed.accounts) {
@@ -646,56 +651,150 @@ function createAccountStore({
       /* One unreadable entry condemns the file. Skipping it would silently drop
          a person's account and let the rest of the product carry on as though
          they had never existed. */
-      if (!account || (account.identity?.provider === HOSTED_PROVIDER) !== hosted) throw new AccountError('ACCOUNT_STORE_CORRUPT', 'The account file on this computer contains an entry this version cannot read.')
+      if (!account || (account.identity?.provider === HOSTED_PROVIDER) !== hosted) throw new AccountError('ACCOUNT_STORE_CORRUPT', `The account file ${name} on this computer contains an entry this version cannot read.`)
       if (accounts.some(other => other.username === account.username || other.id === account.id)) {
-        throw new AccountError('ACCOUNT_STORE_CORRUPT', 'The account file on this computer lists the same account twice.')
+        throw new AccountError('ACCOUNT_STORE_CORRUPT', `The account file ${name} on this computer lists the same account twice.`)
       }
       accounts.push(account)
     }
     return { version: STORE_VERSION, accounts }
   }
 
+  function hasAccountConflict(accounts) {
+    return new Set(accounts.map(value => value.id)).size !== accounts.length
+      || new Set(accounts.map(value => value.username)).size !== accounts.length
+  }
+
   function readStore() {
     const local = readAccountFile(accountsPath, false)
     const hosted = readAccountFile(hostedAccountsPath, true)
     const accounts = [...local.accounts, ...hosted.accounts]
-    if (new Set(accounts.map(value => value.id)).size !== accounts.length
-        || new Set(accounts.map(value => value.username)).size !== accounts.length) {
-      throw new AccountError('ACCOUNT_STORE_CORRUPT', 'The account files on this computer list the same account twice.')
+    if (hasAccountConflict(accounts)) {
+      throw new AccountError('ACCOUNT_STORE_CONFLICT', `The account files ${ACCOUNTS_FILE} and ${HOSTED_ACCOUNTS_FILE} list the same account ID or username. Neither list can be chosen automatically.`)
     }
     return { version: STORE_VERSION, accounts }
   }
 
-  /* A DAMAGED ACCOUNT FILE IS SET ASIDE, NEVER REPAIRED OR DELETED (T1520).
-   *
-   * One file that will not read (a torn write, or an entry from a newer
-   * version) took every way to sign in with it, and the only action left on
-   * the page was removing all of this program's data. This moves each account
-   * file that will not read to a kept name beside it, byte for byte, which
-   * leaves the ordinary no-account state: create or sign in works again, and
-   * the damaged bytes stay on disk for whoever can read them. A file that
-   * reads is never moved; when every file reads, nothing happens. */
+  // Recovery must validate the bytes it keeps, not a second path read. Refuse
+  // linked/non-regular or oversized files without following them or moving them.
+  function recoverySnapshot(file) {
+    const before = fs.lstatSync(file)
+    const regular = stat => stat.isFile() && stat.nlink === 1 && stat.size <= MAX_STORE_BYTES
+    const identity = (a, b) => a.dev === b.dev && a.ino === b.ino
+    const unchanged = (a, b) => identity(a, b) && a.size === b.size
+      && a.mtimeMs === b.mtimeMs && a.ctimeMs === b.ctimeMs
+    if (!regular(before)) throw new AccountError('ACCOUNT_STORE_SET_ASIDE_UNSAFE', 'The account file cannot be safely captured for recovery.')
+    const fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0) | (fs.constants.O_NONBLOCK || 0))
+    try {
+      const opened = fs.fstatSync(fd)
+      if (!regular(opened) || !unchanged(before, opened)) throw new Error('Account file changed while opening')
+      const buffer = Buffer.alloc(MAX_STORE_BYTES + 1)
+      let size = 0
+      while (size < buffer.length) {
+        const count = fs.readSync(fd, buffer, size, buffer.length - size, size)
+        if (count === 0) break
+        size += count
+      }
+      const after = fs.fstatSync(fd)
+      const named = fs.lstatSync(file)
+      if (!regular(after) || !regular(named) || size !== after.size
+          || !unchanged(opened, after) || !unchanged(after, named)) throw new Error('Account file changed while reading')
+      return { stat: after, bytes: buffer.subarray(0, size) }
+    } finally { fs.closeSync(fd) }
+  }
+
+  function sameRecoveryFile(a, b) {
+    return a.stat.dev === b.stat.dev && a.stat.ino === b.stat.ino && a.bytes.equals(b.bytes)
+  }
+
+  function writeRecoveryCopy(file, bytes) {
+    // Exclusive creation protects an earlier archive or a concurrently written
+    // live file. Never fall back to a truncating write or an overwriting rename.
+    const fd = fs.openSync(file, 'wx', 0o600)
+    try {
+      fs.writeFileSync(fd, bytes)
+      fs.fsyncSync(fd)
+    } finally { fs.closeSync(fd) }
+  }
+
+  /* Keep a verified independent copy before removing the damaged file from its
+   * active name. A last-moment writer can still win the source rename; retain
+   * those moved bytes separately and restore them only if the live name is free.
+   * The move destination belongs to a fresh private directory, not a shared
+   * timestamp archive name. No files are deleted, including incomplete copies. */
   function setAsideDamagedStore() {
     if (erased) return erasedRefusal()
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     const kept = []
+    const stopped = (code, reason) => Object.freeze({ ...refusal(code, reason), keptAs: Object.freeze([...kept]) })
+    // Capture both lists before deciding which need recovery. A conflict is a
+    // property of the pair, even when each list is individually readable.
+    const candidates = []
     for (const [file, hosted] of [[accountsPath, false], [hostedAccountsPath, true]]) {
-      try {
-        readAccountFile(file, hosted)
-        continue
-      } catch (error) {
+      let reviewed
+      try { reviewed = recoverySnapshot(file) } catch (error) {
+        if (error?.code === 'ENOENT') continue
+        return stopped('ACCOUNT_STORE_SET_ASIDE_UNSAFE', `The account file ${path.basename(file)} could not be safely read for recovery. No account file was moved.`)
+      }
+      let parsed = null
+      try { parsed = parseAccountFile(reviewed.bytes, hosted) } catch (error) {
         if (!['ACCOUNT_STORE_CORRUPT', 'ACCOUNT_STORE_UNREADABLE'].includes(error?.code)) throw error
       }
-      if (!fs.existsSync(file)) continue
-      const keptAs = `${path.basename(file)}.damaged-${stamp}`
-      const target = path.join(path.dirname(file), keptAs)
-      if (fs.existsSync(target)) return refusal('ACCOUNT_STORE_SET_ASIDE_TAKEN', 'A set-aside copy with that name is already there, so the account file was left where it is. Try again in a moment.')
+      candidates.push({ file, reviewed, parsed })
+    }
+    const conflict = candidates.length === 2 && candidates.every(value => value.parsed)
+      && hasAccountConflict(candidates.flatMap(value => value.parsed.accounts))
+    // Preserve both conflicting lists; never guess which person's account to
+    // keep active. Ordinary damage leaves an unrelated readable sibling alone.
+    // Verify every required copy before moving any active file, so a later
+    // copy failure cannot strand only part of the reviewed pair in archives.
+    const prepared = []
+    for (const { file, reviewed, parsed } of candidates) {
+      if (parsed && !conflict) continue
+      let archiveDirectory
+      let archiveIdentity
+      let backup
+      let moved
       try {
-        fs.renameSync(file, target)
-      } catch {
-        return refusal('ACCOUNT_STORE_SET_ASIDE_FAILED', 'The damaged account file could not be moved, so it was left where it is.')
+        archiveDirectory = fs.mkdtempSync(path.join(path.dirname(file), '.product-account-recovery-'))
+        archiveIdentity = fs.lstatSync(archiveDirectory)
+        if (!archiveIdentity.isDirectory() || archiveIdentity.isSymbolicLink()) throw new Error('Recovery directory changed')
+        backup = path.join(archiveDirectory, `${path.basename(file)}.damaged-${stamp}`)
+        moved = path.join(archiveDirectory, `at-move-${path.basename(file)}`)
+        writeRecoveryCopy(backup, reviewed.bytes)
+        if (!recoverySnapshot(backup).bytes.equals(reviewed.bytes)) throw new Error('Recovery copy verification failed')
+        kept.push(path.relative(directory, backup))
+      } catch (error) {
+        return stopped(error?.code === 'EEXIST' ? 'ACCOUNT_STORE_SET_ASIDE_TAKEN' : 'ACCOUNT_STORE_SET_ASIDE_FAILED',
+          'A recovery copy could not be safely created. That account file was not moved; any earlier or partial copies remain kept.')
       }
-      kept.push(keptAs)
+      prepared.push({ file, reviewed, archiveDirectory, archiveIdentity, moved })
+    }
+    for (const { file, reviewed, archiveDirectory, archiveIdentity, moved } of prepared) {
+      try {
+        if (!sameRecoveryFile(reviewed, recoverySnapshot(file))) throw new Error('Account file changed')
+        const currentDirectory = fs.lstatSync(archiveDirectory)
+        if (!currentDirectory.isDirectory() || currentDirectory.isSymbolicLink()
+            || currentDirectory.dev !== archiveIdentity.dev || currentDirectory.ino !== archiveIdentity.ino) throw new Error('Recovery directory changed')
+      } catch {
+        return stopped('ACCOUNT_STORE_SET_ASIDE_CHANGED', 'The account file changed during recovery. It was not moved; the reviewed copy remains kept.')
+      }
+      try { fs.renameSync(file, moved) } catch {
+        return stopped('ACCOUNT_STORE_SET_ASIDE_FAILED', 'The account file could not be moved. The reviewed copy remains kept.')
+      }
+      let actual
+      try { actual = recoverySnapshot(moved) } catch {
+        kept.push(path.relative(directory, moved))
+        return stopped('ACCOUNT_STORE_SET_ASIDE_CHANGED', 'The moved file could not be verified. Recovery stopped; the reviewed copy and the moved file remain kept.')
+      }
+      if (!sameRecoveryFile(reviewed, actual)) {
+        kept.push(path.relative(directory, moved))
+        let restored = false
+        try { writeRecoveryCopy(file, actual.bytes); restored = true } catch { /* Keep a concurrent live file and both archived versions. */ }
+        return stopped('ACCOUNT_STORE_SET_ASIDE_CHANGED', restored
+          ? 'The account file changed during recovery. The newer bytes were restored and both versions remain kept.'
+          : 'Restoration of the changed account file could not be confirmed. Both captured versions remain kept; recovery stopped.')
+      }
     }
     if (kept.length === 0) return refusal('ACCOUNT_STORE_READABLE', 'Each account file on this computer reads on its own, so it was left where it is.')
     return Object.freeze({ ok: true, keptAs: Object.freeze(kept) })
@@ -1488,8 +1587,8 @@ function createAccountStore({
    * at the worst possible moment: the first-run walkthrough creates the account
    * with an empty display name, `normalizeDisplayName` falls back to the
    * username, and that username was then the permanent label on every record of
-   * that person's work for the life of the account. A person who typed `ab` in
-   * their first ninety seconds was `ab` forever. Google accounts had the same
+   * that person's work for the life of the account. A person who typed `jp` in
+   * their first ninety seconds was `jp` forever. Google accounts had the same
    * door in a different room -- their display name is set to the verified email
    * address, so an approval record read as somebody's full email address rather
    * than as their name.
@@ -1522,7 +1621,7 @@ function createAccountStore({
    * A NAME IS NOT CHECKED FOR UNIQUENESS, deliberately and consistently with
    * `createAccount`, which does not check either. Display names are not
    * identities here; the id is. Adding the check on this path alone would let a
-   * person create an account as "alex" but not rename to it, which is two rules
+   * person create an account as "Example" but not rename to it, which is two rules
    * where the product has one.
    */
   function changeDisplayName({ displayName } = {}) {

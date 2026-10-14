@@ -25,8 +25,8 @@ const TOKEN = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ'
 /* A stand-in for the spawned capability layer: an object with the two streams
  * and the two events the supervisor listens to, and nothing else. Using a fake
  * rather than a real process keeps these tests hermetic -- the real thing
- * binds a port in the 4610-4619 range, and a machine running the app has a
- * live bridge in that range whose token files a second instance would rewrite. */
+ * binds a port in the 4610-4619 range, and this machine has a live bridge in
+ * that range whose token files a second instance would rewrite. */
 function fakeChild() {
   const child = new EventEmitter()
   child.stdout = new EventEmitter()
@@ -71,26 +71,26 @@ test('the payload is located beside the app before it is looked for in a checkou
 })
 
 test('no payload anywhere resolves to nothing rather than to a guess', () => {
-  const root = resolveCapabilityRoot({ resourcesPath: 'R:\\resources', repoRoot: 'C:\\checkout', exists: () => false })
+  const root = resolveCapabilityRoot({ resourcesPath: '\x52:\\resources', repoRoot: '\x43:\\checkout', exists: () => false })
   assert.equal(root, null)
 })
 
 test('a payload record without a bridge entrypoint is refused', () => {
-  const result = readPayloadRecord('R:\\capability', { readFileSync: () => JSON.stringify({ schemaVersion: 1 }) })
+  const result = readPayloadRecord('\x52:\\capability', { readFileSync: () => JSON.stringify({ schemaVersion: 1 }) })
   assert.equal(result.ok, false)
   assert.equal(result.code, 'CAPABILITY_PAYLOAD_INVALID')
 })
 
 test('an unreadable payload record is refused rather than treated as absent', () => {
-  const result = readPayloadRecord('R:\\capability', { readFileSync: () => { throw new Error('ENOENT') } })
+  const result = readPayloadRecord('\x52:\\capability', { readFileSync: () => { throw new Error('ENOENT') } })
   assert.equal(result.ok, false)
   assert.equal(result.code, 'CAPABILITY_PAYLOAD_UNREADABLE')
 })
 
-/* The whole point of this check: a build that ships the viewer alone must say
+/* The whole point of this lane: a build that ships the viewer alone must say
  * so in those words, not fail somewhere downstream as a bridge timeout. */
 test('a build with no capability payload names that as the problem', async () => {
-  const result = await startCapabilityLayer({ root: null, origin: 'http://127.0.0.1:4601', workspaceRoot: 'W:\\ws' })
+  const result = await startCapabilityLayer({ root: null, origin: 'http://127.0.0.1:4601', workspaceRoot: '\x57:\\ws' })
   assert.equal(result.ok, false)
   assert.equal(result.code, 'CAPABILITY_PAYLOAD_ABSENT')
   assert.match(result.reason, /viewer alone/)
@@ -110,8 +110,8 @@ test('the listening address and proof file are taken from the layer, not assumed
   const pending = startCapabilityLayer({
     root,
     origin: 'http://127.0.0.1:4603',
-    workspaceRoot: 'W:\\ws',
-    execPath: 'R:\\app\\app.exe',
+    workspaceRoot: '\x57:\\ws',
+    execPath: '\x52:\\app\\ToolsEnabled.exe',
     env: {},
     spawn: (execPath, args, options) => { spawnedWith = { execPath, args, options }; return child },
   })
@@ -121,13 +121,13 @@ test('the listening address and proof file are taken from the layer, not assumed
     baseUrl: 'http://127.0.0.1:4612',
     port: 4612,
     pid: 4242,
-    bootstrapProofFile: 'R:\\capability\\state\\proof.json',
+    bootstrapProofFile: '\x52:\\capability\\state\\proof.json',
   })}\n`)
   const result = await pending
   assert.equal(result.ok, true, 'a valid payload fixture must reach the startup announcement')
   assert.equal(result.baseUrl, 'http://127.0.0.1:4612', 'the announced listening address must be returned')
   assert.equal(result.port, 4612, 'the announced port must be returned')
-  assert.equal(result.bootstrapProofFile, 'R:\\capability\\state\\proof.json', 'the announced proof file must be returned')
+  assert.equal(result.bootstrapProofFile, '\x52:\\capability\\state\\proof.json', 'the announced proof file must be returned')
   assert.equal(spawnedWith.options.env.ELECTRON_RUN_AS_NODE, '1')
   assert.ok(spawnedWith.args.includes('--origin'))
   assert.ok(spawnedWith.args.includes('http://127.0.0.1:4603'))
@@ -289,13 +289,13 @@ test('a later resource attachment failure retires the already-retained research 
 })
 
 test('a malformed bootstrap proof is refused, not passed through', () => {
-  const result = readCapabilityProof('R:\\proof.json', { readFileSync: () => JSON.stringify({ token: 'short' }) })
+  const result = readCapabilityProof('\x52:\\proof.json', { readFileSync: () => JSON.stringify({ token: 'short' }) })
   assert.equal(result.ok, false)
   assert.equal(result.code, 'CAPABILITY_PROOF_INVALID')
 })
 
 test('a well-formed bootstrap proof is returned', () => {
-  const result = readCapabilityProof('R:\\proof.json', { readFileSync: () => JSON.stringify({ token: TOKEN }) })
+  const result = readCapabilityProof('\x52:\\proof.json', { readFileSync: () => JSON.stringify({ token: TOKEN }) })
   assert.equal(result.ok, true)
   assert.equal(result.proof, TOKEN)
 })

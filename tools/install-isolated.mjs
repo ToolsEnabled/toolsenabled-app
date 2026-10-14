@@ -59,7 +59,7 @@ if (!existsSync(installer)) fail(2, `no installer at ${installer}`);
 const target = path.resolve(into);
 
 /* THE RELEASE IDENTITY IS REFUSED OUTRIGHT, and this is the sharpest guard here.
-   The release GUID is the identity an installed release copy carries, so
+   The release GUID is the identity the owner's own installed copy carries, so
    installing it "somewhere else" is exactly the operation that cannot be fenced
    -- initMultiUser will find the real InstallLocation and use it. A lifecycle
    test must use a non-release channel; that is what installer-identity is for. */

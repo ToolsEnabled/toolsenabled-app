@@ -1,3 +1,4 @@
+import { openNodeActionMenu, nodeMenuRows, bindNodeMenuGestures } from './node-action-menu.js'
 import { fmtRuntime } from './runtime-clock.js'
 import { TreePreviewFitter } from './tree-preview-fit.js'
 /* rimRole, not a local `ROLES[x] || ROLES.default` — see its header in
@@ -24,11 +25,17 @@ import { attachResizeHandle } from './resize-handle.js'
 import { textZoom } from './text-size.js'
 import { TreeScope, TREE_COLLAPSE_AT, branchSummaryText, countNoun } from './tree-scope.js'
 import { TREE_CONTEXT_CARDS_KEY, TREE_CONTEXT_BOX_SIZE_KEY, TREE_CONTEXT_CARDS_EVENT, TREE_CONTEXT_SIZES, agentTreeContextKeys, readTreeContextCards, treeContextProfile, updateTreeContextCards } from './tree-context-cards.js'
-import { TREE_CARDS_KEY, TREE_CONTEXT_SIZE_KEY, liveContextSize, treeBoxSize, treeCardSize, layoutBoxTree, boxPort } from './tree-box-layout.js'
+import { TREE_CARDS_KEY, TREE_CONTEXT_SIZE_KEY, TREE_VIEW_CHANGE_EVENT, liveContextSize, treeBoxSize, treeCardSize, layoutBoxTree, boxPort, boxVideoLane } from './tree-box-layout.js'
 import { TreeWorkspace } from './tree-workspace.js'
 import { mergeTreeStrokeRoutes } from './tree-stroke-paths.js'
 import { chooseTreeProjection } from './tree-readability.js'
 import { clearLinkMarkerPoint } from './tree-link-marker.js'
+/* 1.0.49 VIDEO BOX. The broker holds each agent's stream; tree-box-video.js
+   draws the panel under the box. Which agents have a panel comes from the
+   Voice, screen & video controls through setContactMarks (videoNodeIds). */
+import { videoBoxBroker, VIDEO_BOX_CHANGE_EVENT } from './video-box-broker.js'
+import { createBoxVideoWatcher, mountBoxVideo, renderBoxVideo, unmountBoxVideo } from './tree-box-video.js'
+import { THIS_COMPUTER_ID } from './declared-fleet.js'
 
 /* Density guides focus and drill-in; it must not withdraw a legal add action. */
 const DENSE_AT = TREE_COLLAPSE_AT
@@ -36,7 +43,7 @@ const STRUCTURAL_MS = 680
 const REMOVE_MS = 150
 const SCREEN_CHIP_W = 280
 const SCREEN_CHIP_H = 126
-/* 420, not 360: the picked chat card ("Dense — light-mode palette")
+/* 420, not 360: the owner's picked chat card ("Dense — light-mode palette")
    sets the Card width at 420px (design/chat/picked-card.png; SIZING LAW,
    design/chat/Sizes.dc.html -- width may never change a padding, type size,
    radius or border, only which of Card 420 / Panel 520 / Full is showing).
@@ -49,7 +56,7 @@ const SCREEN_EDGE = 8
 const SCREEN_TOP = 72
 const SCREEN_CHIP_GAP = 5
 const ROLE_PRIORITY = { controller: 6, coordinator: 6, helper: 5, shadow: 5, manager: 4, planner: 3, reviewer: 3, builder: 2, default: 2, worker: 1, spawned: 1 }
-/* 2.4x, not 1.7x: the ask was to zoom in far enough to READ a card, and
+/* 2.4x, not 1.7x: the owner's ask was to zoom in far enough to READ a card, and
    1.7 stopped short of that on a 1440-wide window. */
 const ZOOM_MIN = 0.05
 const ZOOM_MAX = 2.4
@@ -82,14 +89,15 @@ const DRAG_PAN_MAX = 18
 // one card-width away still scans as attached; two away does not.
 const CHIP_REACH = 380
 const HIERARCHY_TYPES = new Set(['manages', 'delegates_to', 'hierarchy'])
+const NO_VIDEO = Object.freeze(new Set())
 
 /* ============================================================================
    EMPTY SLOTS — the pressable holes in the tree.
 
    THE STATE THIS EXISTS FOR. A fresh install has started nothing, so this
    canvas has nothing to draw, and a canvas with nothing on it teaches nobody
-   what it is for. The instruction: draw EMPTY nodes, and the user presses them
-   to extend their existing structure.
+   what it is for. The owner's instruction: "we should essentially draw EMPTY
+   nodes, and the user just presses them to extend their existing structure."
    So absence is drawn as an offer rather than as blankness — a dashed circle
    hanging where the next agent would go, and one at the top for a tree that
    does not exist yet, because a computer may hold MORE THAN ONE tree.
@@ -266,6 +274,7 @@ export class StaticTreeGraph {
     onLinkChange = null,
     onReparent = null,
     treeChat = null,
+    nodeActions = null,
     onMountChatDraft = null,
     onMountChatControls = null,
     onOverridesChange = null,
@@ -315,6 +324,7 @@ export class StaticTreeGraph {
     this.onLinkChange = onLinkChange
     this.declaredEdges = Array.isArray(edges) ? edges : null
     this.onReparent = typeof onReparent === 'function' ? onReparent : null
+    this.nodeActions = nodeActions
     this.treeChat = typeof treeChat === 'function' ? treeChat : null
     this.onOverridesChange = typeof onOverridesChange === 'function' ? onOverridesChange : null
     this.emptySlotsEnabled = emptySlots !== false
@@ -422,6 +432,9 @@ export class StaticTreeGraph {
     }
     window.addEventListener(TREE_CONTEXT_CARDS_EVENT, this._onContextCardsChange)
     window.addEventListener('storage', this._onContextCardsChange)
+    // A stream started, ended or paused: redraw the panels, never the layout.
+    this._onVideoBoxChange = () => { if (!this._destroyed) this._renderVideoPanels() }
+    window.addEventListener(VIDEO_BOX_CHANGE_EVENT, this._onVideoBoxChange)
     this._wireHostInteractions()
     this._onDocumentKeydown = (event) => this._escapeTopChat(event)
     document.addEventListener('keydown', this._onDocumentKeydown)
@@ -519,6 +532,13 @@ export class StaticTreeGraph {
     }
     try { localStorage.setItem('mc.set.tree_style', next) } catch { /* session choice still applies */ }
     this.treeWindows?.toolbar?.sync()
+    this._announceView()
+  }
+
+  /* Boxes/Circles or edit mode changed. An open Video section (1.0.49) says
+     why no panel shows, so it has to hear about it. */
+  _announceView() {
+    try { window.dispatchEvent(new CustomEvent(TREE_VIEW_CHANGE_EVENT)) } catch { /* no page to tell */ }
   }
 
   _setRenderStyle(next) {
@@ -537,6 +557,7 @@ export class StaticTreeGraph {
       record.chip?.remove()
       record.chipLeader?.remove()
       record.chipLeaderDot?.remove()
+      this._unmountVideo(record)
       record.el.remove()
       this._createRecord(record.agent, false, record)
     }
@@ -577,7 +598,7 @@ export class StaticTreeGraph {
            follows the node's parent. A v1 entry {dx,dy} recorded no parent,
            so after any reparent it displaced the node from its NEW slot by a
            vector measured against the OLD one: the saved-drag defect behind
-           the stale connector lines (defect 2). It cannot be validated
+           the stale connector lines (owner defect 2). It cannot be validated
            retroactively — the parent it was measured under is gone — and
            keeping it preserves exactly the displacement being fixed, so v1
            blobs are discarded on read. Costs any hand-arrangement once, said
@@ -708,14 +729,18 @@ export class StaticTreeGraph {
     const previous = this._projectionMemory.get(key)
     // Gestures move the camera, not the layout. Only a changed branch,
     // topology, style or settled viewport can choose a different frontier.
+    // A video turned on or off changes how tall a branch is, so it chooses afresh.
+    const videoRevision = this._videoRevision || 0
     if (previous && previous.revision === this._scopeRevision && previous.scope === scope && previous.input === this._scopeInput && previous.edges === this._scopeEdges &&
+      previous.videoRevision === videoRevision &&
       (previous.W === W && previous.H === H || this._panState || this._zoomMotion)) {
       this._projection = previous.result
       return previous.result.agents
     }
+    const videoIds = this._videoIds()
     const result = chooseTreeProjection({ scope, rootId, rootIds, nodeStyle: this.nodeStyle,
-      W, H, contextSize: this.cardSize, previousFolded: previous?.result.folded })
-    this._projectionMemory.set(key, { input: this._scopeInput, edges: this._scopeEdges, revision: this._scopeRevision, scope, W, H, result })
+      W, H, contextSize: this.cardSize, previousFolded: previous?.result.folded, ...(videoIds.size ? { videoIds } : {}) })
+    this._projectionMemory.set(key, { input: this._scopeInput, edges: this._scopeEdges, revision: this._scopeRevision, videoRevision, scope, W, H, result })
     if (this._projectionMemory.size > 64) this._projectionMemory.delete(this._projectionMemory.keys().next().value)
     this._projection = result
     return result.agents
@@ -807,8 +832,8 @@ export class StaticTreeGraph {
       }
       this._createRecord(agent, !initial || addIds.has(agent.id))
     }
-     /* GEOMETRY FOLLOWS STRUCTURE, NOT TICKS (iteration 7: the tree's motion
-       was messy).
+    /* GEOMETRY FOLLOWS STRUCTURE, NOT TICKS (owner, iteration 7: "the tree
+       action is a mess like the way it moves and such").
        Every reply, usage reading and status change reached this line, and
        _layoutNow re-runs the packers AND the vertical fitter — which is
        allowed to rescale every radius in the tree. Nodes carry no transition
@@ -821,10 +846,37 @@ export class StaticTreeGraph {
     this._syncConversationShelf()
     if (this._layoutResult && this._layoutKey === this._structureKey()) {
       this._publishNodeCount()
+      this._syncPanHintCover()
       return
     }
     this._layoutNow()
     this._publishNodeCount()
+    this._syncPanHintCover()
+  }
+
+  /* THE HINT NEVER COVERS A CARD'S WORDS. The pan hint is drawn over the
+     canvas's bottom-left corner (tree-graph.css .tree-pan-hint). With the chat
+     pane open at 1280x800 and 150% text the Controller card's status row sat
+     under it, fully hidden, until the person panned. Measured, not guessed:
+     captures/after-design6-v2/agent-chat-white-1280x800-z150.png. So the hint
+     steps aside whenever a node card intersects its box -- the same rule
+     board.css applies to the org status footer -- and comes back when the
+     cards move off it. Only mounted nodes are measured; the detail budget
+     already bounds how many there are. */
+  _syncPanHintCover() {
+    const hint = this.panHint
+    if (!hint || this._destroyed) return
+    const box = hint.getBoundingClientRect()
+    let covered = false
+    if (box.width > 0 && box.height > 0) {
+      for (const record of this.nodes.values()) {
+        const el = record.el
+        if (!el || !el.isConnected || el.hidden) continue
+        const r = el.getBoundingClientRect()
+        if (r.width > 0 && r.left < box.right && r.right > box.left && r.top < box.bottom && r.bottom > box.top) { covered = true; break }
+      }
+    }
+    hint.toggleAttribute('data-covered', covered)
   }
 
   /* What a layout is a function of. Two passes with the same key must produce
@@ -847,6 +899,7 @@ export class StaticTreeGraph {
       this._positionsRevision,
       this._contextRevision || 0,
       this._extensionRevision || 0,
+      this._videoRevision || 0,
       edges,
       shape,
     ].join('~')
@@ -896,6 +949,8 @@ export class StaticTreeGraph {
     node.tabIndex = 0
     node.setAttribute('role', 'button')
     node.setAttribute('aria-label', `${agent.name} — ${role.label}; Shift+Enter opens controls`)
+    node.setAttribute('aria-haspopup', 'menu')
+    node.setAttribute('aria-keyshortcuts', 'Shift+F10 ContextMenu')
     this.container.appendChild(node)
 
     const record = existing || {
@@ -955,6 +1010,9 @@ export class StaticTreeGraph {
         button.addEventListener('pointerdown', event => event.stopPropagation())
         button.addEventListener('keydown', event => { if (['Enter', ' '].includes(event.key)) event.stopPropagation() })
       }
+      // A hovered box's video runs at the focused rate.
+      node.addEventListener('pointerenter', () => this._hoverVideo(record, true))
+      node.addEventListener('pointerleave', () => this._hoverVideo(record, false))
     }
 
     this._renderRuntime(record)
@@ -979,6 +1037,8 @@ export class StaticTreeGraph {
       } else node.append(contact)
       this._renderContactMark(record)
     }
+    // The panel under the box; a rebuilt record gets the broker's same stream.
+    this._syncVideoPanel(record)
     if (this.screenChips) this._makeChip(record)
 
     if (fadeIn) {
@@ -1011,6 +1071,8 @@ export class StaticTreeGraph {
 
   _removeRecord(record, animate = true) {
     if (this._nodeDrag?.record === record) this._nodeDrag.cancel()
+    if (this._menuNodeId === record.id) this.nodeMenu?.close(false)
+    this._unmountVideo(record)
     this.previewFitter.forget(record)
     this._disposeChat(record)
     this.nodes.delete(record.id)
@@ -1115,7 +1177,7 @@ export class StaticTreeGraph {
     let start = null
     let offset = null
     node.addEventListener('pointerdown', (event) => {
-      if (!this.editMode || this._destroyed || event.button !== 0 || event.isPrimary === false
+      if (!this.editMode || this._destroyed || event.button !== 0 || event.ctrlKey || event.isPrimary === false
         || this._nodeDrag || this._panState || record.agent.treeScope?.group) return
       if (this.canDrag && !this.canDrag(record.agent)) {
         this.onDropRefused?.('notDraggable', { name: record.agent.name || record.id || 'this agent' })
@@ -1202,9 +1264,9 @@ export class StaticTreeGraph {
     this._renderLinks()
   }
 
-   /* THE VIEW COMES TO THE HAND (it was sometimes hard to pull an
-     agent far enough right to drop it on another agent's tree). A pointer
-     cannot leave the pane, so a drop target past its edge
+  /* THE VIEW COMES TO THE HAND (owner, 2026-09-15: "sometime on the tree its
+     hard to pull a agent far enough right to drop it on another agents
+     tree"). A pointer cannot leave the pane, so a drop target past its edge
      was unreachable: the drag stopped at the glass. While a node is held
      within DRAG_EDGE of an edge, the view pans that way a little each frame,
      faster the deeper into the band, and the held node is re-placed under
@@ -1343,7 +1405,7 @@ export class StaticTreeGraph {
        Answered as an interval of future frames rather than a yes/no, because
        "past the right edge" is not the same question as "can get here".
 
-       Asking the axes independently was wrong: a
+       Asking the axes independently was wrong (Builder 10, 2026-09-15): a
        circle off to the right AND far above the pane counted as ahead of a
        horizontal drag, so the pan ran to its bound chasing something that
        could never arrive -- and carried the one real target off screen on the
@@ -1373,11 +1435,11 @@ export class StaticTreeGraph {
 
   /* HOW FAR RIGHT A NUDGE MAY GO. The canvas edge used to be a wall, and the
      layout packs each family's "+" offer against it, so an agent could not be
-     moved into or past the "+" column (in edit mode agents could
-     not be moved right, where the + slots are).
+     moved into or past the "+" column (owner, 2026-09-10: "i cant move any
+     agents in edit mode they cant be moved right which is where the + are").
      A nudge may travel a further canvas width, or as far as anything drawn
      plus one more width when the forest is wider than that (another agent's
-     tree far to the right); the pan bounds follow the drawn
+     tree far to the right, owner 2026-09-15); the pan bounds follow the drawn
      content (_contentBox), so a node out there stays reachable. */
   _rightReach(record, slotX) {
     let box = null
@@ -1409,9 +1471,9 @@ export class StaticTreeGraph {
      band stays free. The precise label-collision veto below is what refuses
      genuine overlaps, not this coarse fence: the earlier version also
      subtracted the label stack here and floored at zero, which made tight
-     rows refuse every vertical nudge — the snap-back feel reported as a
-     regression (iteration 6: keep the new version, but make it act and feel
-     as before). The outermost rows get a fixed 40px outward since
+     rows refuse every vertical nudge — the snap-back feel the owner called
+     a regression (iteration 6: "keep the new version but make it act and
+     feel like before"). The outermost rows get a fixed 40px outward since
      no neighbour bounds them.
 
      THE BAND ALWAYS CONTAINS THE RECORD'S OWN SLOT. The corridor constrains
@@ -1451,7 +1513,7 @@ export class StaticTreeGraph {
   _labelBox(record) {
     if (this.nodeStyle === 'boxes' && record.agent) return {
       left: record.x - this._boxSize().width / 2, right: record.x + this._boxSize().width / 2,
-      top: record.y - this._boxSize().height / 2, bottom: record.y + this._boxSize().height / 2,
+      top: record.y - this._boxSize().height / 2, bottom: record.y + this._boxSize().height / 2 + this._videoExtra(record),
     }
     const half = Math.min(record.r + 59, (record.labelMax || Infinity) / 2)
     return {
@@ -1470,8 +1532,9 @@ export class StaticTreeGraph {
     let best = within
     for (const record of this.nodes.values()) {
       if (record.el.hidden || this._culled.has(record.id) || (this._layoutVisibleIds && !this._layoutVisibleIds.has(record.id))) continue
+      const top = record.y - this._boxSize().height / 2, bottom = record.y + this._boxSize().height / 2 + this._videoExtra(record)
       const distance = this.nodeStyle === 'boxes'
-        ? Math.hypot(Math.max(0, Math.abs(record.x - graphX) - this._boxSize().width / 2), Math.max(0, Math.abs(record.y - graphY) - this._boxSize().height / 2))
+        ? Math.hypot(Math.max(0, Math.abs(record.x - graphX) - this._boxSize().width / 2), Math.max(0, top - graphY, graphY - bottom))
         : Math.hypot(record.x - graphX, record.y - graphY)
       if (distance < best) {
         best = distance
@@ -1487,11 +1550,11 @@ export class StaticTreeGraph {
      used to fall into dead space and read as a rejected drop. */
   /* HOW FAR A DRAGGED NODE MAY TRAVEL, AND WHY IT IS NOT THE RANK CORRIDOR.
    *
-   * THE DEFECT: editing had worked -- dragging a node to a new node slot on the
-   * same tree, a new tree or a different tree -- and then on page 2 nodes could
-   * no longer be dropped onto the new bubbles.
+   * THE OWNER'S DEFECT, verbatim: "edit had been working; drag a node to a new
+   * node slot; on the same tree, on a new tree, or on a different tree. On pg2
+   * you cant drag and drop the nodes onto the new bubbles anymore."
    *
-   * WHAT BROKE IT. an earlier commit put the rank corridor on the LIVE drag, for a real
+   * WHAT BROKE IT. c06c44c put the rank corridor on the LIVE drag, for a real
    * reason -- before it, a drag rode free and then jumped into the corridor on
    * release, a snap the hand never asked for. But the corridor is HALF THE
    * PITCH to the neighbouring row, and every empty slot on this canvas sits in
@@ -1504,14 +1567,14 @@ export class StaticTreeGraph {
    * is `(height - 104 - 116) / (rows - 1)` (src/tree-layout.js), which on a
    * 620px canvas is 400px for two rows and 200px for three. Half of either is
    * further than 77px, so a cross-row drop could not register at any realistic
-   * window size. All three of the moves they name are cross-row, which is why they
+   * window size. All three of the moves he names are cross-row, which is why he
    * reports all three dead while the drop code reads as intact.
    *
    * THE RULE THAT SATISFIES BOTH INTENTS. The band is the rank corridor UNIONED
    * with the reach of every target that is actually on screen. Then:
    *
    *   released inside the corridor   a nudge, exactly where the hand left it --
-   *                                  the no-jump property an earlier commit bought.
+   *                                  the no-jump property c06c44c bought.
    *   released on a target           a reparent: the node is relaid out into
    *                                  its new slot, which is the whole gesture.
    *   released on a refused target   the refusal branch says which rule refused
@@ -1577,7 +1640,7 @@ export class StaticTreeGraph {
        DROP_SLOP — AT LEAST the packed non-overlap distance — so no annulus
        exists where two nodes visually touch yet nothing registers: the old
        `record.r * 0.55` factor left exactly that dead ring, which is what
-       made dropping a child on its parent land in nothing (defect 3:
+       made dropping a child on its parent land in nothing (owner defect 3:
        a MISSED drop, not an accepted one). */
     let raw = null
     let best = Infinity
@@ -1589,7 +1652,7 @@ export class StaticTreeGraph {
         raw = candidate
       }
     }
-    /* SLOTS ARE DROP TARGETS TOO (defect 4). A child slot means "join
+    /* SLOTS ARE DROP TARGETS TOO (owner defect 4). A child slot means "join
        this family" — the same move as dropping on the parent circle, said at
        the exact spot the child would land. The new-tree slot is the drag OUT:
        this branch becomes its own tree. Slots compete in the same
@@ -1690,7 +1753,7 @@ export class StaticTreeGraph {
 
     if (raw) {
       /* A refused drop names its rule. The wiggle alone taught nothing —
-         a child that seemed droppable directly on its parent (defect 3)
+         "possible to drop a child directly on its parent" (owner defect 3)
          was in fact this branch snapping back wordlessly, which read as an
          accepted drop that mysteriously changed nothing. */
       if (this.onDropRefused) {
@@ -1956,8 +2019,9 @@ export class StaticTreeGraph {
        tree is too dense to read (the drill hint), and which agents fit. Both
        are claims about the fleet, and a slot must not be able to make either
        of them true. */
+    const videoIds = this._videoIds()
     const fleetLayout = this.nodeStyle === 'boxes'
-      ? layoutBoxTree({ nodes: agents, edges, W: this.W, H: this.H, contextSize: this.cardSize })
+      ? layoutBoxTree({ nodes: agents, edges, W: this.W, H: this.H, contextSize: this.cardSize, ...(videoIds.size ? { videoIds } : {}) })
       : layoutTree({ nodes: agents, edges, W: this.W, H: this.H, spacious: this.spacious && (!this.editMode || this.smartScope) })
     this._syncContextCardControl()
     this._realDrillRequired = fleetLayout.drillRequired
@@ -2038,8 +2102,8 @@ export class StaticTreeGraph {
          lands exactly where the layout put it — the old clamps moved big
          circles even at rest, and that push-down was the overlap the owner
          called a regression. Vertically the nudge also stays in its own
-         rank corridor (iteration 5: the top circles stay at the top and never
-         overlap): the midline between rows is the
+         rank corridor (owner, iteration 5: "the top circles should stay at
+         the top — not overlap ever"): the midline between rows is the
          fence, and the label-collision veto below is the precise check. */
       record.x = clamp(slot.x + offset.dx, Math.min(record.r + 12, slot.x), this._rightReach(record, slot.x))
       record.y = clamp(slot.y + offset.dy, ...this._rankCorridor(record, result, slot.y))
@@ -2085,7 +2149,7 @@ export class StaticTreeGraph {
       }
       if (!collides) {
         /* An offered "+" under a moved agent gives way instead of the move:
-           the person put the agent there, and the offer
+           the person put the agent there (owner, 2026-09-10), and the offer
            comes back when the agent moves off it. */
         for (const plan of plans) {
           const slot = result.slots.get(plan.id)
@@ -2104,6 +2168,8 @@ export class StaticTreeGraph {
       }
     }
     this._syncEmptySlots(covered.size ? plans.filter(plan => !covered.has(plan.id)) : plans, result)
+    for (const record of this.nodes.values()) this._syncVideoPanel(record)
+    this._boxVideoWatcher?.refresh()
     this._renderLinks()
     this.updateDensity()
     this._placeChips()
@@ -2315,6 +2381,7 @@ export class StaticTreeGraph {
      and none of which the new agent is a reason to discard. */
   refresh() {
     if (this._destroyed) return
+    this._retainVideo()
     this._scopeRevision = (this._scopeRevision || 0) + 1
     if (this._treeScope) {
       this._treeScope.update(this.computer?.agents || [], this.declaredEdges || [])
@@ -2350,14 +2417,15 @@ export class StaticTreeGraph {
 
   /* Orthogonal parent->child routing. A starburst of straight centre-to-centre
      lines crosses every card on the canvas and reads as an explosion rather
-     than a hierarchy -- the lines themselves made no sense. Siblings dropping
-     to the same row now share one horizontal bus,
+     than a hierarchy -- the owner's "the lines themselves are just absolutely
+     nonsense". Siblings dropping to the same row now share one horizontal bus,
      so a tier reads as one bracket. The segments are axis-aligned, which is
      also what lets the context blocks avoid them EXACTLY (see _placeChips)
      instead of approximately. */
   _elbowRoute(from, to, busY) {
     const startX = from.x
-    const startY = from.y + this._nodeRadius(from)
+    // A parent's trunk starts under its own video panel, never across it.
+    const startY = from.y + this._nodeRadius(from) + this._videoExtra(from)
     const endX = to.x
     const endY = to.y - this._nodeRadius(to)
     const straight = {
@@ -2439,7 +2507,7 @@ export class StaticTreeGraph {
          at 2.2x on a 400px drop, growing with both the scale and the gap -- and in the tight
          case it lands outside the drawn span, where _elbowRoute's guard gives up and returns
          a straight diagonal on a canvas whose whole point is that it has none. */
-      const top = link.from.y + this._nodeRadius(link.from)
+      const top = link.from.y + this._nodeRadius(link.from) + this._videoExtra(link.from)
       const bottom = link.to.y - this._nodeRadius(link.to)
       buses.set(key, Math.min(buses.get(key) ?? Infinity, top + (bottom - top) * 0.55))
       link.busKey = key
@@ -2549,8 +2617,9 @@ export class StaticTreeGraph {
   }
 
   /* A card (a circle's context card, or a box) opens side chat; double-
-     clicking an agent opens its conversation. Double-clicking the circle
-     brings up a window, and clicking the card brings up the sidebar. A circle's single click only selects. */
+     clicking an agent opens its conversation. Owner, 2026-09-10: "double
+     clicking the circle should bring up a window and clicking on the card
+     should bring up the sidebar". A circle's single click only selects. */
   handleClick(record) {
     this._cancelPendingNodeClicks()
     if (this._linkMode) { void this._chooseLinkNode(record); return }
@@ -2577,6 +2646,7 @@ export class StaticTreeGraph {
     this._cancelPendingNodeClicks()
     this.selectedId = id
     for (const record of this.nodes.values()) record.el.classList.toggle('selected', record.id === id)
+    this._boxVideoWatcher?.refresh()
     const record = this.nodes.get(id)
     if (record) this.onSelect?.(record.agent)
   }
@@ -2761,7 +2831,7 @@ export class StaticTreeGraph {
 
   /* The 680ms re-root glide re-ran the chip beam-search on EVERY frame — the
      most expensive routine on the page, sixty times a second, to decorate a
-     click. The rule is no required motion and function over
+     click. The owner asked for no required motion and for function over
      decoration; the re-root now lands immediately. */
   _animateRecord(record, from, target) {
     if (this._animationRaf) cancelAnimationFrame(this._animationRaf)
@@ -2843,6 +2913,7 @@ export class StaticTreeGraph {
       }
       this.treeWindows?.refreshHeaders()
       this.treeWindows?.toolbar?.sync()
+      this._announceView()
       return
     }
     if (next && this._treeScope?.groups.has(this.rootId)) {
@@ -2854,7 +2925,7 @@ export class StaticTreeGraph {
     if (next) {
       this.container.dataset.editMode = 'true'
       this.screenOverlay?.setAttribute('data-edit-mode', 'true')
-      /* Slots STAY in edit mode (defect 4: the grey + nodes are kept).
+      /* Slots STAY in edit mode (owner defect 4: "keep the gray + nodes").
          The old withdrawal's stated reason — "a slot cannot be dropped on" —
          stopped being true when slot drops became real moves: a child slot
          accepts a node as moveNode(id, slot.parentId), and the new-tree slot
@@ -2881,6 +2952,7 @@ export class StaticTreeGraph {
     }
     this._renderLinks()
     this._placeChips()
+    this._announceView()
   }
 
   addAgent(agent) {
@@ -2924,6 +2996,8 @@ export class StaticTreeGraph {
     chip.setAttribute('aria-label', record.agent.treeScope?.group
       ? `${record.agent.name}; explore this group`
       : `${record.agent.name} monitoring context; open side chat. Shift+Enter opens the conversation`)
+    chip.setAttribute('aria-keyshortcuts', 'Shift+F10 ContextMenu')
+    chip.setAttribute('aria-haspopup', 'menu')
     chip.tabIndex = 0
     this.screenOverlay.appendChild(chip)
     record.chip = chip
@@ -3080,6 +3154,19 @@ export class StaticTreeGraph {
   setContactMarks(value = {}) {
     this.contactMarks = value
     for (const record of this.nodes.values()) this._renderContactMark(record)
+    const video = [...new Set(Array.isArray(value?.videoNodeIds) ? value.videoNodeIds.filter(id => typeof id === 'string') : [])].sort()
+    if (video.join('\n') !== [...(this._videoMarked || [])].join('\n')) {
+      /* A panel appearing or leaving changes how tall its rank is: choose the
+         frontier and lay the tree out again, and let the view refit, like a
+         new card size (_applyContextCardPolicy). */
+      this._videoMarked = Object.freeze(new Set(video))
+      this._videoRevision = (this._videoRevision || 0) + 1
+      if (this.nodes && this.container && !this._destroyed) {
+        this._layoutKey = null
+        this._viewSteered = false
+        this._reconcile()
+      }
+    }
     if (!this.chatOwner) for (const frame of this.windowBoard?.windows || []) {
       if (frame.graph !== this) frame.graph.setContactMarks(value)
     }
@@ -3090,17 +3177,83 @@ export class StaticTreeGraph {
     if (!contact) return
     const selected = this.contactMarks.voiceNodeId === record.id
     const screen = this.contactMarks.screenNodeIds?.includes(record.id) === true
+    const video = this.contactMarks.videoNodeIds?.includes(record.id) === true
+    // A choice saved before a restart streams nothing until the person picks again.
+    const videoStarted = video && this.contactMarks.videoStartedNodeIds?.includes(record.id) === true
     const state = selected ? this.contactMarks.voiceState || 'off' : 'off'
     contact.dataset.voiceSelected = String(selected)
     contact.dataset.voiceState = state
     contact.dataset.screenAccess = String(screen)
+    contact.dataset.video = String(video)
     contact.setAttribute('aria-pressed', String(selected))
-    contact.setAttribute('aria-label', `Voice controls for ${record.agent.name}`)
-    contact.title = `${record.agent.name} · ${selected ? state === 'off' ? 'voice selected, not recording' : `voice ${state}` : 'open voice controls'}${screen ? ' · screen access on' : ''}`
+    contact.setAttribute('aria-label', `Voice, screen and video for ${record.agent.name}`)
+    contact.title = `${record.agent.name} · ${selected ? state === 'off' ? 'voice selected, not recording' : `voice ${state}` : 'open voice, screen and video'}${screen ? ' · screen access on' : ''}${video ? videoStarted ? ' · video on' : ' · video saved' : ''}`
+  }
+
+  /* ---------------------------------------------------------------------------
+     THE VIDEO UNDER A BOX (1.0.49, phase 1).
+     Only Boxes view, never edit mode, never a group box, and only where the
+     desktop app's bridge exists (not the browser, the phone or the paired
+     window). One rule, _videoIds(), feeds the layout lanes, the projection,
+     the connectors, the hit tests and the panels, so they cannot disagree.
+     --------------------------------------------------------------------------- */
+  _videoBroker() { return videoBoxBroker() }
+
+  _videoIds() {
+    const marked = this._videoMarked
+    if (!marked?.size || this.nodeStyle !== 'boxes' || this.editMode) return NO_VIDEO
+    try { return this._videoBroker().available() ? marked : NO_VIDEO } catch { return NO_VIDEO }
+  }
+
+  // The room a record's panel takes under its box: the 8px gap plus the panel.
+  _videoExtra(record) {
+    if (!record?.agent || record.agent.treeScope?.group || !this._videoIds().has(record.id)) return 0
+    return boxVideoLane(this._boxSize())
+  }
+
+  _syncVideoPanel(record) {
+    if (!record?.el) return
+    if (!this._videoExtra(record)) { this._unmountVideo(record); return }
+    if (record.videoPanel?.parentNode === record.el) { renderBoxVideo(record); return }
+    this._unmountVideo(record)
+    mountBoxVideo(record, { broker: this._videoBroker() })
+    this._videoWatcher()?.observe(record)
+  }
+
+  _unmountVideo(record) {
+    if (!record?.videoPanel) return
+    this._boxVideoWatcher?.unobserve(record)
+    unmountBoxVideo(record)
+  }
+
+  _renderVideoPanels() {
+    for (const record of this.nodes.values()) if (record.videoPanel) renderBoxVideo(record)
+  }
+
+  _videoWatcher() {
+    if (this._destroyed) return null
+    this._boxVideoWatcher ||= createBoxVideoWatcher({ root: this.zoomHost, broker: this._videoBroker(),
+      isFocused: id => !!id && (id === this.selectedId || this.nodes.get(id)?.videoHover === true) })
+    return this._boxVideoWatcher
+  }
+
+  _hoverVideo(record, hovered) {
+    record.videoHover = hovered
+    if (record.videoPanel) this._boxVideoWatcher?.refresh()
+  }
+
+  /* Agents that left this computer's tree lose their stream. The main graph
+     only, with the whole agent list rather than the folded view, and never
+     from an empty list, which is what a tree still loading looks like. */
+  _retainVideo() {
+    if (this.chatOwner || this.computer?.id !== THIS_COMPUTER_ID) return
+    const agents = this.computer?.agents
+    if (!Array.isArray(agents) || !agents.length) return
+    try { this._videoBroker().retain(agents.map(agent => agent.id)) } catch { /* the broker keeps its streams */ }
   }
 
   /* THE SWARM BOX AND THE DRIFT LIGHT. What is drawn is decided in
-     src/lane-marks.js (the pure half — see its header for the rules
+     src/lane-marks.js (the pure half — see its header for the owner's rules
      and the cloudLane contract); this binding only places it. Both marks ride
      the bubble's bottom-right at 45° on the rim (chip centre at r × 0.71, so
      the inset is r × 0.293 minus half the 24px chip), and when both show the
@@ -3376,11 +3529,11 @@ export class StaticTreeGraph {
       }
       /* THE WHOLE CONFIG, NOT A HAND-PICKED HALF OF IT.
        *
-       * THE DEFECT THIS CLOSES: this had been right before, with the buttons in
-       * the chat window, and was disabled by accident. It was, and here is the
-       * accident. This call was
-       * written at an earlier commit as an explicit list of the six fields the config had
-       * then. Iteration 6 (an earlier commit) grew the SHARED config -- the one
+       * THE DEFECT THIS CLOSES, in the owner's words: "we had this right in the
+       * past and it had the buttons in the chat window so maybe it just got
+       * disabled on accident". It did, and here is the accident. This call was
+       * written at 4bf6000 as an explicit list of the six fields the config had
+       * then. Iteration 6 (7cce02c) grew the SHARED config -- the one
        * treeChatConfigFor builds for the card AND the rail -- by four more
        * powers: the busy feed behind the send/stop morph, the queue face, the
        * actions popup, and the stop verb. The rail spreads the config
@@ -4498,8 +4651,8 @@ export class StaticTreeGraph {
       const ux = dx / length, uy = dy / length
       const x1 = from.x + ux * this._nodeRadius(from), y1 = from.y + uy * this._nodeRadius(from)
       const x2 = to.x - ux * this._nodeRadius(to), y2 = to.y - uy * this._nodeRadius(to)
-      const start = this.nodeStyle === 'boxes' ? boxPort(from, to, 1, this.cardSize) : { x: x1, y: y1 }
-      const end = this.nodeStyle === 'boxes' ? boxPort(to, from, 1, this.cardSize) : { x: x2, y: y2 }
+      const start = this.nodeStyle === 'boxes' ? boxPort(from, to, 1, this.cardSize, this._videoExtra(from)) : { x: x1, y: y1 }
+      const end = this.nodeStyle === 'boxes' ? boxPort(to, from, 1, this.cardSize, this._videoExtra(to)) : { x: x2, y: y2 }
       const path = document.createElementNS(ns, 'path')
       path.setAttribute('class', 'tree-link link-direct')
       path.setAttribute('data-from', link.from)
@@ -4820,6 +4973,20 @@ export class StaticTreeGraph {
   focusNode(id, { zoom = null } = {}) {
     const record = this.nodes.get(id)
     if (!record) return
+    /* THE NODE IS CENTRED WHERE IT IS, NOT WHERE IT WAS. A smart-scope pane
+       settles a resize 120 ms after the last size change (resize()), and the
+       settled layout can move every node. A press of F inside that window
+       centred the node at its pre-resize slot; the settled layout then kept
+       the steered pan and carried the node out of the pane (measured on a
+       390 px window with the rail collapsed: the agent's name painted 455 px
+       left of the window). So a pending settle runs first, and the pan is
+       computed against the layout the person is looking at. */
+    if (this._readabilityResize) {
+      clearTimeout(this._readabilityResize)
+      this._readabilityResize = null
+      this.resize(true)
+      if (this._destroyed || this.nodes.get(id) !== record) return
+    }
     if (zoom != null) this.zoom = clamp(zoom, ZOOM_MIN, ZOOM_MAX)
     const hostWidth = this.zoomHost.clientWidth || this.W
     const hostHeight = this.zoomHost.clientHeight || this.H
@@ -4832,8 +4999,46 @@ export class StaticTreeGraph {
     this._applyZoom()
   }
 
+  _openNodeContextMenu(event, keyboard = false, fromTab = null) {
+    const target = event.target
+    if (!fromTab && target.closest?.('input, textarea, select, [contenteditable], .chat, .chip.as-chat, .tree-conversation')) return
+    const anchor = fromTab?.anchor || target.closest?.('.static-tree-node, .static-tree-chip')
+    const record = fromTab?.record || (anchor && this.nodes.get(anchor.dataset.agentId))
+    if (!record || this._nodeDrag || this._panState) return
+    event.preventDefault(); event.stopPropagation()
+    this._cancelPendingNodeClicks()
+    if (this.nodeMenu?.root.isConnected && this._menuNodeId === record.id) return
+    const owner = this.chatOwner || this
+    if (!owner._linkMode) this.select(record.id)
+    const door = owner.nodeActions?.(record.agent)
+    const navigation = () => {
+      const row = (id, label, run, enabled = true) => ({ id, label, enabled,
+        disabledHint: enabled ? '' : 'Finish editing the tree first.', run: ctx => { ctx.close(false); run() } })
+      if (owner._linkMode) return [row('stop-linking', 'Stop linking', () => owner.setLinkMode(false))]
+      if (record.agent.treeScope?.group) return [row('explore-group', 'Explore this group', () => this.setRoot(record.id), !this.editMode)]
+      return [...(!fromTab || this.workspace?.mode !== 'chat' ? [row('open-chat', 'Open chat', () => this.openChat(record), !this.editMode)] : []),
+        ...(this.onOpenControls ? [row('open-details', 'Open details', () => door?.openDetails ? door.openDetails() : this.onOpenControls(record.agent))] : []),
+        ...(this._scopeModel().summary(record.id).total > 1 ? [row('explore', 'Explore this branch', () => { this.workspace?.showTrees({ focus: false }); this.setRoot(record.id) }, !this.editMode)] : []),
+        ...(door?.startWork ? [row('start-work', 'Start more work', door.startWork, !this.editMode)] : []),
+        ...(door ? [row('all-actions', 'All actions', () => door.openInChat(null))] : []),
+        ...(fromTab ? [row('close-tab', 'Close tab', () => this.workspace ? this.workspace.close(record) : this.closeChat(record), !this.editMode)] : [])]
+    }
+    this._menuNodeId = record.id
+    this.nodeMenu = openNodeActionMenu({ anchor, fallback: this.zoomHost, title: `${record.agent.name} · ${roleAppearance(record.agent.declaredRole || record.agent.role).label}`,
+      point: keyboard ? null : { x: event.clientX, y: event.clientY }, keyboard,
+      valid: () => !this._destroyed && this.nodes.get(record.id) === record && !anchor.closest('[hidden], [inert]') && (Boolean(fromTab) || !this.zoomHost.inert),
+      rows: () => nodeMenuRows(owner._linkMode || record.agent.treeScope?.group ? [] : door?.rows() || [], navigation()),
+      subscribe: door?.subscribe, openInChat: door?.openInChat,
+    })
+  }
+
   _wireHostInteractions() {
+    this._disposeNodeMenuGestures = bindNodeMenuGestures(this.zoomHost,
+      (event, keyboard) => this._openNodeContextMenu(event, keyboard),
+      { allowTouch: () => !this.editMode && !this._nodeDrag && !this._panState })
+
     this._onWheel = (event) => {
+      this.nodeMenu?.close(false)
       if ((this.editMode && !this.smartScope) || event.target.closest?.('.chip.as-chat, .chat')) return
       event.preventDefault()
       const rect = this.zoomHost.getBoundingClientRect()
@@ -4867,6 +5072,7 @@ export class StaticTreeGraph {
     this.zoomHost.addEventListener('wheel', this._onWheel, { passive: false })
 
     this._onPanDown = (event) => {
+      if (event.button === 1) this.nodeMenu?.close(false)
       if (![0, 1].includes(event.button) || event.isPrimary === false || this._panState || this._nodeDrag
         || (this.editMode && !this.smartScope)) return
       // Capturing an anchor's pointer retargets Chromium's mouse click to the
@@ -5030,6 +5236,7 @@ export class StaticTreeGraph {
     const readout = this.zoomerEl?.querySelector('.gf-z') || this.fitEl?.querySelector('.gf-z')
     if (readout) readout.textContent = `${Math.round(this.zoom * 100)}%`
     this._placeChips()
+    this._syncPanHintCover()
     this.windowBoard?.scheduleLinks()
   }
 
@@ -5067,7 +5274,7 @@ export class StaticTreeGraph {
     for (const record of this.nodes.values()) {
       if (record.el?.hidden || this._culled?.has(record.id) || (this._layoutVisibleIds && !this._layoutVisibleIds.has(record.id))) continue
       if (this.nodeStyle === 'boxes') {
-        take(record.x - this._boxSize().width / 2, record.y - this._boxSize().height / 2, record.x + this._boxSize().width / 2, record.y + this._boxSize().height / 2)
+        take(record.x - this._boxSize().width / 2, record.y - this._boxSize().height / 2, record.x + this._boxSize().width / 2, record.y + this._boxSize().height / 2 + this._videoExtra(record))
         continue
       }
       const labels = record.el?.querySelector?.('.node-labels')
@@ -5134,8 +5341,18 @@ export class StaticTreeGraph {
         topPad = Math.max(topPad, (rect.bottom - hostRect.top) / uiZoom + FIT_PAD)
       }
     }
+    /* The canvas hint is drawn over the bottom of the canvas, and a video
+       panel's caption (the window's title) sits on the panel's bottom edge.
+       A fit with a panel keeps the hint's band clear (1.0.49, stage D D3); a
+       fit without one is unchanged. */
+    let bottomPad = FIT_PAD
+    const hint = hostRect && this._videoIds().size ? this.panHint?.getBoundingClientRect?.() : null
+    const hostBottom = hostRect ? hostRect.top + (hostRect.height ?? hostHeight * uiZoom) : 0
+    if (hint?.height > 0 && hint.top > hostBottom - (hostBottom - hostRect.top) / 3 && hint.top < hostBottom) {
+      bottomPad = Math.max(bottomPad, (hostBottom - hint.top) / uiZoom + FIT_PAD)
+    }
     const usableWidth = Math.max(hostWidth - FIT_PAD * 2, 1)
-    const usableHeight = Math.max(hostHeight - topPad - FIT_PAD, 1)
+    const usableHeight = Math.max(hostHeight - topPad - bottomPad, 1)
     // A sparse overview may grow modestly into spare room. The ceiling keeps
     // a single circle from becoming the canvas; Small text still has readable
     // circles. A person's own zoom/pan is never passed through automatic fit.
@@ -5307,7 +5524,7 @@ export class StaticTreeGraph {
     if (this._destroyed) return
     if (this.smartScope && !settled) {
       clearTimeout(this._readabilityResize)
-      this._readabilityResize = setTimeout(() => this.resize(true), 120)
+      this._readabilityResize = setTimeout(() => { this._readabilityResize = null; this.resize(true) }, 120)
       return
     }
     this._syncConversationShelf()
@@ -5346,6 +5563,8 @@ export class StaticTreeGraph {
   }
 
   destroy() {
+    this.nodeMenu?.close(false)
+    this._disposeNodeMenuGestures?.()
     this._nodeDrag?.cancel()
     if (this._panState) this._onPanEnd({ pointerId: this._panState.id })
     this._dropRec?.el.classList.remove('drop-ok')
@@ -5360,6 +5579,11 @@ export class StaticTreeGraph {
     this._destroyed = true
     window.removeEventListener(TREE_CONTEXT_CARDS_EVENT, this._onContextCardsChange)
     window.removeEventListener('storage', this._onContextCardsChange)
+    window.removeEventListener(VIDEO_BOX_CHANGE_EVENT, this._onVideoBoxChange)
+    // The panels go with the graph; the streams stay with the broker.
+    for (const record of this.nodes.values()) this._unmountVideo(record)
+    this._boxVideoWatcher?.destroy()
+    this._boxVideoWatcher = null
     this.ro.disconnect()
     this.previewFitter.destroy()
     this._shelfResizeDispose?.()

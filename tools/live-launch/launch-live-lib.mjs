@@ -10,8 +10,8 @@
  * watch-live.ps1 (the sampler). They import nothing from each other; the front
  * imports this.
  *
- * WHY THIS EXISTS (measured 2026-09-03, the crash investigation
- * FINDINGS.md): the main process died ~38 times in one day and left no
+ * WHY THIS EXISTS (measured 2026-09-03, REPORT-crash-20260903/00-CONTROLLER-
+ * FINDINGS.md): the owner's main process died ~38 times in one day and left no
  * trace. `start "" electron.exe` discards stdout and stderr, so a V8 "FATAL
  * ERROR: Reached heap limit" (stderr, exit 134/3) is indistinguishable from a
  * taskkill (exit 1) or a Stop-Process (exit -1). Its children outlive it and
@@ -209,12 +209,12 @@ export function knownInstances(records) {
  * Get-NetTCPConnection is unavailable. The format (Windows 10):
  *
  *   Proto  Local Address          Foreign Address        State           PID
- *   TCP    127.0.0.1:9223         0.0.0.0:0              LISTENING       4904
- *   TCP    [::1]:9223             [::]:0                 LISTENING       4904
+ *   TCP    127.0.0.1:9223         0.0.0.0:0              LISTENING       19904
+ *   TCP    [::1]:9223             [::]:0                 LISTENING       19904
  *
  * netstat attributes an inherited listening socket to the pid that CREATED
- * it even after that pid is dead (9223 was measured "owned" by a dead pid,
- * shown as [System] in the owner column), which is exactly the
+ * it even after that pid is dead (the controller measured 9223 "owned" by
+ * dead 19904, shown as [System] in the owner column), which is exactly the
  * held-dead-pid case classifyPortHolder names.
  */
 export function parseNetstatListeners(text, port = DEFAULT_PORT) {

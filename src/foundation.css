@@ -26,7 +26,7 @@
    Light themes separate layers with a hairline and a soft warm shadow; dark
    themes with a lighter tint per step, a hairline and a faint top light.
 
-   SQUARE BOXES. Square boxes were asked for twice (settings.css,
+   SQUARE BOXES. The owner has asked twice for square boxes (settings.css,
    checkout.css). The radius scale stays small: 3px marks, 4px controls, 6px
    cards, 8px overlays. Only a switch, a count badge or a status dot is a pill.
 
@@ -50,24 +50,24 @@
 
 :root {
   /* ---- RADIUS ---- */
-  --radius-xs: 3px;      /* marks inside a control: checkbox, tag, kbd, swatch */
-  --radius-sm: 4px;      /* controls: buttons, fields, segments, tabs, menu rows */
-  --radius-md: 6px;      /* cards, panels, wells, tables in a frame */
-  --radius-lg: 8px;      /* overlays: drawer, dialog, menu, popover, tip */
+  --radius-xs: 4px;      /* marks inside a control: checkbox, tag, kbd, swatch */
+  --radius-sm: 6px;      /* controls: buttons, fields, segments, tabs, menu rows */
+  --radius-md: 10px;      /* cards, panels, wells, tables in a frame */
+  --radius-lg: 10px;      /* overlays: drawer, dialog, menu, popover, tip */
   --radius-pill: 999px;  /* capsules only: switch, count badge, status dot */
-  --radius-control: var(--radius-sm);
-  --radius-card: var(--radius-md);
-  --radius-overlay: var(--radius-lg);
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-overlay: 14px;
 
   /* ---- TYPE — the tiers the product already uses, named. 11px is caps only. ---- */
-  --text-caps: 11px;     /* uppercase micro-labels, always with --track-caps */
-  --text-xs: 12px;       /* meta, timestamps, hints */
+  --text-caps: 11.5px;     /* uppercase micro-labels, always with --track-caps */
+  --text-xs: 11.5px;       /* meta, timestamps, hints */
   --text-sm: 12.5px;     /* interface chrome, control labels, values */
   --text-md: 13.5px;     /* body floor (body inherits this) */
-  --text-base: 14px;     /* reading text in forms and tables */
+  --text-base: 14.5px;     /* reading text in forms and tables */
   --text-lg: 15px;       /* long reading (Research runs 15px/1.6) */
   --text-xl: 17px;       /* section titles */
-  --text-2xl: 21px;      /* panel and dialog titles */
+  --text-2xl: 22px;      /* panel and dialog titles */
   --text-3xl: 28px;      /* page titles */
   --weight-regular: 400;
   --weight-medium: 500;
@@ -78,10 +78,10 @@
   --leading-normal: 1.5;
   --leading-relaxed: 1.6;
   --tracking-display: -0.02em;   /* page titles */
-  --tracking-title: -0.01em;     /* section, panel and dialog titles */
+  --tracking-title: -.012em;     /* section, panel and dialog titles */
   /* The caps micro-label tracking, narrowed from 0.12em: wide-set caps read as
      decoration. Narrower only, so no label can outgrow its box. */
-  --track-caps: 0.08em;
+  --track-caps: 0;
 
   /* ---- CONTROL HEIGHT — one per density (details pass, 2026-09-23). The
      census found 25 button heights; these three are the ones a control may
@@ -99,10 +99,10 @@
 
   /* ---- MOTION — quick and quiet. Colour and hover 160ms, surfaces 260ms.
      The reduced-motion clamps at the foot of styles.css still cap all three. ---- */
-  --dur-1: 100ms;
-  --dur-2: 160ms;
+  --dur-1: 120ms;
+  --dur-2: 180ms;
   --dur-3: 260ms;
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(.16,1,.3,1);
 
   /* ---- FOCUS — one ring everywhere: 2px solid, 2px off the edge. An outline,
      never a box-shadow, so forced colours repaint it instead of dropping it. ---- */
@@ -125,33 +125,29 @@
 /* WHITE — warm paper, warm ink, pine accent (the 2026-09-18 palette carried
    through the whole ramp: theme-refinements.css still wrote cool slate greys
    and blue-grey hairlines over it). Ratios on canvas / sunken / raised. */
-:root[data-theme="white"] {
-  --ink-2: #4a453f;          /* 8.57 / 7.85 / 9.48 */
-  --ink-25: #544e47;         /* 7.42 / 6.80 / 8.21 */
-  --ink-3: #605a51;          /* 6.16 / 5.65 / 6.82 — the AA floor for context text */
-  --ink-4: #8a8278;          /* 3.42 / 3.14 / 3.79 — decoration and edges only */
+:root[data-theme="white"] {          /* 8.57 / 7.85 / 9.48 */         /* 7.42 / 6.80 / 8.21 */          /* 6.16 / 5.65 / 6.82 — the AA floor for context text */          /* 3.42 / 3.14 / 3.79 — decoration and edges only */
   --surface-canvas: var(--bg);
   --surface-sunken: var(--bg-2);
   --surface-base: var(--sheet);
-  --surface-raised: #ffffff;
-  --surface-overlay: #ffffff;
-  --border-ink: #1b1a17;
-  --border-hairline: color-mix(in srgb, var(--border-ink) 8%, transparent);
-  --border-default: color-mix(in srgb, var(--border-ink) 14%, transparent);
-  --border-strong: color-mix(in srgb, var(--border-ink) 25%, transparent);
-  --border-field: #8a8278;   /* 3.42 on canvas, 3.14 sunken, 3.79 raised */
-  --state-hover: color-mix(in srgb, var(--border-ink) 4%, transparent);
-  --state-press: color-mix(in srgb, var(--border-ink) 8%, transparent);
+  --surface-raised: var(--sheet);
+  --surface-overlay: var(--sheet);
+  --border-ink: var(--ink);
+  --border-hairline: var(--line);
+  --border-default: var(--line);
+  --border-strong: var(--line-strong);
+  --border-field: var(--field-border);   /* 3.42 on canvas, 3.14 sunken, 3.79 raised */
+  --state-hover: var(--bg-hover);
+  --state-press: var(--bg-active);
   --highlight: rgba(255, 255, 255, 0.7);
   --shadow-rgb: 36, 30, 22;
   --shadow-k: 1;
-  --focus-ring: #1f6f5c;     /* pine: 5.44 canvas, 6.02 raised */
-  --accent-2: #17594a;
-  --action-primary: var(--ink);
-  --action-primary-hover: #36332e;
-  --action-primary-ink: #fffdfa;
-  --selected-bg: color-mix(in oklab, var(--ui-accent) 8%, var(--surface-raised));
-  --selected-border: color-mix(in oklab, var(--ui-accent) 58%, var(--surface-raised));
+  --focus-ring: var(--ink);     /* pine: 5.44 canvas, 6.02 raised */
+  --accent-2: var(--status-info);
+  --action-primary: var(--primary-bg);
+  --action-primary-hover: var(--primary-bg);
+  --action-primary-ink: var(--primary-ink);
+  --selected-bg: var(--bg-active);
+  --selected-border: var(--ink);
   --selected-ink: var(--ink);
 }
 
@@ -161,50 +157,50 @@
   --surface-canvas: var(--bg);
   --surface-sunken: var(--bg-2);
   --surface-base: var(--sheet);
-  --surface-raised: #fcf6dc;
-  --surface-overlay: #fdf8e2;
-  --border-ink: #3c3020;
-  --border-hairline: color-mix(in srgb, var(--border-ink) 10%, transparent);
-  --border-default: color-mix(in srgb, var(--border-ink) 17%, transparent);
-  --border-strong: color-mix(in srgb, var(--border-ink) 29%, transparent);
-  --border-field: #7c6f64;   /* Gruvbox fg4: 3.87 canvas, 3.55 sunken, 4.45 raised */
-  --state-hover: color-mix(in srgb, var(--border-ink) 6%, transparent);
-  --state-press: color-mix(in srgb, var(--border-ink) 10%, transparent);
+  --surface-raised: var(--sheet);
+  --surface-overlay: var(--sheet);
+  --border-ink: var(--ink);
+  --border-hairline: var(--line);
+  --border-default: var(--line);
+  --border-strong: var(--line-strong);
+  --border-field: var(--field-border);   /* Gruvbox fg4: 3.87 canvas, 3.55 sunken, 4.45 raised */
+  --state-hover: var(--bg-hover);
+  --state-press: var(--bg-active);
   --highlight: rgba(255, 252, 236, 0.75);
   --shadow-rgb: 60, 48, 32;
   --shadow-k: 1;
-  --focus-ring: #4c6a55;     /* 4.77 canvas, 5.48 raised */
-  --action-primary: var(--ink);
-  --action-primary-hover: #3c3836;
-  --action-primary-ink: #fbf1c7;
-  --selected-bg: color-mix(in oklab, var(--ui-accent) 10%, var(--surface-raised));
-  --selected-border: color-mix(in oklab, var(--ui-accent) 62%, var(--surface-raised));
+  --focus-ring: var(--ink);     /* 4.77 canvas, 5.48 raised */
+  --action-primary: var(--primary-bg);
+  --action-primary-hover: var(--primary-bg);
+  --action-primary-ink: var(--primary-ink);
+  --selected-bg: var(--bg-active);
+  --selected-border: var(--ink);
   --selected-ink: var(--ink);
 }
 
 /* BLACK — soft charcoal, warm ink. Each layer one tint step lighter. */
 :root[data-theme="black"] {
   --surface-canvas: var(--bg);
-  --surface-sunken: #1b1d20;
+  --surface-sunken: var(--bg-2);
   --surface-base: var(--sheet);
-  --surface-raised: #35383d;
-  --surface-overlay: #393c42;
-  --border-ink: #ffece2;
-  --border-hairline: color-mix(in srgb, var(--border-ink) 8%, transparent);
-  --border-default: color-mix(in srgb, var(--border-ink) 13%, transparent);
-  --border-strong: color-mix(in srgb, var(--border-ink) 23%, transparent);
-  --border-field: #8d857f;   /* 4.34 canvas, 3.60 base, 3.25 raised, 3.10 overlay */
-  --state-hover: color-mix(in srgb, var(--border-ink) 5%, transparent);
-  --state-press: color-mix(in srgb, var(--border-ink) 9%, transparent);
+  --surface-raised: var(--sheet);
+  --surface-overlay: var(--sheet);
+  --border-ink: var(--ink);
+  --border-hairline: var(--line);
+  --border-default: var(--line);
+  --border-strong: var(--line-strong);
+  --border-field: var(--field-border);   /* 4.34 canvas, 3.60 base, 3.25 raised, 3.10 overlay */
+  --state-hover: var(--bg-hover);
+  --state-press: var(--bg-active);
   --highlight: rgba(255, 255, 255, 0.05);
   --shadow-rgb: 0, 0, 0;
   --shadow-k: 1.7;
-  --focus-ring: #9cbfb4;
-  --action-primary: var(--ink);
-  --action-primary-hover: #ffffff;
-  --action-primary-ink: #1d1f22;
-  --selected-bg: color-mix(in oklab, var(--ui-accent) 16%, var(--surface-raised));
-  --selected-border: color-mix(in oklab, var(--ui-accent) 70%, var(--surface-raised));
+  --focus-ring: var(--ink);
+  --action-primary: var(--primary-bg);
+  --action-primary-hover: var(--primary-bg);
+  --action-primary-ink: var(--primary-ink);
+  --selected-bg: var(--bg-active);
+  --selected-border: var(--ink);
   --selected-ink: var(--ink);
 }
 
@@ -213,33 +209,38 @@
 :root:is([data-theme="ember"], [data-theme="cobalt"]) {
   --surface-canvas: var(--bg);
   --surface-base: var(--sheet);
-  --border-ink: var(--theme-accent);
-  --border-hairline: color-mix(in srgb, var(--border-ink) 14%, transparent);
-  --border-default: color-mix(in srgb, var(--border-ink) 24%, transparent);
-  --border-strong: color-mix(in srgb, var(--border-ink) 40%, transparent);
-  --state-hover: color-mix(in srgb, var(--border-ink) 8%, transparent);
-  --state-press: color-mix(in srgb, var(--border-ink) 14%, transparent);
+  --border-ink: var(--ink);
+  --border-hairline: var(--line);
+  --border-default: var(--line);
+  --border-strong: var(--line-strong);
+  --state-hover: var(--bg-hover);
+  --state-press: var(--bg-active);
   --highlight: rgba(255, 255, 255, 0.05);
   --shadow-rgb: 0, 0, 0;
   --shadow-k: 1.8;
-  --action-primary: var(--theme-accent);
-  --action-primary-hover: color-mix(in srgb, var(--theme-accent) 84%, white);
-  --action-primary-ink: var(--bg);
-  --selected-bg: color-mix(in srgb, var(--theme-accent) 13%, var(--surface-raised));
-  --selected-border: color-mix(in srgb, var(--theme-accent) 62%, var(--surface-raised));
+  --action-primary: var(--primary-bg);
+  --action-primary-hover: var(--primary-bg);
+  --action-primary-ink: var(--primary-ink);
+  --selected-bg: var(--bg-active);
+  --selected-border: var(--ink);
   --selected-ink: var(--ink);
+  --surface-raised: var(--sheet);
+  --surface-overlay: var(--sheet);
+  --surface-sunken: var(--bg-2);
+  --border-field: var(--field-border);
+  --focus-ring: var(--ink);
 }
 :root[data-theme="ember"] {
-  --surface-sunken: #12090e;
-  --surface-raised: #3a2230;
-  --surface-overlay: #3e2533;
-  --border-field: #a0697a;   /* 4.35 canvas, 3.66 base, 3.30 raised, 3.20 overlay */
+  --surface-sunken: var(--bg-2);
+  --surface-raised: var(--sheet);
+  --surface-overlay: var(--sheet);
+  --border-field: var(--field-border);   /* 4.35 canvas, 3.66 base, 3.30 raised, 3.20 overlay */   --surface-canvas: var(--bg);   --surface-base: var(--sheet);   --border-ink: var(--ink);   --border-hairline: var(--line);   --border-default: var(--line);   --border-strong: var(--line-strong);   --state-hover: var(--bg-hover);   --state-press: var(--bg-active);   --focus-ring: var(--ink);   --action-primary: var(--primary-bg);   --action-primary-hover: var(--primary-bg);   --selected-bg: var(--bg-active);   --selected-border: var(--ink);   --selected-ink: var(--ink);   --action-primary-ink: var(--primary-ink);
 }
 :root[data-theme="cobalt"] {
-  --surface-sunken: #080e1c;
-  --surface-raised: #22324f;
-  --surface-overlay: #26375a;
-  --border-field: #6d88b3;   /* 5.18 canvas, 4.03 base, 3.56 raised, 3.32 overlay */
+  --surface-sunken: var(--bg-2);
+  --surface-raised: var(--sheet);
+  --surface-overlay: var(--sheet);
+  --border-field: var(--field-border);   /* 5.18 canvas, 4.03 base, 3.56 raised, 3.32 overlay */   --surface-canvas: var(--bg);   --surface-base: var(--sheet);   --border-ink: var(--ink);   --border-hairline: var(--line);   --border-default: var(--line);   --border-strong: var(--line-strong);   --state-hover: var(--bg-hover);   --state-press: var(--bg-active);   --focus-ring: var(--ink);   --action-primary: var(--primary-bg);   --action-primary-hover: var(--primary-bg);   --selected-bg: var(--bg-active);   --selected-border: var(--ink);   --selected-ink: var(--ink);   --action-primary-ink: var(--primary-ink);
 }
 
 /* ============================================================================
@@ -267,59 +268,57 @@
     0 28px 60px -16px rgba(var(--shadow-rgb), calc(0.26 * var(--shadow-k) * var(--depth)));
   /* the top light a raised or overlay surface carries: a lit bevel on paper, a
      faint rim on charcoal */
-  --shadow-highlight: inset 0 1px 0 var(--highlight);
-  --shadow-control: var(--shadow-highlight), var(--shadow-1);
-  --shadow-card: var(--shadow-2);
+  --shadow-highlight: none;
+  --shadow-control: none;
+  --shadow-card: none;
   --shadow-popover: var(--shadow-highlight), var(--shadow-3);
   --shadow-overlay: var(--shadow-highlight), var(--shadow-4);
 
   /* legacy names, mapped onto the scale so the ~500 rules that spend them move
      together */
-  --elev-1: var(--shadow-1);
-  --elev-2: var(--shadow-2);
-  --elev-3: var(--shadow-3);
+  --elev-1: none;
+  --elev-2: none;
+  --elev-3: var(--shadow-popover);
   --r-sm: var(--radius-xs);
   --r-md: var(--radius-sm);
   --r-lg: var(--radius-md);
-  --line: var(--border-hairline);
   --line-2: var(--border-default);
 
   /* controls. On paper a control is the opaque raised step. A trough and a
      disabled fill are translucent ink, so they read as cut into WHATEVER layer
      holds them -- the page, a card or the drawer -- rather than as one fixed
      grey that is a hole on one layer and a bump on the next. */
-  --control-bg: var(--surface-raised);
-  --control-hover: color-mix(in srgb, var(--border-ink) 3.5%, var(--surface-raised));
-  --control-press: color-mix(in srgb, var(--border-ink) 7%, var(--surface-raised));
-  --control-border: var(--border-default);
-  --control-border-hover: var(--border-strong);
+  --control-bg: var(--sheet);
+  --control-hover: var(--bg-hover);
+  --control-press: var(--bg-active);
+  --control-border: var(--line-strong);
+  --control-border-hover: var(--field-border);
   --control-ink: var(--ink);
-  --control-disabled-bg: color-mix(in srgb, var(--border-ink) 4%, transparent);
+  --control-disabled-bg: var(--sheet);
   --control-disabled-ink: var(--ink-3);
-  --field-bg: var(--surface-raised);
-  --field-border: var(--border-field);
+  --field-bg: var(--sheet);
   --field-border-hover: var(--ink-3);
   --field-border-invalid: var(--s-serious);
   --theme-selected-bg: var(--selected-bg);
   --theme-selected-border: var(--selected-border);
-  --seg-bg: color-mix(in srgb, var(--border-ink) 5%, transparent);
+  --seg-bg: var(--bg-2);
   --seg-border: var(--border-hairline);
 
   /* Native checkbox, radio and progress take the theme's accent instead of the
      browser's blue. Inherited, so this one line reaches every page. */
-  accent-color: var(--accent-2);
+  accent-color: var(--ink);
 }
 
 /* On the dark themes every control step is relative too: a control is a film
    of light over its layer, a field and a trough a film of shade. An opaque
    "raised" grey was darker than the drawer it sat in. */
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) {
-  --control-bg: rgba(255, 255, 255, 0.055);
-  --control-hover: rgba(255, 255, 255, 0.09);
-  --control-press: rgba(255, 255, 255, 0.03);
-  --control-disabled-bg: rgba(0, 0, 0, 0.12);
-  --field-bg: rgba(0, 0, 0, 0.16);
-  --seg-bg: rgba(0, 0, 0, 0.2);
+  --control-bg: var(--sheet);
+  --control-hover: var(--bg-hover);
+  --control-press: var(--bg-active);
+  --control-disabled-bg: var(--sheet);
+  --field-bg: var(--sheet);
+  --seg-bg: var(--bg-2);
 }
 
 ::selection { background: color-mix(in oklab, var(--ui-accent) 20%, transparent); }
@@ -337,12 +336,12 @@
    the backdrop blur and the travelling specular sweep are gone: they fade to
    nothing on the dark themes and read as haze on the light ones. ---- */
 .glass {
-  background: var(--surface-base);
+  background: var(--sheet);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
   transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
 }
 .glass:hover { border-color: var(--border-default); box-shadow: var(--shadow-card); }
@@ -366,9 +365,13 @@
   background: var(--control-bg);
   box-shadow: var(--shadow-control);
   color: var(--control-ink);
-  font-weight: var(--weight-semibold);
+  font-weight: 550;
   transition: background-color var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out),
     color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+  min-height: var(--control-h);
+  padding: 0 12px;
+  font-size: 13.5px;
+  gap: 6px;
 }
 .ctl-btn:hover {
   background: var(--control-hover);
@@ -513,8 +516,8 @@ input[type="range"]:active::-webkit-slider-thumb {
 ::-webkit-scrollbar-thumb { border: 1px solid transparent; background-clip: padding-box; border-radius: var(--radius-pill); }
 
 /* ============================================================================
-   THE CRAFTED FINISH. A review found places
-   that read as plain drawn lines rather than finished artwork. Paper and
+   THE CRAFTED FINISH (2026-09-23). The owner: "theres places, it just feels
+   like basic lines drawn instead of well formatted artwork". Paper and
    hairline kept its square corners and its restraint, but separated almost
    everything with a 1px outline, and put outlines inside outlines. The
    finish moves the separating work to LAYERS, FILLS and TYPE:
@@ -540,42 +543,32 @@ input[type="range"]:active::-webkit-slider-thumb {
   /* A card lifted off paper: a shadow ring too faint to read as a line, a
      contact shadow and a soft pool under it. */
   --shadow-lift:
-    0 0 0 1px rgba(var(--shadow-rgb), calc(0.055 * var(--shadow-k) * var(--depth))),
-    0 1px 2px rgba(var(--shadow-rgb), calc(0.05 * var(--shadow-k) * var(--depth))),
-    0 4px 12px -4px rgba(var(--shadow-rgb), calc(0.08 * var(--shadow-k) * var(--depth))),
-    0 18px 36px -24px rgba(var(--shadow-rgb), calc(0.14 * var(--shadow-k) * var(--depth)));
+    none;
   --shadow-lift-hover:
-    0 0 0 1px rgba(var(--shadow-rgb), calc(0.07 * var(--shadow-k) * var(--depth))),
-    0 2px 4px rgba(var(--shadow-rgb), calc(0.06 * var(--shadow-k) * var(--depth))),
-    0 8px 20px -6px rgba(var(--shadow-rgb), calc(0.12 * var(--shadow-k) * var(--depth)));
-  --craft-band: color-mix(in srgb, var(--border-ink) 3.2%, var(--surface-base));
-  --craft-well: color-mix(in srgb, var(--border-ink) 4%, transparent);
-  --craft-tint: color-mix(in oklab, var(--ui-accent) 5%, var(--surface-base));
-  --craft-row-hover: color-mix(in srgb, var(--border-ink) 3%, transparent);
-  --craft-row-selected: color-mix(in oklab, var(--ui-accent) 9%, var(--surface-base));
+    none;
+  --craft-band: var(--bg-2);
+  --craft-well: var(--bg-2);
+  --craft-tint: var(--bg-hover);
+  --craft-row-hover: var(--bg-hover);
+  --craft-row-selected: var(--bg-active);
   /* A chip's ground is its tone mixed into the layer it sits on. */
   --chip-mix: 13%;
-  --tone-neutral: var(--ink-3);
-  --tone-info: var(--c-coordinator, var(--ui-accent));
+  --tone-neutral: var(--status-idle);
+  --tone-info: var(--status-info);
   --tone-ok: var(--s-good);
-  --tone-warn: var(--s-warn);
+  --tone-warn: var(--s-warn-text);
   --tone-serious: var(--s-serious);
 }
 /* On charcoal a shadow barely shows: the tint step, a hairline and a faint
    lit top edge separate the layers instead. */
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) {
   --shadow-lift:
-    inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    0 0 0 1px var(--border-hairline),
-    0 2px 6px rgba(0, 0, 0, 0.22),
-    0 16px 32px -20px rgba(0, 0, 0, 0.5);
+    none;
   --shadow-lift-hover:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 0 1px var(--border-default),
-    0 4px 12px rgba(0, 0, 0, 0.28);
-  --craft-band: color-mix(in srgb, var(--border-ink) 3.5%, var(--surface-base));
-  --craft-well: rgba(0, 0, 0, 0.17);
-  --craft-tint: color-mix(in oklab, var(--ui-accent) 7%, var(--surface-base));
+    none;
+  --craft-band: var(--bg-2);
+  --craft-well: var(--bg-2);
+  --craft-tint: var(--bg-hover);
   --chip-mix: 20%;
 }
 

@@ -1,5 +1,5 @@
-/* B4 (1.0.48). The rule is that New agent tabs come back after
- * ToolsEnabled is closed and reopened. They used to vanish: the only record of an open
+/* B4 (1.0.48). The owner, on New agent tabs after ToolsEnabled is closed and
+ * reopened: "Yes, reopen them." They used to vanish: the only record of an open
  * tab was a WeakMap keyed by the page's document, which a restart empties.
  *
  * Every other suite "remounts" on the SAME document, which never exercised a
@@ -21,6 +21,7 @@ import { StaticTreeGraph } from '../../src/tree-graph.js'
 import { createStandaloneTabLedger, STANDALONE_TABS_PREFIX } from '../../src/standalone-tab-ledger.js'
 import { defaultStandaloneStart, standaloneStartChoices } from '../../src/tree-standalone-agent.js'
 import * as fleetCopy from '../../src/fleet-tree-copy.js'
+import { LAUNCH_TIERS } from '../../src/orchestration-controls.js'
 const { TRANSCRIPT_OLDER_NOTE } = fleetCopy
 import { fleetTreesStorageKey } from '../../src/fleet-trees.js'
 import { list as outboxList } from '../../src/session-outbox.js'
@@ -45,7 +46,7 @@ function machine(t) {
   const priorStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   globalThis.localStorage = storage
   const saved = new Map(), reads = [], declared = [], released = [], bindings = [], calls = []
-  const listeners = new Set(), hostSessions = new Set(), turns = new Map()
+  const listeners = new Set(), hostSessions = new Set(), turns = new Map(), nativeRecords = new Map()
   const behaviour = { refuseSeat: new Set(), send: null, closeRefused: false, beforeStaleClose: null, beforeStart: null,
     // What the page answers about a restart: a list of tabs kept, the delete-on-exit setting, a reload.
     keepsTabs: true, tabsComeBack: true, reloaded: false }
@@ -56,7 +57,13 @@ function machine(t) {
     onEvent: listener => { listeners.add(listener); return () => listeners.delete(listener) },
     ownerContext: async () => owner,
     onOwnerContextChanged: () => () => {},
-    start: async value => { calls.push(['start', value]); await behaviour.beforeStart?.(value); hostSessions.add(value.sessionId); return { sessionId: value.sessionId } },
+    start: async value => {
+      calls.push(['start', value]); await behaviour.beforeStart?.(value); hostSessions.add(value.sessionId)
+      const native = { nativeSessionId: value.sessionId, threadId: value.resumeThreadId || 'native-thread-' + value.sessionId,
+        provider: LAUNCH_TIERS.find(row => row.id === value.tier)?.provider || 'claude', account: null }
+      if (value.roleBinding?.agentId) nativeRecords.set(value.roleBinding.agentId, native)
+      return { sessionId: value.sessionId, ...native }
+    },
     send: async value => {
       calls.push(['send', value])
       const answer = behaviour.send?.(value)
@@ -93,7 +100,7 @@ function machine(t) {
           const record = typeof value === 'function' ? await value() : value
           if (record instanceof Error) throw record
           if (record) cache.set(id, record)
-          return record ?? null
+          return record ?? (nativeRecords.has(id) ? { lines: [], ...nativeRecords.get(id) } : null)
         },
       },
       declareSeat: async ({ id, name, tier }) => {
@@ -158,7 +165,9 @@ async function send(record, text) {
 const startsSince = (m, mark) => m.calls.slice(mark).filter(([kind]) => kind === 'start').map(([, value]) => value)
 const chip = record => record.chatPanel.querySelector('[data-chat-chip="tier"]')?.textContent || ''
 const chatText = record => panelOf(record).chat()?.textContent || ''
-const conversation = (...words) => ({ lines: words.map(([who, text], index) => ({ id: `${who}:old:${index}`, who, text, at: index + 1 })), before: null, recoveryDirectory: null })
+let savedConversationCount = 0
+const conversation = (...words) => ({ nativeSessionId: 'saved-host-' + (++savedConversationCount),
+  threadId: 'saved-thread-' + savedConversationCount, provider: 'claude', account: null, lines: words.map(([who, text], index) => ({ id: `${who}:old:${index}`, who, text, at: index + 1 })), before: null, recoveryDirectory: null })
 const placeOnTree = nodeId => async ({ record }) => {
   assert.equal(record.session.beginPlacement().ok, true)
   record.session.commitPlacement({ nodeId, getStartOptions: () => ({ surface: 'fleet-tree' }), onSessionChange() {} })
@@ -220,9 +229,13 @@ test('the first send continues the saved conversation, once (B4)', async t => {
   assert.equal(start.surface, 'standalone-agent')
   assert.equal(start.tier, 'claude-sonnet')
   assert.equal(start.effort, 'high')
-  assert.match(start.historyHandoff || '', /The person said: remember KIWI/, 'the new session was not given the saved conversation')
-  assert.doesNotMatch(start.historyHandoff, /Standing rules/, 'context ToolsEnabled added was replayed as the person\'s words')
-  for (const key of ['replacesSessionId', 'treeIdentity', 'requestKeys', 'resumeThreadId']) assert.equal(key in start, false, key)
+  assert.equal(start.resumeThreadId, record.threadId, 'the host resumes the saved native conversation')
+  assert.equal(start.resumeSessionId, record.nativeSessionId)
+  assert.equal(start.resumeThreadProvider, record.provider)
+  assert.deepEqual(start.resumeTranscript, { computerId: COMPUTER, nodeId: a.id })
+  assert.equal('historyHandoff' in start, false, 'native resume must not replay speech as a new request')
+  assert.equal('historyHandoff' in start, false, 'context ToolsEnabled added must not be replayed as a request')
+  for (const key of ['replacesSessionId', 'treeIdentity', 'requestKeys']) assert.equal(key in start, false, key)
   const turnId = `${start.sessionId}:turn-1`
   m.emit(start.sessionId, { type: 'assistant_text_delta', text: 'KIWI', turnId })
   m.emit(start.sessionId, { type: 'turn_completed', status: 'completed', turnId })
@@ -250,8 +263,9 @@ test('a first send the host refuses keeps the saved conversation for the next st
   await send(restored, 'second try')
   const starts = startsSince(m, mark)
   assert.equal(starts.length, 2, 'fixture premise: the refused send was followed by a second start')
-  assert.match(starts[0].historyHandoff || '', /remember KIWI/)
-  assert.match(starts[1].historyHandoff || '', /remember KIWI/, 'a refused first send used up the only copy of the earlier conversation')
+  assert.equal(starts[0].resumeThreadId, m.saved.get(a.id).threadId)
+  assert.equal(starts[1].resumeThreadId, starts[0].resumeThreadId, 'a refused first send keeps the original provider thread')
+  for (const start of starts) assert.equal('historyHandoff' in start, false, 'retrying never converts native resume to a transcript replay')
 })
 
 test('restored tabs hold their seats from the first moment, while their conversations are still being read (B4)', async t => {
@@ -386,7 +400,8 @@ test('an unreadable conversation, a refused seat and a retired program are each 
   await send(rSeatless, 'hello')
   const seatlessStart = startsSince(m, mark)[0]
   assert.equal('roleBinding' in seatlessStart, false, 'a tab with no seat claimed one')
-  assert.match(seatlessStart.historyHandoff || '', /from the seatless tab/)
+  assert.equal(seatlessStart.resumeThreadId, m.saved.get(seatless.id).threadId, 'the tab resumes its own native identity without inventing a seat')
+  assert.equal('historyHandoff' in seatlessStart, false)
 })
 
 test('changing the program writes it down, and so does the session that opens (B4)', async t => {
@@ -642,7 +657,7 @@ test('on the real page a session left running by a reload is closed before its t
   assert.match(record.chatPanel.textContent, /This agent was stopped when the page reloaded/)
 })
 
-test('on the real page a restored tab added to a tree before it sent gives the circle its conversation (B4)', async t => {
+test('on the real page a speech-only restored tab refuses tree placement and keeps its conversation and draft (1.0.50)', async t => {
   const id = solo(3)
   const appended = []
   const records = new Map([[id, { lines: [
@@ -659,18 +674,20 @@ test('on the real page a restored tab added to a tree before it sent gives the c
   const workspace = fixture.graph?.workspace
   const record = workspace?.standalone.get(id)
   assert.equal(Boolean(record), true, 'fixture premise: the tab open at quit came back')
+  const originalTree = fixture.world.storage.getItem(fleetTreesStorageKey(COMPUTER_ID))
+  record.chatPanel.querySelector('.chat-input textarea').value = 'Keep my draft here'
   const placed = await workspace.placeStandalone(record, null)
-  assert.equal(placed.ok, true, `fixture premise: the tab was added to a tree (${placed.sentence})`)
+  assert.equal(placed.ok, false, 'speech alone cannot establish a native conversation to adopt')
+  assert.match(placed.sentence, /saved conversation could not be transferred.*original tab is still open/)
   await settleMounted()
-  const written = appended.filter(request => request.nodeId === placed.nodeId).flatMap(request => request.entries)
-  assert.deepEqual(written.map(entry => entry.text), ['remember KIWI', 'I will remember KIWI.'],
-    'the circle has none of the conversation the tab showed, so its Resume starts from nothing')
-  const node = JSON.parse(fixture.world.storage.getItem(fleetTreesStorageKey(COMPUTER_ID))).nodes.find(row => row.id === placed.nodeId)
-  assert.equal(node?.message, '', 'an old request became the brief Start tree would send')
+  assert.equal(workspace.standalone.get(id), record, 'the original tab keeps custody')
+  assert.equal(record.chatPanel.querySelector('.chat-input textarea').value, 'Keep my draft here')
+  assert.equal(fixture.world.storage.getItem(fleetTreesStorageKey(COMPUTER_ID)), originalTree, 'a refused placement leaves no new circle')
+  assert.deepEqual(appended, [], 'refusal writes no duplicate transcript')
   assert.equal(fixture.operations.filter(row => row.name === 'start' || row.name === 'send').length, 0)
+  assert.deepEqual(record.session.restoredConversation().map(line => line.text), ['remember KIWI', 'I will remember KIWI.'])
 })
-
-/* Decision (B4): the handoff a restored New agent tab sends says "this
+/* Owner decision (B4): the handoff a restored New agent tab sends says "this
    conversation", because a standalone tab is not a circle. Tree wording stays. */
 test('the saved-conversation handoff names a standalone tab\'s conversation, and a tree circle stays a circle (B4)', async () => {
   const { transcriptSeedText } = await import('../../src/session-transcript-store.js')
@@ -687,7 +704,7 @@ test('the saved-conversation handoff names a standalone tab\'s conversation, and
    from the person's side. The circle made from the tab has no session, and a circle with no
    session draws its saved lines as they are -- so the standing rules and tool list showed as the
    person's bubbles there, on every surface and after every restart. */
-test('on the real page a circle made from a restored tab does not show ToolsEnabled\'s context as the person\'s words (B4 review D1)', async t => {
+test('on the real page refused speech-only placement keeps ToolsEnabled context folded in its original tab (1.0.50)', async t => {
   const id = solo(4)
   const appended = []
   const records = new Map([[id, { lines: [
@@ -714,20 +731,27 @@ test('on the real page a circle made from a restored tab does not show ToolsEnab
   assert.equal(Boolean(record), true, 'fixture premise: the tab open at quit came back')
   assert.equal(record.session.restoredConversation().some(line => line.promptSource === 'toolsenabled'), false,
     'the tab hands ToolsEnabled\'s context to the tree as conversation')
+  const originalTree = fixture.world.storage.getItem(fleetTreesStorageKey(COMPUTER_ID))
+  record.chatPanel.querySelector('.chat-input textarea').value = 'Keep my draft here'
   const placed = await workspace.placeStandalone(record, null)
-  assert.equal(placed.ok, true, `fixture premise: the tab was added to a tree (${placed.sentence})`)
+  assert.equal(placed.ok, false, 'speech alone cannot establish a native conversation to adopt')
+  assert.match(placed.sentence, /saved conversation could not be transferred.*original tab is still open/)
   await settleMounted()
-  const written = appended.filter(request => request.nodeId === placed.nodeId).flatMap(request => request.entries)
-  assert.deepEqual(written.map(entry => entry.text), ['remember KIWI', 'I will remember KIWI.'])
-  const node = JSON.parse(fixture.world.storage.getItem(fleetTreesStorageKey(COMPUTER_ID))).nodes.find(row => row.id === placed.nodeId)
-  const mine = (fixture.graph.standaloneAgent.chatConfigFor(node)?.history || []).filter(row => row.who === 'you').map(row => row.text)
-  assert.deepEqual(mine, ['remember KIWI'], 'THE DEFECT: the circle shows ToolsEnabled\'s context as things the person said')
+  assert.equal(workspace.standalone.get(id), record, 'the original tab keeps custody')
+  assert.equal(record.chatPanel.querySelector('.chat-input textarea').value, 'Keep my draft here')
+  assert.equal(fixture.world.storage.getItem(fleetTreesStorageKey(COMPUTER_ID)), originalTree, 'a refused placement leaves no new circle')
+  assert.deepEqual(appended, [], 'refusal writes no duplicate transcript')
+  assert.equal(fixture.operations.filter(row => row.name === 'start' || row.name === 'send').length, 0)
+  const chat = record.chatPanel.querySelector('[data-chat-panel]')
+  const mine = chat.querySelectorAll('.me').map(node => node.textContent)
+  assert.ok(mine.some(text => text.includes('remember KIWI')))
+  assert.equal(mine.some(text => /Standing rules|Tools you may use/.test(text)), false)
+  assert.equal(chat.querySelectorAll('.chat-context').length, 2)
 })
-
 /* D4. The tab read only the newest page of its conversation. Adding it to a tree copied that page
    alone, so the circle lost the older lines and any sign they existed. The older pages are read from
    the tab's seat, with the cursor the tab came back with, and written first. */
-test('on the real page a restored tab added to a tree gives the circle its older pages too (B4 review D4)', async t => {
+test('on the real page refused speech-only placement preserves older pages under their original tab (1.0.50)', async t => {
   const id = solo(5)
   // Long enough that the newest page already fills the handoff budget, so the tab reads no further back (c5).
   const all = Array.from({ length: 90 }, (_, n) => ({ id: `line:${String(n).padStart(3, '0')}`, who: n % 2 ? 'agent' : 'you', text: `line ${n} ${'w'.repeat(120)}`, at: n + 1 }))
@@ -757,16 +781,21 @@ test('on the real page a restored tab added to a tree gives the circle its older
   const record = workspace?.standalone.get(id)
   assert.equal(Boolean(record), true, 'fixture premise: the tab open at quit came back')
   assert.equal(record.session.restoredConversation().length, 60, 'fixture premise: the tab showed its newest page only')
+  const originalTree = fixture.world.storage.getItem(fleetTreesStorageKey(COMPUTER_ID))
+  record.chatPanel.querySelector('.chat-input textarea').value = 'Keep my draft here'
   const placed = await workspace.placeStandalone(record, null)
-  assert.equal(placed.ok, true, `fixture premise: the tab was added to a tree (${placed.sentence})`)
+  assert.equal(placed.ok, false, 'speech alone cannot establish a native conversation to adopt')
+  assert.match(placed.sentence, /saved conversation could not be transferred.*original tab is still open/)
   await settleMounted()
-  const written = appended.filter(request => request.nodeId === placed.nodeId).flatMap(request => request.entries)
-  assert.deepEqual(written.map(entry => entry.id), all.map(entry => entry.id),
-    'THE DEFECT: the circle holds only the newest page, so its older messages are gone from the tree')
-  assert.equal(reads.some(read => read.nodeId === id && read.before === all[30].id && read.strictBefore === true), true,
-    'the older pages were not read from the tab\'s own cursor')
+  assert.equal(workspace.standalone.get(id), record, 'the original tab keeps custody')
+  assert.equal(record.chatPanel.querySelector('.chat-input textarea').value, 'Keep my draft here')
+  assert.equal(fixture.world.storage.getItem(fleetTreesStorageKey(COMPUTER_ID)), originalTree, 'a refused placement leaves no new circle')
+  assert.deepEqual(appended, [], 'refusal writes no duplicate transcript')
+  assert.equal(fixture.operations.filter(row => row.name === 'start' || row.name === 'send').length, 0)
+  const older = await window.mcTranscripts.read({ nodeId: id, before: all[30].id, limit: 100, strictBefore: true })
+  assert.deepEqual(older.entries.map(entry => entry.id), all.slice(0, 30).map(entry => entry.id), 'older source pages remain readable')
+  assert.equal(record.session.restoredConversation().length, 60, 'the displayed page remains bounded')
 })
-
 /* ---- B4 review (1.0.48): when the saved conversation counts as delivered ---- */
 
 /* The held waits of agent-session.js (4 s first) run at once here; nothing else in these cases
@@ -805,7 +834,8 @@ test('a held first start that is retried counts the saved conversation delivered
   const starts = startsSince(m, mark)
   assert.equal(starts.length, 2, 'fixture premise: the held start was asked again')
   assert.notEqual(starts[1].sessionId, starts[0].sessionId, 'fixture premise: the retry runs under a new session id')
-  assert.match(starts[1].historyHandoff || '', /remember KIWI/, 'fixture premise: the retry carries the seed it was given')
+  assert.equal(starts[1].resumeThreadId, m.saved.get(a.id).threadId, 'a held retry keeps the saved native conversation')
+  assert.equal('historyHandoff' in starts[1], false)
   finishTurn(m, starts[1].sessionId)
   await settle()
   assert.deepEqual(restored.session.restoredConversation(), [],
@@ -850,10 +880,10 @@ test('a refused first send whose session is already gone keeps the saved convers
   const now = starts[1].sessionId
   // Both halves at once, so each is seen to fail on its own: the seed, and the words waiting at quit.
   assert.deepEqual({
-    seedCarried: /remember KIWI/.test(starts[1].historyHandoff || ''),
+    nativeConversationCarried: starts[1].resumeThreadId === m.saved.get(a.id).threadId,
     waitingOnNewSession: outboxList(now).map(entry => entry.text),
     waitingOnRefusedSession: outboxList(starts[0].sessionId).map(entry => entry.text),
-  }, { seedCarried: true, waitingOnNewSession: ['and then check the tests'], waitingOnRefusedSession: [] },
+  }, { nativeConversationCarried: true, waitingOnNewSession: ['and then check the tests'], waitingOnRefusedSession: [] },
   'THE DEFECT: a refused first send used up the saved conversation, or left the waiting message with the refused session')
 })
 
@@ -1020,7 +1050,7 @@ function pineappleRecord() {
   }
   return rows
 }
-function pagingTranscripts(all, id, reads) {
+function pagingTranscripts(all, id, reads, native = {}) {
   return {
     list: async () => ({ ok: true, records: [{ nodeId: id }] }),
     // shell/node-transcript-store.cjs read(): the newest `limit` (at most 100) before the cursor.
@@ -1031,7 +1061,7 @@ function pagingTranscripts(all, id, reads) {
       if (strictBefore && before && cursor < 0) return { ok: false, error: { code: 'MC_AGENT_TRANSCRIPT_CURSOR_INVALID', message: 'cursor' } }
       const files = cursor >= 0 ? all.slice(0, cursor) : all
       const page = files.slice(-Math.max(1, Math.min(100, Number(limit) || 60)))
-      return { ok: true, metadata: { nodeId }, entries: structuredClone(page), before: files.length > page.length ? page[0].id : null,
+      return { ok: true, metadata: { nodeId, ...native }, entries: structuredClone(page), before: files.length > page.length ? page[0].id : null,
         count: all.length, ...(includeRecoveryFiles ? { recoveryDirectory: '/saved/seat' } : {}) }
     },
     append: async () => ({ ok: true }),
@@ -1041,15 +1071,16 @@ function pagingTranscripts(all, id, reads) {
   }
 }
 
-test('on the real page a restored tab with more than 60 saved entries still hands over its opening request (c5, soak B4)', async t => {
+test('on the real page a restored tab with more than 60 saved entries resumes its original native thread without replay (1.0.50)', async t => {
   const id = solo(6)
+  const native = { nativeSessionId: 'saved-host-' + id, threadId: 'saved-thread-' + id, provider: 'claude', account: null }
   const all = pineappleRecord()
   assert.equal(all.length, 63, 'fixture premise: the 63-entry record the soak profile had')
   const reads = []
   const fixture = await mountComputers(t, { nodes: [{ id: 'node-1-live', role: 'worker' }], agents: [{ id: 'controller', role: 'controller', enabled: true }, orgSeat(id)],
     seed: storage => {
       storage.setItem(STANDALONE_TABS_PREFIX + COMPUTER_ID, listOne(id))
-      globalThis.window.mcTranscripts = pagingTranscripts(all, id, reads)
+      globalThis.window.mcTranscripts = pagingTranscripts(all, id, reads, native)
       // What a first send asks the host before it starts (the stand-in page bridge has only start/close/send).
       const owner = { version: 1, ownerId: 'restore-fixture-owner', currentEpoch: 'restore-epoch', kind: 'local' }
       Object.assign(globalThis.window.mcAgent, { availability: async () => ({ ok: true }), confinement: async () => ({ ok: true, tier: 'standard' }),
@@ -1070,14 +1101,13 @@ test('on the real page a restored tab with more than 60 saved entries still hand
   await settleMounted()
   const start = fixture.operations.find(row => row.name === 'start')?.request
   assert.equal(Boolean(start), true, 'fixture premise: the first send started a session')
-  const handoff = start.historyHandoff || ''
-  assert.equal(handoff.includes(`The person said: ${PINEAPPLE_ASK}`), true,
-    'THE DEFECT: the opening request is not in what the new session was handed, so it answers that nothing was asked')
-  assert.equal(handoff.includes('Older messages were left out'), false,
-    'THE DEFECT: the handoff says older messages were left out to fit, with the whole conversation far inside the budget')
-  assert.equal(handoff.includes('added by ToolsEnabled'), false, 'context ToolsEnabled added was handed over as the person\'s words')
+  assert.equal(start.resumeSessionId, native.nativeSessionId)
+  assert.equal(start.resumeThreadId, native.threadId, 'the provider thread already holds its opening request')
+  assert.equal(start.resumeThreadProvider, native.provider)
+  assert.deepEqual(start.resumeTranscript, { computerId: COMPUTER_ID, nodeId: id })
+  assert.equal('historyHandoff' in start, false, 'native resume does not replay a truncated speech excerpt')
   assert.equal(reads.some(read => read.nodeId === id && read.strictBefore === true && read.before === all[3].id), true,
-    'the older entries were not read from the tab\'s own cursor')
+    'the retained record remains readable across its saved page cursor')
 })
 
 test('reading a restored conversation back to the budget: bounded pages, and the shown lines stay the newest page (c5)', async () => {
@@ -1110,3 +1140,27 @@ test('reading a restored conversation back to the budget: bounded pages, and the
   const plain = await client.readLatest(id)
   assert.equal(plain.lines.length, 60)
 })
+
+for (const reason of ['unavailable', 'mismatch']) {
+  test('a restored native conversation with ' + reason + ' identity refuses without sending or losing its draft', async t => {
+    const m = machine(t)
+    const first = m.launch()
+    await first.workspace.openStandalone({ tier: 'claude-sonnet', effort: 'high' }); await settle()
+    const [original] = first.records()
+    const saved = conversation(['you', 'Keep my earlier request'], ['agent', 'It is kept'])
+    if (reason === 'unavailable') { delete saved.nativeSessionId; delete saved.threadId }
+    else saved.resumeIdentityError = 'AGENT_RESUME_IDENTITY_MISMATCH'
+    m.saved.set(original.id, saved)
+    const second = m.launch(); await settle()
+    const [restored] = second.records()
+    const mark = m.calls.length
+    const draft = '  keep this exact unsent request  '
+    await send(restored, draft)
+    assert.deepEqual(m.calls.slice(mark).filter(([kind]) => kind === 'start' || kind === 'send'), [],
+      'an unverified identity must never turn into a fresh start or speech replay')
+    assert.equal(panelOf(restored).input().value, draft)
+    assert.deepEqual(restored.session.restoredConversation().map(line => line.text),
+      ['Keep my earlier request', 'It is kept'])
+    assert.match(chatText(restored), reason === 'unavailable' ? /no verified native session identity/ : /does not match its original agent or account/)
+  })
+}

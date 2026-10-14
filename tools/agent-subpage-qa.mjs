@@ -264,7 +264,7 @@ const READ_PAGE = `(() => {
   })
 
   /* EVERY PAIR OF TEXT-BEARING ELEMENTS IN THE ROSTER, tested as real boxes.
-     This is the reported defect -- names printed over other names --
+     This is the defect the owner reported -- names printed over other names --
      so it is measured as geometry rather than inferred from the markup. */
   /* EVERY text-bearing element on the page, not just the roster's.
      The first version of this list stopped at the roster classes, and an overlap
@@ -515,7 +515,7 @@ async function drive(executable, scratch, tier) {
        origin with the router's stage in it is the real first paint. */
     await until('the application origin',
       `location.protocol === 'http:' && Boolean(document.querySelector('#stage'))`)
-    /* The example drill-in, which is the state a reported screenshot showed and the
+    /* The example drill-in, which is the state the owner screenshotted and the
        one where every card carries an activity line. mc.example is the one
        source switch now (src/data-source.js): absent, every screen reads this
        computer, and on a machine with no fleet host that renders an honest
@@ -671,7 +671,7 @@ async function drive(executable, scratch, tier) {
            fold. This used to demand the column ALWAYS scroll, which held only
            while a session surface sat between the roster and the panels and made
            the column overflow at these heights. That surface is correctly gone
-           from the demonstration page (an earlier commit / tools/example-page-write-fence-qa.mjs),
+           from the demonstration page (dd01899 / tools/example-page-write-fence-qa.mjs),
            so the column now fits -- panelsBottom lands above the fold -- and
            requiring a scrollbar demanded a defect. Measured here: at 1280x800 the
            panels' bottom is 627px against an 800px window, fully on screen. */
@@ -693,7 +693,7 @@ async function drive(executable, scratch, tier) {
        * `.agent-session-surface` on this page and read the level name, the
        * confining-refusal copy, the tools sentence and a DISABLED Start with a
        * sign-in reason off it -- per recorded level. That is the exact control
-       * an earlier commit removed and tools/example-page-write-fence-qa.mjs (green) forbids
+       * dd01899 removed and tools/example-page-write-fence-qa.mjs (green) forbids
        * on the demonstration copy: this page's own banner says nothing on it is
        * real, and no control that reaches a real session belongs on it. The old
        * demand also disagreed with tools/first-run-contract-qa.mjs, which proves

@@ -1,7 +1,8 @@
 /* THE UP-ARROW WALK, DRIVEN THROUGH THE MOUNTED COMPOSER — KEYBOARD ONLY.
  *
- * As in a command prompt, pressing Up in the chat reaches the queued messages
- * so a person can edit them.
+ * Owner, verbatim: "i like how in cmd you can press the up button and edit
+ * your qued messages ... ca we let userrs press up from the chat to get to
+ * their qued messages and edit them".
  *
  * tools/test/composer-queue-recall.test.mjs proves the walk's rules by calling
  * them with values. This proves the WIRING: real key events on the real

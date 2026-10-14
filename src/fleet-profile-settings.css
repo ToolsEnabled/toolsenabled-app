@@ -4,31 +4,22 @@
    bolted inside Settings and visually promoted “configured” into “healthy.” */
 
 .fleet-profile-notice {
-  position: fixed;
-  right: var(--s4);
-  bottom: var(--s4);
-  z-index: 190;
-  /* 100% AND NOT 100vw. This notice is `position: fixed`, so a percentage
-     resolves against the viewport in the ZOOMED coordinate space and lands
-     inside the window at every Text size; the viewport unit does not scale
-     with the body zoom while the painted box does, so at Large the notice was
-     12% wider than it asked to be and pushed its own right edge under the
-     window's -- the same defect, and the same fix, as .topbar in
-     src/styles.css. */
-  max-width: min(420px, calc(100% - var(--s5) * 2));
-  padding: var(--s2) var(--s3);
-  border: 1px solid var(--line-2);
-  border-left: 3px solid var(--ink-3);
-  /* OPAQUE, deliberately. The 94%-mix let 6% of whatever body copy sat under
-     this fixed panel bleed through the blur — which read not as a toast over a
-     page but as two pieces of text printed on each other. A floating notice
-     earns its float by covering cleanly. */
-  background: var(--bg);
-  box-shadow: var(--elev-1);
-  color: var(--ink-2);
-  font-size: 12.5px;
-  line-height: 1.45;
-  text-decoration: none;
+  position: fixed; right: 16px; bottom: 16px; z-index: 65;
+  box-sizing: border-box; display: flex; align-items: flex-start; gap: 8px;
+  max-width: min(360px, calc(100% - 32px)); padding: 16px;
+  border: 1px solid var(--line-strong, var(--line-2)); border-radius: 10px;
+  background: var(--bg-surface, var(--sheet)); box-shadow: var(--shadow-popover, var(--elev-3));
+  color: var(--ink-2); font: 450 13.5px/1.5 var(--font-ui);
+}
+/* `text-wrap: pretty` keeps the trailing arrow with its words instead of
+   leaving it alone on a third line (seen on 117 of 1592 captures). */
+.fleet-profile-notice-link { flex: 1; min-width: 0; color: inherit; text-decoration: none; overflow-wrap: anywhere; text-wrap: pretty; }
+.fleet-profile-notice-link:hover { color: var(--ink); text-decoration: underline; }
+.fleet-profile-notice-close { flex: 0 0 28px; width: 28px; height: 28px; min-height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); font: 20px/1 var(--font-ui); cursor: pointer; }
+.fleet-profile-notice-close:hover { background: var(--bg-hover, var(--state-hover)); }
+.fleet-profile-notice :is(a, button):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (forced-colors: active) {
+  .fleet-profile-notice :is(a, button):focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
 }
 
 /* AND IT IS NOT DRAWN OVER THE TWO SCREENS WHOSE PRIMARY BUTTON IT COVERS.
@@ -48,7 +39,7 @@
 body[data-route="account"] .fleet-profile-notice:not(.is-serious),
 body[data-route="subscribe"] .fleet-profile-notice:not(.is-serious) { display: none; }
 
-.fleet-profile-notice.is-serious { border-left-color: var(--s-serious); }
+.fleet-profile-notice.is-serious { border-color: var(--s-serious); z-index: 190; }
 .fleet-profile-notice:hover { color: var(--ink); border-color: var(--ink-3); }
 .fleet-profile-notice:focus-visible {
   outline: 3px solid var(--focus-ring);
@@ -185,7 +176,7 @@ body[data-route="subscribe"] .fleet-profile-notice:not(.is-serious) { display: n
 
 /* THE SIGN-IN SCREEN NEVER GOT THAT RULE, AND A CUSTOMER FOUND OUT.
  *
- * A person installed 1.0.26 from the site, opened it, pressed "Sign in with
+ * The owner installed 1.0.26 from the site, opened it, pressed "Sign in with
  * Google" and nothing happened. Measured in the running window, on the row
  * src/account-markup.js googleOptionMarkup() renders when this copy has no
  * Google application id: the button carried `disabled`, and its computed style
@@ -285,7 +276,7 @@ body[data-route="subscribe"] .fleet-profile-notice:not(.is-serious) { display: n
   .fleet-profile-notice {
     right: var(--s2);
     bottom: var(--s2);
-    max-width: calc(100% - var(--s4));
+    max-width: min(360px, calc(100% - var(--s4)));
   }
 
   .fleet-machine,

@@ -68,12 +68,12 @@ import {
 /* The decision itself, DOM-free, so the suite drives it rather than reading it. */
 import { codexReadiness, localModelReadiness } from '../setup-review-readiness.js'
 import { withDeadline } from '../read-deadline.js'
-/* WHAT EACH SWITCH GRANTS, WHAT IT RISKS, AND WHAT WAS WITHHELD (R1529).
+/* WHAT EACH SWITCH GRANTS, WHAT IT RISKS, AND WHAT WAS WITHHELD (owner, R1529).
    The statements are data in src/permission-guidance.js so this screen, the
    settings page and the drawer cannot describe one switch three ways. */
 import { guidanceMarkup, withheldMarkup } from '../guided-step.js'
 import { probe, refreshCapabilityProbes } from '../capability-probes.js'
-/* THE MOMENT OF CHOOSING FULL ACCESS (rule X4). Pressing the
+/* THE MOMENT OF CHOOSING FULL ACCESS (owner, X4, 2026-08-15). Pressing the
    widest level on this screen does not select it: the risk goes on the glass in
    the Terms' own words and the person is asked; only the confirm button makes
    it the selection Continue will record, and Continue hands the shell the
@@ -145,12 +145,11 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
   let undoUnavailable = readStoredProfile()?.undoUnavailable || null
   /* Restored beside its two siblings for the same reason they are: the fact
      belongs to the machine, not to this mount. See src/setup-profile.js. */
-  let accountPolicyDeferred = readStoredProfile()?.accountPolicyDeferred || null
 
   const stored = readStoredProfile()
   /* RECOMMENDED_ANSWERS is what the walkthrough OFFERS a person who is
      answering; skip() below applies SAFE_ANSWERS to a person who is not. Since
-     product rule T782 both are the Basic answers
+     the owner's Basic direction (2026-09-20, T782) both are the Basic answers
      -- autonomous within the permission level -- and they are kept as two
      constants so the runtime owner can still let them differ. Preselecting
      the answer that switches nothing on is how the recommended path once
@@ -444,7 +443,7 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
       noteTierRecorded(result.tier || chosen)
       /* The level is the ONLY thing this walkthrough writes before the end, and
          only because the first-run gate is built on it. Advancing to the folder
-         question rather than into the app is the change that was asked for:
+         question rather than into the app is the change the owner asked for:
          before this, step 1 was the whole of setup. */
       goTo('workspace')
       return
@@ -980,7 +979,7 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
    * that somebody is signed in to it -- and it used to read both of them off
    * mcAgent.availability(), which answers a different question: can this
    * installation start ANY agent. That short-circuit is correct and deliberate
-   * (an earlier commit): a person with Claude installed and no Codex is not a broken
+   * (d1eb2a5): a person with Claude installed and no Codex is not a broken
    * machine, and telling them so would be the product calling itself broken on
    * a correctly set-up computer.
    *
@@ -1034,7 +1033,7 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
       </div>`
   }
 
-  /* WHAT THE RECOMMENDED PATH WITHHELD, SAID OUT LOUD (R1529).
+  /* WHAT THE RECOMMENDED PATH WITHHELD, SAID OUT LOUD (owner, R1529).
    *
    * This block used to be one line -- "Off is the shipped default for every one
    * of these" -- under a list of names. That is a true sentence and it is not an
@@ -1072,8 +1071,8 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
       })).join('')}`
   }
 
-  /* THE QUICK BRIEF ON STANDING REQUESTS (setup shows a quick brief about the
-   * /Request functions).
+  /* THE QUICK BRIEF ON STANDING REQUESTS (owner, 2026-08-19: "they should be
+   * shown a quick brief about /Request functions and such in setup").
    *
    * A CARD ON THE REVIEW, NOT A STEP: the walkthrough stays three questions,
    * and this asks nothing. Presentation only -- it writes nothing, gates
@@ -1137,7 +1136,7 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
      deferral is now its own carried fact and `refusal` means only "that was not
      saved". */
   function hasSavedSetupNotice() {
-    return Boolean(assistantConfigFailure || undoUnavailable || accountPolicyDeferred)
+    return Boolean(assistantConfigFailure || undoUnavailable)
   }
 
   function reviewMarkup() {
@@ -1244,23 +1243,18 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
         <strong>This copy cannot record the chosen folder</strong>
         <span>${esc(finishReason)}</span>
       </div>` : ''}
-      
+
       ${assistantConfigFailure ? `<div class="fleet-profile-status" data-setup-status data-setup-assistant-config role="status">
         <strong>Your folders were saved. The agent settings file was not written.</strong>
         <span>Agent programs on ${esc(machineSubject())} read a settings file in the folder you chose, and this copy could not write it. ${esc(setupRefusalDetail(assistantConfigFailure, 'The computer did not say why.'))} Everything else in this setup took. Until it is written, an agent opened in that folder will not see ToolsEnabled&rsquo;s tools &mdash; close anything holding the file, then press Finish setup again.</span>
       </div>` : ''}
-      
+
       ${undoUnavailable ? `<div class="fleet-profile-status" data-setup-status data-setup-undo-unavailable role="status">
         <strong>Your folders were saved. Undo will not be available in them.</strong>
         <span>${esc(setupRefusalDetail(undoUnavailable, 'The application did not say why.'))} Everything else in this setup took. An assistant can still work in those folders; what it cannot do is put them back the way they were.</span>
       </div>` : ''}
 
-      ${accountPolicyDeferred ? `<div class="fleet-profile-status" data-setup-status data-setup-account-policy role="status">
-        <strong>Your setup was saved. The account switching choice waits for an account.</strong>
-        <span>${esc(setupRefusalDetail(accountPolicyDeferred, 'The application did not say why.'))} Everything else in this setup took. Add accounts in the Accounts menu on Computers.</span>
-      </div>` : ''}
-
-        ${hasSavedSetupNotice() ? '<button type="button" class="ctl-btn" data-setup-open-app>Continue to the app</button>' : ''}
+      ${hasSavedSetupNotice() ? '<button type="button" class="ctl-btn" data-setup-open-app>Continue to the app</button>' : ''}
       ${actionsMarkup({ back: stepBefore(STEPS, 'review'), next: 'finish', nextLabel: busy ? 'Saving…' : 'Finish setup', nextDisabled: workspaceWriteMissing, nextReason: finishReason })}`
   }
 
@@ -1634,8 +1628,7 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
       applyDerived()
       /* Recorded BEFORE the write, not after it, because the write is what makes
          the fact outlive this screen. See src/setup-profile.js for why it must. */
-      accountPolicyDeferred = intentResult.deferred.length ? { reason: intentResult.deferred.join(' ') } : null
-      if (writeStoredProfile({ status: 'complete', step: 'review', answers, assistantConfig: assistantConfigFailure, undoUnavailable, accountPolicyDeferred }) === null) throw new Error('The setup answers could not be saved.')
+      if (writeStoredProfile({ status: 'complete', step: 'review', answers, assistantConfig: assistantConfigFailure, undoUnavailable }) === null) throw new Error('The setup answers could not be saved.')
     } catch (error) {
       busy = false
       refusal = { title: 'Setup settings could not be saved', code: 'MC_SETUP_INTENTS_FAILED',
@@ -1645,32 +1638,7 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
     }
     liveWalk = null
     busy = false
-    /* FINISH FINISHES. This is the repair for the worst defect the packaged Linux
-     * run found, and it is a defect about a deferral being filed as a refusal.
-     *
-     * MEASURED 2026-09-11 on the packaged 1.0.44 Linux candidate, from a sterile
-     * profile: the walk answers all five questions, presses Finish, and the build
-     * stays at hash=#/setup. Every write succeeded. The stored profile read
-     * `status: "complete"`. The single thing outstanding was
-     * applySetupIntentChanges' one deferral -- mcProviders.accountPolicy cannot
-     * record an account-switching choice before the account list exists, which is
-     * EVERY fresh installation -- and the old code turned that into a `refusal`
-     * and RETURNED. So the last press of first-run setup answered with an
-     * is-serious role=alert box about a preference the wizard never asks, left
-     * "Finish setup" still on the screen for the person to press again, and made
-     * entering the product depend on noticing a different button.
-     *
-     * `skip()` called the same function, received the same deferral, never read
-     * it, and navigated -- which is exactly why "Skip the rest for now" reached
-     * the app and "Finish setup" did not. One of the two was wrong and it was not
-     * skip.
-     *
-     * The remaining stop is deliberate and is NOT a deferral: assistantConfig and
-     * undoUnavailable are outcomes of the folder the person chose, and the first
-     * of the two names something to do ON THIS SCREEN ("close anything holding
-     * the file, then press Finish setup again"). A notice whose only action is
-     * later and elsewhere must not hold the last press of setup; one whose action
-     * is here may. */
+
     if (assistantConfigFailure || undoUnavailable) {
       paint()
       section.querySelector('[data-setup-assistant-config], [data-setup-undo-unavailable]')?.scrollIntoView?.({ block: 'center' })
@@ -1728,8 +1696,7 @@ export function setupView({ navigate = hash => { location.hash = hash } } = {}) 
          controls differ in what they answer and not in whether they work. */
       const skipIntent = await applySetupIntentChanges(null, derived().intent)
       applyDerived()
-      accountPolicyDeferred = skipIntent.deferred.length ? { reason: skipIntent.deferred.join(' ') } : null
-      if (writeStoredProfile({ status: 'skipped', step: 'review', answers, accountPolicyDeferred }) === null) throw new Error('The setup answers could not be saved.')
+      if (writeStoredProfile({ status: 'skipped', step: 'review', answers }) === null) throw new Error('The setup answers could not be saved.')
     } catch (error) {
       busy = false
       refusal = { title: 'The Basic setup answers could not be saved', code: 'MC_SETUP_INTENTS_FAILED', reason: error.message }

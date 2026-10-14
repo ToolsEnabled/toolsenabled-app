@@ -1,6 +1,6 @@
 # Isolated Page 2 layout proof
 
-Run `node tools/test/fixtures/run-page2-layout.mjs %LOCALAPPDATA%\Temp\page2-layout-proof-<unique-suffix>` while signed in to the permitted Windows development account; the driver refuses an output directory outside that account's Temp folder.
+Run `node tools/test/fixtures/run-page2-layout.mjs <profile-root><unique-suffix>` on the permitted Windows account.
 
 This renderer-only fixture uses installed headless Chrome, an explicit fresh browser profile, a private loopback Vite server, and no application shell. Requests outside that server are blocked. It does not open LIVE, read its state, authenticate, or start providers. It writes screenshots and `measurements.json` beneath the supplied Temp directory.
 

@@ -5,6 +5,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 
 import windowState from '../../shell/window-state.cjs'
+import themeSeedModule from '../../shell/theme-seed.cjs'
 
 const { restoredWindowState, shellStateRecord } = windowState
 const primary = { x: 0, y: 0, width: 1920, height: 1040 }
@@ -255,6 +256,10 @@ function createPersistenceHarness(initialState = {}) {
   }
 
   const sandbox = {
+    require(request) {
+      assert.equal(request, './theme-seed.cjs', 'the persistence fixture refuses unreviewed dependencies')
+      return themeSeedModule
+    },
     app: { getPath: () => userData },
     clearTimeout: clearTimer,
     fs,

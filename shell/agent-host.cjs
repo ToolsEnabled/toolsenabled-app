@@ -1,16 +1,26 @@
 'use strict'
 
+const { isProviderSafetyRefusal, isProviderModelRefusal, safetyRefusalEvent, SAFETY_BLOCK, MODEL_REFUSAL_BLOCK } = require('./provider-safety.cjs')
+
 // This module intentionally has no Electron dependency. It owns Codex session
 // lifecycles; shell/main.cjs is only the IPC boundary around it.
 const fs = require('node:fs')
 const { parseCloudCommand, cloudCommandInstructions } = require('./cloud-command.mjs')
 const { ownedCodexResumeSource } = require('./codex-resume-source.cjs')
-const { createRecoveryState, rememberRecoveryText, createRecoveryTickets, limitReason } = require('./account-session-recovery.cjs')
+const { limitReason, resolvedTurnLimitReason } = require('./account-session-recovery.cjs')
+/* A failed turn the engine itself classified as a usage limit: the data marker payload { limit: 'usage' } the Codex
+   adapter writes for usageLimitExceeded (see emit()). A completed turn is never a limit, whatever its payload says. */
+function engineUsageLimitEnding(event) {
+  const payload = event?.payload
+  return ['failed', 'error'].includes(event?.status) && !isProviderSafetyRefusal(event)
+    && Boolean(payload) && typeof payload === 'object' && !Array.isArray(payload) && payload.limit === 'usage'
+}
 const os = require('node:os')
 const path = require('node:path')
 // capability-layer.cjs is itself Electron-free (node:child_process, node:fs,
 // node:path only), so requiring it here preserves the property above.
 const { resolveCapabilityRoot } = require('./capability-layer.cjs')
+const { loadNativeModelSelection } = require('./native-model-selection.cjs')
 /* Whether this agent's provider can look at a picture at all, decided before
    anything is sent rather than by an adapter throwing afterwards. See T18 and
    the file's own header. */
@@ -47,9 +57,9 @@ const EXIT_SIGNAL_RE = /^[A-Z][A-Z0-9_]{0,31}$/
  *
  * Codex runs a model's script in its code-mode host. With more than about 130
  * tool calls in flight in one script, Codex 0.156's host can stop dispatching
- * and never answer: no event, no timeout, no CPU (reproduced
- * offline). A controller circle sat in exactly that state for hours, shown
- * only as busy, while the tree it coordinates waited.
+ * and never answer: no event, no timeout, no CPU (lane mcp-hang, reproduced
+ * offline 6 of 42 runs). Controller 1 sat in exactly that state from
+ * 2026-09-24 02:32Z, shown only as busy, while the tree it coordinates waited.
  * Stop recovers it: turn/interrupt completes the turn as interrupted within
  * milliseconds and Codex starts a fresh host.
  *
@@ -75,9 +85,7 @@ class AgentHostError extends Error {
     this.name = 'AgentHostError'
     this.code = code
     if (measured && typeof measured === 'object' && !Array.isArray(measured)) {
-      /* Named fields, never the object handed in: a refusal must not become a
-         way for a probe row, a home or a resolver error to leave the host. The
-         same rule session.accountRetryResult follows. */
+
       if (measured.exhaustedBy === 'provider' || measured.exhaustedBy === 'configured') {
         this.exhaustedBy = measured.exhaustedBy
       }
@@ -125,23 +133,11 @@ function startCauseMessage(error) {
     : 'Agent start failed.'
 }
 
-function hostOwnedStartOutcomeError(error, outcome, accountRetryOverride, binding = null) {
+function hostOwnedStartOutcomeError(error, outcome, binding = null) {
   const wrapped = new AgentHostError(startCauseCode(error), startCauseMessage(error), error)
   try {
     Object.defineProperty(wrapped, 'cause', { value: error, enumerable: false, configurable: false, writable: false })
   } catch { /* AgentHostError remains the safe transport if cause cannot be attached. */ }
-  const accountRetry = accountRetryOverride !== undefined
-    ? accountRetryOverride
-    : (error && typeof error === 'object' && Object.prototype.hasOwnProperty.call(error, 'accountRetry')
-      ? error.accountRetry
-      : undefined)
-  if (accountRetry !== undefined) {
-    try {
-      Object.defineProperty(wrapped, 'accountRetry', {
-        value: accountRetry, enumerable: true, configurable: false, writable: false,
-      })
-    } catch { /* accountRetry is optional; never copy it by mutation. */ }
-  }
   if (outcome) {
     Object.defineProperty(wrapped, 'startOutcome', {
       value: outcome, enumerable: true, configurable: false, writable: false,
@@ -164,11 +160,11 @@ function rememberStartOutcome(binding, error, outcome) {
   return error
 }
 
-function attachStartOutcome(error, outcome, accountRetryOverride, binding = null) {
+function attachStartOutcome(error, outcome, binding = null) {
   if (!outcome) return error
   if (!error || typeof error !== 'object') {
     return rememberStartOutcome(binding,
-      hostOwnedStartOutcomeError(error, outcome, accountRetryOverride, binding), outcome)
+      hostOwnedStartOutcomeError(error, outcome, binding), outcome)
   }
   try {
     const descriptor = Object.getOwnPropertyDescriptor(error, 'startOutcome')
@@ -176,16 +172,6 @@ function attachStartOutcome(error, outcome, accountRetryOverride, binding = null
       Object.defineProperty(error, 'startOutcome', {
         value: outcome, enumerable: true, configurable: false, writable: false,
       })
-      if (accountRetryOverride !== undefined) {
-        const retryDescriptor = Object.getOwnPropertyDescriptor(error, 'accountRetry')
-        if (retryDescriptor && retryDescriptor.configurable !== true) {
-          return rememberStartOutcome(binding,
-            hostOwnedStartOutcomeError(error, outcome, accountRetryOverride, binding), outcome)
-        }
-        Object.defineProperty(error, 'accountRetry', {
-          value: accountRetryOverride, enumerable: true, configurable: false, writable: false,
-        })
-      }
       Object.defineProperty(error, START_OUTCOME_TRANSPORT, {
         value: true, enumerable: false, configurable: false, writable: false,
       })
@@ -196,7 +182,7 @@ function attachStartOutcome(error, outcome, accountRetryOverride, binding = null
     }
   } catch { /* A frozen or conflicting upstream error needs a new host-owned wrapper. */ }
   return rememberStartOutcome(binding,
-    hostOwnedStartOutcomeError(error, outcome, accountRetryOverride, binding), outcome)
+    hostOwnedStartOutcomeError(error, outcome, binding), outcome)
 }
 
 function hasOwnedStartOutcome(error, binding) {
@@ -275,9 +261,10 @@ function turnFailureSentence(raw) {
 
 /* WHETHER THIS SESSION'S MANAGER HAS ACTUALLY STOPPED, AND WHO IS ABOVE IT.
  *
- * THE DEFECT (ledger T123). A manager's session failed every turn. Each of
- * its workers finished one item, sent the report to a circle that could no
- * longer read it, and then sat idle for hours under a working policy whose entire point is that they do not.
+ * THE DEFECT (ledger T123, measured 2026-09-15). A manager's session failed
+ * every turn from 21:47Z. Each of its workers finished one item, sent the
+ * report to a circle that could no longer read it, and then sat idle for over
+ * three hours under a working policy whose entire point is that they do not.
  * The engine's continuation controller already sends a child its own next turn
  * without asking any manager; what it had no way to learn was that the manager
  * was GONE, so the text it sent never said so and no ancestor was ever told.
@@ -485,9 +472,9 @@ function managerCoordinationNotice({ fact, taskIds = [], selfName = null } = {})
  * are refused BY NAME — approvalPolicy and sandbox are the recorded level's
  * ceiling, cwd per-turn would relocate execution outside the workspace root
  * the plan measured, and serviceTier is a billing routing question nobody
- * asked the person. The requested model must be a Codex row of the SAME
- * START_TIERS table the start channel resolves from, so the two surfaces can
- * never disagree about what is launchable.
+ * asked the person. The paired engine validates the exact model identifier
+ * and the selected effort on the session's existing provider/client route.
+ * Catalog rows describe known models; the provider decides availability.
  *
  * The plan's per-turn-legal key (approvalPolicy) is spread LAST, so even a
  * key that slipped past the name check could not override what the plan
@@ -497,7 +484,7 @@ function managerCoordinationNotice({ fact, taskIds = [], selfName = null } = {})
  * rather than grepping for its shape. */
 const RENDERER_TURN_KEYS = Object.freeze(['model'])
 
-function narrowTurnOptions(planThreadOptions, requested, startTiers) {
+function narrowTurnOptions(planThreadOptions, requested, startTiers, selection = {}) {
   if (requested === undefined || requested === null) return null
   if (typeof requested !== 'object' || Array.isArray(requested)) {
     fail('AGENT_TURN_OPTION_FORBIDDEN', 'Turn options must be an object')
@@ -509,15 +496,22 @@ function narrowTurnOptions(planThreadOptions, requested, startTiers) {
   }
   const narrowed = {}
   if (requested.model !== undefined) {
-    const model = boundedString(requested.model, 'model', 128, { allowEmpty: false })
-    const row = Object.entries(startTiers).find(([, tier]) => tier.model === model)
-    if (!row) {
-      fail('AGENT_TIER_UNKNOWN', `Unknown model "${model}". Available: ${Object.values(startTiers).map(tier => tier.model).join(', ')}.`)
+    const resolver = loadNativeModelSelection(selection.engineRoot)
+    const provider = selection.provider || 'codex'
+    const client = selection.client || null
+    try {
+      narrowed.model = resolver.resolveNativeModelSelection({
+        base: selection.base, model: requested.model, provider, client,
+        effort: selection.effort, tiers: startTiers,
+      }).model
+      resolver.validateNativeModelEffort(narrowed.model, selection.effort, { provider, client })
+      if (provider !== 'codex') {
+        fail('AGENT_MODEL_TURN_UNSUPPORTED', 'This provider cannot apply an engine-neutral turn model override. Choose the model when starting a new session or continuing this conversation.')
+      }
+    } catch (error) {
+      if (error?.code === 'AGENT_MODEL_INVALID') fail('AGENT_HOST_INVALID_ARGUMENT', 'model must be a valid string identifier. ' + error.message)
+      throw error
     }
-    if (row[1].provider !== 'codex') {
-      fail('AGENT_TIER_NO_LAUNCHER', `The ${row[0]} tier has no launcher in this app yet.`)
-    }
-    narrowed.model = model
   }
   if (!Object.keys(narrowed).length) return null
   return {
@@ -785,9 +779,9 @@ const PAYLOAD_ENGINE_MODULE = 'src/lib/agent-engine/codex-process.js'
  * THE GAP THIS CLOSES. ToolsEnabled's first-run screen asks how much the
  * assistant may do and records the answer. This module used to start every
  * session with `threadOptions: {}` and no environment, so Codex fell back to the
- * user's own ~/.codex/config.toml -- which can say
+ * user's own ~/.codex/config.toml -- measured on the build machine as
  * `sandbox_mode = "danger-full-access"`, `approval_policy = "never"`. A `guided`
- * install could therefore start an agent with unrestricted write access to the whole
+ * install therefore started an agent with unrestricted write access to the whole
  * computer. The product made a safety promise at the point of choice and did not
  * keep it for its own agent. */
 const PAYLOAD_CONFINEMENT_MODULE = 'src/lib/agent-session-confinement.js'
@@ -801,18 +795,18 @@ const PAYLOAD_CONFINEMENT_MODULE = 'src/lib/agent-session-confinement.js'
  * was passed at all, and codex-process.js falls back to `process.env` when
  * `env` is undefined; at every confined level `{ ...process.env, ...plan.env }`
  * was the whole parent environment plus CODEX_HOME. Neither branch removed
- * anything. ANTHROPIC_API_KEY can be set AND persisted in
- * HKCU:\Environment, and then it is inherited by every process the user
+ * anything. Measured on the build machine: ANTHROPIC_API_KEY is set AND
+ * persisted in HKCU:\Environment, so it is inherited by every process the owner
  * starts -- including this one, including the agent, including anything the
  * agent spawns.
  *
  * TWO DISTINCT HARMS, and they are not the same harm.
  *
  *   1. BILLING. The agent session can spawn a Claude CLI, and Claude Code gives
- *      ANTHROPIC_API_KEY PRECEDENCE over a subscription login. That is not a
- *      hypothesis: subscription-launch-env.js records the credential-leak
- *      failure (R1186) -- a drained API account billed for hours while
- *      reporting logged in, under a perfect green `claude auth status`.
+ *      ANTHROPIC_API_KEY PRECEDENCE over the owner's Max subscription login.
+ *      That is not a hypothesis: subscription-launch-env.js records the outage
+ *      it came from -- the R1186 sweeps "billed a drained API account for hours
+ *      while reporting logged in", under a perfect green `claude auth status`.
  *
  *   2. REDIRECTION. OPENAI_BASE_URL / ANTHROPIC_BASE_URL send the session's
  *      prompts and the file contents they carry to an arbitrary host. The
@@ -858,7 +852,7 @@ const PAYLOAD_CLAUDE_ENGINE_MODULE = 'src/lib/agent-engine/claude-cli-process.js
 
 /* THE THIRD ENGINE: A MODEL ON THIS COMPUTER.
  *
- * The defect: a local model could not be started. The
+ * The owner, 2026-09-04: "why can i still not start a local model". The
  * engine had carried a local runtime for weeks (src/lib/providers/
  * local-node-runtime.js) and a DISPATCH-lane runner for it, and nothing that
  * spoke engine-contract.js for a local model -- so the `local` row in
@@ -878,8 +872,8 @@ const PAYLOAD_LOCAL_ENGINE_MODULE = 'src/lib/agent-engine/local-node-process.js'
 
 /* THE TWO MODULES THAT LET ONE AGENT ON THIS COMPUTER WRITE TO ANOTHER.
  *
- * THE FINDING: reaching the coordinator through agent comms did not work.
- * A child started under a
+ * THE OWNER'S FINDING: "This is just the issue with trying to have it reach
+ * coordinator through agent comms it didnt work." A child started under a
  * manager on the tree was told its manager's name, handed a messaging tool, and
  * refused every time. The messenger it was handed is CROSS-MACHINE and refuses
  * a local recipient by design; on a one-machine installation that is every
@@ -915,7 +909,7 @@ const PAYLOAD_LOCAL_MESSAGE_MODULE = 'src/lib/providers/agent-comms-local.js'
 /* THE TRAILING FULL STOP IS NOT PART OF THE MATCH, AND THAT WAS A REAL BUG.
  * A node at the TOP of the tree writes `... you are "X", at the top of your
  * tree.` -- no manager clause, and a comma where an expression anchored on a
- * full stop expected one. So the manager in a reported screenshot, the one
+ * full stop expected one. So the manager in the owner's own screenshot, the one
  * circle that most needs to be addressable, would never have registered at all
  * while every child registered fine. Found by the contract test running both
  * halves rather than by reading them. */
@@ -996,11 +990,13 @@ function loadLocalEngine(engineRoot) {
 /* THE STANDARD TOOL NOTE A NEW SESSION IS HANDED, resolved from the same tree
  * every other payload module comes out of.
  *
- * THE REQUIREMENT: a person should not have to tell agents which tools exist
- * and when to use them. A very short standard file shares exactly what exists,
- * cheap in tokens; a setting can disable it, but it is on by default. And
+ * THE OWNER'S REQUIREMENT, verbatim: "i have to tell agents what tools are
+ * called and what to do and to use this or that tool etc. so thats really hard
+ * on a user. We should have a really short standard file that just shares
+ * exactly what exists - we dont wat to eat tokens but they need to knoiw. We
+ * can give a specific setting to disable this but it should be standard." And
  * the first outside user hit the other half of the same silence: their agents
- * could not use the credential manager or vault, on a level that withholds
+ * "weren't able to use credential manager or vault" on a level that withholds
  * it BY DESIGN, and nothing had told the agent, so the agent could not tell
  * them.
  *
@@ -1056,14 +1052,14 @@ function composeToolSummaryNote(toolSummary, plan) {
    *     --mcp-config. This gate is what kept the note away from it. The comment
    *     then predicted the note would follow "when the Claude MCP wiring lands".
    *
-   *   2026-09-17, staged payload `capability/PAYLOAD.json` sourceRef an earlier commit:
+   *   2026-09-17, staged payload `capability/PAYLOAD.json` sourceRef 39ac2385:
    *     that wiring HAS landed. confinementPlanFor() routes Claude to
    *     claudeToolsSessionPlan(), whose plan carries the generated .mcp.json,
    *     the settings grant beside it, and a NON-EMPTY servers array. Codex the
    *     same. Both pass this gate and are handed the note. The prediction came
    *     true and the sentence describing it inverted in place.
    *
-   *   2026-09-17, engine candidate an earlier commit (far ahead of that
+   *   2026-09-17, engine candidate bafd25a5b (1,337 commits ahead of that
    *     payload): local, Gemini and Grok gain planners too, and in the default
    *     tool-access mode all five providers wire servers and pass this gate.
    *     Gemini and Grok are refused in the wider mode by design, so they never
@@ -1092,7 +1088,7 @@ function composeToolSummaryNote(toolSummary, plan) {
  * FAMILIES. This one is different on every turn and names up to three exact
  * tool ids — or, far more often, names nothing: "hi", "thanks" and "keep
  * going" are answered with silence, and so is anything the match is not
- * confident about. It closes the other half of the gap described:
+ * confident about. It closes the other half of the gap the owner described:
  * knowing a family exists is not knowing what the tool is called.
  *
  * PER PROMPT, NOT PER SESSION, WHICH IS WHY IT IS NOT ON pendingToolSummary.
@@ -1162,11 +1158,11 @@ function composeCapabilityNote(capabilityRecall, session, turnText) {
   }
 }
 
-/* STANDING REQUESTS — the /Request family's host seams.
+/* THE OWNER'S STANDING REQUESTS — the /Request family's host seams.
  *
- * The engine's src/lib/r-ledger.js (folded into ONE canonical ledger with
- * scope tiers — global, session, tree, thread — in place of four markdown
- * files) is written by
+ * The engine's src/lib/r-ledger.js is the owner's design (2026-08-15, and
+ * folded on 2026-09-02 into ONE canonical ledger with scope tiers — global,
+ * session, tree, thread — in place of four markdown files): written by
  * /Request, /RequestSession, /RequestTree, /RequestThread, managed on the
  * Ledger page, and READ by agents at boot. The module is now a thin door over
  * the engine's src/lib/owner-request-store.js; every name this host calls is
@@ -1182,9 +1178,9 @@ function composeCapabilityNote(capabilityRecall, session, turnText) {
  *          mc-agent:request-decide -> this). The engine's editRequest /
  *          removeRequest / decide are PERSON-ONLY: reachable from no MCP tool
  *          and no agent gate, only from these seams on the person's own
- *          press, and the store refuses any other actor. It is a hand-edit
- *          tool: the user edits or deletes entries on the ToolsEnabled
- *          ledger by hand. A delete is a tombstone in
+ *          press, and the store refuses any other actor. Owner, 2026-08-22:
+ *          "its a hand edit tool. for the user to go in on the toolsenabled
+ *          ledger and hand edit or delete them." A delete is a tombstone in
  *          the ledger, never a splice; an edit keeps the words it replaced.
  *   CARRY  composeStandingRequestsNote() — the applicable layers ride the
  *          FIRST turn a session is sent, beside the tool note and under the
@@ -1246,8 +1242,9 @@ function loadRulesTurnSnapshot(engineRoot) {
 }
 
 /* THE LEDGER PAGE'S WRITE VERBS FOR TASK AND ASK RECORDS -- ledger kinds,
- * extended to add removeAsk after the ledger page drew a fifth
- * button. completeTask, removeTask, answerAsk, declineAsk and removeAsk
+ * 2026-09-07 (Controller 3 ruling 05:20Z, extended same-day to add
+ * removeAsk after Worker 2's ledger-page commit 7c6b70e0 drew a fifth
+ * button). completeTask, removeTask, answerAsk, declineAsk and removeAsk
  * live on the engine's raw store, src/lib/owner-request-store.js, not on the
  * r-ledger.js door above: r-ledger.js is the R family's own module and never
  * re-exports them. Same optional, loaded-once posture as every other
@@ -1291,8 +1288,8 @@ const REQUEST_BLOCK_MAX_BYTES = 20_000
 
 /* THE OFF PARAGRAPH, BYTE FOR BYTE THE PAYLOAD GATE'S (src/lib/r-ledger-agent-gate.js
    PARAGRAPH_OFF; tools/test/request-contract.test.mjs pins the two equal). Since
-   2026-09-15 it ends with the rule that off means off -- agents do not ask
-   when it is disabled either -- so a payload cut before the gate existed hands a
+   2026-09-15 it ends with the owner's rule that off means off -- "agents shouldnt
+   ask if its disabled either" -- so a payload cut before the gate existed hands a
    session the same sentence the gate would. The page-only form is the gate's
    answer when the person keeps the typed commands off too; both count as the
    lean text an empty world need not inject. */
@@ -1353,14 +1350,14 @@ function sessionCanFileRules(plan) {
  * this, and an unreadable switch is a switch that is off.
  *
  * `askWhenUnsure` is the switch's nested sub-setting (rules.ask_when_unsure,
- * a user setting, default no, nested below it),
+ * owner 2026-08-22: "more of a user setting. default no. nest it below"),
  * read off the SAME gate answer and handed to the same paragraph call, so
  * the person's choice that doubt should file nothing and end the reply with
  * one question reaches the agent in the one place it is told its duty. Only
  * the gate's literal `true` counts; anything else is off.
  *
  * `needsApproval` is the switch's second sub-setting
- * (rules.agent_filed_needs_approval: an agent's filing may
+ * (rules.agent_filed_needs_approval, owner 2026-09-02: an agent's filing may
  * wait for the person), read off the same answer the same way: with it on
  * the store files an agent's rule as a proposal and the paragraph tells the
  * agent so, so what it is told and what happens to its filing cannot
@@ -1373,8 +1370,8 @@ function agentFilingFor(gate, plan) {
     const mode = decision && typeof decision.mode === 'string' ? decision.mode : 'off'
     const askWhenUnsure = Boolean(decision && decision.askWhenUnsure === true)
     const needsApproval = Boolean(decision && decision.needsApproval === true)
-    /* WHETHER THE TYPED COMMANDS EXIST AT ALL (rules.filing_from: filing
-       manually on the ledger page only is a choice). Read off the
+    /* WHETHER THE TYPED COMMANDS EXIST AT ALL (rules.filing_from, owner
+       2026-09-15: "manually on the ledger page only" is a choice). Read off the
        same gate answer: only the gate's literal `false` takes the commands
        away, so an older gate that never says leaves them exactly as before. */
     const chatFiling = !(decision && decision.chatFiling === false)
@@ -1434,15 +1431,15 @@ function chatFilingAllowed(gate) {
  * record -- the behaviour that shipped before the switch existed. */
 /* AND WHEN THE AGENT FILES NOTHING, THE REQUEST IS STILL THE PERSON'S.
  *
- * MEASURED on a development install: nearly every settled record in
- * state/r-ledger/owner-capture-spool/reconciled read ledgerOutcome
+ * MEASURED 2026-09-03 on the owner's own install: of 231 settled records in
+ * state/r-ledger/owner-capture-spool/reconciled, 228 read ledgerOutcome
  * 'discarded' with the reason below and an agent's name as the decider, while
  * the canonical request ledger held ONE request. This host was calling the
  * spool's markDiscarded -- the call that records the PERSON declining their own
  * words -- every time a turn ended without an r_ledger filing. That moved the
  * record out of pending/, which is the only queue tools/owner-spool-review.js
- * and the reconciler can still reach, so nearly all recent messages were kept
- * bytes nobody could list or re-file.
+ * and the reconciler can still reach, so 29 of the owner's 30 recent messages
+ * were kept bytes nobody could list or re-file.
  *
  * A turn that ended with nothing filed is not a decision, so it settles
  * nothing: markUnfiled annotates the record WHERE IT STANDS, in pending/, and
@@ -1487,7 +1484,7 @@ const TURN_ORIGINS = new Set(['person', 'agent', 'brief'])
  * result that does not parse to `filed: true` with a ledger id is not a
  * filing, whatever the agent said about it. */
 /* Both r_ledger.file and r_ledger.propose settle the person's spooled turn:
-   since the one-ledger fold a proposal is a real record
+   since the one-ledger fold (owner, 2026-09-02) a proposal is a real record
    with status 'proposed' -- filed, waiting for the person on the Ledger page
    -- so a turn that became one was not "read and filed nothing". */
 const RULE_FILING_TOOL = /(?:^|[._:/])r_ledger[._](?:file|propose)$/
@@ -1904,18 +1901,16 @@ function loadLaunchEnvironment(engineRoot) {
  *   USERPROFILE with no Codex sign-in -> availability READY, start() REFUSED
  *   USERPROFILE with a Codex sign-in  -> availability READY, start() STARTED
  *
- * The refusal is correct: prepareConfinedCodexHome() links the user's
- * auth.json into the isolated home, and linkCredential() refuses rather than
- * starting a session against an account it cannot name. What was wrong is that
+ * The refusal is correct: prepareConfinedCodexHome() checks the selected
+ * official sign-in home and refuses a missing sign-in before launching Codex. What was wrong is that
  * the probe could not see it, so the product offered an enabled button that
  * refused every press -- the exact defect this function was repaired for,
  * surviving in the one precondition nobody had enumerated.
  *
  * IT IS CONDITIONAL ON THE PLAN, AND THE CONDITION IS THE POINT. Every level
  * this payload currently ships -- guided, standard and unrestricted -- is
- * isolated in an assistant home owned by this installation, so all three link
- * the Codex credential from the installation-owned profile and need this
- * precondition. Keeping the check keyed to `isolated` rather than a tier name
+ * constrained by launch overrides and use the selected official sign-in
+ * home, so all three need this precondition. Keeping the check keyed to `isolated` rather than a tier name
  * preserves the planner as authority if a genuinely non-isolated level is ever
  * introduced.
  *
@@ -1934,9 +1929,8 @@ function loadLaunchEnvironment(engineRoot) {
  * installation-owned profile, then look for the registry's `auth.json` there.
  * Ambient CODEX_HOME is deliberately not an identity source: it may belong to
  * the account that launched this process rather than the account that owns this
- * installation. The module exports no read-only sign-in probe to call instead
- * -- linkCredential() is private and writes -- so the choice is a checked copy
- * or no answer at all. */
+ * installation. This readiness probe checks presence only; the selected
+ * account and private-profile boundaries are checked again during start. */
 function confinedSessionIsSignedOut(planner) {
   if (!planner || typeof planner.resolveAgentConfinement !== 'function') return false
   let confinement
@@ -2009,8 +2003,8 @@ function confinedSessionIsSignedOut(planner) {
  * EACCES, EPERM, EBUSY -- every way a directory can refuse to be looked in --
  * counted as "codex is not here", and a complete search then answered MISSING.
  * A machine with codex.exe sitting in a PATH directory this process may not
- * stat was told to install Codex. That is a reported shape from a second
- * machine, arrived at by a different road, and it is the reverse of
+ * stat was told to install Codex. That is the owner's own reported shape from
+ * his second machine, arrived at by a different road, and it is the reverse of
  * the rule stated one paragraph up. resolveOnSearchPath() in the payload's
  * src/lib/agent-engine/codex-process.js -- the function this half mirrors --
  * already draws the line correctly and says why: it tolerates
@@ -2053,8 +2047,8 @@ function codexCommandIsMissing({ searchPath = machineSearchPath, statFile = fs.s
      * to read process.env.PATH, which on Windows is the copy this process was
      * born holding -- for an app launched from Explorer, the environment
      * captured at login. Anything installed afterwards writes its directory into
-     * the REGISTRY copy and is invisible here. That is a report from a second
-     * machine: Codex installed, Codex reported missing, and a
+     * the REGISTRY copy and is invisible here. That is the owner's report from
+     * his own second machine: Codex installed, Codex reported missing, and a
      * press answering "nothing was started" with an install command attached.
      * shell/machine-search-path.cjs resolves what a NEWLY started process would
      * search -- which is the right question, because the session this precondition
@@ -2097,12 +2091,12 @@ function codexCommandIsMissing({ searchPath = machineSearchPath, statFile = fs.s
 /* WHICH PROVIDER A START WITH NO TIER SHOULD RESOLVE TO, from what this
  * machine actually has.
  *
- * THE DEFECT, found by cross-machine testing on a Claude-only foreign
+ * THE DEFECT, driven by the cross-machine lane on a Claude-only foreign
  * machine: with no ~/.codex/auth.json anywhere, the no-tier start path kept a
  * CODEX confinement plan regardless of the machine, so pressing Start refused
  * on a computer whose only agent program -- Claude, installed and signed in --
- * could have served it. Provider-login work fixed the refusal's words
- * (an earlier commit); this resolves the routing.
+ * could have served it. The provider-login lane fixed the refusal's words
+ * (6a3ab66); this resolves the routing.
  *
  * CODEX KEEPS THE DEFAULT WHENEVER ITS PROGRAM IS ON THE MACHINE, and the
  * probe reads NOTHING ELSE -- not the sign-in file, and not CODEX_HOME.
@@ -2118,7 +2112,7 @@ function codexCommandIsMissing({ searchPath = machineSearchPath, statFile = fs.s
  *     ambient value could still decide "signed out" and silently reroute a
  *     Codex start to Claude on evidence the actual launch will not inherit.
  * So the reroute fires on exactly one machine shape: no codex PROGRAM at all
- * (the Claude-only foreign machine above), with Claude
+ * (the cross-machine lane's Claude-only foreign machine), with Claude
  * installed. Every uncertain answer falls back to codex, the path this host
  * has always taken.
  *
@@ -2163,16 +2157,19 @@ function defaultStartProviderProbe(engineRoot = null) {
  * tripwire rejects any surviving compound variable (such as PATH) that still
  * names a sibling profile. Unrestricted preserves reach; it never means
  * inheriting another account's directives or credentials. */
-function sessionLaunchEnvironment(launchEnvironment, plan, planner, { context, extras = null }) {
-  const scrubbed = launchEnvironment.safeLaunchEnvironment(process.env, { context })
+function sessionLaunchEnvironment(launchEnvironment, plan, planner, { context, extras = null, provider = null }) {
+  // Claude Code owns its native authentication choices, including API/cloud
+  // settings. The app only applies its tool and owning-profile confinement.
+  const nativeClaude = provider === 'claude'
+  const scrubbed = nativeClaude ? { ...process.env }
+    : launchEnvironment.safeLaunchEnvironment(process.env, { context })
   /* Extras sit UNDER the plan: a settings row may narrow a session (the tool
      allowlist), but nothing a settings row carries may override what the
      confinement plan decided. Both layered results still pass the billing
      assertion, so an extra can never reintroduce what the scrub removed. */
-  const billingSafe = launchEnvironment.assertNoBillingCredentials(
-    { ...scrubbed, ...(extras || {}), ...(plan.env || {}) },
-    { context },
-  )
+  const candidate = { ...scrubbed, ...(extras || {}), ...(plan.env || {}) }
+  const billingSafe = nativeClaude ? candidate
+    : launchEnvironment.assertNoBillingCredentials(candidate, { context })
   /* Windows supplies PUBLIC pointing at its shared profile to every account. That directory is
      a shared OS profile, not the profile that owns this installation, and the
      account tripwire correctly treats any inherited sibling-profile path as a
@@ -2210,7 +2207,7 @@ function sameEnvironmentLayer(left, right) {
  * sessionLaunchEnvironment() costs 5.0-7.3 ms, of which 4.18 ms is the
  * foreign-profile fence reading every value and 1.43 ms is the billing scrub
  * copying and folding the environment. Three of them is 15-22 ms on every agent
- * start, and the reported experience is that starting a node is one of the huge
+ * start, and the owner's own report is that starting a node is one of the huge
  * lag points.
  *
  * WHAT IS REUSED IS AN ANSWER ALREADY ASSERTED, NOT AN ASSERTION SKIPPED.
@@ -2309,8 +2306,8 @@ function sessionLaunchEnvironments(launchEnvironment, planner, options) {
  *
  * WHAT IS DELIBERATELY NOT DONE HERE, and it is the one thing that looks
  * missing: confinedSessionPlan() is NOT called. It is not a read --
- * prepareConfinedCodexHome() mkdirs the isolated agent home, links the Codex
- * credential into it and writes config.toml. Availability is the one agent
+ * prepareConfinedCodexHome() creates product artifacts and account-fence
+ * directives, then derives launch overrides. Availability is the one agent
  * channel that starts nothing, and a probe the home screen runs on every mount
  * must not build a session's home as a side effect. Its `plan.ok === false`
  * refusal therefore remains a start-time refusal; see the note on that check in
@@ -2328,6 +2325,8 @@ function engineAvailability({
   profileRoot = null,
   providerPresence = providerCliPresence,
   localRuntime = null,
+  requiredProvider = null,
+  requiredClient = null,
   ...options
 } = {}) {
   try {
@@ -2355,6 +2354,100 @@ function engineAvailability({
     const codexCode = (privatePolicy ? !privatelyInstalled('codex') : codexCommandIsMissing())
       ? 'AGENT_CODEX_CLI_NOT_INSTALLED'
       : !privatePolicy && confinedSessionIsSignedOut(planner) ? 'AGENT_CONFINEMENT_SIGNED_OUT' : null
+
+    /* A named tier cannot borrow the default provider's answer. A Claude-only
+       computer is ready for Claude even when Codex is absent, while a selected
+       Local tier is not ready merely because its module was bundled: its
+       runtime detector and local planner must also accept the start. The host
+       still supplies the tier's provider/client route; this function supplies
+       the same engine/profile/launch facts the eventual start consumes. */
+    if (typeof requiredProvider === 'string' && requiredProvider) {
+      const presence = privatePolicy ? null : (() => {
+        try { return providerPresence() } catch { return null }
+      })()
+      const presenceKnown = Boolean(privatePolicy
+        || (presence?.ok === true && Array.isArray(presence.providers)))
+      const providerState = provider => {
+        if (privatePolicy) return privatelyInstalled(provider) ? 'yes' : 'no'
+        const row = presenceKnown
+          ? presence.providers.find(candidate => candidate?.id === provider)
+          : null
+        return row?.installed === 'yes' || row?.installed === 'no' ? row.installed : 'unknown'
+      }
+      const requireProvider = provider => {
+        const state = providerState(provider)
+        if (state === 'unknown') {
+          fail('AGENT_PROVIDER_PRESENCE_UNAVAILABLE',
+            `The selected ${provider} provider could not be verified on this computer.`)
+        }
+        if (state !== 'yes') {
+          fail('PROVIDER_LOGIN_NOT_INSTALLED',
+            `The selected ${provider} provider is not installed or ready on this computer.`)
+        }
+      }
+      const requireClient = (provider, client) => {
+        if (privatePolicy || !presenceKnown || !Array.isArray(presence?.clients)) {
+          fail('AGENT_PROVIDER_PRESENCE_UNAVAILABLE',
+            `The selected ${provider} ${client} client could not be verified on this computer.`)
+        }
+        const row = presence.clients.find(candidate => candidate?.provider === provider
+          && candidate?.client === client)
+        if (row?.installed === 'unknown' || !row
+            || (row.installed !== 'yes' && row.installed !== 'no')) {
+          fail('AGENT_PROVIDER_PRESENCE_UNAVAILABLE',
+            `The selected ${provider} ${client} client could not be verified on this computer.`)
+        }
+        if (row.installed !== 'yes') {
+          fail('PROVIDER_LOGIN_NOT_INSTALLED',
+            `The selected ${provider} ${client} client is not installed on this computer.`)
+        }
+      }
+      let selectedReady = false
+      if (requiredProvider === 'codex') {
+        if (codexCode === 'AGENT_CODEX_CLI_NOT_INSTALLED') {
+          fail('AGENT_CODEX_CLI_NOT_INSTALLED', 'The selected Codex provider is not installed.')
+        }
+        if (codexCode === 'AGENT_CONFINEMENT_SIGNED_OUT') {
+          fail('AGENT_CONFINEMENT_SIGNED_OUT', 'The selected Codex provider is signed out.')
+        }
+        selectedReady = true
+      } else if (requiredProvider === 'local') {
+        selectedReady = localRuntime?.ok === true && localRuntime.ready === true
+          && typeof planner.localSessionPlan === 'function' && loadLocalEngine(engineRoot)
+        if (!selectedReady) {
+          fail('LOCAL_NODE_RUNTIME_UNAVAILABLE', 'The selected Local runtime is not ready on this computer.')
+        }
+      } else if (requiredClient === 'antigravity') {
+        selectedReady = requiredProvider === 'gemini'
+          && typeof planner.antigravitySessionPlan === 'function'
+          && loadAntigravityEngine(engineRoot)
+        if (selectedReady) {
+          // Antigravity has its own executable/sign-in surface. Its client
+          // row is authoritative; the ordinary Gemini CLI row is unrelated.
+          requireClient(requiredProvider, requiredClient)
+        }
+      } else if (requiredProvider === 'claude') {
+        selectedReady = Boolean(loadClaudeEngine(engineRoot))
+        if (selectedReady) requireProvider(requiredProvider)
+      } else if (requiredProvider === 'gemini' || requiredProvider === 'grok') {
+        selectedReady = typeof planner.acpSessionPlan === 'function'
+          && Boolean(loadAcpEngine(engineRoot))
+        if (selectedReady) requireProvider(requiredProvider)
+      }
+      if (!selectedReady) {
+        fail('PROVIDER_LOGIN_NOT_INSTALLED',
+          `The selected ${requiredProvider} provider is not installed or ready on this computer.`)
+      }
+      // A provider-specific read still crosses the common launch boundary.
+      loadLaunchEnvironment(engineRoot)
+      return Object.freeze({
+        ok: true,
+        code: 'AGENT_ENGINE_READY',
+        readyProvider: requiredProvider,
+        ...(codexCode ? { codexCode } : {}),
+      })
+    }
+
     if (!codexCode) {
       loadLaunchEnvironment(engineRoot)
       return Object.freeze({ ok: true, code: 'AGENT_ENGINE_READY' })
@@ -2411,6 +2504,8 @@ function engineAvailability({
  * force a new one to be classified rather than forgotten. */
 const AVAILABILITY_CODES = Object.freeze([
   'AGENT_ENGINE_UNAVAILABLE',
+  'AGENT_PROVIDER_PRESENCE_UNAVAILABLE',
+  'LOCAL_NODE_RUNTIME_UNAVAILABLE',
   'AGENT_CONFINEMENT_ACCOUNT_PROFILE_UNAVAILABLE',
   'AGENT_CONFINEMENT_WRONG_PRINCIPAL',
   'AGENT_CONFINEMENT_FOREIGN_PROFILE',
@@ -2520,8 +2615,15 @@ const START_REFUSAL_CODES = Object.freeze([
   'RULES_POLICY_UNAVAILABLE',
   'AGENT_CLOUD_COMMAND_INVALID',
   'ACCOUNT_NONE_USABLE', 'ACCOUNT_EXHAUSTED_MANUAL', 'ACCOUNTS_REGISTRY_UNREADABLE',
-  'ACCOUNT_STATE_UNREADABLE', 'ACCOUNT_RECOVERY_INVALID', 'ACCOUNT_RECOVERY_NO_ALTERNATE',
+  'ACCOUNT_STATE_UNREADABLE', 'ACCOUNT_SIGNED_OUT', 'ACCOUNT_NOT_PROVISIONED', 'ACCOUNT_EXHAUSTED',
+  'ACCOUNT_MISMATCH', 'ACCOUNT_STATUS_UNKNOWN', 'ACCOUNT_LAUNCH_COMMIT_CONFLICT',
+  'ACCOUNT_SELECTION_UNAVAILABLE', 'ACCOUNT_AUTOMATIC_SWITCHING_DISABLED',
   'ACCOUNT_CLIENT_INVALID', 'AGENT_ACCOUNT_UNAVAILABLE',
+  /* A default Claude start when startup set CLAUDE_CONFIG_DIR aside because it
+     named another Windows account or could not be checked (1.0.50 review,
+     accounts B; shell/install-profile-guard.cjs nativeClaudeHomeStartAnswer,
+     answered through the account resolver in shell/main.cjs). */
+  'ACCOUNT_DEFAULT_CLAUDE_HOME_UNUSABLE',
   'AGENT_RESUME_SOURCE_UNAVAILABLE', 'CODEX_RESUME_SOURCE_INVALID', 'CODEX_RESUME_IDENTITY_MISMATCH', 'CLAUDE_RESUME_IDENTITY_MISMATCH',
   'EDITOR_FORK_UNSUPPORTED', 'EDITOR_FORK_WORKSPACE_MISMATCH', 'EDITOR_FORK_PROVIDER_MISMATCH',
   'EDITOR_SOURCE_ACCOUNT_UNAVAILABLE', 'EDITOR_FORK_INVALID', 'EDITOR_RECEIPT_UNAVAILABLE',
@@ -2549,8 +2651,8 @@ const START_REFUSAL_CODES = Object.freeze([
   /* Recovery is admitted only for a current replacement request. It can also
      refuse while closing the predecessor; availability has no recovery ticket
      or selected replacement account to check. Both outcomes need UI copy. */
-  'AGENT_ACCOUNT_RECOVERY_UNAVAILABLE',
-  'AGENT_ACCOUNT_RECOVERY_NO_ALTERNATE',
+
+
   // A model replacement can refuse during preparation or settlement. The
   // readiness probe has neither its source session nor its selected target.
   'AGENT_SWITCH_STALE',
@@ -2568,8 +2670,8 @@ const START_REFUSAL_CODES = Object.freeze([
      different tree node, was stopped by the person, or could not be closed.
      Each is checked against the predecessor session, which a readiness probe
      does not have. */
-  'AGENT_ACCOUNT_RECOVERY_IDENTITY_MISMATCH',
-  'AGENT_ACCOUNT_RECOVERY_STOPPED',
+
+
   'AGENT_PREDECESSOR_CLEANUP_FAILED',
   /* A resume or fresh replacement of a tree session first finishes its
      predecessor's close. One that is still stopping is refused until it has
@@ -2587,6 +2689,13 @@ const START_REFUSAL_CODES = Object.freeze([
   'AGENT_ROLE_TOOL_RESTRICTION_INVALID',
   'AGENT_ROLE_TOOL_SERVER_UNSUPPORTED',
   'AGENT_OPTIMIZED_TOOLS_UNSUPPORTED',
+  /* The planner's other Agent API mode refusals. None starts with
+     AGENT_CONFINEMENT_, which is why the planner walk missed them: an
+     unreadable saved mode crossed IPC as AGENT_SESSION_FAILED and told the
+     person to reinstall. */
+  'AGENT_API_MODE_UNAVAILABLE',
+  'AGENT_ACP_REQUIRES_APP_TOOLS',
+  'AGENT_TOOL_MODE_ROLE_CONFLICT',
   'AGENT_SESSION_IDENTITY_TRANSPORT_UNAVAILABLE',
   'AGENT_SESSION_ROOT_GUARD_UNAVAILABLE',
   'OWNER_HOST_NOT_READY',
@@ -2610,6 +2719,12 @@ const START_REFUSAL_CODES = Object.freeze([
      availability probe never builds that plan. An unsupported provider must
      keep refusing before credentials are prepared or a process starts. */
   'AGENT_CONFINEMENT_PROVIDER_INVALID',
+  /* Two ToolsEnabled tool servers name the same private value differently; the Codex launch forwards such values by name. */
+  'AGENT_CONFINEMENT_SERVER_ENV_CONFLICT',
+  /* Resuming a saved conversation refuses these at start, after readiness said yes. */
+  'AGENT_RESUME_HOME_UNAVAILABLE',
+  'AGENT_RESUME_IDENTITY_MISMATCH',
+  'AGENT_RESUME_PROVIDER_MISMATCH',
   'AGENT_CONFINEMENT_ACCOUNT_COLLISION',
   'AGENT_CONFINEMENT_ACCOUNT_FENCE_UNAVAILABLE',
   'AGENT_CONFINEMENT_ACCOUNT_INVALID',
@@ -2635,6 +2750,8 @@ const START_REFUSAL_CODES = Object.freeze([
   'AGENT_CONFINEMENT_SERVER_ENTRY_INVALID',
   'AGENT_CONFINEMENT_SESSION_CREDENTIAL_INVALID',
   'AGENT_CONFINEMENT_SIGN_IN_UNAVAILABLE',
+  'AGENT_CODEX_CONFINEMENT_UNAVAILABLE',
+  'AGENT_CODEX_CONFINEMENT_MISMATCH',
   /* Raised by the payload's codex-adapter.js when the installed Codex is not on
      the compatibility line the adapter was generated against. It belongs here
      for the reason this whole list exists: it is reachable from one press, by a
@@ -2696,7 +2813,8 @@ const START_REFUSAL_CODES = Object.freeze([
 
 /* WHAT ONE ASSISTANT COSTS THIS COMPUTER, MEASURED RATHER THAN GUESSED.
  *
- * Sampled 2026-09-03 from Get-Process, on the processes the probe itself started:
+ * Sampled 2026-09-03 from Get-Process, on the pids the probe itself started,
+ * with the raw output kept in REPORT-crash-20260903/evidence/C/:
  *
  *   claude.exe (the CLI)          540-623 MB private, 392-477 MB working set
  *                                 (claude-cli-and-os-memory.txt)
@@ -2714,13 +2832,17 @@ const START_REFUSAL_CODES = Object.freeze([
  * THE RESERVE is what has to be left for everything that is not this new
  * assistant: Windows, the application itself, the browser, and the assistants
  * already running. 2 GB, and it is a JUDGEMENT rather than a measurement, so it
- * is written down as one. On a healthy machine this gate is silent.
+ * is written down as one. On the evening this was measured the machine had
+ * 17.7 GB free with the app dead (Win32_OperatingSystem, same evidence file),
+ * so on a healthy machine this gate is silent.
  *
  * WHAT THIS DOES NOT CLAIM. Nine assistants at 0.75 GB is 6.75 GB, which fits
- * in a typical machine's memory with room to spare -- so memory alone is not
- * every failure, and this gate does not stop every one. It stops one: the
- * machine reaching its commit limit while a person keeps pressing start. The
- * per-assistant CPU cost is a different scarcity and is not what this reads.
+ * in this machine's memory with room to spare -- so memory alone did NOT kill
+ * the app on 2026-09-03, and this gate would not have stopped that death. It
+ * stops the OTHER one: the machine reaching its commit limit while a person
+ * keeps pressing start, which is the state two MCP servers were already dying
+ * in at 21:11:56. The per-assistant CPU cost (nine assistants on four cores) is
+ * a different scarcity and is not what this reads.
  */
 const CIRCLE_MEMORY_BYTES = 768 * 1024 * 1024
 const MEMORY_RESERVE_BYTES = 2 * 1024 * 1024 * 1024
@@ -2737,7 +2859,7 @@ function gigabytes(bytes) {
  *
  * IT IS A WARNING THE PERSON CAN OVERRIDE, NOT A WALL. `acknowledged` is the
  * second press: the person has been told the number and said start it anyway,
- * and this then admits the start. The rule is that the person is never
+ * and this then admits the start. The owner's rule is that the person is never
  * gated silently and never gated twice, so there is exactly one refusal here
  * and it carries the numbers it refused on.
  */
@@ -2927,7 +3049,7 @@ function observeEngineExit(startedValue, onExit) {
 
 /* THE CONFINEMENT A SESSION RUNS UNDER, ASKED PER PROVIDER.
  *
- * WHAT WAS MEASURED, and it is a stated requirement failing. With Claude
+ * WHAT WAS MEASURED, and it is the owner's own requirement failing. With Claude
  * signed in and NO Codex sign-in on the machine, pressing Start was refused with
  * "Codex is installed on this computer, but nobody is signed in to it ... run
  * codex login" -- for a Claude tier, on a build carrying the Claude engine. The
@@ -2936,10 +3058,9 @@ function observeEngineExit(startedValue, onExit) {
  *
  * WHY IT HAPPENED. Every permission level in the payload's
  * INSTALL_TIER_AGENT_CONFINEMENT is `isolated: true`, and confinedSessionPlan()
- * answers an isolated level by building an isolated CODEX home -- mkdir, link the
- * user's Codex credential, write config.toml. linkCredential() refuses when there
- * is no auth.json to link, which is correct for Codex and is the whole plan for
- * every provider, because that function predates there being a second one. So a
+ * historically answered every provider with a generated Codex home. The
+ * provider-specific plans now preserve each official client's own sign-in
+ * directory and apply that provider's restrictions at launch. So a
  * Claude subscriber was gated on a Codex account to use their own subscription.
  *
  * WHAT A CLAUDE SESSION ACTUALLY NEEDS OUT OF THE PLAN, read from the engine
@@ -2977,14 +3098,14 @@ function observeEngineExit(startedValue, onExit) {
  * address. Loading one of the two would produce a session that registers itself
  * as reachable and then cannot be reached, which is worse than no channel at
  * all -- the person would see a manager listed and never get an answer. */
-/* W22 ATTRIBUTION MARK -- see shell/main-lag.cjs, and an internal
-   report. createTreeNodeDirectory() takes injectable
+/* W22 ATTRIBUTION MARK -- see shell/main-lag.cjs, and Manager 3's M7 in
+   t5-m8-REPORT-agent-run-lag.md. createTreeNodeDirectory() takes injectable
    `lockSleep` and `fsImpl` (confirmed by reading live-engine's
    tree-node-directory.js directly: `lockSleep = sleepSync`, `fsImpl = fs`,
    both threaded through `mutate()` into `acquireMutationLock` and
    `read()`/`writeRecord()`), so the lock wait and the directory file's own
    read can each be timed from HERE, in the app worktree, with no engine
-   change -- exactly the injection point that report named as real and
+   change -- exactly the injection point Manager 3's report named as real and
    unused. `lockSleep` is called once per retry inside a contended
    `acquireMutationLock`, synchronously and without ever returning to the
    event loop between retries, so a single multi-second stall is many small
@@ -3017,7 +3138,7 @@ function loadTreeMessaging(engineRoot, { mainLag = null } = {}) {
           recordDuration('tree-directory:read-file', Number(process.hrtime.bigint() - startedAt) / 1e6)
         }
       },
-      /* The write path, named alongside readRecord in the same report:
+      /* The write path, named alongside readRecord in Manager 3's M7:
          "the write path uses writeFileSync plus fsyncSync". Both time
          directly (each fires at most once per registerNode/heartbeatNode
          call, unlike lockSleep's retry loop, so no accumulator is needed
@@ -3078,9 +3199,8 @@ function confinementPlanFor(planner, {
   }
   if (provider === 'codex' || typeof planner.resolveAgentConfinement !== 'function') {
     /* The account reaches the Codex plan because that is where it MEANS
-       something: it says which of the person's own signed-in homes the
-       credential is linked from, and gives that account a confined home of its
-       own so two sessions cannot re-sign each other. A payload that predates
+       something: it selects the person's own official sign-in home, while
+       confinement is carried by command overrides and product artifacts. A payload that predates
        the option ignores the extra key, which is the same fail-closed shape
        every other option here has. */
     return planner.confinedSessionPlan({ ...identity, ...sessionAuthority, ...(account ? { account } : {}) })
@@ -3215,20 +3335,29 @@ function sessionAccountRows(sessions) {
  *                             (see readTreeInboxes), so a read still out after
  *                             six seconds is stuck, not slow -- and a stuck
  *                             read must not stop the heartbeats, which are
- *                             written only after it. MEASURED on a development
- *                             tree: every circle's heartbeat stopped within
- *                             milliseconds of every other's and never
- *                             resumed, every send was then
+ *                             written only after it. MEASURED 2026-09-04 on the
+ *                             owner's fourth tree: every circle's heartbeat
+ *                             stopped within 132 ms of every other's at
+ *                             00:12:31Z and never resumed, every send was then
  *                             refused TREE_SENDER_NOT_RUNNING for agents that
  *                             were demonstrably working, and the tree had to
  *                             be abandoned. That is one shared read hanging
  *                             inside the engine with nothing bounding it.
+ *   recoveryHoldMs 30,000 ms  how long an open account recovery offer holds
+ *                             this circle's queued tree work back, at most
+ *                             (tree-turn-priority.cjs, THE FOURTH LOST RACE).
+ *                             The same bound the Computers view gives a
+ *                             recovery in flight (src/tree-node-settle-wait.js
+ *                             NODE_SETTLE_BOUND_MS): a coordinator that is
+ *                             answering closes the session well inside it, and
+ *                             an offer nobody answers delays tree work by no
+ *                             more than this.
  *
  * A test passes smaller values so a hung read or a slow acknowledgement can be
  * driven in seconds. Each must be a positive safe integer of at most one hour;
  * anything else is refused by name, because a courier clock that is zero,
  * negative or NaN is a courier that spins or never wakes. */
-const TREE_COURIER_DEFAULTS = Object.freeze({ pollMs: 1200, heartbeatMs: 30_000, readDeadlineMs: 6_000 })
+const TREE_COURIER_DEFAULTS = Object.freeze({ pollMs: 1200, heartbeatMs: 30_000, readDeadlineMs: 6_000, recoveryHoldMs: 30_000 })
 const TREE_COURIER_CLOCK_MAX_MS = 60 * 60 * 1000
 
 function treeCourierTimingOf(value) {
@@ -3254,7 +3383,12 @@ function createAgentHost({
   confinementPlanner = null,
   sessionEnvironmentExtras = null,
   accountResolver = null,
-  recoveryEnabled = () => false,
+  // Registry metadata only: this lookup must neither probe nor start a provider.
+  resumeAccountHome = null,
+  resumeOriginDirectory = null,
+  legacyResumeOriginResolver = null,
+  automaticTurnStartTimeoutMs = 60_000,
+  stoppedConversationAdoption = null,
   assertTranscriptWritable = () => {},
   reserveTranscriptTurn = () => null,
   /* WHETHER ANY ACCOUNT FOR A PROVIDER IS SIGNED IN: 'yes', 'no' or 'unknown'.
@@ -3359,6 +3493,9 @@ function createAgentHost({
    * time they restart the application. "You can change it later" is what the
    * first-run screen promises; a ceiling cached at construction would make that
    * promise true only after a relaunch. */
+  if (!Number.isSafeInteger(automaticTurnStartTimeoutMs) || automaticTurnStartTimeoutMs < 1 || automaticTurnStartTimeoutMs > 3_600_000) {
+    fail('AGENT_HOST_INVALID_ARGUMENT', 'The automatic turn acknowledgement bound must be between 1 millisecond and one hour.')
+  }
   const planConfinement = confinementPlanner
     || ((options = {}) => confinementPlanFor(planner, options))
   const authorityBind = typeof sessionAuthority?.bind === 'function'
@@ -3391,6 +3528,23 @@ function createAgentHost({
     fail('AGENT_SESSION_IDENTITY_TRANSPORT_UNAVAILABLE', 'The session identity transport must provide both bind and revoke operations.')
   }
   const sessions = new Map()
+  // Native conversation origins outlive Stop. Only host-observed paths live
+  // here; renderer requests carry the previous session id, never a home.
+  const resumeOrigins = new Map()
+  const resumeOriginsByThread = new Map()
+  const resumeOriginStore = resumeOriginDirectory === null ? null
+    : require('./native-resume-origin-store.cjs').createNativeResumeOriginStore({
+      directory: planner.assertAccountProfilePath(resumeOriginDirectory, { field: 'native conversation origin directory' }),
+    })
+  const rememberResumeOrigin = session => {
+    if (!['claude', 'codex', 'gemini'].includes(session.provider) || !session.pinnedHome || !session.threadId) return
+    const origin = Object.freeze({ threadId: session.threadId, provider: session.provider,
+      account: session.account?.name || null, agentId: session.agentId, home: session.pinnedHome,
+      databaseHome: session.pinnedDatabaseHome || null })
+    resumeOriginStore?.set(session.sessionId, origin)
+    resumeOrigins.set(session.sessionId, origin)
+    resumeOriginsByThread.set(JSON.stringify([session.agentId, session.threadId]), origin)
+  }
   const standaloneReplacementPermits = new WeakMap()
   let standaloneReplacementRevision = 0
   const boundedWorkRecords = new Map()
@@ -3403,7 +3557,6 @@ function createAgentHost({
      -- are told apart and an old release can never clear a newer wait. */
   let personWaitingTokenSeq = 0
   const nextPersonWaitingToken = () => (personWaitingTokenSeq += 1)
-  const recoveryTickets = createRecoveryTickets({ enabled: recoveryEnabled })
   const listeners = new Set()
   const acceptedPromptListeners = new Set()
   // Session close can clear its send field before a provider acknowledges.
@@ -3436,7 +3589,7 @@ function createAgentHost({
    * drift into overlapping a live turn. */
   function autonomousSendAllowed(session) {
     return !closed && sessions.get(session.sessionId) === session
-      && session.state === 'ready' && !session.closeRequested
+      && session.state === 'ready' && !session.closeRequested && !session.safetyBlocked && !session.modelRefused
       && !session.sendPromise && !session.activeTurnId && !session.turnAnnounce && !session.rewindPending && !session.modeSelectionPending && !session.settingsPending && !session.standaloneSwitch && !session.replacementHold && !session.interruptRequested
       && !session.treeQueue?.length && !session.treeHandoffPromise && !session.personWaitingSince
       && now() - (session.turnBoundaryAt || 0) >= 5000
@@ -3710,6 +3863,11 @@ function createAgentHost({
     const goal = session.goal
     if (!goal || !sessionGoal.GOAL_RUNNING_STATUSES.includes(goal.status)) return
 
+    if (session.safetyBlocked) {
+      updateGoal(session, sessionGoal.makeGoal(goal.objective, { status: 'paused', continuations: goal.continuations }))
+      announceGoal(session, 'The provider refused this turn through its safety policy. Automatic continuation is stopped.')
+      return
+    }
     const outcome = sessionGoal.readGoalOutcome(spoken)
     if (outcome === 'achieved' || outcome === 'blocked') {
       const settled = sessionGoal.makeGoal(goal.objective, { status: outcome, continuations: goal.continuations })
@@ -3838,17 +3996,53 @@ function createAgentHost({
   const TREE_POLL_MS = treeCourierTiming.pollMs
   const TREE_HEARTBEAT_MS = treeCourierTiming.heartbeatMs
   const TREE_READ_DEADLINE_MS = treeCourierTiming.readDeadlineMs
+  const TREE_RECOVERY_HOLD_MS = treeCourierTiming.recoveryHoldMs
   /* Slower than the poll, because a directory that cannot hold a node is
      usually waiting on a person or another process and re-reading the file
      every 1.2 seconds buys nothing. Fast enough that a repair is picked up
      while the person is still looking at the canvas. */
   const TREE_REGISTER_RETRY_MS = 5_000
-  /* How many times one tree hand-off is offered to a living session that
-     refuses it for a reason other than being mid-turn, before it is set aside
-     out loud. Three is one transient refusal plus two more chances a poll
-     interval apart; see pumpTreeSessionOnce(). A turn-in-progress refusal is
-     never counted against this -- see namesATurnInProgress(). */
-  const TREE_HANDOFF_ATTEMPTS = 3
+  // Retry refusals on a time budget, not three rapid courier ticks. Five
+  // offers separated by 5/10/20/30 seconds span at least one minute. Known
+  // admission waits retain the original batch without spending this budget.
+  const TREE_HANDOFF_ATTEMPTS = 5
+  const TREE_HANDOFF_RETRY_BASE_MS = 5_000
+  const TREE_HANDOFF_RETRY_MAX_MS = 30_000
+  const TREE_HANDOFF_ADMISSION_WAITS = new Set([
+    'RULES_CONTEXT_UNAVAILABLE', 'RULES_POLICY_UNAVAILABLE', 'RULES_POLICY_CHANGED',
+    'RULES_CONTEXT_STALE', 'MC_TRANSCRIPT_STORAGE_FAILED',
+  ])
+  /* AN ADMISSION WAIT HAS A BOUND (T1743). A wait holds every message behind
+     it, and a rules context or transcript store that never recovers would hold
+     them for ever. After ten minutes, or 24 offers, whichever comes first, the
+     batch is set aside with its own refusal code: its sender is told why, and
+     the messages behind it are offered again. */
+  const TREE_HANDOFF_ADMISSION_WAIT_MS = 10 * 60_000
+  const TREE_HANDOFF_ADMISSION_WAIT_LIMIT = 24
+  const treeHandoffRetryDelay = count => Math.min(TREE_HANDOFF_RETRY_MAX_MS,
+    TREE_HANDOFF_RETRY_BASE_MS * 2 ** Math.min(3, Math.max(0, count - 1)))
+  const treeHandoffRefusalCode = error => typeof error?.code === 'string'
+    && /^[A-Z][A-Z0-9_]{0,95}$/.test(error.code) ? error.code : 'AGENT_TREE_HANDOFF_REFUSED'
+  /* READ RECEIPTS NEVER HOLD LATER MESSAGES FOR LONG (T1742). An accepted
+     batch whose read receipts are refused is held and retried at most this many
+     times; after that its receipts are owed and resent from the stored bookmark
+     on their own schedule, while later messages keep reaching the model. The
+     schedule is counted in courier rounds (TREE_POLL_MS each, 1.2 s in the
+     app): 4 rounds is about 5 s, doubling to 50 rounds, about a minute, while
+     nothing moves. At most TREE_READ_RESYNC_PER_PASS receipts are sent in one
+     round, so one lagging agent adds a bounded number of writes per round. */
+  const TREE_READ_RECEIPT_HOLD_ATTEMPTS = 3
+  /* THE SAME BOUND FOR A HANDOFF RECEIPT (the third pause that never cleared).
+     A batch whose model handoff could not be confirmed (acknowledgeDeferred
+     refused) was held in 'persist' on every tick for as long as the broker
+     refused, so nothing newer reached the model. After this many held passes
+     the confirmation is owed instead: it is retried on the read-receipt
+     schedule and once more at close, and later messages flow. */
+  const TREE_HANDOFF_RECEIPT_HOLD_ATTEMPTS = 5
+  const TREE_READ_RESYNC_FIRST_ROUNDS = 4
+  const TREE_READ_RESYNC_MAX_ROUNDS = 50
+  const TREE_READ_RESYNC_PER_PASS = 25
+  const TREE_READS_OWED_LIMIT = 1024
   /* How many records one circle's page may carry in a round. Unchanged from
      when each circle was asked about on its own; a round of ten-record pages is
      still ten records per circle, not ten shared between them. */
@@ -3966,7 +4160,7 @@ function createAgentHost({
         if (!row.supersededBy || row.agentId === session.treeAddress.agentId
           || row.nodeKey !== session.treeNodeKey) continue
         if (directory.successorOf(row.agentId) !== session.treeAddress.agentId) continue
-        retained.push(old.get(row.agentId) || { agentId: row.agentId, cursor: 0 })
+        retained.push(old.get(row.agentId) || { agentId: row.agentId, cursor: 0, readPositionPending: true })
       }
       session.treePredecessors = retained
       session.treePredecessorsPending = false
@@ -4076,7 +4270,7 @@ function createAgentHost({
     if (!prior && !supplied) return
     /* THE SAVED TREE WINS OVER THE PRIOR ROW, WHEN THE CALLER KNOWS IT.
      *
-     * MEASURED: a manager resumed under its PRIOR
+     * MEASURED, Controller 2026-09-04: a manager resumed under its PRIOR
      * parent after the person had reparented it, because this used to copy
      * prior.managerName unconditionally -- the directory row from whenever the
      * OLD session last registered, which a reparent done via
@@ -4127,6 +4321,62 @@ function createAgentHost({
     return treeMessaging.directory.setLink(request)
   }
 
+  const stoppedAdoptions = new Set()
+  async function adoptStoppedConversation({ nativeConversation, selfName, managerName = null, treeKey, requestKeys } = {}) {
+    const refuse = () => fail('AGENT_STOPPED_ADOPTION_REFUSED', 'This saved conversation could not be transferred to the tree. Its original tab is still open.')
+    let sourceId = null
+    try {
+      assertOpen()
+      if (!nativeConversation || typeof stoppedConversationAdoption?.prepare !== 'function' || !resumeOriginStore) refuse()
+      sourceId = normalizeSessionId(nativeConversation.nativeSessionId)
+      const threadId = boundedString(nativeConversation.threadId, 'threadId', 512)
+      const source = nativeConversation.sourceTranscript
+      if (!source || Object.keys(source).some(key => !['computerId', 'nodeId'].includes(key))) refuse()
+      boundedString(source.computerId, 'computerId', 512)
+      boundedString(source.nodeId, 'nodeId', 512)
+      normalizeTreeIdentity({ selfName, managerName })
+      const nextTreeKey = boundedString(treeKey, 'treeKey', 128)
+      const requests = normalizeRequestKeys(requestKeys), anchors = requests?.treeAnchors
+      if (!requests?.threadId || !anchors?.length || anchors[0] !== nextTreeKey
+          || anchors.at(-1) !== requests.threadId || new Set(anchors).size !== anchors.length
+          || Object.keys(requestKeys).some(key => !['treeAnchors', 'threadId'].includes(key))
+          || requests.threadId === source.nodeId || stoppedAdoptions.has(sourceId)) refuse()
+      const origin = resumeOrigins.get(sourceId) || resumeOriginStore.get(sourceId)
+      if (!origin || origin.threadId !== threadId || origin.provider !== nativeConversation.provider
+          || origin.account !== nativeConversation.account || origin.agentId !== source.nodeId) refuse()
+      const identity = Object.freeze({ nativeSessionId: sourceId, threadId,
+        provider: origin.provider, account: origin.account })
+      const assertCurrent = () => {
+        if (closed || [...sessions.values()].some(session => session.state !== 'ended'
+            && (session.sessionId === sourceId || session.agentId === source.nodeId
+              || session.treeNodeKey === requests.threadId
+              || session.provider === origin.provider && (session.threadId || session.endedThreadId) === threadId))) refuse()
+        const current = resumeOriginStore.get(sourceId)
+        if (!current || JSON.stringify(current) !== JSON.stringify(origin)) refuse()
+      }
+      stoppedAdoptions.add(sourceId)
+      try {
+        assertCurrent()
+        const prepared = await stoppedConversationAdoption.prepare({ identity, source,
+          destination: { computerId: source.computerId, nodeId: requests.threadId }, assertCurrent })
+        assertCurrent()
+        await prepared.persist()
+        assertCurrent()
+        // Last fallible write: a refused copy/origin leaves the source owner
+        // unchanged. A crash before this point cannot resume the reservation
+        // under its new declared agent; it is a named identity refusal.
+        const transferred = Object.freeze({ ...origin, agentId: requests.threadId })
+        resumeOriginStore.set(sourceId, transferred)
+        resumeOrigins.set(sourceId, transferred)
+        resumeOriginsByThread.delete(JSON.stringify([origin.agentId, threadId]))
+        resumeOriginsByThread.set(JSON.stringify([transferred.agentId, threadId]), transferred)
+        return Object.freeze({ ok: true, stopped: true, sessionId: null, nativeSessionId: sourceId,
+          threadId, provider: origin.provider, account: origin.account,
+          nodeId: requests.threadId, treeKey: nextTreeKey })
+      } finally { stoppedAdoptions.delete(sourceId) }
+    } catch { refuse() }
+  }
+
   function adoptTreeAddress({ sessionId, selfName, managerName = null, treeKey, requestKeys } = {}) {
     assertOpen()
     const session = readySession(sessionId)
@@ -4145,7 +4395,7 @@ function createAgentHost({
       selfName: identity.selfName, managerName: identity.managerName, treeKey: nextTreeKey,
       nodeId: nextRequests.threadId, threadId: session.threadId || null,
       account: session.account?.name || null, provider: session.provider,
-      effort: session.effort, tier: session.requestedModelTier || null,
+      effort: session.effort, tier: session.requestedModelTier || null, model: session.model ?? null,
       phase: session.activeTurnId || session.sendPromise || session.turnAnnounce ? 'working' : 'open',
     })
     if (session.treeNodeKey || session.treeIdentity || session.treeAddress || session.treeRequestIdentity) {
@@ -4295,9 +4545,11 @@ function createAgentHost({
    * that was missing from it: this line is NOT the receiving model speaking,
    * it is what was said TO it by another circle.
    *
-   * THE DEFECT THIS CLOSES, filed as tree rule R1203: messages between agents
-   * go to the Messages page, where the user can track agent comms, and do not
-   * appear in the chat window where the user chats with the agents. An unmarked
+   * THE DEFECT THIS CLOSES, in the person's words, filed as tree rule R1203:
+   * "in chat windows, agents comms are seen in chat windows for the user.
+   * Messages inbetween agents are supposeed to go to messages page so the user
+   * can track the agent comms from there. Those messages should not appear in
+   * the chat window where users chat with the agents." An unmarked
    * `assistant_text_delta` is indistinguishable from the agent's own answer,
    * so every chat surface painted a sibling's message in the person's
    * conversation -- and src/session-transcript-store.js saved it there, so it
@@ -4402,7 +4654,8 @@ function createAgentHost({
       for (let index = 0; index < count; index++) {
         const predecessor = predecessors[(offset + index) % predecessors.length]
         if (!retainedTreePredecessor(session, predecessor)) continue
-        wanted.push({ ...request, agentId: predecessor.agentId, cursor: predecessor.cursor, predecessor: true })
+        wanted.push({ ...request, agentId: predecessor.agentId, cursor: predecessor.cursor, predecessor: true,
+          includeReadPosition: predecessor.readPositionPending === true })
       }
       wanted.push(request)
     }
@@ -4421,6 +4674,7 @@ function createAgentHost({
           agentId: request.agentId,
           cursor: request.cursor,
           limit: request.limit,
+          ...(request.includeReadPosition ? { includeReadPosition: true } : {}),
         })))
       } catch {
         /* A durable read that fails is retried on the next tick. It is never
@@ -4438,6 +4692,7 @@ function createAgentHost({
           agentId: request.agentId,
           cursor: request.cursor,
           limit: request.limit,
+          ...(request.includeReadPosition ? { includeReadPosition: true } : {}),
         })
         observe(request, page)
       } catch {
@@ -4486,6 +4741,21 @@ function createAgentHost({
   }
 
   function appendTreeInboxPage(session, page, position, recovered = false) {
+    // A predecessor has its own durable read position. Zero would count
+    // already-read, compacted history as lost and replay its retained tail.
+    if (recovered && position.readPositionPending) {
+      if (!page) return
+      if (!Number.isSafeInteger(page.durableReadCursor) || page.durableReadCursor < 0
+        || !Number.isSafeInteger(page.headSequence) || page.headSequence < page.durableReadCursor) {
+        if (!position.readPositionNotified) {
+          showIncoming(session, '[Tree courier] The previous inbox read position could not be confirmed. Its messages are retained while the courier retries.')
+          position.readPositionNotified = true
+        }
+        return
+      }
+      position.cursor = page.durableReadCursor
+      position.readPositionPending = false
+    }
     const cursorKey = recovered ? 'cursor' : 'treeCursor'
     const deferred = new Map((page?.pendingDeliveries || []).map(row => [row?.message?.id, row]))
     /* The durable position rides with the entry (T201). The courier keeps its
@@ -4570,11 +4840,13 @@ function createAgentHost({
       while (session.treeReceiptKeys.size > 4096) session.treeReceiptKeys.delete(session.treeReceiptKeys.values().next().value)
       const recipient = treeSenderName(receipt.recipientAgentId) || 'its recipient'
       const prefix = `[Tree courier] Your message ${receipt.messageId} to ${recipient}`
+      const refusal = typeof receipt.refusalCode === 'string' && /^[A-Z][A-Z0-9_]{0,95}$/.test(receipt.refusalCode)
+        ? ` Underlying refusal: ${receipt.refusalCode}.` : ''
       const text = receipt.code === 'BROKER_DELIVERY_DEFERRED'
         ? `${prefix} is retained for recovery because its session ended before model delivery was confirmed. The original envelope will be offered to its replacement; check the prior result before repeating an action.`
         : receipt.code === 'BROKER_MODEL_HANDOFF_CONFIRMED'
           ? `${prefix} has a confirmed model handoff. This confirms delivery to the model, not completion of the work.`
-          : `${prefix} was set aside (${receipt.reason}). Delivery to its model could not be confirmed. The original message is retained as a dead letter; check its result before sending the work again.`
+          : `${prefix} was set aside (${receipt.reason}).${refusal} Delivery to its model could not be confirmed. The original message is retained as a dead letter; check its result before sending the work again.`
       showIncoming(session, text)
       session.treeQueue.push(`${text}\nThis is a transport receipt, not an instruction from the person.`)
     }
@@ -4588,6 +4860,7 @@ function createAgentHost({
           const result = await treeMessaging.provider.discard({
             agentId: message.envelope.audience?.agent?.agentId,
             message: message.envelope,
+            refusalCode: treeHandoffRefusalCode(batch.setAsideError),
           })
           if (result?.accepted !== true) throw Object.assign(new Error('Delivery failure was not retained'), { code: result?.code })
         }
@@ -4611,8 +4884,48 @@ function createAgentHost({
 
   // A late acknowledgment must not revive an ended session, but its observed
   // model acceptance still settles the courier's retained recovery copy. Only
-  // errors created by the host's own post-accept session fence enter this set.
+  // errors created by the host's own post-accept session fence, or by a save
+  // boundary that failed after acceptance (acceptedSendError), enter this set.
   const acceptedTreeHandoffErrors = new WeakSet()
+
+  /* A SEND THE PROVIDER ACCEPTED IS ANSWERED AS ACCEPTED, EVEN WHEN SAVING IT
+     FAILED.
+
+     sendTurn() holds its answer at the accepted-prompt boundary until the
+     accepted words are saved and their reservation released. A failure there
+     comes AFTER the provider took the turn. It used to reject the send with the
+     storage code it was handed -- MC_TRANSCRIPT_STORAGE_FAILED, the very code a
+     refused reservation raises BEFORE dispatch -- so every caller read a running
+     turn as a message that never left: the composer said "this message was not
+     sent. Your draft is kept", the queue drain put the entry back to be sent
+     again, and the tree courier re-offered its batch. Each of those is a second
+     copy of a turn the model is already running.
+
+     A transcript failure is renamed MC_TRANSCRIPT_SENT_UNSAVED, the one code
+     that says both halves. Any other observer failure keeps its own code. Both
+     record the turn they belong to, so Stop can still name it, and an agent's
+     hand-off is settled as accepted rather than re-offered. The storage failure
+     itself is still reported by the store's own notice; this only stops it
+     from being mistaken for a refusal. */
+  const acceptedSendTurnIds = new WeakMap()
+  function acceptedSendError(error, turnId, origin) {
+    const unsaved = typeof error?.code === 'string' && error.code.startsWith('MC_TRANSCRIPT_')
+    const answer = unsaved
+      ? Object.assign(new AgentHostError('MC_TRANSCRIPT_SENT_UNSAVED',
+        'This message was sent and the agent is working on it, but it is not saved yet. Do not send it again. Check the disk and its permissions, then use Retry saving.'),
+      { cause: error })
+      : (error && typeof error === 'object' ? error : new AgentHostError('AGENT_SEND_FAILED', 'The accepted message could not be recorded.'))
+    acceptedSendTurnIds.set(answer, turnId)
+    if (origin === 'agent') acceptedTreeHandoffErrors.add(answer)
+    return answer
+  }
+
+  function settleOwedTreeAcknowledgment(session, batch) {
+    batch.acknowledgmentOwed = false
+    if (session.treeAcknowledgmentsOwed?.includes(batch)) {
+      session.treeAcknowledgmentsOwed = session.treeAcknowledgmentsOwed.filter(owed => owed !== batch)
+    }
+  }
 
   async function acknowledgeTreeBatch(session, batch) {
     if (batch.acknowledgmentPromise) return batch.acknowledgmentPromise
@@ -4621,7 +4934,7 @@ function createAgentHost({
       || session.treeDeferredMessageIds?.has(message?.envelope?.id)
       || (typeof treeMessaging?.provider.acknowledgeDeferred === 'function'
         && message?.envelope?.id && message.envelope.audience?.agent?.agentId)))
-    if (!pending.length) return
+    if (!pending.length) { settleOwedTreeAcknowledgment(session, batch); return }
     batch.acknowledgmentPending = true
     const acknowledging = Promise.resolve().then(async () => {
       try {
@@ -4632,15 +4945,34 @@ function createAgentHost({
           const result = await treeMessaging.provider.acknowledgeDeferred({
             agentId: message.envelope.audience?.agent?.agentId, message: message.envelope,
           })
-          if (result?.accepted !== true) fail('AGENT_TREE_RECOVERY_UNCONFIRMED', 'The recovered message handoff receipt was not retained.')
+          /* The broker's own refusal code is the only record of WHY the
+             handoff was not confirmed; carry it (code-shaped only). */
+          if (result?.accepted !== true) fail('AGENT_TREE_RECOVERY_UNCONFIRMED', `The recovered message handoff receipt was not retained${
+            typeof result?.code === 'string' && /^[A-Z][A-Z0-9_]{2,63}$/.test(result.code) ? ` (${result.code})` : ''}.`)
           batch.acknowledgedMessageIds ||= new Set()
           batch.acknowledgedMessageIds.add(message.envelope.id)
         }
         batch.acknowledgmentPending = false
+        settleOwedTreeAcknowledgment(session, batch)
       } catch (error) {
         if (sessions.get(session.sessionId) === session && session.state === 'ready') {
-          session.treeQueue.unshift(...batch.messages.filter(message => !session.treeQueue.includes(message)))
-          session.treeHandoffRetry = batch
+          batch.acknowledgmentAttempts = (batch.acknowledgmentAttempts || 0) + 1
+          if (batch.acknowledgmentAttempts < TREE_HANDOFF_RECEIPT_HOLD_ATTEMPTS) {
+            session.treeQueue.unshift(...batch.messages.filter(message => !session.treeQueue.includes(message)))
+            session.treeHandoffRetry = batch
+            return
+          }
+          // The hold has a bound: the model already has these words. Only the
+          // broker's confirmation is owed, retried on its own schedule.
+          batch.acknowledgmentPending = false
+          if (!batch.acknowledgmentOwed) {
+            batch.acknowledgmentOwed = true
+            ;(session.treeAcknowledgmentsOwed ||= []).push(batch)
+            session.treeReadResync ||= { delayRounds: TREE_READ_RESYNC_FIRST_ROUNDS,
+              dueRound: (session.treeCourierRound || 0) + TREE_READ_RESYNC_FIRST_ROUNDS }
+            const code = (String(error?.message || '').match(/\(([A-Z][A-Z0-9_]{2,63})\)/) || [])[1] || 'AGENT_TREE_RECOVERY_UNCONFIRMED'
+            showIncoming(session, `[Tree courier] An agent message reached this agent, but this computer could not record that it did (${code}). Later messages continue; recording is retried without sending it again.`)
+          }
           return
         }
         throw error
@@ -4652,42 +4984,110 @@ function createAgentHost({
     return acknowledging
   }
 
-  /* TELL THE DURABLE STREAM WHAT THIS SESSION HAS ACTUALLY READ (T201).
+  /* RECEIPTS OWED FROM THE STORED BOOKMARK (T1742).
    *
-   * THE DEFECT THIS CLOSES. Everything the courier knew about its read
-   * position lived in memory, on the session (`session.treeCursor`), and
-   * `fabric.read()` is a positioned read that records nothing. So the stored
-   * cursor for every tree recipient stayed at zero for the life of the
-   * installation, and the durable history's retention -- which prunes the
-   * oldest record when a channel fills -- had no way to know that a record
-   * had never been read. It pruned it anyway, and the person saw the result in
-   * this file's own words: "[Tree courier] Earlier agent messages have expired
-   * before this session could read them". A message sent to an agent expired
-   * before the agent ever saw it.
-   *
-   * WHY HERE AND NOT AT THE READ. A page being read is not evidence that
-   * anything consumed it; this host reads a page, shows it, and may still be
-   * refused the turn. This runs where the recovered-handoff receipt already
-   * runs -- after `batch.modelAccepted` -- because the model accepting the
-   * words is the only moment anyone can honestly say the message arrived.
-   *
-   * IN ORDER, because the engine requires it: markRead matches the next unread
-   * record, so the entries are acknowledged by ascending position and a gap
-   * stops the run rather than skipping over something never shown.
-   *
-   * BEST EFFORT, AND DELIBERATELY SO. A read receipt is a retention safety
-   * net, not delivery. If it cannot be recorded the words have still been
-   * delivered, and unqueuing or re-offering the batch over a failed receipt
-   * would re-deliver a person's instruction twice -- the exact trade T382
-   * settled one layer up. A failure is said once, in the session's own
-   * transcript, and the channel simply fills later and refuses a send by name
-   * instead of destroying something unread. */
+   * The fabric takes read receipts strictly in order and answers a refusal
+   * with the stored bookmark (`cursor`). A receipt that cannot be recorded
+   * yet -- a gap ahead that the engine has not settled, or a write that failed
+   * -- is kept here, per stream, and resent in ascending order from that
+   * bookmark: everything at or below it is already read or settled, and the
+   * lowest owed receipt above it is tried first. Nothing here is ever sent
+   * for a record the model did not accept: only accepted batches reach
+   * oweTreeReads(). The ledger is in memory, like the batch it came from. */
+  function oweTreeReads(session, messages) {
+    const owed = session.treeReadsOwed ||= []
+    for (const message of messages) {
+      const agentId = message?.envelope?.audience?.agent?.agentId
+      if (!agentId || !Number.isSafeInteger(message.sequence)
+        || owed.some(entry => entry.agentId === agentId && entry.sequence === message.sequence)) continue
+      if (owed.length >= TREE_READS_OWED_LIMIT) break
+      owed.push(Object.freeze({ agentId, envelope: message.envelope, sequence: message.sequence }))
+    }
+    owed.sort((left, right) => left.agentId === right.agentId ? left.sequence - right.sequence
+      : left.agentId < right.agentId ? -1 : 1)
+    session.treeReadResync ||= { delayRounds: TREE_READ_RESYNC_FIRST_ROUNDS,
+      dueRound: (session.treeCourierRound || 0) + TREE_READ_RESYNC_FIRST_ROUNDS }
+  }
+
+  function dropOwedTreeReads(session, drop) {
+    const before = session.treeReadsOwed?.length || 0
+    if (before) session.treeReadsOwed = session.treeReadsOwed.filter(entry => !drop(entry))
+    return (session.treeReadsOwed?.length || 0) < before
+  }
+
+  function resyncTreeReads(session) {
+    if (session.treeReadResyncPromise) return session.treeReadResyncPromise
+    if (!session.treeReadsOwed?.length && !session.treeAcknowledgmentsOwed?.length) return Promise.resolve()
+    const run = (async () => {
+      let sent = 0, progressed = false
+      for (const owedBatch of [...(session.treeAcknowledgmentsOwed || [])]) {
+        if (sessions.get(session.sessionId) !== session || session.state !== 'ready') break
+        await acknowledgeTreeBatch(session, owedBatch)
+        if (!owedBatch.acknowledgmentOwed) progressed = true
+      }
+      if (!session.treeAcknowledgmentsOwed?.length) session.treeAcknowledgmentsOwed = null
+      if (typeof treeMessaging?.provider.acknowledgeRead !== 'function') session.treeReadsOwed = null
+      const blocked = new Set()
+      for (const entry of [...(session.treeReadsOwed || [])]) {
+        if (sent >= TREE_READ_RESYNC_PER_PASS) break
+        if (blocked.has(entry.agentId) || !session.treeReadsOwed?.includes(entry)) continue
+        sent += 1
+        let result = null
+        try {
+          result = await treeMessaging.provider.acknowledgeRead({
+            agentId: entry.agentId, message: entry.envelope, sequence: entry.sequence,
+          })
+        } catch {
+          blocked.add(entry.agentId)
+          continue
+        }
+        const cursor = Number.isSafeInteger(result?.cursor) ? result.cursor : null
+        if (result?.accepted === true || (result?.code === 'FABRIC_READ_OUT_OF_ORDER' && cursor !== null && cursor >= entry.sequence)) {
+          dropOwedTreeReads(session, owed => owed === entry)
+          progressed = true
+          continue
+        }
+        // The refusal names the stored bookmark: the resync restarts there.
+        if (result?.code === 'FABRIC_READ_OUT_OF_ORDER' && cursor !== null
+          && dropOwedTreeReads(session, owed => owed.agentId === entry.agentId && owed.sequence <= cursor)) progressed = true
+        blocked.add(entry.agentId)
+      }
+      if (!session.treeReadsOwed?.length && !session.treeAcknowledgmentsOwed?.length) {
+        session.treeReadsOwed = null
+        session.treeReadResync = null
+        return
+      }
+      const state = session.treeReadResync ||= { delayRounds: TREE_READ_RESYNC_FIRST_ROUNDS, dueRound: 0 }
+      state.delayRounds = progressed ? TREE_READ_RESYNC_FIRST_ROUNDS
+        : Math.min(TREE_READ_RESYNC_MAX_ROUNDS, state.delayRounds * 2)
+      state.dueRound = (session.treeCourierRound || 0) + state.delayRounds
+    })()
+    session.treeReadResyncPromise = run
+    const settled = () => { if (session.treeReadResyncPromise === run) session.treeReadResyncPromise = null }
+    run.then(settled, settled)
+    return run
+  }
+
+  // Model acceptance and durable read receipts are separate. Retain a refused
+  // receipt for ordered retries; it must never authorize another model send or
+  // advancing past an unread record. Terminal settlement belongs to the engine.
   async function acknowledgeTreeReads(session, batch) {
-    if (typeof treeMessaging?.provider.acknowledgeRead !== 'function') return
+    if (!batch.modelAccepted || typeof treeMessaging?.provider.acknowledgeRead !== 'function') return
     const readable = batch.messages
       .filter(message => Number.isSafeInteger(message?.sequence) && message.sequence >= 1
-        && message.envelope?.id && message.envelope.audience?.agent?.agentId)
+        && message.envelope?.id && message.envelope.audience?.agent?.agentId
+        && !batch.readAcknowledgedMessageIds?.has(message.envelope.id))
       .sort((left, right) => left.sequence - right.sequence)
+    // Behind a receipt already owed, a receipt can only be refused: owe it with
+    // the rest and resync now, in order, rather than hold later messages for it.
+    if (session.treeReadResyncPromise) await session.treeReadResyncPromise
+    if (session.treeReadsOwed?.length) {
+      oweTreeReads(session, readable)
+      batch.readAcknowledgmentPending = false
+      await resyncTreeReads(session)
+      return
+    }
+    batch.readAcknowledgmentPending = readable.length > 0
     for (const message of readable) {
       try {
         const result = await treeMessaging.provider.acknowledgeRead({
@@ -4695,17 +5095,35 @@ function createAgentHost({
           message: message.envelope,
           sequence: message.sequence,
         })
-        // A refused receipt is not a delivery failure; stop the run so a gap
-        // is never acknowledged over, and leave the rest for the next batch.
-        if (result?.accepted !== true) break
+        // A reply to this authenticated, exact receipt can show it was already
+        // settled (for example the successful response was lost). This neither
+        // advances a cursor nor classifies any intervening message as read.
+        const alreadySettled = result?.code === 'FABRIC_READ_OUT_OF_ORDER'
+          && Number.isSafeInteger(result.cursor) && result.cursor >= message.sequence
+        if (result?.accepted !== true && !alreadySettled) throw new Error('Read receipt was not retained')
+        batch.readAcknowledgedMessageIds ||= new Set()
+        batch.readAcknowledgedMessageIds.add(message.envelope.id)
       } catch {
+        batch.readAttempts = (batch.readAttempts || 0) + 1
+        if (sessions.get(session.sessionId) === session && session.state === 'ready') {
+          if (batch.readAttempts < TREE_READ_RECEIPT_HOLD_ATTEMPTS) {
+            session.treeQueue.unshift(...batch.messages.filter(item => !session.treeQueue.includes(item)))
+            session.treeHandoffRetry = batch
+          } else {
+            // The hold has a bound: the unrecorded receipts are owed from the
+            // stored bookmark and the batch stops holding later messages.
+            oweTreeReads(session, readable.filter(item => !batch.readAcknowledgedMessageIds?.has(item.envelope.id)))
+            batch.readAcknowledgmentPending = false
+          }
+        }
         if (!session.treeReadReceiptNotice) {
           session.treeReadReceiptNotice = true
-          showIncoming(session, '[Tree courier] This computer could not record which agent messages have been read. They were delivered; the record only affects how long unread messages are retained.')
+          showIncoming(session, '[Tree courier] This computer could not record which agent messages have been read. They were delivered; recording will be retried without sending them again.')
         }
         return
       }
     }
+    batch.readAcknowledgmentPending = false
   }
 
   async function waitForTreeRetirement(session, retiring, attempt) {
@@ -4745,6 +5163,13 @@ function createAgentHost({
         if (batch?.acknowledgmentPending) {
           await acknowledgeTreeBatch(session, batch)
           if (batch.acknowledgmentPending) fail('AGENT_TREE_RECOVERY_UNCONFIRMED', 'The recovered message handoff receipt was not retained.')
+        }
+        // An owed confirmation is tried once more before the session retires;
+        // closing still refuses, exactly as a held one did, if it is not retained.
+        for (const owedBatch of [...(session.treeAcknowledgmentsOwed || [])]) {
+          owedBatch.acknowledgmentPending = true
+          await acknowledgeTreeBatch(session, owedBatch)
+          if (owedBatch.acknowledgmentOwed) fail('AGENT_TREE_RECOVERY_UNCONFIRMED', 'The recovered message handoff receipt was not retained.')
         }
         const seen = new Set()
         for (const queued of messages) {
@@ -4794,6 +5219,67 @@ function createAgentHost({
     return waitForTreeRetirement(session, retiring, attempt)
   }
 
+  /* AN UNCERTAIN STEER IS RECONCILED AT THE NEXT TURN BOUNDARY (T1745).
+   *
+   * A steer that failed without a JSON-RPC code may or may not have reached
+   * the running turn. Until now the courier paused for good
+   * (treeDeliveryUncertain) and never steered that session again
+   * (treeSteerUnavailable), so every later message waited unread. When the
+   * turn it was steered into ends, the provider thread is the evidence:
+   *  - the steered words are in the thread: the batch reached the model, so its
+   *    handoff and read receipts are recorded and it leaves the queue;
+   *  - they are not, or the thread cannot be read: missing words are not proof
+   *    of non-delivery, so the batch is offered ONCE more, as a new turn, with
+   *    a notice that it may be a duplicate -- never silently twice, never lost.
+   * Then both flags clear. An explicit "method not found" refusal (-32601)
+   * keeps steering off: that runtime cannot steer. */
+  const TREE_POSSIBLE_DUPLICATE_NOTICE = '[Tree courier] Possible duplicate: an earlier attempt to deliver the message below during your last turn could not be confirmed. If you already acted on it, do not repeat that action.'
+
+  const normalizedWords = text => String(text || '').replace(/\s+/g, ' ').trim()
+
+  function threadShowsSteer(thread, pending) {
+    const turns = Array.isArray(thread?.turns) ? thread.turns : []
+    const wanted = normalizedWords(pending.text)
+    if (!wanted) return false
+    const candidates = pending.turnId && turns.some(turn => turn?.id === pending.turnId)
+      ? turns.filter(turn => turn?.id === pending.turnId) : turns.slice(-3)
+    return candidates.some(turn => (Array.isArray(turn?.said) ? turn.said : [])
+      .some(line => line?.who === 'you' && normalizedWords(line.text).includes(wanted)))
+  }
+
+  async function reconcileUncertainTreeSteer(session) {
+    const pending = session.treeUncertainSteer
+    if (!pending || pending.reconciling) return
+    pending.reconciling = true
+    let shown = false
+    try {
+      if (typeof session.adapter?.readThread === 'function' && pending.threadId) {
+        shown = threadShowsSteer(await session.adapter.readThread(pending.threadId, { includeTurns: true }), pending)
+      }
+    } catch { shown = false }
+    if (sessions.get(session.sessionId) !== session || session.treeUncertainSteer !== pending) return
+    session.treeUncertainSteer = null
+    const { batch } = pending
+    if (shown) {
+      session.treeQueue = session.treeQueue.filter(message => !batch.messages.includes(message))
+      if (session.treeQueue.length === 0) session.treeQueuedSince = null
+      if (session.treeHandoffRetry === batch) session.treeHandoffRetry = null
+      batch.modelAccepted = true
+      showIncoming(session, '[Tree courier] The agent message whose delivery could not be confirmed is in this agent\u2019s conversation. It is recorded as delivered, and delivery has resumed.')
+      // Its receipts are recorded before the courier resumes, so a later
+      // message's receipt can never be offered ahead of this one.
+      if (!(session.closeRequested && session.treeRetirementRecoverable === false)) await acknowledgeTreeBatch(session, batch)
+      await acknowledgeTreeReads(session, batch)
+    } else {
+      batch.duplicateNotice = true
+      batch.noSteer = true
+      showIncoming(session, '[Tree courier] The agent message whose delivery could not be confirmed is not visible in this agent\u2019s conversation. It will be offered once more, marked as a possible duplicate, and delivery has resumed.')
+    }
+    if (sessions.get(session.sessionId) !== session) return
+    session.treeDeliveryUncertain = false
+    if (session.treeSteerRefusalCode !== -32601) session.treeSteerUnavailable = false
+  }
+
   function pumpTreeSessionOnce(session, pages) {
     if (!treeMessaging || !session.treeAddress || session.state !== 'ready') return
     const now = Date.now()
@@ -4831,6 +5317,9 @@ function createAgentHost({
          one, and it bounds what a renderer that has gone away can hold. */
       personYieldMs: TREE_POLL_MS,
       queuedSince: session.treeQueuedSince,
+      /* An open account recovery offer: taking this boundary would start a
+         turn on the account that just hit its limit and spend the offer. */
+      recoveryHoldMs: TREE_RECOVERY_HOLD_MS,
     })
     /* A HAND-OFF STILL BEING ACCEPTED IS NOT A REASON TO STOP READING. This
        used to await sendTurn() right here, inside the per-session latch, and
@@ -4840,35 +5329,51 @@ function createAgentHost({
        whole span the circle was neither read nor heartbeated: arrivals for it
        were not shown, and past the directory's live window it was called
        stopped and its own sends were refused TREE_SENDER_NOT_RUNNING while
-       its agent was working (measured on a development tree, on a worker
-       still mid-task). The latch's one job is the cursor, and the
+       its agent was working (measured on the owner's fourth tree, 2026-09-04,
+       on a worker still mid-lane). The latch's one job is the cursor, and the
        cursor was advanced above, synchronously. The hand-off is tracked on
        its own so a second one is never started under the first. */
+    session.treeCourierRound = (session.treeCourierRound || 0) + 1
     if (session.treeHandoffPromise) return
+    // Owed receipts are resent on their own schedule, never behind a hold.
+    if ((session.treeReadsOwed?.length || session.treeAcknowledgmentsOwed?.length) && !session.treeReadResyncPromise
+      && session.treeCourierRound >= (session.treeReadResync?.dueRound || 0)) {
+      resyncTreeReads(session).catch(() => { /* retried on the next due round */ })
+    }
+    // Reading and heartbeats continue during backoff. Accepted batches retry
+    // only their receipt, and an exhausted batch retries only its disposition.
+    if (session.treeHandoffRetry?.retryAt > now
+      && !session.treeHandoffRetry.acknowledgmentPending
+      && !session.treeHandoffRetry.readAcknowledgmentPending
+      && !session.treeHandoffRetry.setAsideError) return
     /* THREE SIBLING SPANS, NOT ONE AROUND THE PASS (T837; STALLS-01). Two 9 s main-thread
-       stalls on a live generation ran in this delivery path and no timed span covered it. Each span
+       stalls on gen-ca97a363 ran in this delivery path and no timed span covered it. Each span
        below closes before the next opens, because main-lag keeps only the single worst span:
        nesting them would let the outer one hide the inner. The batch spans carry the number
        of messages and characters taken, so a stall that names one says whether it was large. */
-    const delivery = lagNote('tree-courier:decide', () => session.treeHandoffRetry?.acknowledgmentPending ? 'persist' : messageDeliveryDecision({
+    const delivery = lagNote('tree-courier:decide', () => (session.treeHandoffRetry?.acknowledgmentPending || session.treeHandoffRetry?.readAcknowledgmentPending) ? 'persist' : messageDeliveryDecision({
       ...currentMessageDelivery(), now, queuedSince: session.treeQueuedSince,
       queued: session.treeQueue.length, boundaryAllowed: claim.take,
       active: Boolean(session.sendPromise || session.activeTurnId || session.turnAnnounce),
-      paused: Boolean(session.rewindPending || session.interruptRequested || session.treeDeliveryUncertain),
+      paused: Boolean(session.safetyBlocked || session.modelRefused || session.rewindPending || session.interruptRequested || session.treeDeliveryUncertain),
       canSteer: Boolean(session.activeTurnId && !session.sendPromise && !session.turnAnnounce
-        && !session.treeSteerUnavailable && typeof session.adapter?.steerTurn === 'function'),
+        && !session.treeSteerUnavailable && !session.treeHandoffRetry?.noSteer && typeof session.adapter?.steerTurn === 'function'),
     }))
     if (delivery === 'wait') return
     const { batch, next } = lagNote('tree-courier:batch', () => {
       const taken = takeTreeBatch(session.treeQueue, session.treeHandoffRetry)
       session.treeHandoffRetry = null
       session.treeHandoffBatch = taken
-      return { batch: taken, next: taken.messages.map(treeMessageText).join('\n\n') }
+      const text = taken.messages.map(treeMessageText).join('\n\n')
+      return { batch: taken, next: taken.duplicateNotice ? `${TREE_POSSIBLE_DUPLICATE_NOTICE}\n\n${text}` : text }
     }, ({ batch: taken, next: text }) => ({ messages: taken.messages.length, chars: text.length }))
     /* Tagged as another agent's words: a message crossing the tree is never
        the person's typed turn, so it is never spooled as one. */
     const receivingTurnId = session.activeTurnId
-    const handoff = (batch.acknowledgmentPending ? Promise.resolve().then(() => acknowledgeTreeBatch(session, batch))
+    const handoff = ((batch.acknowledgmentPending || batch.readAcknowledgmentPending) ? Promise.resolve().then(async () => {
+      await acknowledgeTreeBatch(session, batch)
+      await acknowledgeTreeReads(session, batch)
+    })
       : batch.setAsideError ? Promise.resolve().then(() => settleRefusedTreeBatch(session, batch))
       : Promise.resolve().then(() => lagNote('tree-courier:send-sync', () => delivery === 'steer'
       ? session.adapter.steerTurn({ threadId: session.threadId, turnId: receivingTurnId, text: next })
@@ -4899,9 +5404,19 @@ function createAgentHost({
             session.treeSteerUnavailable = true
             const refused = Number.isInteger(error?.rpcCode)
             session.treeDeliveryUncertain = !refused
+            // An explicit refusal is remembered only to keep an unsupported
+            // steer (-32601) off; an uncertain one is reconciled at the boundary.
+            if (refused) session.treeSteerRefusalCode = error.rpcCode
+            else {
+              session.treeUncertainSteer = { batch, text: next, turnId: receivingTurnId, threadId: session.threadId }
+              // The turn may already have ended while the steer was in flight.
+              if (!session.activeTurnId || session.activeTurnId !== receivingTurnId) {
+                queueMicrotask(() => reconcileUncertainTreeSteer(session).catch(() => { /* retried at the next boundary */ }))
+              }
+            }
             showIncoming(session, refused
               ? '[Tree courier] This runtime refused delivery during the active turn. Messages remain queued for the next turn boundary.'
-              : '[Tree courier] Delivery of an agent message could not be confirmed. Its queued copy is held to avoid delivering it twice; restart this agent to recover its durable inbox.')
+              : '[Tree courier] Delivery of an agent message could not be confirmed. Its queued copy is held to avoid delivering it twice. Automatic replay is paused until this delivery can be reconciled.')
           }
           return
         }
@@ -4929,8 +5444,28 @@ function createAgentHost({
            bound it is set aside and the session is TOLD, in the same stream
            its arrival was shown in, so a lost message is a line a person can
            read rather than nothing at all. */
+        if (TREE_HANDOFF_ADMISSION_WAITS.has(error?.code)) {
+          batch.admissionWaits = (batch.admissionWaits || 0) + 1
+          batch.admissionWaitSince ??= Date.now()
+          if (batch.admissionWaits >= TREE_HANDOFF_ADMISSION_WAIT_LIMIT
+            || Date.now() - batch.admissionWaitSince >= TREE_HANDOFF_ADMISSION_WAIT_MS) {
+            batch.failures += batch.admissionWaits
+            batch.setAsideError = error
+            await settleRefusedTreeBatch(session, batch)
+            return
+          }
+          batch.retryAt = Date.now() + treeHandoffRetryDelay(batch.admissionWaits)
+          session.treeQueue.unshift(...batch.messages)
+          session.treeHandoffRetry = batch
+          if (!batch.waitNotified) {
+            showIncoming(session, `[Tree courier] An agent message is waiting for this session to accept input (${treeHandoffRefusalCode(error)}). It remains queued and will be retried.`)
+            batch.waitNotified = true
+          }
+          return
+        }
         const failures = batch.failures + 1
         if (failures < TREE_HANDOFF_ATTEMPTS) {
+          batch.retryAt = Date.now() + treeHandoffRetryDelay(failures)
           batch.failures = failures
           session.treeQueue.unshift(...batch.messages)
           session.treeHandoffRetry = batch
@@ -4944,7 +5479,7 @@ function createAgentHost({
         // Model acceptance and recording its receipt are separate outcomes.
         // Preserve a failed receipt for cleanup/recovery; never create an
         // unhandled rejection or submit the same model turn to repair a write.
-        if (batch.acknowledgmentPending) session.treeRetiringBatch = batch
+        if (batch.acknowledgmentPending || batch.readAcknowledgmentPending) session.treeRetiringBatch = batch
         showIncoming(session, '[Tree courier] The recovered handoff receipt could not be recorded. Its retained copy remains available for recovery; check the result before repeating the work.')
       })
       .finally(() => {
@@ -4999,7 +5534,7 @@ function createAgentHost({
          W22 ATTRIBUTION MARK. attemptTreeRegistration() is the OTHER call
          that reaches directory.registerNode() -> mutate() ->
          acquireMutationLock() (see the heartbeat's lock-wait note further
-         below, and the lock-contention report). Same reason as there for reading the
+         below, and Manager 3's M7). Same reason as there for reading the
          lock-wait accumulator's delta directly rather than wrapping the
          whole call in a `lagNote()` span: a coarser span would always win
          main-lag.cjs's "single worst since last tick" comparison and hide
@@ -5088,7 +5623,7 @@ function createAgentHost({
            so a span wrapping this whole call would always be at least as
            long as the heartbeat-mutate span nested inside pumpTreeSessionOnce
            and would win every comparison, silently hiding the one number
-           the lock-contention measurement needs -- the same "outer always wins" mistake
+           Manager 3's M7 needs -- the same "outer always wins" mistake
            already caught and fixed once in shell/main.cjs's agent-event
            fan-out (see the note there). The mutation call is attributed at
            its own call site instead, further in; the delivery/turn-decision
@@ -5345,7 +5880,7 @@ function createAgentHost({
     if (event?.type === SESSION_ENDED_EVENT) {
       if (session.state !== 'ended' || session.terminalEventEmitted) return
       session.terminalEventEmitted = true
-    } else if (session.state === 'ended' && event?.type !== 'account_recovery_needed') {
+    } else if (session.state === 'ended') {
       return
     }
     if (event && typeof event === 'object' && event.type !== NO_PROGRESS_EVENT) noteEngineProgress(session, event)
@@ -5357,7 +5892,6 @@ function createAgentHost({
       announceTurn(session, event.turnId)
     }
 
-    if (event?.type === 'assistant_text_delta') rememberRecoveryText(session.recovery, 'assistant', event.text)
     /* THE AGENT'S OWN WORDS FOR THIS TURN, AND ONLY THIS TURN.
        `productNote` events are this host talking to the person, not the agent
        talking, so they are excluded: a goal announcement that was read back as
@@ -5368,12 +5902,40 @@ function createAgentHost({
     if (event?.type === 'assistant_text_delta' && !event.productNote && session.goal && typeof event.text === 'string') {
       session.goalTurnText = `${session.goalTurnText}${event.text}`.slice(-8192)
     }
-    const recoveryOffer = recoveryTickets.offer(session, event)
-    if (recoveryOffer) queueMicrotask(() => emit(session, recoveryOffer))
+    if (event?.type === 'turn_completed' && isProviderSafetyRefusal(event)) {
+      event = safetyRefusalEvent(event)
+      session.safetyBlocked = true
+    }
+    /* 1.0.50 review #2: A CLAUDE USAGE LIMIT ENDS A TURN THE ADAPTER RESOLVES, NOT ONE IT REJECTS. The Claude CLI
+       adapter ends it as status 'error' with the CLI's sentence on `text` ("You're out of usage credits · resets ...")
+       and, when the CLI sent one, `payload.code` 'rate_limit'. The shell's verdict was added only on a rejected send,
+       so the New agent tab kept sending its queue into the spent account and the tree's limit fence never rose. The
+       same limitReason() rule is applied here, so every surface reads one verdict. A verdict already present is kept.
+       PLATFORM REVIEW FOLLOW-UP: a Codex usage limit has the same gap. The Codex adapter ends the turn as status
+       'failed' with the engine's own sentence and the data marker payload { limit: 'usage', resetsAt? }, and no code
+       or sentence limitReason() reads, so the tree's limit fence never rose for a Codex agent in a tree. The marker
+       is the engine's classification, the one the New agent tab already holds on, so it is read here too; the tab
+       reads either signal as one verdict, so it holds once.
+       REVIEW OF FIXES 3.5: the CLI attaches `rate_limit` to every HTTP 429, a transient one included, so on a
+       resolved turn that code is read with the CLI's sentence (resolvedTurnLimitReason); the rejected-send
+       verdict below is unchanged. */
+    if (event?.type === 'turn_completed' && !event.failureReason
+      && (resolvedTurnLimitReason(event) === 'account-limit' || engineUsageLimitEnding(event))) {
+      event = { ...event, failureReason: 'account-limit' }
+    }
+    /* 1.0.50 review CM-2: a provider that refused this session's model would refuse every automatic send the
+       same way, so they are held until a turn on this session succeeds (a person's own send is still taken). */
+    if (event?.type === 'turn_completed' && (!event.turnId || !session.activeTurnId || session.activeTurnId === event.turnId)) {
+      if (isProviderModelRefusal(event)) session.modelRefused = true
+      else if (['completed', 'success', 'end_turn'].includes(event.status)) session.modelRefused = false
+    }
     noteRuleFiling(session, event)
     if (event && event.type === 'turn_completed') settleSpooledTurn(session)
 
     if (event && event.type === 'turn_completed') {
+      if (session.safetyBlocked && (!event.turnId || !session.activeTurnId || session.activeTurnId === event.turnId)) {
+        session.safetyLastTurnStatus = event.status
+      }
       // Completion can precede Stop, even inside adapter.sendTurn(). Retain
       // named evidence on this admission after send bookkeeping is consumed;
       // Stop checks it against the captured turn's actual identity.
@@ -5388,7 +5950,7 @@ function createAgentHost({
          reads it (treeNodeRows()); a non-failed completion clears it, and a
          status this shell does not classify neither raises nor clears it. */
       if (event.status === 'failed') session.consecutiveTurnFailures = (session.consecutiveTurnFailures || 0) + 1
-      else if (event.status === 'completed') session.consecutiveTurnFailures = 0
+      else if (['completed', 'success', 'end_turn'].includes(event.status)) session.consecutiveTurnFailures = 0
 
       if (!event.turnId || !session.activeTurnId || session.activeTurnId === event.turnId) {
         continuation?.completed(session, event)
@@ -5420,6 +5982,12 @@ function createAgentHost({
          turn is over, which is the only thing that makes the session able to
          take the next one. See waitForTurnRelease(). */
       releaseTurnWaiters(session, event.turnId)
+      /* THE TURN BOUNDARY IS WHERE STEERING IS RETRIED (T1745): a failed steer
+         turns steering off only until the turn it failed in has ended. */
+      if (!session.activeTurnId) {
+        if (session.treeUncertainSteer) reconcileUncertainTreeSteer(session).catch(() => { /* retried at the next boundary */ })
+        else if (session.treeSteerUnavailable && session.treeSteerRefusalCode !== -32601) session.treeSteerUnavailable = false
+      }
     }
 
     const packet = Object.freeze({ sessionId: session.sessionId, event })
@@ -5790,8 +6358,8 @@ function createAgentHost({
    * A row whose provider this payload carries no launcher for is still listed,
    * and refused BY NAME with a reason (resolveStartTier), because the
    * alternative -- omitting it -- makes a chosen model quietly become Codex,
-   * which is exactly the defect that was hit: neither the provider
-   * nor the model could be chosen, while every agent silently ran on Codex. A refusal that says why
+   * which is exactly the defect the owner hit: "i cant even choose the provider
+   * or model", while every agent silently ran on Codex. A refusal that says why
    * is worth more than a success that lies.
    *
    * A row with no `effort` leaves the depth to the model: an absent effort on
@@ -5821,6 +6389,7 @@ function createAgentHost({
     astra: { provider: 'codex', model: 'gpt-6-astra', effort: 'medium' },
     'gpt-6-sol': { provider: 'codex', model: 'gpt-6-sol', effort: 'medium' },
     'gpt-6-luna': { provider: 'codex', model: 'gpt-6-luna', effort: 'medium' },
+    'gpt-6.1-sol': { provider: 'codex', model: 'gpt-6.1-sol', effort: 'medium' },
     luna: { provider: 'codex', model: 'gpt-5.6-luna', effort: 'medium' },
     terra: { provider: 'codex', model: 'gpt-5.6-terra', effort: 'high' },
     sol: { provider: 'codex', model: 'gpt-5.6-sol', effort: 'xhigh' },
@@ -5830,6 +6399,8 @@ function createAgentHost({
     'claude-opus-5-5': { provider: 'claude', model: 'claude/claude-opus-5-5' },
     'claude-opus-5': { provider: 'claude', model: 'claude/claude-opus-5' },
     'claude-sonnet-5': { provider: 'claude', model: 'claude/claude-sonnet-5' },
+    'claude-sonnet-5-5': { provider: 'claude', model: 'claude/claude-sonnet-5-5' },
+    'claude-haiku-5-5': { provider: 'claude', model: 'claude/claude-haiku-5-5' },
     'claude-fable-5-1': { provider: 'claude', model: 'claude/claude-fable-5-1' },
     'claude-fable-5': { provider: 'claude', model: 'claude/claude-fable-5' },
     'claude-haiku-4-5': { provider: 'claude', model: 'claude/claude-haiku-4-5' },
@@ -5851,11 +6422,11 @@ function createAgentHost({
    *
    * Read by sendTurn() below, so a mid-conversation model switch can carry the
    * session's recorded tier with it instead of leaving it pointed at whatever
-   * the session started on. THE SAME TABLE narrowTurnOptions() ALREADY
-   * VALIDATED THE MODEL AGAINST, so this can never name a tier the turn was
-   * refused for -- there is no second opinion here to disagree with the first. */
-  function tierForModel(model) {
-    const row = Object.entries(START_TIERS).find(([, candidate]) => candidate.model === model)
+   * the session started on. This is advisory bookkeeping on the same
+   * provider/client route. Unknown model IDs keep that route's existing tier. */
+  function tierForModel(model, provider, client = null) {
+    const row = Object.entries(START_TIERS).find(([, candidate]) => candidate.model === model
+      && candidate.provider === provider && (candidate.client || null) === client)
     return row ? row[0] : null
   }
 
@@ -5869,17 +6440,61 @@ function createAgentHost({
    * (`session.tier`). So it asks here rather than keeping a tier->provider map
    * of its own. Unknown or absent answers null, which every caller reads as
    * "this build cannot know" and never as a refusal. */
+  /* The model name a session's turns run on when the person typed it rather than picking a model row, or null
+     (1.0.50 review CM-4; read by the usage record in shell/main.cjs). */
+  function typedModelFor(sessionId) {
+    const session = sessions.get(sessionId)
+    return session && typeof session.typedModel === 'string' && session.typedModel ? session.typedModel : null
+  }
+
   function providerForTier(tier) {
     const row = typeof tier === 'string' && tier ? START_TIERS[tier] : null
     return row && typeof row.provider === 'string' ? row.provider : null
   }
 
-  function resolveStartTier(tier) {
-    if (tier === undefined || tier === null || tier === '') return null
-    const row = START_TIERS[tier]
+  /* The command surface needs the same client distinction as the start path:
+     plain Gemini and Antigravity are different launchers even though both use
+     the Gemini provider. Return only the closed route vocabulary, never a
+     filesystem fact or account value. */
+  function startRouteForTier(tier) {
+    const row = typeof tier === 'string' && tier ? START_TIERS[tier] : null
+    if (!row || typeof row.provider !== 'string') return null
+    return Object.freeze({
+      provider: row.provider,
+      ...(typeof row.client === 'string' && row.client ? { client: row.client } : {}),
+    })
+  }
+
+  function defaultSessionProvider() {
+    try {
+      const probed = startProviderProbe ? startProviderProbe() : defaultStartProviderProbe(engineRoot)
+      return probed === 'claude' && claudeEngine ? 'claude' : 'codex'
+    } catch { return 'codex' }
+  }
+
+  function assertProviderSignIn(row, tier) {
+    const signedIn = typeof providerSignIn === 'function' ? providerSignIn(row.provider) : 'unknown'
+    if (signedIn === 'no') {
+      fail('AGENT_TIER_NO_SIGNED_IN_ACCOUNT',
+        `The ${tier} tier runs on ${row.provider}, and no ${row.provider} account on this computer is signed in. `
+        + `Add or sign in to a ${row.provider} account, or pick a tier for a provider you are signed in to.`)
+    }
+  }
+
+  function resolveStartTier(tier, model, { deferSignIn = false } = {}) {
+    const explicitModel = model !== undefined
+    if ((tier === undefined || tier === null || tier === '') && !explicitModel) return null
+    let row = (tier === undefined || tier === null || tier === '')
+      ? { provider: defaultSessionProvider() } : START_TIERS[tier]
     if (!row) {
       fail('AGENT_TIER_UNKNOWN',
         `Unknown tier "${tier}". Available: ${Object.keys(START_TIERS).join(', ')}.`)
+    }
+    if (explicitModel) {
+      const selected = loadNativeModelSelection(engineRoot).resolveNativeModelSelection({
+        base: row, model, provider: row.provider, client: row.client || null, tiers: START_TIERS,
+      })
+      row = { ...row, model: selected.model }
     }
     /* AND BEFORE THE LAUNCHER GATE, BECAUSE A LAUNCHER IS NOT THE ONLY THING A
      * START NEEDS. Every branch below asks whether this payload carries the
@@ -5937,8 +6552,8 @@ function createAgentHost({
      * five-hour window that returns on its own, and the account rotation is
      * built to carry a person straight through it. Refusing a spent provider
      * HERE would delete Codex from the menu for five hours every time the owner
-     * burned a window -- taking the product away from them at precisely the
-     * moment the rotation would have carried them through, which is not a fix,
+     * burned a window -- taking the product away from him at precisely the
+     * moment the rotation would have carried him through, which is not a fix,
      * it is a new complaint. So this gate reads sign-in presence only; it never
      * reads an allowance, and an exhausted provider stays offered.
      *
@@ -5948,12 +6563,7 @@ function createAgentHost({
      * computer's sign-in -- none of those is evidence that a person cannot
      * start, and refusing on them would take a working tier away on the
      * strength of a stat that did not answer. */
-    const signedIn = typeof providerSignIn === 'function' ? providerSignIn(row.provider) : 'unknown'
-    if (signedIn === 'no') {
-      fail('AGENT_TIER_NO_SIGNED_IN_ACCOUNT',
-        `The ${tier} tier runs on ${row.provider}, and no ${row.provider} account on this computer is signed in. `
-        + `Add or sign in to a ${row.provider} account, or pick a tier for a provider you are signed in to.`)
-    }
+    if (!deferSignIn) assertProviderSignIn(row, tier)
     /* THE GATE OPENS ON THE ENGINE BEING THERE, NEVER ON THE NAME OF A PROVIDER.
      *
      * `claudeEngine` is not a flag, a version string or a configuration value.
@@ -6006,7 +6616,7 @@ function createAgentHost({
    * unless `initialize` declares the experimentalApi capability -- which we
    * never declared. On that false premise the product told the owner that
    * changing depth mid-conversation required restarting the agent, and
-   * charged them the tokens to re-read the conversation. The adapter now
+   * charged him the tokens to re-read the conversation. The adapter now
    * declares the capability and exposes updateThreadSettings.
    *
    * The spawn flag stays: `-c model_reasoning_effort=<key>` is what sets a
@@ -6082,7 +6692,10 @@ function createAgentHost({
     cwd,
     tier,
     effort,
+    model,
     resumeThreadId = null,
+    resumeSessionId = null,
+    resumeTranscript = null,
     historyHandoff = null,
     /* THE PROVIDER THAT MINTED THE THREAD, as the renderer's durable transcript
        record remembers it (src/session-transcript-store.js keeps `provider`
@@ -6095,9 +6708,6 @@ function createAgentHost({
     standaloneReplacement = null,
     editorFork = null,
     startAdmission = null,
-    continueFromAccount = null,
-    accountRecovery = null,
-    accountRetry = null,
     replacesSessionId = null,
     requestKeys = null,
     treeIdentity = null,
@@ -6161,10 +6771,16 @@ function createAgentHost({
     if (agentId !== null && (typeof agentId !== 'string' || !DECLARED_AGENT_ID.test(agentId))) {
       fail('AGENT_ROLE_BINDING_INVALID', 'A bound agent must carry one valid declared organisation id')
     }
-    const startTier = resolveStartTier(tier)
+    // A saved conversation must compare its recorded home before asking about
+    // sign-in presence. The same sign-in gate runs below after origin validation.
+    const startTier = resolveStartTier(tier, model, { deferSignIn: Boolean(resumeThreadId) })
     const sessionEffort = resolveEffort(effort, startTier)
+    if (model !== undefined) {
+      loadNativeModelSelection(engineRoot).validateNativeModelEffort(model, sessionEffort,
+        { provider: startTier.provider, client: startTier.client || null })
+    }
     if (replacement && (tier !== replacement.tier || sessionEffort !== replacement.effort || resumeThreadId || resumeAccount
-      || treeIdentity || requestKeys || replacesSessionId || continueFromAccount || accountRecovery || editorFork
+      || treeIdentity || requestKeys || replacesSessionId || editorFork
       || path.resolve(cwd || fallbackCwd) !== path.resolve(replacement.cwd))) {
       fail('AGENT_SWITCH_STALE', 'The replacement does not match the retained source and selected target.')
     }
@@ -6193,10 +6809,22 @@ function createAgentHost({
         || typeof editorFork.threadId !== 'string' || typeof editorFork.sourcePath !== 'string'
         || typeof editorFork.providerHome !== 'string'
         || (editorFork.provider === 'codex' ? typeof forkCodexSession !== 'function' : typeof editorFork.stageSource !== 'function')
-        || resumeId || resumeAccount || continueFromAccount || accountRecovery || replacesSessionId || delegationPermit)) {
+        || resumeId || resumeAccount || replacesSessionId || delegationPermit)) {
       fail('EDITOR_FORK_UNSUPPORTED', 'This editor copy needs a validated source receipt and a compatible provider launcher.')
     }
-    let exactResumeAccount = null
+    let resumeOrigin = resumeSessionId === null
+      ? (resumeId ? resumeOriginsByThread.get(JSON.stringify([agentId, resumeId])) || null : null)
+      : resumeOrigins.get(normalizeSessionId(resumeSessionId)) || resumeOriginStore?.get(normalizeSessionId(resumeSessionId))
+    const legacyResumePending = resumeSessionId !== null && resumeId && !resumeOrigin
+      && resumeTranscript !== null && typeof legacyResumeOriginResolver === 'function'
+    if (resumeSessionId !== null && (!resumeId || (!resumeOrigin && !legacyResumePending))) {
+      fail('AGENT_RESUME_HOME_UNAVAILABLE', 'The original sign-in home for this saved conversation cannot be verified in this run. The conversation is kept; open a new agent to start another conversation.')
+    }
+    if (resumeOrigin && (resumeOrigin.threadId !== resumeId || resumeOrigin.agentId !== agentId
+        || (treeAccount !== null && treeAccount !== resumeOrigin.account))) {
+      fail('AGENT_RESUME_IDENTITY_MISMATCH', 'The saved conversation does not match its original agent or account, so it was not resumed.')
+    }
+    let exactResumeAccount = resumeOrigin?.account || null
     if (resumeAccount !== null && resumeAccount !== undefined) {
       if (!resumeId) {
         fail('AGENT_HOST_INVALID_ARGUMENT', 'A resume account may only be named with the thread it owns.')
@@ -6206,7 +6834,7 @@ function createAgentHost({
     const exactTreeAccount = treeAccount === null || treeAccount === undefined
       ? null : boundedString(treeAccount, 'treeAccount', ACCOUNT_NAME_MAX_CHARS)
     if (exactTreeAccount && (!suppliedTreeIdentity || !requestIdentity?.threadId
-        || (resumeId && exactResumeAccount !== exactTreeAccount) || accountRecovery || accountRetry || editorFork
+        || (resumeId && exactResumeAccount !== exactTreeAccount) || editorFork
         || replacement || delegationPermit || restrictedResearch)) {
       fail('AGENT_HOST_INVALID_ARGUMENT', 'A slot account requires a bound tree start or its same-account saved thread, without recovery or inherited delegation.')
     }
@@ -6226,17 +6854,6 @@ function createAgentHost({
     }
     if (replacedTreeSessionId && !suppliedTreeIdentity) {
       fail('AGENT_HOST_INVALID_ARGUMENT', 'A replaced session must carry its saved tree identity')
-    }
-    const manuallyExcludedAccount = continueFromAccount === null || continueFromAccount === undefined
-      ? null : boundedString(continueFromAccount, 'continueFromAccount', ACCOUNT_NAME_MAX_CHARS)
-    if (manuallyExcludedAccount && (resumeId || exactResumeAccount || accountRecovery || !replacedTreeSessionId || !suppliedTreeIdentity)) {
-      fail('AGENT_HOST_INVALID_ARGUMENT', 'Continuing on another account requires a fresh tree replacement without a provider thread or automatic recovery ticket.')
-    }
-    if (accountRetry !== null && (!suppliedTreeIdentity || !requestKeys?.threadId || resumeId || exactResumeAccount || editorFork
-      || accountRecovery || manuallyExcludedAccount || !Array.isArray(accountRetry.excludeAccounts) || accountRetry.excludeAccounts.length > 32
-      || accountRetry.excludeAccounts.some(name => typeof name !== 'string' || !name || name.length > ACCOUNT_NAME_MAX_CHARS)
-      || !Number.isSafeInteger(accountRetry.recheckAttempt) || accountRetry.recheckAttempt < 0 || accountRetry.recheckAttempt > 100000)) {
-      fail('AGENT_HOST_INVALID_ARGUMENT', 'Account retries require the current tree identity and fresh account selection.')
     }
     if (sessions.has(id)) fail('AGENT_SESSION_EXISTS', `Session already exists: ${id}`)
     const sessionCwd = normalizeCwd(trustedResearchCwd, fallbackCwd, planner, profileRoot)
@@ -6260,14 +6877,13 @@ function createAgentHost({
      * demonstrably cannot and the payload carries the claude engine. A probe
      * fault degrades to codex, the path this host has always taken, never to
      * a refusal of its own. */
-    const sessionProvider = (startTier && startTier.provider) || (() => {
-      try {
-        const probed = startProviderProbe ? startProviderProbe() : defaultStartProviderProbe(engineRoot)
-        return probed === 'claude' && claudeEngine ? 'claude' : 'codex'
-      } catch {
-        return 'codex'
-      }
-    })()
+    const sessionProvider = (startTier && startTier.provider) || defaultSessionProvider()
+    if (resumeOrigin && resumeOrigin.provider !== sessionProvider) {
+      fail('AGENT_RESUME_PROVIDER_MISMATCH', 'Choose the assistant program that owns this saved conversation before resuming it.')
+    }
+    if (resumeOrigin && (resumeAccount !== null || resumeSessionId !== null) && resumeAccount !== resumeOrigin.account) {
+      fail('AGENT_RESUME_IDENTITY_MISMATCH', 'The saved conversation does not match its original agent or account, so it was not resumed.')
+    }
     if (exactTreeAccount && (sessionProvider === 'local' || !accountResolver)) {
       fail('AGENT_ACCOUNT_UNAVAILABLE', 'An exact slot account is unavailable for this provider. No other sign-in was used.')
     }
@@ -6452,7 +7068,7 @@ function createAgentHost({
     const launchEnvironmentFor = sessionLaunchEnvironments(
       loadLaunchEnvironment(engineRoot),
       planner,
-      { context: 'ToolsEnabled agent session', extras: envExtras },
+      { context: 'ToolsEnabled agent session', extras: envExtras, provider: sessionProvider },
     )
     const baseEnv = launchEnvironmentFor(basePlan)
 
@@ -6481,7 +7097,6 @@ function createAgentHost({
       boundedWorkTimer: null,
       boundedCapReached: false,
       boundedWorkRecord: boundedWorkPermit ? { ...boundedWorkPermit.details, state: 'starting', reason: null, endedAt: null } : null,
-      recovery: createRecoveryState(),
       cwd: sessionCwd,
       requestedModelTier: tier || null,
       /* Which engine serves this session -- the actor name the engine binds
@@ -6505,6 +7120,13 @@ function createAgentHost({
          override can drift from. */
       effort: sessionEffort,
       model: typeof startTier?.model === 'string' ? startTier.model : null,
+      /* A model name the person typed rather than a model row (1.0.50 review CM-4): the usage record names it
+         instead of the default row the session started on. Null for the launcher row's own model, and for a
+         row's model started with no row. A typed name that is ANOTHER row's model is still a typed name: the
+         session keeps the launcher's row, so naming it by row would sign that row (REVIEW-1050 #11). */
+      typedModel: model !== undefined && typeof startTier?.model === 'string' && startTier.model
+        && (tier ? START_TIERS[tier]?.model !== startTier.model
+          : !tierForModel(startTier.model, startTier.provider, startTier.client || null)) ? startTier.model : null,
       state: 'starting',
       /* Start custody is distinct from the provider's final error. A
          post-dispatch rejection without a trusted close handle remains
@@ -6619,8 +7241,8 @@ function createAgentHost({
          flipping agent.tool_summary takes effect on the next start — the same
          per-session rule the plan itself follows. A resumed conversation
          already had its introduction and gets none. The account re-plan below
-         does not recompute it: an account changes whose home the credential
-         links from, never the recorded level the note describes. */
+         does not recompute it: an account changes the official sign-in home,
+         never the recorded level the note describes. */
       /* A LOCAL SESSION GETS IT TOO, since the local engine started calling
          the plan's servers: it is handed the same plan below and reads
          mcpConfig off it, so the note describes a toolkit it can use. */
@@ -6728,48 +7350,41 @@ function createAgentHost({
     const revokeStart = () => requestSessionClose(session)
     startAdmission?.signal.addEventListener('abort', revokeStart, { once: true })
     if (startAdmission?.signal.aborted) revokeStart()
-    let recoveryTicket = null
     session.startPromise = (async () => {
       try {
         startAdmission?.assertCurrent()
-        if (accountRetry && replacedTreeSessionId) {
-          const prior = sessions.get(replacedTreeSessionId)
-          if (prior) {
-            if (!session.treeNodeKey || !session.treeKey || prior.treeNodeKey !== session.treeNodeKey || prior.treeKey !== session.treeKey) {
-              fail('AGENT_ACCOUNT_RECOVERY_IDENTITY_MISMATCH', 'The retained predecessor belongs to a different tree node.')
-            }
-            if (prior.closeRequested) fail('AGENT_ACCOUNT_RECOVERY_STOPPED', 'The previous session was stopped. Review this node before retrying.')
-            if (!['ended', 'closed', 'failed'].includes(prior.state)) {
-              fail('AGENT_ACCOUNT_RECOVERY_UNAVAILABLE', 'Close the previous session before starting its recovery.')
-            }
-            try {
-              if (prior.state === 'ended') await cleanupEndedSession(prior)
-              else await closeSession({ sessionId: replacedTreeSessionId, preserveContinuation: true })
-            }
-            catch { fail('AGENT_PREDECESSOR_CLEANUP_FAILED', 'The previous session still needs cleanup. No replacement was started.') }
-            startAdmission?.assertCurrent()
-            if (session.closeRequested) fail('AGENT_SESSION_START_CANCELLED', 'The replacement was stopped during predecessor cleanup.')
+        if (legacyResumePending) {
+          resumeOrigin = await legacyResumeOriginResolver({ sessionId: normalizeSessionId(resumeSessionId),
+            threadId: resumeId, provider: resumeThreadProvider, account: resumeAccount,
+            agentId, transcript: resumeTranscript })
+          if (closed || session.closeRequested) fail('AGENT_SESSION_START_CANCELLED', 'Session closed while checking its saved conversation.')
+          if (!resumeOrigin?.home) fail('AGENT_RESUME_HOME_UNAVAILABLE', 'The original sign-in home for this saved conversation could not be verified.')
+          if (resumeOrigin.threadId !== resumeId || resumeOrigin.agentId !== agentId
+              || resumeOrigin.account !== resumeAccount || (treeAccount !== null && treeAccount !== resumeOrigin.account)) {
+            fail('AGENT_RESUME_IDENTITY_MISMATCH', 'The saved conversation does not match its original agent or account.')
+          }
+          if (resumeOrigin.provider !== sessionProvider) fail('AGENT_RESUME_PROVIDER_MISMATCH', 'Choose the assistant program that owns this saved conversation before resuming it.')
+          exactResumeAccount = resumeOrigin.account
+        }
+        if (resumeOrigin && resumeOrigin.account !== null && typeof resumeAccountHome === 'function') {
+          let configuredHome
+          try { configuredHome = resumeAccountHome(resumeOrigin.account, resumeOrigin.provider) }
+          catch { fail('AGENT_RESUME_ACCOUNT_UNAVAILABLE', 'The saved conversation account is no longer configured. No other sign-in was used.') }
+          if (typeof configuredHome !== 'string' || !path.isAbsolute(configuredHome)) {
+            fail('AGENT_RESUME_HOME_UNAVAILABLE', 'The saved conversation account has no verified sign-in home.')
+          }
+          const recordedHome = planner.assertAccountProfilePath(resumeOrigin.home, { field: 'saved conversation sign-in home' })
+          const currentHome = planner.assertAccountProfilePath(configuredHome, { field: 'saved account sign-in home' })
+          if (path.resolve(currentHome) !== path.resolve(recordedHome)) {
+            fail('AGENT_RESUME_HOME_CHANGED', 'This account now points to a different sign-in folder. Your conversation is kept. Choose the account again before resuming.')
           }
         }
+        if (resumeId && startTier) assertProviderSignIn(startTier, tier)
         // Capture fresh admission before account lookup yields. A sibling may
         // add its seat while we wait; no credential is issued until the account
         // and its confinement pass, and bind still checks our exact identity.
         const sessionAdmission = agentId !== null && authorityAdmit
           ? authorityAdmit(credentialBindingOf(session, { includeCredential: false })) : undefined
-        if (accountRecovery !== null) {
-          if (resumeId || !replacedTreeSessionId || typeof accountRecovery?.recoveryId !== 'string') {
-            fail('AGENT_ACCOUNT_RECOVERY_UNAVAILABLE', 'Recovery requires a fresh replacement of the original tree session.')
-          }
-          const prior = sessions.get(replacedTreeSessionId)
-          if (prior && !['closed', 'ended', 'failed'].includes(prior.state)) {
-            fail('AGENT_ACCOUNT_RECOVERY_UNAVAILABLE', 'Close the previous session before starting its recovery.')
-          }
-          recoveryTicket = recoveryTickets.claim(accountRecovery.recoveryId, {
-            sessionId: id, replacesSessionId: replacedTreeSessionId, provider: sessionProvider, nodeKey: session.treeNodeKey,
-          })
-          session.recovery.excluded = [...recoveryTicket.excluded]
-        }
-
         /* WHOSE SIGN-IN THIS SESSION RUNS ON, resolved before anything is planned
          * and before anything is spawned.
          *
@@ -6805,7 +7420,7 @@ function createAgentHost({
          * and names which account is spent and which is ready.
          *
          * On the legacy planning path, one ordering consequence remains: the
-         * base plan above links the credential from the DEFAULT home, so a machine
+         * base plan above checks the DEFAULT sign-in home, so a machine
          * whose default home is signed out still refuses at that point even if a
          * registered account is signed in. Rotation cannot rescue that case, and
          * making it able to would mean deferring the sign-out refusal -- trading a
@@ -6817,9 +7432,6 @@ function createAgentHost({
         const exactSourceAccount = exactTreeAccount || replacement?.exactAccount || exactResumeAccount || (editorFork?.account
           ? boundedString(editorFork.account, 'editor source account', ACCOUNT_NAME_MAX_CHARS) : null)
         if (editorFork) editorFork.assertCurrent()
-        const excludedAccounts = accountRetry?.excludeAccounts || (manuallyExcludedAccount ? [manuallyExcludedAccount] : recoveryTicket?.excluded || [])
-        if (accountRetry && !accountResolver) fail('AGENT_ACCOUNT_RECOVERY_NO_ALTERNATE', 'Account selection is unavailable; no replacement was started.')
-        if (excludedAccounts.length > 0 && !accountResolver) fail('AGENT_ACCOUNT_RECOVERY_NO_ALTERNATE', 'Account selection is unavailable; no replacement was started.')
         if (accountResolver && sessionProvider !== 'local') {
           let resolvedAccount = null
           try {
@@ -6827,14 +7439,16 @@ function createAgentHost({
                must observe cancellation before those writes; abandoning its
                promise here would allow a late answer to change the account
                after Stop. Older resolvers are awaited until they settle. */
-            resolvedAccount = await accountResolver({
+            // A default-home conversation stays on that default sign-in even
+            // when the person has selected a named account since it stopped.
+            resolvedAccount = resumeOrigin && resumeOrigin.account === null
+              ? { rotated: false, account: null, code: 'ACCOUNTS_NOT_CONFIGURED' }
+              : await accountResolver({
               provider: sessionProvider,
               ...(sessionProvider === 'claude' && startTier?.model ? { model: startTier.model } : {}),
-              ...(accountRetry ? { keepTryingAccounts: true, recheckAttempt: accountRetry.recheckAttempt } : {}),
               ...(startTier?.client ? { client: startTier.client } : {}),
-              ...(excludedAccounts.length > 0 ? { excludeAccounts: excludedAccounts } : {}),
               ...(exactSourceAccount ? { preferred: exactSourceAccount, exact: true } : {}),
-              ...(exactTreeAccount ? { persistSelection: false } : {}),
+              ...(exactTreeAccount || resumeOrigin ? { persistSelection: false } : {}),
             }, { signal: session.startController.signal })
           } catch {
             if (!closed && !session.closeRequested) {
@@ -6860,20 +7474,14 @@ function createAgentHost({
           const account = (resolvedAccount && resolvedAccount.rotated === true && resolvedAccount.account) || null
           if (exactTreeAccount && (resolvedAccount.blocked === true || account?.name !== exactTreeAccount
               || account?.provider !== sessionProvider)) {
-            fail('AGENT_ACCOUNT_UNAVAILABLE', 'The selected slot account is unavailable. No other sign-in was used.')
+            fail(resolvedAccount.blocked === true ? (resolvedAccount.code || 'AGENT_ACCOUNT_UNAVAILABLE') : 'AGENT_ACCOUNT_UNAVAILABLE',
+              resolvedAccount.blocked === true ? (resolvedAccount.reason || 'The selected slot account could not be checked. Open Accounts and check it again.')
+                : 'The selected slot account is unavailable. No other sign-in was used.')
           }
           replacement?.assertCurrent()
           if (replacement && (resolvedAccount?.blocked || (replacement.exactAccount && account?.name !== replacement.exactAccount)
             || (replacement.defaultAccount && account !== null))) {
             fail('AGENT_SWITCH_ACCOUNT_UNAVAILABLE', 'The selected account is unavailable. The original session is retained.')
-          }
-          if (accountRetry) {
-            // Only selection facts cross to the retry UI. Never forward a home,
-            // credential, provider payload, or arbitrary resolver error object.
-            session.accountRetryResult = { provider: sessionProvider, account: account?.name || null,
-              attempts: (resolvedAccount?.attempts || []).slice(0, 128).map(row => ({ account: String(row.account || '').slice(0, ACCOUNT_NAME_MAX_CHARS), status: String(row.status || 'unknown').slice(0, 64) })),
-              retry: resolvedAccount?.retry ? Object.fromEntries(['nextAttemptAt', 'resetAt', 'reason', 'allQuotaExhausted', 'exhaustedCount', 'unmeasuredCount'].map(key => [key, resolvedAccount.retry[key]])) : null }
-            if (!account || resolvedAccount?.blocked) fail(resolvedAccount?.code || 'AGENT_ACCOUNT_RECOVERY_NO_ALTERNATE', resolvedAccount?.reason || 'No registered eligible account is available for this provider.')
           }
           // A refused selection has no account object. Preserve its measured
           // refusal below; absence during a quota/probe hold is not evidence
@@ -6903,10 +7511,6 @@ function createAgentHost({
              session credential exists. A person can sign that account in or
              explicitly Start over on another one; we never impersonate a
              successful continuation. */
-          if (excludedAccounts.length > 0 && (!account || excludedAccounts.includes(account.name)
-            || (account.provider && account.provider !== sessionProvider))) {
-            fail('AGENT_ACCOUNT_RECOVERY_NO_ALTERNATE', resolvedAccount?.reason || 'No other eligible account is available for this program.')
-          }
           if (exactResumeAccount && (!account || account.name !== exactResumeAccount)) {
             // Preserve the exact account's measured reason. Another account's
             // availability is not evidence about the owner of this saved thread.
@@ -6962,9 +7566,8 @@ function createAgentHost({
           }
           if (account || deferredAccountPreparation) {
             selectedAccount = account
-            /* Re-planned rather than patched: the account changes which home the
-               credential is linked FROM and gives that account its own confined
-               home, and both of those are decisions the planner makes. */
+            /* Re-plan the chosen official home and the account's confinement
+               overrides together, before any provider thread starts. */
             const pinned = requireRoleToolRestriction(planConfinement({
               provider: sessionProvider,
       ...(startTier?.client ? { client: startTier.client } : {}),
@@ -7069,7 +7672,7 @@ function createAgentHost({
          * authority check must leave the running predecessor intact; closing
          * it in the renderer before start made AGENT_RESUME_ACCOUNT_LIMIT
          * irreversible. Fresh recovery keeps its existing earlier boundary. */
-        if (replacedTreeSessionId && !accountRetry) {
+        if (replacedTreeSessionId) {
           const prior = sessions.get(replacedTreeSessionId)
           if (prior) {
             if (!session.treeNodeKey || !session.treeKey || prior.treeNodeKey !== session.treeNodeKey || prior.treeKey !== session.treeKey) {
@@ -7082,8 +7685,8 @@ function createAgentHost({
              * used to refuse every later Resume as AGENT_RESUME_SOURCE_UNAVAILABLE
              * ("the saved native conversation could not be verified", retried
              * in 5 s) before the cleanup below could run, so the agent could
-             * never be resumed although its conversation was intact (T1790).
-             * Only a close that is still running refuses
+             * never be resumed although its conversation was intact (T1790,
+             * Worker 8, 2026-09-24). Only a close that is still running refuses
              * now, under its own code; an owed close is retried first, with the
              * recoverability its own close chose, and the resume continues when
              * it completes. */
@@ -7214,24 +7817,75 @@ function createAgentHost({
         /* A local session is pointed at no sign-in at all -- there is none --
            so it records none, even though the plan it was confined under
            carries the Claude tool surface's configDir. */
+        if (resumeOrigin && !useLocal) {
+          const home = planner.assertAccountProfilePath(resumeOrigin.home, { field: 'saved conversation sign-in home' })
+          if (resumeOrigin.account !== null || sessionProvider === 'claude') {
+            // A default Claude conversation belongs to the native home the
+            // person launched with, just as a named one belongs to its registry
+            // home. Verify the current plan BEFORE restoring the recorded pin.
+            const inheritedClaudeHome = process.platform === 'win32'
+              ? Object.entries(sessionEnv).find(([name]) => name.toUpperCase() === 'CLAUDE_CONFIG_DIR')?.[1]
+              : sessionEnv.CLAUDE_CONFIG_DIR
+            const profileHome = process.platform === 'win32'
+              ? sessionEnv.USERPROFILE || sessionEnv.HOME
+              : sessionEnv.HOME || sessionEnv.USERPROFILE
+            const configuredHome = resumeOrigin.account !== null ? selectedAccount?.resolvedHome
+              : plan.configDir || inheritedClaudeHome || (profileHome ? path.join(profileHome, '.claude') : null)
+            if (typeof configuredHome !== 'string' || !path.isAbsolute(configuredHome)) {
+              fail('AGENT_RESUME_HOME_UNAVAILABLE', 'The saved conversation account has no verified sign-in home.')
+            }
+            if (path.resolve(configuredHome) !== path.resolve(home)) {
+              fail(resumeOrigin.account === null ? 'AGENT_RESUME_HOME_UNAVAILABLE' : 'AGENT_RESUME_HOME_CHANGED',
+                'This account now points to a different sign-in folder. Your conversation is kept. Choose the account again before resuming.')
+            }
+          }
+          // Rebuild the current tool policy, then retain only the original
+          // official sign-in pointer. No credential is read or copied.
+          plan = useClaude ? { ...plan, configDir: home }
+            : sessionProvider === 'gemini' ? { ...plan, configDir: home,
+              env: { ...(plan.env || {}), GEMINI_CLI_HOME: home } }
+            : { ...plan, env: { ...(plan.env || {}), CODEX_HOME: home }, codexHome: home }
+          if (sessionProvider === 'codex' && resumeOrigin.databaseHome && plan.codexConfig) {
+            const databaseHome = planner.assertAccountProfilePath(resumeOrigin.databaseHome, { field: 'saved conversation database home' })
+            if (typeof planner.codexConfigOverrideArgs !== 'function') {
+              fail('AGENT_RESUME_HOME_UNAVAILABLE', 'Update the paired engine before resuming this saved conversation with its original native history home.')
+            }
+            const codexConfig = { ...plan.codexConfig, sqlite_home: databaseHome }
+            plan = { ...plan, codexConfig, codexArgs: planner.codexConfigOverrideArgs(codexConfig) }
+          }
+          sessionEnv = launchEnvironmentFor(plan)
+        }
+        // Older planner seams may leave the official home implicit. Record
+        // the environment actually handed to the native process, including its
+        // profile default, rather than re-deriving it from a later launch.
+        const nativeHomeVariable = sessionProvider === 'claude' ? 'CLAUDE_CONFIG_DIR'
+          : sessionProvider === 'codex' ? 'CODEX_HOME' : sessionProvider === 'gemini' ? 'GEMINI_CLI_HOME' : null
+        const nativeProfileHome = process.platform === 'win32'
+          ? sessionEnv.USERPROFILE || sessionEnv.HOME
+          : sessionEnv.HOME || sessionEnv.USERPROFILE
         session.pinnedHome = useLocal
           ? null
           : (plan && typeof plan.configDir === 'string' && plan.configDir)
             || (plan && plan.env && typeof plan.env.CODEX_HOME === 'string' && plan.env.CODEX_HOME)
+            || (nativeHomeVariable && sessionEnv[nativeHomeVariable])
+            || (nativeHomeVariable && typeof nativeProfileHome === 'string' && nativeProfileHome
+              ? sessionProvider === 'gemini' ? nativeProfileHome : path.join(nativeProfileHome, sessionProvider === 'claude' ? '.claude' : '.codex') : null)
             || null
+        session.pinnedDatabaseHome = typeof plan?.codexConfig?.sqlite_home === 'string' ? plan.codexConfig.sqlite_home : null
         let nativeResumeSource = null
         if (resumeId && sessionProvider === 'codex') {
           if ([...sessions.values()].some(other => other !== session && other.threadId === resumeId
               && !['closed', 'ended', 'failed'].includes(other.state))) {
             fail('AGENT_RESUME_SOURCE_UNAVAILABLE', 'This native conversation is still running. Close its current session before resuming.')
           }
-          nativeResumeSource = ownedCodexResumeSource({ generatedHome: session.pinnedHome, agentId,
+          nativeResumeSource = ownedCodexResumeSource({ generatedHome: plan.agentHome || session.pinnedHome, agentId,
             account: selectedAccount?.name || null, threadId: resumeId })
           if (nativeResumeSource && !(resumeSourceContractVersion >= (nativeResumeSource.databaseHome ? 2 : 1))) {
             fail('CODEX_RESUME_SOURCE_INVALID', 'Update the paired app and engine before resuming this saved native conversation.')
           }
         }
         if (editorFork) editorFork.assertCurrent()
+        resumeOrigin?.assertCurrent?.()
         startAdmission?.assertCurrent()
         // Account selection and authority binding above are still preparation.
         // Only this engine invocation makes the start's outcome uncertain.
@@ -7290,7 +7944,7 @@ function createAgentHost({
           // choosing it was consenting to have a metered API account billed by
           // surprise, or to have their prompts routed through whatever host an
           // inherited BASE_URL happens to name. So the scrub applies at every
-          // level. Since an earlier engine commit (payload pin flip 2026-08-14),
+          // level. Since engine f1cc018 (payload pin flip 2026-08-14),
           // `unrestricted` is ALSO redirected to a prepared Codex home
           // carrying the full generated tool surface -- capability parity
           // with the confined tiers, after the measured inversion where the
@@ -7298,7 +7952,7 @@ function createAgentHost({
           // it still means: sandbox danger-full-access, the widest reach the
           // engine offers; isolation is about whose home, not about reach.
           env: sessionEnv,
-          ...((useAcp || useAntigravity) ? { plan } : {}),
+          ...((useAcp || useAntigravity || (!useClaude && !useLocal)) ? { plan } : {}),
           ...(providerCommand ? { command: providerCommand } : {}),
           /* THE PLAN TRAVELS WHOLE, AND THAT IS THE JOIN. A payload that can
              build a tool surface (its plan carries an `mcpConfig` field) hands
@@ -7436,11 +8090,12 @@ function createAgentHost({
           if (session.resourceLease) session.resourceLease.ready()
           else resourceGovernor?.ready(session.resourceReservation)
         }
-        recoveryTickets.settle(recoveryTicket, true)
+        rememberResumeOrigin(session)
         return Object.freeze({
           sessionId: id,
           startOutcome: makeStartOutcome(id, 'admitted', 'not-required', 'session'),
           threadId: session.threadId,
+          provider: sessionProvider,
           tier: plan.tier,
           effort: session.effort,
           ...(session.researchRestriction ? { researchRestriction: session.researchRestriction } : {}),
@@ -7464,9 +8119,6 @@ function createAgentHost({
            admission-uncertain. No error code, null reply or malformed reply
            is allowed to turn that uncertainty into a fresh-start permission. */
         const admission = dispatchStarted ? 'unknown' : 'not-admitted'
-        const retryResult = accountRetry && session.accountRetryResult !== undefined
-          ? session.accountRetryResult
-          : undefined
         /* The engine may fail before returning a session while cleanup is
            still unproven. Its private retry handle owns only that child;
            retain it just like a close handle, and never infer closure from
@@ -7503,7 +8155,7 @@ function createAgentHost({
             `Session ${id} failed to start and its Codex child failed to close`,
           )
           combined.code = 'AGENT_SESSION_CLEANUP_FAILED'
-          throw attachStartOutcome(combined, makeStartOutcome(id, admission, 'pending', 'cleanup-pending'), retryResult, startBinding)
+          throw attachStartOutcome(combined, makeStartOutcome(id, admission, 'pending', 'cleanup-pending'), startBinding)
         }
         session.state = session.state === 'closed' ? 'closed' : 'failed'
         try { await releaseSessionResources(session) }
@@ -7514,7 +8166,7 @@ function createAgentHost({
                 ? 'resource-only' : null)
           session.state = 'close-failed'
           if (session.boundedWorkRecord) Object.assign(session.boundedWorkRecord, { state: 'close-failed', reason: 'cleanup-unproven' })
-          throw attachStartOutcome(releaseError, makeStartOutcome(id, admission, 'pending', 'cleanup-pending'), retryResult, startBinding)
+          throw attachStartOutcome(releaseError, makeStartOutcome(id, admission, 'pending', 'cleanup-pending'), startBinding)
         }
         /* A dispatch without a trusted close handle is still unknown. Keep
            the owner-bound host record instead of converting a malformed or
@@ -7523,7 +8175,7 @@ function createAgentHost({
           session.startCustody = 'unknown'
           session.state = 'close-failed'
           if (session.boundedWorkRecord) Object.assign(session.boundedWorkRecord, { state: 'close-failed', reason: 'cleanup-unproven' })
-          throw attachStartOutcome(error, makeStartOutcome(id, 'unknown', 'pending', 'cleanup-pending'), retryResult, startBinding)
+          throw attachStartOutcome(error, makeStartOutcome(id, 'unknown', 'pending', 'cleanup-pending'), startBinding)
         }
         if (session.boundedWorkRecord) Object.assign(session.boundedWorkRecord, {
           state: 'closed', reason: session.boundedCapReached ? 'cap-reached' : 'start-refused', endedAt: Date.now(),
@@ -7532,19 +8184,18 @@ function createAgentHost({
         if (session.boundedCapReached) {
           const boundedError = new AgentHostError('MC_TREE_BOUNDED_WORK_CAP_REACHED', 'The time cap ended while this work was starting.')
           throw attachStartOutcome(boundedError, makeStartOutcome(id, admission,
-            dispatchStarted ? 'confirmed' : 'not-required', 'none'), retryResult, startBinding)
+            dispatchStarted ? 'confirmed' : 'not-required', 'none'), startBinding)
         }
         if (session.startController.signal.aborted && error?.name === 'AbortError') {
           const cancelledError = new AgentHostError('AGENT_SESSION_START_CANCELLED', `Session closed while starting: ${id}`)
           throw attachStartOutcome(cancelledError, makeStartOutcome(id, admission,
-            dispatchStarted ? 'confirmed' : 'not-required', 'none'), retryResult, startBinding)
+            dispatchStarted ? 'confirmed' : 'not-required', 'none'), startBinding)
         }
         throw attachStartOutcome(error, makeStartOutcome(id, admission,
-          dispatchStarted ? 'confirmed' : 'not-required', 'none'), retryResult, startBinding)
+          dispatchStarted ? 'confirmed' : 'not-required', 'none'), startBinding)
       } finally {
         startAdmission?.signal.removeEventListener('abort', revokeStart)
         session.startController = null
-        if (recoveryTicket && !recoveryTicket.used) recoveryTickets.settle(recoveryTicket, false)
       }
     })()
 
@@ -7568,7 +8219,6 @@ function createAgentHost({
         session.startCustody = 'resource-only'
       }
       throw attachStartOutcome(error, outcome,
-        accountRetry && session.accountRetryResult !== undefined ? session.accountRetryResult : undefined,
         startBinding)
     })
     return guardedStartPromise
@@ -7590,7 +8240,6 @@ function createAgentHost({
           state: 'close-failed', reason: 'cleanup-unproven',
         })
         throw attachStartOutcome(error, makeStartOutcome(id, 'not-admitted', 'pending', 'cleanup-pending'),
-          accountRetry && session.accountRetryResult !== undefined ? session.accountRetryResult : undefined,
           startBinding)
       }
       throw error
@@ -7612,8 +8261,7 @@ function createAgentHost({
       activeStarts -= 1
       if (hasOwnedStartOutcome(error, startBinding)) throw error
       if (startBinding.settledError) throw startBinding.settledError
-      throw attachStartOutcome(error, makeStartOutcome(request?.sessionId, 'not-admitted', 'not-required', 'none'),
-        undefined, startBinding)
+      throw attachStartOutcome(error, makeStartOutcome(request?.sessionId, 'not-admitted', 'not-required', 'none'), startBinding)
     }
     return Promise.resolve(started).catch(error => {
       if (hasOwnedStartOutcome(error, startBinding)) throw error
@@ -7624,8 +8272,7 @@ function createAgentHost({
       /* A rejected promise without the host-owned marker has crossed an
          asynchronous boundary before classification. Treat it as uncertain
          custody; only the synchronous pre-dispatch path above is no-admission. */
-      throw attachStartOutcome(error, makeStartOutcome(request?.sessionId, 'unknown', 'pending', 'cleanup-pending'),
-        undefined, startBinding)
+      throw attachStartOutcome(error, makeStartOutcome(request?.sessionId, 'unknown', 'pending', 'cleanup-pending'), startBinding)
     }).finally(() => { activeStarts -= 1 })
   }
 
@@ -7636,14 +8283,16 @@ function createAgentHost({
    * three are refused BY NAME — approvalPolicy and sandbox are the recorded
    * level's ceiling, cwd per-turn would relocate execution outside the
    * workspace root the plan measured, and serviceTier is a billing routing
-   * question nobody asked the person. The requested model must be a Codex
-   * row of the same START_TIERS table the start channel resolves from, so
-   * the two surfaces can never disagree about what is launchable.
+   * question nobody asked the person. Exact model IDs use the shared engine
+   * resolver on the session's existing provider/client route.
    *
    * The plan's own keys are spread LAST, so even a key that slipped past the
    * name check could not override what the plan states. Widening is
    * structurally impossible, not merely checked. */
-  const narrowTurn = (plan, requested) => narrowTurnOptions(plan, requested, START_TIERS)
+  const narrowTurn = (plan, requested, session) => narrowTurnOptions(plan, requested, START_TIERS, {
+    engineRoot, provider: session.provider, client: session.client || null, effort: session.effort,
+    base: START_TIERS[session.requestedModelTier],
+  })
 
   function boundedTurnImages(images) {
     if (images === undefined || images === null) return []
@@ -7659,6 +8308,15 @@ function createAgentHost({
   async function sendTurn({ sessionId, text, images, options, origin, dispatchTracking, acceptedAttachmentSummaries } = {}) {
     assertOpen()
     const session = readySession(sessionId)
+    const assertSafetyAdmission = () => {
+      if (session.safetyBlocked && origin !== 'person') {
+        fail(SAFETY_BLOCK.code, 'The provider refused this turn through its safety policy. Automatic and queued turns are stopped; the session can be closed.')
+      }
+      if (session.modelRefused && origin !== 'person') {
+        fail(MODEL_REFUSAL_BLOCK.code, 'The provider refused this agent\u2019s model. Automatic and queued turns wait until a message you send is answered.')
+      }
+    }
+    assertSafetyAdmission()
     const requestedImages = boundedTurnImages(images)
     const acceptedAttachments = requestedImages.length
       ? normalizeAcceptedAttachmentSummaries(acceptedAttachmentSummaries)
@@ -7667,6 +8325,7 @@ function createAgentHost({
     const transcriptAdmission = assertTranscriptWritable({ sessionId, text: turnText, images: requestedImages, origin })
     if (transcriptAdmission && typeof transcriptAdmission.then === 'function') await transcriptAdmission
     readySession(sessionId, session)
+    assertSafetyAdmission()
     const personIntent = origin === 'person' || origin === 'person-queued'
     const deliveryTracking = dispatchTracking || { dispatched: false }
     const cloudCommand = personIntent ? parseCloudCommand(turnText) : null
@@ -7678,7 +8337,7 @@ function createAgentHost({
     }
     const pictureNotSent = null
     const turnImages = requestedImages
-    const turnOptions = narrowTurn(session.planThreadOptions, options)
+    const turnOptions = narrowTurn(session.planThreadOptions, options, session)
     /* A PER-TURN MODEL OVERRIDE MOVES THE SESSION'S RECORDED TIER WITH IT.
      *
      * THE DEFECT THIS CLOSES. shell/agent-command-surface.cjs reads a session's
@@ -7699,7 +8358,7 @@ function createAgentHost({
      * is merged in beside it. A turn with no override resolves `switchedTier`
      * to null and leaves the session's tier exactly as untouched as it always
      * was. */
-    const switchedTier = typeof turnOptions?.model === 'string' ? tierForModel(turnOptions.model) : null
+    const switchedTier = typeof turnOptions?.model === 'string' ? tierForModel(turnOptions.model, session.provider, session.client || null) : null
     if (session.sendPromise || session.activeTurnId || session.turnAnnounce || session.rewindPending || session.modeSelectionPending || session.settingsPending || session.standaloneSwitch || session.replacementHold || session.interruptRequested) {
       /* A PERSON WHO WAS TOLD TO WAIT IS A PERSON WHO IS WAITING, and the tree
          courier is now required to know it. This refusal is unchanged -- one
@@ -7852,6 +8511,7 @@ function createAgentHost({
     const reportAcceptedPrompt = turnId => {
       if (acceptedPromptReported) return acceptedPromptBoundary
       acceptedPromptReported = true
+      deliveryTracking.accepted = true
       session.taskContextDelivered = true
       const prompt = Object.freeze({
         sessionId: session.sessionId, text: turnText, turnId, transcriptPrompt, origin,
@@ -7908,8 +8568,6 @@ function createAgentHost({
         },
       }
     })
-    recoveryTickets.newTurn(session)
-    rememberRecoveryText(session.recovery, personIntent ? 'person' : (origin || 'agent'), turnText)
     session.turnAnnounce = announce
     session.directUserTurn = personIntent
 
@@ -7933,6 +8591,20 @@ function createAgentHost({
       if (historyIntroduction && !session.pendingHistoryHandoff) session.pendingHistoryHandoff = historyIntroduction
       if (requestsIntroduction && !session.pendingStandingRequests) session.pendingStandingRequests = requestsIntroduction
       if (noteIntroduction && !session.pendingToolSummary) session.pendingToolSummary = noteIntroduction
+    }
+
+    /* AFTER DISPATCH, A CLEANUP FAILURE IS NOT THE SEND'S ANSWER. Releasing an
+       unaccepted reservation can throw (the recovery journal refused its
+       cleanup), and a throw from here used to replace the send's own error.
+       Before dispatch both mean "not sent", so the storage refusal may stand.
+       After dispatch the send's answer is "delivery unknown", and replacing it
+       with MC_TRANSCRIPT_STORAGE_FAILED told the window "this message was not
+       sent. Your draft is kept" about words the provider may be running -- the
+       store's own notice for the same failure says "do not resend". That notice
+       still reports it; the caller keeps the honest answer. */
+    const releaseUnacceptedReservation = async () => {
+      try { await transcriptReservation.release({ accepted: false, dispatched: deliveryTracking.dispatched }) }
+      catch (error) { if (!deliveryTracking.dispatched) throw error }
     }
 
     /* Asked ONCE, before the race, so no branch below can send a second turn.
@@ -7961,6 +8633,7 @@ function createAgentHost({
         finally { if (session.workResumePromise === resuming) session.workResumePromise = null }
       }
       if (session.interruptRequested) fail('AGENT_STOP_PENDING', 'Stop was requested before this turn reached the provider.')
+      assertSafetyAdmission()
       // Stop/resume authority can await. Never dispatch a snapshot whose
       // applicable rules changed during that wait, and never silently omit
       // rules if the owner enabled the setting after preparation.
@@ -8008,6 +8681,7 @@ function createAgentHost({
       if (reservationWait.signal.aborted) fail('MC_TRANSCRIPT_SEND_STOPPED', 'This message was stopped while it waited for another agent’s message to be saved, so it was not sent.')
       readySession(session.sessionId, session)
       if (session.interruptRequested) fail('AGENT_STOP_PENDING', 'Stop was requested before this turn reached the provider.')
+      assertSafetyAdmission()
       continuation?.started(session, origin)
       const structuredLocal = session.provider === 'local' && typeof session.adapter.sendTurnWithSessionInstructions === 'function'
       const localText = structuredLocal
@@ -8023,6 +8697,7 @@ function createAgentHost({
       // words are kept intact and cannot masquerade as retained directions.
       // Once the adapter is invoked, even a synchronous throw can follow a
       // provider write. Retained images and goals must not assume no delivery.
+      assertSafetyAdmission()
       deliveryTracking.dispatched = true
       const dispatched = structuredLocal
         ? session.adapter.sendTurnWithSessionInstructions(request, {
@@ -8032,13 +8707,12 @@ function createAgentHost({
       acknowledged = Promise.resolve(dispatched)
     } catch (error) {
       try {
-        if (!announce.accepted && transcriptReservation) await transcriptReservation.release({ accepted: false, dispatched: deliveryTracking.dispatched })
+        if (!announce.accepted && transcriptReservation) await releaseUnacceptedReservation()
       } finally {
         restoreResumedGoal()
         holdGoalOnUnknownDelivery()
         restoreUnacceptedNotes()
         if (!announce.accepted) continuation?.refused(session, error)
-        offerRecoveryFailure(session, error)
         if (session.turnAnnounce === announce) session.turnAnnounce = null
         settleCustody()
       }
@@ -8058,7 +8732,16 @@ function createAgentHost({
             return result.turnId
           }),
         ])
-        if (acceptedPromptBoundary) await acceptedPromptBoundary
+        /* The provider has the turn from here on. A save boundary that fails
+           now is held back until the turn is recorded as running below, so the
+           session is never left looking idle -- open to a second turn beside
+           this one and answering Stop with AGENT_TURN_NONE -- while the model is
+           still working. See acceptedSendError(). */
+        let unsavedAfterAcceptance = null
+        if (acceptedPromptBoundary) {
+          try { await acceptedPromptBoundary }
+          catch (error) { unsavedAfterAcceptance = acceptedSendError(error, turnId, origin) }
+        }
         // An acknowledgement queued before Stop or process exit can arrive
         // after its session has ended. It cannot revive that turn or answer
         // for a replacement that happens to use the same session id.
@@ -8070,12 +8753,14 @@ function createAgentHost({
         const alreadyCompleted = session.completedWithoutTurnId || session.completedDuringSend.delete(turnId)
         if (alreadyCompleted) session.directUserTurn = false
         session.activeTurnId = alreadyCompleted ? null : turnId
-        if (switchedTier) {
-          session.requestedModelTier = switchedTier
+        if (typeof turnOptions?.model === 'string') {
+          if (switchedTier) session.requestedModelTier = switchedTier
           session.model = turnOptions.model
+          session.typedModel = switchedTier ? null : turnOptions.model
           if (session.nativeModeSettings) session.nativeModeSettings = Object.freeze({ ...session.nativeModeSettings, model: turnOptions.model })
-          continuation?.update(session, { tier: switchedTier })
+          continuation?.update(session, { ...(switchedTier ? { tier: switchedTier } : {}), model: turnOptions.model })
         }
+        if (unsavedAfterAcceptance) throw unsavedAfterAcceptance
         return Object.freeze({
           sessionId: session.sessionId,
           threadId: session.threadId,
@@ -8092,6 +8777,7 @@ function createAgentHost({
              field simply does not read it, exactly as an old caller reading a
              record with no `end` field already does not read one. */
           ...(switchedTier ? { tier: switchedTier } : {}),
+          ...(typeof turnOptions?.model === 'string' ? { model: turnOptions.model } : {}),
         })
       } catch (error) {
         /* No acknowledgement and no event means the role never reached a turn.
@@ -8101,11 +8787,20 @@ function createAgentHost({
         holdGoalOnUnknownDelivery()
         restoreUnacceptedNotes()
         if (!announce.accepted) continuation?.refused(session, error)
-        offerRecoveryFailure(session, error)
         throw error
       }
     })()
     session.sendPromise = sendPromise
+    /* What Stop waits on while this send is held at its save boundary: the
+       accepted turn's id, whether the send then settled or failed only to save
+       it (acceptedSendError). Stop must still reach a turn the model is running. */
+    const sendTurnForStop = sendPromise.catch(error => {
+      const turnId = error && typeof error === 'object' ? acceptedSendTurnIds.get(error) : undefined
+      if (turnId) return { turnId }
+      throw error
+    })
+    sendTurnForStop.catch(() => {})
+    session.sendTurnForStop = sendTurnForStop
     transcriptAdmissions.add(sendPromise)
     // The quiet clock for this turn starts at its send; any event restarts it.
     if (session.provider === 'codex') {
@@ -8128,75 +8823,86 @@ function createAgentHost({
      * the status is deliberately NOT any engine's success word, so nothing can
      * read this as an answer. If the engine did emit its own completion first,
      * activeTurnId is already clear and this adds a second, honest ending rather
-     * than inventing a first one. */
-    void sendPromise.then(
-      accepted => acknowledged.then(
-        () => {},
-        error => {
-          /* Only the turn this send answered for, and only while it is still
-             the one running: an engine that already reported its own ending
-             has been believed, and a second ending must not overwrite it. */
-          if (session.activeTurnId !== accepted.turnId) return
-          session.activeTurnId = null
-          holdGoalOnUnknownDelivery()
-          /* A TURN CUT SHORT BY A REQUESTED CLOSE IS THE CLOSE, NOT A FAILURE.
-             The same rule endSessionFromExit() keeps for the child's exit: "an
-             exit that follows closeSession()/closeAll() is the close, and the
-             caller already knows about that ending." The Claude CLI adapter
-             resolves sendTurn() only when the turn is over and its close()
-             rejects a running turn (CLAUDE_CLI_CLOSED), so every Stop the
-             person pressed on a busy Claude circle arrived here and left as a
-             `failed` completion: main.cjs counted it as the session's last
-             turn status, the tree filed 'turn-failed' with "This Claude
-             session was closed while a turn was running" as the agent's words,
-             and the signed end record for a session the person closed said its
-             last turn failed. The close's own result is the answer. */
-          if (session.closeRequested || session.interruptRequested) return
-          /* THE CLASSIFICATION IS COMPUTED FROM THE RAW MESSAGE, NOT FROM WHAT
-             SURVIVES THE LEAK FILTER.
-             A provider that reports an account limit as prose sends no code, so
-             the words are the only evidence. turnFailureSentence() below is
-             deliberately strict -- it refuses any sentence containing a slash so
-             that a path or a stack frame can never reach the person -- and the
-             observed limit sentence, "You've hit your session limit · resets
-             <time> (<Area>/<City>)", contains an IANA timezone. The whole
-             sentence is therefore withheld, correctly, and the event left here
-             with no code AND no text. Downstream, the renderer's
-             retryFailureKind() and the engine's classifyFailure() both read a
-             code; with nothing to read they recorded no failure, took no hold
-             and scheduled no retry, and the person was told nothing.
-             limitReason() is the one rule in this shell that reads the words as
-             well as the code. Running it on the RAW message and carrying its
-             verdict as a machine-readable field keeps the person-facing filter
-             exactly as strict as it is while giving every later surface the
-             meaning it was missing. The field is the shell's verdict, not the
-             provider's prose: it leaks nothing. */
-          const failureReason = limitReason({ type: 'turn_completed', status: 'failed', code: error?.code, text: error?.message })
-          emit(session, {
-            type: 'turn_completed',
-            ...(session.threadId ? { threadId: session.threadId } : {}),
-            turnId: accepted.turnId,
-            status: 'failed',
-            ...(typeof error?.code === 'string' ? { code: error.code } : {}),
-            ...(turnFailureSentence(error && error.message) ? { text: turnFailureSentence(error && error.message) } : {}),
-            ...(failureReason ? { failureReason } : {}),
-          })
-        },
-      ),
-      /* The send itself was refused; that refusal is already the caller's
-         answer and needs no event beside it. */
+     * than inventing a first one.
+     *
+     * A send that failed only to SAVE its accepted words (acceptedSendError)
+     * still left a running turn behind, so it is watched exactly the same way;
+     * otherwise a child that died during that turn would hold the session busy
+     * for good. */
+    const watchAcceptedTurn = acceptedTurnId => acknowledged.then(
       () => {},
+      error => {
+        /* Only the turn this send answered for, and only while it is still
+           the one running: an engine that already reported its own ending
+           has been believed, and a second ending must not overwrite it. */
+        if (session.activeTurnId !== acceptedTurnId) return
+        session.activeTurnId = null
+        holdGoalOnUnknownDelivery()
+        /* A TURN CUT SHORT BY A REQUESTED CLOSE IS THE CLOSE, NOT A FAILURE.
+           The same rule endSessionFromExit() keeps for the child's exit: "an
+           exit that follows closeSession()/closeAll() is the close, and the
+           caller already knows about that ending." The Claude CLI adapter
+           resolves sendTurn() only when the turn is over and its close()
+           rejects a running turn (CLAUDE_CLI_CLOSED), so every Stop the
+           person pressed on a busy Claude circle arrived here and left as a
+           `failed` completion: main.cjs counted it as the session's last
+           turn status, the tree filed 'turn-failed' with "This Claude
+           session was closed while a turn was running" as the agent's words,
+           and the signed end record for a session the person closed said its
+           last turn failed. The close's own result is the answer. */
+        if (session.closeRequested || session.interruptRequested) return
+        /* THE CLASSIFICATION IS COMPUTED FROM THE RAW MESSAGE, NOT FROM WHAT
+           SURVIVES THE LEAK FILTER.
+           A provider that reports an account limit as prose sends no code, so
+           the words are the only evidence. turnFailureSentence() below is
+           deliberately strict -- it refuses any sentence containing a slash so
+           that a path or a stack frame can never reach the person -- and the
+           observed limit sentence, "You've hit your session limit · resets
+           1:30am (America/Los_Angeles)", contains an IANA timezone. The whole
+           sentence is therefore withheld, correctly, and the event left here
+           with no code AND no text. Downstream, the renderer's
+           retryFailureKind() and the engine's classifyFailure() both read a
+           code; with nothing to read they recorded no failure, took no hold
+           and scheduled no retry, and the person was told nothing.
+           limitReason() is the one rule in this shell that reads the words as
+           well as the code. Running it on the RAW message and carrying its
+           verdict as a machine-readable field keeps the person-facing filter
+           exactly as strict as it is while giving every later surface the
+           meaning it was missing. The field is the shell's verdict, not the
+           provider's prose: it leaks nothing. */
+        const failureReason = limitReason({ type: 'turn_completed', status: 'failed', code: error?.code, text: error?.message })
+        emit(session, {
+          type: 'turn_completed',
+          ...(session.threadId ? { threadId: session.threadId } : {}),
+          turnId: acceptedTurnId,
+          status: 'failed',
+          ...(typeof error?.code === 'string' ? { code: error.code } : {}),
+          ...(turnFailureSentence(error && error.message) ? { text: turnFailureSentence(error && error.message) } : {}),
+          ...(failureReason ? { failureReason } : {}),
+        })
+      },
+    )
+    void sendPromise.then(
+      accepted => watchAcceptedTurn(accepted.turnId),
+      /* The send itself was refused; that refusal is already the caller's
+         answer and needs no event beside it -- unless the provider had
+         accepted the turn and only saving it failed. */
+      error => {
+        const acceptedTurnId = error && typeof error === 'object' ? acceptedSendTurnIds.get(error) : undefined
+        if (acceptedTurnId) return watchAcceptedTurn(acceptedTurnId)
+      },
     )
 
     try {
       return await sendPromise
     } finally {
       try {
-        if (!announce.accepted && transcriptReservation) await transcriptReservation.release({ accepted: false, dispatched: deliveryTracking.dispatched })
+        if (!announce.accepted && transcriptReservation) await releaseUnacceptedReservation()
       } finally {
         transcriptAdmissions.delete(sendPromise)
         settleCustody()
         if (session.sendPromise === sendPromise) session.sendPromise = null
+        if (session.sendTurnForStop === sendTurnForStop) session.sendTurnForStop = null
         if (session.turnAnnounce === announce) session.turnAnnounce = null
         session.completedDuringSend.clear()
         session.completedWithoutTurnId = false
@@ -8354,7 +9060,7 @@ function createAgentHost({
     const state = session.interruptState ||= {
       turnId: session.activeTurnId, providerDone: false, requiresResume: false,
       adapter: session.adapter, threadId: session.threadId, announce: session.turnAnnounce,
-      pendingSend: session.sendPromise, resumePromise: session.workResumePromise,
+      pendingSend: session.sendTurnForStop || session.sendPromise, resumePromise: session.workResumePromise,
       credential: credentialBindingOf(session),
     }
     const assertCapturedSession = () => {
@@ -8403,7 +9109,20 @@ function createAgentHost({
             if (!interruptTurnCompleted(state) && state.turnId
               && (session.activeTurnId === state.turnId || state.pendingAdapter === session.adapter)) {
               assertCapturedSession()
-              const result = await state.adapter.interrupt({ threadId: state.threadId, turnId: state.turnId })
+              let result
+              try {
+                result = await state.adapter.interrupt({ threadId: state.threadId, turnId: state.turnId })
+              } catch (cause) {
+                assertCapturedSession()
+                // The provider may finish the captured turn while its interrupt
+                // request crosses the terminal packet, then refuse that request.
+                // Allow the existing bounded wait to collect that packet. Only
+                // its exact named completion proves
+                // the model is finished; command cleanup still settles separately.
+                if (!interruptTurnCompleted(state)) await waitForTurnRelease(session, state.turnId)
+                assertCapturedSession()
+                if (!interruptTurnCompleted(state)) throw cause
+              }
               assertCapturedSession()
               state.requiresResume = result?.requiresResume === true
             }
@@ -8498,6 +9217,12 @@ function createAgentHost({
       readySession(session.sessionId, session)
       if (!forked || typeof forked.threadId !== 'string' || forked.threadId.length === 0) {
         fail('AGENT_ENGINE_INVALID_SESSION', 'thread/fork returned an invalid thread')
+      }
+      // A fork is only a candidate until its original-home identity is durable.
+      // On refusal it is abandoned: no turn, continuation or event selects it.
+      try { rememberResumeOrigin({ ...session, threadId: forked.threadId }) }
+      catch {
+        fail('AGENT_REWIND_ORIGIN_STORAGE_FAILED', 'Rewind could not save the fork’s original sign-in home. This conversation is still on its previous thread.')
       }
       session.threadId = forked.threadId
       continuation?.update(session, { resumeThreadId: session.threadId })
@@ -8666,14 +9391,13 @@ function createAgentHost({
     return Object.freeze({ sessionId: session.sessionId, approvalId: id, decision: chosen })
   }
 
-  async function closeSession({ sessionId, accountRecovery = null, preserveContinuation = false } = {}) {
+  async function closeSession({ sessionId, preserveContinuation = false } = {}) {
     const id = normalizeSessionId(sessionId)
     const session = sessions.get(id)
     if (!session) fail('AGENT_SESSION_UNKNOWN', `Unknown sessionId: ${id}`)
-    if (accountRecovery !== null) recoveryTickets.assertAvailable(accountRecovery?.recoveryId, id)
     // A validated recovery ticket replaces this session; it is not an owner Stop.
     // Keep both deferred courier work and its continuation until the successor owns them.
-    const recoverable = preserveContinuation || accountRecovery !== null
+    const recoverable = preserveContinuation
     session.treeRetirementRecoverable = recoverable
     if (!recoverable) continuation?.stop(session)
     continuation?.forget(session)
@@ -8815,7 +9539,19 @@ function createAgentHost({
    *
    * IT STARTS NOTHING and returns no path: tier ids, which are already the
    * renderer's own vocabulary. */
-  function startableTiers() {
+  function startableTiers({ tier } = {}) {
+    if (tier !== undefined) {
+      try {
+        resolveStartTier(tier)
+        return Object.freeze({ ok: true, tier })
+      } catch (error) {
+        return Object.freeze({
+          ok: false,
+          tier,
+          code: typeof error?.code === 'string' ? error.code : 'AGENT_TIER_UNAVAILABLE',
+        })
+      }
+    }
     return Object.freeze({
       ok: true,
       tiers: Object.freeze(Object.keys(START_TIERS).filter((id) => {
@@ -8841,7 +9577,7 @@ function createAgentHost({
      stays exactly the four keys it always was. A kind that is present but
      is neither 'T' nor 'A' REFUSES BY NAME (AGENT_REQUEST_KIND_INVALID) --
      it is never silently coerced into a plain rule, the same honesty every
-     other refusal on this seam already keeps. The engine is adding
+     other refusal on this seam already keeps. The engine lane is adding
      kind dispatch inside r-ledger.js's own fileRequest; until that lands, an
      older module simply ignores the extra field (it destructures only the
      keys it knows) and mints an ordinary R id -- filing still succeeds, it
@@ -8858,8 +9594,8 @@ function createAgentHost({
       fail('AGENT_REQUEST_DIFFICULTY_INVALID', 'Choose Easy, Medium or Hard for a task; no task was filed.')
     }
     /* A RULE filing that names the chat as its door is refused while the
-       person's "Who adds standing rules" is "Ledger page only" (rules.filing_from).
-       The Ledger page's box names no door and is always let
+       person's "Who adds standing rules" is "Ledger page only" (rules.filing_from,
+       owner 2026-09-15). The Ledger page's box names no door and is always let
        in, and a /Task or /Ask is not a rule, so the choice does not touch it. */
     if (via === 'chat' && (kind === undefined || kind === null) && !chatFilingAllowed(agentFilingGate)) {
       fail('AGENT_REQUEST_CHAT_OFF', 'Filing rules from a chat is off in Settings ("Who adds standing rules" is set to Ledger page only), so nothing was filed. Add it on the Ledger page, or change that setting.')
@@ -8974,8 +9710,9 @@ function createAgentHost({
   }
 
   /* THE PERSON'S RESOLUTION OF ONE STANDING REQUEST -- R_LEDGER kinds
-   * follow-on (built exactly the way decideStandingRequest is built, not by
-   * loading the store by path). The engine adds `resolve({ id, status, reason, now }, options)`
+   * follow-on, 2026-09-07 (Controller 3 L4e, corrected 2026-09-07: "exactly
+   * the way decideStandingRequest is built" wins over "load the store by
+   * path"). Worker's L1f adds `resolve({ id, status, reason, now }, options)`
    * to src/lib/r-ledger.js beside `decide`, with the same shape: the wrapper
    * binds actor 'owner' itself, so THIS seam never passes an actor, exactly
    * as decideStandingRequest never does. Reject an id whose first letter is
@@ -8984,7 +9721,7 @@ function createAgentHost({
    * otherwise surface as a confusing "entry unknown" rather than a clear
    * refusal); reject a status the loaded module does not name -- read
    * RESOLUTION_STATUSES from whatever the loaded module exposes (r-ledger's
-   * own re-export if the engine adds one, else the store's export, loaded the way
+   * own re-export if L1f adds one, else the store's export, loaded the way
    * canonical-ledger-read.cjs loads it -- which is exactly how
    * loadOwnerRequestStore() above already loads it into `ownerRequestStore`,
    * so no second load is needed here) AT CALL TIME, never a hardcoded list.
@@ -9033,23 +9770,23 @@ function createAgentHost({
   }
 
   /* THE LEDGER PAGE'S WRITE VERBS FOR TASK AND ASK RECORDS -- ledger kinds,
-   * Built the same shape as the
+   * 2026-09-07 (Controller 3 ruling 05:20Z). Built the same shape as the
    * three rewrites just above -- person-only, one bounded id in, {ok, id,
    * status} out, no path -- but these five reach the store directly rather
    * than through the R module's findEntry: the id's own first letter names
    * its kind (T for the task verbs, A for the ask verbs) so it is checked
-   * before the store is ever touched, as the rule requires.
+   * before the store is ever touched, exactly as Controller 3 ordered.
    * completeTask and removeTask pass 'owner' as the actor because this
    * bridge is reachable ONLY from the Ledger page (the person's hand); the
-   * store itself would accept any actor for these two (agents may complete
-   * and remove these tasks), but that wider
+   * store itself would accept any actor for these two (the owner's words:
+   * "these tasks can be completed and removed by agents"), but that wider
    * door is the tools lane's (t_ledger.complete / t_ledger.remove), not this
    * one. The bridge binds the owner actor for all five verbs; the store
    * retains its own actor and status rules for calls from other doors.
    *
    * ONCE THE STORE IS CALLED, ITS OWN CODE AND SENTENCE PASS THROUGH
-   * UNCHANGED (the rule: the store's typed refusal codes pass through
-   * unchanged) -- unlike the R family's R_LEDGER_* -> AGENT_REQUEST_*
+   * UNCHANGED (Controller 3, verbatim: "the store's typed refusal codes pass
+   * through unchanged") -- unlike the R family's R_LEDGER_* -> AGENT_REQUEST_*
    * re-prefix above, a status-not-completable or entry-unknown refusal here
    * is already a sentence the person can act on, and renaming it would claim
    * ownership of a code this surface does not own. */
@@ -9115,9 +9852,9 @@ function createAgentHost({
     }
   }
 
-  /* THE OWNER REMOVES ONE ASK OUTRIGHT (from the ledger page, which draws a
-     fifth button beside answer and decline). Same shape as declineAsk just
-     above: owner-gated at the
+  /* THE OWNER REMOVES ONE ASK OUTRIGHT (Controller 3 ruling, from Worker 2's
+     ledger-page commit 7c6b70e0, which draws a fifth button beside answer
+     and decline). Same shape as declineAsk just above: owner-gated at the
      store (assertPerson), same id-kind guard, same refusal posture. */
   async function removeAsk({ id } = {}) {
     const chosenId = ledgerWriteVerbId('A', id, 'an ask record')
@@ -9250,6 +9987,8 @@ function createAgentHost({
     return {
       busy: Boolean(session.activeTurnId || session.sendPromise || session.turnAnnounce || session.rewindPending || session.modeSelectionPending || session.settingsPending || session.standaloneSwitch || session.replacementHold || session.interruptRequested),
       closing: session.closeRequested === true,
+      ...(session.safetyBlocked ? { automaticTurnBlock: SAFETY_BLOCK, lastTurnStatus: session.safetyLastTurnStatus || 'failed' }
+        : session.modelRefused ? { automaticTurnBlock: MODEL_REFUSAL_BLOCK } : {}),
       directUserTurn: isDirectUserTurn(sessionId),
       /* THE GOAL SURVIVES A RELOAD because it was never the page's to lose:
          it lives on the session in this process, and the turns it starts keep
@@ -9257,6 +9996,17 @@ function createAgentHost({
          reconnecting page learns what it came back to, so a person who
          reloaded does not see an agent working and no reason why. */
       goal: session.goal,
+      // Metadata only: expose the courier's custody state, never queued text,
+      // message identities, provider thread IDs or permission bindings.
+      ...(session.treeIdentity || session.treeAddress ? { courier: {
+        deliveryUncertain: session.treeDeliveryUncertain === true,
+        queuedMessages: session.treeQueue?.length || 0,
+        handoffPending: Boolean(session.treeHandoffPromise),
+        receiptPending: session.treeHandoffRetry?.acknowledgmentPending === true || session.treeHandoffRetry?.readAcknowledgmentPending === true
+          || (session.treeReadsOwed?.length || 0) > 0 || (session.treeAcknowledgmentsOwed?.length || 0) > 0,
+        retryAfterMs: Number.isFinite(session.treeHandoffRetry?.retryAt)
+          ? Math.min(30_000, Math.max(0, session.treeHandoffRetry.retryAt - Date.now())) : 0,
+      } } : {}),
       /* Present only while a Codex turn has gone quiet (NO_PROGRESS_EVENT):
          how long since its last engine event. Nothing has been stopped. */
       ...(quietTurnMs(session) !== null ? { noProgress: Object.freeze({ quietForMs: quietTurnMs(session) }) } : {}),
@@ -9289,18 +10039,9 @@ function createAgentHost({
    * with a null name. A computer with one sign-in has no account question, and
    * a row saying so would invite a caller to treat "nothing to choose" as
    * "nobody knows". */
-  function offerRecoveryFailure(session, error) {
-    const offer = recoveryTickets.offer(session, { type: 'turn_completed', status: 'failed', code: error?.code, text: error?.message })
-    if (offer) queueMicrotask(() => emit(session, offer))
-  }
 
-  function offerPendingAccountRecoveries() {
-    for (const session of sessions.values()) {
-      if (!session.recovery.failure) continue
-      const offer = recoveryTickets.offer(session, session.recovery.failure)
-      if (offer) queueMicrotask(() => emit(session, offer))
-    }
-  }
+
+
 
   function claimStandaloneReplacement({ sessionId, tier, effort, account = { mode: 'keep' } } = {}) {
     assertOpen()
@@ -9314,8 +10055,8 @@ function createAgentHost({
     }
     const target = resolveStartTier(tier)
     const selectedEffort = resolveEffort(effort, target)
-    if (!account || !['keep', 'automatic', 'exact'].includes(account.mode)) {
-      fail('AGENT_SWITCH_ACCOUNT_INVALID', 'Choose whether to keep, select, or automatically choose an account.')
+    if (!account || !['keep', 'exact'].includes(account.mode)) {
+      fail('AGENT_SWITCH_ACCOUNT_INVALID', 'Choose whether to keep the current account or select an account.')
     }
     let exactAccount = null, defaultAccount = false
     if (target.provider !== 'local') {
@@ -9452,20 +10193,37 @@ function createAgentHost({
     },
     startSession,
     activeSessionCount: () => sessions.size + activeStarts,
-    offerPendingAccountRecoveries,
     async sendTurnTracked(request) {
       const dispatchTracking = { dispatched: false }
-      try {
-        const result = await sendTurn({ ...request, dispatchTracking })
-        return { ok: true, deliveryDisposition: 'accepted', result }
-      } catch (error) {
-        return { ok: false, code: typeof error?.code === 'string' ? error.code : 'AGENT_SEND_FAILED',
-          deliveryDisposition: dispatchTracking.dispatched ? 'unknown' : 'not-sent' }
-      }
+      let timer = null
+      const sending = (async () => {
+        try {
+          const result = await sendTurn({ ...request, dispatchTracking })
+          return { ok: true, deliveryDisposition: 'accepted', result }
+        } catch (error) {
+          /* 'accepted' when the provider took the turn and only a later step
+             (saving it) failed: that answer is not a retryable non-delivery. */
+          return { ok: false, code: typeof error?.code === 'string' ? error.code : 'AGENT_SEND_FAILED',
+            deliveryDisposition: dispatchTracking.accepted ? 'accepted' : dispatchTracking.dispatched ? 'unknown' : 'not-sent' }
+        }
+      })()
+      if (request?.origin !== 'automatic') return sending
+      // This bounds only an absent native acknowledgement, never a running
+      // turn or its durable-save boundary. Keep the original send and its
+      // custody alive: expiration cannot prove that the provider sent nothing.
+      const expired = new Promise(resolve => {
+        timer = setTimeout(() => {
+          if (dispatchTracking.accepted) return
+          resolve({ ok: false, code: 'AGENT_AUTOMATIC_TURN_START_UNCONFIRMED', deliveryDisposition: 'unknown',
+            sentence: 'The assistant did not confirm starting the continuation. Its session and queued messages are kept. Stop it before retrying.' })
+        }, automaticTurnStartTimeoutMs)
+      })
+      try { return await Promise.race([sending, expired]) }
+      finally { if (timer !== null) clearTimeout(timer) }
     },
-    pendingAccountRecoveries: () => recoveryTickets.pending(),
     sendTurn,
     adoptTreeAddress,
+    adoptStoppedConversation,
     updateTreeAddress,
     treeLinks,
     setTreeLink,
@@ -9565,6 +10323,8 @@ function createAgentHost({
     closeAll,
     startableTiers,
     providerForTier,
+    startRouteForTier,
+    typedModelFor,
   })
 }
 

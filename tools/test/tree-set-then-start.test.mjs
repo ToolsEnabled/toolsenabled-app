@@ -16,8 +16,8 @@ function between(start, end) {
 
 test('compose sets a persisted draft without entering the launch path', () => {
   const submit = between('async function submitCompose(draft, detail, workspace, submission)', 'async function startDraftNode')
-  /* THE LABEL IS THE ACTION, NOT THE TARGET TREE (Set and Start are both
-     offered as options). This used to derive Set-versus-Start from
+  /* THE LABEL IS THE ACTION, NOT THE TARGET TREE (owner: "ITS SUPPOSED TO
+     HAVE SET OR START AS OPTIONS"). This used to derive Set-versus-Start from
      treeHasStarted() -- the tree deciding what the person's press meant,
      which is the exact defect the two-button compose panel exists to close.
      draft.mode is which button src/agent-compose-panel.js actually built and

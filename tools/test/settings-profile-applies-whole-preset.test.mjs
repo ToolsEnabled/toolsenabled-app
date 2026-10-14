@@ -1,11 +1,12 @@
-/* CHOOSING A WORKING PRESET APPLIES THE WHOLE PRESET (the slider
- * did not work for Autonomous+; the sliders are independent and give a quick,
- * easy way to set most settings, and they are preset profiles).
+/* CHOOSING A WORKING PRESET APPLIES THE WHOLE PRESET (owner, 2026-09-16: "my
+ * slider doesnt even work now for autonomous+. all the sliders are supposed to
+ * be independent and make for a quick easy way to set the large majority of
+ * settings. its literally just preset profiles").
  *
  * This file supersedes settings-profile-keeps-your-choices.test.mjs (2026-09-15),
  * which pinned the rule that a row the person had changed since the last
  * application was HELD BACK when a preset was chosen again. Measured on the
- * installed copy: with every row carrying user provenance, choosing
+ * owner's own install: with every row carrying user provenance, choosing
  * Autonomous+ left most of the preset unstaged, the message said "N settings
  * you chose yourself are kept", and the slider read as broken. The receipt the
  * earlier change introduced stays, and does the honest half of that job: once
@@ -157,7 +158,7 @@ test('the review shows each current value beside the preset value and offers no 
 })
 
 test('after the person changes a row, the saved name keeps the applied preset and counts the change', async () => {
-  // "Custom" is what sent the person back to the slider; "Autonomous+ · 1
+  // "Custom" is what sent the owner back to the slider; "Autonomous+ · 1
   // changed" keeps the preset they chose in view, and the thumb stays on it.
   const { root } = mount({ values: { ...appliedValues(), 'agent.message_screening': 'Refuse look-alikes' } })
   await settle()
@@ -194,7 +195,7 @@ test('a permission level that clamps the answer hands Setup the clamped one', as
   assert.equal(staged.at(-1)?.intent?.approvals, 'stop', 'Setup is handed the answer this level allows')
 })
 
-/* BASIC IS BASIC (product rule T782). Detailed activity
+/* BASIC IS BASIC (owner direction 2026-09-20, T782). Detailed activity
    auditing is the person's own setup under Advanced; a preset never stages
    it, never counts a person's audit choice as a change, and says in the
    review that it is kept and where its setup lives. */

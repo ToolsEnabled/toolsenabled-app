@@ -13,19 +13,19 @@ body[data-navigation="side"] :is(.research-shell, .settings-shell, .metrics) {
 
 body[data-navigation="side"] .settings-header.m-head,
 body[data-navigation="side"] .m-page-head {
-  min-height: 96px;
-  margin: 0;
-  padding: 12px 0 20px;
+  min-height: 0;
+  margin: 0 0 24px;
+  padding: 0;
   align-items: center;
   gap: 16px 32px;
 }
 
 body[data-navigation="side"] :is(.settings-header .mt, .m-page-head h1) {
   color: var(--ink);
-  font-size: 36px;
-  font-weight: 610;
-  line-height: 1.15;
-  letter-spacing: -.035em;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -.012em;
   text-transform: none;
 }
 
@@ -252,7 +252,7 @@ body[data-navigation="side"] .metrics .m-usage-record[open] summary { font-weigh
   body[data-navigation="side"] .settings-page [data-setting-id="theme"] .settings-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container sidebar-page (max-width: 700px) {
-  body[data-navigation="side"] :is(.settings-header .mt, .m-page-head h1) { font-size: 30px; }
+  body[data-navigation="side"] :is(.settings-header .mt, .m-page-head h1) { font-size: 22px; }
   body[data-navigation="side"] .settings-header.m-head { grid-template-columns: minmax(0, 1fr); }
   body[data-navigation="side"] .settings-command-bar { position: static; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   body[data-navigation="side"] .settings-save-bar [role="status"] { text-align: start; }
@@ -292,13 +292,14 @@ body[data-navigation="side"] .metrics .m-usage-record[open] summary { font-weigh
 }
 
 /* With the side navigation the pages no longer sit in a centred column: the
-   workspace beside the rail is the page. Home and Settings span it (the
-   side white space is used now that navigation is a sidebar);
+   workspace beside the rail is the page. Home and Settings span it (owner,
+   2026-09-10: "use up the side white space since we changed to a sidebar");
    their own grids already give the remaining width to the panel and the rows. */
-body[data-navigation="side"] .home:has(.home-ring-stage) { max-width: none; }
 body[data-navigation="side"] .settings-shell { max-width: none; }
-/* METRICS WAS LEFT OUT OF THAT CHANGE: the metrics page still had wide side
-   gaps. It is the same request as the one above, about the one sidebar
+/* METRICS WAS LEFT OUT OF THAT CHANGE, and the owner has now asked twice:
+   2026-09-15, "the metrics page still doesnt seem to have its formatting landed
+   or needs its formatting reworked because theres huge side gaps at times".
+   It is the same sentence as the 2026-09-10 one above, about the one sidebar
    page that never got it.
    MEASURED before the change, rendered, at a 1920px window: Ledger 1920 wide
    and Settings 1920, both flush; Computers 1888 with its 16px gutter either
@@ -311,3 +312,8 @@ body[data-navigation="side"] .settings-shell { max-width: none; }
    still governs the centred non-sidebar layout, where the cap is what keeps the
    page from sprawling. This file is where the sidebar exceptions already live. */
 body[data-navigation="side"] .metrics { max-width: none; }
+
+/* Common page-header typography wins over the former large Settings variants;
+   the page still owns its grid, category rail and toolbar layout. */
+body[data-navigation="side"] .view-pad.settings-page .settings-shell .settings-header .mt { font-size: 22px; font-weight: 650; line-height: 1.2; letter-spacing: -.012em; }
+body[data-navigation="side"] .settings-page .settings-shell .settings-header.m-head { min-height: 0; padding-block: 0; margin-bottom: 24px; border-bottom: 0; }

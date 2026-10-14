@@ -2,10 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import postcss from 'postcss'
 
 /* THE HOME FEED, STYLE-UNIFIED ONTO THE DENSE TOKENS, PINNED AT SOURCE.
  *
- * The picked chat card ("Dense — light-mode palette",
+ * The owner's picked chat card ("Dense — light-mode palette",
  * design/chat/picked-card.png) and its SIZING LAW (design/chat/Sizes.dc.html)
  * set a type scale of 13.5/12/11/10.5px and a 3px corner radius. This is a
  * STYLE unification only -- src/views/home.js still builds its own hand-rolled
@@ -78,23 +79,20 @@ test('the "next step" door\'s corner unifies onto the 3px radius token', () => {
 })
 
 test('no rule inside the feed panel is left on the retired 12.5px/11.5px steps', () => {
-  /* The feed panel is TWO sections in this file, split by the hero ring
-     region in between (a different design region this lane does not touch,
-     and whose own .home-fact is deliberately still 12.5px) and followed by
-     the full-page takeover chrome (also untouched): the session/thread chrome
-     (session-head, panel-badge, turns, the dead-but-harmless .home-door rules
-     snapped alongside it) and, further down past the whole hero section, the
-     run rows (log-thread-head, session-foot). Each slice stops at the next
-     section header. */
-  const threadStart = css.indexOf('The coordinator session thread')
-  const heroStart = css.indexOf('Home hero')
-  const runsStart = css.indexOf('What has actually run on this computer.')
-  const fullPageStart = css.indexOf('THE FULL PAGE.')
-  assert.ok(
-    threadStart >= 0 && heroStart > threadStart && runsStart > heroStart && fullPageStart > runsStart,
-    'the feed-panel section markers moved; re-anchor this scan',
-  )
-  const panel = css.slice(threadStart, heroStart) + css.slice(runsStart, fullPageStart)
-  assert.doesNotMatch(panel, /font-size:\s*12\.5px/, 'a 12.5px rule survived the Dense unification')
-  assert.doesNotMatch(panel, /font-size:\s*11\.5px/, 'an 11.5px rule survived the Dense unification')
+  // Cover the same thread, doors, turns and run-row regions by parsed rules;
+  // descriptive comments can change without changing their font values.
+  const panelClasses = /\.(?:home-door(?:-reason)?|session-(?:head|view|log|input|foot)|panel-badge|log-turns|turn(?:-who|-text|-fold|-fold-head)?|run-turn|home-run|log-thread-head)(?=[\s.#:[>+~]|$)/
+  const sizes = []
+  postcss.parse(css).walkRules(rule => {
+    if (!panelClasses.test(rule.selector)) return
+    rule.walkDecls('font-size', declaration => {
+      if (/^-?\d+(?:\.\d+)?px$/.test(declaration.value.trim())) {
+        sizes.push({ selector: rule.selector, value: Number.parseFloat(declaration.value) })
+      }
+    })
+  })
+  assert.ok(sizes.length > 0, 'the panel font values must be examined')
+  for (const { selector, value } of sizes) {
+    assert.equal([12.5, 11.5].includes(value), false, `${selector}: retired ${value}px panel type step`)
+  }
 })

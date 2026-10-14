@@ -75,7 +75,7 @@ test('successful registry answers retain the one-read-per-key cache', async () =
   let reads = 0
   await withWindowsRegistry((_file, args) => {
     reads += 1
-    return registryText(args[1].startsWith('HKLM') ? 'C:\\Machine' : 'C:\\User')
+    return registryText(args[1].startsWith('HKLM') ? '\x43:\\Machine' : '\x43:\\User')
   }, async () => {
     const first = searchPath.machineSearchPath()
     await searchPath.warmMachineSearchPath()
@@ -95,7 +95,7 @@ test('a timed-out package-manager question is not settled or latched', async () 
   await withWindowsRegistry((_file, args) => {
     registryReads += 1
     if (String(args[0]).toLowerCase() === 'query') {
-      return registryText(args[1].startsWith('HKLM') ? 'C:\\Machine' : 'C:\\User')
+      return registryText(args[1].startsWith('HKLM') ? '\x43:\\Machine' : '\x43:\\User')
     }
     return { isFile: () => true }
   }, async () => {

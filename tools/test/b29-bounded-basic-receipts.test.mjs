@@ -1,4 +1,4 @@
-/* B29: with audit off (Basic, the default since an earlier commit), the shell answers a
+/* B29: with audit off (Basic, the default since 7a1134d61), the shell answers a
  * bounded start with the engine's unsigned not-required receipt
  * (main.cjs recordSpawnIntent -> operation.skippedStatus('controller.agent.launch',
  * sessionId); agent-command-surface.cjs agent:start / agent:work-status `record`),

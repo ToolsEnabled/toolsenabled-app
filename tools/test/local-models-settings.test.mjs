@@ -85,7 +85,7 @@ test('the settings window can write the row that decides which model answers', (
   for (const id of MODEL_ROW_IDS) {
     assert.ok(shell.WRITABLE_IDS.includes(id),
       `${id} must be writable from the settings window: a row a person cannot change is a row`
-      + ' the product decided for them, and the rule is to choose the local model by name')
+      + ' the product decided for them, and the owner asked to choose the local model by name')
   }
 })
 

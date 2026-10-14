@@ -9,8 +9,8 @@ const floors = new Map()
 const nextPages = new Map()
 let sequence = 0
 
-/* A READ THAT NEVER ANSWERS, ON DEMAND. MEASURED on a development tree:
- * every circle's heartbeat stopped within milliseconds of every other's
+/* A READ THAT NEVER ANSWERS, ON DEMAND. MEASURED 2026-09-04 on the owner's
+ * fourth tree: every circle's heartbeat stopped within 132 ms of every other's
  * and never resumed, which is the shape of the courier's one shared read
  * hanging inside the engine. While reads are held, inbox() waits on a promise
  * the test releases; the records placed meanwhile stay in the inbox so the
@@ -19,21 +19,33 @@ let sequence = 0
 let held = null
 let reads = 0
 
-async function inbox({ agentId, cursor = 0, limit = 25 } = {}) {
+/* THE STORED READ POSITION, mirrored from the real provider (T1744). Asked
+   for with includeReadPosition, a page also carries the stream's head and the
+   durable read cursor, which here is the highest accepted read receipt for
+   that inbox (0 when none was accepted). A page nobody asked about is
+   unchanged. */
+const storedCursors = new Map()
+function withReadPosition(agentId, page, requested) {
+  if (requested !== true) return page
+  return { ...page, headSequence: Number.isSafeInteger(page.headSequence) ? page.headSequence : sequence,
+    durableReadCursor: storedCursors.get(agentId) || 0 }
+}
+
+async function inbox({ agentId, cursor = 0, limit = 25, includeReadPosition = false } = {}) {
   reads += 1
   if (held) await held.promise
   if (nextPages.has(agentId)) {
     const records = nextPages.get(agentId)
     nextPages.delete(agentId)
-    return { page: { records } }
+    return { page: withReadPosition(agentId, { records }, includeReadPosition) }
   }
   const floorSequence = floors.get(agentId) || 1
-  if (cursor < floorSequence - 1) return { page: { status: 'TRUNCATED', floorSequence,
-    headSequence: sequence, cursor, records: [] } }
+  if (cursor < floorSequence - 1) return { page: withReadPosition(agentId, { status: 'TRUNCATED', floorSequence,
+    headSequence: sequence, cursor, records: [] }, includeReadPosition) }
   const records = (inboxes.get(agentId) || [])
     .filter(record => record.sequence > cursor)
     .slice(0, limit)
-  return Object.freeze({ page: Object.freeze({ records: Object.freeze(records) }) })
+  return Object.freeze({ page: Object.freeze(withReadPosition(agentId, { records: Object.freeze(records) }, includeReadPosition)) })
 }
 
 function holdReads() {
@@ -85,6 +97,9 @@ let readReceiptMode = 'accept'
 function acknowledgeRead({ agentId, message, sequence } = {}) {
   readReceipts.push({ agentId, messageId: message?.id, sequence })
   if (readReceiptMode === 'throw') return Promise.reject(new Error('read receipt storage refused'))
+  if (readReceiptMode === 'accept' && Number.isSafeInteger(sequence)) {
+    storedCursors.set(agentId, Math.max(storedCursors.get(agentId) || 0, sequence))
+  }
   return Promise.resolve({ accepted: readReceiptMode === 'accept' })
 }
 function readReceiptsSeen() { return readReceipts.map(entry => ({ ...entry })) }
@@ -93,6 +108,7 @@ function setReadReceiptMode(mode) { readReceiptMode = mode }
 function reset() {
   readReceipts.length = 0
   readReceiptMode = 'accept'
+  storedCursors.clear()
   inboxes.clear()
   floors.clear()
   nextPages.clear()

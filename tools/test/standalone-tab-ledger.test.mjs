@@ -1,4 +1,4 @@
-/* B4 (1.0.48, owner decision: reopen them): the New agent tabs that are open are
+/* B4 (1.0.48, owner: "Yes, reopen them"): the New agent tabs that are open are
    written down, so a restart can bring them back and the seat sweep can tell an
    open tab from a lost one. This pins the list itself: what a row may hold, that
    damage reads as damage rather than as "no tabs", and that the sweep's union

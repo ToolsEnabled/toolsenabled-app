@@ -1,17 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, linkSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, linkSync, rmSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { THEME_CHOICES } from '../../src/theme-choice.js'
-import { FONT_CHOICES } from '../../src/font-choice.js'
+import { FONT_CHOICES, DEFAULT_FONT } from '../../src/font-choice.js'
 import { TEXT_SIZES } from '../../src/text-size.js'
-import { DEFAULT_GLOW, GLOW_MIN, GLOW_MAX, DEFAULT_REDUCE_MOTION } from '../../src/appearance-persistence.js'
+import { DEFAULT_REDUCE_MOTION } from '../../src/appearance-persistence.js'
 
 const require = createRequire(import.meta.url)
 const { PREFERENCES, FONT_STACKS, scenarios, ownedPreferenceFile, readPreferenceFile, readStartIdentity,
-  assertPreferenceReceipt, assertPreferenceChange, assertPreferenceRestored, withRestoration, assertBoundaryKey } = require('../lib/page2-native-preference-scenarios.cjs')
+  assertPreferenceReceipt, assertPreferenceChange, assertPreferenceRestored, withRestoration } = require('../lib/page2-native-preference-scenarios.cjs')
 const preference = id => PREFERENCES.find(item => item.id === id)
 const hash = '1'.repeat(64)
 
@@ -21,17 +21,16 @@ function receipt() {
     notice: { damaged: null, preservedAt: null, refused: null } },
   raw, host: Object.fromEntries(PREFERENCES.map(item => [item.key, { ok: true, value: null }])),
   disk: { file: '/owned/profile/renderer-prefs.json', sha256: hash, protectedSha256: hash, values: structuredClone(raw) }, starts: { count: 0, sha256: hash },
-  applied: { theme: 'white', themeBackground: '#ffffff', fontStack: FONT_STACKS.plex, bodyFont: FONT_STACKS.plex,
-    zoom: '', layoutZoom: '', glow: '1', reduceMotion: false, reading: null } }
+  applied: { theme: 'white', themeBackground: '#ffffff', fontStack: FONT_STACKS[preference('ui_font').default], bodyFont: FONT_STACKS[preference('ui_font').default],
+    zoom: '', layoutZoom: '', reduceMotion: false, reading: null } }
 }
 function changed(before, id, value) {
   const after = structuredClone(before), item = preference(id)
-  const raw = ['glow', 'reduce_motion'].includes(id) && value === item.default ? null : String(value)
+  const raw = id === 'reduce_motion' && value === item.default ? null : String(value)
   after.raw[item.key] = raw; after.host[item.key].value = raw; after.disk.values[item.key] = raw
   if (id === 'theme') { after.applied.theme = value; after.applied.themeBackground = `theme ${value}` }
   else if (id === 'ui_font') { after.applied.fontStack = FONT_STACKS[value]; after.applied.bodyFont = FONT_STACKS[value] }
   else if (id === 'text_size') { after.applied.zoom = value === '1' ? '' : value; after.applied.layoutZoom = after.applied.zoom }
-  else if (id === 'glow') after.applied.glow = String(value / 100)
   else if (id === 'reduce_motion') after.applied.reduceMotion = value
   else after.applied.reading = { width: value, max: value === 'wide' ? '1400px' : '920px',
     label: value === 'wide' ? 'Wide' : 'Comfortable', pressed: String(value === 'wide'), subject: 'coordinator', exampleShown: false }
@@ -42,14 +41,34 @@ const mountedHome = before => ({ ...before, applied: { ...before.applied, readin
 test('the reviewed native preference vocabulary matches the actual source options and defaults', () => {
   assert.deepEqual(preference('theme').choices, THEME_CHOICES.map(item => item.id))
   assert.deepEqual(preference('ui_font').choices, FONT_CHOICES.map(item => item.id))
+  assert.equal(preference('ui_font').default, DEFAULT_FONT)
   assert.deepEqual(FONT_STACKS, Object.fromEntries(FONT_CHOICES.map(item => [item.id, item.stack])))
   assert.deepEqual(preference('text_size').choices, TEXT_SIZES.map(String))
-  assert.deepEqual(preference('glow').choices, [GLOW_MIN, GLOW_MAX])
-  assert.equal(preference('glow').default, DEFAULT_GLOW)
   assert.equal(preference('reduce_motion').default, DEFAULT_REDUCE_MOTION)
 })
 
-for (const [id, value] of [['theme', 'cobalt'], ['ui_font', 'mono'], ['text_size', '1.12'], ['glow', 200], ['reduce_motion', true], ['reading_width', 'wide']]) {
+test('the retired Quick Settings Glow slider earns no native preference case', () => {
+  assert.equal(preference('glow'), undefined)
+  assert.equal(PREFERENCES.some(item => item.kind === 'range' || item.key === 'mc.set.glow'), false)
+  assert.equal(scenarios.some(item => item.id === 'quick-preference-glow' || item.controls.includes('appearance.quick.glow')), false)
+})
+
+// 1.0.50 removed `#set-glow` from src/quick-settings.js and the Glow row from
+// src/views/settings.js. A packaged driver that still looks for either records
+// a false failure (appearance-persistence-drive is a non-skippable step of the
+// Linux cut) or a false DEFECT (settings-truth-drive's ledger), so the three
+// drivers are pinned to the retired control's absence.
+test('the packaged and native drivers no longer drive the retired Glow slider', () => {
+  for (const file of ['tools/appearance-persistence-drive.mjs', 'tools/settings-truth-drive.mjs', 'tools/lib/page2-native-preference-scenarios.cjs']) {
+    const source = readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8')
+    assert.equal(source.includes('#set-glow'), false, `${file} still locates the retired slider`)
+    assert.equal(source.includes('data-setting-id="glow"'), false, `${file} still locates the retired Settings row`)
+    assert.equal(/nudge\('glow'/.test(source), false, `${file} still nudges the retired range`)
+    assert.equal(source.includes("getPropertyValue('--glow')"), false, `${file} still reads the retired --glow property`)
+  }
+})
+
+for (const [id, value] of [['theme', 'cobalt'], ['ui_font', 'mono'], ['text_size', '1.12'], ['reduce_motion', true], ['reading_width', 'wide']]) {
   test(`preference proof accepts the exact ${id} change and a reported visible restoration`, () => {
     const before = id === 'reading_width' ? mountedHome(receipt()) : receipt(), item = preference(id)
     assertPreferenceReceipt(before)
@@ -60,7 +79,7 @@ for (const [id, value] of [['theme', 'cobalt'], ['ui_font', 'mono'], ['text_size
     const proof = assertPreferenceRestored(before, restored, item)
     assert.equal(proof.originalRaw, null)
     assert.equal(proof.effectiveValue, item.default)
-    assert.equal(proof.canonicalDefaultWritten, !['glow', 'reduce_motion'].includes(id))
+    assert.equal(proof.canonicalDefaultWritten, id !== 'reduce_motion')
   })
 }
 
@@ -111,30 +130,6 @@ test('a stored width without an actual mounted Home control cannot earn reading-
   const before = mountedHome(receipt()), after = changed(before, 'reading_width', 'wide')
   after.applied.reading = null
   assert.throws(() => assertPreferenceChange(before, after, preference('reading_width'), 'wide'), /actual mounted reading controls/)
-})
-
-test('slider endpoint evidence requires the actual trusted key and focused native target', () => {
-  for (const [key, value] of [['ArrowLeft', 0], ['ArrowRight', 200]]) {
-    const receipt = { keys: [{ key, trusted: true }], value: String(value), focused: true }
-    assertBoundaryKey(receipt, key, value)
-    for (const mutate of [
-      copy => { copy.keys = [] },
-      copy => { copy.keys[0].trusted = false },
-      copy => { copy.keys[0].key = 'Enter' },
-      copy => { copy.focused = false },
-      copy => { copy.value = '100' },
-    ]) {
-      const copy = structuredClone(receipt); mutate(copy)
-      assert.throws(() => assertBoundaryKey(copy, key, value))
-    }
-  }
-})
-
-test('glow accepts floating representation of a whole percentage and refuses unsupported style values', () => {
-  const before = receipt(), after = changed(before, 'glow', 113)
-  assertPreferenceChange(before, after, preference('glow'), 113)
-  after.applied.glow = '1.135'
-  assert.throws(() => assertPreferenceChange(before, after, preference('glow'), 113))
 })
 
 test('restoration cannot silently retain the tested value or normalize an unrelated key', () => {
@@ -227,9 +222,9 @@ test('a role-independent preference guard refuses links and shared durable files
   assert.throws(() => readPreferenceFile({ ...paths, userData: redirect }, path.join(redirect, 'renderer-prefs.json')), /link or junction/)
 })
 
-test('the six held cases have distinct preference identities and only the actual setup prerequisite', () => {
-  assert.equal(scenarios.length, 6)
-  assert.equal(new Set(scenarios.map(item => item.id)).size, 6)
-  assert.equal(new Set(scenarios.flatMap(item => item.controls)).size, 6)
+test('the five held cases have distinct preference identities and only the actual setup prerequisite', () => {
+  assert.equal(scenarios.length, 5)
+  assert.equal(new Set(scenarios.map(item => item.id)).size, 5)
+  assert.equal(new Set(scenarios.flatMap(item => item.controls)).size, 5)
   for (const scenario of scenarios) assert.deepEqual(scenario.requires, ['setup'])
 })

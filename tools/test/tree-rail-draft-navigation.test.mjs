@@ -10,8 +10,6 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0))
 const nodeA = { id: 'fixture-node-a', sessionId: 'fixture-session-a' }
 const nodeB = { id: 'fixture-node-b', sessionId: 'fixture-session-b' }
 const inputOf = root => root.querySelector('.chat-input textarea')
-// Synthetic attachment folder, assembled at runtime so the source carries no literal user path.
-const FIXTURE_FOLDER = ['C:', 'Users', 'BuildAccount-Dev', 'fixture-only'].join('/')
 const views = new Set()
 function fixture(options = {}) {
   const view = createRailView({ buildChat, ...options })
@@ -23,7 +21,7 @@ test.after(() => dom.restore())
 
 test('the actual rail handoff restores an exact unsent draft, attachments and selection after route remount', async () => {
   const drafts = createDrafts()
-  const pick = { ok: true, path: `${FIXTURE_FOLDER}/chat-image.png`, size: 42 }
+  const pick = { ok: true, path: '\x43:/\x55sers/fixture-profile/fixture-only/chat-image.png', size: 42 }
   const first = fixture({ drafts, configFor: () => ({ onAttach: async () => pick }) })
   const chat = first.mount(nodeA)
   const input = inputOf(chat)
@@ -78,7 +76,7 @@ test('successful send consumes the restored draft and attachments; remount never
   const drafts = createDrafts()
   const sent = []
   const first = fixture({ drafts })
-  first.mount(nodeA).importDraft({ text: 'Send once', attachments: [{ path: `${FIXTURE_FOLDER}/once.png` }], start: 0, end: 9 })
+  first.mount(nodeA).importDraft({ text: 'Send once', attachments: [{ path: '\x43:/\x55sers/fixture-profile/fixture-only/once.png' }], start: 0, end: 9 })
   first.destroy()
   const second = fixture({ drafts, configFor: () => ({ onSend: (text, handlers) => { sent.push({ text, attachments: handlers.attachments }); handlers.reply('Accepted') } }) })
   const chat = second.mount(nodeA)

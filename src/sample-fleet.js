@@ -112,8 +112,9 @@ const SEATS = Object.freeze([
 /* ============================================================================
    THE EXAMPLE'S AGENT TREES — what "watch by tree" has to demonstrate (T401).
 
-   Each tree is a single option, and ALL TREES shows just the tip of each active
-   tree, so people can monitor their top-level agents more easily.
+   Owner: "we have each tree as a single option, then we have ALL TREES but this
+   shows just the tip of the tree when its active ... so then people can monitor
+   just their top level agents more easily."
 
    WHY THIS IS DECLARED HERE AND NOT DERIVED. The example fleet already has tree
    SHAPE -- the seat table's `parent` chain is one hierarchy rooted at codex --
@@ -165,7 +166,7 @@ function sampleTreeTip(members) {
 
 /**
  * The example's trees in the shape the Home panel's filter takes
- * (src/home-circle-action.js): membership by the key a run carries, one tip,
+ * (src/home-following.js): membership by the key a run carries, one tip,
  * and whether the tree is active. A tree with no members is not offered.
  */
 export function sampleAgentTreeRecords() {

@@ -27,7 +27,7 @@ function sentence(text) {
 
 /* One plain summary of the engine's installation-wide support rows: which providers can use
    Optimized, what it adds there, and which providers do not start while it is selected. The
-   engine planner refuses every provider whose row is not 'supported' (Claude only). */
+   engine planner refuses every provider whose row is not 'supported' (rc-0922: Claude only). */
 export function optimizedSupportText(support) {
   if (!(support?.scope === 'installation' && support.appliesTo === 'new-sessions'
       && Array.isArray(support.providers) && support.providers.length)) {

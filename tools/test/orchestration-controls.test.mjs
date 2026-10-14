@@ -1,7 +1,6 @@
 /* THE CONTROLS ON PAGE 2, AND THE ONE RULE THEY HAVE TO OBEY.
  *
- * The rule: never claim a control, such as temperature, that the product cannot
- * actually set.
+ * Owner, verbatim: "dont lie like we cant control temperature."
  *
  * A control on this page is a claim about a child process. This suite is what
  * stops that claim from drifting away from the engine that has to honour it.
@@ -33,6 +32,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { createRequire } from 'node:module'
+import { canonicalRootForTests } from '../canonical-root.mjs'
 
 import {
   DISPATCH_TIERS as LAUNCH_TIERS,
@@ -50,7 +51,9 @@ import {
 } from '../../src/orchestration-controls.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-const read = relative => readFileSync(path.join(ROOT, relative), 'utf8')
+const ENGINE_ROOT = canonicalRootForTests({ requireConfigured: true })
+const require = createRequire(import.meta.url)
+const read = relative => readFileSync(relative.startsWith('capability/') ? path.join(ENGINE_ROOT, relative.slice('capability/'.length)) : path.join(ROOT, relative), 'utf8')
 
 const ACTIONS = 'capability/src/lib/mission-bridge/actions.js'
 const AGENT_ORG = 'capability/src/lib/agent-org.js'
@@ -60,27 +63,15 @@ const AGENT_ORG = 'capability/src/lib/agent-org.js'
    --------------------------------------------------------------- */
 
 test('the tier table matches the engine tier table, name for name', () => {
-  const source = read(ACTIONS)
-  const block = source.slice(source.indexOf('const TIERS = Object.freeze({'))
-  assert.ok(block.startsWith('const TIERS'), 'engine TIERS table not found — this test is checking air')
-
-  const engine = new Map()
-  const row = /'?([a-z0-9-]+)'?:\s*Object\.freeze\(\{([^}]*)\}\)/g
-  let match
-  while ((match = row.exec(block.slice(0, block.indexOf('});')))) !== null) {
-    const fields = Object.fromEntries([...match[2].matchAll(/(\w+):\s*'([^']*)'/g)].map(f => [f[1], f[2]]))
-    engine.set(match[1], fields)
-  }
-
-  assert.equal(engine.size, LAUNCH_TIERS.length,
-    `engine declares ${engine.size} tiers, page 2 offers ${LAUNCH_TIERS.length}`)
+  const { TIERS } = require(path.join(ENGINE_ROOT, 'src/lib/model-dispatch-tiers.js'))
+  assert.deepEqual(LAUNCH_TIERS.map(tier => tier.id), Object.keys(TIERS))
   for (const tier of LAUNCH_TIERS) {
-    const declared = engine.get(tier.id)
-    assert.ok(declared, `page 2 offers tier "${tier.id}" which the engine does not declare`)
-    assert.equal(tier.provider, declared.provider, `tier ${tier.id} provider drifted`)
-    assert.equal(tier.model, declared.model, `tier ${tier.id} model drifted`)
-    assert.equal(tier.effort ?? undefined, declared.effort, `tier ${tier.id} effort drifted`)
-    if (tier.cliModel) assert.equal(tier.cliModel, declared.cliModel, `tier ${tier.id} cliModel drifted`)
+    const declared = TIERS[tier.id]
+    assert.equal(tier.provider, declared.provider, tier.id + ' provider')
+    assert.equal(tier.model, declared.model, tier.id + ' model')
+    assert.equal(tier.effort ?? undefined, declared.effort, tier.id + ' effort')
+    if (tier.cliModel) assert.equal(tier.cliModel, declared.cliModel, tier.id + ' CLI model')
+    assert.deepEqual([...tier.seats], [...declared.seats], tier.id + ' shared seats')
   }
 })
 

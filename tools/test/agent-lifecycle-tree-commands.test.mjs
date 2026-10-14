@@ -1,14 +1,15 @@
 /* AN ASSISTANT CAN STOP, RESTART AND REMOVE A CIRCLE BELOW IT.
  *
- * Agents can delete, start and restart the agents under them, and message each
- * other. Start and message
+ * Owner, 2026-09-03, verbatim: "THE AGENTS NEED TO BE ABLE TO DELETE AND START
+ * AND RESTART AGENTS UNDER THEM AND BE ABLE TO MESSAGE EACH". Start and message
  * already had a route. Stop, restart and remove did not -- although this view
  * performs all three for the person's own press, and the page shipped three
  * DISABLED buttons with excuse text where the behaviour should have been.
  *
- * AND THE RULE THAT DECIDES A REMOVAL: agents spawned by agents that the user
- * has not prompted can be removed by their parent agents; an agent the user has
- * prompted remains, even if another agent created it.
+ * AND THE RULE THAT DECIDES A REMOVAL, also verbatim: "agents that were spawned
+ * by agents AND who the user hasnt prompted - THEY can be removed by parent
+ * agents. AGENTS that a user prompts even if created by another agent can
+ * remain."
  *
  * Both halves are FACTS ABOUT WHAT HAPPENED, recorded where they happen:
  * `createdByAgent` when an assistant makes the circle, `promptedByPerson` the

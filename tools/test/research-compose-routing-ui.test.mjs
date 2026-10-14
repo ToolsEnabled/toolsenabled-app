@@ -69,8 +69,8 @@ test('explicitly imported example snippets supply the categories the strip shows
   assert.match(f(view, 'snippet-count').textContent, /example/, 'the count says which of them are examples')
   // Every category shown comes from a label on an example bundle, never from a
   // list in the page: pressing one filters to exactly the snippets carrying it.
-  // The category pressed here is one of the four kinds, because those are
-  // the only categories the library carries. How many
+  // 2026-09-19: the category pressed here is one of the owner's four kinds,
+  // because those are now the only categories the library carries. How many
   // cards it must hold is read from the library rather than typed, so this
   // still checks that the filter is EXACT and not that the number is 6.
   const kind = 'Sell details'
@@ -108,8 +108,8 @@ test('a person nests a composition inside a composition inside a composition and
   // Three named compositions, each placed inside the next. Every name here is
   // typed; the page offers none.
   // The bundles nested here are the STARTER's own template and atom. They used
-  // to be example snippets (a state-gated template, a race template and a
-  // review prompt); the current rule leaves only four
+  // to be example snippets (lb-state-gated-template, lb-race-template,
+  // lb-ref-impl-prompt-v2); the owner's 2026-09-19 ruling leaves only four
   // kinds of example and no templates among them, and nesting is the product's
   // behaviour rather than the examples', so it is checked on bundles the
   // product ships.
@@ -235,7 +235,7 @@ test('example snippets can be loaded into a library that does not have them', as
   assert.equal(ids().length, genericStarter().catalog.length, 'and the load is undoable like any other replacement')
 })
 
-/* PROMPT B. Opening Compose tasks used to show an unchanged page, because
+/* PROMPT B. The owner opened Compose tasks and saw an unchanged page, because
    the routing surface waited behind a prepare button and a JSON disclosure.
    These are the checks that it is the panel now, not an advanced corner of it. */
 test('Compose tasks opens with the rules already on the glass', async () => {
@@ -244,7 +244,7 @@ test('Compose tasks opens with the rules already on the glass', async () => {
   assert.ok(r(view, 'add-field'), 'fields can be named without a prepare step')
   assert.ok(r(view, 'add-rule', 'r'), 'a rule can be added without a prepare step')
   assert.ok(r(view, 'add-row'), 'a row can be added without a prepare step')
-  // Rule: compositions are listed and edited once, in the Nesting
+  // Owner, 2026-09-20: compositions are listed and edited once, in the Nesting
   // library and inspector; the rules block draws none of them.
   assert.equal(f(view, 'routing-editor').querySelectorAll('.routing-composition').length, 0, 'the rules block does not draw compositions; the Nesting library and inspector do')
   assert.ok(view.el.querySelector('[data-nest-from-snippets]'), 'Nesting can create a composition without a prepare step')
@@ -282,7 +282,7 @@ test('a row says which rule answers it, and the ladder marks that rule', async (
   const view = await mount()
   await addComposition(view)
   await set(view, 'composition-name', '1', 'other')
-  await set(view, 'use', '1:', 'snippet:ex-review-prompt-v2')
+  await set(view, 'use', '1:', 'snippet:lb-ref-impl-prompt-v2')
   await press(view, 'add-field')
   await set(view, 'field', '0', 'topic')
   await press(view, 'add-rule', 'r')
@@ -329,7 +329,7 @@ test('the empty-rules guards say what is true and name a control that exists', a
 })
 
 /* PROMPT C. THE DECISION LAYER NESTS THE WAY THE CONTENT LAYER DOES.
-   They nest, as intended. So a
+   The owner: "i think they were supposed to nest right? i mean why not." So a
    rung chooses either a composition or another set of rules, and that set is
    asked the same way — and it is built with the same gesture, from the same
    select, without learning a second mechanism. */
@@ -357,7 +357,7 @@ test('three levels of decision, and a row traces its whole path through them', a
   for (const [at, name] of [['1', 'small'], ['2', 'big']]) {
     await addComposition(view)
     await set(view, 'composition-name', at, name)
-    await set(view, 'use', `${at}:`, 'snippet:ex-review-prompt-v2')
+    await set(view, 'use', `${at}:`, 'snippet:lb-ref-impl-prompt-v2')
   }
   for (const field of ['situation', 'size']) {
     await press(view, 'add-field')
@@ -433,7 +433,7 @@ function draftOf(view) { return JSON.parse(f(view, 'routing').value) }
 
 test('a bundled full experiment loads its snippets, named compositions and tasks through the example menu', async () => {
   const { readFile } = await import('node:fs/promises')
-  const example = JSON.parse(await readFile(new URL('../../src/data/example-experiment-draft.json', import.meta.url), 'utf8'))
+  const example = JSON.parse(await readFile(new URL('../../src/data/lean-bench-example-draft.json', import.meta.url), 'utf8'))
   const downloads = []
   const view = createBenchmarkBuilder({
     account: fixture.account, loadSources: async () => ({}),
@@ -456,14 +456,14 @@ test('a bundled full experiment loads its snippets, named compositions and tasks
   const exported = async () => { await pressControl('draft-export'); return downloads.at(-1) }
   const original = await exported()
   assert.ok(controls.starter.querySelectorAll('option').some(option =>
-    option.getAttribute('value') === 'example-snippets-and-compositions'), 'the full example is offered by name')
-  controls.starter.value = 'example-snippets-and-compositions'
+    option.getAttribute('value') === 'lean-bench-snippets-and-compositions'), 'the full example is offered by name')
+  controls.starter.value = 'lean-bench-snippets-and-compositions'
   await pressControl('use-starter')
-  assert.match(controls.status.textContent, /Example draft loaded: Example: stock and options/)
-  assert.equal(JSON.parse(controls.routing.value).compositions.length, 13)
-  assert.equal(controls.task.querySelectorAll('option').length, 9, 'all tasks are offered in the editor')
+  assert.match(controls.status.textContent, /Example draft loaded: Lean Bench/)
+  assert.equal(JSON.parse(controls.routing.value).compositions.length, 66)
+  assert.equal(controls.task.querySelectorAll('option').length, 41, 'all tasks are offered in the editor')
   const library = panels.find(node => node.dataset.benchPanel === 'library')
-  assert.equal(library.querySelectorAll('[data-bench-select-snippet]').length, 21, 'all snippets and templates are visible')
+  assert.equal(library.querySelectorAll('[data-bench-select-snippet]').length, 74, 'all snippets and templates are visible')
   const categories = library.querySelectorAll('[data-bench-snippet-category]')
     .map(node => node.getAttribute('data-bench-snippet-category'))
     .filter(value => value.startsWith('label:'))

@@ -1,14 +1,15 @@
 /* THE PHONE CANVAS — ONE NAMED MODE, AND THE LOCK AROUND MACHINERY THAT
    ALREADY EXISTS.
  *
- * The design, for mobile without the downloaded app: the zoom stays static and
- * is changed only with + and -; the page is stripped of everything but
- * computer selection and the tree; the page itself never scrolls, whatever it
- * renders at that screen size; the person drags in any direction to see the
- * rest of the tree, uses the zoom buttons, and sees the same things as in the
- * software; and pressing a bubble or a chat opens an on-screen pop-up. And the
- * hard constraint: mobile development must not change the main app or the
- * normal site.
+ * The owner's design, verbatim: "on mobile with non downloaded version - the
+ * trick is to keep the zoom static, force them to use the + and - then strip
+ * the page of everything but computer selection and the tree, then if they
+ * scroll, force no scroll on the page no matter what it is forced to render in
+ * the screen size; and then they can drag any direction to see the rest of the
+ * tree, manually hit the zoom in/out button; see all the same stuff as on the
+ * software; and then if they press a bubble or a chat; we do it as a sort of on
+ * screen pop up." And his hard constraint, verbatim: "we cannot let mobile
+ * development change the main app or the normal site".
  *
  * SO THE CONSTRAINT COMES FIRST, AND IT IS THE SHAPE OF THIS FILE.
  *
@@ -20,9 +21,9 @@
  * tools/test/phone-canvas.test.mjs holds both halves of it: every selector in
  * the sheet carries the attribute, and no desktop environment can turn it on.
  *
- * AND IT IS A MODE RATHER THAN A FORK, because of what may come next: this
- * could be copied to the mobile app as an optional second view style. So the
- * decision is a pure function of a small environment
+ * AND IT IS A MODE RATHER THAN A FORK, because the owner said what comes next:
+ * "We might actually be able to copy this to the mobile app as an optional 2nd
+ * view style." So the decision is a pure function of a small environment
  * record, and the first thing that record carries is a stored choice —
  * `mc.phoneCanvas`, 'auto' | 'on' | 'off'. Nothing writes it today; a settings
  * control that does is one line, and it will not need this file changed.
@@ -381,7 +382,7 @@ export function startPhoneCanvas({ win = globalThis.window } = {}) {
 /**
  * WHAT MOVES, AND WHY MOVING BEATS HIDING.
  *
- * The functionality stays isomorphic with the desktop. The safest way to keep
+ * The owner: "the functionality must remain isomorphic". The safest way to keep
  * a phone's facts identical to the desktop's is to refuse to author them twice.
  * So the rail is not hidden and re-drawn small — the actual `aside.rail` is
  * MOVED into the sheet, with its pages, its numbers, its listeners and its own
@@ -435,8 +436,8 @@ const SHEET_CLOSE_LABEL = 'Close details'
  *
  * The rise used to be a keyframe: `animation: phone-sheet-rise`, translateY of
  * one spacing step, played once on the frame the element stopped being
- * `hidden`. Two things were wrong with it, and both matter because the chat
- * surface has to pull up cleanly and easily. A 24px nudge is not a pull-up;
+ * `hidden`. Two things were wrong with it and the owner named both — "the chat
+ * surface needs to pull up super clean and easy". A 24px nudge is not a pull-up;
  * measured 120ms after a real touch tap on the served build (2026-08-28), the
  * card was already fully in place and fully opaque. And an animation cannot run
  * on the way out, because `hidden` removes the element in the same frame — so

@@ -53,8 +53,6 @@ test('the current app census selects every source suite and accounts for the con
   const root = fileURLToPath(new URL('../../', import.meta.url))
   const selection = inspectSourceSuite('app', { sourceRoots: { app: root } })
   assert.deepEqual(selection.exclusions, [
-    { file: 'tools/test/helpers/account-buckets-electron.cjs', reason: 'imported-fixture-helper' },
-    { file: 'tools/test/helpers/account-buckets-renderer.mjs', reason: 'imported-fixture-helper' },
     { file: 'tools/test/helpers/account-field-contrast-electron.cjs', reason: 'imported-fixture-helper' },
     { file: 'tools/test/helpers/account-field-contrast-renderer.mjs', reason: 'imported-fixture-helper' },
     { file: 'tools/test/helpers/chat-readable-stream-electron.cjs', reason: 'imported-fixture-helper' },
@@ -65,8 +63,8 @@ test('the current app census selects every source suite and accounts for the con
     { file: 'tools/test/helpers/risk-gate-focus-renderer.mjs', reason: 'imported-fixture-helper' },
     { file: 'tools/test/helpers/role-studio-empty-electron.cjs', reason: 'imported-fixture-helper' },
     { file: 'tools/test/helpers/role-studio-empty-renderer.mjs', reason: 'imported-fixture-helper' },
-    { file: 'tools/test/helpers/t844-retry-layout-electron.cjs', reason: 'imported-fixture-helper' },
-    { file: 'tools/test/helpers/t844-retry-layout-renderer.mjs', reason: 'imported-fixture-helper' },
+
+
     { file: 'tools/test/helpers/setup-account-fields-electron.cjs', reason: 'imported-fixture-helper' },
     { file: 'tools/test/helpers/setup-account-fields-renderer.mjs', reason: 'imported-fixture-helper' },
     { file: 'tools/test/helpers/tree-card-compact-electron.cjs', reason: 'imported-fixture-helper' },
@@ -95,7 +93,7 @@ test('the current app census selects every source suite and accounts for the con
   }
   // The merged Settings queue adds executable suites. The actual adapter must
   // select each exactly once; listing one as a helper cannot satisfy inclusion.
-  // settings-profile-keeps-your-choices.test.mjs is the earlier name of
+  // settings-profile-keeps-your-choices.test.mjs is the pre-85dc71a8 name of
   // settings-profile-applies-whole-preset.test.mjs; the rename landed with the
   // whole-preset change and the census must follow the file that exists.
   /* The 1.0.48 provider-then-model picker's own suites, named here so the
@@ -144,7 +142,7 @@ test('the named administrative fixture remains a required measured input without
 function invoke(args = [], nodeArgs = []) {
   return spawnSync(process.execPath, [...nodeArgs, CLI, ...args], {
     cwd: OUTSIDE_SOURCE,
-    env: { PATH: '', ...(process.platform === 'win32' ? { SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows' } : {}) },
+    env: { PATH: '', ...(process.platform === 'win32' ? { SystemRoot: '\x43:\\Windows', WINDIR: '\x43:\\Windows' } : {}) },
     encoding: 'utf8', windowsHide: true, timeout: 15000, maxBuffer: 1024 * 1024,
   })
 }

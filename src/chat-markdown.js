@@ -16,11 +16,11 @@ export function isSafeChatUrl(value) {
 /* ITEM 5, CODEX: A FILE CITATION IS NOT A URL, AND IT WAS BEING SHOWN AS
  * PUNCTUATION.
  *
- * MEASURED over a local node-transcript store (counts only; no path was
- * copied out): codex writes a markdown link in a large share of its replies,
- * and most of them do not name a web page -- they target a local file by
- * absolute or repo-relative path. claude, by contrast, almost never writes a
- * link. Refusing to make a local path
+ * MEASURED over the owner's LIVE node-transcripts, 2026-09-19 (counts only; no
+ * path was copied out): codex writes a markdown link in 44% of its replies,
+ * 261 links in all -- and 238 of them do not name a web page. 226 target a
+ * local file by absolute path and 12 by repo-relative path. claude, by
+ * contrast, writes 2 links in 3677 replies. Refusing to make a local path
  * clickable is right and is unchanged. What was wrong is what the reader then
  * saw: markdown-it drops the link token entirely when validateLink refuses, so
  * the paragraph rendered the SOURCE -- "See [src/chat-markdown.js](C:\...)" --
@@ -230,7 +230,7 @@ export function renderChatVoice(voiceClass, text) {
 
 /* THE SAME MARKDOWN THE CONVERSATION READS, SAID AS ONE LINE OF WORDS.
  *
- * T293, found on screen: a tree CARD showed the agent's reply as
+ * T293, found on screen by Worker 85: a tree CARD showed the agent's reply as
  * its source -- "two colours: **red** and **yellow**" -- while the conversation
  * beside it rendered the same words properly. A card preview is one clamped
  * line under a fitter, with the full text as its tooltip, so rendering real

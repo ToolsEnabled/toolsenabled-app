@@ -38,10 +38,10 @@ export const PROFILE_PRODUCT_VALUES = Object.freeze({
   'fleet.max_declared_agents': [8, 16, 64, 256, 512, 512],
 })
 
-/* AUDITING IS NOT A PRESET VALUE ANY MORE (T782: most users do not want
-   everything saved forever, audited or verified; these advanced features are
-   enabled and set up in advanced/expert/enterprise rather than switched on
-   automatically). Every one of the
+/* AUDITING IS NOT A PRESET VALUE ANY MORE (owner direction, 2026-09-20, T782:
+   "for most users we dont want to save everything forever or audit or verify
+   everything ... These advanced things should need to be enabled and setup in
+   advanced/expert/enterprise rather than be auto enabled"). Every one of the
    six presets used to write `audit.activity` = Full, so choosing Basic or
    Autonomous silently switched detailed activity auditing back on. A working
    profile now leaves that row exactly as the person set it, or unset; the
@@ -51,7 +51,7 @@ export const PROFILE_PRODUCT_VALUES = Object.freeze({
    themselves. */
 export const PROFILE_PRODUCT_PRESERVED = Object.freeze({
   'audit.activity': 'Keep your activity audit choice. Detailed activity auditing is an optional setup under Advanced; a working profile never turns it on or off for you.',
-  /* Product rule T781/T782/T783: the signed audit, ledger
+  /* Owner direction 2026-09-20 (T781/T782/T783): the signed audit, ledger
      history verification and diagnostic retention are explicit setups under
      Advanced, off or finite on a fresh copy. No preset writes them. */
   'audit.enabled': 'Keep your signed activity audit choice. It is an optional setup under Advanced, off until you turn it on; a working profile never switches it.',
@@ -87,8 +87,6 @@ export const PROFILE_LOCAL_PRESERVED = Object.freeze({
   uninstall_data: 'Keep your separate decision about removing data during uninstall.',
   theme: 'Keep your chosen appearance.',
   ui_font: 'Keep your chosen letter shapes and readability.',
-  home_circle_style: 'Keep your chosen Home circle appearance.',
-  home_circle_motion: 'Keep your Home circle motion and accessibility preference.',
   /* THE THREE STATUS COLORS ARE EXPLAINED ONE BY ONE, NOT AS A GROUP, and
      they are written out rather than mapped from HOME_STATUS_COLOR_SETTINGS.
      This list is what the coverage test measures every writable row against,
@@ -104,7 +102,6 @@ export const PROFILE_LOCAL_PRESERVED = Object.freeze({
   tree_cards: 'Keep your chosen visibility of tree context cards.',
   text_size: 'Keep your reading size and accessibility preference.',
   reduce_motion: 'Keep your motion and accessibility preference.',
-  glow: 'Keep your chosen visual intensity.',
   example_mode: 'Keep the example preference; complete profiles need examples off and local resource access.',
   notify_agent_finished: 'Keep your explicit notification opt-in.',
   notify_agent_error: 'Keep your explicit notification opt-in.',
@@ -113,9 +110,9 @@ export const PROFILE_LOCAL_PRESERVED = Object.freeze({
 export const PROFILE_PRESERVED_SCOPES = Object.freeze([
   ['Permission level and working folders', 'Keep the permission ceiling, its consent record and workspace roots. A working profile does not change those records. Working folders do not guarantee that other files cannot be read.'],
   ['Action permission profiles', 'Keep the active profile, name, parent, per-action rules and allowed function list. These restrictions still constrain the working profile.'],
-  ['Accounts and credentials', 'Keep linked accounts, priorities, quota reserves, provider overrides, passwords, PINs and keys. The listed automatic/manual account selection is the only account policy a profile changes.'],
+  ['Accounts and credentials', 'Keep linked accounts, passwords, PINs and keys. Choose each agent’s account yourself.'],
   ['Fleet and remote connections', 'Keep fleet labels, machine IDs/names/addresses, data folders, transports/ports/endpoints, pairing, web-drive opt-in and remote-workspace consent. These identify and authorize real destinations.'],
-  ['Reading and appearance', 'Keep the Settings detail view, theme, font, text size, motion, glow, every role color and every ledger status color. Profiles preserve readability and accessibility choices.'],
+  ['Reading and appearance', 'Keep the Settings detail view, theme, font, text size, motion, every role color and every ledger status color. Profiles preserve readability and accessibility choices.'],
   ['Home and tree display', 'Keep selected Home agents, run visibility, default context-card size and every per-tree override. These are display choices, not action policy.'],
   ['Notifications', 'Keep both finish and problem notifications as chosen. A profile neither requests notification permission nor opts into interruptions.'],
   ['Example screens', 'Keep the example-fleet choice. Complete profiles require local desktop Settings with examples off; unavailable resources are never silently omitted.'],
@@ -152,7 +149,7 @@ export function workingProfilePlan(id, { tier, writeFlagIds = [], totalBytes, ke
   const choice = WORKING_PROFILES[index]
   const answers = answersForAutonomy(choice.autonomy)
   if (id === 'autonomous-plus') answers.approvals = 'other-work'
-  if (id === 'locked' || id === 'careful') Object.assign(answers, { approvals: 'stop', attach: 'mirror', ideImport: 'none', failover: 'manual' })
+  if (id === 'locked' || id === 'careful') Object.assign(answers, { approvals: 'stop', attach: 'mirror', ideImport: 'none' })
   /* "When an agent needs an answer" reaches its row through Setup's own
      writer rather than the product list, so keeping the person's own choice
      means deriving the whole plan from it -- the intent, the row and the
@@ -192,7 +189,6 @@ export function matchWorkingProfile(plan, { product, setup, resources, resourceA
   }
   for (const [id, value] of Object.entries(plan.setup.writeFlags)) if (setup?.writeFlags?.[id] !== value) differences.push(`write:${id}`)
   for (const field of PROFILE_INTENT) {
-    if (field.id === 'failover' && setup?.accounts?.applicable === false) continue
     if (setup?.intent?.[field.id] !== plan.setup.intent[field.id]) differences.push(`setup:${field.id}`)
   }
   if (resourceApplicable) for (const [id, value] of Object.entries(plan.resources)) {

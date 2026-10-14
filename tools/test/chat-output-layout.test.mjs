@@ -111,7 +111,7 @@ test('a typed command approval stays outside the tool-call group despite its com
 
 test('workspace metadata starts compact, retains the whole path, and preserves an opened disclosure on refresh', () => {
   let notify
-  const full = 'C:\\work\\a-very-long-workspace-name\\engine'
+  const full = '\x43:\\work\\a-very-long-workspace-name\\engine'
   const chat = mount({ headerMeta: {
     read: () => ({ path: { source: 'session-workspace', value: full } }),
     subscribe: listener => { notify = listener; return () => {} },

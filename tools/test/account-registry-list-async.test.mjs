@@ -169,9 +169,9 @@ test('listAsync() matches list() account for account: signed in, signed out, and
 
   assert.equal(sync.accounts.length, 3)
   assert.deepEqual(asynced, sync, 'listAsync() must answer the identical record list() does')
-  assert.deepEqual(asynced.accounts.map(a => a.name), ['signed-in', 'signed-out', 'empty-credential'],
-    'default priority is insertion order')
-  assert.deepEqual(asynced.accounts.map(a => a.signedIn), ['yes', 'no', 'no'])
+  assert.deepEqual(asynced.accounts.map(a => a.name), ['signed-out', 'empty-credential', 'signed-in'],
+    'accounts list by provider, then name: since 1.0.50 there is no account priority order')
+  assert.deepEqual(asynced.accounts.map(a => a.signedIn), ['no', 'no', 'yes'])
 }))
 
 test('listAsync() matches list() on an absent registry (first launch): empty, not damaged', () => withScratchProfile(async ({ home, file, stateFile, servicesRoot }) => {

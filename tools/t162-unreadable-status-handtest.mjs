@@ -64,7 +64,7 @@ const FLEET_FILE = 'renderer-fleet-documents.json'
 const STAMP = '2026-09-19T12:00:00.000Z'
 
 /* The word. Any status outside NODE_STATUSES does this; 'paused' is the one
-   that was actually seen on a development install. */
+   that was actually on the owner's disk. */
 const UNKNOWN_WORD = 'paused'
 const MARKER_CHIP = 'state unreadable by this build'
 const DRAFT_CHIP = 'not started yet'

@@ -3,10 +3,10 @@
 /* READING THE ONE LEDGER BACK, FOR THE LEDGER PAGE.
  *
  * WHAT THIS IS. The /ledger page used to paint a build-time file the app never
- * carries on an installed copy, so on an installed computer it read
- * "unreadable" while every /Request typed there landed in a file nobody could
- * open from the app. The rule: ONE canonical ledger with scope tiers, filed by
- * the /Request family, managed on the Ledger page.
+ * carries on an installed copy, so on the owner's own computer it read
+ * "unreadable" while every /Request he typed landed in a file nobody could
+ * open from the app. The owner's ruling (2026-09-02): ONE canonical ledger
+ * with scope tiers, filed by the /Request family, managed on the Ledger page.
  * The engine's src/lib/owner-request-store.js is that ledger's single store;
  * this file is the shell's READ of it -- the whole ledger, every tier, with
  * the history chain checked -- answered over the agent command surface as
@@ -197,8 +197,8 @@ function publicRecord(record) {
   const isTask = record.kind === 'T' || (typeof record.id === 'string' && record.id.startsWith('T'))
   return Object.freeze({
     id: String(record.id),
-    /* THE FOUR LEDGER SUBSETS: R rules, T tasks, A asks, P
-       purchases. The store does not carry `kind` yet -- the engine is
+    /* THE OWNER'S FOUR SUBSETS (2026-09-07): R rules, T tasks, A asks, P
+       purchases. The store does not carry `kind` yet -- L1 (engine lane) is
        adding it to src/lib/owner-request-store.js -- so this is null on
        every record today. It is passed through now, ahead of that landing,
        so this reader does not need a second change the day it appears: the
@@ -323,7 +323,7 @@ function readCanonicalLedger({ scope = 'all', key = null, removed = false, root 
 
   let all
   try {
-    /* THE FOUR LEDGER SUBSETS: the store's own readAll defaults
+    /* THE OWNER'S FOUR SUBSETS (2026-09-07): the store's own readAll defaults
        to `kinds: ['R']` so every caller that predates this feature keeps
        seeing exactly what it always saw. This is the one caller that must
        ask for all four -- naming them here, not trusting the default, is

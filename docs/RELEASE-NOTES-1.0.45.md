@@ -153,7 +153,7 @@ controls in a chat do what they look like they do.
 Nothing here is deferred. Every item below is **open**, with the person who owns it and when it is
 expected. An item leaves this list only when it is fixed or when the owner accepts it by name.
 
-- **OPEN — the installed Windows lifecycle rows are unexecuted rather than passed**.
+- **OPEN — the installed Windows lifecycle rows are unexecuted rather than passed** *(Builder 7)*.
   The readiness adapters are available for all ten Windows rows. No row is unadapted. Eight rows
   have drivers. Two are deliberately left undriven, `advertised-integrations` and `update-delivery`.
   Qualifying those two needs three things that do not yet exist. A reviewed egress policy for the
@@ -168,12 +168,12 @@ expected. An item leaves this list only when it is fixed or when the owner accep
   available here. So the installed-lifecycle rows remain unexecuted rather than passed. Nothing about
   the installed product's fresh-install, upgrade, uninstall or update-delivery behaviour is proven by
   this release.
-- **INCLUDED IN THIS CANDIDATE — restored rows preserve an unknown result**. When a
+- **INCLUDED IN THIS CANDIDATE — restored rows preserve an unknown result** *(Builder 8)*. When a
   conversation is reopened, an action row whose recorded state is absent or unrecognised is treated
   as unknown. It is shown as "no result came back". A known `done` state remains "finished". The fix
   and its tests are included in this combined candidate; verification on the merged tip and shared
   landing are still pending.
-- **OPEN — a message between agents can be lost without anyone being told**. A
+- **OPEN — a message between agents can be lost without anyone being told** *(Builder 10)*. A
   message accepted for delivery records a delivery receipt. If the receiving session is
   reassigned, resumed or closed before it reads the message, the message is dropped. Neither side
   is told — the sender's receipt says delivered. The paired engine now keeps a durable dead letter
@@ -181,26 +181,26 @@ expected. An item leaves this list only when it is fixed or when the owner accep
   message is told it was dead-lettered. What has not been shown is that every reassign, resume and
   close path in this release files that dead letter. Until that is measured, treat a delivery
   receipt as "handed over", not "read".
-- **OPEN — live thinking can open folded**. A saved transcript replayed when a
+- **OPEN — live thinking can open folded** *(Builder 6, 15:00Z)*. A saved transcript replayed when a
   conversation is opened folds a run that is still live and has produced no words yet. This happens
   in both the full conversation and the right-rail chat. The restore path settles the action runs
   unconditionally on replay.
-- **OPEN — retrying after an account limit is only half-delivered**. The
+- **OPEN — retrying after an account limit is only half-delivered** *(Builder 7, 14:30Z)*. The
   machine meaning of an account limit is restored in this release, so the retry offered from the
   Accounts menu can continue after a limit. Three things are still open. The person-facing filter
   that drops the provider's explanation is not yet narrowed. The program behind the window still
   drops that same sentence. The end-to-end retry from the Accounts menu has not been hand-tested.
-- **OPEN — the queued-send surfaces are not fully walked**. The happy path was
+- **OPEN — the queued-send surfaces are not fully walked** *(Builder 6)*. The happy path was
   hand-walked in the full conversation and the right-rail chat, and behaves as described. The
   cross-surface reply fault found earlier is fixed at this candidate. What remains open is the
   four-surface matrix walk.
-- **OPEN — the display sharpness work rests on static evidence, not a before/after measurement**.
-  The resting compositing hints were removed from the cards,
+- **OPEN — the display sharpness work rests on static evidence, not a before/after measurement**
+  *(Builder 5, after the installer)*. The resting compositing hints were removed from the cards,
   chips and metrics rows. The top bar is now centred on whole pixels without a transform, checked
   by a gate. The visible before/after could not be measured on the build machine: every
   hidden-window configuration there reported software compositing. The change follows Chromium's
   documented rules; it is not a measured improvement.
-- **OPEN — the Metrics page showed nothing for a day**. The page scoped its 24-hour
+- **OPEN — the Metrics page showed nothing for a day** *(Builder 2)*. The page scoped its 24-hour
   view to the signed-in account. But every session recorded since 2026-09-14T22:00Z carried the
   account identity `unauthenticated`. So the page showed nothing, while the home screen's unscoped
   tail still showed those runs. The page now states the period and account scope it is showing, and
@@ -208,7 +208,7 @@ expected. An item leaves this list only when it is fixed or when the owner accep
   survives a restart. So the page and its persistence work. Why those sessions lost their account
   identity is still being traced.
 - **OPEN — on Linux the vault page cannot list what your vault holds** *(T269)*. Measured against
-  engine revision an earlier commit. `createReader()` in `src/lib/vault-linux.js` returns exactly
+  engine revision `bafd25a5b`. `createReader()` in `src/lib/vault-linux.js` returns exactly
   `presence` and `getMany`. Neither answers "what is in there". `getMany` needs the names, and the
   names are the question being asked. The module does export a top-level `list()`. It is deliberately
   not borrowed here. It is synchronous, and it resolves the vault from the surrounding environment —
@@ -242,17 +242,17 @@ expected. An item leaves this list only when it is fixed or when the owner accep
   by name, and inside its archive with a positive control; it carried neither. The owner-data scanner
   is clean on the fleet profile. It reports the owner's name twice in the research queue, inside an
   authored note about commit authorship. Untracking them would not remove those bytes from history.
-  That is a product decision and is not made here.
+  That is the owner's call and is not done here.
 - **OPEN — `tree-standalone-agent` check 148 fails, and did before this release** *(No owner yet)*.
   Pre-existing rather than introduced here, and it has not been assigned.
-- **OPEN — the physical-phone path is unproven**. Nothing about running this against a
+- **OPEN — the physical-phone path is unproven** *(Builder 2)*. Nothing about running this against a
   real iPhone was verified before release: the qualification laptop has no iOS Safari control tooling
   and none was installed. This is an absence of evidence, not a known failure.
-- **CORRECTED — the compact tool catalogue reaches every provider, not "local sessions only"**.
-  Each new assistant is offered a short guide to the tool families
+- **CORRECTED — the compact tool catalogue reaches every provider, not "local sessions only"**
+  *(Worker 88, 2026-09-17)*. Each new assistant is offered a short guide to the tool families
   available at its permission level. It is also offered a few relevant tool suggestions when a
   message clearly matches one. This entry used to say sessions on hosted providers received none of
-  that. This was measured against engine revision an earlier commit, the revision being cut for this
+  that. This was measured against engine revision `bafd25a5b`, the revision being cut for this
   release. It was measured at the permission level recorded as Standard, in the default
   tool-access mode.
   **Codex, Claude, Gemini, Grok and local sessions all receive it**. What decides is whether a
@@ -263,10 +263,10 @@ expected. An item leaves this list only when it is fixed or when the owner accep
   There are two bounds on that reading. Both cost a reader more if left unsaid:
   - This reading depends on which copy of the engine is installed where you re-run it. Read that
     copy's revision before quoting any per-provider result. The original measurement used a copy at
-    source reference an earlier commit, far behind the revision being cut. That copy carries no
+    source reference `39ac2385`, 1,337 commits behind the revision being cut. That copy carries no
     launcher for Gemini, Grok or local, so those three refuse to start against it. That is a fact
     about one installed copy, never about the release. The revision being cut does carry those
-    launchers. The qualification machine no longer stages an earlier commit. It has since been restaged,
+    launchers. The qualification machine no longer stages `39ac2385`. It has since been restaged,
     and is being advanced to the revision being cut.
   - Gemini and Grok are planned only in the default tool-access mode. Asked for the wider mode, they
     are refused rather than widened, deliberately. Those engines expose only this product's own
@@ -274,7 +274,7 @@ expected. An item leaves this list only when it is fixed or when the owner accep
 
   Withholding the guide from a session whose plan wired no tool servers is deliberate and stays.
   Describing a toolkit an assistant cannot call is the misdirection this feature exists to end.
-- **OPEN — running the test suites needs Node 22.19 or newer**. On Node
+- **OPEN — running the test suites needs Node 22.19 or newer** *(Builder 6, 15:45Z)*. On Node
   22.14.0 the suite runner cannot load the thinking-transcript pipeline suite — a loader false
   positive, `ERR_REQUIRE_CYCLE_MODULE`, on a graph with no cycle. The shipped app never performs that
   import order, and the suite runs green under the shipped Electron's Node 24.18.1.
@@ -310,8 +310,8 @@ an agent takes. A qualification walk therefore reads by capture and text recogni
 when the installed candidate is genuinely the front window. If it is not, the walk asks the operator
 to bring that window forward by hand once.
 
-**Security**. An independent review read four shell files for image delivery and recorded its
-ruling. The gates are byte-identical, and the new `statFile`
+**Security**. Lane F read four shell files for image delivery. The independent ruling is recorded in
+`SECURITY-IMAGE-DELIVERY-LANE-F-20260915.md`. The gates are byte-identical, and the new `statFile`
 metadata read happens only on authorized images. The refusal row also records the provider and
 the generated explanation. Independent security tests are final at 18/18 pass.
 

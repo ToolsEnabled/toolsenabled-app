@@ -13,7 +13,7 @@ export function normalizePendingEditorFork(value) {
       || !ID.test(value.sourceSessionId || '') || typeof value.workspace !== 'string' || value.workspace.length > 160
       || /[\r\n\0]/.test(value.workspace)) return Object.freeze({ invalid: true })
   return Object.freeze({ provider: value.provider, sourceSessionId: value.sourceSessionId,
-    workspace: value.workspace, model: typeof value.model === 'string' ? value.model.slice(0, 64) : null,
+    workspace: value.workspace, model: typeof value.model === 'string' ? value.model : null,
     ...(['current-model-context', 'saved-conversation'].includes(value.historyScope) ? { historyScope: value.historyScope } : {}) })
 }
 

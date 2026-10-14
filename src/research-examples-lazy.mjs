@@ -1,10 +1,11 @@
 // LOADING THE EXAMPLE LIBRARY WHEN SOMETHING WANTS IT, NOT WHEN THE APP STARTS.
 //
-// src/research-examples.mjs is example content for one tab of one page. It
-// used to be reached by a static import in research-benchmark.js, and the
-// chain main.js -> views/research.js -> research-benchmark.js is static all
-// the way down, so every one of those bytes was fetched and parsed at app
-// startup whether or not anybody opened Research.
+// src/research-examples.mjs is about 400 KB of the owner's donor material --
+// prompts, variants, extracted programs and instruments. It is content for one
+// tab of one page. It used to be reached by a static import in
+// research-benchmark.js, and the chain main.js -> views/research.js ->
+// research-benchmark.js is static all the way down, so every one of those bytes
+// was fetched and parsed at app startup whether or not anybody opened Research.
 //
 // This module is the seam. It holds no bundle data of its own, so importing it
 // costs nothing, and it resolves the library exactly once however many callers
@@ -39,8 +40,8 @@ export const isExampleSnippet = bundle => library ? library.isExampleSnippet(bun
 // Each load gets an independent draft; edits never mutate the bundled data.
 export const exampleExperimentDrafts = Object.freeze([
   Object.freeze({
-    id: 'example-snippets-and-compositions',
-    label: 'Example: stock and options snippets and compositions',
-    load: async () => structuredClone((await import('./research-example-draft.mjs')).default),
+    id: 'lean-bench-snippets-and-compositions',
+    label: 'Lean Bench: ETF and options snippets and compositions',
+    load: async () => structuredClone((await import('./research-lean-example.mjs')).default),
   }),
 ])

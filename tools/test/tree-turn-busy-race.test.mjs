@@ -1,6 +1,7 @@
 /* THE ACKNOWLEDGEMENT MUST NOT RE-OPEN A TURN THAT ALREADY ENDED.
  *
- * THE DEFECT (found in a hand test of a local Observer node): treeCardSend's bridge.send(...).then(sent => ...) marks a node
+ * THE DEFECT (owner, Local Observer node16-8a2ff6c3, session cedebfeb-0079,
+ * 2026-09-12): treeCardSend's bridge.send(...).then(sent => ...) marks a node
  * 'running' unconditionally once the send's own IPC round trip settles. A
  * local turn whose first event is already its last -- LOCAL_NODE_RESPONSE_
  * INVALID, "the local model finished without returning an answer" -- can have

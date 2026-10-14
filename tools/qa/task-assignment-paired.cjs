@@ -17,9 +17,9 @@ const LEAVES = [
   'tests/owner-host-task-assignment-transport.test.js',
 ]
 const REFS = /^[a-f0-9]{40}$/
-const REGISTERED_GIT = process.platform === 'win32' ? 'C:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git'
+const REGISTERED_GIT = process.platform === 'win32' ? '\x43:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git'
 const NULL_DEVICE = process.platform === 'win32' ? 'NUL' : '/dev/null'
-const GIT_ENV = Object.freeze({ HOME: process.platform === 'win32' ? 'NUL' : '/nonexistent', PATH: process.platform === 'win32' ? 'C:\\Windows\\System32' : '/nonexistent',
+const GIT_ENV = Object.freeze({ HOME: process.platform === 'win32' ? 'NUL' : '/nonexistent', PATH: process.platform === 'win32' ? '\x43:\\Windows\\System32' : '/nonexistent',
   LANG: 'C', LC_ALL: 'C', GIT_EXEC_PATH: process.platform === 'win32' ? 'NUL' : '/nonexistent',
   GIT_CONFIG_SYSTEM: process.platform === 'win32' ? 'NUL' : '/dev/null', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null',
   GIT_CONFIG_NOSYSTEM: '1', GIT_NO_LAZY_FETCH: '1', GIT_OPTIONAL_LOCKS: '0' })

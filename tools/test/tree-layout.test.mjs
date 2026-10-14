@@ -127,7 +127,7 @@ test('a rank under one parent is packed under it, not smeared across the canvas'
   }
 })
 
-/* A REPORTED SCREENSHOT, AS ARITHMETIC (P-O3). Three roots A/B/C (r39,
+/* THE OWNER'S SCREENSHOT, AS ARITHMETIC (P-O3). Three roots A/B/C (r39,
    78px claim), D2 under A, one child slot under each root (r34 unnamed, 68px
    claim), and the new-tree slot S. Canvas ≈ 900px. The per-rank packer put
    the child row at 89/230/536/842 under a root row at 236/382/528: B's slot

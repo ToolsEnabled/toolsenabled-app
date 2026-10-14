@@ -1,7 +1,7 @@
 // Who may put this product in an iframe. The answer is: nobody, except the
 // preview page inside its own origin — and the answer has to live in a
 // RESPONSE HEADER, because Chrome ignores frame-ancestors delivered via
-// <meta> (an internal report, found by the
+// <meta> (reports/lanes/preview-frame-ancestors-inert.md, found by the
 // paid-product lane 2026-08-14 while embedding the preview in the website).
 //
 // The stakes are concrete: the shell serves the whole app over loopback HTTP,

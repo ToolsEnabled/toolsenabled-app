@@ -14,8 +14,8 @@
  * whose off state selected a SECOND RENDER -- a separate demonstration face
  * with its own rails, its own tabs, and most of the product missing. That
  * conflated three independent things in one flag: which render runs, where
- * data comes from, and where commands go. The rule collapsed it: every
- * simulated page IS the UI page, with mock data. So there is one
+ * data comes from, and where commands go. The owner's ruling collapsed it:
+ * "all simulated pages ARE the UI pages, just mock data." So there is one
  * render, and this module answers only the question that remains.
  *
  * RESOLUTION IS ASYNC AND CACHED. On a public origin the relay-versus-mock
@@ -59,8 +59,8 @@ export function onDesktop() {
 
 /* THE SIGNED-OUT VISITOR ARRIVES IN THE SIMULATION.
  *
- * The rule: simulation is on by default on every visit when a user is not
- * signed in. A stranger who follows the site's primary
+ * Owner ruling 2026-08-26: "simulation 'on' should be default on every visit
+ * when a user is not logged in." A stranger who follows the site's primary
  * button already saw mock data -- resolveDataSource() correctly answers 'mock'
  * for a browser with no desktop and no relay -- but they saw it framed as a
  * DEGRADED page rather than as a working demonstration. The product's front

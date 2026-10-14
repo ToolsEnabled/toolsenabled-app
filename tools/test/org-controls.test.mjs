@@ -89,3 +89,29 @@ test('refusal helpers preserve a useful reason and identify only the revision-co
   assert.equal(isRevisionConflict({ code: 'AGENT_ORG_STORE_UNKNOWN_AGENT' }), false,
     'an unrelated refusal must not be presented as a revision conflict')
 })
+
+test('a seat whose plugin role went away is named in a notice, as text', async () => {
+  // 1.0.49 plugins walk: an agent given a plugin's role, then the plugin
+  // withdrawn. The engine now gives that seat the Worker role instead of
+  // failing the whole organisation; the person is told which seat, and why.
+  const { roleSourceLabel } = await import('../../src/org-controls.js')
+  const one = orgNotices({ withdrawnPluginRoles: [{ agentId: 'astra', displayName: 'Astra', role: 'field-notes-curator' }] })
+  assert.deepEqual(one.map(({ kind }) => kind), ['plugin-role'])
+  assert.match(one[0].text, /^Astra held “field-notes-curator”, a role a plugin added\./)
+  assert.match(one[0].text, /works as a Worker/)
+  assert.match(one[0].text, /same abilities/)
+  const two = orgNotices({ withdrawnPluginRoles: [
+    { agentId: 'astra', displayName: 'Astra', role: 'field-notes-curator' },
+    { agentId: 'luna', displayName: '<b>Luna</b>', role: 'field-notes-archivist' },
+  ] })
+  assert.match(two[0].text, /^2 agents held roles a plugin added/)
+  assert.match(two[0].text, /work as Workers/)
+  const markup = orgNoticeMarkup({ withdrawnPluginRoles: [{ agentId: 'luna', displayName: '<b>Luna</b>', role: 'x-y' }] })
+  assert.ok(markup.includes('&lt;b&gt;Luna&lt;/b&gt;'), 'a display name is text')
+  assert.deepEqual(orgNotices({ withdrawnPluginRoles: [] }), [], 'nothing withdrawn, nothing said')
+
+  // And the role library names where a role came from.
+  assert.equal(roleSourceLabel({ custom: true, plugin: 'field-notes' }), 'From the plugin “field-notes”')
+  assert.equal(roleSourceLabel({ custom: true, plugin: null }), 'Custom role')
+  assert.equal(roleSourceLabel({ custom: false }), 'Default role')
+})

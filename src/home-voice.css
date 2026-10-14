@@ -258,5 +258,4 @@ section.voice-contact.voice-contact-panel {
   .voice-contact-panel.voice-contact :is(button, select, input):disabled { color: GrayText; }
 }
 
-.home .home-ring-wrap > section.voice-contact.voice-contact-panel { margin-top: 20px; }
 .voice-contact-panel:focus-within { border-color: color-mix(in srgb, var(--accent-2) 60%, var(--line-2)); }

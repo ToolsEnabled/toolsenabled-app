@@ -13,6 +13,7 @@ import {
   signedOutProviderIds,
   startableTierAnswer,
   startableTierIds,
+  startRefusalSentence,
   tierNoLauncherSentence,
   tierChoicesFor,
   TIER_CHOICES,
@@ -172,4 +173,19 @@ test('provider read failures do not become absence claims, and proven negatives 
   assert.ok(codexRow, 'the real caller default tier must have a menu row')
   assert.match(codexRow.label, /not installed/i, 'a proven missing program must tell the reader what prerequisite is missing')
   assert.doesNotMatch(codexRow.label, /sign(?:ed)?[ -]?in/i, 'a missing-program row must not send the reader to sign in before the program exists')
+})
+
+/* THE LOCAL DEAD END: a Local agent on a computer with no Ollama answered
+   "Nothing was started. The chosen local runtime is unavailable. Start it and
+   check its address in Settings → Local models." -- a runtime that was not
+   there, and rows that only tune one. The refusal now
+   names the one control that gets a local model working, and still says that
+   nothing started. */
+test('a Local start refused for a runtime or model that is not set up names Set up local models', () => {
+  for (const code of ['LOCAL_NODE_RUNTIME_UNAVAILABLE', 'LOCAL_NODE_MODEL_NOT_INSTALLED']) {
+    const sentence = startRefusalSentence({ ok: false, code }, { tier: 'local' })
+    assert.match(sentence, /^Nothing was started\. /, code)
+    assert.match(sentence, /Set up local models/, `${code} names the popup that finishes the setup`)
+    assert.doesNotMatch(sentence, /Start it and check its address/, `${code} no longer sends the person to rows for a runtime they may not have`)
+  }
 })

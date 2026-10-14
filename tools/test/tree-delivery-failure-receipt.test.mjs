@@ -28,10 +28,23 @@ const providerPath = path.join(fixtures, 'providers/agent-comms-local.js')
 const enginePath = path.join(fixtures, 'agent-engine/codex-process.js')
 const { createAgentHost } = require_(path.join(root, 'shell/agent-host.cjs'))
 let index = 0
+/* A refused hand-off is offered TREE_HANDOFF_ATTEMPTS times, 5, 10, 20 and 30
+   seconds apart (T1743), before it is set aside. Waiting for a set-aside moves
+   the host's clock (Date.now, the only clock that schedule reads) a few
+   seconds per real poll instead of sleeping through a minute. */
+const TREE_HANDOFF_ATTEMPTS = 5
+const realNow = Date.now
+let clockSkew = 0
+Date.now = () => realNow() + clockSkew
+test.after(() => { Date.now = realNow })
 
-async function until(predicate, label) {
-  const deadline = Date.now() + 7000
-  while (Date.now() < deadline) { if (predicate()) return; await delay(25) }
+async function until(predicate, label, { advanceMs = 0 } = {}) {
+  const deadline = realNow() + 7000
+  while (realNow() < deadline) {
+    if (predicate()) return
+    await delay(25)
+    clockSkew += advanceMs
+  }
   assert.fail(label)
 }
 
@@ -100,8 +113,8 @@ async function fixture(t, { refuseDiscardOnce = false } = {}) {
 
 test('bounded host refusal creates a durable dead letter and tells the sender once', async t => {
   const f = await fixture(t)
-  await until(() => f.notices().length > 0, 'sender never received its later delivery failure')
-  assert.equal(f.offers(), 3)
+  await until(() => f.notices().length > 0, 'sender never received its later delivery failure', { advanceMs: 5_000 })
+  assert.equal(f.offers(), TREE_HANDOFF_ATTEMPTS)
   assert.match(f.notices()[0].event.text, /set aside|dead letter/i)
   assert.equal(f.notices()[0].event.treeDelivery, false, 'the receipt is a host transport notice')
   assert.equal(f.state().deadLetters.filter(row => row.entry.messageId === f.sent.messageId).length, 1)
@@ -111,16 +124,16 @@ test('bounded host refusal creates a durable dead letter and tells the sender on
 
 test('a replacement does not deliver a terminal predecessor record again', async t => {
   const f = await fixture(t)
-  await until(() => f.notices().length > 0, 'the original refusal never settled')
+  await until(() => f.notices().length > 0, 'the original refusal never settled', { advanceMs: 5_000 })
   await f.host.startSession({ sessionId: `${f.recipientId}-next`, replacesSessionId: f.recipientId, ...f.recipientStart })
   await delay(250)
-  assert.equal(f.offers(), 3, 'predecessor recovery replayed a message already set aside')
+  assert.equal(f.offers(), TREE_HANDOFF_ATTEMPTS, 'predecessor recovery replayed a message already set aside')
 })
 
 test('a refused dead-letter write retains the batch and retries recording without more model offers', async t => {
   const f = await fixture(t, { refuseDiscardOnce: true })
-  await until(() => f.notices().length > 0, 'a refused durable write lost the batch instead of retrying')
+  await until(() => f.notices().length > 0, 'a refused durable write lost the batch instead of retrying', { advanceMs: 5_000 })
   assert.equal(f.discardAttempts(), 2)
-  assert.equal(f.offers(), 3, 'retrying persistence must not submit a fourth model turn')
+  assert.equal(f.offers(), TREE_HANDOFF_ATTEMPTS, 'retrying persistence must not submit another model turn')
   assert.equal(f.state().deadLetters.filter(row => row.entry.messageId === f.sent.messageId).length, 1)
 })

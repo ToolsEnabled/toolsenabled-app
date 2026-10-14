@@ -238,16 +238,16 @@ test('the review screen asks the per-provider bridge, and does not decide from t
 /* ------------------------------------------------------------------
    THE UNCERTAIN STATE MAY NOT HAND ANYBODY AN INSTALL COMMAND.
 
-   THE REPORT, from a second machine: Claude and Codex were installed and signed
-   in, yet launching agents said nothing was started and to run a winget
-   install.
+   THE REPORT, verbatim, from the owner's own second machine: "i have claude and
+   codex downloaded and installed and signed it but when i try to launch agents
+   it says nothing was started and to run winget install openAI".
 
    Two things were wrong and this is the second one. The probe's half -- a
    Windows process reading the PATH it inherited at login and missing everything
    installed since -- is fixed in shell/machine-search-path.cjs and pinned by its
-   own suite. This half is the one their report is really about: they were handed an
-   install command for a program they had already installed, and after that no
-   sentence the product prints about their machine is worth believing.
+   own suite. This half is the one his report is really about: he was handed an
+   install command for a program he had already installed, and after that no
+   sentence the product prints about his machine is worth believing.
 
    'unknown' NOW MEANS "WE COULD NOT FIND IT", WHICH IS NOT "YOU HAVE NOT GOT
    IT". A command printed here is a specific, checkable claim about somebody's
@@ -342,9 +342,9 @@ test('a relay reader is told which computer the facts and remedies belong to', (
    THE TONE ASYMMETRY IS THE PROPERTY WORTH A TEST. codexReadiness() marks a
    missing Codex `is-warn`, because nothing else in setup guarantees an agent
    can start without SOME engine. Nothing in setup depends on a local runtime
-   the same way -- it is a first-class peer to the paid providers (the free path
-   is the product, not a consolation) but never required (depth is enabled, not
-   required) -- so its
+   the same way -- it is a first-class peer to the paid providers (owner
+   ruling, "the free path is the product, not a consolation") but never
+   required (owner ruling, "enable depth, don't require it") -- so its
    absence must read as plain information, never a warning demanding
    attention. Only the genuinely uncertain state ("could not check") keeps
    the warn tone, matching the vocabulary the rest of this screen already
@@ -420,7 +420,7 @@ test('setup never installs or downloads anything for local models -- that stays 
   /* THE SAME "READ ONLY" PROPERTY setup.js's own comment states for
      codexReadinessMarkup(), now measured for its sibling: no install/pull
      verb may be called from this file, because the actual controls live on
-     guide.js's PROVIDER_SETUP and a second,
+     guide.js's PROVIDER_SETUP (owner ruling via fleet-B) and a second,
      thinner copy of them here would be the exact "two paths for one thing"
      defect this codebase has already fixed once. */
   const setupSection = view.slice(view.indexOf('function loadLocalModelPresence'), view.indexOf('function loadLocalModelPresence') + 800)

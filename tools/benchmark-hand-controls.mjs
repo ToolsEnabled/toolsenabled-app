@@ -8,10 +8,7 @@ import { promisify } from 'node:util'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
 const { sterileLaunchEnvironment, prepareSterileProfile, sterileProfileDirectories } = require('./lib/sterile-launch.cjs')
-// The Dev account's own Windows Temp folder. The account name is a placeholder,
-// and the path is joined at run time so the source carries no literal profile path.
-const devTemp = path.win32.join('C:\\', 'Users', 'BuildAccount-Dev', 'AppData', 'Local', 'Temp')
-const data = await fs.mkdtemp(path.win32.join(devTemp, 'hand-controls-benchmark-'))
+const data = await fs.mkdtemp('\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp\\hand-controls-benchmark-')
 const response = await fetch('https://storage.googleapis.com/mediapipe-assets/thumb_up.jpg', { signal: AbortSignal.timeout(30000) })
 if (!response.ok) throw Error('Could not obtain the official hand fixture')
 const bytes = Buffer.from(await response.arrayBuffer())

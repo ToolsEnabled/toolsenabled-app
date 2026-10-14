@@ -1,7 +1,7 @@
 ﻿/* A REDRAW MUST NOT ERASE WHAT THE PERSON IS STILL TYPING.
  *
- * The defect: occasional UI redraws erased what a person was typing.
- * src/home-chat-composer-draft.js carries that rule and
+ * Owner, verbatim: "theres occassionally really annoying UI redraws and they
+ * erase my typing." src/home-chat-composer-draft.js carries that sentence and
  * holds the TEXT across a subject-switch rebuild, and
  * tools/test/home-chat-composer-draft.test.mjs pins the text. Neither covers
  * the other two things lost in the same instant: WHERE THE CARET WAS and WHAT

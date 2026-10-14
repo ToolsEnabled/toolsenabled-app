@@ -1,7 +1,8 @@
 /* THE GOOGLE SIGN-IN CONTROL THAT CANNOT BE PRESSED HAS TO LOOK LIKE ONE.
  *
- * THE DEFECT THIS FILE EXISTS TO END, reported against the build on the site:
- * after downloading and opening it, pressing Sign in with Google did nothing.
+ * THE DEFECT THIS FILE EXISTS TO END, reported by the owner against the build
+ * on the site: "sign in with google in the version on the site -> when i
+ * download and open and press sign in to google it doesnt work".
  *
  * What was actually on the screen, measured by driving the app rather than by
  * reading it: src/account-markup.js googleOptionMarkup() rendered its
@@ -186,7 +187,7 @@ test('every disabled Google control is covered by an off-state rule that reaches
     `${STYLESHEET} has no rule that turns off a .ctl-btn inside ${ROW_HOOK}, so the disabled Google control in `
     + `${disabledStates.map(state => `"${state.name}"`).join(', ')} paints exactly like a live one: `
     + 'cursor: pointer, opacity 1, the full card and the hover lift. That is the shipped defect -- '
-    + 'a person pressed it, disabled ate the click, and the product answered with silence. '
+    + 'the owner pressed it, disabled ate the click, and the product answered with silence. '
     + 'Every .ctl-btn:disabled rule in the product is scoped to .board-page, .computers .stats-page, '
     + '.agentv-panels .ctl-actions or .fleet-profile-section, and this row is inside none of them.',
   )

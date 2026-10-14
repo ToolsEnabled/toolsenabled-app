@@ -1,3 +1,4 @@
+import { bindNodeMenuGestures, openNodeActionMenu } from '../node-action-menu.js'
 import { createImageConversation } from '../image-conversation.js'
 import { createImageOwnerClient } from '../image-owner-client.js'
 import { createProviderModeMenu } from '../provider-mode-menu.js'
@@ -24,7 +25,7 @@ import { readCloudLane } from '../lane-marks.js'
 import { adoptStandaloneIntoTree } from '../tree-standalone-adoption.js'
 import '../agent-screen-voice-controls.css'
 /* THE ONE AXIS THIS PAGE FORKS ON. live-flags.js's per-view second render is
-   gone (every simulated page IS the UI page, with mock data); what
+   gone (owner: "all simulated pages ARE the UI pages, just mock data"); what
    remains is a data source — local, relay, or mock — and one render fed by
    whichever answered. resolveDataSource is async because a public page has to
    ask the host for a transport; DATA_SOURCE_EVENT is the host saying the world
@@ -59,12 +60,13 @@ import { createTreeLaunchQueue, isResourceHold } from '../tree-launch-queue.js'
 import { answerWithinBound, createPendingApprovals } from '../approval-answer.js'
 import { executeFreshStartExistingNode } from '../fresh-start-existing-node.js'
 import { createEngineModelCatalog } from '../engine-model-catalog.js'
+import { customModelTier, customModelAction, validateModelId, modelIdProblem, modelChoiceEffort, OTHER_MODEL_VALUE, MODEL_NAME_HELP, MODEL_NEXT_START, nextModelChoiceProblem } from '../model-picker.js'
 import { createSavedSessionRefusals } from '../saved-session-refusals.js'
-import { MANAGED_SLOT_ACTIONS, planManagedSlotChoice } from '../managed-slot-choice.js'
+import { MANAGED_SLOT_ACTIONS, PERSON_ONLY_SLOT_REASON, personOnlySlotChange, planManagedSlotChoice } from '../managed-slot-choice.js'
 import { slotAccountStartOptions } from '../slot-account-choice.js'
 import { createAccountRecoveryCoordinator, recoveryPausedNode } from '../account-recovery-coordinator.js'
 import { createRecoveryHandoffStore } from '../recovery-handoff-store.js'
-import { savedAccountResumeRefused, predecessorCloseRefused, savedSessionEffort, saveStoppedSessionEffort, defaultRetryProviders, MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY, isAccountHandoff, isModelHandoff } from '../manual-account-continuation.js'
+import { savedAccountResumeRefused, predecessorCloseRefused, savedSessionEffort, saveStoppedSessionEffort, MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY, isAccountHandoff, isModelHandoff } from '../manual-account-continuation.js'
 import { stopStillOwnsNode, MANAGER_STOP_NOTE } from '../stop-node-session.js'
 import { executeRestartExistingNodeCommand } from '../restart-existing-node-command.js'
 import { executeFreshStartBriefSend } from '../fresh-start-brief-send.js'
@@ -72,7 +74,7 @@ import { executeSendToBoundNode } from '../send-to-bound-node.js'
 import { executeCreateAndStartNode, PROVIDERS_WITH_A_THINKING_DEPTH } from '../create-and-start-node.js'
 import { canRetryUnstartedNode, executeRetryUnstartedNode } from '../retry-unstarted-node.js'
 import { editorAttachmentDrafts } from '../editor-attachment-drafts.js'
-/* The rule for who may remove a circle, and the other half of it: which
+/* The owner's rule for who may remove a circle, and the other half of it: which
    typed lines count as the person prompting one. Both callable from a test. */
 import { callerCircleRefusal, executeRemoveNode, notePersonSpokeTo } from '../agent-removal-rule.js'
 import { resumableThread } from '../tree-resume-decision.js'
@@ -110,8 +112,8 @@ function paintSaidReply(host, text) {
    the environment they are standing in, which on production is exactly the
    address the absolute form spelled. */
 const ACCOUNT_PAGE_HREF = '/account/'
-/* THE COMPUTERS ON THE ACCOUNT, AND THE PRESS THAT DRIVES ANOTHER ONE. The
-   rule: the choice belongs on this page, not back on the account page,
+/* THE COMPUTERS ON THE ACCOUNT, AND THE PRESS THAT DRIVES ANOTHER ONE. Owner,
+   2026-08-23: the choice belongs on this page, not back on the account page,
    and either computer can be driven. The module holds no DOM and re-derives
    none of the host bridge's rules -- see its header for why this axis and the
    `liveComputers` one below are kept apart. */
@@ -125,7 +127,7 @@ import { mountPhoneLedger, buildSignInDoor, phoneLedgerNeedsSignIn } from '../ph
    account-state.js reader data-source.js's own signed-out/signed-in split
    already relies on for this exact window.mcAccount signal — see that
    module's onDesktop()/nobodyIsSignedIn() for why window.mcAccount is a real
-   signal here, backed on a browser copy by the website's public/
+   signal here, backed on a browser copy by toolsenabled-paid/website/public/
    host-bridge.js's own account service rather than being Electron-only. */
 import { loadAccountState } from '../account-state.js'
 /* No bare identifier reaches a person from this page's controls; the code is
@@ -161,6 +163,7 @@ import {
   movedFrontSentence,
   SWITCH_PANEL,
   sendFailureIsUnconfirmed,
+  sendFailureWasAccepted,
   sendRefusalSentence as queuedSendRefusalSentence,
   SAID_PANEL,
   NODE_STATUS_WORDS,
@@ -214,6 +217,8 @@ import {
   enqueue as outboxEnqueue,
   holdForSend as outboxHoldForSend,
   list as outboxList,
+  markHeld as outboxMarkHeld,
+  clearHeld as outboxClearHeld,
   moveSession as outboxMoveSession,
   replace as outboxReplace,
   promoteFront as outboxPromoteFront,
@@ -224,15 +229,16 @@ import { WRITE_OUTCOME_KEYS, recordUndeliveredWrite } from '../write-outcomes.js
 /* The readers that decide what a session event is allowed to put on a screen.
    Same set the agent page uses; a second reading of the same stream is how one
    surface comes to be wrong without anybody noticing. */
-import { createActionBuffer, completionSettlesOpenTurn, sessionActivityEvent, sessionEndedEvent, createSessionTextReader, sessionEventTurnId, sessionFiledRule, sessionNoProgressEvent, sessionRuleFilingCall, sessionTurnFailureText, sessionTurnStatus, sessionTurnSucceeded, sessionTurnCancelled, nodeStatusForTurn, recoveredNodeTurnStatus, sessionUsageEvent, sessionPersonTurn } from '../agent-session-events.js'
+import { createActionBuffer, completionSettlesOpenTurn, sessionActivityEvent, sessionEndedEvent, createSessionTextReader, sessionEventTurnId, sessionFiledRule, sessionNoProgressEvent, sessionRuleFilingCall, sessionTurnFailureText, sessionSafetyRefusal, sessionModelRefusal, sessionTurnStatus, sessionTurnSucceeded, sessionTurnCancelled, nodeStatusForTurn, recoveredNodeTurnStatus, sessionUsageEvent, sessionPersonTurn } from '../agent-session-events.js'
 import { desktopRefusalCode, desktopSessionFacts, desktopSessionName, desktopSessionsBridge, desktopSessionsOutsideTree, desktopStartedSessions, desktopTreeSignature, mountDesktopSessionChat, readDesktopSessionList } from '../desktop-sessions.js'
-import { DESKTOP_SESSION_COPY, desktopSessionSentence } from '../desktop-session-copy.js'
+import { DESKTOP_SESSION_COPY, desktopSessionSentence } from '../\x64esktop-session-copy.js'
 /* The one line the chat shows when an agent filed one of the person's rules
    -- built from the engine's tool result, never from the agent's prose. */
 import { filedRuleChatRow } from '../filed-rule-copy.js'
 /* The one sentence the read-only example chat falls back to when planNodeChatbox
    named no reason of its own. See the module for why it is not inlined here. */
 import { RAIL_CHAT_COPY } from '../rail-readonly-chat-copy.js'
+import { agentAccountCopy } from '../chat-copy.js'
 import {
   goalConfirmationSentence,
   goalPendingSentence,
@@ -267,7 +273,7 @@ import { createDesktopTreeViewStore, desktopTreeBridge, desktopTreeComputer, rea
 /* WHAT A NODE IS TOLD ABOUT ITS PLACE IN THE TREE. The tree holds the
    relationship; before this the session was never told it, and a child asked
    the person for "the manager's identifier" while its manager was drawn one
-   circle above it. See that file's header for why this
+   circle above it (owner, 2026-08-18). See that file's header for why this
    rides in the message text rather than in an engine option. */
 import { composeNodeBrief, nodeManagerContext, readTreeAddress } from '../tree-node-brief.js'
 import { markRoleContext } from '../chat-role-context.js'
@@ -296,7 +302,7 @@ import { createTurnInterrupts } from '../turn-interrupts.js'
 import { cloudControlsBox } from '../cloud-tasks.js'
 import { cloudCommandAction } from '../cloud-command-actions.js'
 import { accountSwitcher } from '../account-switcher.js'
-import { accountsBridge, loadAccounts, readAccountList } from '../account-switcher-state.js'
+import { accountsBridge, loadAccounts, readAccountList, observeAccountNames, sessionAccountDisplayRecord } from '../account-switcher-state.js'
 import { continuationRouteFor, mountSwitchAndContinueDialog, switchChoices, SWITCH_OPEN_REASON } from '../switch-and-continue.js'
 import { bridgeReachable, bridgeStatus, postBridgeAction, validAuditReceiptPair } from '../mission-bridge.js'
 import { readResearchSnapshot } from '../research-projects.js'
@@ -312,7 +318,7 @@ import { declaredAgentsData, declaredFleetData, seatCarriesProvider, seatProvide
  * src/declared-fleet.js takes `started` as its second argument and says in its
  * own header why: it is pure, the registry is a live singleton, and "the caller
  * holds the live half and hands it over". This page is that caller, and from
- * an earlier commit until 2026-08-18 it called `declaredFleetData(org)` at BOTH sites with
+ * 6f0a34a until 2026-08-18 it called `declaredFleetData(org)` at BOTH sites with
  * no second argument at all -- so `started` was null on every call, `running`
  * was always empty, and the declared fallback drew a tree that could never have
  * a node in it no matter what the person did.
@@ -343,6 +349,8 @@ import {
 } from '../org-controls.js'
 import '../board.css'
 import '../switch-and-continue.css'
+import '../local-setup-popup.css'
+import { localSetupNeeded, offersLocalSetup, openLocalModelSetupUntilClosed } from '../local-setup-popup.js'
 import '../tree-graph.css'
 import '../tree-workspace.css'
 import '../fleet-overview.css'
@@ -375,8 +383,8 @@ const ROLE_ASSIGN_UNAVAILABLE = Object.freeze({
  * from one button to the next. Nothing was stored, nothing was sent, and the
  * page reported no failure because nothing had been attempted.
  *
- * This class of defect is named exactly: never claim a control, such as
- * temperature, that cannot actually be set. A control that moves and reports success while changing
+ * The owner named this class of defect exactly: "dont lie like we cant control
+ * temperature". A control that moves and reports success while changing
  * nothing is worse than a missing control, because a missing control can be
  * asked for and a lying one is believed.
  *
@@ -589,7 +597,7 @@ function projectionMonitorContext(agent) {
    STARTING A REAL AGENT, WHICH IS THE ONE THING THIS PAGE COULD NOT DO.
    ---------------------------------------------------------------
 
- * WHAT WAS ASKED FOR. The tree is empty until a person starts something.
+ * WHAT THE OWNER ASKED FOR. The tree is empty until a person starts something.
  * The empty places in it are drawn, and pressing one is how the structure grows:
  * the panel on the right asks for a role and a message, and answering it starts
  * a real agent. Not a card that says an agent exists — an actual session, on
@@ -662,7 +670,7 @@ const START_NEEDS_APP_TEXT = () => readerRemedy(
   { viaRelay: currentDataSource() === 'relay' },
 )
 
-/* WHY THE EXAMPLE FLEET DOES NOT GROW TREES, and it is the same fence an earlier commit
+/* WHY THE EXAMPLE FLEET DOES NOT GROW TREES, and it is the same fence dd01899
    put on this page's Dispatch control.
    `isWriteEnabled` is a question about PERMISSION; this is a question about
    PROVENANCE, and they are not the same question. On the desktop with the
@@ -868,7 +876,7 @@ function researchRestrictionLabel(restriction) {
   return `Restricted research · ${mode} · ${access} · Folder: ${root}. Restart/resume unavailable.${retained}`
 }
 
-export async function startAgentForNode({ text, historyHandoff = null, automatic = false, surface, tier, effort, treeAccount = null, profileId, researchProjectId = null, research = null, researchSetup, requestKeys = null, treeIdentity = null, roleBinding = null, replacesSessionId = null, delegationToken = null, boundedWork = null, editorForkReceipt = null, treeCommandRequestId = null, onSessionOpen, onSessionEnd, sessionIsOpen, onCleanupRequired, onFirstTurnFailure, beforeSessionOpen = null, startRequestSessionId = null }) {
+export async function startAgentForNode({ text, historyHandoff = null, automatic = false, surface, tier, model = null, effort, treeAccount = null, profileId, researchProjectId = null, research = null, researchSetup, requestKeys = null, treeIdentity = null, roleBinding = null, replacesSessionId = null, delegationToken = null, boundedWork = null, editorForkReceipt = null, treeCommandRequestId = null, onSessionOpen, onSessionEnd, sessionIsOpen, onCleanupRequired, onFirstTurnFailure, beforeSessionOpen = null, startRequestSessionId = null }) {
   /* THE MOCK REFUSAL COMES BEFORE THE BRIDGE CHECKS, deliberately. On the
      desktop with the example toggle on, window.mcAgent EXISTS and works — so
      a bridge-presence test alone would let a mock-sourced press start a real
@@ -885,6 +893,7 @@ export async function startAgentForNode({ text, historyHandoff = null, automatic
       needsAssistantProgram: false,
     }
   }
+  if (model != null && modelIdProblem(model)) return { ok: false, code: 'AGENT_MODEL_INVALID', sentence: modelIdProblem(model), sessionId: null }
   let cleanupSessionId = null
   const bridge = withRetainedStartIdentity(typeof window === 'undefined' ? null : window.mcAgent, retained => {
     cleanupSessionId = retained.sessionId
@@ -922,6 +931,7 @@ export async function startAgentForNode({ text, historyHandoff = null, automatic
       ...(historyHandoff ? { historyHandoff } : {}),
       surface,
       ...(tier ? { tier } : {}),
+      ...(model == null ? {} : { model }),
       ...(effort ? { effort } : {}),
       ...(profileId ? { profileId } : {}),
       ...(!research && researchProjectId ? { researchProjectId } : {}),
@@ -1025,6 +1035,8 @@ export async function startAgentForNode({ text, historyHandoff = null, automatic
   if (typeof onSessionOpen === 'function') {
     try {
       const opened = await onSessionOpen({ sessionId, threadId, account, roleIntroduction, ...nativeWork,
+        accountRecord: { provider: started.provider,
+          ...(Object.hasOwn(started, 'account') ? { account: started.account } : {}) },
         ...(launchSettings !== undefined ? { launchSettings } : {}),
         ...(started.resourceAdmission ? { resourceAdmission: started.resourceAdmission } : {}) })
       if (beforeSessionOpen && opened !== true) return { ok: false, sessionId, threadId, cancelled: true,
@@ -1063,7 +1075,9 @@ export async function startAgentForNode({ text, historyHandoff = null, automatic
           deliveryDisposition: delivery?.deliveryDisposition === 'accepted' ? 'accepted'
             : delivery?.deliveryDisposition === 'not-sent' && delivery?.ok === false ? 'not-sent' : 'unknown',
           code: delivery?.code || 'AGENT_AUTOMATIC_DELIVERY_UNCONFIRMED',
-          sentence: 'The continuation could not be confirmed. Its session is retained; review the conversation before trying again.' }
+          sentence: delivery?.code === 'AGENT_AUTOMATIC_TURN_START_UNCONFIRMED'
+            ? 'The assistant did not confirm starting the continuation. Its session and queued messages are kept. Stop it before retrying.'
+            : 'The continuation could not be confirmed. Its session is retained; review the conversation before trying again.' }
       }
       sent = delivery.result
     } else sent = await bridge.send({ sessionId, text: research ? research.prompt : text })
@@ -1072,6 +1086,17 @@ export async function startAgentForNode({ text, historyHandoff = null, automatic
       deliveryDisposition: 'unknown', code: refusalCode(error) || 'AGENT_AUTOMATIC_DELIVERY_UNCONFIRMED',
       sentence: 'The continuation could not be confirmed. Its session is retained; review the conversation before trying again.' }
     const refusal = { ok: false, code: refusalCode(error) }
+    /* SENT, BUT NOT SAVED. The session is open and its provider accepted the
+       opening words; only saving them failed. That is a start that worked, not
+       "your message did not reach it" -- which marked the node failed and left
+       the same words ready to be sent again beside the turn already running.
+       The sentence rides with the success so a surface can still show it. */
+    if (sendFailureWasAccepted(refusal.code)) {
+      return { ok: true, needsApp: false, sessionId, threadId, account, roleIntroduction, ...nativeWork,
+        ...(launchSettings !== undefined ? { launchSettings } : {}), code: refusal.code,
+        sentence: readerRemedy(queuedSendRefusalSentence(refusal.code), { viaRelay: currentDataSource() === 'relay' }),
+        needsAssistantProgram: false }
+    }
     if (TERMINAL_AGENT_SESSION_CODES.has(refusal.code)) {
       if (typeof onSessionEnd === 'function') {
         try { onSessionEnd({ sessionId, code: refusal.code }) } catch { /* the terminal result below remains authoritative */ }
@@ -1215,7 +1240,37 @@ class RunSessionNodes extends Map {
   constructor(...args) {
     super(...args)
     this.seenAt = new Map()
+    this.automaticTurnBlocks = new Map()
   }
+
+  // Keep a safety hold for this session until retirement. A later completion
+  // or a remounted page cannot authorize delivery of older queued messages.
+  // A model hold (1.0.50 review CM-2) never replaces a safety hold, and ends
+  // when a turn on the session succeeds.
+  holdAutomaticTurns(sessionId, code = 'PROVIDER_SAFETY_REFUSAL') {
+    if (typeof sessionId === 'string' && sessionId) {
+      if (code === 'PROVIDER_MODEL_REFUSED' && this.automaticTurnBlocks.get(sessionId) === 'PROVIDER_SAFETY_REFUSAL') return
+      this.automaticTurnBlocks.set(sessionId, code)
+      outboxMarkHeld(sessionId, code)
+    }
+  }
+
+  releaseAutomaticTurns(sessionId, code) {
+    if (this.automaticTurnBlocks.get(sessionId) !== code) return false
+    this.automaticTurnBlocks.delete(sessionId)
+    outboxClearHeld(sessionId, code)
+    return true
+  }
+
+  recordAutomaticTurnBlock(packet) {
+    const sessionId = packet?.sessionId
+    if (sessionSafetyRefusal(packet, sessionId)) this.holdAutomaticTurns(sessionId)
+    else if (sessionModelRefusal(packet, sessionId)) this.holdAutomaticTurns(sessionId, 'PROVIDER_MODEL_REFUSED')
+    else if (sessionTurnSucceeded(sessionTurnStatus(packet, sessionId))) this.releaseAutomaticTurns(sessionId, 'PROVIDER_MODEL_REFUSED')
+  }
+
+  automaticTurnsHeld(sessionId) { return this.automaticTurnBlocks.has(sessionId) }
+  automaticTurnHoldCode(sessionId) { return this.automaticTurnBlocks.get(sessionId) || null }
 
   /** Record evidence this session answered, without claiming ownership. */
   touch(sessionId) {
@@ -1229,11 +1284,13 @@ class RunSessionNodes extends Map {
   }
 
   delete(sessionId) {
+    this.automaticTurnBlocks.delete(sessionId)
     this.seenAt.delete(sessionId)
     return super.delete(sessionId)
   }
 
   clear() {
+    this.automaticTurnBlocks.clear()
     this.seenAt.clear()
     return super.clear()
   }
@@ -1244,8 +1301,8 @@ const RUN_SESSION_NODES = new RunSessionNodes()
    mount of this view and of the Home chat, for every saved circle whose
    session this run does not own. A session the host does not hold is refused
    every time it is asked, and every refusal is a handler stack in the host's
-   log: MEASURED on a development install, hundreds of refused
-   mc-agent:models reads within half an hour, one burst per mount. Module
+   log: MEASURED 2026-09-21 on the LIVE generation (app d46c18f49), 303 refused
+   mc-agent:models reads in 27 minutes, one burst of ~76 per mount. Module
    state like RUN_SESSION_NODES, so a remount asks only about circles that
    changed; src/saved-session-refusals.js says what "changed" means. */
 const SAVED_SESSION_REFUSALS = createSavedSessionRefusals()
@@ -1294,12 +1351,6 @@ function recoveryImageContext() {
   }
 }
 
-/* THE VIEW'S FAILURE-FIRST CONSENT READ, lent to the module-level coordinator.
-   keepTryingOnLimitIsOn is closure-private to computersView (and is executed
-   by tools/test/resume-keeps-the-conversation.test.mjs in that shape), while
-   the coordinator is a singleton built here; the view sets this on mount.
-   Until it does, the answer is no. */
-let RUN_KEEP_TRYING_CONSENT = async () => false
 function recoveryCoordinator() {
   if (!accountRecoveryCoordinator && typeof window !== 'undefined' && window.mcAgent) {
     const imageContext = recoveryImageContext()
@@ -1307,10 +1358,9 @@ function recoveryCoordinator() {
       // The live start-consent reader leads: recovery starts sessions only while starting is on.
       canStart: () => isWriteEnabled(START_CONTROL_FLAG),
       bridge: imageContext?.bridge || window.mcAgent, sessionNodeIds: RUN_SESSION_NODES, moveOutbox: outboxMoveSession,
-      orgBridge: window.mcOrg, readAccounts: () => loadAccounts(window), tiers: LAUNCH_TIERS,
+      orgBridge: window.mcOrg, tiers: LAUNCH_TIERS,
       outbox: { takeNext: outboxTakeNext, confirmDelivered: outboxConfirmDelivered, requeueFront: outboxRequeueFront },
       canContinue: imageContext?.canContinue || (() => currentDataSource() === 'local' && window.mcAgent === imageContext?.bridge),
-      keepTryingOnLimit: nodeId => RUN_KEEP_TRYING_CONSENT(nodeId),
       isReplacing: nodeId => RUN_NODE_REPLACEMENTS.busy(nodeId),
       onCleanupRequired: (store, nodeId, sessionId, context) => retainTreeSessionCleanup(store, nodeId, sessionId,
         { ...context, note: 'The incomplete replacement still needs cleanup. Use Stop on this agent.' }),
@@ -1620,7 +1670,7 @@ const sessionProfileIds = new Map()
  * destroyed the view the person was looking at, panel and all. Measured
  * 2026-08-18 on a staged build: the flag was written, the switch worked, and
  * the panel simply vanished -- Start "came back" on a page they were no longer
- * on. That is a restart in everything but name, and the rule is no
+ * on. That is a restart in everything but name, and the owner asked for no
  * restart.
  *
  * So the press records WHICH slot was being composed, the rebuilt view reads it
@@ -1646,10 +1696,10 @@ let composeToRestore = null
  * the snapshot waits for the flip back instead of the wording dying with the
  * first flip.
  *
- * THIS LINE HAS ALREADY BEEN LOST ONCE. an earlier commit committed the USES of this
+ * THIS LINE HAS ALREADY BEEN LOST ONCE. ed7a10a committed the USES of this
  * variable without the declaration, and the fleet board died at load with
  * "roleLibraryToRestore is not defined" -- zero nodes, no way to start an
- * agent; the coordinator restored it at an earlier commit. It is declared beside
+ * agent; the coordinator restored it at 0bf3281. It is declared beside
  * composeToRestore because the two survive the same teardown, and a lane
  * staging one of them must take this line with them. */
 let roleLibraryToRestore = null
@@ -1804,7 +1854,7 @@ export function drillRootAfterReprojection(rootId, before = [], after = []) {
 /**
  * THE ONE NAME A CIRCLE ANSWERS TO, on the canvas and in the messenger.
  *
- * THE DEFECT THIS EXISTS FOR (T138, measured 2026-09-16): four
+ * THE DEFECT THIS EXISTS FOR (T138, measured 2026-09-16 03:47Z-05:05Z): four
  * circles started through `agent.spawn` were all registered as "Manager" and
  * sixteen as "Worker", so `agent_comms.local_roster` listed identical rows and
  * `agent_comms.send_local` answered TREE_RECIPIENT_AMBIGUOUS for the name and
@@ -1817,7 +1867,7 @@ export function drillRootAfterReprojection(rootId, before = [], after = []) {
  * by the time the circle was added. That short-circuit ran BEFORE
  * nodeDisplayName() and so discarded both halves of the rule the rest of the
  * product agrees on: the per-tree ordinal ("Manager 2") and the cross-tree id
- * suffix ("Manager (00000001)"). It arrived with the native-desktop-tree
+ * suffix ("Manager (5ef0084f)"). It arrived with the native-desktop-tree
  * adapter beside the `node.name` branch below, which is the branch that
  * adapter actually needs -- desktopTreeComputer() puts a composed `name` on
  * every row it projects.
@@ -2002,7 +2052,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      "Continue on Opus · Claude" off the menu, because the pre-answer value is
      TREE_DEFAULT_STARTABLE_TIERS: the four Codex tiers. Measured as a real
      regression by tools/test/t158-cross-provider-model-switch.test.mjs while
-     request R1238 was being built. So a subtractive reader asks THIS
+     owner request R1238 was being built. So a subtractive reader asks THIS
      flag, which is true only where a reply was actually parsed. */
   let startableTierAnswered = false
   /* AND WHICH PROVIDERS THIS COMPUTER IS PROVABLY NOT SIGNED IN TO -- the second
@@ -2093,8 +2143,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     <div class="computers">
       <!-- THE FIRST ROW OF THE PAGE, WHICH NOW HOLDS TWO THINGS.
            The tab strip is unchanged and keeps the whole left of the row. The
-           accounts menu is the right-hand end of it, which is where it belongs:
-           on page 2, right below settings and to the right. The
+           accounts menu is the right-hand end of it, which is where the owner
+           asked for it: "on page 2 right below settings and to the right". The
            quick-settings gear is the last thing in the page chrome directly
            above this row, so this is the one spot that is both immediately
            under settings and clear of the canvas.
@@ -2113,8 +2163,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
            reach a computer says so here, an inch under the chip. -->
       <div class="machine-note" role="status" hidden></div>
       <div class="comp-body">
-        <!-- ONE REAL BAR PER PANE (iteration 6: one clean bar per split, with a
-             scroll function, placed well). The title, the tree switcher and the
+        <!-- ONE REAL BAR PER PANE (owner, iteration 6: "it should be one nice
+             bar per split and it should have a scroll function. you have to
+             place it nicely though"). The title, the tree switcher and the
              tool buttons used to be absolutely positioned siblings sharing one
              band over the canvas, and the strip legally painted across the
              title the moment enough trees existed. The bar is normal flow with
@@ -2122,8 +2173,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
              stops deciding the visual order, and the trees slot alone scrolls
              sideways (hidden scrollbar, edge fades). -->
         <div class="graph-wrap glass">
-          <!-- THE BAR, REBUILT (the top bar still looked poor and was
-               started over). Same three slots, because
+          <!-- THE BAR, REBUILT (owner, 2026-08-18: "this bar still needs work
+               ... start over on just this top bar"). Same three slots, because
                that part was never the complaint; what it lacked was RANK and
                GROUPING, and what it carried was a paragraph.
 
@@ -2159,14 +2210,14 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
                 <button class="graph-edit-btn" type="button" title="Edit the role hierarchy">Edit</button>
                 <button class="graph-roles-btn" type="button" data-open-role-workspace title="Edit role directions and functions" hidden disabled>Roles</button>
               </div>
-              <!-- The Split button (defect 5's second, view-only pane) stood
-                   here until 2026-08-16, when it was retired for now -- the
-                   reasoning was that a page ends up with two views nobody keeps
+              <!-- The Split button (owner defect 5's second, view-only pane) stood
+                   here until 2026-08-16. Owner: "lets throw it away for now" -- his
+                   read was that a page ends up with two views nobody keeps
                    straight. So the button, its pane and its saved preference are
                    gone; the page is single-pane, which is also the shape every
                    harness measured it in. The bar around it is the packaging
                    lane's, which is why this resolution keeps their structure and
-                   their removal at once. -->
+                   his removal at once. -->
             </div>
             <div class="graph-edit-note">drag onto a parent or into empty space</div>
           </div>
@@ -2190,7 +2241,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
           <button type="button" class="tree-rail-close" aria-label="Close side panel">×</button>
           <div class="rail-page stats-page is-active"></div>
           <div class="rail-page ctl-page board-page"></div>
-          <!-- THE RIGHT-SIDE PANEL THAT WAS ASKED FOR, and it is a THIRD page
+          <!-- THE RIGHT-SIDE PANEL THE OWNER ASKED FOR, and it is a THIRD page
                rather than a takeover of one of the two above. Both of those are
                about something that already exists — the fleet, or one agent —
                and the person reading either of them may press an empty node
@@ -2204,6 +2255,33 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     </div>`)
 
   const tabsElement = root.querySelector('.tabs')
+  const computerMenuTargets = new WeakMap()
+  let computerMenu = null
+  const disposeComputerMenu = bindNodeMenuGestures(tabsElement, (event, keyboard) => {
+    const anchor = event.target.closest?.('.tab')
+    const target = anchor && computerMenuTargets.get(anchor)
+    if (!target) return
+    event.preventDefault(); event.stopPropagation()
+    computerMenu = openNodeActionMenu({ anchor, fallback: tabsElement, title: target.name, keyboard,
+      point: keyboard ? null : { x: event.clientX, y: event.clientY },
+      valid: () => !destroyed && anchor.isConnected,
+      rows: () => {
+        const current = target.machine ? machineChoices.find(row => row.relayPairId === target.machine.relayPairId && row.devicePairId === target.machine.devicePairId)
+          : liveComputers.find(row => row.id === target.computer.id)
+        const unavailable = !current ? 'This computer is no longer available. Choose another computer.'
+          : machineSwitchBusy ? machineTabSwitchState(window).sentence || 'Wait for the current computer switch to finish.' : ''
+        const selected = current && (target.machine ? current.driving : current === computer)
+        return [
+          { id: 'open-computer', label: target.name, hint: 'Open this computer', enabled: !unavailable, disabledHint: unavailable,
+            run: ctx => { ctx.close(false); if (target.machine) return driveMachine(current); switchComputer(current) } },
+          { id: 'computer-details', label: openButton.textContent, hint: 'Show this computer’s fleet details.', enabled: !unavailable && Boolean(selected),
+            disabledHint: unavailable || 'Open this computer first.', run: ctx => { ctx.close(false); if (graph?._treeWide || !statsPage.classList.contains('is-active')) openButton.click() } },
+        ]
+      },
+    })
+  }, { matches: target => target.closest?.('.tab') })
+  unsubs.push(() => { computerMenu?.close(false); disposeComputerMenu() })
+
   if (chatOnly) root.classList.add('home-agent-workspace')
   /* THE PAGE'S HEADING (T1572). Every h1-h4 on Computers sat inside a closed
      dialog or hidden panel, and the page's title is a styled div, so a screen
@@ -2219,31 +2297,21 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      menu that outlived its page would hold this whole view alive through those
      closures -- the retained-view shape src/page-frames.js documents at length.
      Its own destroy() is the only thing that removes them. */
-  let accountRetryGlobalPolicy = { autoRecoverOnLimit: true, state: 'pending' }
-  let accountRetryGlobalPolicyRead = null
-  let accountsMenuEl = null
   const accountsSlot = root.querySelector('.comp-accounts')
   if (accountsSlot) {
-    const accountsMenu = accountSwitcher({
-      onPolicyChange: policy => {
-        accountRetryGlobalPolicyRead = null
-        accountRetryGlobalPolicy = policy && typeof policy.autoRecoverOnLimit === 'boolean'
-          ? { autoRecoverOnLimit: policy.autoRecoverOnLimit, state: 'ready' }
-          : { autoRecoverOnLimit: null, state: 'unavailable' }
-        notifyNodeStatusListeners()
-      },
-    })
-    accountsMenuEl = accountsMenu
+    const accountsMenu = accountSwitcher()
     accountsSlot.appendChild(accountsMenu)
     unsubs.push(() => accountsMenu.__accountSwitcher?.destroy())
   }
   const graphWrap = root.querySelector('.graph-wrap')
   const agentScreenVoice = mountAgentScreenVoiceControls({
     sample: mockSource(), getComputerId: () => computer?.id,
+    // A saved node's canvas record carries its treeNode; a fleet agent that matches none does not.
+    isSavedTreeAgent: agent => Boolean(agent?.treeNode),
     onMarks: marks => graph?.setContactMarks(marks),
   })
   agentScreenVoice.el.classList.add('is-node-popover')
-  agentScreenVoice.el.setAttribute('aria-label', 'Agent voice and screen controls')
+  agentScreenVoice.el.setAttribute('aria-label', 'Agent voice, screen and video controls')
   if (!chatOnly) root.append(agentScreenVoice.el)
   let contactOpener = null
   const closeAgentContact = () => {
@@ -2434,7 +2502,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
   /* THE ORGANISATION HAS EXACTLY ONE ROOT, AND A CIRCLE RUNNING THAT ROLE IS
    * THAT ONE.
    *
-   * Measured on a development tree: a Controller circle could
+   * Measured on the owner's own tree, 2026-09-02: a Controller circle could
    * never bind an identity, so every agent.spawn it made was refused with
    * AGENT_SPAWN_IDENTITY_REQUIRED. The chain was: ensureSeatForNode asked for a
    * seat whose id is the NODE id; the Controller role carries the org-root
@@ -2493,7 +2561,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     /* WHICH TIER THIS SEAT IS BEING PREPARED FOR -- the one the start will
      * actually carry, which is not always the one the node still records.
      *
-     * T158 (from T137): continueNodeOnAnotherModel asks
+     * T158 (owner complaint T137, 2026-09-16): continueNodeOnAnotherModel asks
      * for a seat for a node whose `tier` is still the OLD model, and then
      * starts the replacement on the NEW one. shell/agent-host.cjs requires
      * `agentAuthority.provider === sessionProvider`, and that authority is the
@@ -2527,7 +2595,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      * own default (report to the organisation root when none is given) fired on
      * every one -- every node-id-shaped seat reads as `controller manages X`
      * regardless of where the circle actually sits, which is why the org reads
-     * flat (see an internal report). Naming the node's real
+     * flat (see REPORT-org-vocabulary-leak-20260907.md). Naming the node's real
      * tree parent HERE, only when that parent already holds a seat of its own,
      * turns this into a real hierarchy for the ordinary case (a child starts
      * after its already-running parent) without changing anything for the one
@@ -2984,6 +3052,24 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     orgStatusElement.dataset.state = text ? state : 'idle'
     orgStatusElement.hidden = !text
     markRefusalCode(orgStatusElement, code ? { code } : null)
+    /* A Local start refused because nothing local is set up carries the way
+       out on the same line: the popup that shows only the steps still needed. */
+    if (text && state === 'refuse' && offersLocalSetup(code) && !mockSource()
+        && typeof window.mcProviders?.localSetupStatus === 'function') {
+      const setUp = document.createElement('button')
+      setUp.type = 'button'
+      setUp.className = 'ctl-btn org-status-action'
+      setUp.setAttribute('data-org-local-setup', '')
+      setUp.textContent = START_PANEL.localSetupButton
+      setUp.addEventListener('click', async () => {
+        setUp.disabled = true
+        const ready = await openLocalModelSetupUntilClosed()
+        if (destroyed) return
+        setUp.disabled = false
+        if (ready && orgStatusPrimary?.code === code) setOrgStatus('', 'info')
+      })
+      orgStatusElement.append(' ', setUp)
+    }
   }
 
   const agentNameOf = (agentId) =>
@@ -3028,7 +3114,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
          re-render it -- so a person who started an agent and pressed Cancel was
          looking at the count as it stood BEFORE they started anything. Measured
          on the packaged build: two starts in the signed ledger, hero still
-         reading 0, which is the report exactly. Returning to this page
+         reading 0, which is the owner's report exactly. Returning to this page
          is a gesture, not a poll, so this costs one read per visit. */
       void paintAgentsOnRecord()
       paintFleetOverview()
@@ -3336,7 +3422,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * and, from tools/a11y-keyboard-qa: "an agent can be opened from the keyboard
    * on the computers page -- no Open control was reachable by Tab".
    *
-   * WHY. This button was aimed at `computer.agents[0]`, and since an earlier commit ("a
+   * WHY. This button was aimed at `computer.agents[0]`, and since 5cc2f09 ("a
    * fleet tree you build, instead of one the app invented") those are the agents
    * this person has STARTED -- correctly empty until they start one. So the
    * button hid itself on every fresh install.
@@ -3351,8 +3437,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * pointing at it.
    *
    * THE TREE STAYS EMPTY. This changes no node, draws no circle and invents no
-   * agent: the rule (the node tree is empty unless a user has started a
-   * session) is the reason the fallback reads DECLARED CAPACITY
+   * agent: the owner's rule ("the node tree should be empty unless a user has
+   * started a session") is the reason the fallback reads DECLARED CAPACITY
    * rather than putting a seat on the canvas. Capacity is what this computer
    * COULD run, it is exactly what the drill-in page reads, and declared-fleet.js
    * keeps the two halves apart on purpose. Nothing is drawn; a door is named. */
@@ -3467,8 +3553,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    *
    * YOUR COMPUTERS, FIRST, and only when this browser is reading one of them
    * over the account. Each chip is a whole machine; pressing it changes which
-   * machine the whole page is read from. This is the rule -- the choice
-   * used to be made on the account page, which meant
+   * machine the whole page is read from. This is the owner's ruling of
+   * 2026-08-23 — the choice used to be made on the account page, which meant
    * leaving the product to change which computer you were using it on.
    *
    * THE COMPUTERS IN THE MOUNTED RECORD, AFTER THEM — the bar that has always
@@ -3499,6 +3585,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       /* The account's name for it, set as text rather than built into markup:
          this is the one string in the bar that comes from outside the program. */
       tab.textContent = choice.name
+      computerMenuTargets.set(tab, { machine: choice, name: choice.name })
+      tab.setAttribute('aria-haspopup', 'menu')
+      tab.setAttribute('aria-keyshortcuts', 'Shift+F10 ContextMenu')
       tab.disabled = machineSwitchBusy
       tab.addEventListener('click', () => driveMachine(choice))
       tabsElement.appendChild(tab)
@@ -3507,6 +3596,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     if (!bar.record) return
     for (const candidate of liveComputers) {
       const tab = el(`<button class="tab ${candidate === computer ? 'active' : ''}">${escapeMarkup(candidate.name)}<span class="ip">${escapeMarkup(candidate.ip)}</span></button>`)
+      computerMenuTargets.set(tab, { computer: candidate, name: candidate.name })
+      tab.setAttribute('aria-haspopup', 'menu')
+      tab.setAttribute('aria-keyshortcuts', 'Shift+F10 ContextMenu')
       tab.addEventListener('click', () => switchComputer(candidate))
       tabsElement.appendChild(tab)
     }
@@ -3671,7 +3763,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       return
     }
     if (badge) return
-    badge = el('<span class="rail-sub graph-example-badge" data-example-badge="true" style="display: inline-flex; align-items: center; gap: 6px; font: 500 12px/18px var(--font-ui); color: var(--ink-2); background: color-mix(in srgb, var(--border-ink) 6%, transparent); border: 1px solid transparent; border-radius: var(--radius-xs, 3px); padding: 0 7px 0 6px; margin: 0 0 0 10px; align-self: center; white-space: nowrap;">Example, not your data</span>')
+    badge = el('<span class="rail-sub graph-example-badge" data-example-badge="true" style="display: inline-flex; align-items: center; gap: 6px; font: 500 12px/18px var(--font-ui); color: var(--ink-2); background: color-mix(in srgb, var(--border-ink) 6%, transparent); border: 1px solid transparent; border-radius: var(--radius-xs, 3px); padding: 0 7px 0 6px; margin: 0 0 0 10px; align-self: center; flex: none; white-space: nowrap;">Example, not your data</span>')
     lead.appendChild(badge)
   }
 
@@ -3829,12 +3921,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
   /* EVERY SURFACE WAITING ON THIS TURN, not the last one to ask.
    *
    * This was one callback per session, set unconditionally by whichever
-   * surface sent. Since an earlier commit gave the compact card the whole shared config,
+   * surface sent. Since 5f394a4 gave the compact card the whole shared config,
    * BOTH the card and the rail's Chat tab can send -- so a second send
    * overwrote the first surface's callback, and that surface's pending bubble
    * was never answered by anything. The person watched a message they had
-   * really sent sit unanswered while the reply appeared somewhere else
-   * (messages in history disappeared or merged into each other).
+   * really sent sit unanswered while the reply appeared somewhere else (owner,
+   * 2026-08-18: "the messages in history disappear or combine into each
+   * other").
    *
    * A set, drained once when the turn completes. A surface that closed in the
    * meantime simply is not in it; the reply still lands on the chip, the store
@@ -4193,6 +4286,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      different account for a new conversation; a resumed conversation must
      return to this one because provider thread storage is per account home. */
   const sessionAccountNames = new Map()
+  // Display receipts remain available after Stop, even before transcript
+  // hydration catches up. They do not participate in account selection.
+  const sessionAccountRecords = new Map()
 
   /* THE TURN EACH SESSION'S OPEN BUBBLE AND ACCUMULATOR BELONG TO. Absent
      means nothing is in flight; an engine that does not name its turns leaves
@@ -4442,7 +4538,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      * is reading. But nothing seeded it on the WRITE side either, so the FIRST
      * line appended for a session this window had not held became the whole of
      * `history`, and a five-line saved record was shadowed for the life of the
-     * view. That is a reported screenshot: a panel showing one YOU bubble over
+     * view. That is the owner's screenshot: a panel showing one YOU bubble over
      * a conversation that really happened.
      *
      * So the seed happens HERE, once, before the first append -- which is
@@ -4479,7 +4575,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
 
   /* ---- WHAT THE AGENT DID: BUFFER, SURFACES, RECORD ----
    *
-   * THE DEFECT (item 1). The engine narrates every turn -- tool_call,
+   * THE DEFECT (owner, item 1). The engine narrates every turn -- tool_call,
    * tool_result, approval_request, each with the command or the path, the exit
    * code, and the name that pairs a result with its call -- and every one of
    * those packets already reached this view. The activity branch below turned
@@ -4970,9 +5066,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       selfName: treeNodeName(node),
       parentName: parent ? (parent.name || null) : null,
       /* THE AGENTS THAT ALREADY REPORT TO THIS ONE, so it is told at spawn
-         instead of finding out when one of them messages it. The reported
-         symptom: agents took a while to realize they had subagents or
-         coordinators.
+         instead of finding out when one of them messages it. The owner reported
+         the symptom: agents "take a little while to realize they have subagents
+         or coordinators".
          treeNodeName, NOT node.name, for the reason the block above this
          function records at length: a bare `name` loses `role`, and a child
          under a circle drawn "Manager" was told its manager was "Agent".
@@ -4990,7 +5086,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      or provider cannot establish support for this one. */
   function engineEffortsFor(node) {
     const tier = LAUNCH_TIERS.find(tier => tier.id === node?.tier)
-    const wanted = sessionModelOverride.get(node?.sessionId) || tier?.model || null
+    const wanted = sessionModelOverride.get(node?.sessionId) || node?.model || tier?.model || null
     return engineModelCatalog.efforts(node?.sessionId, tier?.provider, wanted)
   }
 
@@ -5171,9 +5267,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * while the host process it was routing to keeps working. handleAgentEvent
    * then discarded every event for this window's own live session, the node
    * kept the status it was saved with, and the reply that arrived after the
-   * reload reached nothing. MEASURED on the native build: a session that
-   * had been working for minutes was still drawn as "starting" with the
-   * previous turn's answer, while its reply sat durable on disk.
+   * reload reached nothing. MEASURED by the owner on the native build: a
+   * session working at 10:21 was still drawn as "starting" with the previous
+   * turn's answer at 10:30, while its reply sat durable on disk.
    *
    * A saved id still proves nothing. One local presence read first checks
    * the saved inventory against this window and the live host. Absent IDs
@@ -5245,6 +5341,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         getNode: id => store.getNode(id),
         isCurrent: () => !destroyed && source === 'local' && treeStore === store,
         onReconnect: (node, answer, recovered) => {
+          if (recovered.activity?.automaticTurnBlock?.code === 'PROVIDER_SAFETY_REFUSAL') {
+            sessionNodeIds.holdAutomaticTurns?.(node.sessionId)
+          } else if (recovered.activity?.automaticTurnBlock?.code === 'PROVIDER_MODEL_REFUSED') {
+            sessionNodeIds.holdAutomaticTurns?.(node.sessionId, 'PROVIDER_MODEL_REFUSED')
+          } else if (recovered.activity) {
+            sessionNodeIds.releaseAutomaticTurns?.(node.sessionId, 'PROVIDER_MODEL_REFUSED')
+          }
           engineModelCatalog.record(node.sessionId, answer)
           const pending = nativePendingPackets.get(node.sessionId)
           nativePendingPackets.delete(node.sessionId)
@@ -5391,7 +5494,6 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      and disposing first is how a rebuild honours it. */
   let railChat = null
   function disposeRailChat() {
-    removeAccountRetrySection()
     disposeDesktopChat()
     if (!railChat) return
     if (chatNodeId) chatDraft?.write(railChat.root?.exportDraft?.())
@@ -5539,7 +5641,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * re-announce on a signed-in instance -- a token refresh, an account
    * re-check -- resolves to the source it already had, so the page kept its
    * verdict and the person still lost the conversation they were reading and
-   * the message they had half-typed (T296).
+   * the message they had half-typed (T296, owner-reported 2026-09-17).
    *
    * Holding stays unconditional because it is what makes a stale answer
    * harmless. Releasing now waits for the verdict; see onDataSourceChange for
@@ -5761,13 +5863,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       slot.appendChild(help)
       const list = document.createElement('ul')
       list.className = 'fleet-overview-trees'
-      list.setAttribute('data-desktop-session-list', '')
+      list.setAttribute('data-\x64esktop-session-list', '')
       for (const row of rows) {
         const item = document.createElement('li')
         const open = document.createElement('button')
         open.type = 'button'
         open.className = 'ctl-btn'
-        open.setAttribute('data-desktop-session-open', '')
+        open.setAttribute('data-\x64esktop-session-open', '')
         const name = document.createElement('b')
         name.textContent = desktopSessionName(row)
         const facts = document.createElement('span')
@@ -5793,7 +5895,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     currentRailTreeNode = null
     controlsPage.innerHTML = `
       ${railTitleRow({ back: { aria: DESKTOP_SESSION_COPY.backAria }, title: DESKTOP_SESSION_COPY.railTitle })}
-      <div class="rail-scroll" data-live-mode="live" data-desktop-session-rail>
+      <div class="rail-scroll" data-live-mode="live" data-\x64esktop-session-rail>
         <div class="agent-head board-head"><span class="role-dot"></span><div><div class="an">${escapeMarkup(desktopSessionName(row))}</div><div class="ar">${escapeMarkup(desktopSessionFacts(row))}</div></div></div>
         <div class="board-box board-chat-box"></div>
       </div>`
@@ -5865,12 +5967,36 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     })
   }
 
+  function repaintTreeAccount(node) {
+    const host = controlsPage.querySelector('[data-tree-account]')
+    if (!host) return
+    const copy = agentAccountCopy(treeAccountRecord(node))
+    host.textContent = copy.text
+    host.setAttribute('aria-label', copy.ariaLabel)
+  }
+
+  function treeAccountRecord(node) {
+    const receipt = node?.sessionId ? sessionAccountRecords.get(node.sessionId) : null
+    if (receipt) return sessionAccountDisplayRecord({ started: true, ...receipt }, window)
+    const saved = node?.id ? transcriptStore?.get(node.id) : null
+    // A live replacement must not borrow the previous session's account.
+    if (saved && (!nodeSessionLive(node) || saved.nativeSessionId === node?.sessionId)) {
+      return sessionAccountDisplayRecord({ started: true, provider: saved.provider,
+        ...(Object.hasOwn(saved, 'account') ? { account: saved.account } : {}) }, window)
+    }
+    return { started: node?.sessionId ? true : false }
+  }
+
+  unsubs.push(observeAccountNames(() => {
+    if (currentRailTreeNode) repaintTreeAccount(currentRailTreeNode)
+  }, window))
+
   function treeChatHeaderMetaFor(nodeId) {
     return {
       read() {
         const current = treeStore?.getNode(nodeId)
         if (!current) return {}
-        const snapshot = {}
+        const snapshot = { account: { source: 'session-account', ...treeAccountRecord(current) } }
         const sessionId = typeof current.sessionId === 'string' && current.sessionId ? current.sessionId : null
         const profileId = sessionId ? sessionProfileIds.get(sessionId) : null
         const cwd = profileId ? profileCwds.get(profileId) : null
@@ -5890,12 +6016,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       },
       subscribe(listener) {
         const removeStatusListener = registerNodeStatusListener(nodeId, listener)
+        const removeAccountNames = observeAccountNames(listener, window)
         profileMapListeners.add(listener)
         let active = true
         return () => {
           if (!active) return
           active = false
-          try { removeStatusListener() } finally { profileMapListeners.delete(listener) }
+          try { removeStatusListener() } finally { profileMapListeners.delete(listener); removeAccountNames() }
         }
       },
     }
@@ -6081,6 +6208,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       const isCurrent = () => !destroyed && treeStore === store
         && store.getNode(nodeId)?.sessionId === sessionId && window.mcAgent === bridge
       conversation = createImageConversation({ bridge, sessionId, isCurrent,
+        // The account-limit fence holds queued pictures as it holds queued words (REVIEW-1050 #9).
+        mayDrainAutomatically: () => !sessionNodeIds.automaticTurnsHeld?.(sessionId)
+          && recoveryCoordinator()?.externalBlock?.(nodeId)?.blocked !== true,
         mayDrain: () => {
           const node = store.getNode(nodeId)
           return isCurrent() && !nodeBusy(node) && !nodeSessionEnded(node) && node.status !== 'interrupted'
@@ -6196,103 +6326,6 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     return recovery.result
   }
 
-  const ACCOUNT_RETRY_DRAFT_REASON = 'Start this agent first. The retry policy becomes available after this agent starts.'
-  function refreshAccountRetryGlobalPolicy() {
-    if (accountRetryGlobalPolicyRead) return
-    const read = Promise.resolve(loadAccounts(window)).then(listed => {
-      if (accountRetryGlobalPolicyRead !== read) return
-      accountRetryGlobalPolicy = listed?.available === true
-        ? { autoRecoverOnLimit: listed.policy?.autoRecoverOnLimit === true, state: 'ready' }
-        : { autoRecoverOnLimit: null, state: 'unavailable' }
-      notifyNodeStatusListeners()
-    }).catch(() => {
-      if (accountRetryGlobalPolicyRead !== read) return
-      accountRetryGlobalPolicy = { autoRecoverOnLimit: null, state: 'unavailable' }
-      notifyNodeStatusListeners()
-    })
-    accountRetryGlobalPolicyRead = read
-  }
-  function accountRetryChipState(nodeId) {
-    const node = treeStore?.getNode(nodeId)
-    const coordinator = recoveryCoordinator()
-    const policy = coordinator?.retryPolicy(nodeId)
-    refreshAccountRetryGlobalPolicy()
-    const recovering = coordinator?.isRecovering(nodeId) === true
-    const writable = currentDataSource() === 'local' && isWriteEnabled(START_CONTROL_FLAG) && !recovering
-    const followsGlobal = !policy && accountRetryGlobalPolicy.state === 'ready' && accountRetryGlobalPolicy.autoRecoverOnLimit === true
-    const value = policy ? (policy.enabled ? (policy.waitForReset === true ? 'wait' : 'keep') : 'off') : followsGlobal ? 'keep' : 'off'
-    const unstartedDraft = Boolean(node?.status === 'draft' && !node.sessionId)
-    const labels = followsGlobal ? { keep: 'Follows Accounts menu: continue after a limit' } : null
-    const inheritedStatus = accountRetryGlobalPolicy.state === 'pending'
-      ? 'Reading the Accounts menu policy…'
-      : accountRetryGlobalPolicy.state === 'unavailable'
-        ? 'Accounts menu policy could not be read; automatic continuation is held.'
-        : followsGlobal
-          ? 'No per-agent override. Accounts menu continues after a limit.'
-          : 'No per-agent override. Accounts menu stops after a limit.'
-    return {
-      value,
-      labels,
-      status: unstartedDraft ? ACCOUNT_RETRY_DRAFT_REASON : (policy ? (coordinator?.retryStatus(nodeId, { compact: true }) || '') : inheritedStatus),
-      disabled: unstartedDraft || !writable,
-      showAction: policy?.enabled === true,
-      actionDisabled: unstartedDraft || !writable || policy?.state === 'working',
-    }
-  }
-  async function applyAccountRetryChip(nodeId, value, output = null) {
-    if (!['off', 'keep', 'wait'].includes(value)) return false
-    const node = treeStore?.getNode(nodeId)
-    const coordinator = recoveryCoordinator()
-    if (!node || !coordinator) return false
-    if (node.status === 'draft' && !node.sessionId) {
-      if (output) output.textContent = ACCOUNT_RETRY_DRAFT_REASON
-      return false
-    }
-    if (currentDataSource() !== 'local' || !isWriteEnabled(START_CONTROL_FLAG) || coordinator.isRecovering(nodeId)) {
-      if (output) output.textContent = currentDataSource() !== 'local' ? MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY : startControlOffReason()
-      return false
-    }
-    try {
-      const policy = coordinator.retryPolicy(nodeId)
-      if (value === 'off') {
-        if (policy?.enabled) await coordinator.cancelAccountRetries(nodeId)
-        else await coordinator.setAccountRetryOverride(nodeId, false)
-      }
-      else if (policy?.enabled) await coordinator.setWaitForResets(nodeId, value === 'wait')
-      else await continueNodeOnAnotherAccount(node, output, {
-        waitForReset: value === 'wait',
-        allowedProviders: policy?.allowedProviders || null,
-      })
-      notifyNodeStatusListeners()
-      return true
-    } catch (error) {
-      if (output) output.textContent = error.message || String(error)
-      return false
-    }
-  }
-  async function tryAccountRetryNow(nodeId, output = null) {
-    const node = treeStore?.getNode(nodeId)
-    const coordinator = recoveryCoordinator()
-    if (!node || !coordinator) return false
-    if (node.status === 'draft' && !node.sessionId) {
-      if (output) output.textContent = ACCOUNT_RETRY_DRAFT_REASON
-      return false
-    }
-    const policy = coordinator.retryPolicy(nodeId)
-    if (!policy?.enabled) return false
-    try {
-      await continueNodeOnAnotherAccount(node, output, {
-        waitForReset: policy.waitForReset === true,
-        allowedProviders: policy.allowedProviders || null,
-      })
-      notifyNodeStatusListeners()
-      return true
-    } catch (error) {
-      if (output) output.textContent = error.message || String(error)
-      return false
-    }
-  }
-
   function treeChatConfigFor(node) {
     if (!node) return null
     /* The example's working tree, and any example node holding an example
@@ -6304,13 +6337,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     const chatChips = {
       // Machine preferences do not prove the running session's sandbox.
       tier: () => ({ label: 'Permission settings' }),
-      /* T158 (chat-lifecycle, from an on-screen walk): this used to answer
-       * null -- hiding the chip
+      /* T158 (chat-lifecycle, Controller correction 2026-09-17, Worker 82's
+       * on-screen walk): this used to answer null -- hiding the chip
        * entirely, the same `hidden` paintChips() sets the effort chip
        * without gating on a chosen value at all -- until a same-provider
        * override already existed. A person can never click a chip that is
        * never there, so the only door onto a running agent's model was the
-       * Actions overflow row, which could not be found on screen. The
+       * Actions overflow row, which Worker 82 could not find on screen. The
        * chip must be there whenever there is a session to switch, showing
        * the model that IS running (override, or the tier it started on)
        * so a click always has something to open. */
@@ -6318,12 +6351,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         const live = treeStore ? treeStore.getNode(node.id) || node : node
         const tier = LAUNCH_TIERS.find(row => row.id === live.tier) || null
         const requested = sessionModelOverride.get(live.sessionId) || null
-        const wanted = requested || tier?.model || null
+        const wanted = requested || live.model || tier?.model || null
         if (!wanted) return { label: 'Choose model' }
         const choice = sessionModelChoices(live.tier).find(c => c.model === wanted)
-        const label = choice ? choice.label : wanted
+        const label = (requested || live.model) ? wanted : choice ? choice.label : wanted
         const pending = pendingModelChoice(live)
         const appliedLabel = !live.sessionId || requested ? 'Next: ' + label : label
+        if (live.nextModelChoice && !requested) return { label: appliedLabel + ' · Next: ' + live.nextModelChoice.model }
         return { label: pending
           ? appliedLabel + ' · Pending: ' + (pending.label || LAUNCH_TIERS.find(row => row.id === pending.tierId)?.label || pending.tierId)
           : appliedLabel }
@@ -6331,9 +6365,6 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       onOpenModel: chat => chat?.openActions?.('model'),
       onOpenMode: chat => chat?.openActions?.('provider-mode'),
       onOpenEffort: chat => chat?.openActions?.('effort'),
-      accountRetry: () => accountRetryChipState(node.id),
-      onAccountRetryChange: (value, chat) => applyAccountRetryChip(node.id, value, chat?.querySelector('[data-chat-chip="account-retry-status"]')),
-      onAccountRetryNow: chat => tryAccountRetryNow(node.id, chat?.querySelector('[data-chat-chip="account-retry-status"]')),
       // Keep the draft and attachments mounted while changing machine preferences.
       onOpenTier: () => { if (!destroyed) chatRoot?.openActions?.('permission-settings') },
       onCycleTier: null,
@@ -6372,10 +6403,10 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
            to 3, and its rule is `history.length ? [] : CHAT.slice(start, seed)`
            -- so a chat opened over an EMPTY history renders three canned
            bubbles from the demonstration fixture. The compact card pinned
-           `seed: 0` in an earlier commit; the rail's Chat tab spreads this config and
+           `seed: 0` in 5f394a4; the rail's Chat tab spreads this config and
            pinned nothing, so it fabricated a conversation for any node whose
            transcript was empty and then dropped it on the next rebuild. That
-           is half of the disappearing messages in history (2026-08-18). It
+           is half of "messages in history disappear" (owner, 2026-08-18). It
            belongs on the config rather than on either mount, because a rule
            kept in two places is a rule that drifts again. */
         seed: 0,
@@ -6490,7 +6521,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       /* THE WORK, MERGED INTO THE WORDS. A chat opened halfway through a turn
          has to show the commands already run, or a person watching a five-
          minute turn sees an empty log and concludes the product is hung -- the
-         exact reading that was reported. */
+         exact reading the owner reported. */
       history: mergeActionsIntoHistory(markTreeContext(history, node.sessionId), node.sessionId,
         { settled: !mockSource() && !nodeSessionLive(node) }),
       onOpenDiff: selection => openChatDiff({ ...selection, sessionId: liveSessionId() || null }),
@@ -6679,8 +6710,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
           return queueForSession(node, text)
         },
         cancel: id => outboxCancel(liveSessionId(), id),
-        /* THE UP-ARROW WALK'S WRITE (pressing Up in the chat reaches the queued
-           messages so a person can edit them). It rewrites ONE
+        /* THE UP-ARROW WALK'S WRITE (owner: "let userrs press up from the chat
+           to get to their qued messages and edit them"). It rewrites ONE
            waiting message in place -- same position, same id -- because
            cancel+add would send a corrected FIRST message LAST, and because
            the walk anchors on the id across repaints.
@@ -6917,13 +6948,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      * deletes itself when listTrees() is empty), every path to
      * showTreeNodeControls (no node is a tree node without a store), and with
      * it treeChatConfigFor, where the actions palette and the attachment and
-     * mention pickers are wired. It was found the only way it could be found --
-     * by looking: agent actions and file upload seemed to be missing. They were
-     * never removed. They were unreachable.
+     * mention pickers are wired. The owner found it the only way it could be
+     * found -- by looking: "where are my agent actions and such and the file
+     * upload?" They were never removed. They were unreachable.
      *
      * So the example opens a store of its own. It is the REAL store (same
      * createFleetTreeStore, same validation, same refusals) over a memory
-     * backing that writes nothing down, seeded with the example's trees. Their
+     * backing that writes nothing down, seeded with the example's trees. His
      * tree code runs over it unmodified, which is the point: there is no
      * example rail to maintain, because there is no second rail. */
     if (mockSource()) return openSampleTreeStore()
@@ -6969,8 +7000,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     return treeStore
   }
 
-  /* THE EXAMPLE, AT WORK (the example fleet simulates its
-   * different states in what looks like a very active environment).
+  /* THE EXAMPLE, AT WORK (owner, 2026-09-11: "have the example fleet simulate
+   * its different states in a seemingly very acive environment").
    *
    * src/sample-simulation.js plays the working tree: it changes the example
    * store through the store's own API and hands back what each agent is doing.
@@ -7295,8 +7326,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        * at the tree a person is actually looking at. It was first taken from
        * the address bar, and that was wrong twice over: this view resolves its
        * own computer when the address names none, and the app's own link to
-       * this page is a bare #/computers. Measured on a development tree: one
-       * circle was drawn while the address carried an id, and
+       * this page is a bare #/computers. Measured on the owner's own tree,
+       * 2026-09-03: one circle was drawn while the address carried an id, and
        * every spawn after a normal relaunch refused MC_TREE_SPAWN_TREE_NOT_OPEN
        * on a page that was plainly open.
        *
@@ -7395,7 +7426,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      falls back to the role's own label rather than to an id. */
   /* A NODE'S NAME IS AN IDENTITY, NOT ITS HOMEWORK. This used to return the
      start brief's first line, so the Details head shouted "Reply with exactly
-     the word OMEGA…" as if it were somebody's name (walkthrough,
+     the word OMEGA…" as if it were somebody's name (owner walkthrough,
      iteration 5). The name is now the role plus a per-tree ordinal when
      siblings share the role — "Coordinator", "Worker 2" — mirroring the
      ordinal shape treeLabel() already uses for trees. The brief keeps its own
@@ -7563,8 +7594,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        The hash-seeded fake excerpt (monitorContextFor) died with the second
        render — a fabricated chat line has no honest home on any source. */
     if (!node) return projectionMonitorContext(agent)
-    /* THE CONTEXT WINDOW, not a telemetry card. The old shape showed nothing
-       useful — by construction: chat was hardcoded null, statusNote is cleared on success,
+    /* THE CONTEXT WINDOW, not a telemetry card. The owner's words for the old
+       shape: "I dont see anything just nonsense" — and he was right by
+       construction: chat was hardcoded null, statusNote is cleared on success,
        so every successful run printed "nothing has run for this agent yet"
        under "telemetry unavailable". A tree node KNOWS its context: what was
        asked (message), what it is doing right now (nodeActivity), what it is
@@ -7737,13 +7769,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     if (focusedAction) group.querySelector(`[data-queue-action="${focusedAction}"]`)?.focus({ preventScroll: true })
   }
 
-  /* The second view-only pane stood here until 2026-08-16, when it was retired
-     for now. The packaging lane's branch predates that directive, so
+  /* The second view-only pane stood here until 2026-08-16. Owner: "lets throw
+     it away for now". The packaging lane's branch predates that directive, so
      its copy of the pane's enable and disable helpers arrived in this merge
      and is dropped here deliberately; notifyNodeStatusListeners() above is
      theirs and stays, because the chat composers depend on it. */
 
-  /* THE TREE SWITCHER (defect 5: buttons to navigate between trees).
+  /* THE TREE SWITCHER (owner defect 5: "buttons to navigate between them").
      One button per tree, named by treeLabel — the first words the person typed
      into it — plus Every tree to zoom back out. Rendered only when there are
      two or more trees: a switcher over one tree is chrome with no decision in
@@ -7895,15 +7927,15 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      700-character window from this function, so a long note here pushes the
      code out of its own test. The rest of the reasoning is in the commit.
 
-     Four sentences became three (the panel read as cluttered). What went was
+     Four sentences became three (owner, on this panel: "messy"). What went was
      the JOURNEY -- "Settings -> Write -> Run an agent session" -- spelled out in
      prose directly above a button that does it in one press. Settings is still
      named, because a refusal that names nowhere to change a thing is a dead end
      and that gate is right. */
   /* THE ONE-PRESS WAY OUT, offered only for the one reason a press can undo.
    *
-   * The rule, and it is the reason this is a control and not a default:
-   * the person's recorded answer stays off until THEY press. So nothing here writes
+   * Owner's rule, and it is the reason this is a control and not a default:
+   * his recorded answer stays off until HE presses. So nothing here writes
    * anything -- composeUnavailableAction only DESCRIBES a press, and the write
    * happens inside `run`, which is the click handler and nowhere else.
    *
@@ -7916,6 +7948,17 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * setWriteEnabled is the single writer of these rows (src/write-flags.js),
    * which is what makes the two surfaces incapable of disagreeing. */
   const nativeTreeReadOnlyReason = 'The computer’s saved trees are read-only here. Add or change agents on that computer.'
+
+  /* "Set up local models" for the compose panel: whether the Local model can
+     start here yet, and the popup that makes it so. Absent without the
+     desktop bridge, and on example data. */
+  function composeLocalSetup() {
+    if (mockSource() || typeof window.mcProviders?.localSetupStatus !== 'function') return null
+    return {
+      needed: () => localSetupNeeded(window.mcProviders),
+      open: () => openLocalModelSetupUntilClosed(),
+    }
+  }
 
   function composeUnavailableAction(detail) {
     /* Mock answers null FIRST: the example refusal's remedy is the Data & Sim
@@ -7974,7 +8017,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      * agent page, which asks -- and only of the agent page. THIS page never
      * asked: the dashed circle opened its panel, "Start this agent" went all
      * the way to the engine, and what came back was an ENGINE refusal about
-     * Codex, on a computer whose person had been promised nothing here would
+     * Codex, on a computer whose owner had been promised nothing here would
      * start anything. Measured on the packaged build 2026-08-16 on a fresh
      * profile that answered "Nothing yet -- let me look around first".
      *
@@ -8011,9 +8054,10 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    */
   /* THE FOLDER A TREE STARTS IN, ASKED WHERE THE PERSON STARTS THE TREE.
    *
-   * Starting a tree selects a folder, with a configurable default, where the
-   * agents spawn; on 2026-08-19 choosing a folder for each tree was reported
-   * missing.
+   * Owner, 2026-08-16: "when a user starts a tree they should select a folder,
+   * they can have a default folder, where the agents spawn"; and again on
+   * 2026-08-19, having gone looking for it: "what happened to sessions and
+   * choosing a folder for each tree and such?"
    *
    * NOTHING NEW IS BUILT HERE. The named folders already exist in the main
    * process (mcAgent.profiles(), created through the OS dialog by the fleet
@@ -8160,8 +8204,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
 
   /* ASKED AGAIN RATHER THAN BELIEVED ONCE.
    *
-   * THE DEFECT THIS CLOSES, reported from a real machine: Claude,
-   * Gemini and Grok could not be launched, only Codex. Every
+   * THE DEFECT THIS CLOSES, reported by the owner on his own machine: only Codex
+   * could be launched, not Claude, Gemini or Grok. Every
    * launcher was in the payload, every CLI was installed and every account was
    * signed in. What had happened is one throw: the shell's
    * mc-agent:startable-tiers handler failed twice during a restart with
@@ -8343,6 +8387,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
          composeUnavailableAction(): it is offered for the switched-off flag and
          for nothing else, and it writes only when pressed. */
       unavailableAction: composeUnavailableAction(detail),
+      localSetup: composeLocalSetup(),
       /* WHICH ENGINES THIS COPY CAN REALLY START, asked of the shell rather
          than assumed by the renderer. See startableTiersNow() below. */
       tiers: startableTierChoices,
@@ -8409,8 +8454,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     const store = treeStore
     if (!store) return { ok: false, message: treeStoreProblem || START_NEEDS_APP_TEXT() }
     const parent = composeParentFor(detail)
-    /* THE LABEL IS THE ACTION, THE ONLY DECIDER (Set and Start are both offered
-       as options). This used to ask treeHasStarted() what the
+    /* THE LABEL IS THE ACTION, THE ONLY DECIDER (owner: "ITS SUPPOSED TO HAVE
+       SET OR START AS OPTIONS"). This used to ask treeHasStarted() what the
        person's press MEANT -- context deciding an intent nobody stated, which
        is the exact defect the two-button panel exists to close: on a fresh
        tree treeHasStarted() is false by construction, so a person who pressed
@@ -8455,8 +8500,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         const updated = store.updateNode(node.id, { role: draft.role, message: draft.message })
         if (!saved(updated)) return refusal(updated)
       }
-      if (current.tier !== (draft.tier || '') || current.effort !== (draft.effort || '')) {
-        const updated = store.setNodeLaunchPreferences(node.id, { tier: draft.tier || '', effort: draft.effort || '' })
+      if (current.tier !== (draft.tier || '') || current.effort !== (draft.effort || '') || (current.model ?? null) !== (draft.model ?? null)) {
+        const updated = store.setNodeLaunchPreferences(node.id, { tier: draft.tier || '', effort: draft.effort || '', model: draft.model ?? null, nextModelChoice: null })
         if (!saved(updated)) return refusal(updated)
       }
       // Only the root form owns the tree's folder, including clearing an old
@@ -8516,6 +8561,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       /* Recorded so "start this conversation over" can honestly reuse the
          tier the person chose, however much later the restart happens. */
       tier: draft.tier || '',
+      ...(draft.model == null ? {} : { model: draft.model }),
       /* Set closes this panel, so the node is the only place the person's
          exact effort choice can survive until the tree-level Start. */
       effort: draft.effort || '',
@@ -8549,7 +8595,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       container: host, parent: null, roles: composeRoleChoices(),
       ...composeResearchOptions(),
       unavailableReason: composeUnavailableReason(), startUnavailableReason: composeStartUnavailableReason(),
-      unavailableAction: composeUnavailableAction(null), tiers: startableTierChoices,
+      unavailableAction: composeUnavailableAction(null), localSetup: composeLocalSetup(), tiers: startableTierChoices,
       folders: composeFolders, folderSelectedId: lastComposeFolder(), defaultFolder: composeDefaultFolder,
       confinementLine: composeConfinementLine,
       onSubmit: async draft => {
@@ -8571,19 +8617,18 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     if (!panel) return null
     const kept = keptDraft?.read?.()
     if (kept && typeof kept === 'object') {
-      /* PROVIDER BEFORE MODEL (1.0.48, D12). The draft keeps the model row id
-         only; its provider is read off that row and chosen first, because the
-         Model menu lists one provider's rows and a Claude model is not among
-         the Codex rows the form opens on. Each change event rebuilds the menu
-         below it, so the model and then the depth are restored into menus that
-         offer them. */
-      const saved = { ...kept, provider: launchTier(kept.tier)?.provider }
-      for (const [field, key] of [['role', 'role'], ['provider', 'provider'], ['tier', 'tier'], ['effort', 'effort'], ['profile', 'profileId'], ['workspace-kind', 'workspaceKind'], ['research-project', 'researchProjectId'], ['message', 'message']]) {
+      /* Restore the provider before the model and its depth. A typed-model
+         draft keeps its launcher tier plus the exact name, so restore Other
+         model and that name before rebuilding the effort menu. An empty name
+         is still an unfinished draft and must survive navigation too. */
+      const saved = { ...kept, provider: launchTier(kept.tier)?.provider,
+        tier: typeof kept.model === 'string' ? OTHER_MODEL_VALUE : kept.tier }
+      for (const [field, key] of [['role', 'role'], ['provider', 'provider'], ['tier', 'tier'], ['model', 'model'], ['effort', 'effort'], ['profile', 'profileId'], ['workspace-kind', 'workspaceKind'], ['research-project', 'researchProjectId'], ['message', 'message']]) {
         const control = host.querySelector(`[data-compose-field="${field}"]`)
         if (!control || typeof saved[key] !== 'string') continue
         if (control.tagName === 'SELECT' && ![...control.options].some(option => option.value === saved[key])) continue
         control.value = saved[key]
-        control.dispatchEvent(new Event(field === 'message' ? 'input' : 'change', { bubbles: true }))
+        control.dispatchEvent(new Event(control.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }))
       }
       const message = host.querySelector('[data-compose-field="message"]')
       if (Number.isInteger(saved.start) && Number.isInteger(saved.end)) message?.setSelectionRange?.(saved.start, saved.end)
@@ -8640,6 +8685,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         /* The store's own sentence, on the line the person already reads for
            everything else this view refuses. */
         noteStoreRefusal: sentence => setOrgStatus(sentence, 'warn'),
+        /* B38: a second mount of this page retires this copy under the start;
+           the seam then answers the retryable VIEW_DESTROYED, not a failure. */
+        viewDestroyed: () => destroyed,
       })
     } finally {
       if (parentNodeId) createFlightsByParent.delete(parentNodeId)
@@ -8763,6 +8811,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       role: node.role,
       message: node.message,
       tier: node.tier,
+      ...(node.model == null ? {} : { model: node.model }),
       effort: draftStartEffort(node, { override: effort, tierDefault: tierEffortOf(node.tier) }),
     }
     /* The chosen canvas role remains optional. Its declared identity is not:
@@ -8859,8 +8908,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     let attachProblem = null
     /* WHERE THIS AGENT STANDS IN THE TREE, SENT WITH THE JOB.
      *
-     * An agent did not realize it had a manager and could not
-     * contact it. The tree drew Default under Manager and the session was told
+     * Owner, 2026-08-18: "This one is not realizing and not able to contact its
+     * manager." The tree drew Default under Manager and the session was told
      * neither fact, so the agent asked the person for "the manager's
      * identifier". The names here are treeNodeName's, which is to say the words
      * on the circles -- an agent that answers "Manager: ..." is naming what the
@@ -8877,6 +8926,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       ...accountStart.options,
       surface: 'fleet-tree',
       tier: draft.tier,
+      model: draft.model,
       effort: draft.effort,
       /* The tree's assigned session profile rides with every start in it --
          per-tree onboarding, which is the whole point of profiles. Null means
@@ -8903,7 +8953,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         }
       },
       onCleanupRequired: ({ sessionId }) => { retainTreeSessionCleanup(store, node.id, sessionId, { note: statusNote(startCleanupSentence()) }) },
-      onSessionOpen: ({ sessionId, threadId, account, roleIntroduction, researchRestriction, resourceAdmission }) => {
+      onSessionOpen: ({ sessionId, threadId, account, accountRecord, roleIntroduction, researchRestriction, resourceAdmission }) => {
         // B31 follow-up: the bounded box's Stop can close this before its brief is accepted.
         if (boundedWork && typeof onBoundedSessionOpen === 'function') { try { onBoundedSessionOpen(sessionId) } catch {} }
         if (editorCopy.receipt) editorAttachmentDrafts.forget(node.id, treeStoreId)
@@ -8911,13 +8961,18 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         sessionEfforts.set(sessionId, draft.effort || tierEffortOf(draft.tier))
         if (threadId) sessionThreadIds.set(sessionId, threadId)
         sessionAccountNames.set(sessionId, account || null)
+        sessionAccountRecords.set(sessionId, accountRecord || {})
         if (researchRestriction && typeof store.setNodeResearchRestriction === 'function') {
-          store.setNodeResearchRestriction(node.id, researchRestriction)
+          const savedRestriction = store.setNodeResearchRestriction(node.id, researchRestriction)
+          if (savedRestriction?.ok !== true || savedRestriction.snapshot?.persistenceFailed) {
+            return { ok: false, code: 'RESEARCH_RESTRICTION_NOT_SAVED',
+              sentence: 'The restricted research session could not be saved.' }
+          }
         }
         /* THE FIRST THING SAID IS RECORDED LIKE EVERY OTHER THING SAID, and
          * until now it was the one turn that was not.
          *
-         * Messages in history sometimes disappeared.
+         * Owner, 2026-08-18: "Sometimes the messages in history disappear."
          * transcriptAppend was called from three places -- a typed message, a
          * drained queued message, and a completed turn -- and the compose
          * panel's brief was none of them. It survived on screen only through
@@ -8936,8 +8991,11 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
          * conversation these words were sent from, not a claim about who typed
          * them. Ordered before any reply can arrive, because this runs before
          * the send. */
-        if (draft.message) transcriptAppend(sessionId, { who: 'you', text: draft.message, at: Date.now() }, { persist: false })
-        transcriptAppend(sessionId, { who: 'you', text: nodeManagerContext(briefContext), at: Date.now() }, { persist: false })
+        // A restricted opening records the same explicit prompt sent below;
+        // it has no ordinary manager context to construct or append.
+        const openingMessage = research ? research.prompt : draft.message
+        if (openingMessage) transcriptAppend(sessionId, { who: 'you', text: openingMessage, at: Date.now() }, { persist: false })
+        if (briefContext) transcriptAppend(sessionId, { who: 'you', text: nodeManagerContext(briefContext), at: Date.now() }, { persist: false })
         if (roleIntroduction) transcriptAppend(sessionId, { who: 'you', text: roleIntroduction, at: Date.now() }, { persist: false })
         if (resourceAdmission?.bootstrapController === true) transcriptAppend(sessionId, {
           who: 'action', tool: 'Resource policy', state: 'done', at: Date.now(),
@@ -9038,7 +9096,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       const panelSentence = result.needsAssistantProgram
         ? `${result.sentence} ${START_REFUSAL.assistantProgramNote}`
         : result.sentence
-      return { ...(boundedWork ? result : {}), ok: false, message: panelSentence }
+      /* The code rides back so the panel can offer the way out a refusal has
+         (a Local start with nothing set up offers "Set up local models"). */
+      return { ...(boundedWork ? result : {}), ok: false, message: panelSentence, code: result.code ?? null }
     }
 
     if (destroyed) return { ...result, ok: result.ok === true, sessionId: result.sessionId || null,
@@ -9182,8 +9242,17 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
             return result.ran ? result.value : { ok: false, sentence: 'This agent is already changing. Try again when it has finished.' }
           } finally { startingNodeIds.delete(node.id); repaint() }
         },
-        bindSession(node, host, initial, restoredLines = null) {
+        async bindSession(node, host, initial, restoredLines = null) {
           let currentSession = null
+          if (host?.stopped === true) {
+            // The host already copied and bound the canonical record. Load
+            // this circle's record before its chat and Resume read the cache.
+            const saved = await transcripts?.readLatest?.(node.id)
+            if (saved?.nativeSessionId !== host.nativeSessionId || saved.threadId !== host.threadId
+                || saved.provider !== host.provider || saved.account !== host.account) {
+              throw new Error('The placed conversation’s saved native identity could not be confirmed.')
+            }
+          }
           /* B4 step 10 (1.0.48): a New agent tab reopened after a restart and
              placed before any agent had its conversation gives the circle that
              conversation, written to the circle's own record so the tree shows
@@ -9205,6 +9274,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
             store.attachSession(node.id, id)
             if (result?.threadId || snapshot.threadId) sessionThreadIds.set(id, result?.threadId || snapshot.threadId)
             sessionAccountNames.set(id, result?.account ?? snapshot.account ?? null)
+            sessionAccountRecords.set(id, result && Object.hasOwn(result, 'account')
+              ? { account: result.account, provider: result.provider || snapshot.accountRecord?.provider }
+              : snapshot.accountRecord || {})
             if (result?.effort) sessionEfforts.set(id, result.effort)
             const state = snapshot.phase === 'working' ? 'running'
               : nodeStatusForTurn(snapshot.lastTurnStatus, { userStopped: snapshot.lastTurnStatus === 'interrupted' })
@@ -9233,7 +9305,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
           if (!initial.sessionId && host) {
             // A provider exit during the IPC round trip is history, not a
             // reason to label an acknowledged but ended session as running.
-            store.setNodeStatus(node.id, 'interrupted', { note: 'This session ended while the agent was joining the tree.' })
+            store.setNodeStatus(node.id, 'interrupted', { note: host.stopped === true ? 'Stopped conversation placed. Resume to continue it.' : 'This session ended while the agent was joining the tree.' })
           }
           repaint()
           return {
@@ -9241,7 +9313,17 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
               const fresh = store.getNode(node.id)
               if (!fresh) throw new Error('The agent is no longer on this tree.')
               if (fresh.sessionId && sessionNodeIds.has(fresh.sessionId)) throw new Error('Open the current tree conversation to use this running agent.')
-              return { surface: 'fleet-tree', treeIdentity: nodeTreeIdentity(fresh, store), requestKeys: nodeRequestKeys(fresh, store) }
+              const options = { surface: 'fleet-tree', tier: fresh.tier, ...(fresh.model == null ? {} : { model: validateModelId(fresh.model) }), ...(fresh.effort ? { effort: fresh.effort } : {}), treeIdentity: nodeTreeIdentity(fresh, store), requestKeys: nodeRequestKeys(fresh, store) }
+              if (host?.stopped === true) return (async () => {
+                const role = identityRoleForTreeNode(fresh.role)
+                const ensured = await ensureSeatForNode(fresh, role, { tierId: fresh.tier })
+                if (ensured?.ok === false) throw Object.assign(new Error(ensured.reason || 'The circle’s declared identity is unavailable.'), { code: ensured.code })
+                const bound = roleBindingForStart(fresh.id, role, fresh.role)
+                if (!bound.ok) throw Object.assign(new Error(bound.message), { code: bound.code })
+                options.roleBinding = bound.binding
+                return options
+              })()
+              return options
             },
             onSessionChange(snapshot, event = {}) {
               if (event.kind === 'open') bind(snapshot)
@@ -9351,7 +9433,12 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
            window with no transcript bridge legitimately has none -- the seat
            then keeps exactly the behaviour it had, window memory only. */
         transcript: {
-          bind: (sessionId, seatId) => transcriptStore?.bind?.(sessionId, seatId),
+          bind: (sessionId, seatId) => {
+            if (typeof transcriptStore?.bind !== 'function') {
+              return Promise.resolve({ ok: false, code: 'TRANSCRIPT_STORE_UNAVAILABLE' })
+            }
+            return transcriptStore.bind(sessionId, seatId)
+          },
           release: sessionId => transcriptStore?.release?.(sessionId),
           /* B4: the saved conversation of a tab coming back after a restart
              (it also fills the cache treeChatConfigFor reads, with the newest
@@ -9415,7 +9502,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
           role: identityRoleForTreeNode(''), tier: null, parentId: null, sessionId: null, message: '', reply: '', statusNote: '' })?.history),
         /* THE SOLO AGENT GETS A REAL SEAT AND THIS PAGE'S OWN CHAT.
 
-           T286/T88, the owner: it is the same agent system, and the chat
+           T286/T88, the owner: "its the same agent system", and the chat
            surface must be reused. A standalone agent used to be absent
            from the declared-agent registry by design, which is why the App
            permissions roster showed it as a raw session id with "The agent
@@ -9597,6 +9684,37 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
          builder serves both this card and the rail's Chat tab — two copies of
          the attach/mention/send wiring is how the two surfaces drift. */
       treeChat: agent => authoritativeTreeSnapshot ? null : treeChatConfigFor(agent.treeNode),
+      nodeActions: agent => {
+        const node = agent?.treeNode
+        if (authoritativeTreeSnapshot || !node) return null
+        const current = () => treeStore?.getNode(node.id) || node
+        const details = () => {
+          graph?.workspace?.showTrees({ focus: false }); graph?.setWide(false)
+          showWorkspaceControls(); showTreeNodeControls(current())
+          controlsPage.querySelector('[data-rail-tab="details"]')?.click()
+        }
+        return {
+          rows: () => mockSource() && (current().sessionId || sampleRun?.owns(node.id))
+            ? exampleOnlyRows(chatActionRowsFor(current())) : chatActionRowsFor(current()),
+          subscribe: listener => registerNodeStatusListener(node.id, listener),
+          openDetails: details,
+          startWork: () => {
+            details()
+            const toggle = controlsPage.querySelector('[data-start-work-toggle]')
+            if (toggle?.getAttribute('aria-expanded') !== 'true') toggle?.click()
+            toggle?.focus()
+          },
+          openInChat: id => {
+            const record = graph?.nodes.get(node.id)
+            if (record?.chatOpen && record.chatRoot) {
+              graph.openChat(record); record.chatRoot.openActions?.(id); return
+            }
+            showWorkspaceControls(); showTreeNodeControls(current())
+            controlsPage.querySelector('[data-rail-tab="chat"]')?.click()
+            railChat?.root.openActions?.(id)
+          },
+        }
+      },
       /* Saved tree nodes have their own controls. Both kinds of agent become
          the target for Full chat view when selected. */
       onOpenControls: (agent) => {
@@ -9617,7 +9735,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
            could not carry the actions palette or the pickers, because those come
            from treeChatConfigFor and a record agent has no tree node to
            configure from. The example's own agents ARE tree nodes now (see
-           syncTreeStore), so they take the branch above and get their real rail;
+           syncTreeStore), so they take the branch above and get his real rail;
            what reaches here is a seat from the fleet record, which is what the
            projection rail was written to describe. */
         showProjectionControls(agent)
@@ -9702,8 +9820,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        refreshTree above. Null everywhere the mode is off. */
     phoneLedger?.refresh()
     /* A split-pane preference saved before 2026-08-16 is simply not
-       read any more: the split pane is gone (retired for now), and a key
-       nobody reads is a key that cannot bring it back. */
+       read any more: the split pane is gone (owner: "lets throw it away for
+       now"), and a key nobody reads is a key that cannot bring it back. */
     /* Aim the button before anything is clicked, so it is a way IN rather than a
        reward for having already found the way in. */
     setOpenTarget(computer.agents?.[0] || firstDeclaredTarget())
@@ -9713,6 +9831,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        showed an empty trees slot until something changed — found driving the
        installed iteration-6 build, where the bar stood bare over a forest. */
     refreshTreeSwitch()
+    graph.workspace?.restoreNavigation()
   }
 
   /**
@@ -9921,8 +10040,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
 
   /* THE DOOR THIS PAGE DID NOT HAVE, ON THE PAGE PEOPLE COME TO FIRST FOR THIS.
    *
-   * After signing up, a user could not see how to connect their computer.
-   * Somebody looking for how to add a computer opens the page called
+   * "as a user I dont even see how after signing up that I now connect my
+   * computer." Somebody looking for how to add a computer opens the page called
    * Computers. Measured on a cold install: the only add-shaped control anywhere
    * on it was "Empty spot. Press to start an agent here." Nothing named the
    * account, the website, or the connect screen -- which exists, works end to
@@ -10059,8 +10178,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       note.textContent = 'Open the installed app on this computer to read its agent history.'
       return
     }
-    /* AUDITING OFF IS NOT A BROKEN RECORD (product rule T782 / BUG08): the
-       person's own setting, the Basic default, said as such and
+    /* AUDITING OFF IS NOT A BROKEN RECORD (owner direction 2026-09-20, T782 /
+       BUG08): the person's own setting, the Basic default, said as such and
        pointed at where it is turned on. A record that really would not open
        keeps the sentence below it. */
     if (sessions.disabled) {
@@ -10168,8 +10287,10 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      something says it: that their saved organisation could not be loaded and
      this is the shipped default (`damaged`), that the shipped default moved
      under their edits (`baselineDrift`), and that there is no store here at all.
-     orgNoticeMarkup carries the first two verbatim from the engine; the third is
-     added here because a rail that offers no editing owes a reason. */
+     orgNoticeMarkup carries the first two verbatim from the engine, and also
+     names any seat whose plugin role went away with its plugin
+     (`withdrawnPluginRoles`); the third is added here because a rail that offers
+     no editing owes a reason. */
   function orgSourceMarkup() {
     if (!orgReady()) {
       return `<div class="org-notice" data-notice="off">${escapeMarkup(failureSentence(orgAvailability, 'The declared organisation could not be read.'))}</div>`
@@ -10270,7 +10391,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
 
   /* The three lifecycle buttons this page cannot perform, rendered as disabled
      with the reason on each one. They are kept rather than deleted because the
-     buttons were asked for, and because a person who remembers a Pause
+     owner asked for the buttons, and because a person who remembers a Pause
      button and now finds nothing will assume the page is broken. Saying "there
      is no bridge action for this" is the honest version of showing a button
      that quietly rearranges a CSS class. This is the same posture the agent
@@ -10374,7 +10495,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       </div>`)
   }
 
-  /* THE FENCE, and it is the same one an earlier commit put on the example AGENT page.
+  /* THE FENCE, and it is the same one dd01899 put on the example AGENT page.
    *
    * WHAT WAS WRONG. This box, and the team and loop boxes below it, were built
    * for the SIMULATED board as readily as for the live one, gated on nothing but
@@ -10447,6 +10568,10 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         start: request => startBoundedChild({ ...request, effort: startWorkEffort(request.tier, request.effort) }, ownedStore, bridge),
         readStatus: sessionId => bridge.workStatus({ sessionId }),
         subscribeEnded: listener => subscribeBoundedSessionEnded(bridge, listener),
+        /* B36: the box reads its own agents' first turns off the bridge,
+           like the session end above, so it keeps listening while the person
+           is on another page. */
+        subscribeHostEvents: listener => bridge.onEvent(listener),
         close: async sessionId => {
           const result = await bridge.close({ sessionId })
           const status = await bridge.workStatus({ sessionId })
@@ -11080,7 +11205,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    *
    * `/goal` (runGoalFor(), below) already sets, reads and clears
    * `session.goal` end to end through shell/agent-host.cjs's
-   * setGoal/readGoal/clearGoal -- an internal report confirmed the
+   * setGoal/readGoal/clearGoal -- REPORT-B5-SUB2-loop-goal.md confirmed the
    * whole path works. What that report found missing was not the mechanism,
    * it was a place to SEE it: unlike Loop, whose data-loop="plan" and
    * data-loop="out" never go quiet, a goal set five turns ago is legible
@@ -11187,8 +11312,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
            stays beside it because it is not in that host-side set.
            AGENT_SESSION_UNKNOWN is shell/agent-host.cjs readySession()'s
            answer for a session this window still owns but the host has
-           already dropped (a development log: a run of refused reads right
-           after a burst of owner-host revoke retirements). It is
+           already dropped (LIVE 2026-09-23: nine refused reads logged right
+           after four owner-host revoke retirements, 09:20:10-09:21:01). It is
            over in the same way and memoised the same way. */
         if (TERMINAL_AGENT_SESSION_CODES.has(code) || code === 'AGENT_SESSION_ENDED' || code === 'AGENT_SESSION_UNKNOWN') {
           accepted = null
@@ -11241,7 +11366,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
   }
 
   /**
-   * The chatbox that was asked for, in the rail, for the clicked node.
+   * The chatbox the owner asked for, in the rail, for the clicked node.
    *
    * What appears is decided by src/node-chatbox.js, which in turn defers to the
    * person's own chat settings (which agents, and whether runs appear) rather
@@ -11393,7 +11518,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    */
   /* WHAT IT RUNS ON. This used to be a statement instead of a menu, because the
    * channel had no tier parameter and a select here would have been the
-   * temperature slider again (an earlier commit) -- a control that moves and changes
+   * temperature slider again (f1ce3ec) -- a control that moves and changes
    * nothing. The channel now carries `tier` end to end (parseAgentStart ->
    * startSession -> resolveStartTier), and the CHOICE lives where the start
    * lives: the compose panel's model menu, whose value rides in the draft and
@@ -11405,7 +11530,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * this tree run on Codex. You pick the model in the start panel; the Claude
    * choices are listed there and say so when they cannot start yet." Both
    * halves were true when Codex was the only engine in the payload and both
-   * are false today, which is what was reported. Measured on a staged
+   * are false today, which is what the owner reported. Measured on a staged
    * packaged build with real presses (the post-cut-truth lane, 2026-08-17):
    * the shell answers luna, terra, sol, claude-fable, claude-sonnet,
    * claude-opus; the menu renders "Sonnet · Claude" with NO marker on it; and
@@ -11493,8 +11618,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     disposeRailChat()
     controlsPage.innerHTML = `
       ${railTitleRow({ back: { aria: 'Back to the fleet overview' }, title: mockSource() ? 'Example agent' : 'Agent in your tree' })}
-      <!-- THE VSCODE-SHAPED RAIL, round two (iteration 6: Actions is not its
-           own page; it is a button on the chat). Two PERSISTENT bodies toggled by [hidden] — many selectors
+      <!-- THE VSCODE-SHAPED RAIL, round two (owner, iteration 6: "Actions
+           again just shouldnt be its own page it should be a button on the
+           chat"). Two PERSISTENT bodies toggled by [hidden] — many selectors
            query controlsPage, and swapping innerHTML per tab would orphan the
            mounted chat and strand every live updater; hidden bodies keep both
            working. The verbs live in the chat composer's actions popup; what
@@ -11513,8 +11639,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
            refusal where the message box would be (treeChatConfigFor). -->
       <div class="rail-tab-body rail-chat-body" data-rail-body="chat">
         <div class="rail-chat-host" data-rail-chat-host></div>
-        <!-- Keep trying accounts and Wait for resets live in the Accounts menu:
-             accountRetrySection(). -->
+        <!-- Choose an account explicitly in the Accounts menu. -->
       </div>
       <div class="rail-tab-body rail-scroll" data-rail-body="details" hidden>
         <!-- The head names the agent and its ROLE — never its brief. The brief
@@ -11528,8 +11653,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
              four-step scavenger hunt: press Details, scroll past three boxes,
              read "Setup" as the place folders live, then read "Works in" as
              meaning a folder. It was the fifth of nine panels
-             (tools/rail-inventory-drive.mjs). On 2026-08-19 choosing a folder
-             for each tree was reported missing.
+             (tools/rail-inventory-drive.mjs). Owner, 2026-08-19: "what happened
+             to sessions and choosing a folder for each tree and such?"
 
              EVERY DATA HOOK KEEPS ITS EXACT NAME -- data-tree-profile,
              data-tree-profile-out, data-tree-profile-restart-row,
@@ -11588,6 +11713,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
              agent runs on and where it sits in the tree. -->
         <div class="board-box board-ctl-box" data-tree-move>
           <div class="board-box-h"><span class="bh-t">Setup</span></div>
+          <p class="rail-prose" data-tree-account role="note"></p>
           <div class="ctl-row"><span class="cl">Engine</span><span class="cv" data-tree-engine-label>${escapeMarkup(engineFace.label)}</span></div>
           <p class="board-absent-copy" data-tree-engine-note${engineFace.note ? '' : ' hidden'}>${escapeMarkup(engineFace.note)}</p>
           <div class="rail-sec">${escapeMarkup(MOVE_PANEL.title)}</div>
@@ -11616,9 +11742,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
              were built only on a rail nothing could open. -->
         <div class="board-start-work-slot"></div>
       </div>`
+    repaintTreeAccount(node)
     if (chatNodeId) controlsPage.querySelector('[data-rail-body="details"]').prepend(agentScreenVoice.el)
     controlsPage.querySelector('.rail-back').addEventListener('click', showStats)
-    mountAccountRetryControls(node)
     mountStartWorkControls(
       { id: node.id, name: treeNodeName(node) },
       controlsPage.querySelector('.board-start-work-slot'),
@@ -11686,7 +11812,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
          * node. A reply arriving after a rebuild therefore closed a DIFFERENT
          * node's bubble with this node's words, and this node's own handler was
          * never called -- one message merged into another conversation and one
-         * vanished (2026-08-18). The object is built first and compared
+         * vanished (owner, 2026-08-18). The object is built first and compared
          * by identity, so a stale wrapper answers its own chat or nothing. */
         const mine = { sessionId: node.sessionId, nodeId: node.id, root: null, stream: null }
         const chat = buildChat({
@@ -11852,8 +11978,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         const parents = points.map(point => treeStore.getNode(point.parentId)).filter(Boolean)
         /* EVERY CHOICE SAYS WHICH TREE IT IS IN (T1467). Names already carry
            an id suffix when another tree has the same role, so a duplicate-name
-           test never fired and a person chose between "Controller (aaaa1111)"
-           and "Controller (bbbb2222)". Like the Add to tree picker, a parent in
+           test never fired and a person chose between "Controller (d3f68efd)"
+           and "Controller (9bbcabf8)". Like the Add to tree picker, a parent in
            another tree names that tree; one in this circle's own tree says so. */
         const ownTreeId = treeStore.getNode(node.id)?.treeId ?? node.treeId
         const choices = parents.map(parent => {
@@ -12000,7 +12126,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * drained. The palette driver reopens and counts; a person just loses it.
    *
    * WHAT THOSE CALLERS ACTUALLY NEEDED, read from the rebuild they reached
-   * for. The re-calls predate iteration 6 (an earlier commit): the rail then rendered
+   * for. The re-calls predate iteration 6 (3887c93): the rail then rendered
    * status and queue as static markup, so a rebuild was the only repaint.
    * Today the composer's send-stop face and the queue strip subscribe through
    * the chat config -- notifyNodeStatusListeners and SESSION_OUTBOX_EVENT --
@@ -12012,6 +12138,12 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * and all -- is never torn down by a status. */
   function repaintRailStatus(node) {
     currentRailTreeNode = node
+    const accountHost = controlsPage.querySelector('[data-tree-account]')
+    if (accountHost) {
+      const copy = agentAccountCopy(treeAccountRecord(node))
+      accountHost.textContent = copy.text
+      accountHost.setAttribute('aria-label', copy.ariaLabel)
+    }
     const statusHost = controlsPage.querySelector('[data-tree-status]')
     if (statusHost) statusHost.textContent = treeNodeStatusWord(node)
     const noteHost = controlsPage.querySelector('[data-tree-status-note]')
@@ -12103,9 +12235,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        be mid-word in its composer or its actions filter when the landing
        fires. showTreeNodeControls below is an innerHTML rebuild: it disposes
        the mounted chat and closes an open actions popup, taking the field and
-       the half-typed words with it. It was reported as the surface itself
-       going away: while typing, the typing surface sometimes disappeared or
-       lost focus.
+       the half-typed words with it. The owner reported it as the surface
+       itself going away: "sometimes i am typing and then my typing surface
+       disappears or gets clicked out of".
        deferRailRebuildWhileTyping already answered this for the successful
        resume's tail, the ONE landing that was routed through it; the other
        five reached showTreeNodeControls directly. Routing the rebuild here
@@ -12186,7 +12318,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
          Claude session -- whose engine cannot fork and therefore can never
          rewind (CLAUDE_CLI_FORK_UNSUPPORTED) -- drew "Try once more", forever.
          A permanent refusal says what is true and names the door that works. */
-      const words = /CLAUDE_CLI_FORK_UNSUPPORTED/.test(String(refusal?.message || '')) ? REWIND_PANEL.cannotFork : REWIND_PANEL.failed
+      const words = /AGENT_REWIND_ORIGIN_STORAGE_FAILED/.test(String(refusal?.code || refusal?.message || '')) ? REWIND_PANEL.originStorageFailed
+        : /CLAUDE_CLI_FORK_UNSUPPORTED/.test(String(refusal?.message || '')) ? REWIND_PANEL.cannotFork : REWIND_PANEL.failed
       if (out) out.textContent = words
       return false
     }
@@ -12286,9 +12419,17 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
 
   function openLoopFor(node, minutes = null) {
     if (mockSource()) return { ok: false, sentence: PALETTE_PANEL.loopExample }
+    const current = treeStore?.getNode(node.id) || node
+    /* A saved session id is historical identity, not permission to open a
+       control that can no longer start. The typed card and busy queue both
+       enter here, so they must share the same ownership/cleanup gate as the
+       visible loop action. */
+    if (!nodeSessionLive(current) || nodeCleanupPending(current)) {
+      return { ok: false, sentence: PALETTE_PANEL.whyNotRunning }
+    }
     showWorkspaceControls()
-    if (currentRailTreeNode?.id !== node.id || !controlsPage.querySelector('.board-loop-box')) {
-      showTreeNodeControls(treeStore?.getNode(node.id) || node)
+    if (currentRailTreeNode?.id !== current.id || !controlsPage.querySelector('.board-loop-box')) {
+      showTreeNodeControls(current)
     }
     activateRail(controlsPage)
     controlsPage.querySelector('[data-rail-tab="details"]')?.click()
@@ -12314,36 +12455,41 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
 
   function commonChatActionsFor(node) {
     const current = treeStore?.getNode(node.id) || node
+    const unavailable = nodeCleanupPending(current) ? startCleanupSentence() : PALETTE_PANEL.whyNotStarted
+    const loopReady = !mockSource() && nodeSessionLive(current) && !nodeCleanupPending(current)
+    const loopDisabledHint = mockSource() ? PALETTE_PANEL.loopExample
+      : nodeCleanupPending(current) ? startCleanupSentence() : current.sessionId ? PALETTE_PANEL.whyNotRunning : PALETTE_PANEL.whyNotStarted
     /* THE CLOUD SWARM IS A CODEX CLOUD FEATURE, so the action only belongs on an
        agent that can actually run one. /cloud launches a Codex Cloud swarm
        (shell/cloud-command.mjs) through the cloud.task_* tools; a Claude, local, or
        other-provider agent has no codex cloud swarm to run, so offering it there is
-       a dead affordance (the swarm action is present only when cloud Codex is
-       used). Gate on this node's provider exactly the way effort and
+       a dead affordance (owner: the swarm action "should only be present for when
+       cloud codex is used"). Gate on this node's provider exactly the way effort and
        the model rows already do -- launchTier(tier).provider === 'codex' -- and HIDE
        the row rather than show a permanently disabled one. Goal and loop stay common
        to every agent. */
     const codexCloudCapable = launchTier(current.tier)?.provider === 'codex'
     return [
       ...(codexCloudCapable ? [cloudCommandAction({ enabled: Boolean(current.sessionId) && !nodeCleanupPending(current) && !mockSource(),
-        disabledHint: PALETTE_PANEL.whyNotStarted })] : []),
+        disabledHint: mockSource() ? exampleBoardText() : unavailable })] : []),
       { id: 'goal', group: PALETTE_PANEL.groupCommon, label: PALETTE_PANEL.goal,
         icon: 'goal', hint: PALETTE_PANEL.goalHint,
-        enabled: Boolean(current.sessionId) && !nodeCleanupPending(current), disabledHint: PALETTE_PANEL.whyNotStarted,
+        enabled: Boolean(current.sessionId) && !nodeCleanupPending(current), disabledHint: mockSource() ? exampleBoardText() : unavailable,
         run: ctx => ctx.compose('/goal ', PALETTE_PANEL.goalHint) },
       /* A loop hands work to a running session, like /goal: an agent that has
          never started has none, and its loop setup could only say "press Start
          loop" beside a Start loop that cannot be pressed (T1351). */
       { id: 'loop', group: PALETTE_PANEL.groupCommon, label: PALETTE_PANEL.loop,
         icon: 'loop', minutes: loopIntervals.get(current.id) || LOOP_BOUNDS.defaultIntervalMs / 60_000,
-        hint: PALETTE_PANEL.loopHint, enabled: !mockSource() && Boolean(current.sessionId) && !nodeCleanupPending(current),
-        disabledHint: mockSource() ? PALETTE_PANEL.loopExample : PALETTE_PANEL.whyNotStarted,
+        hint: PALETTE_PANEL.loopHint, enabled: loopReady,
+        disabledHint: loopDisabledHint,
         run: ctx => { ctx.close(); const result = openLoopFor(treeStore?.getNode(node.id) || node); setOrgStatus(result.sentence, result.ok ? 'ok' : 'refuse') } },
     ]
   }
 
-  /* THE CHAT'S ACTION ROWS — the palette model, re-homed (iteration 6: Actions
-     is not its own page; it is a button on the chat). Same honest rules as the page it replaces: every row is
+  /* THE CHAT'S ACTION ROWS — the palette model, re-homed (owner, iteration
+     6: "Actions again just shouldnt be its own page it should be a button
+     on the chat"). Same honest rules as the page it replaces: every row is
      something this build really performs on this node today, enabled states
      derive from the node. Composer actions use their originating chat;
      lifecycle verbs still use runPaletteAction. Depth, model and rewind are two-stage picks inside the popup
@@ -12423,7 +12569,10 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     const current = fresh()
     const running = nodeBusy(current)
     const liveSession = nodeSessionLive(current)
+    const stoppableSession = Boolean(current.id && current.sessionId
+      && ownedSessions().get(current.sessionId) === current.id)
     const cleanupPending = nodeCleanupPending(current)
+    const hasStopTarget = stoppableSession || cleanupPending
     const reply = nodeReplies.get(current.id) || current.reply || ''
     const sinkFor = ctx => ({
       get textContent() { return '' },
@@ -12431,8 +12580,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     })
     const currentEffort = () => savedSessionEffort({ sessionEffort: sessionEfforts.get(fresh().sessionId),
       savedEffort: transcriptStore?.get(node.id)?.effort, nodeEffort: fresh().effort, tierEffort: tierEffortOf(fresh().tier) })
-    /* THE DEPTHS ARE THE PROVIDER'S, AND SO ARE THEIR WORDS (each provider has
-       STANDARD effort names, and those are used). The engine's
+    /* THE DEPTHS ARE THE PROVIDER'S, AND SO ARE THEIR WORDS (owner: "there
+       are STANDARD per provider effort names. Use those"). The engine's
        model/list reports what THIS model really supports, each with the
        provider's own description — ultra's is "Maximum reasoning with
        automatic task delegation", which is a different agent, not a bigger
@@ -12543,9 +12692,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       return menu.open(ctx)
     }
     const modelRows = () => {
-      /* PROVIDER, THEN MODEL (1.0.48, owner decision: every model a
-         provider offers is selectable, chosen as provider first, then
-         model). With one row per model the flat list ran to forty rows, and
+      /* PROVIDER, THEN MODEL (1.0.48, owner: "users need to be able to select
+         all the models from the providers. it should be provider, then model
+         choice"). With one row per model the flat list ran to forty rows, and
          Opus 5 and Sonnet 5 sat somewhere in the middle of it. The first stage
          now names the providers; each opens that provider's models as a stage
          of its own, through the popup's ctx.show. The provider the agent runs
@@ -12562,6 +12711,55 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         enabled: true,
         run: ctx => ctx.show(() => modelsOf(provider.id), { title: MODEL_PANEL.providerTitle(provider.label) }),
       }))
+      const customStore = treeStore, customNode = fresh(), customSessionId = customNode.sessionId || null
+      const customBlocked = provider => {
+        const live = customStore?.getNode(customNode.id)
+        if (destroyed || treeStore !== customStore || !live || (live.sessionId || null) !== customSessionId)
+          return 'This agent changed. Reopen the model menu for its current session.'
+        if (nodeCleanupPending(live)) return startCleanupSentence()
+        if (startingNodeIds.has(live.id) || startDraftFlight.busy(live.id) || nodeReplacementFlight.busy(live.id) || recoveryCoordinator()?.isRecovering(live.id))
+          return 'This agent is already starting or recovering. Wait for that operation to finish.'
+        const id = customModelTier(provider)
+        const row = startableTierChoices.find(row => row.id === id)
+        if (row?.enabled === false) return row.label
+        if (startableTierAnswered && !startableTierIdList?.includes(id))
+          return 'This provider cannot start an agent on this computer. Choose an available provider.'
+        return ''
+      }
+      const typedModelRows = provider => {
+        const running = sessionNodeIds.has(fresh().sessionId)
+        const runningProvider = LAUNCH_TIERS.find(row => row.id === fresh().tier)?.provider
+        const next = fresh().nextModelChoice
+        const value = next && LAUNCH_TIERS.find(row => row.id === next.tier)?.provider === provider ? next.model
+          : runningProvider === provider ? sessionModelOverride.get(fresh().sessionId) || fresh().model || '' : ''
+        const inPlace = running && runningProvider === 'codex' && provider === 'codex'
+        return [customModelAction({
+          provider, value, hint: MODEL_NAME_HELP + (inPlace ? '' : ' ' + MODEL_NEXT_START),
+          enabled: !customBlocked(provider), disabledHint: customBlocked(provider),
+          submit: (model, ctx) => {
+            const blocked = customBlocked(provider)
+            if (blocked) { ctx.say(blocked); return }
+            const before = fresh(), tier = customModelTier(provider)
+            const effort = modelChoiceEffort(tier, model, null)
+            const clearsAccount = before.accountChoice?.provider && before.accountChoice.provider !== provider
+            const preferences = running ? { nextModelChoice: { tier, model, effort } }
+              : { tier, model, effort: effort || '', nextModelChoice: null }
+            const saved = customStore.setNodeLaunchPreferences(node.id, { ...preferences, ...(clearsAccount ? { accountChoice: null } : {}) })
+            if (saved?.ok !== true || saved.snapshot?.persistenceFailed) {
+              ctx.say(saved?.problems?.[0] || 'This model choice could not be saved. Try again before restarting the agent.')
+              notifyNodeStatusListeners()
+              return
+            }
+            if (inPlace) {
+              cancelPendingModelChoice(node.id)
+              sessionModelOverride.set(before.sessionId, model)
+            }
+            notifyNodeStatusListeners()
+            ctx.say((inPlace ? 'The next message will use the model you typed.' : MODEL_NEXT_START)
+              + (clearsAccount ? ' ' + MODEL_PANEL.accountCleared(provider) : ''))
+          },
+        })]
+      }
       if (!sessionNodeIds.has(fresh().sessionId)) {
         const capturedStore = treeStore
         const capturedNode = fresh()
@@ -12618,7 +12816,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
             const clearsAccount = Boolean(savedAccountProvider && savedAccountProvider !== tier.provider)
             const beforeRow = LAUNCH_TIERS.find(row => row.id === before?.tier) || null
             const carriedEffort = beforeRow && beforeRow.provider === tier.provider ? before?.effort : null
-            const saved = treeStore.setNodeLaunchPreferences(node.id, { tier: tier.id, effort: scopedEffort(tier, carriedEffort),
+            const saved = treeStore.setNodeLaunchPreferences(node.id, { tier: tier.id, effort: scopedEffort(tier, carriedEffort), model: null, nextModelChoice: null,
               ...(clearsAccount ? { accountChoice: null } : {}) })
             ctx.say(saved?.ok && !saved.snapshot?.persistenceFailed
               ? [`The next session will use ${rowLabel(tier)}.`, clearsAccount ? MODEL_PANEL.accountCleared(tier.provider) : '']
@@ -12628,7 +12826,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
           },
         }))
         const nextTier = LAUNCH_TIERS.find(tier => tier.id === fresh().tier) || null
-        return providerStage(nextTier?.provider || null, nextTier ? rowLabel(nextTier) : '', nextModelRows)
+        return providerStage(nextTier?.provider || null, fresh().model || (nextTier ? rowLabel(nextTier) : ''), provider => [...nextModelRows(provider), ...typedModelRows(provider)])
       }
       const override = sessionModelOverride.get(fresh().sessionId) || ''
       const keepRow = {
@@ -12640,6 +12838,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         run: ctx => {
           cancelPendingModelChoice(node.id)
           sessionModelOverride.delete(fresh().sessionId)
+          treeStore.setNodeLaunchPreferences(node.id, { nextModelChoice: null })
           /* THE MODEL CHIP HEARS THIS THROUGH THE SAME LISTENER THE COMPOSER'S
              busy/step already use -- see chips.subscribe in treeChatConfigFor. */
           notifyNodeStatusListeners()
@@ -12655,8 +12854,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
          and its words now live in src/fleet-tree-copy.js sessionModelChoices(),
          where the suite drives them, and it gates on THIS conversation's
          provider rather than on a provider's name. */
-      /* T137: a model switch, including across providers, continues in a
-         fresh session with the context handed over. A row the running thread
+      /* OWNER REQUEST T137 (2026-09-16 02:58Z): "switch models still doesnt
+         work. and it should work for even different providers because we can
+         just hand the context to the next agent." A row the running thread
          cannot take in place -- every Claude model, every other provider -- is
          no longer a refusal: it continues this conversation in a fresh session
          on that tier, from the same handoff "Continue on another account"
@@ -12670,7 +12870,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
               : !isWriteEnabled(START_CONTROL_FLAG) ? startControlOffReason()
                 : (nodeReplacementFlight.busy(node.id) || recoveryCoordinator()?.isRecovering(node.id))
                   ? 'This agent is already starting a replacement session.' : ''
-      /* THE SHELL'S OWN ANSWER, HANDED TO THE ROWS (request R1238).
+      /* THE SHELL'S OWN ANSWER, HANDED TO THE ROWS (owner request R1238).
          sessionModelChoices() used to decide which tiers could be continued to
          from a provider name it held itself, and the last of those names --
          `tier.provider !== 'local'` -- kept the local node out of this menu on
@@ -12713,12 +12913,16 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
             const sink = { textContent: '' }
             queueModelChoice(fresh(), choice.id, sink, (live, isCurrent) => {
               if (!isCurrent()) return false
+              const saved = treeStore.setNodeLaunchPreferences(live.id, { nextModelChoice: { tier: choice.id, model: choice.model, effort: modelChoiceEffort(choice.id, choice.model, live.effort) } })
+              if (saved?.ok !== true || saved.snapshot?.persistenceFailed) return false
               sessionModelOverride.set(live.sessionId, choice.model)
               notifyNodeStatusListeners()
               return true
             }, { drainAfter: true, label: choice.label })
             ctx.say(sink.textContent)
           } else {
+            const saved = treeStore.setNodeLaunchPreferences(node.id, { nextModelChoice: { tier: choice.id, model: choice.model, effort: modelChoiceEffort(choice.id, choice.model, fresh().effort) } })
+            if (saved?.ok !== true || saved.snapshot?.persistenceFailed) { ctx.say('This model choice could not be saved. Try again before restarting the agent.'); return }
             cancelPendingModelChoice(node.id)
             sessionModelOverride.set(fresh().sessionId, choice.model)
             notifyNodeStatusListeners()
@@ -12733,7 +12937,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       const sessionTier = LAUNCH_TIERS.find(tier => tier.id === fresh().tier) || null
       const runningTier = (override && LAUNCH_TIERS.find(tier => tier.provider === sessionTier?.provider && tier.model === override)) || sessionTier
       return [keepRow, ...cancelRows, ...providerStage(runningTier?.provider || null,
-        runningTier ? `${runningTier.label} · ${tierProviderWord(runningTier.id)}` : '', providerModels)]
+        override || fresh().model || (runningTier ? `${runningTier.label} · ${tierProviderWord(runningTier.id)}` : ''), provider => [...providerModels(provider), ...typedModelRows(provider)])]
     }
     const rewindRows = () => (sessionTurnLog.get(fresh().sessionId) || []).map(entry => ({
       id: `rewind-${entry.turnId}`,
@@ -12775,8 +12979,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     }
     /* THE TABLE, GROUPED, EVERY ROW SAYING WHY WHEN IT CANNOT BE PRESSED.
      *
-     * The report on this menu: it should work more like VS Code and be much
-     * more intuitive. Three things were wrong with the list itself, and each is
+     * The owner's report on this menu: "more like vscode, much more intuitive
+     * preferably". Three things were wrong with the list itself, and each is
      * a field on the row now.
      *
      * `group`: eleven rows of mixed severity in source order put "Stop this
@@ -12806,6 +13010,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     const canStartSession = typeof bridge?.start === 'function'
     const canSetEffort = typeof bridge?.setEffort === 'function'
     const started = Boolean(current.sessionId) && !cleanupPending
+    const unavailable = cleanupPending ? startCleanupSentence() : PALETTE_PANEL.whyNotStarted
     const actionBridgeWhy = START_NEEDS_APP_TEXT()
     const turnsSoFar = (sessionTurnLog.get(current.sessionId) || []).length
     /* Measured 2026-08-18: after a restart the Rewind row said "You have not
@@ -12826,14 +13031,14 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     const danger = PALETTE_PANEL.groupDanger
     return [
       ...commonChatActionsFor(node),
-      { id: 'queue', group: conversation, label: PALETTE_PANEL.queueFocus, hint: PALETTE_PANEL.queueFocusHint, enabled: started, disabledHint: PALETTE_PANEL.whyNotStarted, run: ctx => { ctx.close(); ctx.composer.focus() } },
-      { id: 'attach', group: conversation, label: PALETTE_PANEL.attach, hint: PALETTE_PANEL.attachHint, enabled: started && canAttach, disabledHint: !started ? PALETTE_PANEL.whyNotStarted : PALETTE_PANEL.whyNoPicker, run: async ctx => { ctx.say(await ctx.composer.attach() ? PALETTE_PANEL.attachPicked : PALETTE_PANEL.attachCancelled) } },
-      { id: 'mention', group: conversation, label: PALETTE_PANEL.mention, hint: PALETTE_PANEL.mentionHint, enabled: started && canMention, disabledHint: !started ? PALETTE_PANEL.whyNotStarted : PALETTE_PANEL.whyNoPicker, run: async ctx => { if (await ctx.composer.mention()) ctx.close(); else ctx.say(PALETTE_PANEL.mentionCancelled) } },
-      { id: 'effort', group: conversation, label: EFFORT_SWITCH.title, hint: EFFORT_SWITCH.help, enabled: started && (canSetEffort || (canStartSession && isWriteEnabled(START_CONTROL_FLAG))), disabledHint: !started ? PALETTE_PANEL.whyNotStarted : (!canSetEffort && !isWriteEnabled(START_CONTROL_FLAG) ? startControlOffReason() : actionBridgeWhy), run: ctx => ctx.show(effortRows, { title: EFFORT_SWITCH.title }) },
+      { id: 'queue', group: conversation, label: PALETTE_PANEL.queueFocus, hint: PALETTE_PANEL.queueFocusHint, enabled: started, disabledHint: unavailable, run: ctx => { ctx.close(); ctx.composer.focus() } },
+      { id: 'attach', group: conversation, label: PALETTE_PANEL.attach, hint: PALETTE_PANEL.attachHint, enabled: started && canAttach, disabledHint: !started ? unavailable : PALETTE_PANEL.whyNoPicker, run: async ctx => { ctx.say(await ctx.composer.attach() ? PALETTE_PANEL.attachPicked : PALETTE_PANEL.attachCancelled) } },
+      { id: 'mention', group: conversation, label: PALETTE_PANEL.mention, hint: PALETTE_PANEL.mentionHint, enabled: started && canMention, disabledHint: !started ? unavailable : PALETTE_PANEL.whyNoPicker, run: async ctx => { if (await ctx.composer.mention()) ctx.close(); else ctx.say(PALETTE_PANEL.mentionCancelled) } },
+      { id: 'effort', group: conversation, label: EFFORT_SWITCH.title, hint: EFFORT_SWITCH.help, enabled: started && (canSetEffort || (canStartSession && isWriteEnabled(START_CONTROL_FLAG))), disabledHint: !started ? unavailable : (!canSetEffort && !isWriteEnabled(START_CONTROL_FLAG) ? startControlOffReason() : actionBridgeWhy), run: ctx => ctx.show(effortRows, { title: EFFORT_SWITCH.title }) },
       { id: 'permission-settings', group: conversation, label: 'Permission settings', hint: 'Read and change saved permissions for future starts and resumes on this computer.', enabled: true, run: openPermissionSettings },
       { id: 'provider-mode', group: conversation, label: 'Provider mode', hint: 'Read and change modes advertised by this provider session.', enabled: true, run: openProviderModes },
       { id: 'model', group: conversation, label: PALETTE_PANEL.switchModel, hint: PALETTE_PANEL.switchModelHint, enabled: true, disabledHint: null, run: ctx => ctx.show(modelRows, { title: MODEL_PANEL.title }) },
-      { id: 'rewind', group: conversation, label: PALETTE_PANEL.rewind, hint: PALETTE_PANEL.rewindHint, enabled: started && turnsSoFar > 0 && canRewind, disabledHint: !started ? PALETTE_PANEL.whyNotStarted : (!canRewind ? actionBridgeWhy : (sentEarlier ? PALETTE_PANEL.whyOnlySavedTurns : PALETTE_PANEL.whyNoTurns)), run: ctx => ctx.show(rewindRows(), { title: REWIND_PANEL.title }) },
+      { id: 'rewind', group: conversation, label: PALETTE_PANEL.rewind, hint: PALETTE_PANEL.rewindHint, enabled: started && turnsSoFar > 0 && canRewind, disabledHint: !started ? unavailable : (!canRewind ? actionBridgeWhy : (sentEarlier ? PALETTE_PANEL.whyOnlySavedTurns : PALETTE_PANEL.whyNoTurns)), run: ctx => ctx.show(rewindRows(), { title: REWIND_PANEL.title }) },
       { id: 'copy-brief', group: conversation, label: PALETTE_PANEL.copyBrief, hint: '', enabled: Boolean(current.message), disabledHint: PALETTE_PANEL.whyNoBrief, run: ctx => runPaletteAction('copy-brief', fresh(), sinkFor(ctx)) },
       { id: 'copy-reply', group: conversation, label: PALETTE_PANEL.copyReply, hint: '', enabled: Boolean(reply), disabledHint: PALETTE_PANEL.whyNoReply, run: ctx => runPaletteAction('copy-reply', fresh(), sinkFor(ctx)) },
       ...(current.status === 'failed' && !current.sessionId ? [{ id: 'retry-start', group: agent,
@@ -12846,29 +13051,15 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
             : mockSource() ? exampleBoardText() : 'This agent is already starting or recovering. Wait for that operation to finish.',
         run: async ctx => { ctx.close(); await retryUnstartedTreeNode(fresh()) },
       }] : []),
-      ...(recoveryCoordinator()?.canRetry(current.id) ? [{ id: 'retry-account-recovery', group: agent,
-        label: 'Retry on another account', hint: 'Continue from the saved recovery handoff.',
-        enabled: !running && isWriteEnabled(START_CONTROL_FLAG),
-        disabledHint: running ? RESUME_PANEL.busy : startControlOffReason(),
-        run: async ctx => { ctx.close(); await recoveryCoordinator().retry(current.id) },
-      }] : []),
-      ...(savedConversation?.account ? [{ id: 'continue-another-account', group: agent,
-        label: 'Continue on another account',
-        hint: 'Start a fresh session from the saved handoff. Keep this agent, its reports, conversation, and queued messages.',
-        enabled: currentDataSource() === 'local' && !running && !cleanupPending && !nodeReplacementFlight.busy(current.id)
-          && !recoveryCoordinator()?.isRecovering(current.id) && canStartSession && isWriteEnabled(START_CONTROL_FLAG),
-        disabledHint: currentDataSource() !== 'local' ? MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY : running ? 'Wait for this agent to finish its turn.' : startControlOffReason(),
-        run: async ctx => { ctx.close(); await continueNodeOnAnotherAccount(fresh(), statusSink(node)) },
-      }] : []),
       /* SWITCH AND CONTINUE (owner T381): the one dialog for account, model and
          depth, reachable here at any time and opened by the app when the saved
          account is refused. Same gates as Resume: a saved conversation, no
          turn in flight, starts allowed. */
-      /* PRESENT EVEN WHEN IT CANNOT ACT (R1238: the switch-model row is always
-         present and works). This row was spread in
+      /* PRESENT EVEN WHEN IT CANNOT ACT (owner request R1238, 2026-09-19: "why
+         does the button hide now it needs to work"). This row was spread in
          behind `savedConversation`, so on a circle with nothing saved yet it was
          not refused -- it was ABSENT. An absent control reads as a product that
-         does not have the feature, which is exactly how it read.
+         does not have the feature, which is exactly what the owner read off it.
          Every ordinary row in this palette is present and carries a
          `disabledHint` saying why; this one now follows that rule, and borrows
          Resume's existing sentence for the state the two share rather than
@@ -12901,8 +13092,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
           hint: 'Closes only the earlier incomplete replacement. Keeps the current session and queued messages.',
           enabled: canStop && !detachedCleanupFlights.has(sessionId), disabledHint: actionBridgeWhy,
           run: ctx => cleanEarlierSession(current, sessionId, sinkFor(ctx)) })),
-      { id: 'stop', group: danger, label: PALETTE_PANEL.stop, hint: PALETTE_PANEL.stopHint, enabled: (liveSession || cleanupPending || recoveryCoordinator()?.retryPolicy(current.id)?.enabled) && canStop, disabledHint: !liveSession && !cleanupPending ? PALETTE_PANEL.whyNotRunning : actionBridgeWhy, run: ctx => runPaletteAction('stop', fresh(), sinkFor(ctx)) },
-      { id: 'clear', group: danger, label: PALETTE_PANEL.clear, hint: PALETTE_PANEL.clearHint, enabled: started && canStartSession && canStop && isWriteEnabled(START_CONTROL_FLAG), disabledHint: !started ? PALETTE_PANEL.whyNotStarted : (!isWriteEnabled(START_CONTROL_FLAG) ? startControlOffReason() : actionBridgeWhy), run: ctx => { ctx.close(); void runPaletteAction('clear', fresh(), statusSink(node)) } },
+      { id: 'stop', group: danger, label: PALETTE_PANEL.stop, hint: PALETTE_PANEL.stopHint, enabled: hasStopTarget && canStop, disabledHint: !hasStopTarget ? PALETTE_PANEL.whyNotRunning : canStop ? null : actionBridgeWhy, run: ctx => runPaletteAction('stop', fresh(), sinkFor(ctx)) },
+      { id: 'clear', group: danger, label: PALETTE_PANEL.clear, hint: PALETTE_PANEL.clearHint, enabled: started && canStartSession && canStop && isWriteEnabled(START_CONTROL_FLAG), disabledHint: !started ? unavailable : (!isWriteEnabled(START_CONTROL_FLAG) ? startControlOffReason() : actionBridgeWhy), run: ctx => ctx.show(() => [{ id: 'clear-confirm', label: 'Start over',
+        hint: `${treeNodeName(fresh())} stops its work, drops queued messages and starts an empty conversation. Its place in the tree stays. Its brief is not sent again.`,
+        enabled: !nodeCleanupPending(fresh()) && Boolean(fresh().sessionId) && isWriteEnabled(START_CONTROL_FLAG),
+        disabledHint: nodeCleanupPending(fresh()) ? startCleanupSentence() : !fresh().sessionId ? PALETTE_PANEL.whyNotStarted : startControlOffReason(),
+        run: confirm => { confirm.close(); void runPaletteAction('clear', fresh(), statusSink(node)) },
+      }], { title: PALETTE_PANEL.clear }) },
       { id: 'remove', group: danger, label: REMOVE_PANEL.action, hint: removalPreview.count > 1 ? `Removes this agent and ${removalPreview.count - 1} ${removalPreview.count - 1 === 1 ? 'agent' : 'agents'} below it after one confirmation.` : REMOVE_PANEL.hint, enabled: removalPreview.ok && !nodeBranchRemovalFlight.busy(current.id), disabledHint: nodeBranchRemovalFlight.busy(current.id) ? 'This branch is already being removed.' : removalPreview.problems[0] || '', run: ctx => ctx.show(removeRows(), { title: REMOVE_PANEL.action }) },
     ].map(paletteRow)
   }
@@ -13030,6 +13226,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
   }
 
   async function freshStartExistingNodeUnguarded(node, { delegationToken = null } = {}) {
+    const choiceProblem = node?.nextModelChoice ? nextModelChoiceProblem(node.nextModelChoice) : node?.model == null ? '' : modelIdProblem(node.model)
+    if (choiceProblem) return { ok: false, code: 'AGENT_MODEL_INVALID', nodeId: node?.id || null, sessionId: null, reason: choiceProblem }
+    if (node.nextModelChoice) node = { ...node, ...node.nextModelChoice }
     if (isWriteEnabled(START_CONTROL_FLAG) !== true) return { ok: false, code: 'MC_TREE_COMMAND_START_DISABLED', nodeId: node?.id || null, sessionId: null, threadId: null, reason: startControlOffReason() }
     if (nodeCleanupPending(node)) {
       return { ok: false, code: 'AGENT_SESSION_CLEANUP_FAILED', nodeId: node.id, sessionId: node.sessionId, threadId: null, reason: startCleanupSentence() }
@@ -13091,6 +13290,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         efforts: sessionEfforts,
         threadIds: sessionThreadIds,
         accountNames: sessionAccountNames,
+        accountRecords: sessionAccountRecords,
       },
       nodeState: {
         diffHistories: nodeDiffHistories,
@@ -13175,152 +13375,14 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     active.addEventListener('blur', onBlur)
   }
 
-  /* KEEP TRYING LIVES UNDER THE ACCOUNTS BUTTON. The controls are the same per-agent
-     controls with the same hooks; they moved from under the rail's chat into the Accounts menu, as
-     the first section of its settings column, named for the agent they act on.
-     Built fresh for each agent the rail opens (so no listener outlives its agent)
-     and removed whenever the rail lets that agent go (disposeRailChat). */
-  function accountRetryHost() {
-    return accountsMenuEl?.querySelector('[data-account-retry-controls]') || null
-  }
-  function removeAccountRetrySection() {
-    accountRetryHost()?.remove()
-  }
-  function accountRetrySection(node) {
-    removeAccountRetrySection()
-    const sidebar = accountsMenuEl?.querySelector('.acct-sidebar')
-    if (!sidebar) return null
-    const section = el(`
-      <section class="acct-section acct-keep-trying account-retry-controls" data-account-retry-controls aria-label="Keep trying accounts for ${escapeMarkup(treeNodeName(node))}">
-        <h4 class="acct-section-title">Keep trying · ${escapeMarkup(treeNodeName(node))}</h4>
-        <div class="ctl-row"><button class="acct-btn" type="button" data-keep-trying-accounts>Keep trying accounts</button>
-          <button class="acct-btn" type="button" data-cancel-account-retries hidden>Cancel retries</button></div>
-        <label class="acct-toggle"><span>Wait for resets and auto retry</span><input type="checkbox" data-wait-account-resets></label>
-        <details><summary class="acct-help">Allowed providers for retries</summary>
-          <div class="ctl-row">${[['codex', 'Codex'], ['claude', 'Claude'], ['gemini', 'Gemini'], ['grok', 'Grok']].map(([id, label]) => `<label><input type="checkbox" data-retry-provider value="${id}"${defaultRetryProviders(LAUNCH_TIERS.find(row => row.id === node.tier)?.provider).includes(id) ? ' checked' : ''}> ${label}</label>`).join('')}</div>
-        </details>
-        <output class="acct-help" role="status" data-account-retry-status></output>
-        <p class="acct-help acct-help-quiet">Uses your registered signed-in accounts and other providers, with this role and the saved conversation. Other agents still follow saved action permissions.</p>
-      </section>`)
-    sidebar.prepend(section)
-    return section
-  }
-
-  function paintAccountRetryControls(nodeId) {
-    if (currentRailTreeNode?.id !== nodeId) return
-    const node = treeStore?.getNode(nodeId)
-    const host = accountRetryHost()
-    if (!node || !host) return
-    const policy = recoveryCoordinator()?.retryPolicy(nodeId)
-    const tier = LAUNCH_TIERS.find(row => row.id === node.tier)
-    const out = host.querySelector('[data-account-retry-status]')
-    const actualAccount = policy?.sessionId === node.sessionId ? policy.actualAccount : transcriptStore?.get(node.id)?.account
-    const current = tier ? `Current: ${tier.label} · ${tier.provider}${actualAccount ? ` · ${actualAccount}` : ''}. ` : ''
-    const preferred = policy?.preferredTier && policy.preferredTier !== policy.actualTier
-      ? ` Preferred model: ${LAUNCH_TIERS.find(row => row.id === policy.preferredTier)?.label || policy.preferredTier}.` : ''
-    out.textContent = current + (recoveryCoordinator()?.retryStatus(nodeId) || '') + preferred
-    const button = host.querySelector('[data-keep-trying-accounts]')
-    button.disabled = currentDataSource() !== 'local' || !isWriteEnabled(START_CONTROL_FLAG) || recoveryCoordinator()?.isRecovering(nodeId)
-    button.textContent = policy?.enabled ? (policy.state === 'working' ? 'Keep trying accounts is on' : 'Try accounts now') : 'Keep trying accounts'
-    host.querySelector('[data-cancel-account-retries]').hidden = !policy?.enabled
-    host.querySelector('[data-wait-account-resets]').checked = policy?.waitForReset === true
-    for (const input of host.querySelectorAll('[data-retry-provider]')) {
-      if (policy) input.checked = policy.allowedProviders.includes(input.value)
-      input.disabled = recoveryCoordinator()?.isRecovering(nodeId) === true
-    }
-  }
-  function mountAccountRetryControls(node) {
-    const host = accountRetrySection(node)
-    if (!host) return
-    const out = host.querySelector('[data-account-retry-status]')
-    const wait = host.querySelector('[data-wait-account-resets]')
-    const allowedProviders = () => [...host.querySelectorAll('[data-retry-provider]:checked')].map(input => input.value)
-    for (const input of host.querySelectorAll('[data-retry-provider]')) input.addEventListener('change', async () => {
-      if (!recoveryCoordinator()?.retryPolicy(node.id)?.enabled) return
-      try { await recoveryCoordinator().setAllowedProviders(node.id, allowedProviders()); paintAccountRetryControls(node.id) }
-      catch (error) { out.textContent = error.message || String(error) }
-    })
-    const run = async () => {
-      try {
-        await continueNodeOnAnotherAccount(treeStore?.getNode(node.id) || node, out, { waitForReset: wait.checked, allowedProviders: allowedProviders() })
-        paintAccountRetryControls(node.id)
-      } catch (error) { out.textContent = error.message || String(error) }
-    }
-    host.querySelector('[data-keep-trying-accounts]').addEventListener('click', () => { void run() })
-    host.querySelector('[data-cancel-account-retries]').addEventListener('click', async () => {
-      try { await recoveryCoordinator().cancelAccountRetries(node.id); paintAccountRetryControls(node.id) }
-      catch (error) { out.textContent = error.message || String(error) }
-    })
-    wait.addEventListener('change', async () => {
-      try {
-        if (recoveryCoordinator()?.retryPolicy(node.id)?.enabled) await recoveryCoordinator().setWaitForResets(node.id, wait.checked)
-        else if (wait.checked) await run()
-        paintAccountRetryControls(node.id)
-      } catch (error) { out.textContent = error.message || String(error) }
-    })
-    paintAccountRetryControls(node.id)
-  }
-
-  /* IS KEEP-TRYING ON -- AND "I COULD NOT FIND OUT" IS NOT YES.
-   *
-   * THE FAILURE PATHS ARE WRITTEN FIRST BECAUSE THEY ARE THE POINT. This answer
-   * decides whether this program moves somebody's conversation to another account
-   * without asking. Every way of failing to learn the answer -- no bridge, a
-   * bridge that throws, an answer that is not an object -- returns false, so a
-   * broken or unreadable settings read leaves the person exactly where the
-   * refusal left them, with the sentence and the choice. Nothing here treats
-   * "cannot tell" as permission.
-   *
-   * WHY NOT loadAccounts(), WHICH IS RIGHT THERE. It cannot express failure: a
-   * throwing bridge and a successful empty answer both come back as
-   * readAccountList(null), whose policy reads autoRecoverOnLimit true. Using it
-   * would turn every broken read into consent -- the precise mistake this guard
-   * exists to prevent. So the bridge is read directly and its failures are mine
-   * to classify.
-   *
-   * ABSENT IS STILL ON, THOUGH, and that is not a contradiction. A read that
-   * SUCCEEDS and reports no decision means nobody has turned keep-trying off,
-   * and keep-trying is on by default and persistent. "Nobody decided" is a fact
-   * the shell told us; "I could not ask" is the absence of a fact. The two rules
-   * sit on opposite sides of ONE line: did we get an answer.
-   *
-   * DO NOT FLATTEN THEM INTO "BE CAUTIOUS EVERYWHERE". Reading this cold, the
-   * tidy-looking move is to treat a missing decision as cautiously as a missing
-   * answer -- and that would switch keep-trying OFF for everybody who has never
-   * opened the accounts policy, which is nearly everybody, because on-by-default
-   * is precisely what "nobody decided" means here. The caution belongs on the
-   * failure of the READ, never on the content of a successful one. */
-  RUN_KEEP_TRYING_CONSENT = nodeId => keepTryingOnLimitIsOn(nodeId)
-  async function keepTryingOnLimitIsOn(nodeId = null) {
-    const policy = nodeId ? recoveryCoordinator()?.retryPolicy(nodeId) : null
-    if (policy?.enabled === false) return false
-    const bridge = accountsBridge()
-    if (!bridge || typeof bridge.accounts !== 'function') return false
-    let answered = null
-    try { answered = await bridge.accounts() } catch { return false }
-    if (!answered || typeof answered !== 'object' || Array.isArray(answered)) return false
-    const listed = readAccountList(answered)
-    /* `available` FIRST, AND MY OWN TEST IS WHY. readAccountList answers
-       NO_POLICY for anything that is not a real list -- no ok:true, no accounts
-       array -- and NO_POLICY reads autoRecoverOnLimit TRUE, because a menu drawn
-       before the shell answers must not show recovery as off when it is on. That
-       default is right for drawing a checkbox and catastrophic as consent: a
-       bridge answering `{}` would have moved the person's conversation. So the
-       answer must be a list that actually read, and only then is the policy
-       consulted. An explicit false is a decision and is obeyed. */
-    if (!listed || listed.available !== true) return false
-    return listed.policy?.autoRecoverOnLimit === true
-  }
-
-  async function continueNodeOnAnotherAccount(node, out = null, retryChoice = null, { effort: chosenEffort = null, treeAccount = null, isCurrent = () => true, beginContinuation = null, assignment = null } = {}) {
-    const choiceRevision = retryChoice ? recoveryCoordinator()?.retryChoiceRevision(node?.id) : null
+  async function continueNodeOnAnotherAccount(node, out = null, { effort: chosenEffort = null, treeAccount = null, isCurrent = () => true, beginContinuation = null, assignment = null } = {}) {
     if (currentDataSource() !== 'local') {
       if (out) out.textContent = MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY
       return false
     }
     const store = treeStore
     const computerId = treeStoreId
-    if (!isCurrent() || !store || !node || (!retryChoice && !node.sessionId) || !isWriteEnabled(START_CONTROL_FLAG)) return false
+    if (!isCurrent() || !store || !node || !node.sessionId || !isWriteEnabled(START_CONTROL_FLAG)) return false
     if (nodeReplacementFlight.busy(node.id) || recoveryCoordinator()?.isRecovering(node.id)) return false
     const identityRole = identityRoleForTreeNode(node.role)
     const seat = await ensureSeatForNode(node, identityRole)
@@ -13339,25 +13401,26 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     /* The person's pick from the switch dialog first (see continueNodeWithChoice),
        then the depth the record remembers. */
     const continueRequest = { computerId, nodeId: current.id, isCurrent: beginContinuation ? beginContinuation() : isCurrent,
-      startOptions: { tier: current.tier, effort: chosenEffort || savedSessionEffort({ savedEffort: transcriptStore?.get(current.id)?.effort,
+      startOptions: { tier: current.tier, ...(current.model == null ? {} : { model: current.model }), effort: chosenEffort || savedSessionEffort({ savedEffort: transcriptStore?.get(current.id)?.effort,
         nodeEffort: current.effort, tierEffort: tierEffortOf(current.tier) }),
         ...(profileId ? { profileId } : {}),
         ...(treeAccount ? { treeAccount } : {}),
         ...(store.getTree(current.treeId)?.researchProjectId ? { researchProjectId: store.getTree(current.treeId).researchProjectId } : {}),
         roleBinding: boundRole.binding } }
-    return retryChoice ? recoveryCoordinator().keepTryingAccounts({ ...continueRequest, ...retryChoice, choiceRevision, effortChosen: Boolean(chosenEffort) })
-      : recoveryCoordinator().continueOnAnotherAccount({ ...continueRequest, ...(assignment ? { assignment } : {}) })
+    return recoveryCoordinator().continueOnAnotherAccount({ ...continueRequest, ...(assignment ? { assignment } : {}) })
   }
 
-  /* T137: a model switch, including across providers, continues in a fresh
-     session with the context handed over. The Claude CLI binds --model at spawn and
+  /* OWNER REQUEST T137 (2026-09-16 02:58Z): "switch models still doesnt work.
+     and it should work for even different providers because we can just hand
+     the context to the next agent." The Claude CLI binds --model at spawn and
      no thread crosses providers, so the switch is a continuation: the same
      path as continueNodeOnAnotherAccount, on the chosen tier, on whichever
      account the ordinary start picks (the current one is not excluded), with
      the new tier recorded on the node so the card, the chip and the next
      Resume read the model that is actually running. Refused mid-turn: a turn
      in flight is not interrupted to switch under it. */
-  async function continueNodeOnAnotherModel(node, tierId, out = null, { effort: chosenEffort = null, treeAccount = null, isCurrent = () => true, beginContinuation = null, assignment = null } = {}) {
+  async function continueNodeOnAnotherModel(node, tierId, out = null, { effort: chosenEffort = null, model = null, treeAccount = null, isCurrent = () => true, beginContinuation = null, assignment = null } = {}) {
+    if (model != null && modelIdProblem(model)) { if (out) out.textContent = modelIdProblem(model); return false }
     if (currentDataSource() !== 'local') {
       if (out) out.textContent = MANUAL_ACCOUNT_CONTINUATION_LOCAL_ONLY
       return false
@@ -13367,7 +13430,12 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     const tier = LAUNCH_TIERS.find(row => row.id === tierId) || null
     if (!isCurrent() || !store || !node?.sessionId || !tier || !isWriteEnabled(START_CONTROL_FLAG)) return false
     const savedProvider = transcriptStore?.get(node.id)?.provider
-    if (tier.id === node.tier && (!savedProvider || savedProvider === tier.provider)) return false
+      || LAUNCH_TIERS.find(row => row.id === node.tier)?.provider
+    if (model == null && tier.id === node.tier && (!savedProvider || savedProvider === tier.provider)) return false
+    if (savedProvider && tier.provider !== savedProvider && tier.provider !== 'local' && !treeAccount) {
+      if (out) out.textContent = 'Choose an account before continuing on another provider.'
+      return false
+    }
     if (nodeReplacementFlight.busy(node.id) || recoveryCoordinator()?.isRecovering(node.id)) return false
     if (nodeBusy(node)) {
       if (out) out.textContent = MODEL_PANEL.continueBusy
@@ -13404,21 +13472,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     const carriedEffort = chosenEffort || (from && from.provider === tier.provider
       ? savedSessionEffort({ savedEffort: transcriptStore?.get(current.id)?.effort, nodeEffort: current.effort, tierEffort: tierEffortOf(tier.id) })
       : tierEffortOf(tier.id))
-    const effort = scopedEffort(tier, carriedEffort) || null
+    const effort = model == null ? scopedEffort(tier, carriedEffort) || null : modelChoiceEffort(tier.id, model, chosenEffort)
     return recoveryCoordinator().continueOnAnotherModel({ computerId, nodeId: current.id, isCurrent: beginContinuation ? beginContinuation() : isCurrent,
-      startOptions: { tier: tier.id, ...(effort ? { effort } : {}), ...(treeAccount ? { treeAccount } : {}), ...(profileId ? { profileId } : {}), roleBinding: boundRole.binding },
+      startOptions: { tier: tier.id, ...(model == null ? {} : { model }), ...(effort ? { effort } : {}), ...(treeAccount ? { treeAccount } : {}), ...(profileId ? { profileId } : {}), roleBinding: boundRole.binding },
       ...(assignment ? { assignment } : {}) })
   }
 
-  /* SWITCH AND CONTINUE (owner T381): the one choice, landed on the mechanism
-     it names. continuationRouteFor (src/switch-and-continue.js) decides the
-     route by value: the same account on the same provider is a RESUME of the
-     saved thread at the chosen model and depth -- nothing re-sent, nothing
-     charged; another account or provider is a HANDOFF, because a native thread
-     belongs to the home that made it (shell/agent-host.cjs refuses a start
-     that names both a thread and continueFromAccount). A chosen account rides
-     this tree's native start as an exact per-request selector; it never changes
-     the computer preference or another circle's start. */
+
   async function continueNodeWithChoice(node, choice, out = null, isCurrent = () => true, fromPending = false, beginContinuation = null) {
     if (!isCurrent() || !node || !choice) return false
     if (currentDataSource() !== 'local') {
@@ -13451,7 +13511,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     const treeAccount = route.account || null
     const continued = route.changesModel || route.changesProvider
       ? await continueNodeOnAnotherModel(treeStore?.getNode(current.id) || current, route.tier, out, { effort, treeAccount, isCurrent, beginContinuation })
-      : await continueNodeOnAnotherAccount(treeStore?.getNode(current.id) || current, out, null, { effort, treeAccount, isCurrent, beginContinuation })
+      : await continueNodeOnAnotherAccount(treeStore?.getNode(current.id) || current, out, { effort, treeAccount, isCurrent, beginContinuation })
     if (isCurrent() && continued !== true && out && (!out.textContent || out.textContent === SWITCH_PANEL.continuing)) out.textContent = SWITCH_PANEL.failed
     return continued === true
   }
@@ -13472,6 +13532,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       ok: false, status: 'refused', code, reason, nodeId: node.id,
       sessionId: store.getNode(node.id)?.sessionId || null,
     })
+    /* An agent never moves another agent to a different account (1.0.50
+       review, accounts A); the person does that with Switch and continue. */
+    if (personOnlySlotChange(command)) return refuse(PERSON_ONLY_SLOT_REASON)
     if (command.expectedSessionId !== undefined && (command.expectedSessionId || null) !== previousSessionId) {
       return refuse('This slot changed session. Read its current identity before changing it.')
     }
@@ -13545,6 +13608,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
 
     const savePreferences = () => store.setNodeLaunchPreferences(node.id, {
       tier: plan.choice.tier, effort: plan.choice.effort || '',
+      ...(['provider', 'model'].includes(plan.field) ? { model: null, nextModelChoice: null } : {}),
       ...(plan.field === 'account' ? { accountChoice: { name: plan.choice.account, provider: plan.choice.provider } }
         : plan.field === 'provider' ? { accountChoice: null } : {}),
     })
@@ -13637,8 +13701,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     if (switchDialogs.has(current.id)) return switchDialogs.get(current.id)
     const saved = transcriptStore?.get(current.id) || null
     const store = treeStore
-    /* THE TARGET, FROZEN AT OPEN (T775: the chat shows next to the menu so
-       the user knows which agent is being restarted). The dialog is for
+    /* THE TARGET, FROZEN AT OPEN (owner T775: "show the chat next to the menu
+       so the user knows what agent is being restarted"). The dialog is for
        exactly this circle and this session. Both ids are copied out of the
        record now, so nothing that later mutates the node can move the choice
        onto another target; targetCurrent() re-reads the store every time the
@@ -13691,6 +13755,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
             })
         } else void continueNodeWithChoice(live, choice, statusSink(live))
       },
+      onWait: resetAt => recoveryCoordinator()?.waitForSameAccountReset({ computerId: treeStoreId,
+        nodeId: target.nodeId, resetAt, isCurrent: () => Boolean(targetCurrent()) }),
       onCancel: settle,
       /* Every way the dialog leaves -- Continue, Not now, Escape, a caller's
          close(), the owner's dispose() -- releases the slot and the listener
@@ -13739,6 +13805,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      before any queued message; when it could not go, the queued messages are
      released as an ordinary idle resume would release them. */
   async function deliverResumeAssignment({ command, assignment, resumeOutcome, answer, node, store }) {
+    let assignmentCode = assignment.submitted ? null : 'MC_TREE_COMMAND_ASSIGNMENT_NOT_SUBMITTED'
     if (!assignment.submitted && resumeOutcome === 'engine') {
       const sent = await sendResumeAssignment({
         node, sessionId: answer.sessionId, assignment,
@@ -13749,6 +13816,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         acknowledgeRoot: Boolean(command.delegationToken),
       })
       assignment.submitted = sent.ok === true
+      assignmentCode = assignment.submitted ? null : (sent.code || 'MC_TREE_COMMAND_SEND_FAILED')
     }
     if (!assignment.submitted) {
       const fresh = store.getNode(answer.nodeId)
@@ -13757,16 +13825,24 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         if (nextQueued) void drainOutboxMessage(fresh.sessionId, fresh.id, nextQueued)
       }
     }
-    return { ...answer, firstTurnState: assignment.submitted ? 'submitted' : 'not-submitted' }
+    // Resuming the conversation and admitting its first input are separate results.
+    // Keep the input refusal so a caller cannot mistake it for a request to retry.
+    return { ...answer, firstTurnState: assignment.submitted ? 'submitted' : 'not-submitted',
+      ...(assignmentCode ? { code: assignmentCode } : {}) }
   }
   async function resumeNodeSession(node, options = {}) {
+    if (node?.nextModelChoice && !options.requestedTier) {
+      const problem = nextModelChoiceProblem(node.nextModelChoice)
+      if (problem) { if (options.out) options.out.textContent = problem; return false }
+      options = { ...options, requestedTier: node.nextModelChoice.tier, model: node.nextModelChoice.model, effort: node.nextModelChoice.effort, customModelChoice: true }
+    }
     const provider = LAUNCH_TIERS.find(row => row.id === (options.requestedTier || node?.tier))?.provider
     const accountStart = slotAccountStartOptions(options.accountChoice === undefined ? node : { ...node, accountChoice: options.accountChoice }, provider)
     if (!accountStart.ok) { if (options.out) options.out.textContent = accountStart.reason; return false }
     const savedChoice = transcriptStore?.get(node?.id)
     if (node?.sessionId && !nodeBusy(node) && savedChoice?.provider && savedChoice.provider !== provider) {
       const moved = await continueNodeOnAnotherModel(node, options.requestedTier || node.tier, options.out, {
-        effort: options.effort, treeAccount: accountStart.options.treeAccount || null,
+        effort: options.effort, model: options.model, treeAccount: accountStart.options.treeAccount || null,
         isCurrent: () => options.isCancelled?.() !== true, beginContinuation: options.beginContinuation || null,
         assignment: options.assignment || null,
       })
@@ -13775,11 +13851,14 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       return moved
     }
     if (node?.sessionId && !nodeBusy(node) && accountStart.options.treeAccount && savedChoice?.account !== accountStart.options.treeAccount) {
-      const moved = await continueNodeOnAnotherAccount(node, options.out, null, {
-        effort: options.effort, treeAccount: accountStart.options.treeAccount,
+      const continueOptions = {
+        effort: options.effort, model: options.model, treeAccount: accountStart.options.treeAccount,
         isCurrent: () => options.isCancelled?.() !== true, beginContinuation: options.beginContinuation || null,
         assignment: options.assignment || null,
-      })
+      }
+      const moved = options.model != null || (options.requestedTier && options.requestedTier !== node.tier)
+        ? await continueNodeOnAnotherModel(node, options.requestedTier || node.tier, options.out, continueOptions)
+        : await continueNodeOnAnotherAccount(node, options.out, continueOptions)
       if (moved === true && options.assignment) options.assignment.submitted = true
       return moved
     }
@@ -13880,9 +13959,11 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       if (!destroyed && treeStore === store) { refreshLaunchStatus(); refreshTreeStartControls() }
     }
   }
-  async function resumeNodeSessionUnguarded(node, { effort = null, out = null, deliverQueued = true, deferSeed = false, delegationToken = null, machineInitiated = false, onRefused = null, expectedResume = null, isCancelled = () => false, cleanupCancelledStart = false, requestedTier = null, accountChoice = undefined, beginContinuation = null } = {}) {
+  async function resumeNodeSessionUnguarded(node, { effort = null, out = null, deliverQueued = true, deferSeed = false, delegationToken = null, machineInitiated = false, onRefused = null, expectedResume = null, isCancelled = () => false, cleanupCancelledStart = false, requestedTier = null, model = undefined, customModelChoice = false, accountChoice = undefined, beginContinuation = null } = {}) {
     const resumedFromTier = node?.tier || null
-    if (requestedTier) node = { ...node, tier: requestedTier }
+    if (requestedTier) node = { ...node, tier: requestedTier, model: model ?? null }
+    else if (model !== undefined) node = { ...node, model }
+    if (node.model != null && modelIdProblem(node.model)) { if (out) out.textContent = modelIdProblem(node.model); return false }
     if (accountChoice !== undefined) node = { ...node, accountChoice }
     const accountStart = slotAccountStartOptions(node, LAUNCH_TIERS.find(row => row.id === node?.tier)?.provider)
     if (!accountStart.ok) { if (out) out.textContent = accountStart.reason; return false }
@@ -14039,8 +14120,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        carries only a depth that model takes (1.0.48, D4): Sonnet's high is no
        depth at all on Haiku 4.5, whose CLI refuses one. A resume on the model
        it already ran is left exactly as it was. */
-    const chosenEffort = requestedTier && requestedTier !== resumedFromTier && launchTier(requestedTier)
-      ? (scopedEffort(requestedTier, carriedEffort) || null) : carriedEffort
+    const chosenEffort = node.model != null ? modelChoiceEffort(node.tier, node.model, customModelChoice ? effort : carriedEffort)
+      : requestedTier && requestedTier !== resumedFromTier && launchTier(requestedTier)
+        ? (scopedEffort(requestedTier, carriedEffort) || null) : carriedEffort
     resumeTarget.effort = chosenEffort
     /* The host receives the predecessor id with the resume request and owns
        the close boundary. It keeps the running predecessor alive until the
@@ -14083,11 +14165,15 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         started = await bridge.start({
           surface: 'fleet-tree',
           resumeThreadId: savedThreadId,
+          resumeThreadProvider: saved.provider,
+          resumeSessionId: saved.nativeSessionId || oldSessionId,
+          resumeTranscript: { computerId: store.snapshot().computerId, nodeId: node.id },
           ...accountStart.options,
           ...(delegationToken ? { delegationToken } : {}),
           resumeManagerName: currentManagerName,
-          ...(saved && saved.account ? { resumeAccount: saved.account } : {}),
+          resumeAccount: saved.account ?? null,
           ...(node.tier ? { tier: node.tier } : {}),
+          ...(node.model == null ? {} : { model: validateModelId(node.model) }),
           ...(chosenEffort ? { effort: chosenEffort } : {}),
           ...(profileId ? { profileId } : {}),
           ...(oldSessionId ? { replacesSessionId: oldSessionId } : {}),
@@ -14107,7 +14193,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         // The F1 wrapper has already retained every outcome except the two
         // exact request-bound released receipts. Preserve its fallback gate.
         if (cleanupFailure) result = cleanupFailure
-        else if (machineInitiated || expectedResume || delegationToken || savedAccountResumeRefused(code) || predecessorCloseRefused(code) || isResourceHold(code)) {
+        else if (machineInitiated || expectedResume || delegationToken || savedAccountResumeRefused(code)
+            || ['AGENT_RESUME_HOME_UNAVAILABLE', 'AGENT_RESUME_HOME_CHANGED', 'AGENT_RESUME_IDENTITY_UNAVAILABLE', 'AGENT_RESUME_IDENTITY_MISMATCH', 'AGENT_RESUME_PROVIDER_MISMATCH'].includes(code)
+            || predecessorCloseRefused(code) || isResourceHold(code)) {
           result = { ok: false,
             sessionId: typeof nativeRefusal.sessionId === 'string' && nativeRefusal.sessionId ? nativeRefusal.sessionId : null,
             threadId: savedThreadId, account: saved.account, code,
@@ -14116,25 +14204,6 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         // Machine lifecycle calls return the refusal to their requester. An
         // absent delegation token does not make that request a person's click.
         const mayContinue = () => !machineInitiated && !cleanupFailure && !expectedResume && !delegationToken && resumeChoiceCurrent()
-        if (mayContinue() && code === 'AGENT_RESUME_ACCOUNT_LIMIT'
-          && refusalAttribution(nativeRefusal) === 'provider'
-          && await keepTryingOnLimitIsOn(node.id)
-          && recoveryCoordinator()?.retryPolicy(node.id)?.enabled !== false
-          && mayContinue()) {
-          // The coordinator may acquire this node only after the current
-          // Resume lock has settled. Keep the exact choice currency across it.
-          return { continueAfterResume: async () => {
-            if (!mayContinue()) return false
-            const continued = await continueNodeOnAnotherAccount(node, out, null, {
-              isCurrent: resumeChoiceCurrent, beginContinuation: beginResumeContinuation,
-            })
-            if (!continued && mayContinue()) {
-              if (out) out.textContent = result?.sentence || RESUME_PANEL.failed
-              void offerSwitchAndContinue(node, { reason: SWITCH_OPEN_REASON.accountRefused, sentence: result?.sentence || '', refusedAccount: saved?.account || null })
-            }
-            return continued === true
-          } }
-        }
         if (mayContinue() && savedAccountResumeRefused(code)) {
           void offerSwitchAndContinue(node, { reason: SWITCH_OPEN_REASON.accountRefused, sentence: result?.sentence || '', refusedAccount: saved?.account || null })
         }
@@ -14157,6 +14226,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
               sessionId: started.sessionId,
               threadId: resumedThreadId,
               account: resumedAccount,
+              provider: started.provider,
+              accountRecord: { provider: started.provider,
+                ...(Object.hasOwn(started, 'account') ? { account: started.account } : {}) },
               effort: typeof started.effort === 'string' && started.effort ? started.effort : null,
               roleIntroduction: resumedRoleIntroduction,
               sentence: null,
@@ -14197,6 +14269,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         automatic: true,
         surface: 'fleet-tree',
         tier: node.tier,
+        model: node.model,
         effort: chosenEffort,
         profileId,
         researchProjectId: store.getTree(node.treeId)?.researchProjectId || null,
@@ -14211,7 +14284,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
            note gives: a turn that starts answering before the send is answered
            would otherwise arrive for a session this page has never heard of.
            The block below sets the same key again, which costs nothing. */
-        onSessionOpen: ({ sessionId, account }) => {
+        onSessionOpen: ({ sessionId, account, accountRecord }) => {
           if (!resumeChoiceCurrent()) {
             retainTreeSessionCleanup(store, node.id, sessionId, { detached: true, note: statusNote(startCleanupSentence()) })
             return false
@@ -14223,6 +14296,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
           }
           sessionNodeIds.set(sessionId, node.id)
           sessionAccountNames.set(sessionId, account || null)
+          sessionAccountRecords.set(sessionId, accountRecord || {})
           // Move the earlier words before publishing the new address. A send
           // after attachSession otherwise reaches the destination queue first.
           if (oldSessionId) outboxMoveSession(oldSessionId, sessionId)
@@ -14260,6 +14334,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
             recoveryDirectory: saved?.recoveryDirectory, earlierMessages: Boolean(saved?.before),
           }) } : {}),
           ...(node.tier ? { tier: node.tier } : {}),
+          ...(node.model == null ? {} : { model: validateModelId(node.model) }),
           ...(chosenEffort ? { effort: chosenEffort } : {}),
           ...(profileId ? { profileId } : {}),
           ...(oldSessionId ? { replacesSessionId: oldSessionId } : {}),
@@ -14293,6 +14368,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       // Exact old cleanup custody was retained independently before publication.
       if (!resumeChoiceCurrent()) return false
       const resourceHold = !result.sessionId && isResourceHold(result.code)
+      if (result.sessionId && result.deliveryDisposition === 'unknown') {
+        sessionNodeIds.holdAutomaticTurns(result.sessionId, result.code || 'AGENT_AUTOMATIC_DELIVERY_UNCONFIRMED')
+      }
       if (store) {
         if (result.sessionEnded === true && result.sessionId) {
           store.attachSession(node.id, result.sessionId)
@@ -14358,7 +14436,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       return false
     }
     const appliedEffort = typeof result.effort === 'string' && result.effort ? result.effort : chosenEffort
-    if (requestedTier) store.setNodeLaunchPreferences(node.id, { tier: requestedTier, ...(appliedEffort ? { effort: appliedEffort } : {}) })
+    if (requestedTier || node.model != null) store.setNodeLaunchPreferences(node.id, { tier: node.tier, model: node.model ?? null, nextModelChoice: null, effort: appliedEffort || '' })
     sessionNodeIds.set(result.sessionId, node.id)
     /* The messages that were waiting for the old session are waiting for this
        one: same node, same conversation, same person still expecting them to
@@ -14378,11 +14456,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       sessionEfforts.delete(oldSessionId)
       sessionThreadIds.delete(oldSessionId)
       sessionAccountNames.delete(oldSessionId)
+      sessionAccountRecords.delete(oldSessionId)
       notifyNodeStatusListeners()
     }
     if (appliedEffort) sessionEfforts.set(result.sessionId, appliedEffort)
     if (result.threadId) sessionThreadIds.set(result.sessionId, result.threadId)
     sessionAccountNames.set(result.sessionId, result.account || null)
+    if (result.accountRecord) sessionAccountRecords.set(result.sessionId, result.accountRecord)
     /* THE CONVERSATION ON SCREEN IS THE ONE THE PERSON WAS ALREADY READING.
        A real resume changed nothing about the past -- that is what makes it
        free -- so nothing about the past changes here either. This used to
@@ -14543,7 +14623,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         out.textContent = PALETTE_PANEL.interruptDone
         return { ok: true }
       } catch (error) {
-        /* ONLY "no running turn" IS A MISS. MEASURED 2026-09-03 on a live
+        /* ONLY "no running turn" IS A MISS. MEASURED 2026-09-03 on the owner's
            running instance: a session the engine had already fail-closed
            (CODEX_PROTOCOL_INVALID) rejected Halt with a hard error, and this
            catch reported it as "Nothing was interrupted; the turn may already
@@ -14570,17 +14650,12 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       const imagePreparation = treeImagePreparations.get(node.id)
       if (imagePreparation) { imagePreparation.cancelled = true; imagePreparation.conversation?.hold() }
       cancelPendingModelChoice(node.id)
-      const retryWasEnabled = recoveryCoordinator()?.retryPolicy(node.id)?.enabled === true
       try {
         if (await recoveryCoordinator()?.stopContinuation(node.id)) {
           out.textContent = 'Stopping the saved continuation…'
           return
         }
       } catch { out.textContent = PALETTE_PANEL.stopFailed; return }
-      if (retryWasEnabled && !sessionNodeIds.has(node.sessionId) && !RUN_SESSION_CLEANUPS.has(node.sessionId)) {
-        treeStore?.setNodeStatus(node.id, 'finished', { note: 'Stopped by you.' })
-        paintAccountRetryControls(node.id); out.textContent = 'Automatic retries stopped.'; return
-      }
       if (!bridge || typeof bridge.close !== 'function' || !node.sessionId) { out.textContent = START_NEEDS_APP_TEXT(); return }
       const result = await closePersonNode(node, request => bridge.close(request))
       /* A refused Stop says WHICH refusal it was. See src/fleet-tree-copy.js
@@ -14633,8 +14708,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     if (!node || target?.version !== 1 || node.treeId !== target.treeId || node.sessionId !== target.sessionId
         || !sessionNodeIds.has(node.sessionId) || startingNodeIds.has(node.id)
         || startDraftFlight.busy(node.id) || nodeReplacementFlight.busy(node.id)
-        || recoveryCoordinator()?.isRecovering(node.id) || recoveryCoordinator()?.isContinuing(node.id)
-        || recoveryCoordinator()?.retryPolicy(node.id)?.enabled === true) return null
+        || recoveryCoordinator()?.isRecovering(node.id) || recoveryCoordinator()?.isContinuing(node.id)) return null
     return node
   }
 
@@ -14688,8 +14762,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     return result.ok
   }
 
-  /* THE REMOVAL — the missing leg of the tree verbs (the finding: there was no
-   * way to remove an old node a person wanted to delete).
+  /* THE REMOVAL — the missing leg of the tree verbs (owner finding, verbatim:
+   * "there was also no way to remove an old node you wanted to delete").
    *
    * WHAT GOES AND WHAT STAYS IS A FIXED CONTRACT, the one the confirm stage
    * just read out. Goes: the node's record in the tree store (its tree too,
@@ -14901,6 +14975,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       sessionEfforts.delete(sessionId)
       sessionThreadIds.delete(sessionId)
       sessionAccountNames.delete(sessionId)
+      sessionAccountRecords.delete(sessionId)
       sessionActions.delete(sessionId)
       chatSurfaces.delete(sessionId)
       turnReplies.delete(sessionId)
@@ -14933,12 +15008,12 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
 
   /* THE RAIL FOR A SELECTED EXAMPLE AGENT, in the tree rail's own shape.
    *
-   * WHAT WAS SEEN, verified against screenshots: with the second
+   * WHAT THE OWNER SAW, verified against his screenshots: with the second
    * render gone, a selected example agent was routed through
    * showProjectionControls — 'Recorded agent', 'What is on record' facts
    * first, Pause/Resume/Respawn and 'Open full view' underneath — which is
-   * the OLD demonstration rail they had already rejected, now wearing the
-   * projection rail's clothes. The surface their installed app actually shows
+   * the OLD demonstration rail he had already rejected, now wearing the
+   * projection rail's clothes. The surface his installed app actually shows
    * for a selected agent is showTreeNodeControls: 'Agent in your tree',
    * Chat/Details tabs, the conversation first, an honest composer.
    *
@@ -14952,7 +15027,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * `.agent-head` + `.board-box` stack. The record facts the projection rail
    * led with (id, provider, state, origin, runtime, tasks, and what the
    * record does not carry) are all still here, demoted to the Details tab
-   * exactly as their live tree rail demotes a node's setup. Nothing honest is
+   * exactly as his live tree rail demotes a node's setup. Nothing honest is
    * lost; nothing is front and centre that is not the conversation.
    *
    * NO Pause/Resume/Respawn, NO 'Open full view': the tree rail has neither
@@ -14961,7 +15036,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * detail' button still aims at the selected seat, as on every source. The
    * Start-work group rides in Details as on the tree rail, and under mock it
    * carries the stated-absence box (mountStartWorkControls' mock branch), so
-   * the earlier fence — a demonstration screen must not dispatch a real agent
+   * the dd01899 fence — a demonstration screen must not dispatch a real agent
    * — still holds structurally.
    *
    * showProjectionControls is untouched: it is the rail for REAL declared
@@ -15052,7 +15127,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        Start-work group stays on the mock rail, visible and named (nothing is
        hidden silently), and its body is the stated absence with the way to the
        real board -- the same sentence family every mock start surface answers
-       with. The earlier fence, restated for the one render. */
+       with. The dd01899 fence, restated for the one render. */
     if (mockSource()) {
       body.appendChild(exampleControlsAbsentBox())
     } else {
@@ -15077,7 +15152,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        group's own toggle must not gate: "is a goal already running on this
        agent, right now". Skipped under mock for the same reason the four
        start-work boxes are -- it calls window.mcAgent.goal, the real bridge
-       a demonstration screen must never reach (an earlier commit). */
+       a demonstration screen must never reach (dd01899). */
     if (!mockSource()) group.before(goalControlsBox(agent))
 
     toggle.addEventListener('click', () => {
@@ -15120,7 +15195,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        pointing at a DETACHED root whose sessionId still matched, so the event
        listener kept opening streams and pushing every delta into a chat log
        that was no longer in the document: the answer was recorded and never
-       seen (messages in history disappeared). It also
+       seen (owner, 2026-08-18, "the messages in history disappear"). It also
        leaked that chat's observers, frames and timers. */
     disposeRailSaid()
     disposeRailChat()
@@ -15239,7 +15314,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    *
    * T302: the action this used to offer — "See an example agent", into the
    * #/agent drill-in's /example route — is gone along with that route
-   * (route-parse.js no longer resolves it; the complaint was the
+   * (route-parse.js no longer resolves it; the owner's complaint was the
    * drill-in surfacing with no sensible way in). emptyStateExample() below is
    * now a no-op left in place rather than inlined away, so this comment's
    * history stays attached to the one call site if the empty state ever
@@ -15247,8 +15322,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    */
   /* T302: THE #/agent DRILL-IN'S ONLY DOOR, CLOSED. This used to link to the
      example copy of the #/agent page (`#/agent/<comp>/<agent>/example`) --
-     the one place in the product that could reach it. The complaint was the
-     page itself turning up with no sensible way in; route-parse.js no
+     the one place in the product that could reach it. The owner's complaint
+     was the page itself turning up with no sensible way in; route-parse.js no
      longer resolves that hash to anything, so this action would have led
      nowhere. Removed rather than pointed at a dead route. */
   function emptyStateExample() { return '' }
@@ -15319,7 +15394,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        pointing at a DETACHED root whose sessionId still matched, so the event
        listener kept opening streams and pushing every delta into a chat log
        that was no longer in the document: the answer was recorded and never
-       seen (messages in history disappeared). It also
+       seen (owner, 2026-08-18, "the messages in history disappear"). It also
        leaked that chat's observers, frames and timers. */
     disposeRailSaid()
     disposeRailChat()
@@ -15567,8 +15642,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
   }
 
   /* WHERE THE PAGE'S DATA COMES FROM — the one fork, taken per resolution.
-     The rule collapsed the two renders: every simulated page IS the UI page,
-     with mock data. So the fork here chooses a RECORD, never
+     The owner's ruling collapsed the two renders: "all simulated pages ARE
+     the UI pages, just mock data." So the fork here chooses a RECORD, never
      a render: mock mounts the example record, local and relay read the real
      one. Resolution is async (a public page has to ask the host for a
      transport), which is why the boot is a function and not a statement. */
@@ -15680,7 +15755,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    *
    * 'host' is the bare re-announce: announceDataSourceChange() with nothing
    * said, the default in src/data-source.js. It is the one that carries no
-   * claim that anything changed, and the one reported in T296 -- a
+   * claim that anything changed, and the one the owner reported in T296 -- a
    * token refresh or account re-check on a signed-in instance, closing the
    * conversation and wiping the draft for nothing. Only that one waits.
    *
@@ -16163,8 +16238,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
    * That is the whole reason the derivation is a shared module with a test
    * rather than a second expression written next to the panel.
    *
-   * THE PERSON'S HAND, FROM HERE (O7 improvements: a hand-edit tool, for the
-   * user to edit or delete entries on the ToolsEnabled ledger by hand). Each entry carries Edit and a two-press
+   * THE PERSON'S HAND, FROM HERE (O7 improvements, owner 2026-08-22: "its a
+   * hand edit tool. for the user to go in on the toolsenabled ledger and
+   * hand edit or delete them"). Each entry carries Edit and a two-press
    * Delete; the markup and the presses live in src/tree-standing-requests.js
    * (createStandingRequestsPanel), where node --test can drive them, and
    * this function only reads the ledgers and hands the panel its body. The
@@ -16430,9 +16506,9 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
   }
 
   function treeCardSend(node, text, { reply, fail, queued, note, attachments, pictures, accepted, keepQueued, originSurface = null, recoveryAttempted = false }) {
-    /* BEFORE THE ROUTING, NOT AFTER IT. The fact the removal rule reads -- an
-       agent the user has prompted remains, even if another agent created it --
-       was recorded at the live send below, the one route a
+    /* BEFORE THE ROUTING, NOT AFTER IT. The fact the owner's removal rule
+       reads -- "AGENTS that a user prompts even if created by another agent
+       can remain" -- was recorded at the live send below, the one route a
        typed line takes only when the circle happens to be idle. A busy
        circle's queue, /queue and the dead-session recovery all carried the
        person's words past it, so a circle they had typed at while it worked
@@ -16510,6 +16586,15 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        THROUGH to the send, meet MC_AGENT_UNKNOWN_SESSION, and recover below
        — the old status-only test parked its messages in a queue that no
        turn-completion would ever drain. */
+    if (nodeReplacementFlight.busy(node.id)) {
+      if (Array.isArray(attachments) && attachments.length) { fail(QUEUE_PANEL.busyAttachment, { restoreDraft: true }); return }
+      const pending = outboxEnqueue(node.sessionId, text)
+      if (!pending.ok) { fail(pending.sentence, { restoreDraft: true }); return }
+      accepted?.()
+      const notice = typeof queued === 'function' ? queued : reply
+      notice(pending.sentence || QUEUE_PANEL.cardQueued)
+      return
+    }
     if (nodeBusy(node) || pendingModelChoice(node)?.applying) {
       const queued = outboxEnqueue(node.sessionId, text)
       if (!queued.ok) { fail(queued.sentence); return }
@@ -16527,8 +16612,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        (components.js: "no supplied stamp means no badge"), and the same object
        -- still the one sessionTranscripts holds, transcriptAppend pushes it by
        reference -- takes the real id the moment .then() below actually has it. */
-    /* THE PICTURE IS PART OF THE ENTRY (T332). The defect: images disappeared
-       from chat right after sending. The only copy used to be one
+    /* THE PICTURE IS PART OF THE ENTRY (T332). The owner: "the images
+       disappear from chat right after sending". The only copy used to be one
        optimistic DOM node in the composer, so every repaint that redraws from
        this entry -- a reopen, a remount, the mirror into a second open surface
        on the same session -- drew the message with its picture gone. This
@@ -16588,8 +16673,25 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         refreshTree()
       }
     }, error => {
-      dropTurnReply(node.sessionId, reply)
       const code = refusalCode(error)
+      /* SENT, BUT NOT SAVED. The provider accepted this message and only saving
+         it failed (sendFailureWasAccepted), so the agent is working on it now.
+         It is answered as the send it is -- the words stay on screen as sent,
+         the draft is not handed back, the reply is still awaited, the node is
+         running -- and the one sentence says what did not happen. Handing the
+         draft back with "not sent" here is how the same work ran twice. */
+      if (sendFailureWasAccepted(code)) {
+        accepted?.()
+        if (destroyed) return
+        note?.(queuedSendRefusalSentence(code), { code })
+        if (originSurface) broadcastWorkspaceOwnerMessage(node.sessionId, originSurface, text, sentEntry)
+        if (treeStore) {
+          treeStore.setNodeStatus(node.id, 'running', { note: '' })
+          refreshTree()
+        }
+        return
+      }
+      dropTurnReply(node.sessionId, reply)
       // The host retains ended sessions for Stop, so both a missing session
       // and a retained dead one require the same automatic replacement.
       if (['MC_AGENT_UNKNOWN_SESSION', 'MC_AGENT_SESSION_ENDED', 'AGENT_SESSION_UNKNOWN', 'AGENT_SESSION_ENDED'].includes(code)) {
@@ -16901,12 +17003,17 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
     const live = treeStore ? treeStore.getNode(node.id) || node : node
     const queued = outboxEnqueue(live.sessionId, text)
     if (!queued.ok) return queued
+    if (sessionNodeIds.automaticTurnsHeld?.(live.sessionId)) {
+      const code = sessionNodeIds.automaticTurnHoldCode?.(live.sessionId) || 'PROVIDER_SAFETY_REFUSAL'
+      outboxMarkHeld(live.sessionId, code)
+      return { ok: true, entry: queued.entry, sentence: QUEUE_PANEL.heldReasons[code] || QUEUE_PANEL.cardQueued }
+    }
     if (nodeBusy(live) || pendingModelChoice(live)) return { ok: true, entry: queued.entry, sentence: QUEUE_PANEL.cardQueued }
     if (nodeReplacementFlight.busy(live.id)) return { ok: true, entry: queued.entry, sentence: QUEUE_PANEL.cardQueued }
     /* nodeBusy(live) is false for TWO different facts: a genuinely idle node
        (drain now, correct) and a node whose status still reads
        'starting'/'running' while sessionIsLive is false -- nodeSessionEnded(live)
-       true -- the same resumeNodeSessionUnguarded ended-branch shape an earlier commit
+       true -- the same resumeNodeSessionUnguarded ended-branch shape aeaad75
        gated recoverDeadSessionSend's !ok branch on. Without this check, an
        eager drainOutboxMessage() fires bridge.send() at a session id nothing
        answers to, replying an optimistic "Queued" before that send is even
@@ -16914,9 +17021,10 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        same as the busy branch above, instead of draining into nothing. */
     /* T124. THE DOOR THAT BURNT THE THIRTY TURNS.
      *
-     * MEASURED (T124): a manager returned the provider's usage-limit message
-     * on more than thirty consecutive turns, each ending "Turn did not
-     * finish", WHILE MESSAGES KEPT BEING DELIVERED
+     * MEASURED (T124 ledger entry): Manager (5323eb2d) returned "You've
+     * reached your Fable limit. Switch to another model, or manage usage
+     * credits" on more than thirty consecutive turns from 21:47Z to 23:38Z,
+     * each ending "Turn did not finish", WHILE MESSAGES KEPT BEING DELIVERED
      * TO IT. This branch is how they kept being delivered: a limit refusal
      * leaves the node 'turn-failed', 'turn-failed' is not busy, the session is
      * not ended -- so every one of the three gates above says "go", the queue
@@ -16951,6 +17059,10 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
      that died before the outcome files it with the undelivered-writes store
      rather than swallowing it. */
   async function drainOutboxMessage(sessionId, nodeId, entry) {
+    if (sessionNodeIds.automaticTurnsHeld?.(sessionId)) {
+      outboxRequeueFront(sessionId, { ...entry, heldReason: sessionNodeIds.automaticTurnHoldCode?.(sessionId) || 'PROVIDER_SAFETY_REFUSAL' })
+      return
+    }
     const bridge = typeof window === 'undefined' ? null : window.mcAgent
     if (!bridge || typeof bridge.send !== 'function') {
       // heldReason travels with the words for the same reason the refusal branch
@@ -16971,6 +17083,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       && Boolean(drainNode && drainStore?.getNode(nodeId)?.createdAt === drainCreatedAt
         && drainStore.getNode(nodeId)?.sessionId === sessionId)
     let drained = null
+    let acceptedUnsavedCode = null
     const drainOverride = sessionModelOverride.get(sessionId)
     try {
       drained = await withResearchTreeBinding(bridge).send({
@@ -16987,23 +17100,27 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
          capacity" state had nothing to bind to. It rides on the entry and
          reaches every surface through the SESSION_OUTBOX_EVENT detail. */
       const code = refusalCode(error)
-      const unconfirmed = sendFailureIsUnconfirmed(code)
-      outboxRequeueFront(sessionId, {
-        ...entry,
-        ...(unconfirmed ? { deliveryUnconfirmed: true } : {}),
-        ...(code ? { heldReason: code } : {}),
-      })
-      // Retain the exact queue outcome above, but do not publish a detached
-      // send's refusal into a replacement node, bridge or view.
-      if (!mayPublish()) return
-      setOrgStatus(unconfirmed ? queuedSendRefusalSentence(code) : QUEUE_PANEL.notSent, 'refuse', { sticky: true, code })
-      /* In place, never a rebuild: the person may be typing in the actions
-         popup's filter, and the queue strip already repaints itself through
-         SESSION_OUTBOX_EVENT. See repaintRailStatus. */
-      if (currentRailTreeNode && currentRailTreeNode.id === nodeId && controlsPage.classList.contains('is-active')) {
-        repaintRailStatus(currentRailTreeNode)
+      // Sent, but not saved: settled below as delivered (acceptedUnsavedCode).
+      if (sendFailureWasAccepted(code)) acceptedUnsavedCode = code
+      else {
+        const unconfirmed = sendFailureIsUnconfirmed(code)
+        outboxRequeueFront(sessionId, {
+          ...entry,
+          ...(unconfirmed ? { deliveryUnconfirmed: true } : {}),
+          ...(code ? { heldReason: code } : {}),
+        })
+        // Retain the exact queue outcome above, but do not publish a detached
+        // send's refusal into a replacement node, bridge or view.
+        if (!mayPublish()) return
+        setOrgStatus(unconfirmed ? queuedSendRefusalSentence(code) : QUEUE_PANEL.notSent, 'refuse', { sticky: true, code })
+        /* In place, never a rebuild: the person may be typing in the actions
+           popup's filter, and the queue strip already repaints itself through
+           SESSION_OUTBOX_EVENT. See repaintRailStatus. */
+        if (currentRailTreeNode && currentRailTreeNode.id === nodeId && controlsPage.classList.contains('is-active')) {
+          repaintRailStatus(currentRailTreeNode)
+        }
+        return
       }
-      return
     }
     /* THE OTHER WAY A TAKEN ENTRY SETTLES: bridge.send() resolved, so this
        message reached the wire and will never come back to the queue through
@@ -17032,7 +17149,13 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       treeStore.setNodeStatus(nodeId, 'running', { note: '' })
       refreshTree()
     }
-    setOrgStatus(QUEUE_PANEL.sentNext, 'ok')
+    /* SENT, BUT NOT SAVED: the provider took this message and only saving it
+       failed (sendFailureWasAccepted). Putting it back at the front, as a real
+       refusal is above, sent the same words again by themselves at the very
+       next turn boundary. It settled here exactly as a delivered message does;
+       the status line says what did not happen. */
+    if (acceptedUnsavedCode) setOrgStatus(queuedSendRefusalSentence(acceptedUnsavedCode), 'refuse', { sticky: true, code: acceptedUnsavedCode })
+    else setOrgStatus(QUEUE_PANEL.sentNext, 'ok')
     if (currentRailTreeNode && currentRailTreeNode.id === nodeId && controlsPage.classList.contains('is-active')) {
       repaintRailStatus({ ...currentRailTreeNode, status: 'running' })
     }
@@ -17061,12 +17184,11 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         if (started.threadId) sessionThreadIds.set(started.sessionId, started.threadId)
         if (started.effort) sessionEfforts.set(started.sessionId, started.effort)
         sessionAccountNames.set(started.sessionId, started.account ?? null)
+        sessionAccountRecords.set(started.sessionId, { account: started.account, provider: started.provider })
         notifyNodeStatusListeners()
         rebindRailToSession(result.nodeId)
       }
-      if (Object.hasOwn(result, 'retryPolicy')) notifyNodeStatusListeners()
       refreshTree()
-      paintAccountRetryControls(result.nodeId)
       /* THE REOPEN POLL'S REFUSAL, OFFERED AS A CHOICE. The coordinator brings
          saved agents back on its own; when the saved account cannot continue
          and the automatic move did not take, it says so here (switchOffer)
@@ -17092,6 +17214,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       // A retained routing edge proves custody only. Detached session events may
       // not publish into the current node or release either session's outbox.
       if (!eventCurrent()) return
+      sessionNodeIds.recordAutomaticTurnBlock?.(packet)
       if (packet.event?.type === 'person_turn') {
         acceptRemotePersonTurn(sessionId, packet)
         return
@@ -17176,7 +17299,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
            that may never come. Without this the accumulator and the open
            bubble both survived a turn that ended any other way, and the next
            turn's first word was appended to the last turn's answer inside the
-           same bubble -- messages merging into each other. */
+           same bubble -- the owner's "combine into each other". */
         settleTurnBoundary(sessionId, sessionEventTurnId(packet, sessionId))
         /* The paragraph break between two messages of one turn, if one is
            owed, before the new words. The open rail streams the same break. */
@@ -17370,7 +17493,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       const nodeId = sessionNodeIds.get(sessionId)
       /* WHOSE WORDS THIS COMPLETION MAY TAKE, ASKED BEFORE IT TAKES THEM.
        *
-       * THE DEFECT (messages merging into each other). This branch read the
+       * THE DEFECT (owner: "combine into each other"). This branch read the
        * status, which does not carry a turn id, and filed whatever was in the
        * accumulator as this completion's answer. Order two turns
        *     delta(turn-a) -> delta(turn-b) -> completed(turn-a)
@@ -17543,11 +17666,14 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
          away is a different act with its own door (the Stop row's close,
          which calls outboxClearSession and says how many it dropped), and
          this branch must not quietly become a second one of those. */
-      if (userStopped || cancelled) cancelPendingModelChoice(nodeId)
-      if (!userStopped && !cancelled && !isHistoricalReplay
+      const automaticTurnsHeld = sessionNodeIds.automaticTurnsHeld?.(sessionId) === true
+      // A model refusal keeps a model change the person already chose: it is the way out of that hold.
+      const safetyHeld = automaticTurnsHeld && sessionNodeIds.automaticTurnHoldCode?.(sessionId) !== 'PROVIDER_MODEL_REFUSED'
+      if (userStopped || cancelled || safetyHeld) cancelPendingModelChoice(nodeId)
+      if (!safetyHeld && !userStopped && !cancelled && !isHistoricalReplay
           && await applyPendingModelChoice(nodeId, sessionId)) return
       if (!eventCurrent()) return
-      if (!userStopped && (!isHistoricalReplay || (nativeReplayIdle && succeeded)) && !nodeReplacementFlight.busy(nodeId)) {
+      if (!automaticTurnsHeld && !userStopped && (!isHistoricalReplay || (nativeReplayIdle && succeeded)) && !nodeReplacementFlight.busy(nodeId)) {
         const queuedNext = outboxTakeNext(sessionId)
         if (queuedNext) void drainOutboxMessage(sessionId, nodeId, queuedNext)
       }
@@ -17594,6 +17720,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
   unsubs.push(subscribeMachineTabSwitch(window, state => {
     if (destroyed) return
     machineSwitchBusy = state.busy
+    computerMenu?.refresh()
     setMachineNote(state.sentence)
     for (const tab of tabsElement.querySelectorAll('[data-machine-tab]')) tab.disabled = state.busy
   }))
@@ -17629,8 +17756,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
        * computer: `!treeStore || treeStoreId !== command.computerId` answers
        * MC_TREE_COMMAND_COMPUTER_NOT_FOUND either way, so a load that never
        * finishes gets the SAME code, from the SAME gate, as a computer that
-       * was never there -- never a hang. MEASURED (ported from an earlier
-       * app commit's own suite): unmodified, `await
+       * was never there -- never a hang. MEASURED (Worker 14, 2026-09-07,
+       * ported from app 4d3cfab9's own suite): unmodified, `await
        * projectionReady` alone left this exact scenario cancelled by the test
        * runner rather than answered at all --
        * tools/test/tree-node-command-projection-bound.test.mjs's first case.
@@ -17645,8 +17772,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       if (destroyed) return { ok: false, code: 'MC_TREE_COMMAND_VIEW_DESTROYED', retryable: true,
         retryAfterMs: 0, nodeId: command?.nodeId || null, sessionId: null, threadId: null }
       /* THE LIFECYCLE VERBS AN ASSISTANT MAY ASK FOR ON A CIRCLE UNDER IT.
-         Agents can delete, start and restart the agents under them, and
-         message each other. Start
+         Owner, 2026-09-03: "THE AGENTS NEED TO BE ABLE TO DELETE AND START
+         AND RESTART AGENTS UNDER THEM AND BE ABLE TO MESSAGE EACH". Start
          and message already had a route; stop, restart and remove did not,
          even though this view performs all three for the person's own press.
          Each maps onto the SAME function that press calls -- not a second
@@ -17662,93 +17789,7 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
       if (!treeStore || treeStoreId !== command.computerId) {
         return { ok: false, code: 'MC_TREE_COMMAND_COMPUTER_NOT_FOUND', nodeId: command.nodeId, sessionId: null, threadId: null }
       }
-      /* RE-RESOLVED, NOT SNAPSHOTTED, AND NOT LEFT TO CRASH. SHARED by every
-       * verb below whose own operation spans an await this view's destroy()
-       * can land inside.
-       *
-       * destroy() (navigation, a route change, the page closing) can null the
-       * closure's `treeStore` at any point during a slow bridge.start() await
-       * without cancelling the operation already in flight (destroy()'s own
-       * comment: "A start already sent is NOT cancelled by any of this...
-       * What stops here is this view's interest in the answer."). Reading the
-       * closure's `treeStore` fresh after such an await, unguarded, threw
-       * "Cannot read properties of null (reading 'getNode')"
-       * (MC_TREE_COMMAND_RENDERER_FAILED) for fresh-start-existing-node,
-       * MEASURED, and was verified to sit
-       * identically, still unguarded, in resume-node -- MEASURED before
-       * either had been
-       * observed to crash resume in practice.
-       *
-       * A SNAPSHOT TAKEN BEFORE THE AWAIT WAS CONSIDERED AND REJECTED. It
-       * answers "is treeStore null" but not "is treeStore CURRENT" -- a store
-       * captured before the await is exactly as stale as the live binding if
-       * the page reopened onto a genuinely different store for this computer
-       * while the operation was in flight; a write through a stale object is
-       * a silent fork, quieter than a crash and worse. Re-running a read-only
-       * lookup HERE, at call time, is what "current" means: the live closure
-       * variable when it still matches this computer, or a retained copy of
-       * the SAME object when it does not, and NEVER a value carried across
-       * an await. This deliberately omits createTreeRuntimeView's
-       * create-a-fresh-store fallback: a reconciliation callback finishing
-       * someone else's operation must find the tree that was already there,
-       * never mint an empty one as a side effect.
-       *
-       * recoveryCoordinator().activeStore IS DELIBERATELY NOT IN THIS CHAIN,
-       * unlike openTreeStore's own resolution order. VERIFIED in
-       * account-recovery-coordinator.js:
-       * `activeStore` reads an entry captured ONCE by the first overlapping
-       * recover() for a computerId and never reassigned by a later one -- so
-       * while any recovery for this computer is in flight, activeStore can
-       * answer a store from BEFORE this view's own destroy()-and-reopen,
-       * exactly the situation that sends this lookup looking for a fallback
-       * in the first place.
-       *
-       * RUN_STARTING_TREE_STORES'S OWN GUARANTEE DIFFERS BY CALLER, and this
-       * is why the same lookup is reused rather than special-cased per verb
-       * rather than reasoned about once and assumed everywhere. For
-       * fresh-start-existing-node, `retainStartingTreeStore`'s release() runs
-       * only in freshStartExistingNode's own `finally`, which wraps
-       * `afterBind` -- so restartAfterBind's own call to this lookup always
-       * runs BEFORE that release, and the entry is guaranteed present. For
-       * resume-node, resumeNodeSession's retain/release cycle is entirely
-       * INTERNAL to resumeNodeSession itself (release() fires in the
-       * `finally` inside nodeReplacementFlight's own callback, before
-       * resumeNodeSession returns) -- so by the time the resume-node branch
-       * below calls this lookup, ITS OWN retain has already been released,
-       * and RUN_STARTING_TREE_STORES only still helps if some OTHER
-       * overlapping start for the same computer happens to hold it. This
-       * lookup is still correct and still never crashes either way: a miss
-       * falls through to RUN_TREE_RUNTIME_STORES (reassigned on every
-       * retain(), never captured once and left stale) and then a named
-       * refusal -- resume-node's fallback chain is simply weaker in practice
-       * than restart's, not incorrect.
-       *
-       * PRESENT IS NOT THE SAME AS RIGHT, AND ONLY PRESENCE IS GUARANTEED BY
-       * CONSTRUCTION. An earlier revision of this block claimed the entry was
-       * "guaranteed to be the store this specific restart began with". That was
-       * false and the claim has been withdrawn: `retainStartingTreeStore` keys
-       * on `store.snapshot().computerId` and does
-       * `RUN_STARTING_TREE_STORES.get(computerId) || { store, count: 0 }`, so an
-       * existing entry's `.store` is NEVER reassigned by a later overlapping
-       * retain for the same computer. Two nodes on one computer retaining
-       * different store objects leaves the FIRST object answering for both, and
-       * this lookup would hand the second operation a store it never began with
-       * -- the silent fork named above, not a crash.
-       *
-       * That is closed today by the retainers, not by this Map. All three
-       * (startDraftNodeUnguarded, freshStartExistingNode, resumeNodeSession)
-       * now pass the treeStore that is live at the moment they retain: the two
-       * replacement verbs read it synchronously at press time, and
-       * startDraftNodeUnguarded -- which alone captures across two awaits --
-       * re-checks `treeStore !== store` before it retains (see its own note).
-       * Since openTreeStore's chain consults this Map before minting anything,
-       * a reopened page then adopts that same object and the values agree.
-       *
-       * SO THE INVARIANT A FOURTH CALLER MUST KEEP is: never hand
-       * `retainStartingTreeStore` a store reference carried across an await
-       * without re-checking it against the live `treeStore` first. Nothing in
-       * the Map enforces that, and breaking it reintroduces the fork silently,
-       * without touching this file's comment or any line that looks wrong. */
+
       const resolveLiveTreeStore = () => (treeStore && treeStoreId === command.computerId)
         ? treeStore
         : (RUN_STARTING_TREE_STORES.get(command.computerId)?.store
@@ -17780,8 +17821,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         return { ok: false, code: 'MC_TREE_COMMAND_SESSION_CHANGED', nodeId: command.nodeId, sessionId: null, threadId: null,
           reason: 'This circle has a different session now. Read its current session before trying again.' }
       }
-      /* WHERE THE ASKER STANDS, for a stop or a restart. The rule is that
-         agents start and restart the agents UNDER them, and the removal rule below
+      /* WHERE THE ASKER STANDS, for a stop or a restart. The owner's sentence
+         is "start and restart agents UNDER them", and the removal rule below
          already reads the asker's place from the session the application
          bound. Stop and restart read nothing of the kind when they shipped:
          an assistant could name any circle on the tree -- a sibling, its own
@@ -17862,7 +17903,8 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         /* resolveLiveTreeStore, not the bare closure `treeStore`: this line
            runs after resumeNodeSession's own await (bridge.start, exactly as
            slow as a restart's), and destroy() can have released `treeStore`
-           in the meantime -- MEASURED, the same defect class as
+           in the meantime -- MEASURED, Worker 35 and Controller
+           2026-09-06T22:45Z-23:xxZ, the same defect class as
            fresh-start-existing-node's, found here unguarded before it had
            been observed to crash resume in practice. Unlike that branch,
            resumeNodeSession's own retain of RUN_STARTING_TREE_STORES has
@@ -18011,11 +18053,11 @@ export function computersView({ initialComputer = null, navigate, chatNodeId = n
         return { ok: true, code: null, nodeId: node.id, sessionId: node.sessionId, threadId: null }
       }
 
-     /* REMOVE, and the rule about who may be removed.
+      /* REMOVE, and the owner's own rule about who may be removed.
 
-        Agents spawned by agents that the user has not prompted can be removed
-        by their parent agents; an agent the user has prompted remains, even if
-        another agent created it.
+         Verbatim, 2026-09-03: "agents that were spawned by agents AND who the
+         user hasnt prompted - THEY can be removed by parent agents. AGENTS
+         that a user prompts even if created by another agent can remain".
 
          So two facts decide it, and neither is the caller's to claim: whether
          a person ever sent this circle a turn, and whether it was made by an

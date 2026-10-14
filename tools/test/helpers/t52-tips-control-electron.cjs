@@ -1,7 +1,7 @@
 'use strict'
 
 /* T52(4). The "Turn off new-page tips" control, on every route that offers a
-   guide, read from a real rendered window. A candidate measurement found it 0x0
+   guide, read from a real rendered window. Builder (4a1a39df) measured it 0x0
    on Ledger and Settings and 121x44 on Metrics on the cut-1 candidate; this
    asks the same question under conditions the fixture controls, so the answer
    separates "the page collapses it" from "it was measured in a different

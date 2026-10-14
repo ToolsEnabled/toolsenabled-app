@@ -2,10 +2,11 @@
  * identifier is never translated into a legacy lane launch, identity or PID. */
 
 import { auditReceiptDisposition } from './mission-bridge.js'
+import { nodeStatusForTurn, sessionTurnFailureText, sessionTurnStatus } from './agent-session-events.js'
 
 const signed = value => Number.isSafeInteger(value?.sequence) && value.sequence > 0
   && /^[a-f0-9]{64}$/.test(String(value?.eventHash || ''))
-/* B29: AUDIT OFF (Basic, the default since an earlier commit) IS NOT AN UNCONFIRMED
+/* B29: AUDIT OFF (Basic, the default since 7a1134d61) IS NOT AN UNCONFIRMED
    START. The shell then answers with the engine's exact unsigned receipt for
    THIS session (recordSpawnIntent's skippedStatus; recordSessionEnd's end
    copy), and demanding a signed one refused every Launch, Team and Loop. */
@@ -37,11 +38,57 @@ export function verifiedTreeWorkStatus(status, receipt, { closed = false } = {})
 
 const failure = result => result?.message || result?.reason || result?.sentence || 'The work could not be confirmed. Check its circle before trying again.'
 
+/* B36: A STARTED AGENT WHOSE FIRST TURN FAILED IS NOT "STARTED".
+ *
+ * Found by the c5 Linux extra hand test (09-27): a Team with a Sonnet 5 lead
+ * and a Haiku 4.5 member while the Claude account was at its weekly limit.
+ * Both starts were accepted, so the box said "2 saved agents started ...
+ * Started; open its circle to follow the conversation" for both -- while the
+ * usage records said `error` for both and the canvas said "2 need review" and
+ * "the last turn failed: You've hit your weekly limit". A start answers when
+ * the brief is ACCEPTED (B31), which is before the provider has done anything
+ * with it, so the box has to keep listening for the brief's own turn.
+ *
+ * The first completed turn of a session this box started IS its brief's turn:
+ * the box names the session (onSessionOpen) before the brief is sent. Only
+ * that turn is read, and only a failure changes what the box says. The
+ * engine's sentence is shown as the canvas shows it -- the provider's own
+ * words are the ones a person can act on -- bounded so one runaway sentence
+ * cannot swallow the box. */
+const FIRST_TURN_OUTCOMES = Object.freeze(['finished', 'turn-failed', 'cancelled', 'interrupted'])
+const MAX_FIRST_TURN_SENTENCE_CHARS = 400
+function firstTurnSentence(value) {
+  if (typeof value !== 'string') return null
+  const text = value.replace(/\s+/g, ' ').trim()
+  if (!text) return null
+  return text.length > MAX_FIRST_TURN_SENTENCE_CHARS ? `${text.slice(0, MAX_FIRST_TURN_SENTENCE_CHARS - 1)}…` : text
+}
+const ended = text => /[.!?…]["”’)]?$/.test(text) ? text : `${text}.`
+function firstTurnDetail(turn) {
+  return turn.sentence ? `Its first turn failed: ${ended(turn.sentence)}` : 'Its first turn failed. Open its circle to read why.'
+}
+
+/** The completed-turn fact the box reads off one host event packet, or null
+ * for any other packet. A Halt the person pressed is `interrupted`, never a
+ * failure; the engine's sentence rides only on a turn that did not succeed. */
+export function boundedTurnOutcome(packet) {
+  const sessionId = packet?.sessionId
+  const status = sessionTurnStatus(packet, sessionId)
+  if (!status || !named(sessionId)) return null
+  return Object.freeze({ sessionId,
+    outcome: status === 'interrupted' ? 'interrupted' : nodeStatusForTurn(status),
+    sentence: sessionTurnFailureText(packet, sessionId) })
+}
+
 /** One retained controller per selected parent and control. Stop joins starts
  * already in flight, keeps incomplete receipts reachable, and never reports
  * cleanup from a renderer timer or a missing projection row. */
 export function createTreeWorkController({ kind, start, readStatus, close, isBusy = () => true,
-  subscribeEnded = () => () => {}, setTimer = (callback, delay) => setTimeout(callback, delay), clearTimer = clearTimeout } = {}) {
+  subscribeEnded = () => () => {},
+  /* Every event packet the host sends (window.mcAgent.onEvent). The box reads
+     only its own agents' first completed turns out of it (B36). */
+  subscribeHostEvents = () => () => {},
+  setTimer = (callback, delay) => setTimeout(callback, delay), clearTimer = clearTimeout } = {}) {
   const listeners = new Set()
   let state = Object.freeze({ kind, phase: 'idle', busy: false, stoppable: false, rows: [], attempts: 0, message: '' })
   let timer = null
@@ -50,6 +97,7 @@ export function createTreeWorkController({ kind, start, readStatus, close, isBus
   let stopRequested = false
   let plan = null
   let unsubscribeEnded = null
+  let unsubscribeTurns = null
   const patch = fields => {
     state = Object.freeze({ ...state, ...fields, ...(fields.rows ? { rows: Object.freeze(fields.rows) } : {}) })
     for (const listener of listeners) { try { listener(state) } catch { /* a retired panel cannot undo real work */ } }
@@ -57,6 +105,61 @@ export function createTreeWorkController({ kind, start, readStatus, close, isBus
   }
   const cancelTimer = () => { if (timer !== null) clearTimer(timer); timer = null }
   const updateRow = (sessionId, fields) => patch({ rows: state.rows.map(row => row.sessionId === sessionId ? { ...row, ...fields } : row) })
+  const detachHost = () => {
+    unsubscribeEnded?.(); unsubscribeEnded = null
+    unsubscribeTurns?.(); unsubscribeTurns = null
+  }
+
+  /* B36: the sessions this run started, named as they open, and the outcome
+     of each one's first (its brief's) turn. `startedLine` is the "started"
+     sentence this box last wrote, so a late failure replaces that sentence
+     and never a different one (a parent that ended, a refusal, a Stop). */
+  const startedSessions = new Set()
+  const firstTurns = new Map()
+  let startedLine = null
+
+  /* What the box says once its agents are started: "started" only while no
+     brief's turn has failed. For Launch and Team; a Loop reports per run. */
+  function startedMessage() {
+    const count = state.rows.length
+    const agents = `${count} saved agent${count === 1 ? '' : 's'}`
+    const failed = state.rows.filter(row => row.phase === 'turn-failed')
+    if (failed.length === 0) return `${agents} started. Open their circles to follow their replies. Stop closes this work.`
+    const reasons = [...new Set(failed.map(row => row.firstTurn?.sentence).filter(Boolean))]
+    const why = reasons.length === 1 && failed.every(row => row.firstTurn?.sentence)
+      ? `The reason given: ${ended(reasons[0])}`
+      : `Open ${failed.length === 1 ? 'its circle' : 'their circles'} to read why.`
+    if (failed.length === count) {
+      return count === 1
+        ? `The agent started, but its first turn failed, so it is not working on the brief. ${why} Stop closes this work.`
+        : `${agents} started, but every one’s first turn failed, so none of them is working on the brief. ${why} Stop closes this work.`
+    }
+    const some = failed.length === 1
+      ? 'one of them failed on its first turn, so it is not working on the brief.'
+      : `${failed.length} of them failed on their first turn, so they are not working on the brief.`
+    return `${agents} started, but ${some} ${why} Stop closes this work.`
+  }
+
+  function applyFirstTurn(sessionId) {
+    const turn = firstTurns.get(sessionId)
+    const row = state.rows.find(row => row.sessionId === sessionId)
+    if (!turn || turn.outcome !== 'turn-failed' || !row || row.phase !== 'started') return
+    updateRow(sessionId, { phase: 'turn-failed', firstTurn: turn, detail: firstTurnDetail(turn) })
+    if (startedLine !== null && state.phase === 'active' && state.message === startedLine) announceStarted()
+  }
+
+  function announceStarted() {
+    startedLine = startedMessage()
+    return patch({ phase: 'active', busy: false, message: startedLine })
+  }
+
+  function noteHostEvent(packet) {
+    const turn = boundedTurnOutcome(packet)
+    if (!turn || !startedSessions.has(turn.sessionId) || firstTurns.has(turn.sessionId)) return
+    if (!FIRST_TURN_OUTCOMES.includes(turn.outcome)) return
+    firstTurns.set(turn.sessionId, Object.freeze({ outcome: turn.outcome, sentence: firstTurnSentence(turn.sentence) }))
+    applyFirstTurn(turn.sessionId)
+  }
 
   async function refreshClosed(sessionId) {
     const row = state.rows.find(row => row.sessionId === sessionId)
@@ -91,7 +194,7 @@ export function createTreeWorkController({ kind, start, readStatus, close, isBus
         message: refused ? state.message
           : halted ? 'No further work will start. The host confirmed all started sessions closed.'
             : 'The host confirmed all started work closed. No further run is scheduled.' })
-      unsubscribeEnded?.(); unsubscribeEnded = null
+      detachHost()
     }
   }
 
@@ -105,7 +208,7 @@ export function createTreeWorkController({ kind, start, readStatus, close, isBus
     let opened = null
     const pending = { opened: new Promise(resolve => { opened = resolve }) }
     pendingStart = pending
-    try { result = await start({ ...plan, ...parent, tier, label, onSessionOpen: sessionId => { if (named(sessionId)) opened(sessionId) } }) }
+    try { result = await start({ ...plan, ...parent, tier, label, onSessionOpen: sessionId => { if (named(sessionId)) { startedSessions.add(sessionId); opened(sessionId) } } }) }
     catch (error) { result = { ok: false, message: error?.message } }
     finally { if (pendingStart === pending) pendingStart = null; opened(null) }
     // Even an incomplete acknowledgement can name a real child. Preserve the
@@ -125,6 +228,10 @@ export function createTreeWorkController({ kind, start, readStatus, close, isBus
           : stopFlight ? 'Stopped before it took its brief. Stop checks that it closed.'
             : briefRefused && result.sessionEnded === true ? 'Its brief did not reach it, and its session has ended. Stop checks that it closed.'
               : briefRefused ? 'Its brief did not reach it. It is open without a task; Stop closes it.' : failure(result) }] })
+      /* B36: a brief's turn can already have failed by the time its start
+         answers (the start answers at acceptance, not at the reply). */
+      startedSessions.add(result.sessionId)
+      applyFirstTurn(result.sessionId)
       if (verified) return { ok: true, receipt }
     }
     /* A START ENDED BY STOP IS NOT A FAILED START (c4 second review). Stop
@@ -175,7 +282,7 @@ export function createTreeWorkController({ kind, start, readStatus, close, isBus
       // Members first, then their lead. The host also owns descendant cleanup;
       // the separate reads preserve a useful outcome for every visible circle.
       for (const row of [...state.rows].reverse()) if (row.phase !== 'closed') confirmed = await closeRow(row) && confirmed
-      if (confirmed) { unsubscribeEnded?.(); unsubscribeEnded = null }
+      if (confirmed) detachHost()
       return patch({ phase: confirmed ? 'stopped' : 'close-unconfirmed', busy: false, stoppable: !confirmed,
         message: confirmed ? 'No further work will start. The host confirmed all started sessions closed.' : 'No further work will start. Some sessions are not confirmed closed; Stop remains available.' })
     })().finally(() => { stopFlight = null })
@@ -246,6 +353,10 @@ export function createTreeWorkController({ kind, start, readStatus, close, isBus
           for (const row of state.rows) void refreshClosed(row.sessionId)
         } else void refreshClosed(sessionId)
       })
+      if (!unsubscribeTurns) unsubscribeTurns = subscribeHostEvents(noteHostEvent)
+      startedSessions.clear()
+      firstTurns.clear()
+      startedLine = null
       plan = Object.freeze({ ...next, members: [...(next.members || [])] })
       stopRequested = false
       patch({ phase: 'running', busy: true, stoppable: true, rows: [], attempts: 0, message: 'Starting saved child work under the selected agent…' })
@@ -261,7 +372,7 @@ export function createTreeWorkController({ kind, start, readStatus, close, isBus
             if (!member.ok) return state
           }
         }
-        if (!stopRequested) patch({ phase: 'active', busy: false, message: `${state.rows.length} saved agent${state.rows.length === 1 ? '' : 's'} started. Open their circles to follow their replies. Stop closes this work.` })
+        if (!stopRequested) announceStarted()
         return state
       })().finally(() => {
         flight = null

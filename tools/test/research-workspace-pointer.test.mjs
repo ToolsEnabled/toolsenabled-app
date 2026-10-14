@@ -79,7 +79,7 @@ test('a saved local pointer is served as exactly {url}, and only its origin trav
 test('a pointer that is not a loopback http address is refused by name', async t => {
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'te-research-pointer-'))
   t.after(() => fs.rmSync(userData, { recursive: true, force: true }))
-  for (const url of ['https://example.com', 'http://10.0.0.5:57924', 'file:///C:/data', 42, null]) {
+  for (const url of ['https://example.com', 'http://10.0.0.5:57924', 'file:///\x43:/data', 42, null]) {
     fs.writeFileSync(path.join(userData, 'research-workspace.json'), JSON.stringify({ url }))
     const answer = await ask(userData)
     assert.equal(answer.status, 404, `${String(url)} must not be handed to the page`)

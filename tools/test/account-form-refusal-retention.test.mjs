@@ -66,7 +66,7 @@ function fieldNode(liveFields, name, getAttributeExtra = () => null, typeValue =
     },
     getAttributeNames() { return ['name', 'type'] },
     setAttribute() {},
-    focus() {},
+    focus() { if (globalThis.document) globalThis.document.activeElement = this },
     setSelectionRange() {},
     classList: { contains: () => false },
     tagName: 'INPUT',
@@ -112,6 +112,7 @@ function accountDocument(fields = {}, { resetFieldsOnPaint = true } = {}) {
   let forms = []
   let modeControls = []
   let controlLifecycles = []
+  let focusedControl = null
 
   function attribute(attrs, name) {
     const match = new RegExp(name + '="([^"]*)"').exec(attrs)
@@ -203,6 +204,8 @@ function accountDocument(fields = {}, { resetFieldsOnPaint = true } = {}) {
   const section = {
     get innerHTML() { return markup },
     set innerHTML(value) {
+      if (focusedControl) focusedControl.connected = false
+      focusedControl = null
       markup = String(value)
       paints += 1
       if (resetFieldsOnPaint) {
@@ -293,6 +296,20 @@ function accountDocument(fields = {}, { resetFieldsOnPaint = true } = {}) {
       const field = fieldFor(name)
       assert.ok(field, 'cannot focus an account control absent from the rendered form')
       focusedName = name
+    },
+    focusControl(selector) {
+      assert.ok(controlExists(selector), 'cannot focus an account control absent from the rendered markup')
+      const lifecycle = { connected: true, generation: paints }
+      const control = {
+        selector,
+        get isConnected() { return lifecycle.connected },
+        get generation() { return lifecycle.generation },
+        focus() { document.activeElement = control },
+      }
+      focusedControl = lifecycle
+      focusedName = null
+      document.activeElement = control
+      return control
     },
     submit(kind) {
       const listener = listeners.get('submit')
@@ -1040,9 +1057,7 @@ test('mounted local Windows reset preview is read-only and keeps the local setup
     ok: true,
     roots: [{
       kind: 'installation',
-      // A synthetic install folder, assembled at run time so the source carries no
-      // literal drive-rooted product path.
-      directory: ['C:', 'ToolsEnabled'].join('\\\\'),
+      directory: '\x43:\\\\ToolsEnabled',
       present: true,
       files: 3,
       bytes: 300,
@@ -1227,7 +1242,12 @@ test('Show me what would be deleted moves focus into the plan, and Leave it alon
 /* T1520: THE MOUNTED ACCOUNT PAGE SETS A DAMAGED ACCOUNT FILE ASIDE AND OFFERS
    THE CREATE FORM AGAIN. */
 test('Set the damaged account file aside asks the shell once and brings back the create form', async () => {
-  const fixture = accountFixture({ accountCount: 0 })
+  const google = deferred()
+  const fixture = accountFixture({
+    accountCount: 0,
+    googleAvailability: () => google.promise,
+    create: async () => ({ ok: true, persisted: true }),
+  })
   let damaged = true
   const setAside = []
   const healthy = fixture.bridge.availability
@@ -1239,12 +1259,32 @@ test('Set the damaged account file aside asks the shell once and brings back the
   try {
     assert.match(screen.markup(), /data-account-set-aside/, 'the damaged page offers no narrow way back')
     assert.doesNotMatch(screen.markup(), /data-account-form="create"/)
+    const recoveryControl = screen.focusControl('[data-account-set-aside]')
+    assert.equal(screen.document.activeElement, recoveryControl, 'the recovery control was not the starting keyboard target')
     screen.press('[data-account-set-aside]')
     await settle()
     assert.equal(setAside.length, 1)
+    assert.equal(recoveryControl.isConnected, false, 'the pressed recovery control remained connected after repaint')
+    assert.match(screen.markup(), /data-account-form="create"/, 'the create form did not appear while optional availability was pending')
+    screen.type('username', 'after-recovery-user')
+    screen.type('displayName', 'After Recovery')
+    google.resolve({ ok: false, reason: 'Google is unavailable in this fixture.' })
+    await settle()
     assert.match(screen.markup(), /The damaged account file was set aside\./)
     assert.match(screen.markup(), /product-accounts\.json\.damaged-2026-09-22T21-00-00-000Z/)
-    assert.match(screen.markup(), /data-account-form="create"/, 'the create form did not come back after the set-aside')
+    const username = screen.document.querySelector('[name="username"]')
+    assert.ok(username?.isConnected, 'the returned username input is not a live control')
+    assert.equal(screen.document.activeElement, username, 'keyboard focus did not move to a usable returned input')
+    assert.equal(screen.fieldValue('username'), 'after-recovery-user', 'late availability erased the typed username')
+    assert.equal(screen.fieldValue('displayName'), 'After Recovery', 'late availability erased the typed display name')
+    screen.type('password', 'p'.repeat(12))
+    screen.submit('create')
+    await settle()
+    assert.equal(fixture.calls.create.length, 1, 'continued form entry did not reach the real create handler')
+    assert.equal(fixture.calls.create[0].username, 'after-recovery-user')
+    assert.equal(fixture.calls.create[0].displayName, 'After Recovery')
+    assert.equal(typeof fixture.calls.create[0].password, 'string', 'the create handler did not receive the password field')
+    assert.ok(fixture.calls.create[0].password.length > 0, 'the create handler received an empty password field')
   } finally {
     screen.restore()
   }
@@ -1349,4 +1389,105 @@ test('setup account key guards reject IME and modifiers, suppress busy repeats, 
     /actual setup view must listen for keys/,
     'destroy must remove the setup key listener',
   )
+})
+
+/* T1943: AN INTERRUPTED SET-ASIDE MUST KEEP ITS REFUSAL REASON AND REPORT ANY
+   RECOVERY LOCATIONS THE SHELL ACTUALLY RETURNED. These are locations, not a
+   new byte-exact guarantee: the service owns the custody classification. */
+test('interrupted set-aside reports one retained location without claiming recovery succeeded', async () => {
+  const retained = 'product-accounts.json.damaged-prepared-copy'
+  const reason = 'A second account-store copy could not be synced; recovery stopped after this reported location.'
+  const fixture = accountFixture({ accountCount: 0 })
+  let damaged = true
+  let setAsideCalls = 0
+  const healthy = fixture.bridge.availability
+  fixture.bridge.availability = async () => damaged
+    ? { ok: false, code: 'ACCOUNT_STORE_CORRUPT', reason: 'The local account list remains unreadable.', accountCount: 0 }
+    : healthy()
+  fixture.bridge.setAsideDamaged = async () => {
+    setAsideCalls += 1
+    return { ok: false, code: 'ACCOUNT_STORE_RECOVERY_FAILED', reason, keptAs: [retained] }
+  }
+  const screen = await driveAccount(fixture.bridge)
+  try {
+    assert.match(screen.markup(), /data-account-set-aside/, 'the damaged state must expose the recovery action')
+    screen.press('[data-account-set-aside]')
+    await settle()
+    assert.equal(setAsideCalls, 1, 'an interrupted recovery must call the shell once')
+    assert.match(screen.markup(), /That did not work\./)
+    assert.match(screen.markup(), new RegExp(reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    assert.match(screen.markup(), new RegExp(retained.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    assert.doesNotMatch(screen.markup(), /The damaged account file was set aside\./, 'a refusal must not use the success title')
+    assert.doesNotMatch(screen.markup(), /data-account-form="create"/, 'a refused recovery must not claim a new create form')
+    assert.match(screen.markup(), /data-account-set-aside/, 'the damaged state must remain visible after refusal')
+  } finally {
+    screen.restore()
+  }
+})
+
+test('interrupted conflict recovery reports both returned locations and keeps the conflict state', async () => {
+  const retained = [
+    'product-accounts.json.damaged-conflict',
+    'hosted-product-accounts.json.damaged-conflict',
+  ]
+  const reason = 'The account files changed during recovery; the reported copies remain available.'
+  const fixture = accountFixture({ accountCount: 0 })
+  let setAsideCalls = 0
+  fixture.bridge.availability = async () => ({
+    ok: false,
+    code: 'ACCOUNT_STORE_CONFLICT',
+    reason: 'Both account lists still conflict.',
+    accountCount: 0,
+  })
+  fixture.bridge.setAsideDamaged = async () => {
+    setAsideCalls += 1
+    return { ok: false, code: 'ACCOUNT_STORE_RECOVERY_FAILED', reason, keptAs: retained }
+  }
+  const screen = await driveAccount(fixture.bridge)
+  try {
+    assert.match(screen.markup(), /Set both conflicting account files aside/)
+    screen.press('[data-account-set-aside]')
+    await settle()
+    assert.equal(setAsideCalls, 1, 'a conflict recovery must call the shell once')
+    assert.match(screen.markup(), /That did not work\./)
+    assert.match(screen.markup(), new RegExp(reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    for (const path of retained) {
+      assert.match(screen.markup(), new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing reported recovery location ${path}`)
+    }
+    assert.doesNotMatch(screen.markup(), /The account files were set aside\./, 'a conflict refusal must not use the success title')
+    assert.doesNotMatch(screen.markup(), /data-account-form="create"/, 'a refused conflict recovery must not claim a new create form')
+    assert.match(screen.markup(), /Set both conflicting account files aside/, 'the conflict state must remain visible after refusal')
+  } finally {
+    screen.restore()
+  }
+})
+
+test('interrupted set-aside without kept locations does not invent a recovery path', async () => {
+  const reason = 'Recovery stopped before any copy location could be reported; the active files remain in place.'
+  const fixture = accountFixture({ accountCount: 0 })
+  let setAsideCalls = 0
+  fixture.bridge.availability = async () => ({
+    ok: false,
+    code: 'ACCOUNT_STORE_CORRUPT',
+    reason,
+    accountCount: 0,
+  })
+  fixture.bridge.setAsideDamaged = async () => {
+    setAsideCalls += 1
+    return { ok: false, code: 'ACCOUNT_STORE_RECOVERY_FAILED', reason }
+  }
+  const screen = await driveAccount(fixture.bridge)
+  try {
+    screen.press('[data-account-set-aside]')
+    await settle()
+    assert.equal(setAsideCalls, 1)
+    assert.match(screen.markup(), /That did not work\./)
+    assert.match(screen.markup(), new RegExp(reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    assert.doesNotMatch(screen.markup(), /product-accounts\.json\.damaged-/)
+    assert.doesNotMatch(screen.markup(), /hosted-product-accounts\.json\.damaged-/)
+    assert.doesNotMatch(screen.markup(), /data-account-form="create"/)
+    assert.match(screen.markup(), /data-account-set-aside/, 'the damaged state must remain visible after refusal')
+  } finally {
+    screen.restore()
+  }
 })

@@ -245,8 +245,8 @@ test('every claimed reader still uses the storage key licensed above', async () 
 })
 
 test('the example row has its registry, its enforcement, and its control, by name', async () => {
-   /* The house doctrine -- a user setting needs a registry row, enforcement,
-     and a control, or it is a lie -- asserted for the one row that replaced the
+  /* The owner's doctrine -- "a user setting needs registry, enforcement, and
+     a control, or it's a lie" -- asserted for the one row that replaced the
      per-view family, because a toggle claiming to change EVERY screen is the
      most expensive place a dead control could sit.
        REGISTRY     src/data-source.js owns the stored choice (`mc.example`).
@@ -402,7 +402,7 @@ test('every product-settings row names a reader, and the host really reads the t
        flag, and a test that stopped at the file would have called that
        enforced. */
     'agent.agent_api': 'payload src/lib/agent-api-policy.js — agentApiArgs, emitted by src/lib/agent-engine/claude-cli-adapter.js baseClaudeArgs and src/lib/mission-bridge/actions.js claudeArgs (registry enforcedBy)',
-    /* The product-source switch is read inside the
+    /* The owner's product-source switch (2026-09-19) is read inside the
        payload on every refused code-folder write, so no shell reader exists
        by design; the registry names the reader and the fence it feeds. */
     'agent.product_source_writes': 'payload src/lib/product-source-writes.js — productSourceWritesPolicy, read by src/lib/providers/host-control.js isProductCodeWriteAllowed before a product code folder is refused (registry enforcedBy)',
@@ -412,7 +412,7 @@ test('every product-settings row names a reader, and the host really reads the t
        the other. */
     'agent.subagent_route': 'payload src/lib/agent-subagent-route.js — subagentRoute, read by src/lib/tool-registry.js spawnSubagent before either surface is chosen, and obeyed including its refusals',
     'rules.require_read_each_turn': 'shell/agent-host.cjs — complete current snapshot on every turn via payload src/lib/rules-turn-snapshot.js, revalidated before the provider call',
-    /* The three-way choice that superseded the on/off
+    /* The three-way choice (owner, 2026-09-15) that superseded the on/off
        switch rules.capture_spoken: the gate answers the mode from it, and
        whether a /Request typed in a chat exists at all (chatFiling), which
        the host's fileStandingRequest enforces by refusing a chat filing. */
@@ -421,17 +421,17 @@ test('every product-settings row names a reader, and the host really reads the t
        (loadAgentFilingMode().askWhenUnsure) and the host hands it to the
        duty paragraph at every session start. */
     'rules.ask_when_unsure': 'shell/agent-host.cjs — agentFilingFor passes askWhenUnsure to gate.requestContractParagraph (payload src/lib/r-ledger-agent-gate.js)',
-    /* The switch's second sub-setting: an agent's filing
+    /* The switch's second sub-setting (owner, 2026-09-02): an agent's filing
        waits for the person. Enforced one layer deeper than the host, in the
        store the registry names; the host hands the same reading to the duty
        paragraph so the agent is told its filing waits. */
     'rules.agent_filed_needs_approval': 'payload src/lib/owner-request-store.js — fileRequest sets status proposed via r-ledger-agent-gate agentFiledNeedsApprovalOf; shell/agent-host.cjs agentFilingFor passes needsApproval to the duty paragraph',
-    /* Outside control: the payload decides whether the
+    /* Outside control (owner, 2026-09-02): the payload decides whether the
        port opens and the shell asks it before Electron is ready. Neither
        reader is agent-host; the row's enforcer is the module the registry
        names. */
     'app.outside_control': 'payload src/lib/outside-control.js — outsideControlPolicy, read by shell/outside-control.cjs startOutsideControl before Electron is ready (registry enforcedBy)',
-    /* Tool throughput: read inside the payload on every
+    /* Tool throughput (owner, 2026-09-03): read inside the payload on every
        call, so no shell reader exists by design; the registry names the
        reader and the three enforcers. */
     'tools.throughput': 'payload src/lib/throughput-mode.js — throughputMode, read per call by src/lib/tool-registry.js (audit admission path) and src/mcp-server.js createLineDispatcher (scheduler), which src/owner-host.js dispatches every session through (registry enforcedBy)',
@@ -441,7 +441,7 @@ test('every product-settings row names a reader, and the host really reads the t
        one reader of all three: it refuses to treat a retained Full as a
        choice until the master is explicitly on. */
     'audit.enabled': 'payload src/lib/runtime-policy.js — runtimePolicy().auditEnabled is true only for an explicit user or installer true; src/lib/operation-audit.js capturePolicy() refuses an unreadable or rejected master before it mints a policy, so nothing optional is recorded on a guess (registry enforcedBy)',
-    /* Metrics history without the signed audit. Read by
+    /* Metrics history without the signed audit (owner, 2026-09-23). Read by
        the payload into the same captured policy; the app's own records and
        the two Metrics reads obey it in shell/main.cjs. */
     'metrics.local_history': 'payload src/lib/runtime-policy.js — runtimePolicy().metricsLocalHistory, carried by src/lib/operation-audit.js capturePolicy(); shell/main.cjs recordSpawnIntent, recordSessionEndImpl, spawnRecordHistory and usageRecordHistory apply it while audit.enabled is off (registry enforcedBy)',

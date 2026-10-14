@@ -1,8 +1,9 @@
 /* NO CONTROL IN THIS PRODUCT LEADS TO A ROUTE THE ROUTER DOES NOT ACCEPT.
  *
- * THE GAP THIS CLOSES: the 'See the plans and prices' link inside /simulation/
- * returned 404. That control no longer exists anywhere in the app -- on
- * 2026-08-26 the app stopped advertising subscriptions, and every subscription door was removed from the account screens and
+ * THE GAP THIS CLOSES, recorded 2026-08-22: "'See the plans and prices' inside
+ * /simulation/ 404s." That control no longer exists anywhere in the app -- the
+ * owner ruled on 2026-08-26 "i dont want to advertise subscriptions in the
+ * app", and every subscription door was removed from the account screens and
  * from the home panel. A phone drive of the current tree (chromium and webkit,
  * 390x844 and 320x568, every stop the router accepts) found eleven distinct
  * links in the whole application and every one of them resolves.

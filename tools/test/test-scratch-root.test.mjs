@@ -26,7 +26,7 @@ const SUITE_DIRECTORY = HERE;
 const { CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES } = createRequire(import.meta.url)("../../shell/capability-path-environment.cjs");
 
 test("a scratch root lands under the temp root the run pinned, never under node_modules", () => {
-  const pinned = path.join(path.sep === "\\" ? "C:\\pinned-temp" : "/pinned-temp", "run-42");
+  const pinned = path.join(path.sep === "\\" ? "\x43:\\pinned-temp" : "/pinned-temp", "run-42");
   const resolved = testScratchRoot(".toolsenabled-example-test", { tmpdir: pinned });
 
   assert.equal(resolved, path.join(pinned, ".toolsenabled-example-test"));
@@ -177,7 +177,7 @@ test("on Windows the strict measurement empties PSModulePath, and elsewhere leav
     state: path.join(path.sep, "s", "state"), temp: path.join(path.sep, "s", "temp"),
     native: path.join(path.sep, "s", "temp", "native-qualification"), canonicalRoot: path.join(path.sep, "e"),
   }
-  const pwsh7 = "C:\\Program Files\\PowerShell\\Modules;C:\\Program Files\\PowerShell\\7\\Modules"
+  const pwsh7 = "\x43:\\Program Files\\PowerShell\\Modules;\x43:\\Program Files\\PowerShell\\7\\Modules"
   const windows = strictScratch.strictMeasurementEnvironment({ PSModulePath: pwsh7 }, { ...roots, platform: "win32" })
   assert.equal(windows.PSModulePath, "",
     "mutation `hand a PowerShell 7 PSModulePath to Windows PowerShell 5.1 children` survived: the 1.0.45 cut "

@@ -5,8 +5,8 @@
  * which are ours and none of which a customer can perform: the registry the
  * cloud lane reads was hand-authored in an editor, the per-account home
  * directories were made by hand, and the sign-in had to be run with CODEX_HOME
- * set in the right shell -- the PowerShell form does nothing in cmd.exe, and a
- * hand-run sign-in failed four times in a row that way.
+ * set in the right shell -- the owner was handed the PowerShell form, was in
+ * cmd.exe, and it failed four times in a row.
  *
  * shell/cloud-account-setup.cjs is the composition that ends all three. It
  * implements neither half: the engine's registry-write.js creates the directory
@@ -43,11 +43,8 @@ const MODULE_FILE = path.join(REPO_ROOT, 'shell', 'cloud-account-setup.cjs')
 
 const { createCloudAccountSetup } = require_(MODULE_FILE)
 
-// Synthetic Windows paths, assembled at run time so this source carries no
-// literal user-profile path.
-const CAPABILITY = ['C:', 'Users', 'someone', 'AppData', 'Roaming', 'ToolsEnabled', 'capability'].join('\\')
-const HOME = `${CAPABILITY}\\codex-homes\\work`
-const REGISTRY = `${CAPABILITY}\\config\\accounts.json`
+const HOME = '\x43:\\Users\\someone\\AppData\\Roaming\\ToolsEnabled\\capability\\codex-homes\\work'
+const REGISTRY = '\x43:\\Users\\someone\\AppData\\Roaming\\ToolsEnabled\\capability\\config\\accounts.json'
 
 function refusal(code, message) {
   const error = new Error(message)

@@ -1,6 +1,6 @@
 /* LOOPS — running one agent repeatedly, and the four bounds that make that safe.
  *
- * The feature is loop and graph engineering. A loop is not a new engine
+ * The owner asked for "loop and graph engineering". A loop is not a new engine
  * concept any more than a team was: it is the SAME `dispatch` action, sent again
  * on an interval, with every run after the first nested under the first. Nothing
  * here schedules anything the engine does not already understand, and nothing

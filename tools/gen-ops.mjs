@@ -135,8 +135,8 @@ await emitProjection(DOMAIN, async at => {
   const preflightSource = sourceFromResult(preflight, 'live-cli')
   /* THE MESSAGE PANE IS NOT THIS FILE'S TO FILL, AND SAYING SO IS THE FIX.
    *
-   * THE FINDING: the comms page could not be verified because the agents could
-   * not be made to communicate. Both halves of that were true, and
+   * THE OWNER'S FINDING: "i couldnt verify if the comms page is wired because i
+   * couldnt get the agents to communicate." Both halves of that were true, and
    * this file is the second half. It runs at BUILD time, on the machine that
    * cuts the release, and everything it emits is frozen into
    * public/data/ops.json inside the application archive. A customer's agent

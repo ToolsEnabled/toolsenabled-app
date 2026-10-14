@@ -142,8 +142,8 @@ test('the section about running an agent points at the buttons rather than a com
      printed `winget install OpenAI.Codex` and then `codex login`, in that
      order, for a person to copy. Both are gone: a few inches down the same page
      is a section that installs and signs in at the press of a button, and the
-     product rule is that there be one way to do a thing and never two. The
-     copied way is also the one that failed a real person --
+     owner's instruction on 2026-08-22 was that there be one way to do a thing
+     and never two. The copied way is also the one that failed a real person --
      the window their install ran in answered "'codex' is not recognized" --
      so the page keeps the way that works and drops the way that did not. */
   const codex = FIRST_RUN_NEEDS.find(need => need.id === 'codex')
@@ -178,8 +178,8 @@ test('every sentence a person will read is a non-empty string', () => {
 
 /* ---- THE DOOR THE OWNER COULD NOT FIND ---------------------------------
  *
- * After signing up, a user could not see how to connect their computer.
- * Measured on the rendered guide before this section existed: the
+ * "as a user I dont even see how after signing up that I now connect my
+ * computer." Measured on the rendered guide before this section existed: the
  * word "account" appeared thirteen times and every one of them meant a Codex or
  * Claude sign-in folder; "toolsenabled.ai", "signed up" and "code" appeared
  * zero times. A person arriving from the home row about computers read a page
@@ -280,8 +280,8 @@ test('the four screens read the shared copy rather than writing their own', asyn
   }
 
   /* THE SCREEN THAT DRAWS THE ASSISTANT-PROGRAM LIST, WHICHEVER FILE HOLDS IT.
-     It was the page src/views/guide.js. That page was to be folded into
-     Settings, so the same code is src/this-computer-settings.js
+     It was the page src/views/guide.js. The owner asked for that page to be
+     folded into Settings, so the same code is src/this-computer-settings.js
      once that lands. Naming one spelling would make this assertion fail on the
      MOVE rather than on a defect, and the quickest way back to green would be
      to put the deleted page back -- which is the opposite of what was asked
@@ -383,8 +383,8 @@ function claudeStartsFromATree() {
 test('all four rows are named, and none is invented', () => {
   /* WAS "all three assistant programs", before `local` -- a model on the
      person's own computer -- joined the same table LAUNCH_TIERS already
-     carries it in (src/orchestration-controls.js: the free local path is a
-     full part of the product). Renamed rather than
+     carries it in (src/orchestration-controls.js: "the free path is the
+     product, not a consolation", owner 2026-08-12). Renamed rather than
      split into two tests, because the property this asks -- every row is
      real, named, and says what it does -- is the same property for all four;
      the CLI-specific install/sign-in machinery below is where they diverge. */
@@ -396,8 +396,8 @@ test('all four rows are named, and none is invented', () => {
 })
 
 test('every one of the three CLI programs is offered the same pair of buttons', () => {
-  /* Product rule: Gemini, Codex and Claude each download and sign in with a
-     single click. So the thing to hold is not that
+  /* THE OWNER'S INSTRUCTION, 2026-08-22: "all 3 gemini codex and claude should
+     be easy single click download+sign in". So the thing to hold is not that
      each entry has steps -- it now has none, deliberately -- but that the
      buttons exist for all three and that the login table behind them can
      actually answer for each one. A program listed on this page with no way to
@@ -462,7 +462,7 @@ test('provider reach matches the installed interactive tree engines', () => {
      claims a reach the gate does not open. */
   assert.equal(PROVIDERS.claude.reach, claudeStartsFromATree() ? 'tree' : 'not-from-tree')
 
-  /* THE ONE THAT GUARDS THE RULE. Nothing in this product starts Gemini
+  /* THE ONE THAT GUARDS THE OWNER'S RULE. Nothing in this product starts Gemini
      -- there is no adapter at the engine seam and no lane row for it -- so this
      page may not imply otherwise. The day something can start it, this assertion
      is the thing that has to be changed deliberately, by somebody who has driven
@@ -538,9 +538,9 @@ test('the Claude entry claims only what this build can be asked to prove', () =>
    THE SINGLE-PATH GUARD, and it is the one to read first if this suite ever
    goes red on a line somebody just added.
 
-   Product rule: one clear path for each task, never two. The thing in
-   question is getting an assistant program onto this computer and signed in,
-   and until then
+   THE OWNER'S INSTRUCTION, 2026-08-22, in his own words: "we need single clear
+   paths" -- one way to do a thing, never two. The thing in question is getting
+   an assistant program onto this computer and signed in, and until that day
    this product offered it twice: a button on the guide that did it, and,
    inches above the button, a printed command line for the person to copy into
    a terminal themselves.

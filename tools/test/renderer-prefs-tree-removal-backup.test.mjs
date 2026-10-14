@@ -7,7 +7,7 @@
  * removes each tree first and then finds an empty fleet and a clear() that
  * says yes. These tests hold that door and the copies that make it survivable.
  *
- * Searched at an earlier app commit: NO caller in src/ removes an `mc.fleet.trees.v1:`
+ * Searched at app 67db8dfef: NO caller in src/ removes an `mc.fleet.trees.v1:`
  * key, and nothing in src/ calls localStorage.clear(). The product therefore
  * never reaches either line; both are reachable only through mc-prefs:remove /
  * mc-prefs:clear (shell/main.cjs:7756, shell/fleet-profile-preload.cjs:630),
@@ -121,7 +121,7 @@ test('an ordinary preference removal copies nothing', () => {
 /* CHARACTERISATION, not a change: these two already hold with the clear() gate
    alone, and they are the answer to "is the rolling copy reachable at all?".
    It is -- from mc-prefs:clear, whenever the record has no trees left, which is
-   a state a real record can be in. */
+   the state the owner's own record is in right now. */
 test('clear() on a record with no trees takes the dated copy before emptying it', () => {
   const { directory, prefs } = freshStore()
   try {

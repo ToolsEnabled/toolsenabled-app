@@ -82,7 +82,7 @@ test('a source path spelled through its 8.3 short name is accepted, not refused 
   const made = fixture(t)
   /* The canonical answer to compare against, independent of which spelling
    * os.tmpdir() handed fixture() in the first place -- on this very machine
-   * made.root is ITSELF already short (BUILDA~1), so comparing against
+   * made.root is ITSELF already short (TOOLSE~1), so comparing against
    * made.root verbatim would repeat the exact mistake this test exists to
    * catch, just inside the assertion instead of inside the code. */
   const canonicalRoot = realpathSync.native(made.root)

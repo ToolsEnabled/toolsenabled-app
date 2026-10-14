@@ -10,7 +10,7 @@
  * started)` and is proven both ways under tools/test/declared-fleet.test.mjs:
  * hand it a started session and the agent is on the tree, hand it none and the
  * tree is empty. src/views/computers.js -- the only caller -- called it with
- * `(org)` at BOTH sites, from an earlier commit until this file existed. So the second
+ * `(org)` at BOTH sites, from 6f0a34a until this file existed. So the second
  * argument defaulted to null on every call the product ever made, `running` was
  * always empty, and the declared fallback that every customer install falls back
  * to (public/data/fleet.json ships ok:false) could not draw a node whatever the

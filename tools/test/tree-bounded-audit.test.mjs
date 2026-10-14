@@ -29,7 +29,7 @@ async function screenGrants(t) {
     readBinding: () => ({ enabled: true, revision: 1, roleId: 'builder' }),
     permissionLevel: () => 'unrestricted', adapter: { supported: () => true },
     // The host refuses to construct without the desktop lease release
-    // operation (an earlier commit); these grants never run a native action.
+    // operation (610f2025); these grants never run a native action.
     indicator: { ready: async () => {}, show() {}, hide() {}, release() {} }, audit: async () => {},
   })
   t.after(() => host.revokeAll())
@@ -114,7 +114,7 @@ for (const reason of ['cap-reached', 'parent-stopped']) {
       transcriptCapture: { packet() {} }, noteAgentTurnUsage() {}, noteAgentTurnCompleted() {}, ownedByThisWindow: () => false,
     })
     /* The ending is signed in the host's synchronous fan-out; only display
-       waits for transcript capture (an earlier commit), so the delivery is awaited
+       waits for transcript capture (138dab29), so the delivery is awaited
        after the signed-cause assertions and before the forward ones. */
     const delivery = event({ sessionId: 'child-session', event: { type: 'session_ended', reason } })
     const history = recorder.history()

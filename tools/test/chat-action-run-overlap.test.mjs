@@ -1,7 +1,7 @@
 /* TEXT WAS OVERLAPPING TOOL USE: A NEGATIVE MARGIN OUTLIVED THE CONTEXT IT WAS
  * WRITTEN FOR.
  *
- * Reported: text overlapped tool use.
+ * Owner: "text overlaps tool use."
  *
  * THE RULE, AS WRITTEN 2026-08-20 (src/styles.css):
  *

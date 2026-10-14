@@ -31,30 +31,32 @@
 .m-edit-btn {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
+  padding: 0 12px;
   font-family: var(--font-ui);
-  font-size: 12.5px;
-  font-weight: 640;
+  font-size: 13.5px;
+  font-weight: 550;
   color: var(--ink-2);
-  background: transparent;
-  border: 1px solid var(--line-2);
-  border-radius: 3px;
+  background: var(--bg-surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
-  transition: color .22s var(--ease), border-color .22s var(--ease), background .25s var(--ease);
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+
+  min-height: 32px;
 }
 /* The inline-flex rule beats the UA's `[hidden] { display: none }`; the
    research page ships its "New project" button hidden until projects load.
    Gate: tools/test/hidden-display-honesty.test.mjs. */
 .m-edit-btn[hidden] { display: none; }
 .m-edit-btn:hover { color: var(--ink); border-color: var(--ink-3); }
-.m-edit-btn:active { transform: scale(0.96); }
-.m-edit-btn:focus-visible { outline: 3px solid var(--focus-ring, #0079a8); outline-offset: 1px; }
+.m-edit-btn:active { transform: none; }
+.m-edit-btn:focus-visible { outline: 3px solid var(--ink); outline-offset: var(--focus-offset); }
 .m-edit-btn.on {
   /* the graph-edit-btn armed recipe: composites to 5.5:1 under #fff text */
-  color: #fff;
-  border-color: transparent;
-  background: linear-gradient(160deg, #0b7ea8, #05607f);
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--bg-active);
 }
 
 /* the movable-structure signal: one dashed hairline per component */
@@ -65,28 +67,28 @@
 }
 .m-editing [data-mc].m-dragsrc { opacity: 0.45; }
 .m-editing [data-mc].m-carry {
-  outline: 1.5px dashed var(--focus-ring, #0079a8);
+  outline: 1.5px dashed var(--ink);
 }
 
 /* grip + remove, riding each component's title row */
 .m-editctl { display: inline-flex; align-items: center; gap: 4px; align-self: center; margin-left: 8px; }
 .m-grip, .m-x {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px;
+  width: 28px; height: 28px;
   padding: 0;
   color: var(--ink-3);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: grab;
-  transition: color .22s var(--ease), border-color .22s var(--ease);
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
 .m-grip svg { width: 10px; height: 14px; fill: currentColor; display: block; }
 .m-x { cursor: pointer; font-size: 14px; line-height: 1; font-family: var(--font-ui); }
 .m-grip:hover, .m-x:hover { color: var(--ink); border-color: var(--ink-3); }
 .m-grip:focus-visible, .m-x:focus-visible {
-  outline: 3px solid var(--focus-ring, #0079a8);
-  outline-offset: 1px;
+  outline: 3px solid var(--ink);
+  outline-offset: var(--focus-offset);
 }
 /* components with no title row of their own: the injected edit-only head
    spans their grid so it reads exactly like the other section heads */
@@ -129,15 +131,15 @@
   margin-top: -20px;               /* tucks under the filter row's hairline */
   padding: 9px 2px;
   border-bottom: 1px solid var(--line-2);
-  animation: mTrayIn .24s var(--ease);
+  animation: mTrayIn var(--dur-2) var(--ease);
 }
 @keyframes mTrayIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .m-tray-label {
-  font-size: 11px;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  color: var(--ink-25);
-  font-weight: 650;
+  font-size: 12.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+  font-weight: 600;
 }
 .m-tray .spacer { flex: 1; }
 .m-tray-chips { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -145,9 +147,9 @@
 .m-tray-standard {
   padding-right: 8px;
   border-right: 1px solid var(--line-2);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12.5px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .m-tray-live { font-size: 12.5px; color: var(--ink-3); }
 .m-chip {
@@ -155,22 +157,24 @@
   align-items: center;
   padding: 3px 10px;
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 550;
   color: var(--ink-2);
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: grab;
-  transition: color .22s var(--ease), border-color .22s var(--ease);
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+
+  min-height: 28px;
 }
 .m-chip:hover { color: var(--ink); border-color: var(--ink-3); }
-.m-chip:focus-visible { outline: 3px solid var(--focus-ring, #0079a8); outline-offset: 1px; }
+.m-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: var(--focus-offset); }
 .m-chip.m-dragsrc { opacity: 0.45; }
 .m-tray.m-tray-drop {
-  background: color-mix(in oklab, var(--c-coordinator, #00a9d8) 7%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c-coordinator, #00a9d8) 42%, transparent);
-  border-radius: 3px;
+  background: color-mix(in oklab, var(--ink) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 42%, transparent);
+  border-radius: var(--radius-sm);
 }
 .m-reset {
   padding: 0;
@@ -180,10 +184,10 @@
   background: none;
   border: none;
   cursor: pointer;
-  transition: color .22s var(--ease);
+  transition: color var(--dur-1) var(--ease);
 }
 .m-reset:hover { color: var(--ink); text-decoration: underline; }
-.m-reset:focus-visible { outline: 3px solid var(--focus-ring, #0079a8); outline-offset: 2px; border-radius: 3px; }
+.m-reset:focus-visible { outline: 3px solid var(--ink); outline-offset: var(--focus-offset); border-radius: var(--radius-sm); }
 
 /* ---------- drag chrome: ghost, insert line, join halves ----------
    All three are body-level and position:fixed — no component ever gains
@@ -197,14 +201,13 @@ body.m-dragging .m-grip { cursor: grabbing; }
   pointer-events: none;
   padding: 5px 12px;
   font-family: var(--font-ui);
-  font-size: 12.5px;
-  font-weight: 640;
+  font-size: 13.5px;
+  font-weight: 550;
   color: var(--ink);
   background: var(--sheet);
   border: 1px solid var(--line-2);
-  border-radius: 3px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(0.9 * var(--wa))),
-    0 26px 60px -20px rgba(14, 23, 38, 0.45);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-popover);
   opacity: 0.92;
   transform: translate(-500px, -500px);
   white-space: nowrap;
@@ -216,7 +219,7 @@ body.m-dragging .m-grip { cursor: grabbing; }
 .m-insline {
   position: fixed; z-index: 210;
   height: 0;
-  border-top: 2px solid color-mix(in oklab, var(--c-coordinator, #00a9d8) 70%, transparent);
+  border-top: 2px solid color-mix(in oklab, var(--ink) 70%, transparent);
   border-radius: 2px;
   pointer-events: none;
 }
@@ -226,7 +229,7 @@ body.m-dragging .m-grip { cursor: grabbing; }
   top: -4px;
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: var(--c-coordinator, #00a9d8);
+  background: var(--ink);
 }
 .m-insline::before { left: -2px; }
 .m-insline::after { right: -2px; }
@@ -236,8 +239,8 @@ body.m-dragging .m-grip { cursor: grabbing; }
 .m-joinbox i {
   position: absolute; inset: 4px;
   border-radius: 3px;
-  background: color-mix(in oklab, var(--c-coordinator, #00a9d8) 13%, transparent);
-  border: 1.5px solid color-mix(in oklab, var(--c-coordinator, #00a9d8) 45%, white);
+  background: color-mix(in oklab, var(--ink) 13%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--ink) 45%, var(--bg-surface));
 }
 .m-joinbox[data-side="left"] i { right: 50%; }
 .m-joinbox[data-side="right"] i { left: 50%; }

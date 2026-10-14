@@ -23,7 +23,7 @@ function createBoundedTreeAuthority({ readParent, readTree, resolveProfile, defa
     begin(request, owner) {
       const work = parseBoundedWork(request.boundedWork)
       if (!owner || request.delegationPermit || request.resumeThreadId || request.replacesSessionId
-          || request.accountRecovery || !id(request.sessionId) || !id(request.requestKeys?.threadId)
+          || !id(request.sessionId) || !id(request.requestKeys?.threadId)
           || request.agentId !== request.requestKeys.threadId) fail()
       const nodeId = request.requestKeys.threadId
       const startedAt = wallNow(), expires = now() + work.capMs

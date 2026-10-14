@@ -4,16 +4,64 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+import vm from 'node:vm';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createHash, randomUUID } from 'node:crypto';
+import { isIP } from 'node:net';
 import { runOwnedJob, runOwnedJobBatch, registeredToolEnvironment, measureRegisteredToolchain,
   createInertExecutionScopeFixture } from '../lib/transport/owned-job.mjs';
 import { linuxToolPaths, assertLinuxToolIdentity } from '../lib/transport/linux-toolchain.mjs';
 import { getReadinessContract, LINUX_READINESS_TARGET } from '../lib/release-readiness.mjs';
 import ownerModule from '../../shell/owned-claim-process.cjs';
+import { RELEASE_SKIP_REGISTER, skipEntryAppliesOnPlatform } from '../lib/test-suite-result.mjs';
 
 const linux = { skip: process.platform !== 'linux' || process.arch !== 'x64', timeout: 60000 };
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const existingInertCases = new Set([
+  'the shared durable admission rejects competition and retains unresolved cleanup across objects',
+  'shared Linux admission refuses a writable scope or mutable ancestor before acquiring a ledger',
+]);
+// These named cases exercise only disposable ledgers and module bytes. An
+// accidental production-state access or spawn fails; it is never redirected.
+test.beforeEach(t => {
+  if (!t.name.startsWith('T2086 inert ') && !existingInertCases.has(t.name)) return;
+  const blockedRoots = [path.join(os.userInfo().homedir, '.local', 'state', 'ToolsEnabledQualification'),
+    path.join(os.userInfo().homedir, 'AppData', 'Local', 'ToolsEnabledQualification')].map(value => path.resolve(value));
+  const attempts = [], restores = [];
+  const refuse = operation => {
+    attempts.push(operation);
+    throw new Error(`T2086_INERT_ONLY_TRIPWIRE: ${operation}`);
+  };
+  const protectedPath = value => {
+    if (typeof value !== 'string' && !Buffer.isBuffer(value) && !(value instanceof URL)) return false;
+    const selected = path.resolve(value instanceof URL ? fileURLToPath(value) : String(value));
+    return blockedRoots.some(root => selected === root || selected.startsWith(root + path.sep));
+  };
+  const protect = (object, name, check) => {
+    const original = object[name];
+    if (typeof original !== 'function') return;
+    object[name] = function (...args) {
+      if (check(args)) refuse(name);
+      return original.apply(this, args);
+    };
+    restores.push(() => { object[name] = original; });
+  };
+  for (const name of ['open', 'readFile', 'writeFile', 'appendFile', 'lstat', 'stat', 'mkdir', 'rm',
+    'unlink', 'rename', 'copyFile', 'chmod', 'realpath', 'access', 'exists']) {
+    protect(fs, name + 'Sync', args => args.some(protectedPath));
+    protect(fs.promises, name, args => args.some(protectedPath));
+  }
+  for (const name of ['spawn', 'spawnSync', 'exec', 'execSync', 'execFile', 'execFileSync', 'fork'])
+    protect(childProcess, name, () => true);
+  syncBuiltinESMExports();
+  t.after(() => {
+    for (const restore of restores.reverse()) restore();
+    syncBuiltinESMExports();
+    assert.deepEqual(attempts, [], 'inert cases must never reach production state or a process launcher');
+  });
+});
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'qualification-job-test-linux-'));
   fs.chmodSync(root, 0o700);
@@ -239,6 +287,144 @@ test('shared Linux admission refuses a writable scope or mutable ancestor before
   const exact = scope.acquire({ evidenceRoot: f.evidenceRoot }); exact.confirmedCleanup();
 });
 
+test('T2086 inert annotation and closed lease preserve the existing record contract', linux, t => {
+  const f = fixture(t), scope = createInertExecutionScopeFixture(f.root);
+  const lease = scope.acquire({ evidenceRoot: f.evidenceRoot });
+  assert.deepEqual(Object.keys(lease), ['path', 'annotate', 'quarantine', 'confirmedCleanup']);
+  assert.equal(Object.isFrozen(lease), true);
+  const before = JSON.parse(fs.readFileSync(lease.path));
+  assert.equal(before.schema, 'toolsenabled.owned-execution-admission');
+  assert.equal(before.schemaVersion, 1); assert.equal(before.state, 'active');
+  assert.match(before.id, /^[a-f0-9-]{36}$/);
+  assert.equal(fs.statSync(lease.path).mode & 0o777, 0o600);
+  lease.annotate({ evidenceDirectory: path.join(f.evidenceRoot, 'synthetic-only') });
+  const after = JSON.parse(fs.readFileSync(lease.path));
+  assert.equal(after.id, before.id); assert.equal(after.startedAt, before.startedAt);
+  assert.equal(after.evidenceDirectory, path.join(f.evidenceRoot, 'synthetic-only'));
+  lease.confirmedCleanup();
+  assert.equal(fs.existsSync(lease.path), false);
+  assert.throws(() => lease.confirmedCleanup(), { code: 'OWNED_EXECUTION_QUARANTINED' });
+  const next = scope.acquire({ evidenceRoot: f.evidenceRoot });
+  assert.notEqual(JSON.parse(fs.readFileSync(next.path)).id, before.id);
+  next.confirmedCleanup();
+});
+
+test('T2086 inert same-byte inode replacement cannot be removed by the old lease', linux, t => {
+  const f = fixture(t), lease = createInertExecutionScopeFixture(f.root).acquire({ evidenceRoot: f.evidenceRoot });
+  const bytes = fs.readFileSync(lease.path), retained = lease.path + '.old';
+  fs.renameSync(lease.path, retained);
+  fs.writeFileSync(lease.path, bytes, { flag: 'wx', mode: 0o600 });
+  assert.notEqual(fs.statSync(retained, { bigint: true }).ino, fs.statSync(lease.path, { bigint: true }).ino);
+  assert.throws(() => lease.confirmedCleanup(), { code: 'OWNED_EXECUTION_QUARANTINED' });
+  assert.deepEqual(fs.readFileSync(lease.path), bytes);
+});
+
+test('T2086 inert changed record bytes cannot be removed by the old lease', linux, t => {
+  const f = fixture(t), lease = createInertExecutionScopeFixture(f.root).acquire({ evidenceRoot: f.evidenceRoot });
+  const altered = Buffer.from(fs.readFileSync(lease.path, 'utf8') + ' ');
+  fs.writeFileSync(lease.path, altered);
+  assert.throws(() => lease.confirmedCleanup(), { code: 'OWNED_EXECUTION_QUARANTINED' });
+  assert.deepEqual(fs.readFileSync(lease.path), altered);
+});
+
+test('T2086 inert admission distinguishes adjacent inode values beyond Number precision', linux, t => {
+  const f = fixture(t), ledger = path.join(f.root, 'inert-admission', 'active-or-uncertain.json');
+  const originalLstat = fs.lstatSync, originalFstat = fs.fstatSync, inode = 2n ** 54n;
+  let replaced = false;
+  const identify = (stat, value, options) => {
+    Object.defineProperty(stat, 'ino', { value: options?.bigint ? value : Number(value) });
+    return stat;
+  };
+  assert.equal(Number(inode), Number(inode + 1n));
+  fs.lstatSync = (file, options) => {
+    const stat = originalLstat(file, options);
+    return file === ledger ? identify(stat, inode + (replaced ? 1n : 0n), options) : stat;
+  };
+  fs.fstatSync = (fd, options) => identify(originalFstat(fd, options), inode, options);
+  try {
+    const lease = createInertExecutionScopeFixture(f.root).acquire({ evidenceRoot: f.evidenceRoot });
+    lease.annotate({ fixture: 'stable-inode-control' });
+    replaced = true;
+    assert.throws(() => lease.confirmedCleanup(), { code: 'OWNED_EXECUTION_QUARANTINED' });
+    assert.equal(fs.existsSync(ledger), true);
+  } finally { fs.lstatSync = originalLstat; fs.fstatSync = originalFstat; }
+});
+
+test('T2086 inert fixture refuses an unrelated temporary directory without creating a ledger', linux, t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 't2086-unrelated-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  assert.throws(() => createInertExecutionScopeFixture(directory), /execution-scope fixtures require/);
+  assert.deepEqual(fs.readdirSync(directory), []);
+});
+
+async function inertFacade(t, changeBeforeLoad) {
+  const f = fixture(t), directory = path.join(f.root, 'modules');
+  fs.mkdirSync(directory, { mode: 0o700 });
+  const names = ['owned-job.mjs', 'owned-job-files.mjs', 'owned-execution-admission.mjs'];
+  for (const name of names) fs.copyFileSync(new URL('../lib/transport/' + name, import.meta.url), path.join(directory, name));
+  if (changeBeforeLoad) fs.appendFileSync(path.join(directory, changeBeforeLoad), '\n// synthetic byte drift before load\n');
+  const context = vm.createContext({ Buffer, process, TextDecoder, URL, setTimeout, clearTimeout });
+  const forbidden = () => { throw new Error('T2086 inert module reached a native dependency'); };
+  // Execute the actual complete bodies with only import/export syntax removed.
+  // This is a synthetic module-wiring fixture, not native execution or an ESM
+  // loader proof. compileFunction works under the ordinary registered command.
+  function moduleFor(name, bindings) {
+    const file = path.join(directory, name);
+    const source = fs.readFileSync(file, 'utf8');
+    const exports = [...source.matchAll(/^export (?:async )?function (\w+)|^export const (\w+)/gm)]
+      .map(match => match[1] || match[2]);
+    for (const match of source.matchAll(/^export \{([^}]+)\};/gm))
+      exports.push(...match[1].split(',').map(value => value.trim()));
+    const body = source.replace(/^import [\s\S]*?;\n/gm, '').replace(/^export \{[^}]+\};\n/gm, '')
+      .replace(/^export (?=(?:async )?function |const )/gm, '')
+      .replace(/\bimport\.meta\.url/g, JSON.stringify(pathToFileURL(file).href));
+    return vm.compileFunction(body + `\nreturn Object.freeze({${exports.join(',')}});`, Object.keys(bindings),
+      { parsingContext: context, filename: file })(...Object.values(bindings));
+  }
+  const files = moduleFor('owned-job-files.mjs', { fs, path, userInfo: os.userInfo, tmpdir: os.tmpdir, createHash });
+  const admission = moduleFor('owned-execution-admission.mjs', { fs, path, randomUUID, ...files });
+  const facade = moduleFor('owned-job.mjs', { fs, path, mkdir: fs.promises.mkdir, mkdtemp: fs.promises.mkdtemp,
+    writeFile: fs.promises.writeFile, spawn: childProcess.spawn,
+    createHash, randomUUID, fileURLToPath, isIP, ...files,
+    registeredToolPaths: () => ({ powershell: 'inert-never-executed' }), registeredToolSearchPath: forbidden,
+    registeredToolchainPolicyIdentity: forbidden, assertRegisteredToolIdentity: forbidden,
+    measureLinuxToolchain: forbidden, linuxToolEnvironment: forbidden, runLinuxOwnedJobBatch: forbidden,
+    acquireInternalOwnedExecution: admission.acquireOwnedExecution,
+    createInertExecutionScopeFixture: admission.createInertExecutionScopeFixture, cleanupError: admission.cleanupError });
+  return { directory, exports: facade };
+}
+
+for (const name of ['owned-job-files.mjs', 'owned-execution-admission.mjs']) {
+  test(`T2086 inert facade rejects changed ${name} before production acquisition`, linux, async t => {
+    const actual = await inertFacade(t);
+    const before = actual.exports.ownedJobImplementationIdentity();
+    const bytes = fs.readFileSync(path.join(actual.directory, 'owned-job.mjs'));
+    assert.deepEqual(Object.keys(before), ['path', 'sha256', 'bytes']);
+    assert.equal(before.path, path.join(actual.directory, 'owned-job.mjs'));
+    assert.equal(before.sha256, digest(bytes)); assert.equal(before.bytes, bytes.length);
+    fs.appendFileSync(path.join(actual.directory, name), '\n// synthetic byte drift after load\n');
+    assert.throws(() => actual.exports.ownedJobImplementationIdentity(), /loaded owned-job dependency changed/);
+    assert.throws(() => actual.exports.acquireOwnedExecution({}), /loaded owned-job dependency changed/);
+  });
+  test(`T2086 inert facade refuses preloaded drift in ${name}`, linux, async t => {
+    await assert.rejects(inertFacade(t, name), /loaded owned-job dependency changed/);
+  });
+}
+
+test('T2086 inert extracted modules remain in all fixed implementation component lists', linux, () => {
+  for (const [file, declaration] of [['source-harness.mjs', 'COMPONENTS'], ['artifact-subject.mjs', 'ARTIFACT_COMPONENTS'],
+    ['installed-lifecycle.mjs', 'COMPONENTS']]) {
+    const source = fs.readFileSync(new URL('../lib/adapters/' + file, import.meta.url), 'utf8');
+    const start = source.indexOf(`const ${declaration} = Object.freeze([`);
+    // Evaluate only the actual literal declaration, with no adapter execution.
+    const statement = source.slice(start, source.indexOf(';', start) + 1);
+    assert.ok(start >= 0 && statement.includes('.sort()'));
+    const components = vm.runInNewContext(statement + `\n${declaration}`);
+    for (const name of ['transport/owned-job-files.mjs', 'transport/owned-execution-admission.mjs'])
+      assert.equal(components.filter(value => value === name).length, 1, `${file}: ${name}`);
+  }
+});
+
 test('old shared-owner receipt shape stays compatible while new native facts are additive', linux, async t => {
   const f = fixture(t);
   const owner = ownerModule.spawnOwnedClaim({ spawn, command: process.execPath, args: ['-e', 'process.exitCode=0'],
@@ -246,4 +432,40 @@ test('old shared-owner receipt shape stays compatible while new native facts are
   owner.child.stdout.resume(); owner.child.stderr.resume(); t.after(() => owner.cancel());
   const actual = await owner.completion;
   assert.deepEqual(actual, { quiescent: true, started: true, exitedNormally: true, exitCode: 0, hadRemainingChildren: false });
+});
+
+// Portable accounting check; the ten platform fixtures stay unexecuted on
+// other systems and are never promoted into Linux runtime evidence.
+test('T2086 inert exact platform registrations do not admit unnamed or native-host skips', () => {
+  const expected = [
+    "T2086 inert annotation and closed lease preserve the existing record contract",
+    "T2086 inert same-byte inode replacement cannot be removed by the old lease",
+    "T2086 inert changed record bytes cannot be removed by the old lease",
+    "T2086 inert admission distinguishes adjacent inode values beyond Number precision",
+    "T2086 inert fixture refuses an unrelated temporary directory without creating a ledger",
+    "T2086 inert facade rejects changed owned-job-files.mjs before production acquisition",
+    "T2086 inert facade refuses preloaded drift in owned-job-files.mjs",
+    "T2086 inert facade rejects changed owned-execution-admission.mjs before production acquisition",
+    "T2086 inert facade refuses preloaded drift in owned-execution-admission.mjs",
+    "T2086 inert extracted modules remain in all fixed implementation component lists"
+];
+  const entries = RELEASE_SKIP_REGISTER.filter(entry => entry.id.startsWith('linux-owned-job-t2086-'));
+  assert.equal(entries.length, 10);
+  assert.deepEqual(entries.map(entry => entry.testName).sort(), [...expected].sort());
+  for (const entry of entries) {
+    assert.equal(RELEASE_SKIP_REGISTER.filter(row => row.testName === entry.testName).length, 1);
+    assert.equal(entry.class, 'platform'); assert.equal(entry.requiredPlatform, 'linux');
+    assert.deepEqual(entry.stages, ['promotion', 'release']);
+    assert.match(entry.reason, /inert.*fixture/);
+    assert.equal(skipEntryAppliesOnPlatform(entry, 'win32'), true);
+    assert.equal(skipEntryAppliesOnPlatform(entry, 'linux'), false);
+  }
+  for (const platform of ['win32', 'linux']) {
+    const registered = new Map(RELEASE_SKIP_REGISTER
+      .filter(entry => entry.stages.includes('release') && skipEntryAppliesOnPlatform(entry, platform))
+      .map(entry => [entry.testName, entry]));
+    for (const name of expected) assert.equal(registered.has(name), platform === 'win32');
+    assert.equal(registered.has('T2086 inert unregistered synthetic fixture'), false);
+    assert.equal(registered.has('T2086 inert exact platform registrations do not admit unnamed or native-host skips'), false);
+  }
 });

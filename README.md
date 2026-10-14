@@ -54,10 +54,11 @@ to sell it. The free product launches first; Anywhere follows as an invite-only 
 
 ## Governance
 
-The official project will live under the ToolsEnabled GitHub organization, which today
-holds only the organization's profile page — no product repository, no releases, no issue
-tracker. ToolsEnabled, Inc. controls the official repository, the releases, the project's
-names and marks, and the signed installers.
+The official project lives under the ToolsEnabled GitHub organization, and its source is
+public: the application is at https://github.com/ToolsEnabled/toolsenabled-app and the engine
+it runs is at https://github.com/ToolsEnabled/toolsenabled-engine. ToolsEnabled, Inc. controls
+the official repositories, the releases, the project's names and marks, and the signed
+installers.
 
 Anyone may fork this project and propose changes. Only approved code enters the official
 build. A fork is your own; it is not the official product and must not present itself as
@@ -122,7 +123,9 @@ Stated plainly, because a public repository is a dated, permanent record:
 
 ## Status
 
-Pre-release. This repository is not yet public.
+This repository is public. Official installers are published at
+https://toolsenabled.ai/download. For help, write to support@toolsenabled.ai. To report a
+security problem, follow https://toolsenabled.ai/security/.
 
 ---
 

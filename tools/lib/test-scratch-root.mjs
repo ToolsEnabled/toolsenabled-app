@@ -1,6 +1,6 @@
 // WHERE A SUITE'S SCRATCH DIRECTORY GOES, IN ONE PLACE.
 //
-// THE DEFECT THIS ENDS, measured 2026-09-07 at an earlier app commit. Twenty-three
+// THE DEFECT THIS ENDS, measured 2026-09-07 at app 4ba0ceac. Twenty-three
 // suite files built their scratch path as `<repo>/node_modules/.toolsenabled-*`
 // by convention. Every worktree's `node_modules` is a JUNCTION into one shared
 // dependency store -- the layout this repository requires for parallel work --
@@ -47,7 +47,7 @@ import path from "node:path";
 //
 // Not decoration. tools/test/tree-address-saved-tree-wins.test.mjs had already
 // met this and wrote it down: a TEMP handed down as an 8.3 short name
-// (`<drive>:\Users\<SHORT~1>\...`) does not start with the long profile root, and the
+// (`<profile-root>/TOOLSE~1\...`) does not start with the long profile root, and the
 // host's cwd confinement then refuses it as ANOTHER ACCOUNT's folder. A scratch
 // root that is correct on one machine and refused on the next is the same class
 // of problem this file exists to remove, so the resolution happens here, once,

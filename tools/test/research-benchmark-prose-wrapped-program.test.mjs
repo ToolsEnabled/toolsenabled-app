@@ -13,7 +13,7 @@ import { RUNTIME_FILES } from '../../src/benchmark/study.mjs'
 // A reply with prose around one fenced program used to reach the engine whole: pythonSource
 // returned any text that did not start with a fence, the markdown became main.py, and the
 // grade said the model's program crashed (execution-error) although that program never ran.
-// The fixture is a claude-cli reply retained from an apparatus-development run. That run leaked
+// The fixture is the claude-cli reply retained by lean-bench run 5b6ed8d2. That run leaked
 // tools to the model and does not qualify; the reply is a real shape, not the run of record.
 // Its recorded candidateSha256 is the hash of the whole reply, so the engine received all of it.
 // The protocol refuses such a reply before any container; it never extracts the block.

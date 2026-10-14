@@ -151,7 +151,7 @@ const SUITE_COMMAND = "npm test";
 // node_modules and is relying on Node's walk-up instead, the first suite to
 // create that scratch directory creates a real, otherwise-empty node_modules
 // at the repository root -- which ENDS the walk-up for every module resolved
-// after it. MEASURED 2026-09-07 at an earlier commit: the run's own environment doctor
+// after it. MEASURED 2026-09-07 at 4ba0ceac: the run's own environment doctor
 // then reported "node_modules exists but is EMPTY", "missing 12 DECLARED
 // dependencies" and "289 package(s) the lockfile pins are absent", and an
 // unrelated suite died on "Cannot find package 'rollup'". None of it was a

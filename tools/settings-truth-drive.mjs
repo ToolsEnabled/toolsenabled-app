@@ -17,8 +17,8 @@
  *
  *   2  DOES WHAT REMAINS STILL WORK? Removing 74 lies is only worth anything if
  *      the 22 survivors are true. Each one is pressed and its effect looked for
- *      in the document -- the theme attribute, the zoom, the --glow property,
- *      the reduce-motion class, the stored key -- rather than in whether the
+ *      in the document -- the theme attribute, the zoom, the reduce-motion
+ *      class, the stored key -- rather than in whether the
  *      control moved. A switch that moves is what a dead row also did.
  *
  *   3  DOES IT LOOK DELIBERATE? Screenshots at 1024, 1440 and 1920, plus a count
@@ -49,7 +49,8 @@ const ALIVE = Object.freeze({
   theme: 'the document theme attribute',
   ui_font: 'the --font-ui custom property',
   text_size: 'the body zoom',
-  glow: 'the --glow custom property',
+  /* 1.0.50 retired the Glow row (DESIGN-ADDENDUM item 5); its saved value is
+     kept but nothing on this page draws or applies it, so it is not alive. */
   reduce_motion: 'the reduce-motion class on the body',
   scenario_tick_rate: 'the sim pace, stored and re-applied at launch',
   ledger_archive: 'a button that previews an archive rather than a stored value',
@@ -349,7 +350,7 @@ async function main() {
     await press('[data-setting-id="ui_font"] button[data-setting-value="mono"]',
       `document.documentElement.style.getPropertyValue('--font-ui').slice(0, 40)`, 'ui_font -> mono')
 
-    /* The two ranges are dragged by keyboard rather than clicked: a click on a
+    /* The range is dragged by keyboard rather than clicked: a click on a
        track lands wherever the pointer is, which is not a value this can predict
        and therefore not a claim it can make. */
     const nudge = async (id, probe, label) => {
@@ -364,7 +365,6 @@ async function main() {
       const after = await window.evaluate(probe)
       effects.push(`${label}: ${JSON.stringify(before)} -> ${JSON.stringify(after)} ${String(before) === String(after) ? 'NO CHANGE -- DEFECT' : 'changed'}`)
     }
-    await nudge('glow', `document.documentElement.style.getPropertyValue('--glow')`, 'glow')
     await nudge('scenario_tick_rate', `localStorage.getItem('mc.set.scenario_tick_rate')`, 'scenario_tick_rate')
 
     const archive = await window.evaluate(`(() => {

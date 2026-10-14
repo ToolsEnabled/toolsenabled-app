@@ -188,7 +188,7 @@ test('the first-run account step points to the Account page and says the record 
   assert.match(create, /Sign in so your choices are kept for you\. While Signed activity audit is on, the record of what your assistant does also says who asked for it\./)
   assert.doesNotMatch(create, /Sign in so the record of what your assistant does says who asked for it/, 'the lead still promises a record a default install does not keep')
 
-  const done = visibleText(setupAccountStepMarkup({ accountState: { available: true, signedIn: true, displayName: 'Alex P' }, actions: '' }))
+  const done = visibleText(setupAccountStepMarkup({ accountState: { available: true, signedIn: true, displayName: 'Example P' }, actions: '' }))
   assert.match(done, /while Signed activity audit is on, the record of what your assistant does says who asked for it/)
   assert.match(done, /change this later on your Account page/)
   assert.doesNotMatch(done, /From now on, the record of what your assistant does says who asked for it\./)

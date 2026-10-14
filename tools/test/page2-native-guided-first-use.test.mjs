@@ -16,7 +16,7 @@ import { CASE_IDS, GUIDED_CASE_IDS, KEYS, FLAG_IDS, validateFirstUseOptions } fr
 import { NO_CONSENT, observeGuidedIPC, guidedPaths, readGuidedState, retainedGuided, assertGuidedDraft, assertGuidedSaved } from '../lib/page2-native-guided-first-use.cjs'
 
 const answer = roots => ({ autonomy: 'assisted', screens: 'live', workspaceRoots: roots,
-  approvals: 'other-work', attach: 'fork', ideImport: 'ask', failover: 'manual' })
+  approvals: 'other-work', attach: 'fork', ideImport: 'ask' })
 function fixture(t, phase = 'initial') {
   const qaRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'guided-first-use-source-')), userData = path.join(qaRoot, 'ToolsEnabled-Page2-QA')
   t.after(() => fs.rmSync(qaRoot, { recursive: true, force: true }))
@@ -34,7 +34,7 @@ function fixture(t, phase = 'initial') {
     settings: { ok: true, available: true, valuesPath: paths.settings, rejected: [],
       approval: { id: 'agent.blocked_question', present: false, value: 'Stop and wait for me', provenance: { source: 'default' } } },
     editor: { ok: true, importPolicy: 'none' }, workspace: { ok: true, available: true, configured: false, recorded: false, tier: null, roots: [], suggested: '/generated-default' },
-    tierConsent: structuredClone(NO_CONSENT), accounts: { ok: true, damaged: false, count: 0, policy: { selectionMode: 'priority' } } }
+    tierConsent: structuredClone(NO_CONSENT), accounts: { ok: true, damaged: false, count: 0 } }
   const custody = { starts: 0, codexHomeEmpty: true, registry: { path: path.join(userData, 'capability/config/accounts.json'), absent: true },
     ledger: { path: path.join(userData, 'agent-spawn-records.jsonl'), absent: true } }
   const savePrefs = () => {
@@ -144,8 +144,8 @@ test('recommended saved state keeps all requested answers distinct from the Guid
   const f = fixture(t, 'complete'), saved = assertGuidedSaved(await readGuidedState(f.context), f.context.paths.workspace)
   assert.equal(saved.profile.answers.approvals, 'other-work'); assert.equal(saved.settings.approval.value, 'Stop and wait for me')
   assert.equal(saved.profile.answers.ideImport, 'ask'); assert.equal(saved.editor.importPolicy, 'none')
-  assert.equal(saved.profile.answers.failover, 'manual'); assert.equal(saved.accounts.policy.selectionMode, 'priority')
-  for (const [field, wrong] of [['autonomy', 'observe'], ['screens', 'demonstration'], ['approvals', 'stop'], ['attach', 'mirror'], ['ideImport', 'none'], ['failover', 'auto']]) {
+
+  for (const [field, wrong] of [['autonomy', 'observe'], ['screens', 'demonstration'], ['approvals', 'stop'], ['attach', 'mirror'], ['ideImport', 'none']]) {
     const bad = structuredClone(saved); bad.profile.answers[field] = wrong
     assert.throws(() => assertGuidedSaved(bad, f.context.paths.workspace), /requested answers/)
   }
@@ -157,7 +157,7 @@ test('recommended saved state keeps all requested answers distinct from the Guid
 test('unavailable consent, populated accounts, lost IPC and observed start attempts cannot be accepted as sterile', async t => {
   const f = fixture(t, 'complete')
   for (const mutate of [s => { s.tierConsent = { ok: false, code: 'AUDIT_UNAVAILABLE' } }, s => { s.accounts.count = 1 },
-    s => { s.source.signedIn = true }, s => { s.host['mc.example'] = { ok: false } }, s => { s.accounts.policy.selectionMode = 'manual' }]) {
+    s => { s.source.signedIn = true }, s => { s.host['mc.example'] = { ok: false } }]) {
     const previous = structuredClone(f.state); mutate(f.state); await assert.rejects(readGuidedState(f.context)); Object.assign(f.state, previous)
   }
   f.custody.starts = 1; await assert.rejects(readGuidedState(f.context))

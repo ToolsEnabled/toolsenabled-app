@@ -161,7 +161,7 @@ test('an operational audit binds candidate and public harness bytes and regrades
   spec.tasks[0].expected = await deriveTaskExpected(spec, spec.tasks[0])
   spec.protocol.grading = { kind: 'lean-python', executionTimeoutMs: 30000 }
   spec.environment.leanImage = 'synthetic/fixture@sha256:' + 'a'.repeat(64)
-  // lean-python grades a program, so the saved replay response is one (an earlier commit refuses the starter's
+  // lean-python grades a program, so the saved replay response is one (8b7dc2ab refuses the starter's
   // JSON observation here); the adapter and grade below are supplied directly and nothing is executed.
   spec.conditions[0].adapter.responses = { 'operational-canary': '# OPERATIONAL AUDIT MARKER PROGRAM; NEVER EXECUTED\n' }
   spec = await reviewed(developmentDraft(spec))

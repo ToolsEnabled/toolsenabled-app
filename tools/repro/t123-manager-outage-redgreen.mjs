@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-/* Ledger T123 / T410 -- RED at the base pair, GREEN at the fix.
+/* LANE A ITEM 4 (ledger T123 / T410) -- RED at the base pair, GREEN at the fix.
  *
- * THE DEFECT. A manager's session failed every turn. Five circles reporting to
- * it each finished one item, sent the report to a circle that could no longer
- * read it, and then sat idle for hours under a working policy whose entire point is that they do not.
+ * THE DEFECT, MEASURED 2026-09-15. A manager's session failed every turn from
+ * 21:47Z. Five circles reporting to it each finished one item, sent the report
+ * to a circle that could no longer read it, and then sat idle for over three
+ * hours under a working policy whose entire point is that they do not.
  *
  * THE FIX IS IN TWO REPOSITORIES AND EITHER HALF ALONE IS INERT.
  * shell/agent-host.cjs OBSERVES which circle on the person's tree has stopped;
@@ -19,7 +20,7 @@
  * the engine half is injected, because "is that circle still running" is a fact
  * about the host's session map and the engine has no session map.
  *
- * WHY THIS EXISTS BESIDE the end-to-end T123 outage proof script:
+ * WHY THIS EXISTS BESIDE lane-M-hardest-20260919/t123-manager-outage-proof.mjs:
  * that script runs the two real halves against each other end to end and takes
  * minutes of real scheduler time per run, which is the right shape for an
  * acceptance run and the wrong shape for a mutation check. This one isolates
@@ -62,7 +63,7 @@ const FIXTURE = argument('fixture', { required: false })
 /* ------------------------------------------------------------------ *
  * THE MUTATION CHECK, AND ITS OWN PROOF THAT IT APPLIED.
  *
- * A GATE THAT WAS NEVER BROKEN IS NOT A GATE THAT CANNOT BE BROKEN. A review
+ * A GATE THAT WAS NEVER BROKEN IS NOT A GATE THAT CANNOT BE BROKEN. Lane C
  * measured the failure this exists to stop: a mutation whose search string
  * matched nothing ran to completion and reported "still green", so a run that
  * proved only that the edit had silently not happened read as a run that
@@ -166,7 +167,7 @@ if (MUTATE) {
 /* A PRIVATE STATE ROOT, ALWAYS. The engine half opens a real continuation
    store; neither half may ever resolve the owner's live root. Set before
    anything that reads it is loaded. */
-const SCRATCH = mkdtempSync(path.join(os.tmpdir(), 't123-item4-'))
+const SCRATCH = mkdtempSync(path.join(os.tmpdir(), 'laneA-item4-'))
 process.env.TOOLSENABLED_STATE_ROOT = path.join(SCRATCH, 'state')
 mkdirSync(process.env.TOOLSENABLED_STATE_ROOT, { recursive: true })
 
@@ -447,7 +448,7 @@ async function optionalSeam() {
 /* ------------------------------------------------------------------ *
  * TWO INSTANCES, AND THE SECOND ONE IS THE ONE THAT MATTERS.
  *
- * A RULE, EARNED THE HARD WAY. The gate that proved an earlier seat fix
+ * A LANE RULE, EARNED THE HARD WAY. The gate that proved Lane A's seat fix
  * only ever built ONE store, so it was structurally blind to a whole class of
  * defect: the fix was strictly better on the first computer and worse in kind
  * on every other one, because the evidence it gated on lived at MODULE scope

@@ -21,8 +21,8 @@
   WHAT IT MAY NOT DO. It may not promise a remedy that does not exist. The same
   rule src/first-run-needs.js is built around applies with more force here,
   because a person reading this has usually already failed at something. Where
-  there is no answer today -- such as no support address -- this page says so rather than
-  implying a step the reader will go looking for and not find.
+  there is no answer today, this page says so rather than implying a step the
+  reader will go looking for and not find.
 
   KEEP THIS GUIDE TIED TO THE PRODUCT. tools/test/help-page-pages.test.mjs
   checks the route inventory and key control and permission claims.
@@ -232,7 +232,7 @@ Applications as your usual user, then continue to section 3. The program is inst
   also weighs how many people have run a publisher's files. Click <span class="label">More info</span>,
   check that the publisher is ToolsEnabled, Inc., then click <span class="label">Run anyway</span>.
   <br>If there is no Digital Signatures tab, or the publisher is anyone else or Unknown publisher,
-  do not run it. An installer downloaded before we began signing is unsigned; delete it and
+  do not run it. An installer downloaded before we began signing has no signature; delete it and
   download the installer again.</li>
   <li>There are no further questions. No licence screen, no folder chooser, no
   <span class="label">Next</span> buttons. A progress bar runs for a few seconds and the application
@@ -264,6 +264,23 @@ puts ToolsEnabled in the Windows uninstall list.</p>
 
 <p>Press the Start button and type <code>ToolsEnabled</code>. Only one copy runs at a time: starting
 it a second time brings the window you already have to the front instead of opening another.</p>
+
+<h3>Updating</h3>
+
+<p>On Windows, ToolsEnabled can look for a newer version when it opens, once setup is finished. It
+asks <span class="quote">Check for updates?</span> each time until you tick
+<span class="label">Don’t ask me again</span>. Ticked with <span class="label">Check now</span>, it
+then looks on its own, at most once a day; ticked with <span class="label">Not now</span>, it never
+looks. You can change this later in Settings, under <span class="label">System</span>, in the
+<span class="label">Checking for updates</span> row.</p>
+
+<p>When a newer version is out, it asks before downloading anything. The installer comes only from
+toolsenabled.ai, and before it runs, ToolsEnabled checks that it is signed by ToolsEnabled, Inc. and
+matches the size and SHA-256 checksum the site lists. Installing a newer version keeps your data.</p>
+
+<p>On Linux, ToolsEnabled does not update itself. Download the new <code>.deb</code> from
+<span class="label">toolsenabled.ai/download</span>, check it as in step 1, and install it as in
+step 2. Your settings and records are kept.</p>
 
 <h2>3. The first launch</h2>
 
@@ -465,12 +482,13 @@ confirmation. A task cannot be cancelled after acceptance from this panel.</p>
   <tr data-guide-route="checkout"><td><span class="label">Checkout</span></td><td>A purchase list supplied for this copy; the page is omitted when no list is available.</td><td>Select items, adjust quantities and press <span class="label">Review my choices</span>. <span class="label">Confirm and save my decision</span> saves a local note under the signed-in account. It does not charge a card, place an order or contact a vendor.</td></tr>
   <tr data-guide-route="settings"><td><span class="label">Settings</span></td><td>Setup, Write, Accounts, appearance, accessibility, research and local-model settings.</td><td>Search all settings or choose a category. Review pending edits, then <span class="label">Save settings</span> or <span class="label">Discard</span>. Read partial-save messages; some changes may already have been saved.</td></tr>
   <tr data-guide-route="tools"><td><span class="label">Tools</span></td><td>Each ToolsEnabled tool and the policy that makes it available or withheld.</td><td>Search tools and choose enabled, ask first or disabled within the selected permission level. Changes affect assistants started afterwards; running sessions keep their existing tools.</td></tr>
+  <tr data-guide-route="plugins"><td><span class="label">Plugins</span></td><td>Plugin folders you put in place yourself, what each one asked to do and what you allowed it. Adding a plugin allows it nothing.</td><td>Reached from the Tools page. Tick what a plugin may do and press <span class="label">Save these answers</span>, or press <span class="label">Withdraw everything</span>. A change takes effect the next time you open the app. Change any file in a plugin and it is asked about again, with nothing allowed.</td></tr>
   <tr data-guide-route="setup"><td><span class="label">Setup</span></td><td>The first-run permission, folder, account and autonomy questions, followed by a review.</td><td>Back, Continue, the offered skip controls, Check again and Finish setup. Existing answers can also be edited in Settings.</td></tr>
   <tr data-guide-route="account"><td><span class="label">Account</span></td><td>The ToolsEnabled sign-in and account state, separate from provider sign-ins.</td><td>Use the sign-in or account controls offered here. Provider accounts are managed separately in Settings → Accounts.</td></tr>
   <tr data-guide-route="subscribe"><td><span class="label">Subscription information</span></td><td>An old <code>#/subscribe</code> or <code>#/pricing</code> link opens the unavailable subscription page.</td><td>Subscriptions are not open yet. The product does not need a subscription to run; either page arrow returns Home.</td></tr>
 </table></div>
 
-<p>Tools, Setup and Account are extra pages outside the main arrow loop. Checkout is
+<p>Tools, Plugins, Setup and Account are extra pages outside the main arrow loop. Checkout is
 included only when its purchase list is available. The <code>#/guide</code> address opens the in-app
 guide within Settings.</p>
 
@@ -550,28 +568,40 @@ the permission level. Change it there rather than reinstalling — a reinstall d
 answers, so it will not do what you want.</p>
 
 <h3>Uninstall</h3>
-<p>On Linux, remove the <code>toolsenabled</code> package with your package manager. This requires
-administrator permission and leaves your user data in place.</p>
 <p>On Windows, open Settings → <span class="label">Apps</span> → <span class="label">Installed apps</span> →
 <span class="label">ToolsEnabled</span> → <span class="label">Uninstall</span>. No administrator
-password is needed.</p>
+password is needed. What happens to your data then depends on a choice in ToolsEnabled: Settings →
+<span class="label">Data &amp; Privacy</span> → <span class="label">When I uninstall ToolsEnabled</span>.</p>
+
+<ul>
+  <li><span class="label">Ask me then</span>, the answer already selected: the uninstaller asks
+  <span class="quote">Remove your saved ToolsEnabled data from this computer?</span> Yes deletes it,
+  and No keeps it.</li>
+  <li><span class="label">Keep my data</span>: nothing is asked, and your data stays.</li>
+  <li><span class="label">Remove everything</span>: nothing is asked, and your data is deleted.</li>
+</ul>
+
+<p>On Linux, remove the <code>toolsenabled</code> package with your package manager. This requires
+administrator permission and always leaves your user data in place, whatever you chose in Settings.</p>
 
 <div class="note">
-<p><span class="label">Uninstalling does not delete your data.</span> The record of what ran, your
-settings and your permission level stay in your user profile, so reinstalling picks up where you left off.
-On Windows these include <code>%APPDATA%\ToolsEnabled</code> and
-<code>%LOCALAPPDATA%\ToolsEnabled</code>. If you want
-them gone, delete those two folders by hand after uninstalling. That erases the signed record of
-everything that has run, which cannot be recovered.</p>
+<p><span class="label">Your data is the record of what ran, your saved credentials, your settings and
+your permission level.</span> Data that stays is picked up again if you reinstall. On Windows it is in
+<code>%APPDATA%\ToolsEnabled</code> and <code>%LOCALAPPDATA%\ToolsEnabled</code>. Deleting it erases
+the signed record of everything that has run, which cannot be recovered.</p>
+<p>On Linux, removing the package never deletes it. To delete it, use
+<span class="label">Remove this program’s data</span> on the Account page before you remove the package.
+Its <span class="label">Show me what would be deleted</span> button lists the folders, if you would rather
+delete them by hand after removing the package.</p>
 </div>
 
 <h2 id="help">11. Getting help</h2>
 
-<p class="label">There is no support address, no help desk and no community forum. Not “we will get
-back to you slowly” — they do not exist yet.</p>
+<p class="label">Write to support@toolsenabled.ai.</p>
 
-<p>If somebody gave you the installer directly, contact that person for help. Include these two
-details so they can identify the problem:</p>
+<p>That is the support address, and the support page at <span class="label">toolsenabled.ai/support</span>
+gives the same one. To report a security problem, follow <span class="label">toolsenabled.ai/security</span>
+instead. Include these two details so the problem can be identified:</p>
 
 <ul>
   <li><span class="label">The exact sentence on the screen</span>, copied or photographed. This
@@ -579,6 +609,9 @@ details so they can identify the problem:</p>
   work”.</li>
   <li><span class="label">Which of the steps on this page you had completed</span> when it stopped.</li>
 </ul>
+
+<p>If somebody gave you the installer directly, you can also ask that person, with the same two
+details.</p>
 
 <p>Two things can be genuinely somebody else's to fix, and going to them directly will be faster:</p>
 
@@ -592,9 +625,11 @@ details so they can identify the problem:</p>
   download it again.</li>
 </ul>
 
-<p>The source repositories are private. Official installers are
-available at <span class="label">toolsenabled.ai/download</span>. Check that address before
-installing a download offered elsewhere.</p>
+<p>ToolsEnabled is open source. Its source code is published on GitHub:
+<span class="label">github.com/ToolsEnabled/toolsenabled-app</span> for the application and
+<span class="label">github.com/ToolsEnabled/toolsenabled-engine</span> for the engine it runs.
+Official installers are available at <span class="label">toolsenabled.ai/download</span>. Check
+that address before installing a download offered elsewhere.</p>
 
 <footer class="foot">
 <p>ToolsEnabled is free software, licensed under the MIT license. It was founded and created by

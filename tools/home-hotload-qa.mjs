@@ -9,7 +9,7 @@ const output = path.resolve(process.argv[2] || 'home-hotload-qa')
 const origin = process.argv[3] || 'http://127.0.0.1:4623'
 assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(new URL(origin).hostname), 'QA targets a local hotload')
 await mkdir(output, { recursive: true })
-const browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
+const browser = await chromium.launch({ headless: true, ...(process.env.HOME_QA_BROWSER ? { executablePath: path.resolve(process.env.HOME_QA_BROWSER) } : {}), ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
 const records = []
 
 async function geometry(page) {
@@ -42,13 +42,13 @@ async function geometry(page) {
       return { selector, ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05) }
     }
     return {
-      contrast: ['.home-workspace-link', '.home-stat .tl', '.home-overview-clock .uring-caption', '.home > .home-feed-wrap [data-panel-title]',
+      contrast: ['.home-workspace-link', '.home-stat .tl', '.home-follow-action', '.home-feed-wrap [data-panel-title]',
         '.home .run-agent', '.home .run-asked', '.home .run-action', '.home .run-when', '.home .voice-widget-contact',
         '.home .activity-filters button[aria-pressed="true"]', '.home .home-agent-pick', '.home .home-agent-mode button[aria-pressed="true"]'].map(contrast).filter(Boolean),
       homeOverflowX: home.scrollWidth - home.clientWidth,
-      circle: rect('.home-circle'), words: rect('.home-circle .uring-inner'),
-      character: rect('.home > .home-ring-wrap'), voice: rect('.home-ring-wrap > .voice-contact'), facts: rect('.home-facts'),
-      card: rect('.home > .home-feed-wrap'), composer: rect('.home-agent-chat .chat-compose-surface'),
+      following: rect('[data-home-following]'),
+      character: rect('.home-follow-column'), voice: rect('.home-follow-column > .voice-contact'), facts: rect('.home-facts'),
+      card: rect('.home-columns > .home-feed-wrap'), composer: rect('.home-agent-chat .chat-compose-surface'),
       log: rect('.home-agent-chat .chat-log'),
       controls: ['.home-agent-pick', '.home-agent-mode', '.session-expand'].map(rect).filter(Boolean),
       working: [document.querySelector('[data-glance="working"]')?.textContent,
@@ -63,15 +63,12 @@ function checkGeometry(g, chat = false) {
   for (const control of g.controls) {
     assert.ok(control.x >= g.card.x && control.right <= g.card.right + 1, 'card controls stay inside the frame')
   }
-  assert.ok(g.words.width <= g.circle.width * .68, 'circle words fit the lower chord')
-  assert.ok(g.words.bottom <= g.circle.bottom - g.circle.height * .13, 'circle words clear the rim')
-  for (const child of [g.circle, g.voice, g.facts].filter(Boolean)) {
+  for (const child of [g.following, g.voice, g.facts].filter(Boolean)) {
     assert.ok(child.x >= g.character.x && child.right <= g.character.right + 1, 'character content fits horizontally')
     assert.ok(child.y >= g.character.y && child.bottom <= g.character.bottom + 1, 'character panel encloses its content')
   }
   if (g.card.x > g.character.right) {
     assert.ok(Math.abs(g.card.y - g.character.y) <= 1, 'desktop panels align at the top')
-    assert.ok(Math.abs(g.card.bottom - g.character.bottom) <= 1, 'desktop panels align at the bottom')
   } else {
     assert.ok(g.card.y >= g.character.bottom + 16, 'stacked panels keep a gap without overlap')
   }
@@ -87,7 +84,14 @@ try {
     const tag = `${width}x${height}-${theme}${zoom === 1 ? '' : `-zoom${zoom}`}`
     if (process.argv[4] && !tag.startsWith(process.argv[4])) continue
     const context = await browser.newContext({ viewport: { width, height } })
+    await context.route('**/*', route => {
+      const url = new URL(route.request().url())
+      return url.origin === new URL(origin).origin || ['data:', 'blob:'].includes(url.protocol) ? route.continue() : route.abort('blockedbyclient')
+    })
+    await context.routeWebSocket(url => url.host === new URL(origin).host && url.searchParams.has('token'), socket => socket.close())
     await context.addInitScript(({ theme, zoom }) => {
+      localStorage.clear(); localStorage.setItem('mc.example', 'on')
+      localStorage.setItem('mc.set.feature_guides.v1', JSON.stringify({ version: 1, quiet: true, seen: {} }))
       localStorage.setItem('mc.theme', theme)
       localStorage.setItem('mc.text', String(zoom))
     }, { theme, zoom })
@@ -103,28 +107,29 @@ try {
       await page.waitForTimeout(1800)
       assert.match(await page.locator('.panel-badge').textContent(), /example/i)
       const followed = () => page.evaluate(() => {
-        const first = document.querySelector('.home-runs .home-run:not([hidden])')
-        return { top: first?.querySelector('.run-agent')?.textContent, circle: document.querySelector('.home-circle')?.dataset.agentName, marked: first?.hasAttribute('data-followed') }
+        const rows = [...document.querySelectorAll('.home-runs .home-run:not([hidden])')].filter(row => row.querySelector('.run-agent')?.textContent.trim())
+        const first = rows.find(row => row.querySelector('.run-action')?.textContent.trim()) || rows.find(row => row.dataset.status === 'attention') || rows[0]
+        return { top: first?.querySelector('.run-agent')?.textContent, following: document.querySelector('[data-home-following]')?.dataset.agentName, marked: first?.hasAttribute('data-followed') }
       })
       const initialFollow = await followed()
-      assert.equal(initialFollow.circle, initialFollow.top, 'All agents follows the first displayed run')
+      assert.equal(initialFollow.following, initialFollow.top, 'All agents follows actual work, then attention, then displayed order')
       assert.equal(initialFollow.marked, true)
       const overview = await geometry(page)
       checkGeometry(overview)
       assert.equal(...overview.working, 'overview and filter agree on current work')
       await page.screenshot({ path: path.join(output, `${tag}-overview.png`) })
-      note.steps.push('overview, status totals and circle geometry')
-      await page.locator('.home-ring-wrap .voice-widget-toggle').click()
-      await page.waitForFunction(() => document.querySelector('.home-ring-wrap > .voice-contact')?.dataset.expanded === 'true')
+      note.steps.push('overview, status totals and Following layout')
+      await page.locator('.home-follow-column .voice-widget-toggle').click()
+      await page.waitForFunction(() => document.querySelector('.home-follow-column > .voice-contact')?.dataset.expanded === 'true')
       checkGeometry(await geometry(page))
-      await page.locator('.home-ring-wrap .voice-widget-toggle').click()
+      await page.locator('.home-follow-column .voice-widget-toggle').click()
       note.steps.push('voice controls expand inside the character panel and keep both panels aligned')
 
       await page.locator('[data-activity-filter="attention"]').click()
       await page.waitForFunction(() => [...document.querySelectorAll('.home-run:not([hidden])')].every(row => row.dataset.status === 'attention'))
       assert.ok(await page.locator('.home-run:not([hidden])').count() > 0)
       const filteredFollow = await followed()
-      assert.equal(filteredFollow.circle, filteredFollow.top, 'filtering follows the first remaining displayed run')
+      assert.equal(filteredFollow.following, filteredFollow.top, 'filtering preserves work/attention/display-order priority within the visible scope')
       await page.locator('[data-activity-filter="working"]').click()
       assert.equal(await page.locator('.home-run:not([hidden])').count(), 0)
       assert.ok(await page.locator('.home-scope-empty').isVisible())

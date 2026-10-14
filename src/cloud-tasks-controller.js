@@ -12,9 +12,8 @@
  *
  * The fail-closed rules this file owns, each of which is the answer to a real
  * defect class in this codebase (a missing field read as permission):
- *   - an unread environment list never permits a launch;
- *   - an environment absent from an INCOMPLETE reading is unproven, not absent;
- *   - an environment with no single source repository cannot be launched into;
+ *   - a launch requires the person's environment ID, declared repository and chosen Codex account;
+ *   - a person-entered ID never claims provider confirmation of its repository;
  *   - a branch is never defaulted to "main" from nothing;
  *   - UNKNOWN never ends the status watch, and the watch is bounded in both
  *     interval and count so it can never become a background job nobody started;
@@ -118,6 +117,8 @@ export function cloudAvailability({ writeEnabled = isWriteEnabled('cloud-launch'
 }
 
 export const ENVIRONMENT_ID = /^[0-9a-f]{32}$/
+export const REPOSITORY_NAME = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/
+export const PERSON_ENTERED_BINDING_MESSAGE = 'The environment ID was entered by the person. The provider has not confirmed its repository binding.'
 const REMEMBERED_KEY = 'mc.cloud.last'
 /* Fifteen seconds between checks, for at most fifteen minutes of watching. Both
    bounds are here rather than open-ended for the same reason the capability
@@ -133,21 +134,22 @@ export const WATCH_MAX_CHECKS = 60
 export function readRemembered() {
   try {
     const parsed = JSON.parse(localStorage.getItem(REMEMBERED_KEY) || 'null')
-    if (!parsed || typeof parsed !== 'object') return { environment: '', branch: '' }
+    if (!parsed || typeof parsed !== 'object') return { environment: '', repository: '', branch: '' }
     return {
       environment: typeof parsed.environment === 'string' && ENVIRONMENT_ID.test(parsed.environment) ? parsed.environment : '',
+      repository: typeof parsed.repository === 'string' && REPOSITORY_NAME.test(parsed.repository) ? parsed.repository : '',
       branch: typeof parsed.branch === 'string' ? parsed.branch.slice(0, 200) : '',
     }
-  } catch { return { environment: '', branch: '' } }
+  } catch { return { environment: '', repository: '', branch: '' } }
 }
 
 function writeRemembered(value) {
-  /* The environment id and branch only. NOT the prompt: a task body is the one
+  /* The environment id, repository and branch only. NOT the prompt: a task body is the one
      field a person is most likely to paste something sensitive into, and this
      store is a plain file on disk. The bridge already refuses credential-shaped
      prompt text before it reaches the provider; keeping it out of local
      persistence as well means a refused launch leaves nothing behind either. */
-  try { localStorage.setItem(REMEMBERED_KEY, JSON.stringify({ environment: value.environment || '', branch: value.branch || '' })) }
+  try { localStorage.setItem(REMEMBERED_KEY, JSON.stringify({ environment: value.environment || '', repository: value.repository || '', branch: value.branch || '' })) }
   catch { /* a session-only memory is still better than none */ }
 }
 
@@ -166,54 +168,13 @@ export function environmentSummary(environment) {
   return parts.join(' · ')
 }
 
-/* What the person is told about the environment list itself. The incomplete
-   case has its own sentence because an environment MISSING from a partial
-   reading has not been shown to be unauthorized, and a surface that renders a
-   partial list as the whole set turns "we could not ask" into "you do not have
-   it" -- the absence-as-answer defect this codebase keeps finding. */
-/* NOBODY HAS SIGNED IN HERE YET, WHICH IS A STATE AND NOT A FAILURE.
- *
- * THE DEFECT THIS CLOSES, and it is the whole of the owner's finding 8. On a
- * computer with no Codex account the capability layer threw -- a first run was
- * modelled exclusively as an error, with no success shape that could say "we
- * looked, and there are none" -- so this panel had nothing to render but a
- * refusal, and it rendered it TWICE, once for the accounts and once for the
- * environments, because one condition was published into two slots. Two
- * near-identical 47-word paragraphs, one under the other, for a person who had
- * simply never signed in, and nearly impossible for a person to make sense of.
- *
- * The engine answers with an empty reading now (src/lib/cloud-agent/codex-cloud-launch.js),
- * and this is the sentence for it: what is true, and the one thing to do. */
-/* THE SECOND HALF OF THAT DEFECT, WHICH SURVIVED THE FIRST FIX. This sentence
- * ended "Sign in to Codex Cloud on this computer, then press Refresh", and that
- * was a dead end wearing an instruction: signing Codex in the ordinary way does
- * NOT put an account on this list. The list is a registry the cloud lane reads,
- * and until now nothing in the product wrote it -- the two accounts running
- * cloud tasks on the builder's own machine were typed into a JSON file in an
- * editor. So a customer who did exactly what this sentence said came back,
- * pressed Refresh, and read the same sentence again.
- *
- * There is a control under it now. What the sentence promises is what that
- * control does: a name is the only thing they type. */
+/* Account setup remains a separate fact from the unavailable environment catalog. */
 export const NO_ACCOUNT_TEXT = 'No Codex account is set up on this computer yet, so there is nothing to show here. Add one below: give it a name, and this computer makes its folder and opens the sign-in for you.'
 
-export function environmentsMessage({ loaded, environments, complete, signedIn = true }) {
-  if (!loaded) return { tone: 'note', text: 'Environments not read yet.' }
-  /* Before anything about environments, because an environment belongs to an
-     account: with no account, "no environment is authorized for the configured
-     accounts" describes accounts that do not exist. */
+export function environmentsMessage({ loaded, signedIn = true }) {
+  if (!loaded) return { tone: 'note', text: 'Codex accounts have not been read yet.' }
   if (signedIn === false) return { tone: 'note', text: NO_ACCOUNT_TEXT }
-  const usable = environments.filter(environment => environment.launchable === true).length
-  if (environments.length === 0) {
-    return complete
-      ? { tone: 'note', text: 'No Codex Cloud environment is authorized for the configured accounts. Create one on Codex Cloud for the repository you want a task to run against.' }
-      : { tone: 'refused', text: 'No environments could be read, and at least one account could not be asked, so this is not proof that none exist.' }
-  }
-  const partial = complete ? '' : ' At least one account could not be asked, so this list may be incomplete.'
-  return {
-    tone: complete ? 'confirmed' : 'note',
-    text: `${usable} of ${environments.length} authorized environment${environments.length === 1 ? '' : 's'} can take a task.${partial}`,
-  }
+  return { tone: 'note', text: 'Environment discovery is unavailable. Use the environment ID from Codex Cloud in the field above.' }
 }
 
 /* Looked up from a published STATE rather than from the controller, because the
@@ -229,9 +190,9 @@ export function findEnvironment(state, environmentId) {
  *
  * Both of these used to be seeded with `availability.note` -- the whole
  * switched-off paragraph -- so one panel printed one fact three times: once in
- * its header and once in each of these two lines. R1528 called the result
- * cluttered, meaning the repetition, not the refusal: the refusal is correct
- * and stays, stated exactly once by the surface
+ * its header and once in each of these two lines. The owner's word for the
+ * result was "messy" (R1528), and he was describing repetition, not the
+ * refusal: the refusal is correct and stays, stated exactly once by the surface
  * that owns it.
  *
  * So these two say only what THEY know, which is that they hold nothing, and
@@ -251,39 +212,12 @@ export function emptyEnvironmentsMessage(availability) {
     : 'Not read here.'
 }
 
-/* The binding line: what a task launched right now would land in. Written from
-   the discovered environment rather than from anything typed, and explicit when
-   there is nothing to bind to.
- *
- * FOUR STATES, NOT TWO, and conflating them is what made this line wrong.
- * It answered "No environment chosen, so no source repository is bound." for
- * every case with no environment in hand -- including the two where nobody has
- * been offered a choice yet, because the list was never read. On the panel the
- * screenshot showed, with launching switched off and therefore nothing ever
- * asked of the provider, that sentence diagnosed the person ("you did not
- * choose") for a state the product had put itself in. A read that was REFUSED
- * is a third thing again, and it is the one a person must not read as "empty".
- * `state` is optional so a caller that has only an environment still gets the
- * bound/unbound half it always got. */
+/* A typed ID is a declaration by the person, not a provider binding reading. */
 export function bindingText(environment, state = null) {
-  if (environment) {
-    if (typeof environment.repository !== 'string' || !environment.repository) {
-      return environment.reason || 'This environment reports no single source repository.'
-    }
-    return `Bound to ${environment.repository}${environment.defaultBranch ? ` · default branch ${environment.defaultBranch}` : ' · the provider states no default branch'}${environment.visibility ? ` · ${environment.visibility}` : ''}`
-  }
-  /* Said in three words rather than by repeating the sign-in sentence that is
-     already on the panel. One condition, one paragraph. */
-  if (state && state.signedIn === false) return 'Nothing is bound, because no Codex account is signed in here.'
-  if (state && state.environmentsLoaded !== true) {
-    if (state.environmentsTone === 'refused') {
-      return 'Nothing is bound. The environments could not be read, so where a task would land is unknown.'
-    }
-    return state.phase === 'unavailable'
-      ? 'Nothing is bound. The environments have not been read, because launching is switched off.'
-      : 'Nothing is bound yet. The environments have not been read.'
-  }
-  return 'No environment chosen yet, so no source repository is bound.'
+  if (state?.phase === 'unavailable' || state?.signedIn === false || state?.accountsPhase === 'refused') return ''
+  return environment
+    ? PERSON_ENTERED_BINDING_MESSAGE
+    : 'Enter the 32-character environment ID from Codex Cloud.'
 }
 
 /* ---------------------------------------------------------------- *
@@ -478,12 +412,13 @@ export function createCloudTaskController({
     accountsPhase: null,
     signedIn: null,
     defaultAccount: null,
+    nativeRoute: false,
     environments: Object.freeze([]),
     environmentsComplete: false,
     environmentsLoaded: false,
     environmentsReadAt: null,
     environmentsTone: 'note',
-    environmentsMessage: availability.ok ? 'Environments not read yet.' : emptyEnvironmentsMessage(availability),
+    environmentsMessage: availability.ok ? 'Codex accounts have not been read yet.' : emptyEnvironmentsMessage(availability),
     tasks: Object.freeze([]),
     servingAccount: null,
     listMessage: availability.ok ? 'Not loaded yet.' : emptyListMessage(availability),
@@ -555,9 +490,7 @@ export function createCloudTaskController({
   }
   const clock = () => new Date().toLocaleTimeString()
 
-  /* ACCOUNTS AND ENVIRONMENTS ARRIVE TOGETHER, because on this provider they
-     are one fact: an environment is scoped to the account that created it, so
-     "which environments exist" has no answer that is not per-account. */
+  /* The official CLI can read accounts and tasks but cannot discover environments. */
   async function loadAccounts() {
     if (!availability.ok) return state
     const result = await postAction('cloud-accounts', {})
@@ -575,17 +508,11 @@ export function createCloudTaskController({
         accountsPhase: 'refused',
         signedIn: null,
         defaultAccount: null,
+        nativeRoute: false,
         listTone: 'note',
         listMessage: '',
         listCode: null,
-        /* NOT "no environments": a refused read says nothing about what exists.
-           environmentsLoaded goes back to FALSE so the launch path keeps
-           refusing -- and it is set here rather than left at its initial value,
-           which is the bug this comment used to describe without doing. After a
-           successful read followed by a refused one it stayed true, and the
-           binding line then told a person "no environment chosen yet" about a
-           reading that had just failed. An unread list never permits a launch,
-           and a list that could not be re-read is unread. */
+        /* A refused account reading does not prove that environments are absent. */
         environments: Object.freeze([]),
         environmentsLoaded: false,
         environmentsComplete: false,
@@ -609,6 +536,7 @@ export function createCloudTaskController({
       accountsPhase: signedIn ? 'ready' : 'none',
       signedIn,
       defaultAccount: result.receipt.defaultAccount || null,
+      nativeRoute: result.receipt.nativeRoute === true,
       environments,
       environmentsComplete: complete,
       environmentsLoaded: true,
@@ -713,36 +641,23 @@ export function createCloudTaskController({
      confirmed. */
   function arm(request) {
     if (!availability.ok || destroyed) return state
-    const idle = { phase: 'idle', launchTone: 'refused', launchLabel: 'Launch on Codex Cloud' }
+    armed = null
+    const idle = { phase: 'idle', launchTone: 'refused', launchLabel: 'Launch on Codex Cloud', launchCode: null }
+    const account = String(request?.account || '').trim()
     const environment = String(request?.environment || '').trim()
+    const repository = String(request?.repository || '').trim()
     const branch = String(request?.branch || '').trim()
     const prompt = String(request?.prompt || '')
+    if (!account) {
+      publish({ ...idle, launchMessage: 'Choose a Codex account before launching this task. Nothing was sent.' })
+      return state
+    }
     if (!ENVIRONMENT_ID.test(environment)) {
-      publish({ ...idle, launchMessage: 'Choose the Codex Cloud environment this task runs in. Nothing was sent.' })
+      publish({ ...idle, launchMessage: 'Enter the Codex Cloud environment ID: exactly 32 characters using 0–9 and lowercase a–f. Nothing was sent.' })
       return state
     }
-    /* THE BINDING IS REQUIRED HERE AND CHECKED AGAIN AT THE BRIDGE. This surface
-       declares the repository it has been SHOWING for the chosen environment;
-       the capability layer re-reads the binding from the provider and refuses if
-       the two differ. So a stale or wrong picture on this glass cannot become a
-       task submitted against someone else's source -- which is the guarantee
-       Machine B's offload report asked for. */
-    if (!state.environmentsLoaded) {
-      publish({ ...idle, launchMessage: 'The authorized environments have not been read yet, so the source repository cannot be declared. Refresh, then launch. Nothing was sent.' })
-      return state
-    }
-    const chosen = findEnvironment(state, environment)
-    if (!chosen) {
-      publish({
-        ...idle,
-        launchMessage: state.environmentsComplete
-          ? 'That environment is not one the configured accounts are authorized for. Nothing was sent.'
-          : 'That environment is not in the list that could be read, and the reading was incomplete, so nothing about it is confirmed. Nothing was sent.',
-      })
-      return state
-    }
-    if (typeof chosen.repository !== 'string' || !chosen.repository) {
-      publish({ ...idle, launchMessage: `${chosen.reason || 'That environment reports no single source repository.'} A task cannot be bound to it. Nothing was sent.` })
+    if (!REPOSITORY_NAME.test(repository)) {
+      publish({ ...idle, launchMessage: 'Enter the repository as owner/name, with no spaces or extra lines. Nothing was sent.' })
       return state
     }
     if (!branch) {
@@ -755,19 +670,20 @@ export function createCloudTaskController({
     }
     armed = Object.freeze({
       environment,
-      repository: chosen.repository,
+      environmentSource: 'person-entered',
+      repository,
       branch,
       prompt,
       ...(Number.isSafeInteger(request?.attempts) && request.attempts > 1 ? { attempts: request.attempts } : {}),
-      ...(request?.account ? { account: String(request.account) } : {}),
+      account,
       confirmed: true,
     })
-    writeRemembered({ environment, branch })
+    writeRemembered({ environment, repository, branch })
     publish({
       phase: 'armed',
       launchTone: 'note',
       launchLabel: 'Confirm launch',
-      launchMessage: `This starts real work on Codex Cloud as ${armed.account || 'the first account that can serve'}, in ${chosen.repository} on branch ${branch}. A cloud task cannot be cancelled once it is accepted. Select again to send it, and approve the prompt that follows.`,
+      launchMessage: `This starts real work on Codex Cloud as ${account}, for ${repository} on branch ${branch}, using environment ${environment}. ToolsEnabled cannot confirm that this environment points at ${repository}. ${PERSON_ENTERED_BINDING_MESSAGE} A cloud task cannot be cancelled once it is accepted. Select again to send it, and approve the prompt that follows.`,
     })
     return state
   }
@@ -827,7 +743,7 @@ export function createCloudTaskController({
       return settleLaunch(
         { phase: 'idle', launchLabel: 'Launch on Codex Cloud' },
         'refused',
-        `${receipt.state || 'UNKNOWN'} · ${receipt.message || 'The launch did not confirm a task id.'} A task may or may not have been created — refresh the list before trying again rather than launching a second time.`,
+        `${receipt.state || 'UNKNOWN'} · ${receipt.message || 'The launch did not confirm a task id.'} ${receipt.repositoryBinding?.message || PERSON_ENTERED_BINDING_MESSAGE} A task may or may not have been created — refresh the list before trying again rather than launching a second time.`,
       )
     }
     /* THE RECEIPT IS THE PROVIDER'S ANSWER, NOT THIS PAGE'S MEMORY OF THE FORM.
@@ -843,7 +759,8 @@ export function createCloudTaskController({
           taskUrl: receipt.taskUrl || null,
           environment: receipt.environment || null,
           environmentLabel: receipt.environmentLabel || null,
-          repository: receipt.repository || null,
+          repository: receipt.repository || receipt.declaredRepository || null,
+          repositoryBinding: receipt.repositoryBinding ? Object.freeze({ ...receipt.repositoryBinding }) : null,
           branch: receipt.branch || null,
           state: receipt.state || 'UNKNOWN',
           account: receipt.account || null,
@@ -853,14 +770,14 @@ export function createCloudTaskController({
         }),
       },
       'confirmed',
-      `${cloudStateView(receipt.state).label} · task ${receipt.taskId} on ${accountSummary(receipt.account)}${receipt.accountsConsidered?.length > 1 ? ` (after trying ${receipt.accountsConsidered.slice(0, -1).join(', ')})` : ''}.`,
+      `${cloudStateView(receipt.state).label} · task ${receipt.taskId} on ${accountSummary(receipt.account)}. ${receipt.repositoryBinding?.message || PERSON_ENTERED_BINDING_MESSAGE}`,
     )
     /* Only NOW does being torn down matter. The launch is recorded either way;
        what a dead controller must not do is start a status watch nothing will
        read or send another bridge read after its own teardown. */
     if (destroyed) return state
     watch(receipt.taskId, { environment: receipt.environment || request.environment, account: receipt.account?.name || request.account || null })
-    await loadTasks({ environment: request.environment })
+    await loadTasks({ environment: request.environment, account: request.account })
     return state
   }
 

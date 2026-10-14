@@ -1,11 +1,11 @@
 /* T1792. A PARENT CAN HAND A RESUMED AGENT ITS NEXT ASSIGNMENT.
  *
- * MEASURED on a development tree: when every agent was asked to be working, a
- * controller resumed its idle agents. agent.resume carried nothing
+ * MEASURED 2026-09-24 (LIVE .47): after the owner asked for every agent to be
+ * working, Controller 1 resumed 15 idle agents. agent.resume carried nothing
  * but the circle, the resumed first turn told each agent to report finished
  * work and "finish the turn", every one of them confirmed its old task was
- * done, and most went idle after that one turn. The follow-up assignments
- * then travelled as messages to idle agents and several were set aside (T1743).
+ * done, and eight went idle after that one turn. The follow-up assignments
+ * then travelled as messages to idle agents and five were set aside (T1743).
  *
  * This suite proves the three halves the fix needs, each by calling the real
  * code with values:

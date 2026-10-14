@@ -33,16 +33,11 @@ const { WRITE_FLAGS_EVENT, setWriteEnabled } = await import('../../src/write-fla
 const { DATA_SOURCE_EVENT, setExampleMode, announceDataSourceChange, currentDataSource, isExampleMode } = await import('../../src/data-source.js')
 const { createSettingsDraft } = await import('../../src/settings-draft.js')
 const require = createRequire(import.meta.url)
-const { createAccountRegistryStore } = require('../../shell/account-registry.cjs')
 const source = fs.readFileSync(new URL('../../src/main.js', import.meta.url), 'utf8')
 const start = source.indexOf('window.addEventListener(DATA_SOURCE_EVENT,')
 const end = source.indexOf('\nconst hashFor', start)
 assert.ok(start >= 0 && end > start, 'The real data-source/write-flag listener block must be retained.')
 const listenersSource = source.slice(start, end)
-/* The producer's own sentence (src/setup-intent-commit.js), not the review's
-   heading: it is the part a person must actually be able to read, and pinning it
-   here keeps these tests measuring the deferral rather than the copy around it. */
-const notice = 'There are no provider accounts to switch between yet.'
 const tick = () => new Promise(resolve => setImmediate(resolve))
 async function settle() { for (let i = 0; i < 6; i += 1) await tick() }
 after(() => {
@@ -67,8 +62,6 @@ async function fixture(t, { route = 'setup', registry = 'absent', firstRun = fal
     setItem(key, value) { disk(storageFile, { ...values(), [key]: String(value) }) },
     removeItem(key) { const next = values(); delete next[key]; disk(storageFile, next) },
   })
-  const accountStore = createAccountRegistryStore({ file: accountFile, homedir: () => directory })
-  if (registry === 'damaged') fs.writeFileSync(accountFile, '{invalid')
   let releaseFolder
   const folder = new Promise(resolve => { releaseFolder = resolve })
   const workspace = path.join(directory, 'workspace')
@@ -94,18 +87,12 @@ async function fixture(t, { route = 'setup', registry = 'absent', firstRun = fal
     },
   })
   set('mcSettings', { async set(key, value) {
+    if (registry === 'damaged') return { ok: false, reason: 'Synthetic setting save failure' }
     disk(path.join(directory, 'settings.json'), { [key]: value })
     writes.push(['setting', key, value]); return { ok: true }
   } })
   set('mcProviders', {
     presence: async () => ({ ok: true, providers: [] }),
-    async accountPolicy(value) {
-      writes.push(['account-policy', value.selectionMode])
-      // The refusal is the real store's decision over the disposable path.
-      if (registry === 'accepted') return { ok: true } // Explicit controlled success for normal navigation only.
-      try { return accountStore.setPolicy(value) }
-      catch (error) { return { ok: false, code: error.code, reason: error.message } }
-    },
   })
   set('mcAgent', {
     availability: async () => ({ ok: false, code: 'AGENT_ENGINE_UNAVAILABLE' }),
@@ -211,7 +198,7 @@ function saved(f) {
  * producer sentence, and additionally pins that the sentence is DURABLE and that
  * Finish navigated exactly once. The second still pins the saved-notice exit,
  * now reached the way a person reaches it. */
-test('held real Finish keeps its mounted owner through every saved event, records the account deferral and enters the application', async t => {
+test('held real Finish keeps its mounted owner through saved events and enters the application', async t => {
   const f = await fixture(t)
   f.finish()
   assert.equal(f.writes.length, 1)
@@ -225,38 +212,10 @@ test('held real Finish keeps its mounted owner through every saved event, record
   assert.deepEqual(f.navigations, ['#/'],
     'mutation `return instead of navigate when applySetupIntentChanges defers` survived: expected Finish to end in the application')
   assert.equal(f.context.current.route.name, 'home')
-  assert.match(readStoredProfile().accountPolicyDeferred?.reason || '', /no provider accounts to switch between yet/,
-    'mutation `drop accountPolicyDeferred from the completed profile` survived: expected the deferral to outlive the screen that produced it')
+
 })
 
-test('saved Setup restates the absent-account deferral when it is reopened, and can continue without resetting choices or claiming the policy saved', async t => {
-  const f = await fixture(t)
-  assert.equal(f.first.el.querySelector('[data-setup-open-app]'), null)
-  f.finish(); await f.release()
-  saved(f)
-  assert.deepEqual(f.navigations, ['#/'])
-  const before = fs.readFileSync(f.storageFile, 'utf8')
-  const writes = f.writes.length
-  f.reopenSetup(); await settle()
-  const review = f.context.current.view.el
-  assert.ok(f.displayedNotice().includes(notice),
-    'mutation `read the deferral from the live refusal instead of the stored profile` survived: expected a reopened review to restate it')
-  const policyNotice = review.querySelector('[data-setup-account-policy]')
-  assert.ok(policyNotice, 'mutation `stop rendering the carried deferral` survived: expected the review to state it')
-  assert.equal(policyNotice.getAttribute('role'), 'status',
-    'mutation `render the deferral as role=alert is-serious` survived: expected a saved-setup status, not a refusal')
-  assert.equal(policyNotice.className.includes('is-serious'), false,
-    'mutation `keep filing the deferral in `refusal`` survived: expected nothing on this review to look like a save that failed')
-  const button = review.querySelector('[data-setup-open-app]')
-  assert.ok(button, 'A completed first-run setup with no provider account needs an exit from its saved notice.')
-  assert.match(review.querySelector('.setup-lede').textContent, /settings are saved/)
-  button.click(); await settle()
-  assert.deepEqual(f.navigations, ['#/', '#/'])
-  assert.equal(f.context.current.route.name, 'home')
-  assert.equal(f.writes.length, writes, 'Continue must not retry policy writes or reset setup answers.')
-  assert.equal(fs.readFileSync(f.storageFile, 'utf8'), before)
-  assert.equal(fs.existsSync(f.accountFile), false, 'No account or acknowledged account policy is fabricated.')
-})
+
 
 for (const [name, notify] of [
   ['write flag', () => setWriteEnabled('report-read', true)],
@@ -268,10 +227,10 @@ for (const [name, notify] of [
   assert.equal(f.writes.length, 1)
   await f.release(); saved(f)
   assert.deepEqual(f.navigations, ['#/'])
-  assert.match(readStoredProfile().accountPolicyDeferred?.reason || '', /no provider accounts to switch between yet/)
+
 })
 
-test('Finish still navigates normally after an acknowledged account policy', async t => {
+test('Finish navigates normally with an empty provider account list', async t => {
   const f = await fixture(t, { registry: 'accepted' })
   f.finish(); await f.release()
   assert.deepEqual(f.navigations, ['#/'])
@@ -279,7 +238,7 @@ test('Finish still navigates normally after an acknowledged account policy', asy
   assert.equal(readStoredProfile().status, 'complete')
 })
 
-test('a real damaged-registry refusal leaves the review pending without applying the profile', async t => {
+test('a setting save refusal leaves the review pending without applying the profile', async t => {
   const f = await fixture(t, { registry: 'damaged' })
   f.finish(); await f.release()
   assert.equal(f.context.current.view === f.first, true)
@@ -364,7 +323,6 @@ test('a first run that answers every question and presses Finish ends in the app
   const profile = readStoredProfile()
   assert.equal(profile.status, 'complete')
   assert.deepEqual(profile.answers.workspaceRoots, [f.workspace])
-  assert.match(profile.accountPolicyDeferred?.reason || '', /no provider accounts to switch between yet/,
-    'mutation `discard the deferral once Finish navigates` survived: expected the one thing that could not be recorded to be recorded')
+
   assert.equal(fs.existsSync(f.accountFile), false, 'No account or account policy is fabricated to get past the deferral.')
 })

@@ -7,15 +7,16 @@
  * what is checked is the code the app runs rather than a second copy of the
  * logic written in a test.
  *
- * The top button lists trees (or all trees) instead of every agent; from the
- * drop-down a person selects the agent to chat with right there, immediately.
+ * Owner, 2026-09-19: "the top button instead of listing every agent or all
+ * agents, it should just list trees or all trees, then, from the drop down you
+ * can select the agent to chat right there from the list immediately."
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import vm from 'node:vm'
 import { readFileSync } from 'node:fs'
 import { activityMatches, treePickGroups, treePickChoices } from '../../src/home-activity.js'
-import { agentFilterFor, TREE_TIPS_CHOICE, treeChoiceId } from '../../src/home-circle-action.js'
+import { agentFilterFor, TREE_TIPS_CHOICE, treeChoiceId } from '../../src/home-following.js'
 import { declaredFunctionSource } from './lib/declared-function-source.mjs'
 
 const source = readFileSync(new URL('../../src/views/home.js', import.meta.url), 'utf8')
@@ -77,7 +78,7 @@ function fixture({ trees = TREES, lanes = LANES, remembered = '' } = {}) {
     activityMatches, activityFilter: 'all',
     coordinatorEmpty: {}, currentHomeView: { panel: { title: 'Activity' } }, panelTitle: {},
     scopeEmpty: {}, threadBundle: { hidden: true }, readerSentence: text => text,
-    paintActivityOverview() {}, paintGlance() {}, paintCircleAction() {}, paintAgentBoard() {}, paintPanelMode() {},
+    paintActivityOverview() {}, paintGlance() {}, paintFollowing() {}, paintAgentBoard() {}, paintPanelMode() {},
   }
   vm.createContext(state)
   vm.runInContext(resolveChoice, state)

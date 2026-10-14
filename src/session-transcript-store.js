@@ -2,7 +2,7 @@
 //
 // The window keeps each session's back-and-forth in memory (computers.js's
 // sessionTranscripts) and says plainly that closing the window loses it. This
-// store is the durable half that was asked for (iteration 5 W7): a bounded
+// store is the durable half the owner asked for (iteration 5 W7): a bounded
 // excerpt of every conversation, saved per NODE — the circle on the tree —
 // so a dead session can be resumed by a fresh agent that first reads what was
 // said. The record also keeps the engine's threadId when one was reported, so

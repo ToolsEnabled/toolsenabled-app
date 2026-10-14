@@ -122,7 +122,12 @@ test('adoption during an existing turn does not interrupt it or lose its busy st
     assert.equal(before.activity.busy, true)
     const result = host.adoptTreeAddress(adoption('busy-independent', 'busy-node', 'existing-root'))
     assert.equal(result.phase, 'working')
-    assert.deepEqual(host.sessionActivity('busy-independent'), before.activity)
+    const { courier, ...after } = host.sessionActivity('busy-independent')
+    assert.deepEqual(after, before.activity)
+    /* On the tree now, the session also reports its courier's custody state
+       (T1745), and nothing is queued, pending or uncertain. */
+    assert.equal(before.activity.courier, undefined)
+    assert.deepEqual(courier, { deliveryUncertain: false, queuedMessages: 0, handoffPending: false, receiptPending: false, retryAfterMs: 0 })
     assert.equal(engine.calls.length, before.starts)
     assert.equal(engine.adapterCalls.length, before.actions)
     assert.equal(directory.listNodes()[0].nodeKey, 'busy-node')

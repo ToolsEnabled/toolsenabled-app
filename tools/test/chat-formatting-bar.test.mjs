@@ -1,8 +1,8 @@
 /* R1204'S ACCEPTANCE BAR, MADE EXECUTABLE.
  *
- * R1204: the chat windows need more formatting cleanup and must be more
- * readable. That names no bar, so Controller filed ask A1 with a default one
- * and said to build against it now:
+ * The owner, R1204: "the chat windows DO NOT HAVE enough formatting cleanup.
+ * We need to be make the chat more readable". That names no bar, so Controller
+ * filed owner ask A1 with a default one and said to build against it now:
  *
  *   at all three text sizes, these samples must render with no horizontal
  *   overflow, code fences scrolling internally, lists indented, tables

@@ -21,9 +21,9 @@ import { useArithmeticExample } from './lib/benchmark-example.mjs'
 //      rows that had not composed at all. routedTasks() assembles trees without
 //      compiling them, so a row pointing at a bundle whose composition role the
 //      place cannot accept was counted and announced as a success while the
-//      prompt pane held the compiler's refusal. With an earlier example library
-//      that was every whole-prompt variant and matching-code bundle at the root
-//      address.
+//      prompt pane held the compiler's refusal. With the shipped example library
+//      that is every one of the 21 T1v0 variants and 25 matching-code bundles at
+//      the root address.
 import assert from 'node:assert/strict'
 import { readFile, readdir } from 'node:fs/promises'
 import { register } from 'node:module'
@@ -148,7 +148,7 @@ test('opening the apparatus source disclosure names every file before anything i
 test('each builder step is numbered once, and the numbers follow the order the steps are rendered in', async () => {
   const view = await mount()
   const order = [...view.el.querySelectorAll('[data-bench-tab]')].map(button => button.getAttribute('data-bench-tab'))
-  // Qualification is the last Protocol step, the check before freezing.
+  // Qualification is the last Protocol step, the check before freezing (owner-approved 2026-09-23).
   assert.deepEqual(order, ['library', 'compose', 'nesting', 'variance', 'corpus', 'experiment',
     'audit', 'protocol', 'workflow', 'observations', 'requirements', 'run', 'analysis'])
   const separate = await mount({ separateResource: true })

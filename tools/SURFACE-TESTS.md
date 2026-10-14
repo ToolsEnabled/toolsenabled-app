@@ -162,7 +162,7 @@ or replayed. Authenticated login/logout and cross-computer FRA remain separate
 live acceptance, using test accounts and explicit endpoints after a qualified cut.
 
 Linux and Windows must each run their own packaged artifact. Do not change
-accounts: on the owner's Windows desktop use the explicit BuildAccount-Dev
+accounts: on the owner's Windows desktop use the explicit fixture-profile
 connection only. Never connect to the excluded research hotload port.
 Existing packaged-QA sandbox, disposable-worker and native custody checks are
 left intact; missing permission/host readiness never downgrades to a mock pass.

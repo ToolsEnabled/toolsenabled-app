@@ -15,6 +15,7 @@
   isolation: isolate;
 }
 :root:is([data-theme="black"], [data-theme="ember"], [data-theme="cobalt"]) .chat[data-chat-panel] { --chat-stream-blue: #a3c9ff; }
+.chat[data-chat-panel] .chat-ai-disclosure { flex: 0 0 auto; margin: 0; padding-block: 8px; font-size: 12px; line-height: 1.4; color: var(--ink); }
 .chat[data-chat-panel] .chat-head { gap: 8px; min-height: 36px; padding-bottom: 8px; margin-bottom: 0; border-bottom-color: var(--border-hairline); }
 .chat[data-chat-panel] .chat-head .role-dot { width: 8px; height: 8px; border-radius: var(--radius-xs); box-shadow: none; }
 .chat[data-chat-panel] .chat-head .t { font-size: 13.5px; font-weight: 650; letter-spacing: -.01em; }
@@ -36,8 +37,8 @@
 .chat[data-chat-panel] .chat-head :is(.chat-search-toggle, .saved-conversation-toggle)[aria-expanded="true"] { background: var(--selected-bg); border-color: var(--selected-border); color: var(--selected-ink); }
 .chat[data-chat-panel] .chat-head :is(.chat-close, .chat-expand) { width: 28px; height: 28px; border-radius: var(--radius-sm); }
 .chat[data-chat-panel] .chat-head :is(.chat-close, .chat-expand):hover { background: var(--state-hover); }
-/* THE TEXT COLUMN IS THE WHOLE PANEL (rule: more room for chat
-   text than the previous app gave it). The agent's words used to sit
+/* THE TEXT COLUMN IS THE WHOLE PANEL (owner, 2026-09-23: "give more room than
+   the last app to actual text space for chat"). The agent's words used to sit
    behind a 32px gutter that held only a role dot, and every tool run, diff and
    thought was indented 32px more. The speaker's mark now rides inline on the
    name line, so replies, work rows and notes all start at the log's own edge;

@@ -147,7 +147,7 @@ test('a second Start press after a failed start retries the same tree and node',
   assert.equal(fixture.closes(), 0, 'a refused start must leave the brief on screen')
 })
 
-/* A CONTROLLER CIRCLE ON A NEW TREE. A new tree's Controller circle was
+/* THE OWNER'S OWN CIRCLE, 2026-09-23 13:14. A new tree's Controller circle was
    set to Claude Opus while a Codex Controller was live, and its start was
    refused. The brief stayed on screen, so the next press retried the same saved
    draft -- and that retry refused on this page with "The original agent remains

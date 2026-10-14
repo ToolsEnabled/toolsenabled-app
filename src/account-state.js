@@ -92,8 +92,8 @@ export const GOOGLE_SIGNIN_DESCRIPTION = 'A browser opens on the computer you ar
 export const GOOGLE_SIGNIN_SCOPE_NOTE = 'It asks Google for your name and email address only. It gets no access to your Drive, your Gmail or your Calendar, and this program keeps no Google password and no Google token.'
 
 /* WHAT AN UNAVAILABLE GOOGLE OPTION LOOKS LIKE, and this is the case that
- * matters most on the machine this was built on: the Google application id has
- * not been created yet, so the answer today is "not configured".
+ * matters most on the machine this was built on: the owner has not created the
+ * Google application id yet, so the answer today is "not configured".
  *
  * A missing configuration must NOT hide the button and must NOT produce a
  * button that fails when pressed. It produces a DISABLED option that says which
@@ -362,10 +362,16 @@ export function readActionResult(value) {
   if (!isPlainObject(value)) {
     return Object.freeze({ ok: false, code: 'MC_ACCOUNT_NO_REPLY', reason: 'The application did not answer.' })
   }
+  // Recovery may stop after keeping files. Carry reported locations on both
+  // outcomes without treating them as verified copies.
+  const keptAs = Array.isArray(value.keptAs)
+    ? Object.freeze(value.keptAs.filter(name => typeof name === 'string' && name).slice(0, 4).map(name => name.slice(0, 200)))
+    : null
   if (value.ok !== true) {
     return Object.freeze({
       ok: false,
       code: typeof value.code === 'string' ? value.code : 'MC_ACCOUNT_REFUSED',
+      ...(keptAs ? { keptAs } : {}),
       /* IT USED TO STOP AT "and did not say why", which is where a person is
          left with nothing. This is the last-resort sentence on the sign-in
          screen, so it is also the one most likely to be the only thing they
@@ -398,7 +404,7 @@ export function readActionResult(value) {
     ...(typeof value.remoteEnded === 'boolean' ? { remoteEnded: value.remoteEnded } : {}),
     ...(typeof value.localCleared === 'boolean' ? { localCleared: value.localCleared } : {}),
     /* The kept names of account files that were set aside (T1520). */
-    ...(Array.isArray(value.keptAs) ? { keptAs: Object.freeze(value.keptAs.filter(name => typeof name === 'string' && name).slice(0, 4).map(name => name.slice(0, 200))) } : {}),
+    ...(keptAs ? { keptAs } : {}),
   })
 }
 
@@ -429,7 +435,7 @@ export function readGoogleSignInResult(value) {
 /* ---- WHAT BELONGS TO THE SIGNED-IN ACCOUNT ----
  *
  * Three separate questions, kept separate all the way to the screen because
- * collapsing them is how a product tells a person something false about their own
+ * collapsing them is how a product tells a person something false about his own
  * money:
  *
  *   1. Is a payment method ATTACHED to this account? A binding this product

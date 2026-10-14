@@ -182,7 +182,7 @@ function packedXs(list, width) {
    (`desired` below) but it places families with a monotone left-to-right
    cursor, so the moment one family cannot sit under its parent without
    touching the family to its left, it is pushed right, and every family after
-   it is pushed further. Measured on a reported screenshot (canvas ≈ 900px,
+   it is pushed further. Measured on the owner's screenshot (canvas ≈ 900px,
    three roots and one new-tree slot, one child and three child slots): the
    root row sat at the within-family pitch, 78 + 68 = 146px, while the child
    row's families were 68 wide with 238px BETWEEN them — a 306px family pitch
@@ -489,8 +489,8 @@ export function labelFor(record, pitch) {
   const budget = perLine * LABEL_LINES
   /* The total budget is not enough: "Coordinator 1" fits 14 chars over two
      lines, but the single word "Coordinator" does not fit EITHER line, so
-     the renderer broke it mid-word — "Coordinat / or 1" (found in a
-     walkthrough). A name is accepted whole only when its longest word also
+     the renderer broke it mid-word — "Coordinat / or 1" (owner walkthrough,
+     iteration 6). A name is accepted whole only when its longest word also
      fits one line. When the name fits the budget but one word cannot fit a
      line, that WORD is end-ellipsised in place ("Coordin… 1") — the name
      stays a name, the full text rides in the hover title, and nothing is
@@ -674,7 +674,7 @@ export function layoutTree({ nodes = [], edges = [], W = 800, H = 600, spacious 
        edge (the CSS `top: calc(100% + 7px)` — the same 7 the graph's
        _labelBox counts). Reserving only the box budgeted zero air and left
        the stack ~7px into the next circle's space whenever rows ran tight,
-       a constant sliver of the overlap that keeps being reported. */
+       a constant sliver of the overlap the owner keeps photographing. */
     const LABEL_CLEARANCE = LABEL_STACK + 7
     const tallestPair = (radii) => {
       const byTier = tierKeys.map(key =>
@@ -810,8 +810,8 @@ export const TREE_ROLE_RADII = ROLE_RADII
 
 /* HOW FAR A NODE BEING DRAGGED MAY TRAVEL VERTICALLY.
  *
- * THE DEFECT THIS ARITHMETIC EXISTS FOR (2026-08-18): nodes could no longer be
- * dragged and dropped onto the new bubbles. The live drag was clamped
+ * THE DEFECT THIS ARITHMETIC EXISTS FOR (owner, 2026-08-18): "you cant drag
+ * and drop the nodes onto the new bubbles anymore." The live drag was clamped
  * to the node's RANK CORRIDOR -- half the pitch to each neighbouring row --
  * and every empty slot on the canvas is in a different row from the node you
  * would drag onto it. Contact needs about 77px between centres; half a pitch

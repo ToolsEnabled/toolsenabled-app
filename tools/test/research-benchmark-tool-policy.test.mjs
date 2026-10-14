@@ -18,9 +18,9 @@ import { endpointStudy, FIXED_NOW } from './fixtures/research-benchmark-endpoint
 //
 //   canonical(condition.collection) // A declaration is not a receipt that the adapter enforced it.
 //
-// Nothing acted on it. The measured consequence: in an apparatus-development run the
+// Nothing acted on it. The measured consequence is on the board: at project 5b6ed8d2 the
 // claude-cli condition was declared tool-free, the adapter passed a flag that disables
-// nothing, and the model wrote and executed a file on the host during a trial.
+// nothing, and the model wrote and executed a file on the owner's machine during a trial.
 // The tool count the adapter reports is already measured (USAGE_FIELDS carries toolCalls);
 // it was simply never compared with the declaration, and an absent count read as silence
 // rather than as "unknown". See R2/REPORT.md sections 00 and 12.
@@ -98,8 +98,8 @@ test('an attempt that reports tool use while declaring none is not an eligible m
 
 // The other half of the decision, pinned so it cannot drift: silence is NOT a violation.
 // Nothing reports toolCalls today, so making an unreported count ineligible would retroactively
-// invalidate every existing project. That is a sweeping change and not made here; it is
-// recorded as unverified and left eligible.
+// invalidate every existing project including the efaa64a2 run of record. That is a sweeping
+// change and not this lane's to make; it is recorded as unverified and left eligible.
 test('an unreported tool count leaves the attempt eligible, recorded as unverified', () => {
   const seen = observe(controls([]), { usage: {} })
   assert.equal(seen.toolPolicy.agreement, 'unverified')
@@ -210,7 +210,7 @@ test('a condition that declares no tools has its applied policy reported beside 
 
 // --- the envelope that was actually sent ---------------------------------------------
 // Item 5 asks for "the canonical request envelope actually sent". Retained response files
-// carry only { attempt, projectSha256, response, trialId } (an earlier measurement, which was
+// carry only { attempt, projectSha256, response, trialId } (Worker 8's measurement, which I
 // reproduced), so the report rebuilt the envelope and labelled it a reconstruction. The
 // runner never built one at all: it handed the adapter {project, condition, task, trial,
 // attempt} and each adapter built its own. cli.mjs already accepts args.request and only

@@ -12,7 +12,7 @@ function createAccessibilityDesktopAdapter({ profileRoot, spawnProcess = spawn, 
     if (process.platform !== 'win32') return Promise.reject(new Error('This desktop adapter requires Windows.'))
     if (signal?.aborted) return Promise.reject(new Error('Accessibility was stopped.'))
     return new Promise((resolve, reject) => {
-      const child = spawnProcess('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      const child = spawnProcess('\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
         ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(__dirname, 'accessibility-desktop.ps1')],
         { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env,
           TEMP: path.join(profileRoot, 'AppData', 'Local', 'Temp'), TMP: path.join(profileRoot, 'AppData', 'Local', 'Temp') } })

@@ -1,7 +1,7 @@
 /* THE READABILITY GATE, AND THE PROOF THAT IT IS STILL LOOKING AT ANYTHING.
  *
- * The finding: the wording was dense, not easy to consume, and not friendly for
- * users. tools/check-plain-language.mjs is the gate that answers it. This suite
+ * The owner: "the wording is dense and not easy to consume or friendly for
+ * users." tools/check-plain-language.mjs is the gate that answers it. This suite
  * is what stops the gate from quietly becoming a no-op, which is the failure
  * mode every scanner in this repository has been bitten by at least once:
  *

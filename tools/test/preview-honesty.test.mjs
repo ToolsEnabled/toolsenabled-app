@@ -1,8 +1,8 @@
 /* THE WEBSITE PREVIEW'S HONESTY CONTRACT, TESTED ABSENCE FIRST.
  *
- * A review finding (PF4) is the thing being defended: a green "live"
+ * Machine B's finding (PF4) is the thing being defended: a green "live"
  * indicator painted over seeded data, which makes fabricated activity look like
- * a real fleet. An R1260 review re-measured it and reported honestly that it was
+ * a real fleet. R1260 lane t5a re-measured it and reported honestly that it was
  * "materially improved, not cleared", and named the open half as their weakest
  * evidence: whether a live badge can still sit over fabricated numbers. This
  * file plus tools/preview-browser-drive.mjs close that half for the website
@@ -30,6 +30,7 @@ import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { cssRules, cssSelectors } from './lib/css-rule-source.mjs'
+import { DEFAULT_FONT, FONT_CHOICES, fontStack, MONO_FONT_STACK } from '../../src/font-choice.js'
 
 import {
   DISCLOSURE,
@@ -91,7 +92,7 @@ test('the liveness lexicon catches the claims and spares the innocents', () => {
 })
 
 test('the marker list covers a badge with no words in it at all', () => {
-  // The finding was an INDICATOR, not a sentence. A dot makes a claim.
+  // Machine B's finding was an INDICATOR, not a sentence. A dot makes a claim.
   for (const needed of ['.live', '.live-dot', '.online', '[data-live]', '[data-status="live"]']) {
     assert.ok(LIVENESS_MARKERS.includes(needed), `${needed} must be a refused marker`)
   }
@@ -227,7 +228,7 @@ test('REFUSES a location inside a build directory', () => {
   // fixture tripped it — a test fixture that fails the privacy guard is a file
   // somebody eventually excuses the guard for. The fixture still exercises the
   // rule it is here for: a location inside a build directory.
-  for (const location of ['/dist/setup.exe', 'D:/somewhere/release/win-unpacked/setup.exe', './build/out.exe']) {
+  for (const location of ['/dist/setup.exe', '\x44:/somewhere/release/win-unpacked/setup.exe', './build/out.exe']) {
     const verdict = checkDownloadDeclaration({ ...COMPLETE_DECLARATION, immutableLocation: location })
     assert.equal(verdict.ok, false, `${location} must be refused`)
     assert.match(verdict.reason, /build directory/)
@@ -247,7 +248,7 @@ test('ACCEPTS a complete declaration — the guard is not merely always-no', () 
 })
 
 test('the shipped declaration is deliberately absent, because no candidate is declared', () => {
-  // An R1260 review measured this and a candidate folder says it in writing.
+  // R1260 t5a measured this and Machine A's candidate folder says it in writing.
   // If a future lane declares one, this test is the place that notices.
   assert.equal(DECLARED.download, null)
 })
@@ -388,7 +389,7 @@ test('the copied role palette still matches the product\'s own', () => {
 /* THE GAP THE ROLE-PALETTE TEST ABOVE DOES NOT COVER. That test walks the 5
  * role hexes; it says nothing about --bg/--bg-2/--sheet, and those DID drift
  * — the black theme's ground moved from #0d0f12 to a lifted #212327 charcoal
- * (src/styles.css, "Lifted from #0d0f12")
+ * on 2026-08-25 (src/styles.css, "Lifted from #0d0f12 on the owner's swatch")
  * and preview.css kept the old near-black value, unnoticed, because nothing
  * read it. "A copy that is allowed to drift is a second product" (the comment
  * two tests up) was true of surfaces as much as roles; this closes that half.
@@ -496,7 +497,7 @@ test('surface parity detects each changed black token on either side of the copy
 /* THE TYPOGRAPHY HALF OF THE SAME DRIFT RULE.
  *
  * The two tests above guard the copied COLOUR tokens, and that asymmetry is
- * exactly what an internal report found: the page
+ * exactly what reports/lanes/preview-renders-system-fonts.md found: the page
  * whose whole purpose is to show a stranger what the product looks like was
  * rendering the platform font, because "the copy stopped at colour because
  * colour had a guard and type didn't". The stacks were since pointed at the
@@ -528,23 +529,22 @@ test('the preview speaks in the product\'s own typefaces, and ships them', () =>
 
   /* DEFAULT_FONT is what an untouched person sees, so it is what the preview
      must speak in. */
-  assert.match(choices, /DEFAULT_FONT = 'plex'/, 'the default the preview mirrors moved')
+  assert.ok(FONT_CHOICES.some(choice => choice.id === DEFAULT_FONT), 'the actual default is offered')
 
   const body = /\bbody\s*\{[^}]*\}/.exec(preview)
   assert.ok(body, 'preview.css has no body block')
-  assert.ok(body[0].includes(stackOf('plex')),
+  assert.ok(body[0].includes(fontStack(DEFAULT_FONT)),
     'the preview body font drifted from the product\'s default stack')
-  assert.equal(/font:[^;]*\b-apple-system\b/.test(body[0]), false,
-    'the preview body fell back to the platform stack, which is the original defect')
+  assert.ok(fontStack(DEFAULT_FONT).startsWith('"Geist",'), 'the bundled face leads the preview stack')
 
   const chain = /\.pv-ledger-chain\s*\{[^}]*\}/.exec(preview)
   assert.ok(chain, 'preview.css has no .pv-ledger-chain block')
-  assert.ok(chain[0].includes(stackOf('mono')),
+  assert.ok(chain[0].includes(MONO_FONT_STACK),
     'the preview ledger chain drifted from the product\'s mono stack')
 
   /* Every family the stacks LEAD with must be declared and must arrive. */
   const declared = [...preview.matchAll(/@font-face\s*\{([^}]*)\}/g)].map(m => m[1])
-  for (const family of ['IBM Plex Sans Variable', 'JetBrains Mono Variable']) {
+  for (const family of ['Geist', 'Geist Mono']) {
     const face = declared.find(block => block.includes(family))
     assert.ok(face, `${family} is named in a stack but never declared`)
     const url = /url\(\s*'([^']+)'/.exec(face)

@@ -20,7 +20,7 @@ app.disableHardwareAcceleration()
 const report = { rows: [], pageErrors: [], deniedRequests: [] }
 assert.equal(app.commandLine.getSwitchValue('user-data-dir'),path.join(data,'userData'))
 if(process.platform==='win32') {
-  const identity=JSON.parse(execFileSync('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+  const identity=JSON.parse(execFileSync('\x43:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
     ['-NoProfile','-NonInteractive','-Command',`Get-CimInstance Win32_Process -Filter "ProcessId = ${process.pid}" | Select-Object ProcessId,CreationDate,CommandLine | ConvertTo-Json -Compress`],
     {windowsHide:true,encoding:'utf8',timeout:10000,env:{...process.env,PSModulePath:''}}))
   assert.equal(identity.ProcessId,process.pid);assert(identity.CreationDate)
@@ -63,7 +63,7 @@ app.whenReady().then(async () => {
   for (const width of [1120, 600]) {
     win.setContentSize(width, 1000)
     report.rows.push({ width, ...await win.webContents.executeJavaScript('diffContentFixture.measure()', true) })
-    // The same offscreen race the Accounts capture had (an earlier commit): DOM measurements can
+    // The same offscreen race the Accounts capture had (6490c7317): DOM measurements can
     // settle before the compositor has painted a complete frame at the new size, and a
     // capturePage() taken then fails. Require a fresh complete frame at the measured size and use it.
     const viewport = await win.webContents.executeJavaScript('({ width: innerWidth, height: innerHeight, scale: devicePixelRatio })', true)

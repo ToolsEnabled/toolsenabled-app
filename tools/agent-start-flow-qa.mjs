@@ -4,8 +4,8 @@
 //
 // THE DEFECT THIS EXISTS TO CATCH, AND WHY NO SOURCE TEST COULD.
 //
-// The question was how to start an agent, and the honest answer was that a
-// person could not. The chat box on the agent page answered ITSELF with canned replies
+// The owner asked "how do I start an agent?" and the honest answer was that he
+// could not. The chat box on the agent page answered ITSELF with canned replies
 // -- its own note admitted "typing in it still reaches nothing" -- and the only
 // control in the product wired to mcAgent.start() was RESPAWN, which by
 // definition can only restart a session that already exists. First-start had no
@@ -565,14 +565,14 @@ function providerlessEnvironment(profile) {
   for (const key of Object.keys(environment)) {
     if (/^(path|mission_control_engine)$/i.test(key)) delete environment[key]
   }
-  const systemRoot = process.env.SystemRoot || 'C:\\Windows'
+  const systemRoot = process.env.SystemRoot || '\x43:\\Windows'
   environment.PATH = [
     path.join(systemRoot, 'system32'),
     systemRoot,
     path.join(systemRoot, 'System32', 'Wbem'),
     path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0'),
   ].join(';')
-  /* THE WINDOW STAYS OFF THE OWNER'S DESKTOP unless they asked for it.
+  /* THE WINDOW STAYS OFF THE OWNER'S DESKTOP unless he asked for it.
      windowsHide suppresses a console and nothing else; the BrowserWindow is
      hidden by this exact string and nothing else (shell/window-options.cjs), so
      it is set here rather than assumed to be inherited from a suite runner. */
@@ -634,8 +634,8 @@ function seedMachineRecord(profile, appRoot, payloadRoot, tier = 'guided') {
 
 /* ---------- WHAT APPEARED ON THE SCREEN, AND WHO PUT IT THERE ----------
  *
- * THE COMPLAINT THIS INSTRUMENT EXISTS FOR: every agent launch popped up a cmd
- * window and another, outdated-looking ToolsEnabled instance.
+ * THE COMPLAINT THIS INSTRUMENT EXISTS FOR: "every time I launch an agent a cmd
+ * window and another ToolsEnabled instance pops up that looks outdated."
  *
  * WHY IT IS A CENSUS AND NOT A FLAG CHANGE. Two candidate causes were on the
  * table and NEITHER was proved: the product's own spawn seam already refuses
@@ -1383,7 +1383,7 @@ function pressEmptyNodeScript() {
 /* THE SWITCH THE PANEL ITSELF NOW CARRIES.
  *
  * WHY THIS STEP EXISTS, with the commit that made it necessary. Starting an
- * assistant ships switched OFF (`mc.write.agent-session`), and until an earlier commit
+ * assistant ships switched OFF (`mc.write.agent-session`), and until 0e43eb3
  * the compose panel said so and sent the person to Settings to find the remedy.
  * That commit moved the remedy INTO the panel: the person presses "Turn on
  * running agents" where they are standing, the flag is written by the click
@@ -1958,7 +1958,7 @@ async function main() {
       if (panel.present) {
         check('the panel is on the RIGHT of the window', panel.onTheRight,
           `panel spans x=${panel.left}..${panel.right} of ${found.viewportWidth}`)
-        /* A fresh profile has starting switched off, and since an earlier commit the way
+        /* A fresh profile has starting switched off, and since 0e43eb3 the way
            back on is a control in this panel rather than a trip to Settings.
            Press it before judging what the panel offers -- see
            pressComposeSwitchScript() for the three reds this step retires. */

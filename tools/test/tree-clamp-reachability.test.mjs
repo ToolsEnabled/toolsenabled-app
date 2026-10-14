@@ -1,9 +1,9 @@
-/* CAN THE CLAMP STRAND A NODE? T42 item 32, the question behind it: the canvas
- * would not pan. A check showed the reported symptom is
+/* CAN THE CLAMP STRAND A NODE? T42 item 32, the owner's question behind it:
+ * "the canvas will not pan". Builder (4a1a39df) showed the reported symptom is
  * the pan clamp sitting at its bound, not a dead canvas — but a bound is only
- * innocent if everything drawn stays reachable from inside it. The question:
- * on a real saved forest, can any node be off screen and unreachable by pan,
- * in either mode?
+ * innocent if everything drawn stays reachable from inside it. Controller,
+ * 2026-09-15: on the owner's REAL saved forest, can any node be off screen and
+ * unreachable by pan, in either mode?
  *
  * So this asks the real _clampPan (not a stub — the sibling
  * tree-drag-edge-pan.test.mjs stubs it deliberately, this one must not) for the
@@ -11,9 +11,11 @@
  * 46-node / four-tree forest against it. RED here means the clamp strands a
  * node and the clamp is the defect.
  *
- * Fixture: a read-only export of a persisted saved forest, with its ids
- * replaced. It is a structural copy: ids, parents, roles and tree groups only.
- * No live window was opened to produce or to use it. */
+ * Fixture: Manager 2's read-only export of the owner's persisted saved forest,
+ * sha256 93268367939159d65dafa6bdc42c81206d3f595a11950c20bc86661f1f5b0010,
+ * receipt Temp\te-m2-t72-evidence-20260915\LIVE-SAVED-FOREST-RECEIPT.md. It is
+ * a structural copy: ids, parents, roles and tree groups only. No LIVE window
+ * was opened to produce or to use it. */
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -154,7 +156,7 @@ test('a record excluded from the visible set is excluded from the bound, so it m
 
 /* A NUDGED NODE IS STILL REACHABLE. The tests above lay every node on its
  * layout slot, but the case that produced the original doubt was a node the
- * person had DRAGGED: _rightReach lets a nudge travel a further canvas width,
+ * owner had DRAGGED: _rightReach lets a nudge travel a further canvas width,
  * and its comment promises "the pan bounds follow the drawn content
  * (_contentBox), so a node out there stays reachable". That promise is what is
  * checked here, because it is the one that keeps a dragged-away node from

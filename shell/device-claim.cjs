@@ -50,7 +50,8 @@
  * must agree are two allowlists that will eventually differ, and the one that
  * drifts wider is the one nobody looks at. The facade credentials are simply
  * not passed -- a claim is not an agent call and has no business holding the
- * per-boot bearer.
+ * per-boot bearer. Only poll invocations add their held claim token explicitly
+ * to this child's environment, outside argv, on both Linux and Windows.
  *
  * THE CHILD IS BOUNDED. A claim CLI that never exits -- a socket that hangs, a
  * PowerShell waiting on something -- must not wedge the shell behind an IPC
@@ -87,6 +88,8 @@ const ADMIN_ERROR_CODES = new Set(['ADMIN_INPUT_INVALID', 'ADMIN_IDENTITY_ABSENT
 const ADMIN_ENTRY = path.join('tools', 'online-fra-admin-cli.js')
 
 const CLAIM_ENTRY = path.join('tools', 'online-fra-claim-cli.js')
+// A private per-invocation environment handoff; never inherited from the GUI.
+const POLL_TOKEN_ENV = 'TOOLSENABLED_CLAIM_POLL_TOKEN'
 
 /* THE CLOSED SET OF REFUSAL CODES. A renderer branches on these, so they are a
    contract: bounded, stable, and free of anything derived from a message. The
@@ -413,7 +416,7 @@ function createDeviceClaim({
     return { ok: true, entry, root }
   }
 
-  function childEnvironment() {
+  function childEnvironment(pollToken) {
     const environment = relayChildEnvironment(env, { stateRoot: resolvedStateRoot })
     /* Set explicitly rather than inherited. The shared allowlist deliberately
        does not carry this name, so a developer's ambient value cannot point a
@@ -421,6 +424,7 @@ function createDeviceClaim({
     if (typeof accountOrigin === 'string' && accountOrigin) {
       environment.TOOLSENABLED_ACCOUNT_ORIGIN = accountOrigin
     }
+    if (pollToken !== undefined) environment[POLL_TOKEN_ENV] = pollToken
     return environment
   }
 
@@ -428,7 +432,7 @@ function createDeviceClaim({
      Resolves; never rejects. Every caller below is behind an IPC handler, and
      an IPC handler that throws hands the renderer an Error carrying whatever
      text happened to be in it. */
-  function runVerb(args, timeoutMs, { input, entry = CLAIM_ENTRY, administrative = false } = {}) {
+  function runVerb(args, timeoutMs, { input, pollToken, entry = CLAIM_ENTRY, administrative = false } = {}) {
     if (inFlight) return Promise.resolve(refusal(CODES.BUSY))
     const resolved = payloadEntry(entry)
     if (!resolved.ok) return Promise.resolve({ ...refusal(resolved.code), mutationOutcome: 'NOT_ATTEMPTED' })
@@ -437,7 +441,7 @@ function createDeviceClaim({
     try {
       owned = spawnOwned({ spawn, command: execPath, args: [resolved.entry, ...args],
         payloadRoot: resolved.root, stateRoot: resolvedStateRoot,
-        environment: childEnvironment(), input, cleanupTimeoutMs, onOwnershipStart, onOwnershipComplete })
+        environment: childEnvironment(pollToken), input, cleanupTimeoutMs, onOwnershipStart, onOwnershipComplete })
     } catch {
       return Promise.resolve({ ...refusal(CODES.SPAWN_FAILED), mutationOutcome: 'NOT_ATTEMPTED' })
     }
@@ -678,8 +682,8 @@ function createDeviceClaim({
            it. */
         pending.stage = accept ? 'accepting' : 'declining'
         const result = await runVerb([
-          'poll', '--token', pending.pollToken, '--accept', accept ? 'true' : 'false',
-        ], networkTimeoutMs)
+          'poll', '--token-env', POLL_TOKEN_ENV, '--accept', accept ? 'true' : 'false',
+        ], networkTimeoutMs, { pollToken: pending.pollToken })
         if (invalidated(epoch) || pending !== claimRecord) return refusal(CODES.INVALIDATED)
         if (!result.ok) {
           /* A failed accept is ambiguous once the request was on the wire. The
@@ -769,7 +773,8 @@ function createDeviceClaim({
          say the same thing (404 -> DEVICE_CLAIM_GONE) and this saves a spawn,
          but the reason it is here is that the token is dead either way, and a
          dead token must not outlive the claim it belonged to. */
-      const result = await runVerb(['poll', '--token', pending.pollToken], networkTimeoutMs)
+      const result = await runVerb(['poll', '--token-env', POLL_TOKEN_ENV], networkTimeoutMs,
+        { pollToken: pending.pollToken })
       if (invalidated(epoch) || pending !== claimRecord) return refusal(CODES.INVALIDATED)
       if (!result.ok) {
         /* A claim the service says is gone can never be collected, so the token

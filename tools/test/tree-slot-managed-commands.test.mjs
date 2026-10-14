@@ -2,12 +2,13 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { register } from 'node:module'
 register('./lib/t542-runtime-store-loader.mjs', import.meta.url)
-import { FROM_TIER, TO_TIER, runningCircle, busyCircle, sharedBridge, waitFor, startedRequests } from './lib/t158-switch-model-harness.mjs'
+import { FROM_TIER, TO_TIER, runningCircle, busyCircle, sharedBridge, waitFor, startedRequests, pressChosenContinuation, CROSS_ROW } from './lib/t158-switch-model-harness.mjs'
 import { continuationRouteFor } from '../../src/switch-and-continue.js'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { canonicalRootForTests } from '../canonical-root.mjs'
 import { LAUNCH_TIERS } from '../../src/orchestration-controls.js'
+import { PERSON_ONLY_SLOT_REASON } from '../../src/managed-slot-choice.js'
 import { sharedOrgWindow, liveCase } from './lib/t158-switch-model-harness.mjs'
 const require = createRequire(import.meta.url)
 const engineRoot = canonicalRootForTests({ warn: () => {} })
@@ -118,37 +119,48 @@ function managedCommand(ctx, action, choice) {
     nodeId: ctx.NODE_ID, expectedSessionId: store.getNode(ctx.NODE_ID).sessionId,
     parentSessionId, action, choice }
 }
-test('actual managed account command returns pending while busy then saves the same slot choice after admission', async t => {
+/* 1.0.50 REVIEW, ACCOUNTS A. This test used to show a Manager moving its busy
+   worker onto the person's 'backup' account at the next turn boundary. That is
+   the automatic switching 1.0.50 removed: an agent's account command is now
+   refused by the view itself (as well as by the main process, below), and
+   nothing moves when the busy turn ends. The person's own Switch and continue
+   (the mounted account choice tests above) and the owner's coordinator spool
+   (the stopped-slot test below) still choose an account. */
+test('an agent account command is refused by the view and nothing moves when the busy turn ends', async t => {
   const ctx = await busyCircle(t, { replacementStart: async (request, sessionId) => ({ ok: true, sessionId, account: request.treeAccount }) },
     { initialAccount: 'primary' })
   const switches = catalog(t)
   const command = managedCommand(ctx, 'set-node-account', 'backup')
   const answer = await ctx.view.runTreeNodeCommand(command)
-  assert.equal(answer.ok, true, answer.reason)
-  assert.equal(answer.status, 'pending')
-  assert.equal(answer.pending.when, 'turn-boundary')
-  assert.equal(answer.applied.account, 'primary')
-  assert.equal(answer.requested.account, 'backup')
+  assert.equal(answer.ok, false, 'an agent cannot choose another account for its worker')
+  assert.equal(answer.status, 'refused')
+  assert.equal(answer.code, 'TREE_CONFIGURATION_REFUSED')
+  assert.equal(answer.reason, PERSON_ONLY_SLOT_REASON)
   assert.equal(startedRequests(ctx).length, 0)
   ctx.emit({ sessionId: ctx.OLD_SESSION, event: { type: 'turn_completed', status: 'completed', turnId: 'turn-busy' } })
-  await waitFor(() => ctx.readNode().sessionId === ctx.NEW_SESSION && ctx.readNode().accountChoice?.name === 'backup', 'saved account choice after admission')
+  await new Promise(resolve => setTimeout(resolve, 100))
+  assert.equal(startedRequests(ctx).length, 0, 'no session was started on another account at the turn boundary')
   assert.equal(ctx.readNode().id, ctx.NODE_ID)
-  assert.equal(ctx.readNode().parentId, ctx.NODE_ID + '-manager')
-  assert.deepEqual(ctx.readNode().accountChoice, { provider: 'claude', name: 'backup' })
-  assert.equal(startedRequests(ctx)[0].request.treeAccount, 'backup')
+  assert.equal(ctx.readNode().sessionId, ctx.OLD_SESSION)
+  assert.notEqual(ctx.readNode().accountChoice?.name, 'backup', 'the refused account was not saved for the next start either')
   assert.equal(switches(), 0)
 })
-test('actual managed provider command admits the selected model in the same slot without borrowing an old account', async t => {
+test('an agent provider command is refused; the person can still continue the same slot elsewhere', async t => {
   const ctx = await runningCircle(t, { replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) },
     { initialAccount: 'primary' })
   catalog(t)
   const answer = await ctx.view.runTreeNodeCommand(managedCommand(ctx, 'set-node-provider', 'codex'))
-  assert.equal(answer.ok, true, answer.reason)
-  assert.equal(answer.status, 'applied')
-  assert.equal(answer.applied.provider, 'codex')
+  assert.equal(answer.ok, false, 'a provider-only command cannot choose an account')
+  assert.equal(answer.reason, PERSON_ONLY_SLOT_REASON, 'an agent cannot move its worker to another provider account either')
+  assert.equal(startedRequests(ctx).length, 0)
+  assert.equal(ctx.readNode().tier, FROM_TIER)
+  assert.equal(ctx.readNode().sessionId, ctx.OLD_SESSION)
+  const choice = await pressChosenContinuation(ctx, CROSS_ROW)
+  await waitFor(() => ctx.readNode().sessionId === ctx.NEW_SESSION, 'explicit account continuation')
   assert.equal(ctx.readNode().id, ctx.NODE_ID)
   assert.equal(ctx.readNode().tier, TO_TIER)
-  assert.equal(startedRequests(ctx)[0].request.treeAccount, undefined)
+  assert.equal(startedRequests(ctx)[0].request.treeAccount, choice.account)
+  assert.notEqual(choice.account, 'primary', 'the source provider account is never borrowed')
 })
 
 function actualFunction(ctx, t, field, value, { grants = ['agent.set_' + field], nodeId = ctx.NODE_ID } = {}) {
@@ -225,6 +237,20 @@ test('separately enabled role function saves the role and truthfully keeps the r
   assert.equal(startedRequests(ctx).length, 0)
   assert.equal(ctx.calls.filter(row => row.call === 'close' || row.call === 'interrupt').length, 0)
 })
+/* 1.0.50 REVIEW, ACCOUNTS A, through the real tool. A Manager that holds the
+   agent.set_account grant calls it for its worker: the engine dispatches it, the
+   main-process authority refuses it, and the worker keeps its account. */
+test('actual account function is refused for an agent holding the grant, and the worker keeps its account', async t => {
+  const ctx = await runningCircle(t, { replacementStart: async (request, sessionId) => ({ ok: true, sessionId, account: request.treeAccount }) },
+    { initialAccount: 'primary' })
+  const switches = catalog(t)
+  await assert.rejects(actualFunction(ctx, t, 'account', 'backup'),
+    { code: 'TREE_CONFIGURATION_REFUSED', message: /^Only the person can move an agent to another account or provider\./ })
+  assert.equal(startedRequests(ctx).length, 0)
+  assert.equal(ctx.readNode().sessionId, ctx.OLD_SESSION)
+  assert.notEqual(ctx.readNode().accountChoice?.name, 'backup')
+  assert.equal(switches(), 0)
+})
 test('user-disabled functions refuse before changing a mounted slot', async t => {
   const ctx = await runningCircle(t, { replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) })
   await assert.rejects(actualFunction(ctx, t, 'account', 'backup', { grants: [] }), { code: 'TOOL_NOT_ENABLED' })
@@ -237,10 +263,10 @@ test('actual configuration function refuses its own parent and unsupported provi
   managedCommand(ctx, 'set-node-provider', 'codex')
   await assert.rejects(actualFunction(ctx, t, 'provider', 'codex', { nodeId: ctx.NODE_ID + '-manager' }),
     { code: 'TREE_CONFIGURATION_REFUSED' })
-  const refused = await actualFunction(ctx, t, 'provider', 'not-a-provider')
-  assert.equal(refused.ok, false)
-  assert.equal(refused.status, 'refused')
-  assert.match(refused.reason, /provider/i)
+  /* Since 1.0.50 every provider change an agent asks for is refused by the
+     main-process authority, before its value is even looked at. */
+  await assert.rejects(actualFunction(ctx, t, 'provider', 'not-a-provider'),
+    { code: 'TREE_CONFIGURATION_REFUSED', message: /provider/i })
   assert.equal(startedRequests(ctx).length, 0)
 })
 
@@ -302,16 +328,16 @@ test('stopped slot account preference persists and Resume uses it without alloca
   assert.equal(switches(), 0)
 })
 
-test('applied provider result reads the admitted destination account instead of the request default', async t => {
+test('actual provider function refuses default account substitution and keeps the current provider', async t => {
   const ctx = await runningCircle(t, { replacementStart: async (_, sessionId) => ({ ok: true, sessionId, account: 'destination-account' }) },
     { initialAccount: 'primary' })
   catalog(t)
-  const answer = await actualFunction(ctx, t, 'provider', 'codex')
-  assert.equal(answer.ok, true, answer.reason)
-  assert.equal(answer.status, 'applied')
-  assert.equal(answer.requested.account, null, 'provider request leaves native default selection to admission')
-  assert.equal(answer.applied.account, 'destination-account', 'readback names the account actually admitted')
-  assert.equal(answer.applied.provider, 'codex')
+  await assert.rejects(actualFunction(ctx, t, 'provider', 'codex'),
+    { code: 'TREE_CONFIGURATION_REFUSED', message: /^Only the person can move an agent to another account or provider\./ },
+    'a provider-only function cannot authorize a destination account')
+  assert.equal(startedRequests(ctx).length, 0, 'native default selection is never attempted')
+  assert.equal(ctx.readNode().sessionId, ctx.OLD_SESSION)
+  assert.equal(ctx.readNode().tier, FROM_TIER)
 })
 
 test('mounted direct-slot counts retain stopped children and distinguish them from idle sessions', async t => {

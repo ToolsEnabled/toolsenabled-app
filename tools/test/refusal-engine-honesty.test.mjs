@@ -108,7 +108,7 @@ function refusalSentences() {
      src/views/computers.js -- TREE_ENGINE_LABEL = 'Codex' and a note saying
      agents started from a tree run on Codex -- which is the same claim as the
      four above, wrong in the same way, and unreachable from here because a const
-     inside a view is not importable. It is now DERIVED and exported (an earlier commit),
+     inside a view is not importable. It is now DERIVED and exported (8a40242),
      so this walk can see it.
 
      THESE ARE FUNCTIONS OF THE PROVIDER WORDS, NOT FIXED SENTENCES, so calling
@@ -211,7 +211,7 @@ test('the tree Engine row is really being inspected, not air', () => {
 })
 
 test('the detector fires on the Engine row too, in the shape that string used to take', () => {
-  /* The row's own history is the control. Before an earlier commit it read "Agents you
+  /* The row's own history is the control. Before 8a40242 it read "Agents you
      start from this tree run on Codex ... the Claude choices ... say so when
      they cannot start yet", on a build that starts Claude. The note is a
      function now, so the way it could go wrong again is a fixed absence claim

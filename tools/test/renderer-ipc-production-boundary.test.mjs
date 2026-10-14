@@ -138,7 +138,7 @@ test('bridge proof and endpoint refuse an untrusted frame before waiting or disc
 /* THIS SANDBOX IS A REAL SLICE OF shell/main.cjs, so it acquires whatever the
  * product puts between those two markers -- and that is the point: a stand-in
  * narrow enough to miss a new statement would stop measuring the real file.
- * MEASURED 2026-09-07 at an earlier app commit: the main-lag work inserted
+ * MEASURED 2026-09-07 at app 4ba0ceac: the main-lag work inserted
  * `createMainLagMonitor(...)` and `mainLagMonitor.instrument(ipcMain)` into
  * this region, the sandbox had no such name, and the whole check died on
  * "createMainLagMonitor is not defined" -- an accessibility SENDER check
@@ -165,7 +165,7 @@ test('each accessibility transport checks its sender before touching the owner-b
       instrument: bus => instrumented.push({ bus, channelsRegisteredSoFar: handlers.size }),
       start: () => {},
     }),
-    /* MEASURED 2026-09-17 at an earlier app commit: T180's durable exit record inserted
+    /* MEASURED 2026-09-17 at app 5c7798a3: T180's durable exit record inserted
        `createExitRecordWriter(...)` into this same region and the whole sender
        check died on "createExitRecordWriter is not defined" -- the third time a
        new collaborator in this region has been reported as a failure of the

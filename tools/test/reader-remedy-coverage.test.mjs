@@ -151,7 +151,7 @@ const unavailableTextRaw = { ...UNAVAILABLE_TEXT };
  * as reachable over the relay as the success path is. */
 const ledgerNotices = Object.freeze({ LEDGER_UNREADABLE: LEDGER_UNREADABLE.body, QUESTIONS_UNREADABLE: QUESTIONS_UNREADABLE.body, KIND_UNREADABLE: KIND_UNREADABLE.body });
 
-/* THE NINTH SOURCE: two one-off literals composed inline rather than kept in
+/* THE NINTH SOURCE: one-off literals composed inline rather than kept in
  * a table, found by tools/lib/desk-phrase-scan.mjs's whole-tree scan rather
  * than by reading call sites -- exactly the seventh-source risk this file's
  * own header warns about, arriving from a direction none of the eight named
@@ -185,6 +185,27 @@ const oneOffLiterals = Object.freeze({
   // vocabulary); collapsed onto the twin table 2026-08-25, and this entry is
   // what keeps the key live so the anti-drift half can hold it shut.
   computersPage_startNeedsApp: 'Starting an agent needs the installed ToolsEnabled application. This page is a preview of it, so nothing here can start one. Open ToolsEnabled on your computer to grow a real tree.',
+  // src/views/settings.js SETTINGS row uninstall_data .desc, the sentence the
+  // row "When I uninstall ToolsEnabled" renders through readerSentence(setting.desc)
+  // (rowMessage()), so a relay reader of the Settings page meets it exactly as
+  // readerRemedy returns it. It carries "reinstall", so the twin in
+  // src/refusal-copy.js is required (tools/lib/desk-phrase-scan.mjs walks
+  // src/ and fails without one) -- but no table above ever reached this
+  // string, so the anti-drift half below read that twin's key as orphaned the
+  // moment it was added (1.0.50 Gate A, reader-remedy-coverage #5). The same
+  // byte-for-byte rule as the guide lede above: this literal, the `+`-joined
+  // desc in src/views/settings.js and the REMOTE_TWIN key must all agree.
+  // permission-guidance.test.mjs pins the desc's opening against settings.js;
+  // the scan pins settings.js against the twin key; this entry pins the twin
+  // key against a live sentence, which closes the triangle.
+  // UPDATED for 1.0.50 review #8: the row no longer opens by saying that
+  // uninstalling keeps the data, because the Windows uninstaller may delete it.
+  settingsPage_uninstallRowDesc: 'Uninstalling removes the program. On Windows, the uninstaller then keeps or deletes your saved credentials, '
+    + 'your linked accounts, the signed record of every action taken, your agent history '
+    + 'and your settings. Choose what the Windows uninstaller does with them; kept, they let '
+    + 'a reinstall pick up where you left off. '
+    + 'On Linux, removing the package always keeps them; to delete them, use '
+    + 'Remove this program’s data on the Account page before you uninstall.',
 });
 
 const READER_FACING_TABLES = Object.freeze([
@@ -389,4 +410,21 @@ test('the softer "this computer" class is not growing', () => {
     /\bthis computer\b/i.test(s) && readerRemedy(s, { viaRelay: true }) === s);
   assert.ok(deictic.length <= 37,
     `bare "this computer" remedies with no remote reading rose to ${deictic.length}: ${deictic.map(([c]) => c).join(', ')}`);
+});
+
+test('conversation-binding refusals return a relay reader to the driven computer while keeping the diagnosis and draft', () => {
+  for (const code of ['MC_PREFS_SENDER_REFUSED', 'AGENT_SESSION_BINDING_UNCONFIRMED',
+    'AGENT_SESSION_BINDING_UNAVAILABLE', 'TRANSCRIPT_STORE_UNAVAILABLE', 'TRANSCRIPT_BIND_UNCONFIRMED']) {
+    for (const desk of [UNAVAILABLE_TEXT[code], startRefusalSentence({ ok: false, code }, {})]) {
+      const remote = readerRemedy(desk, { viaRelay: true });
+      assert.ok(desk.endsWith('Return to this computer’s chats and try again.'));
+      assert.equal(remote, desk.replace('Return to this computer’s chats and try again.',
+        'Return to that computer’s chats and try again from here.'));
+      assert.equal(readerRemedy(desk, { viaRelay: false }), desk);
+      assert.match(remote, /draft is kept/);
+    }
+  }
+  const browserFact = 'Your unsent draft is held on this computer.';
+  assert.equal(readerRemedy(browserFact, { viaRelay: true }), browserFact,
+    'a browser-local storage fact must not be rewritten to describe the driven computer');
 });

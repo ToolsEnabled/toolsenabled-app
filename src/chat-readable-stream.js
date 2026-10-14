@@ -9,14 +9,14 @@
 // tree card and any other summarised feed want. Their reader glances at a line
 // that stands in for a whole run, and a half-sentence there reads as the text --
 // 'A complete sentence. Pending' is not a thing anyone meant to say. Withheld
-// at an earlier commit by the hold, MEASURED at an earlier commit once the hold was removed:
+// at ec82f690 by the hold, MEASURED at 3876f46b once the hold was removed:
 // five tests across four suites went red, tree-card-thinking-slot and
 // thinking-transcript-pipeline quoting exactly that shape.
 //
 // THE LIVE REPLY BODY MUST NOT HOLD PROSE, and that is the opposite rule for
 // a good reason. Its reader is watching an answer arrive, so the words a
 // person is waiting for are the words that have arrived. MEASURED at
-// an earlier commit, six cases across four suites when the hold applied here: a reply
+// ec82f690, six cases across four suites when the hold applied here: a reply
 // streamed as 'Streaming ' then 'words' painted an empty bubble
 // (desktop-sessions-renderer); a whole short answer, 'The first response.',
 // painted an empty bubble for its entire live turn because its stop had no
@@ -35,7 +35,7 @@
 // turns those seven assertions red, and the only way green from there is to
 // edit them -- which is the defect, not the fix. Measured, not reasoned: with
 // the hold as the default, chat-readable-chunks goes 1/8 and chat-message-body
-// 4/5, both of which are 8/8 and 5/5 at an earlier commit.
+// 4/5, both of which are 8/8 and 5/5 at 3876f46b.
 //
 // THE THINKING ACTION ROW IS DELIBERATELY NOT CHANGED HERE, and that is a
 // reported conflict rather than an oversight. Two suites drive the SAME
@@ -50,7 +50,7 @@
 //     trailing fragment is NOT shown while the item is live.
 // Both cannot hold. Switching that buffer to the holding rule fixes the
 // pipeline's two assertions and breaks chat-readable-stream's, which is 6/6 at
-// an earlier commit. Deciding which yields is a product call, so it is escalated and
+// 3876f46b. Deciding which yields is a product call, so it is escalated and
 // neither test is touched.
 //
 // A PARTIAL FENCE IS HELD ON BOTH PATHS, and is the one case both agree on:
@@ -95,8 +95,8 @@ function readableEnd(text, { holdUnfinishedProse = false } = {}) {
    * is not being shown, with the row still claiming to be working. The inline
    * holds already bound themselves to INLINE_HOLD_REACH; the table holds did
    * not, so a block that opened with a table row could withhold the whole
-   * block. MEASURED by replaying 400 real replies from a local transcript
-   * store as 8-character deltas and cutting the stream at every delta
+   * block. MEASURED by replaying 400 real replies from the owner's LIVE
+   * transcripts as 8-character deltas and cutting the stream at every delta
    * boundary: 337 withheld arrived text at some point and the worst withheld
    * 327 characters, 8 replies withholding more than one reach. Clamped here the
    * worst case is one reach, and the surface names what is still held.

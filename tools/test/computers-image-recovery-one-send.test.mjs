@@ -67,10 +67,10 @@ for(const scenario of ['accepted','image-only','unknown','newer-draft','owner-ch
  const pendingModelChoices=new Map(),pendingModelDrainHolds=new Set()
  const pendingModelChoice=new Function('pendingModelChoices','notifyNodeStatusListeners',
   functionSource('cancelPendingModelChoice')+'\n'+functionSource('pendingModelChoice')+'\nreturn pendingModelChoice')(pendingModelChoices,()=>{})
- const args={treeStore:store,window:globalThis.window,unsubs,createImageConversation,pendingModelChoice,pendingModelDrainHolds,
+ const args={sessionNodeIds:new Map(),treeStore:store,window:globalThis.window,unsubs,createImageConversation,pendingModelChoice,pendingModelDrainHolds,
   nodeBusy:n=>n.busy,nodeSessionEnded:n=>n.ended,nodeCleanupPending:()=>false,nodeReplacementFlight:{busy:()=>false},
   registerNodeStatusListener:(_id,fn)=>{listeners.add(fn);return()=>listeners.delete(fn)},
-  recoveryPausedNode,
+  recoveryPausedNode,recoveryCoordinator:()=>null,
   sessionModelOverride:new Map([['source','chosen']]),
   resumeNodeSession:async(_node,options)=>{assert.equal(options.deliverQueued,false);assert.equal(options.deferSeed,true);startObserved();await resumeGate;node.sessionId='successor';node.ended=false;node.busy=true;resumedObserved();return true}}
  const factory=new Function(...Object.keys(args),'let destroyed=false;\n'+body+'\nreturn {sendImageIntent,imageConversationFor}')

@@ -12,7 +12,7 @@
  * the wrong half of the chain.
  *
  * MEASURED on the promoted build, 2026-09-16, twice on two Codex tiers
- * (internal report, 52 screenshots): pressing the
+ * (REPORT-OWNERVERIFY-T18-T137-20260916.md, 52 screenshots): pressing the
  * enabled row offering to continue a running Claude circle on a Codex model
  * retired the Claude session FIRST, and the replacement start was THEN refused
  * AGENT_ROLE_BINDING_INVALID. The conversation gained no line and the person
@@ -39,7 +39,7 @@ import { createRequire } from 'node:module'
 import { ownedFixtureTempRoot } from './lib/owned-fixture-temp.mjs'
 import {
   payloadSkip, FROM_TIER, TO_TIER, CROSS_ROW, SAME_ROW,
-  runningCircle, waitFor, pressContinueRow, startedRequests,
+  runningCircle, waitFor, pressChosenContinuation, startedRequests,
 } from './lib/t158-switch-model-harness.mjs'
 
 const require = createRequire(import.meta.url)
@@ -51,7 +51,7 @@ const require = createRequire(import.meta.url)
 test('pressing a cross-provider continuation row starts on the target tier with an authority the host will accept',
   { skip: payloadSkip }, async t => {
   const ctx = await runningCircle(t, { replacementStart: async (request, newSession) => ({ ok: true, sessionId: newSession }) })
-  await pressContinueRow(ctx, CROSS_ROW)
+  await pressChosenContinuation(ctx, CROSS_ROW)
   await waitFor(() => startedRequests(ctx).length === 1, 'the pressed row to start a replacement')
 
   const starts = startedRequests(ctx)
@@ -75,7 +75,7 @@ test('pressing a cross-provider continuation row starts on the target tier with 
 test('the same switch inside one provider still starts and still agrees with its seat',
   { skip: payloadSkip }, async t => {
   const ctx = await runningCircle(t, { replacementStart: async (request, newSession) => ({ ok: true, sessionId: newSession }) })
-  await pressContinueRow(ctx, SAME_ROW)
+  await pressChosenContinuation(ctx, SAME_ROW)
   await waitFor(() => startedRequests(ctx).length === 1, 'the pressed row to start a replacement')
 
   const starts = startedRequests(ctx)
@@ -100,7 +100,7 @@ test('a refused replacement leaves the running session ALIVE and the circle usab
       reason: 'New starts pause at 97% CPU. This agent is queued.' }),
   })
   const before = ctx.readNode()
-  await pressContinueRow(ctx, CROSS_ROW)
+  await pressChosenContinuation(ctx, CROSS_ROW)
   await waitFor(() => startedRequests(ctx).length === 1, 'the refused replacement start to be attempted')
   await waitFor(() => ctx.readNode().statusNote !== before.statusNote, 'the circle to be told what happened')
 
@@ -121,7 +121,7 @@ test('a refused replacement leaves the running session ALIVE and the circle usab
 test('a replacement that starts takes the session over without the renderer closing the old one first',
   { skip: payloadSkip }, async t => {
   const ctx = await runningCircle(t, { replacementStart: async (request, newSession) => ({ ok: true, sessionId: newSession }) })
-  await pressContinueRow(ctx, CROSS_ROW)
+  await pressChosenContinuation(ctx, CROSS_ROW)
   await waitFor(() => ctx.readNode().sessionId === ctx.NEW_SESSION, 'the circle to take over the replacement session')
   await waitFor(() => ctx.calls.some(entry => entry.call === 'send' && entry.sessionId === ctx.NEW_SESSION),
     'the handoff to be sent to the replacement')

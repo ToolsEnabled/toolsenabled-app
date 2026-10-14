@@ -1,6 +1,6 @@
 /* TEAMS — sending one intent to several agents, and what that costs.
  *
- * The feature is controls for how a person's agents work together. The
+ * The owner asked for controls for "how their agents ... work together". The
  * dispatch API sends one brief to one tier and returns one launch receipt. A
  * team is therefore not a new engine concept: it is several dispatches that
  * share a parent, which the engine already understands and already bounds.
@@ -24,7 +24,7 @@
  *
  *    A team here dispatches a LEAD first and nests every other member under its
  *    launch id. That is what makes the engine's own cap engage, and it is also
- *    the honest shape of the thing that was asked for: members that report to
+ *    the honest shape of the thing the owner asked for: members that report to
  *    a lead rather than N unrelated processes that happen to share a brief.
  *
  * WHAT A TEAM DOES NOT DO, said here because the panel must not imply it:
@@ -82,8 +82,8 @@ export const TEAM_IDENTITIES = Object.freeze([
 /* `maxDepth` mirrors capability/src/lib/controller-launch-record.js:50-51.
    `maxFanOut` is FOUR, not the engine's eight: a team's members are real tree
    children under the lead, and the tree seats four under one parent
-   (TREE_BOUNDS.maxChildren in ./fleet-trees.js, the width decision). The
-   engine's MAX_FAN_OUT of eight stays the backstop above it;
+   (TREE_BOUNDS.maxChildren in ./fleet-trees.js, the owner's width decision of
+   2026-09-11). The engine's MAX_FAN_OUT of eight stays the backstop above it;
    tools/test/agent-teams.test.mjs holds this at or below that and equal to
    the tree's width.
    `maxConcurrent` is NOT from that file: it is the seat count above, which is

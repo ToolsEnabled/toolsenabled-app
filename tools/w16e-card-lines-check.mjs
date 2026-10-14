@@ -1,18 +1,18 @@
 #!/usr/bin/env node
-/* THE BEHAVIOUR TEST for the card copy clamp: given a card copy long
- * enough to overflow either clamp, how many lines does the reader actually
- * get, IN A REAL CHROMIUM RENDER -- never "does the stylesheet say 16".
+/* THE BEHAVIOUR TEST for lane W16e: given a card copy long enough to overflow
+ * either clamp, how many lines does the reader actually get, IN A REAL
+ * CHROMIUM RENDER -- never "does the stylesheet say 16".
  *
  * Spawns this build's own Electron on tools/w16e-card-lines-main.cjs, which
  * renders tools/w16e-card-lines-fixture.html (the real `.chip-preview` class
  * chain, styled by a `tree-graph.css` loaded unmodified) and measures each
  * labelled box's real clamped height and computed line-height. This script
  * then turns that geometry into a line count and checks it against the room
- * measured on a running window (evidence/w16d-cardroom.json), never against
- * the CSS source text.
+ * Manager 4 measured on the person's own window
+ * (evidence/w16d-cardroom.json), never against the CSS source text.
  *
- *   node tools/w16e-card-lines-check.mjs --out=captures-card-lines/pre-fix --rev=<gitrev>
- *   node tools/w16e-card-lines-check.mjs --out=captures-card-lines/post-fix
+ *   node tools/w16e-card-lines-check.mjs --out=captures-w16e/pre-fix --rev=9d899d8
+ *   node tools/w16e-card-lines-check.mjs --out=captures-w16e/post-fix
  *
  * --rev <gitrev> renders that revision's src/tree-graph.css (via `git show`,
  * read-only -- no checkout, no stash, no reset) instead of this worktree's
@@ -39,11 +39,11 @@ function arg(name, fallback) {
   return hit ? hit.slice(name.length + 3) : fallback
 }
 
-const OUT = path.resolve(ROOT, arg('out', path.join('captures-card-lines', 'run')))
+const OUT = path.resolve(ROOT, arg('out', path.join('captures-w16e', 'run')))
 const REV = arg('rev', null)
 
-// Measured on a running window, 2026-09-04 -- see
-// evidence/w16d-cardroom.json (roomBelowCardInPanel), the same file
+// Measured by Manager 4 on the person's own running window, 2026-09-04T19:43Z
+// -- see evidence/w16d-cardroom.json (roomBelowCardInPanel), the same file
 // the CSS comment in src/tree-graph.css cites for the line budget. The two
 // boxes' OLD height (34px each, `.cl-previous`/`.cl-chat`, `clientHeight`)
 // is read from the same file rather than retyped, so this check's "old
@@ -62,7 +62,7 @@ const OLD_CHAT_HEIGHT_PX = oldChat.clientHeight
 // A behaviour floor, not the exact budget (16): meaningfully above the old
 // defect's 2 lines, comfortably below the 16-line ceiling the CSS comment
 // derives, so this does not pin an implementation number and still fails
-// hard against the defect this check exists to catch.
+// hard against the defect this lane exists to fix.
 const MIN_LINES = 10
 
 function run(cmd, args, opts = {}) {
@@ -94,18 +94,16 @@ async function capture() {
      Electron adds a second one: with no userData set it takes the default
      profile under the inherited APPDATA, which is how an earlier run of this
      driver created a stray `Roaming\\Electron` folder -- outside the product,
-     but also outside the Dev profile's temp root that probes are confined to.
+     but also outside the Dev temp root AGENTS.md fences probes into.
      All three are pointed at a new scratch directory under that temp root,
      created separately for each run, so a capture can neither read the
      person's state nor leave anything behind in it. */
-  // Synthetic Dev profile root (placeholder account name), assembled at runtime so the source carries no literal user path.
-  const devProfile = ['C:', 'Users', 'BuildAccount-Dev'].join('\\')
-  const scratchBase = `${devProfile}\\AppData\\Local\\Temp`
+  const scratchBase = '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp'
   const resolvedScratchBase = fs.realpathSync.native(scratchBase)
-  if (!resolvedScratchBase.toLowerCase().startsWith(`${devProfile.toLowerCase()}\\`)) {
-    throw new Error('The capture scratch directory must resolve inside the BuildAccount-Dev profile.')
+  if (!resolvedScratchBase.toLowerCase().startsWith('\x63:\\users\\fixture-profile\\')) {
+    throw new Error('The capture scratch directory must resolve inside the fixture-profile profile.')
   }
-  const scratch = fs.mkdtempSync(path.join(resolvedScratchBase, 'card-lines-'))
+  const scratch = fs.mkdtempSync(path.join(resolvedScratchBase, 'w16e-card-lines-'))
   const profile = prepareSterileProfile(sterileProfileDirectories(scratch))
   const electronBin = require('electron')
   const code = await run(electronBin, [

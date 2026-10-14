@@ -36,7 +36,7 @@
  * in COMMANDS with MC_AGENT_PRINCIPAL_READ_ONLY, before the payload is even
  * parsed, and reads keep answering so a surface can say what the state is and
  * WHY a command was refused. No window caller sets it false; it is the seam
- * the "this computer may be driven from the web" switch will use,
+ * the owner-ruled "this computer may be driven from the web" switch will use,
  * and that switch defaults OFF.
  *
  * THE DIALOG GATE. Three commands open a native dialog on this computer -- the
@@ -93,8 +93,8 @@ const ENDED_SESSION_REFUSAL = 'MC_AGENT_SESSION_ENDED'
    kinds this surface knows, which ARE the person's two seats. Any other kind
    is refused before the payload is read, with PRINCIPAL_REFUSAL (it is not a
    principal this surface can reason about FOR THESE VERBS) and its own
-   sentence. It is a hand-edit tool: the user edits or deletes entries on the
-   ToolsEnabled ledger by hand. */
+   sentence. Owner, 2026-08-22: "its a hand edit tool. for the user to go in
+   on the toolsenabled ledger and hand edit or delete them." */
 const PERSON_KINDS = Object.freeze(['window', 'relay'])
 const PAYLOAD_LEDGER_RESET_MODULE = 'src/lib/ledger-category-reset.js'
 const ROLE_CAPABILITY_FIELDS = Object.freeze([
@@ -190,7 +190,7 @@ const COMMANDS = Object.freeze({
      person-only like the two rewrite verbs above. */
   'agent:request-decide': Object.freeze({ write: true, dialog: false }),
   /* THE PERSON'S RESOLUTION OF ONE STANDING REQUEST (R_LEDGER kinds
-     follow-on). Writes, no dialog, person-only,
+     follow-on, 2026-09-07, Controller 3 L4e). Writes, no dialog, person-only,
      the same shape as decide just above. */
   'agent:request-resolve': Object.freeze({ write: true, dialog: false }),
   /* THE LEDGER PAGE'S WRITE VERBS FOR TASK AND ASK RECORDS (ledger kinds,
@@ -201,7 +201,7 @@ const COMMANDS = Object.freeze({
   'agent:ask-answer': Object.freeze({ write: true, dialog: false }),
   'agent:ask-decline': Object.freeze({ write: true, dialog: false }),
   /* The owner removes one ask outright, rather than answering or declining
-     it (the ledger page draws this as a fifth
+     it (Worker 2's ledger-page commit 7c6b70e0 draws this as a fifth
      button). Same shape as the four verbs just above. */
   'agent:ask-remove': Object.freeze({ write: true, dialog: false }),
   'agent:requests': Object.freeze({ write: false, dialog: false }),
@@ -218,8 +218,8 @@ const COMMANDS = Object.freeze({
   /* ISSUES an allowlist grant into the session: a write, and a dialog. */
   'agent:pick-attachment': Object.freeze({ write: true, dialog: true }),
   /* THE SECOND, AND ONLY OTHER, FEEDER OF THAT SAME ALLOWLIST -- for this
-     command alone (the rule: the attachment allowlist gains a second feeder
-     for that command only). A write, and NOT a
+     command alone (Controller's ruling, verbatim: "the attachment allowlist
+     gains a second feeder FOR THAT COMMAND ONLY"). A write, and NOT a
      `dialog` -- it opens no native dialog, so marking it one would make the
      dialog gate's own refusal sentence false. It is window-gated by its own
      body instead (windowOnly(), below), for the same reason pick-attachment
@@ -386,7 +386,7 @@ function createAgentCommandSurface(deps) {
       standaloneStarts.set(sessionId, { owner: source.principal.owner, lease: source })
       try {
         source.assertCurrent()
-        const { cwd: retainedCwd, ...defaults } = source.defaults
+        const { cwd: retainedCwd, model: retainedModel, ...defaults } = source.defaults
         const result = await run('agent:start', {
           ...defaults, sessionId, tier: target.tier,
           ...(target.effort !== undefined ? { effort: target.effort } : {}),
@@ -560,8 +560,8 @@ function createAgentCommandSurface(deps) {
 
   /* A LIVE CONVERSATION, NOT A LEFTOVER ENTRY. An exit path marks an entry
      'ended' in `state` and not always in `ended`, and an entry the running host
-     no longer knows holds no provider either. Measured 2026-09-23: four
-     such entries, a revoked Claude one on 'controller' among them, refused
+     no longer knows holds no provider either. Measured 2026-09-23 13:50-13:52:
+     four such entries, a revoked Claude one on 'controller' among them, refused
      three Codex Controller resumes although the only host session on that seat
      was Codex. A session still starting, or a host that cannot answer, counts. */
   function liveConversation(sessionId, session) {
@@ -800,21 +800,64 @@ function createAgentCommandSurface(deps) {
        directory the session will actually run in, prepared by the same
        ensureWorkspaceRoot() getAgentHost() calls. */
     'agent:availability': async (value) => {
-      agentPayload(value === undefined || value === null ? {} : value, [])
+      const payload = agentPayload(value === undefined || value === null ? {} : value, ['tier'])
+      const tier = payload.tier === undefined ? null : boundedAgentString(payload.tier, 'tier', 128)
       const record = spawnRecordAvailability()
       if (record.ok !== true) return record
-      const reading = engineAvailability({ defaultCwd: ensureWorkspaceRoot() })
+      if (tier !== null) {
+        let selected
+        let route = null
+        try {
+          const host = await getAgentHost()
+          route = typeof host.startRouteForTier === 'function'
+            ? host.startRouteForTier(tier)
+            : { provider: host.providerForTier?.(tier) || null }
+          selected = host.startableTiers({ tier })
+        } catch (error) {
+          selected = { ok: false, tier, code: typeof error?.code === 'string' ? error.code : 'AGENT_TIER_UNAVAILABLE' }
+        }
+        if (selected?.ok !== true) return selected
+        let localRuntime = null
+        if (route?.provider === 'local' && typeof deps.detectLocal === 'function') {
+          try { localRuntime = await deps.detectLocal() } catch { /* unknown stays unavailable */ }
+          if (localRuntime?.ok !== true || localRuntime.ready !== true) localRuntime = null
+        }
+        // Host construction and the local detector both cross an asynchronous
+        // boundary. Re-read the recorder after either one: a positive answer
+        // from before that await cannot authorize a start that can no longer be
+        // durably recorded.
+        const currentRecord = spawnRecordAvailability()
+        if (currentRecord.ok !== true) return currentRecord
+        // A named tier without an authoritative route must refuse closed. Do
+        // not omit requiredProvider and let the default-provider path answer
+        // for a selection it cannot actually launch.
+        if (!route || typeof route.provider !== 'string' || route.provider.length === 0) {
+          return { ok: false, tier, code: 'AGENT_TIER_NO_LAUNCHER' }
+        }
+        const selectedReading = engineAvailability({
+          defaultCwd: ensureWorkspaceRoot(),
+          requiredProvider: route.provider,
+          ...(typeof route?.client === 'string' && route.client ? { requiredClient: route.client } : {}),
+          ...(localRuntime ? { localRuntime } : {}),
+        })
+        if (selectedReading?.ok !== true) return { ...selectedReading, tier }
+        return { ...selectedReading, tier }
+      }
+
+      let reading = engineAvailability({ defaultCwd: ensureWorkspaceRoot() })
       const codexCode = reading?.ok === true ? reading.codexCode : reading?.code
-      if (!['AGENT_CODEX_CLI_NOT_INSTALLED', 'AGENT_CONFINEMENT_SIGNED_OUT'].includes(codexCode)
-          || typeof deps.detectLocal !== 'function') return reading
-      let localRuntime = null
-      try { localRuntime = await deps.detectLocal() } catch { /* the original diagnosis remains valid */ }
-      if (localRuntime?.ok !== true || localRuntime.ready !== true) localRuntime = null
-      // Recheck both recording and common engine/account inputs after the
-      // asynchronous read; a stale positive must not reopen a failed boundary.
-      const currentRecord = spawnRecordAvailability()
-      if (currentRecord.ok !== true) return currentRecord
-      return engineAvailability({ defaultCwd: ensureWorkspaceRoot(), ...(localRuntime ? { localRuntime } : {}) })
+      if (['AGENT_CODEX_CLI_NOT_INSTALLED', 'AGENT_CONFINEMENT_SIGNED_OUT'].includes(codexCode)
+          && typeof deps.detectLocal === 'function') {
+        let localRuntime = null
+        try { localRuntime = await deps.detectLocal() } catch { /* the original diagnosis remains valid */ }
+        if (localRuntime?.ok !== true || localRuntime.ready !== true) localRuntime = null
+        // Recheck both recording and common engine/account inputs after the
+        // asynchronous read; a stale positive must not reopen a failed boundary.
+        const currentRecord = spawnRecordAvailability()
+        if (currentRecord.ok !== true) return currentRecord
+        reading = engineAvailability({ defaultCwd: ensureWorkspaceRoot(), ...(localRuntime ? { localRuntime } : {}) })
+      }
+      return reading
     },
 
     /* What a session started here would be allowed to do. A tier name, a
@@ -937,11 +980,7 @@ function createAgentCommandSurface(deps) {
          tell apart from a quiet fleet. The session list is still correct and
          still answered: which account each agent is on does not depend on the
          allowance check having run. */
-      const recoveries = principal.mayWrite === true ? (host?.pendingAccountRecoveries?.() || []).filter(packet => {
-        const original = recoveryStartDefaults.get(packet.sessionId)
-        return original?.owner === principal.owner && original.kind === principal.kind
-      }) : []
-      return { ok: true, sessions, report, reportReason, recoveries }
+      return { ok: true, sessions, report, reportReason }
     },
 
     /* What has actually run on this computer. Starts nothing. */
@@ -1023,40 +1062,13 @@ function createAgentCommandSurface(deps) {
         standaloneStart.lease.assertCurrent()
         Object.defineProperty(request, 'standaloneReplacement', { value: standaloneStart.lease.startDescriptor })
       }
-      if (request.continueFromAccount && principal.kind !== 'window') {
-        agentIpcError('AGENT_MANUAL_ACCOUNT_CONTINUATION_WINDOW_ONLY', 'Continuing on another account requires the person at this application window.')
-      }
-      if (request.accountRetry && principal.kind !== 'window') {
-        agentIpcError('AGENT_MANUAL_ACCOUNT_CONTINUATION_WINDOW_ONLY', 'Keep trying accounts belongs to the person at this application window.')
-      }
-      if (request.accountRecovery) {
-        const previous = recoveryStartDefaults.get(request.replacesSessionId)
-        if (!previous || previous.owner !== principal.owner || previous.kind !== principal.kind) {
-          agentIpcError('AGENT_ACCOUNT_RECOVERY_UNAVAILABLE', 'The original agent start is unavailable to this caller.')
-        }
-        // Re-parse and re-resolve the role/profile through the ordinary gates.
-        // The replacement supplies the current node address and ancestry.
-        const inherited = { ...previous.defaults }
-        if (!request.roleBinding && inherited.roleBinding) {
-          const snapshot = agentOrgRecord.read()
-          const original = inherited.roleBinding
-          const role = snapshot?.roles?.find(entry => entry.id === original.id)
-          const agent = original.agentId ? snapshot?.org?.agents?.find(entry => entry.id === original.agentId) : null
-          if (snapshot?.ok !== true || !role || !Number.isSafeInteger(snapshot.org?.revision)
-            || (original.agentId && (!agent || agent.enabled !== true || agent.role !== original.id))) {
-            agentIpcError('AGENT_ACCOUNT_RECOVERY_UNAVAILABLE', 'The original role assignment changed or is unavailable. Review this agent before restarting it.')
-          }
-          inherited.roleBinding = { ...original, expectedOrgRevision: snapshot.org.revision, expectedRoleRevision: role.revision }
-        }
-        request = parseAgentStart({ ...inherited, ...request })
-      }
       // Private host admission, created after parsing; it cannot be supplied
       // by a renderer/relay payload or serialized into the signed audit.
       const startAdmission = deps.startAdmission?.(principal, request) || null
       if (startAdmission) Object.defineProperty(request, 'startAdmission', { value: startAdmission })
       delete request.treeCommandRequestId
       startAdmission?.assertCurrent()
-      const retainedDefaults = Object.fromEntries(['tier', 'effort', 'cwd', 'profileId', 'roleBinding']
+      const retainedDefaults = Object.fromEntries(['tier', 'model', 'effort', 'cwd', 'profileId', 'roleBinding']
         .filter(key => request[key] !== undefined).map(key => [key, request[key]]))
       if (request.roleBinding) {
         /* THE RENDERER CHOOSES A ROW; THE STORES SUPPLY ITS WORDS. A nested
@@ -1170,8 +1182,9 @@ function createAgentCommandSurface(deps) {
       catch (error) { request.delegationPermit?.cancel(); request.boundedWorkPermit?.cancel(); throw rendererSafeAgentError(error) }
       /* THERE IS NO CEILING ON HOW MANY AGENTS MAY BE RUNNING AT ONCE.
        *
-       * There used to be: eight, refused by name. The rule: there is no
-       * session limit; the cap was never part of the design. It was never
+       * There used to be: eight, refused by name. The owner's ruling,
+       * 2026-09-03: "THERE WAS NEVER SUPPOSED TO BE A SESSION LIMIT SOME AGENT
+       * STARTED THAT AND I HAVE BEEN FIGHTING THAT RULE FOR AGES." It was never
        * a product decision; it arrived in a lane and then outlived every
        * argument for it.
        *
@@ -1391,15 +1404,7 @@ function createAgentCommandSurface(deps) {
            `started` is written, because a refused start has no run to end. If
            the child was already reported gone, that ending is written here. */
         session.started = record.disposition === 'not-required' ? (record.audit || record) : { sequence: record.sequence }
-        /* B24: A REPLACEMENT THE HOST COMPLETED HAS ALREADY CLOSED ITS PREDECESSOR.
-           shell/agent-host.cjs closes a replacesSessionId predecessor itself,
-           just before dispatch, and reports no exit for a close it performed
-           (model continuation, keep-trying accounts). This is the only place
-           that knows the replacement succeeded, so the predecessor's outer
-           record is retired here once the host no longer holds it. Left open,
-           one tree node had two open sessions: main's readTreeAdmission()
-           refused every bounded Launch under the continued agent, and the
-           ending was never recorded (quit would record it as app-shutdown). */
+
         const replaced = request.replacesSessionId ? agentSessions.get(request.replacesSessionId) : null
         if (replaced && replaced !== session && replaced.ended !== true
             && replaced.owner === principal.owner && replaced.ownerKind === principal.kind
@@ -1479,14 +1484,7 @@ function createAgentCommandSurface(deps) {
             startOutcome: outcome,
             ...(outcome.custody === 'cleanup-pending' ? { cleanupPending: true } : {}),
             ...(exhaustedBy ? { exhaustedBy } : {}),
-            ...(error?.accountRetry ? { accountRetry: error.accountRetry } : {}),
           }
-        }
-        if (request.accountRetry && error?.code !== 'AGENT_SESSION_CLEANUP_FAILED'
-            && !hostInvocationAttempted) {
-          return { ok: false, code: typeof failure?.code === 'string' ? failure.code : 'AGENT_START_FAILED', reason: safe.message,
-            ...(exhaustedBy ? { exhaustedBy } : {}),
-            ...(error?.accountRetry ? { accountRetry: error.accountRetry } : {}) }
         }
         throw safe
       } finally {
@@ -1500,6 +1498,7 @@ function createAgentCommandSurface(deps) {
       try {
         const request = parseAgentSend(value)
         const session = ownedAgentSession(principal, request.sessionId)
+        const retainedAtSend = recoveryStartDefaults.get(request.sessionId)
         /* THE SECURITY LINE FOR IMAGES: the caller can never name an arbitrary
            disk path for the engine to read into model context. Only paths a
            person picked in this session's own native dialog ride -- anything
@@ -1590,10 +1589,17 @@ function createAgentCommandSurface(deps) {
          * requested override against the real tier table (shell/agent-
          * host.cjs, tierForModel()) -- never guessed here from request.model,
          * which is an unvalidated model string until the host says otherwise. */
-        if (typeof result.tier === 'string') {
-          session.tier = result.tier
-          const retained = recoveryStartDefaults.get(request.sessionId)
-          if (retained) retained.defaults.tier = result.tier
+        // Only the original live session and recovery entry own this receipt.
+        if (agentSessions.get(request.sessionId) === session
+            && session.ended !== true && session.state !== 'ended'
+            && recoveryStartDefaults.get(request.sessionId) === retainedAtSend) {
+          if (typeof result.tier === 'string') {
+            session.tier = result.tier
+            if (retainedAtSend) retainedAtSend.defaults.tier = result.tier
+          }
+          if (typeof result.model === 'string' && retainedAtSend) {
+            retainedAtSend.defaults.model = result.model
+          }
         }
         return tracked ? { ok: true, result, deliveryDisposition } : result
       } catch (error) {
@@ -1662,6 +1668,10 @@ function createAgentCommandSurface(deps) {
         const word = typeof session.lastTurnStatus === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(session.lastTurnStatus)
           ? session.lastTurnStatus : null
         return { ok: true, busy: activity.busy === true, closing: activity.closing === true,
+          ...(activity.automaticTurnBlock?.code === 'PROVIDER_SAFETY_REFUSAL'
+            ? { automaticTurnBlock: { code: 'PROVIDER_SAFETY_REFUSAL', reason: 'safety-policy' } }
+            : activity.automaticTurnBlock?.code === 'PROVIDER_MODEL_REFUSED'
+              ? { automaticTurnBlock: { code: 'PROVIDER_MODEL_REFUSED', reason: 'model-refused' } } : {}),
           lastTurnStatus: word,
           ...(typeof session.lastTurnId === 'string' && session.lastTurnId.length > 0 && session.lastTurnId.length <= 512
             && !/[\u0000-\u001f\u007f]/.test(session.lastTurnId) ? { lastTurnId: session.lastTurnId } : {}),
@@ -1671,6 +1681,25 @@ function createAgentCommandSurface(deps) {
 
     'agent:tree-adopt': async (value, principal) => {
       try {
+        if (value?.nativeConversation !== undefined) {
+          if (principal.kind !== 'window') agentIpcError('AGENT_STOPPED_ADOPTION_REFUSED', 'Only the owning application window can place a stopped conversation.')
+          const payload = agentPayload(value, ['nativeConversation', 'selfName', 'managerName', 'treeKey', 'requestKeys'])
+          const source = agentPayload(payload.nativeConversation, ['nativeSessionId', 'threadId', 'provider', 'account', 'sourceTranscript'])
+          const location = agentPayload(source.sourceTranscript, ['computerId', 'nodeId'])
+          const request = { nativeConversation: {
+            nativeSessionId: boundedAgentString(source.nativeSessionId, 'nativeSessionId', MAX_SESSION_ID_LENGTH),
+            threadId: boundedAgentString(source.threadId, 'threadId', 512),
+            provider: boundedAgentString(source.provider, 'provider', 32),
+            account: source.account === null ? null : boundedAgentString(source.account, 'account', 128),
+            sourceTranscript: { computerId: boundedAgentString(location.computerId, 'computerId', 512),
+              nodeId: boundedAgentString(location.nodeId, 'nodeId', 512) },
+          }, selfName: boundedAgentString(payload.selfName, 'selfName', 120),
+            managerName: payload.managerName == null ? null : boundedAgentString(payload.managerName, 'managerName', 120),
+            treeKey: boundedAgentString(payload.treeKey, 'treeKey', 128), requestKeys: payload.requestKeys }
+          const host = await getAgentHost()
+          if (typeof host?.adoptStoppedConversation !== 'function') agentIpcError('AGENT_STOPPED_ADOPTION_REFUSED', 'This build cannot transfer a stopped native conversation.')
+          return await host.adoptStoppedConversation(request)
+        }
         const payload = agentPayload(value, ['sessionId', 'selfName', 'managerName', 'treeKey', 'requestKeys'])
         const request = {
           sessionId: boundedAgentString(payload.sessionId, 'sessionId', MAX_SESSION_ID_LENGTH),
@@ -1798,8 +1827,8 @@ function createAgentCommandSurface(deps) {
       }
     },
 
-    /* THE PERSON'S HAND ON ONE STANDING RULE (O7 improvements): rewrite its
-       words, or remove it from its ledger file (the
+    /* THE PERSON'S HAND ON ONE STANDING RULE (O7 improvements, owner
+       2026-08-22): rewrite its words, or remove it from its ledger file (the
        engine keeps a copy beside the file). Two verbs, the same shape as
        filing: bounded id, optional bounded key (the id the renderer already
        holds for that scope; null for the global ledger), and for an edit the
@@ -1868,7 +1897,7 @@ function createAgentCommandSurface(deps) {
     },
 
     /* THE PERSON'S RESOLUTION OF ONE STANDING REQUEST (R_LEDGER kinds
-       follow-on). Same fence as decide just
+       follow-on, 2026-09-07, Controller 3 L4e). Same fence as decide just
        above -- person only, before the payload is even parsed -- and the
        same bounds: a bounded id, a bounded status word, an optional reason
        the store caps at its own 2048. The host resolves the id's kind
@@ -1889,8 +1918,8 @@ function createAgentCommandSurface(deps) {
       }
     },
 
-    /* THE LEDGER PAGE'S WRITE VERBS FOR TASK AND ASK RECORDS (ledger
-       kinds). Same fence as the three
+    /* THE LEDGER PAGE'S WRITE VERBS FOR TASK AND ASK RECORDS (ledger kinds,
+       2026-09-07, Controller 3 ruling 05:20Z). Same fence as the three
        rewrite verbs just above -- person-only, before the payload is even
        parsed -- and the same bounds: a bounded id, and for answerAsk the
        owner's words, capped the same as a filing (the store's own
@@ -2418,15 +2447,9 @@ function createAgentCommandSurface(deps) {
     },
 
     'agent:close': async (value, principal) => {
-      let recoveryClose = false
       try {
-        const payload = agentPayload(value, ['sessionId', 'accountRecovery', 'delegationToken'])
+        const payload = agentPayload(value, ['sessionId', 'delegationToken'])
         const request = parseAgentSessionCommand({ sessionId: payload.sessionId })
-        if (payload.accountRecovery !== undefined) {
-          const recovery = agentPayload(payload.accountRecovery, ['recoveryId'])
-          request.accountRecovery = { recoveryId: boundedAgentString(recovery.recoveryId, 'recoveryId', 120) }
-          recoveryClose = true
-        }
         if (payload.delegationToken !== undefined) {
           const token = boundedAgentString(payload.delegationToken, 'delegationToken', 128)
           if (typeof deps.assertTreeLifecycleClose !== 'function') agentIpcError('TREE_DELEGATION_REFUSED', 'This replacement cannot be verified.')
@@ -2446,12 +2469,6 @@ function createAgentCommandSurface(deps) {
         }
         return result
       } catch (error) {
-        // Another turn or replacement can consume the ticket while the renderer
-        // saves its checkpoint. This expected refusal must not become an IPC error.
-        if (recoveryClose && ['AGENT_ACCOUNT_RECOVERY_UNAVAILABLE', 'MC_AGENT_UNKNOWN_SESSION', 'AGENT_SESSION_UNKNOWN'].includes(error?.code)) {
-          return { ok: false, closed: false, code: 'AGENT_ACCOUNT_RECOVERY_UNAVAILABLE',
-            reason: 'This recovery has changed. This request did not close the current session.' }
-        }
         throw rendererSafeAgentError(error)
       }
     },
@@ -2507,7 +2524,7 @@ function createAgentCommandSurface(deps) {
          circle starting beside a live Codex one is a second conversation of
          the same actor: the seat now carries both, and the Codex session's
          provider, credential and sockets are untouched. Refusing it here left
-         a Claude Controller unable to start at all (observed 2026-09-23). Every
+         a Claude Controller unable to start at all (2026-09-23 13:14). Every
          other seat is still REPLACED by adoption, so the guard below still
          keeps one circle's start from taking the provider away from a live
          conversation on it. */

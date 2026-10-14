@@ -11,9 +11,9 @@
  * THE PERSON TYPES THE PRIVATE MIRROR REPOSITORY. The registry keys every
  * dispatch on an exact GitHub "owner/name" string, so the bridge canonicalizes
  * that address, asks GitHub about that exact repository, and requires the
- * selected cloud environment to report the same binding. The text box and the
- * environment are two witnesses to one repository, never two independently
- * trusted destinations.
+ * person to enter the 32-hex Cloud environment ID for it. ToolsEnabled cannot
+ * confirm that environment's repository binding; registration receipts keep
+ * that declaration separate from the verified private GitHub destination.
  *
  * WHY NOT owner-popup.js. That module is the OWNER PROMPT surface -- it
  * validates against PROMPT_KINDS, polls a snapshot, and reports presentation
@@ -29,7 +29,6 @@
  * already paid for that twice.
  */
 
-import { currentDataSource } from './data-source.js'
 import { validAuditReceiptPair } from './mission-bridge.js'
 
 const CHECK_STATES = Object.freeze({
@@ -38,11 +37,12 @@ const CHECK_STATES = Object.freeze({
   'NOT CHECKED': { label: 'not checked', tone: 'warn' },
 })
 
-/* A project key is typed, so it is the one field that can be malformed by hand.
+/* Project keys and environment IDs are typed and can be malformed by hand.
    Mirrored from PROJECT_KEY in the engine's cloud-mirror module: the engine is
    the authority and refuses by name regardless, but refusing here as well means
    a person is told before they spend three network calls finding out. */
 const PROJECT_KEY_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/
+const ENVIRONMENT_ID_RE = /^[a-f0-9]{32}$/i
 const GITHUB_OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,98}[A-Za-z0-9])?$/
 const GITHUB_REPO_RE = /^[A-Za-z0-9._-]{1,100}$/
 const DEFAULT_BOUNDARY_MANIFEST = 'config/cloud-mirror-boundary.json'
@@ -72,7 +72,6 @@ export function githubRepositoryFromRemote(value) {
 
 const COMMIT_SHA = /^[a-f0-9]{40}$/i
 const REQUIRED_REGISTRATION_CHECKS = Object.freeze([
-  'typed remote and Cloud environment name the same repository',
   'mirror repository is active',
   'mirror repository is private',
   'mirror repository is reachable',
@@ -125,6 +124,11 @@ function verifiedRegistrationReceipt(receipt, request) {
   try {
     if (!plainRecord(receipt) || receipt.action !== 'cloud-mirror-register'
       || receipt.projectKey !== request.projectKey || receipt.environment !== request.environment
+      || !plainRecord(receipt.repositoryBinding)
+      || receipt.repositoryBinding.source !== 'person-entered'
+      || receipt.repositoryBinding.confirmation !== 'unconfirmed'
+      || receipt.repositoryBinding.providerConfirmed !== false
+      || typeof receipt.repositoryBinding.message !== 'string' || !receipt.repositoryBinding.message.trim()
       || !validAuditReceiptPair(receipt.intentAudit, receipt.audit, 'cloud.mirror.register', request.projectKey)) return false
     const expectedRepository = githubRepositoryFromRemote(request.mirrorRemote)
     if (!expectedRepository || !verifiedProjectBinding(request.projectKey, receipt.project, expectedRepository)
@@ -170,8 +174,6 @@ export function emptyMirrorSetupState() {
     phase: 'loading',        // loading | ready | registering | publishing | registered | failed | publish-failed
     projects: [],            // what is already registered
     registryPath: null,
-    environments: [],
-    environmentsComplete: null,   // null = not read yet. NOT the same as false.
     draft: { projectKey: '', sourceRoot: '', boundaryManifest: DEFAULT_BOUNDARY_MANIFEST, mirrorRemote: '', environment: '' },
     reregisterKey: null,     // set only by the disabled project's own control
     busy: null,
@@ -190,8 +192,8 @@ export function emptyMirrorSetupState() {
  * says why beside it, never silently inert and never live-and-refusing. The
  * dead-control census in this repository found forty-nine of the other kind.
  */
-export function registerBlockedReason(state, { viaRelay = false } = {}) {
-  if (state.phase === 'loading') return 'Reading the environments the computer you are driving is signed in to.'
+export function registerBlockedReason(state) {
+  if (state.phase === 'loading') return 'Reading registered mirrors on the computer you are driving.'
   if (state.busy) return 'Working.'
   const { projectKey, sourceRoot, boundaryManifest, mirrorRemote, environment } = state.draft
   if (!projectKey.trim()) return 'Give this project a short name first.'
@@ -219,55 +221,11 @@ export function registerBlockedReason(state, { viaRelay = false } = {}) {
   if (!typedRepository) {
     return 'Use an HTTPS GitHub repository address such as https://github.com/you/your-mirror.git. SSH, embedded credentials, and non-GitHub remotes are not accepted.'
   }
-  if (!environment.trim()) return 'Choose the cloud environment this project runs in.'
-  const chosen = state.environments.find((entry) => entry.environmentId === environment.trim())
-  /* Not merely "unknown". If the list is INCOMPLETE, an environment missing
-     from it has not been shown not to exist -- most often the account that owns
-     it is not signed in here -- and telling somebody it does not exist would
-     send them to fix the wrong thing. */
-  if (!chosen) {
-    return state.environmentsComplete === true
-      ? (viaRelay
-          ? 'That environment is not one the computer you are driving is signed in to.'
-          : 'That environment is not one this computer is signed in to.')
-      : 'The environment list could not be read in full, so this one could not be confirmed.'
-  }
-  if (!chosen.repository) {
-    return chosen.reason || 'That environment names no single repository, so a mirror cannot be bound to it.'
-  }
-  if (String(chosen.repository).toLowerCase() !== typedRepository.toLowerCase()) {
-    return `That cloud environment is bound to ${chosen.repository}, not ${typedRepository}. Bind it to the private mirror repository you entered, then refresh this list.`
+  if (!environment.trim()) return 'Enter the Cloud environment ID for this repository.'
+  if (!ENVIRONMENT_ID_RE.test(environment.trim())) {
+    return 'A Cloud environment ID must contain exactly 32 hexadecimal characters (0–9 and a–f).'
   }
   return null
-}
-
-/** The environments a person may actually choose, and why the others are out. */
-export function environmentChoices(state) {
-  return state.environments.map((entry) => ({
-    id: entry.environmentId,
-    repository: entry.repository || null,
-    visibility: entry.visibility || null,
-    // An environment bound to no repository, or to several, is SHOWN and not
-    // selectable. Hiding it would leave a person hunting for an environment
-    // they can see in the provider's own console. Provider visibility is shown
-    // only as context: it can be stale and never overrules the authenticated
-    // GitHub check the registration action makes against the typed repository.
-    selectable: Boolean(entry.repository),
-    reason: entry.repository ? null : (entry.reason || 'This environment names no single repository.'),
-  }))
-}
-
-/**
- * The line under the environment picker. Absent when the list is whole.
- *
- * A partial list presented as the whole set is the defect this exists to avoid:
- * somebody concludes their environment is gone when the truth is that we could
- * not ask.
- */
-export function environmentCompletenessNote(state) {
-  if (state.environmentsComplete === true) return null
-  if (state.environmentsComplete === null) return 'Environments have not been read yet.'
-  return 'This list is incomplete — at least one account could not be asked. An environment missing here has not been shown to be missing.'
 }
 
 function escapeHtml(value) {
@@ -288,8 +246,15 @@ export function checkRowsMarkup(checks) {
   }).join('')}</ul>`
 }
 
+function repositoryBindingMarkup(receipt) {
+  const message = receipt?.repositoryBinding?.message
+  return typeof message === 'string' && message.trim()
+    ? `<p class="cms-note">${escapeHtml(message)}</p>`
+    : ''
+}
+
 function setupStatusText(state) {
-  if (state.phase === 'loading') return 'Reading registered mirrors and signed-in cloud environments.'
+  if (state.phase === 'loading') return 'Reading registered mirrors.'
   if (state.busy === 'register') {
     return state.reregisterKey
       ? `Revalidating disabled mirror ${state.reregisterKey}.`
@@ -310,22 +275,14 @@ function selectedDisabledProject(state) {
   return state.projects.find((project) => project.key === state.reregisterKey && project.enabled === false) || null
 }
 
-function projectEnvironment(state, project) {
-  const explicit = String(project.environment || project.environmentId || '').trim()
-  if (explicit && state.environments.some((entry) => entry.environmentId === explicit)) return explicit
-  const repository = String(project.githubRepository || project.cloudRepository || '').trim().toLowerCase()
-  if (!repository) return ''
-  const matches = state.environments.filter((entry) => String(entry.repository || '').trim().toLowerCase() === repository)
-  return matches.length === 1 ? matches[0].environmentId : ''
-}
-
-export function setupBodyMarkup(state, { canChooseDirectory = true, viaRelay = false } = {}) {
+export function setupBodyMarkup(state, { canChooseDirectory = true } = {}) {
   if (state.phase === 'registered' && state.result) {
     const publication = state.result.publication?.publication || state.result.publication || null
     const branch = publication?.mirrorBranch || state.result.project?.mirrorBranch || null
     return `<div class="cms-done" role="status" aria-live="polite">
       <p class="cms-lede">${escapeHtml(state.result.projectKey)} now mirrors to ${escapeHtml(state.result.project.cloudRepository)}.</p>
-      <p class="cms-note">The current snapshot was published${branch ? ` to ${escapeHtml(branch)}` : ''}. Cloud work for this project is checked against that repository from now on.</p>
+      <p class="cms-note">The current snapshot was published${branch ? ` to ${escapeHtml(branch)}` : ''}. The private GitHub destination was checked.</p>
+      ${repositoryBindingMarkup(state.result)}
       ${checkRowsMarkup(state.result.checks)}
     </div>`
   }
@@ -335,6 +292,7 @@ export function setupBodyMarkup(state, { canChooseDirectory = true, viaRelay = f
     return `<div class="cms-done cms-progress" role="status" aria-live="polite" aria-busy="true">
       <p class="cms-lede">Publishing ${escapeHtml(state.result.projectKey)} to ${escapeHtml(destination)}...</p>
       <p class="cms-note">ToolsEnabled is classifying and scanning the current committed snapshot, checking the destination is still private, and then publishing its workspace branch.</p>
+      ${repositoryBindingMarkup(state.result)}
       ${checkRowsMarkup(state.result.checks)}
       <div class="cms-actions">
         <button type="button" class="ctl-btn" disabled>Publishing...</button>
@@ -345,6 +303,7 @@ export function setupBodyMarkup(state, { canChooseDirectory = true, viaRelay = f
   if (state.phase === 'publish-failed' && state.result) {
     return `<div class="cms-done">
       <p class="cms-lede">${escapeHtml(state.result.projectKey)} is registered, but its current snapshot was not published.</p>
+      ${repositoryBindingMarkup(state.result)}
       ${state.refusal ? `<p class="cms-refusal" role="alert" tabindex="-1">${escapeHtml(state.refusal.message)}</p>` : ''}
       ${checkRowsMarkup(state.result.checks)}
       <div class="cms-actions">
@@ -355,12 +314,10 @@ export function setupBodyMarkup(state, { canChooseDirectory = true, viaRelay = f
     </div>`
   }
 
-  const blocked = registerBlockedReason(state, { viaRelay })
+  const blocked = registerBlockedReason(state)
   const folderBlocked = canChooseDirectory
     ? null
     : 'Choosing a folder is unavailable in this browser. Open the installed desktop app on the computer you are driving.'
-  const choices = environmentChoices(state)
-  const note = environmentCompletenessNote(state)
   const replacing = selectedDisabledProject(state)
   const controlsDisabled = Boolean(state.busy || state.phase === 'loading')
 
@@ -421,21 +378,17 @@ export function setupBodyMarkup(state, { canChooseDirectory = true, viaRelay = f
     </label>
 
     <label class="cms-field">
+      <span class="cms-label">Cloud environment ID</span>
+      <input class="cms-input" type="text" data-cms-field="environment" value="${escapeHtml(state.draft.environment)}"
+        autocomplete="off" spellcheck="false" aria-describedby="cms-environment-note"${controlsDisabled ? ' disabled' : ''} />
+      <span class="cms-note" id="cms-environment-note">Enter the 32-character hexadecimal environment ID for ${escapeHtml(githubRepositoryFromRemote(state.draft.mirrorRemote) || 'the private repository above')}. ToolsEnabled cannot confirm that this environment points at that repository.</span>
+    </label>
+
+    <label class="cms-field">
       <span class="cms-label">Boundary manifest</span>
       <input class="cms-input" type="text" data-cms-field="boundaryManifest" value="${escapeHtml(state.draft.boundaryManifest)}"
         autocomplete="off" spellcheck="false" placeholder="${DEFAULT_BOUNDARY_MANIFEST}"${controlsDisabled ? ' disabled' : ''} />
       <span class="cms-note">Repository-relative file that classifies every tracked path as mirrored or withheld. ToolsEnabled will not create it or guess what may leave this computer.</span>
-    </label>
-
-    <label class="cms-field">
-      <span class="cms-label">Cloud environment</span>
-      <select class="cms-input" data-cms-field="environment"${controlsDisabled ? ' disabled' : ''}>
-        <option value="">Choose one…</option>
-        ${choices.map((choice) => `<option value="${escapeHtml(choice.id)}"${choice.selectable ? '' : ' disabled'}${state.draft.environment === choice.id ? ' selected' : ''}>${
-          escapeHtml(choice.selectable ? `${choice.repository}${choice.visibility ? ` · provider label: ${choice.visibility}; GitHub rechecks` : ''}` : `${choice.id} — ${choice.reason}`)
-        }</option>`).join('')}
-      </select>
-      ${note ? `<span class="cms-note">${escapeHtml(note)}</span>` : ''}
     </label>
 
     ${state.refusal ? `<p class="cms-refusal" role="alert" tabindex="-1">${escapeHtml(state.refusal.message)}</p>` : ''}
@@ -448,7 +401,7 @@ export function setupBodyMarkup(state, { canChooseDirectory = true, viaRelay = f
       ${blocked ? `<span class="cms-blocked" id="cms-blocked">${escapeHtml(blocked)}</span>` : ''}
     </div>
 
-    <p class="cms-note">Registering verifies this exact GitHub repository is private and writable, and that the selected cloud environment is bound to the same owner/name. It changes nothing in the folder you chose.</p>
+    <p class="cms-note">Registering checks that this exact GitHub repository is private and writable. It changes nothing in the folder you chose.</p>
   </div>`
 }
 
@@ -497,7 +450,6 @@ export function createCloudMirrorSetup({ documentRef, postAction, chooseDirector
     if (!root) return
     const options = {
       canChooseDirectory: typeof chooseDirectory === 'function',
-      viaRelay: currentDataSource() === 'relay',
     }
     const dialog = root.querySelector?.('.cms-dialog')
     const status = root.querySelector?.('#cms-registration-status')
@@ -544,10 +496,7 @@ export function createCloudMirrorSetup({ documentRef, postAction, chooseDirector
     state.refusal = null
     state.notice = null
     refresh()
-    const [listed, accounts] = await Promise.all([
-      safePost('cloud-mirror-list', {}),
-      safePost('cloud-accounts', {}),
-    ])
+    const listed = await safePost('cloud-mirror-list', {})
     if (!current(requestGeneration)) return
     if (listed?.ok && listed.receipt) {
       state.projects = Array.isArray(listed.receipt.projects)
@@ -561,21 +510,6 @@ export function createCloudMirrorSetup({ documentRef, postAction, chooseDirector
       state.refusal = {
         code: listed?.code || 'BRIDGE_UNKNOWN',
         message: listed?.reason || 'The registered mirrors could not be read on the computer you are driving.',
-      }
-    }
-    if (accounts?.ok && accounts.receipt) {
-      state.environments = Array.isArray(accounts.receipt.environments) ? accounts.receipt.environments : []
-      state.environmentsComplete = accounts.receipt.environmentsComplete === true
-    } else {
-      // Not read is not empty, and `environmentsComplete: false` is how the
-      // note below says so out loud.
-      state.environments = []
-      state.environmentsComplete = false
-      if (!state.refusal) {
-        state.refusal = {
-          code: accounts?.code || 'BRIDGE_UNKNOWN',
-          message: accounts?.reason || 'The signed-in cloud environments could not be read on the computer you are driving.',
-        }
       }
     }
     state.phase = 'ready'
@@ -606,7 +540,7 @@ export function createCloudMirrorSetup({ documentRef, postAction, chooseDirector
       sourceRoot: String(project.sourceRoot || ''),
       boundaryManifest: portableBoundaryManifest(project.boundaryManifest) || DEFAULT_BOUNDARY_MANIFEST,
       mirrorRemote: String(project.mirrorRemote || ''),
-      environment: projectEnvironment(state, project),
+      environment: '',
     }
     state.phase = 'ready'
     state.result = null
@@ -636,7 +570,8 @@ export function createCloudMirrorSetup({ documentRef, postAction, chooseDirector
       sourceRoot: state.draft.sourceRoot.trim(),
       boundaryManifest: portableBoundaryManifest(state.draft.boundaryManifest),
       mirrorRemote: state.draft.mirrorRemote.trim(),
-      environment: state.draft.environment.trim(),
+      environment: state.draft.environment.trim().toLowerCase(),
+      environmentSource: 'person-entered',
       ...(replacement ? { replace: true } : {}),
     }
     state.busy = 'register'

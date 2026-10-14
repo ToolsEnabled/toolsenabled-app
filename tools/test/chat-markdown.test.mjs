@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import test from 'node:test'
+import vm from 'node:vm'
 import { decodeHTML } from 'entities'
 import { chatPreviewText, isPlainVoice, isSafeChatUrl, renderChatMarkdown, renderChatPlain, renderChatVoice } from '../../src/chat-markdown.js'
 import { createDocument } from './lib/dom-stand-in.mjs'
@@ -8,7 +11,7 @@ const tree = text => { const host = createDocument().createElement('div'); host.
 const codeText = html => decodeHTML((/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/.exec(html)?.[1] || '').replace(/<[^>]*>/g, ''))
 
 test('untrusted text cannot introduce executable tags, arbitrary attributes, or non-web links', () => {
-  const attacks = ['<script>alert(1)</script>', '<img src=x onerror=alert(1)>', '**<script>bold</script>**', '`<script>code</script>`', '# <img src=x onerror=alert(1)>', '- <iframe src="javascript:alert(1)">', '> <object data="x">', '|<script>a</script>|b|\n|---|---|\n|c|d|', '[click](javascript:alert(1))', '[click](javascript&#x3a;alert(1))', '[click](data:text/html,anything)', '[click](file:///C:/secret)', '[click](//example.test)', '<a href="javascript:alert(1)">x</a>', '</div><script>alert(1)</script><div>', 'https://evil.test/`<script>x</script>`', '![tracking](https://example.test/pixel)', '```html\n<img onerror="alert(1)">\n```', '```js\" onmouseover=alert(1)\nhello\n```']
+  const attacks = ['<script>alert(1)</script>', '<img src=x onerror=alert(1)>', '**<script>bold</script>**', '`<script>code</script>`', '# <img src=x onerror=alert(1)>', '- <iframe src="javascript:alert(1)">', '> <object data="x">', '|<script>a</script>|b|\n|---|---|\n|c|d|', '[click](javascript:alert(1))', '[click](javascript&#x3a;alert(1))', '[click](data:text/html,anything)', '[click](file:///\x43:/secret)', '[click](//example.test)', '<a href="javascript:alert(1)">x</a>', '</div><script>alert(1)</script><div>', 'https://evil.test/`<script>x</script>`', '![tracking](https://example.test/pixel)', '```html\n<img onerror="alert(1)">\n```', '```js\" onmouseover=alert(1)\nhello\n```']
   const tags = new Set(['p','br','strong','em','del','s','code','pre','ul','ol','li','blockquote','hr','div','table','thead','tbody','tr','th','td','a','h3','h4','h5','h6','figure','figcaption','span','button'])
   const attrs = new Set(['class','href','target','rel','title','start','data-lang','tabindex','role','aria-label','scope','type','aria-pressed','data-chat-code-wrap','data-chat-code-copy'])
   for (const attack of attacks) {
@@ -124,7 +127,7 @@ test('user and activity lines keep their literal text, with safe links', () => {
   for(const cls of ['',null,undefined,'is-agent']) assert.equal(isPlainVoice(cls), false)
 })
 
-/* T293. A tree CARD showed the agent's reply as its source -- a walk saw
+/* T293. A tree CARD showed the agent's reply as its source -- Worker 85 saw
    "two colours: **red** and **yellow**" on a card while the conversation
    beside it rendered the same words properly. A card preview is one clamped
    line with the full text as its tooltip, so the answer is to take the markup
@@ -201,18 +204,19 @@ test('a card preview keeps every word the rendered conversation shows', () => {
 /* ITEM 5 -- PER-PROVIDER OUTPUT RENDERING, AGAINST WHAT THE PROVIDERS ACTUALLY
  * WRITE.
  *
- * The shapes below were chosen by censusing a local node-transcript store
- * (read only; counts were taken, no text, path or account value was copied
- * into this file). Per provider, by share of agent replies:
+ * The shapes below were chosen by censusing the owner's LIVE node-transcripts
+ * on 2026-09-19 (read only; counts were taken, no owner text, path or account
+ * value was copied into this file). Per provider, by share of agent replies:
  *
- *   claude  strong, inline code and bullets most often; headings, tables and
- *           fences rarely -- and few fence openings carry a language. Links
- *           almost never.
- *   codex   inline code, LINKS, bullets and strong. Most of its links target
- *           a local absolute or repo-relative path: they are file citations,
- *           not web pages.
- *   local   strong, inline code and ordered lists.
- *   gemini  no replies -- see the refusal recorded below.
+ *   claude  3677 replies  strong 69%, inline code 58%, bullets 29%, headings
+ *                         7%, tables 5%, fences 4% -- and of 770 fence
+ *                         openings only 25 carry a language. 2 links in total.
+ *   codex    498 replies  inline code 53%, LINKS 44%, bullets 36%, strong 23%.
+ *                         Of its 261 links, 226 target a local absolute path
+ *                         and 12 a repo-relative path: 238 are file citations,
+ *                         not web pages.
+ *   local     11 replies  strong 73%, inline code 73%, ordered lists 36%.
+ *   gemini      0 replies -- see the refusal recorded below.
  *
  * These call the renderer with values and assert what a reader gets. None of
  * them pins a class name or an attribute order beyond the one thing that is a
@@ -319,4 +323,79 @@ test('local and claude: a lone asterisk in prose is not emphasis', () => {
 test('a card preview of a codex citation shows the words, not the markup', () => {
   assert.equal(chatPreviewText(`Edited [src/x.js](${drivePath}) and moved on.`).replace(/\s+/g, ' '),
     'Edited src/x.js and moved on.')
+})
+
+/* 1.0.50 M3: WHERE A CHAT LINK GOES WHEN IT IS PRESSED.
+   Every link above is rendered target="_blank" with a label the sender
+   chooses. In the application window that used to open a chromeless window
+   inside the application's own session. main.cjs cannot be required by a
+   test, so its install statement is lifted out and run against a stand-in
+   window, with the real guard module. */
+const MAIN = fs.readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf8')
+const shellRequire = createRequire(new URL('../../shell/main.cjs', import.meta.url))
+function applicationWindow(origin = 'http://127.0.0.1:4600') {
+  const at = MAIN.indexOf("require('./main-window-navigation.cjs').installMainWindowNavigationGuard(inputOwner, {")
+  assert.ok(at > 0, 'main installs a window-open and navigation guard on the application window')
+  assert.ok(at > MAIN.indexOf('const inputOwner = window.webContents') && at < MAIN.indexOf('await window.loadURL(`${shellOrigin}/`)'),
+    'the guard is in place before the application loads')
+  const opened = [], navigation = []
+  const inputOwner = { setWindowOpenHandler(fn) { this.windowOpen = fn }, on(name, fn) { if (name === 'will-navigate') navigation.push(fn) } }
+  vm.runInNewContext(MAIN.slice(at, MAIN.indexOf('\n  })', at) + '\n  })'.length), {
+    require: shellRequire, inputOwner, shellOrigin: origin, electronShell: { openExternal: async url => { opened.push(url) } },
+  })
+  assert.equal(navigation.length, 1)
+  return {
+    opened,
+    open: url => inputOwner.windowOpen({ url, frameName: '', features: '', disposition: 'foreground-tab' }),
+    navigate: url => { let prevented = false; navigation[0]({ url, preventDefault() { prevented = true } }, url); return prevented },
+  }
+}
+const hrefOf = html => decodeHTML(/href="([^"]*)"/.exec(html)?.[1] || '')
+
+test('a chat link opens in the person\u2019s own browser, never in a window inside the application', () => {
+  const app = applicationWindow()
+  const disguised = hrefOf(renderChatMarkdown('[Your session expired, sign in again](https://attacker.example/login?next=%2F&a=1)'))
+  const plain = hrefOf(renderChatPlain('see https://example.test/docs for more'))
+  assert.deepEqual(app.open(disguised), { action: 'deny' })
+  assert.deepEqual(app.open(plain), { action: 'deny' })
+  assert.deepEqual(app.opened, ['https://attacker.example/login?next=%2F&a=1', 'https://example.test/docs'])
+  // Anything but a plain web address is refused and opened nowhere.
+  for (const url of ['file:///etc/passwd', 'vscode://file/x', 'ms-officecmd:x', 'search-ms:query=x', 'javascript:alert(1)',
+    'data:text/html,x', 'about:blank', 'https://user:secret@example.test/', 'https://example.test/' + 'a'.repeat(9000), '', undefined]) {
+    assert.deepEqual(app.open(url), { action: 'deny' }, String(url).slice(0, 40))
+  }
+  assert.equal(app.opened.length, 2)
+})
+
+/* 1.0.50 review of fixes, 3.4. A Ctrl-click, a middle click or window.open on
+   one of the application's own links (#/settings, #/computers, a ledger tab)
+   is a new-window request too. It is denied like every other, and it is NOT
+   handed to the system browser: a browser copy of the application has no
+   session and no preload, so it would be inert, and the page is already here. */
+test('a new-window request for one of the application\u2019s own pages opens nowhere, not in the browser', () => {
+  const app = applicationWindow('http://127.0.0.1:4600')
+  for (const url of ['http://127.0.0.1:4600/#/settings', 'http://127.0.0.1:4600/#/settings?section=agents',
+    'http://127.0.0.1:4600/#/computers', 'http://127.0.0.1:4600/#/ledger?tab=p', 'http://127.0.0.1:4600/account/']) {
+    assert.deepEqual(app.open(url), { action: 'deny' }, url)
+  }
+  assert.deepEqual(app.opened, [], 'the application\u2019s own address was handed to the system browser')
+  // Another port or host on the loopback is not this application; it goes where every web address goes.
+  assert.deepEqual(app.open('http://127.0.0.1:4601/#/settings'), { action: 'deny' })
+  assert.deepEqual(app.open('http://localhost:4600/#/settings'), { action: 'deny' })
+  assert.deepEqual(app.opened, ['http://127.0.0.1:4601/#/settings', 'http://localhost:4600/#/settings'])
+})
+
+test('the application window stays on the application\u2019s own origin', () => {
+  const app = applicationWindow('http://127.0.0.1:4600')
+  assert.equal(app.navigate('http://127.0.0.1:4600/account/'), false, 'its own pages still load')
+  assert.equal(app.navigate('http://127.0.0.1:4600/#/settings'), false)
+  // A web address (a checkout link, for one) goes to the browser instead of replacing the application.
+  assert.equal(app.navigate('https://checkout.example/pay?id=1'), true)
+  assert.deepEqual(app.opened, ['https://checkout.example/pay?id=1'])
+  for (const url of ['http://localhost:4600/', 'http://127.0.0.1:4601/', 'file:///\x43:/x', 'ms-officecmd:x', 'about:blank']) {
+    assert.equal(app.navigate(url), true, url)
+  }
+  assert.deepEqual(app.opened, ['https://checkout.example/pay?id=1', 'http://localhost:4600/', 'http://127.0.0.1:4601/'])
+  // Before the application has an origin, nothing navigates the window at all.
+  assert.equal(applicationWindow(null).navigate('http://127.0.0.1:4600/'), true)
 })

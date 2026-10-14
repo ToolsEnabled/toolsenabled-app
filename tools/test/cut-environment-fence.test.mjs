@@ -30,7 +30,7 @@ import { OWNED_NAMES, assertScratchFence, isInside, requiredNames } from '../lib
 const { groups, names: NAMES } = requiredNames()
 const CAPABILITY_NAMES = groups.find((group) => group.category === 'capability overrides').names
 
-const LIVE = path.join('C:', 'Users', 'Someone', 'Documents', 'Project Files', 'ToolsEnabled-Live', 'capability')
+const LIVE = path.join('C:', 'Users', 'Someone', 'Desktop', 'Example profile', 'ToolsEnabled-Live', 'capability')
 const SCRATCH_STATE = path.join('C:', 'sc', 'state')
 const SCRATCH_TEMP = path.join('C:', 'sc', 't')
 
@@ -123,7 +123,7 @@ test('both Windows profile directories are redirected into the scratch', () => {
   // sink writes through the ROAMING profile. LOCALAPPDATA alone is not enough.
   assert.equal(env.APPDATA, path.join(SCRATCH_STATE, 'Roaming'))
   assert.equal(env.LOCALAPPDATA, path.join(SCRATCH_STATE, 'LocalAppData'))
-  // And the fence must actually be asked about them: a check drove this
+  // And the fence must actually be asked about them: Worker 89 drove this
   // function with both at the live profiles and it accepted, because neither is
   // in the derived capability-override list and neither sits under the
   // installation directory, so the live-path rule could not see them either.
@@ -203,7 +203,7 @@ test('the node loader variables are cleared for the cut children', () => {
 })
 
 test('the owned set and what the cut re-points cannot disagree', () => {
-  // An earlier fence picked its required names out of the authorities BY
+  // Worker 87's fence picked its required names out of the authorities BY
   // PATTERN -- a second hand-picked list wearing derivation's clothes -- and it
   // could disagree with the re-pointing about what the run even owned. This
   // asserts the two are the same set, in both directions, so neither can drift.

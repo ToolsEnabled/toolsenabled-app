@@ -1,11 +1,13 @@
 /* WHICH OF YOUR COMPUTERS THIS BROWSER IS DRIVING -- the choice, moved into
  * the application.
  *
- * THE RULE (2026-08-23, for the account page's rows and the computers page's tab
- * bar): instead of choosing which computer to drive on the account page, the
- * choice is on page 2, and either machine can be driven once connected. It
- * completes an earlier one: with one computer connected, the interface serves
- * that computer; with two, it serves both, and both are controllable.
+ * THE RULING (owner, 2026-08-23, on two screenshots of the account page's rows
+ * and the computers page's tab bar): "rather than selecting what computer they
+ * drive here (1) it should be added here (2) to page2 and either machine should
+ * be driveable once connected." It completes an earlier one: "If there's only
+ * one computer connected we need to serve that one computer in the interface.
+ * If there's two we need to serve both in the interface and both need to be
+ * controllable."
  *
  * So a person driving their machine from a browser somewhere else picks which
  * machine on the page they are already on, and does not have to leave for the

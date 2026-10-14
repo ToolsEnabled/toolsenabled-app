@@ -16,6 +16,7 @@ import {
   currentFontChoice,
   fontStack,
   normalizeFontId,
+  refreshThemedFonts,
 } from '../../src/font-choice.js'
 
 function fakeDocument({ applied = '', theme } = {}) {
@@ -116,4 +117,34 @@ test('applying an unknown value safely applies the default without inventing a t
     'an unknown font request must write the default stack')
   assert.deepEqual(documentRef.themeWrites, [],
     'applying a font must not invent a theme when the document has none')
+})
+
+
+test('default typography is Geist while every previously offered saved ID remains usable', () => {
+  const documentRef = fakeDocument({ theme: 'white' })
+  assert.equal(withDocument(documentRef, () => applyFontChoice(undefined)), 'geist')
+  assert.match(documentRef.properties.get('--font-ui'), /^"Geist",/)
+  for (const id of ['plex', 'manrope', 'source', 'system', 'grotesk', 'mono']) {
+    assert.equal(normalizeFontId(id), id)
+    assert.equal(withDocument(documentRef, () => applyFontChoice(id)), id)
+    assert.equal(documentRef.properties.get('--font-ui'), fontStack(id))
+  }
+})
+
+test('font-ready refresh waits for loaded faces and preserves the existing theme', async () => {
+  const documentRef = fakeDocument({ theme: 'cobalt' })
+  let ready
+  documentRef.fonts = { ready: new Promise(resolve => { ready = resolve }) }
+  const pending = refreshThemedFonts(documentRef)
+  await Promise.resolve()
+  assert.deepEqual(documentRef.themeWrites, [])
+  documentRef.documentElement.dataset.theme = 'ember'
+  ready()
+  assert.equal(await pending, true)
+  assert.deepEqual(documentRef.themeWrites, ['ember', 'ember'])
+  assert.equal(await refreshThemedFonts(fakeDocument({ theme: 'white' })), false)
+  const noTheme = fakeDocument()
+  noTheme.fonts = { ready: Promise.resolve() }
+  assert.equal(await refreshThemedFonts(noTheme), false)
+  assert.deepEqual(noTheme.themeWrites, [])
 })

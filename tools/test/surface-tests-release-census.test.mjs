@@ -35,7 +35,7 @@ for (const file of required) {
 
 test('the actual default source-test invocation reaches every registered path suite', () => {
   const { scripts } = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
-  /* Since an earlier commit the default leaf is tools/run-data-tests.mjs: it keeps the
+  /* Since 435db7db the default leaf is tools/run-data-tests.mjs: it keeps the
      package glob visible, expands it itself and hands every selected suite to
      node:test's run() (the T542 source only through its two wrappers). The
      runner's own --print-selection is asked what the default invocation runs. */

@@ -249,10 +249,10 @@ test('a card says when the sign-in behind it has run out, and says nothing when 
     agents,
     accounts: new Map([
       /* Judged, and there is somewhere for the next one to start. */
-      ['spent-id', { account: 'work', provider: 'claude', spent: true, to: 'spare', why: 'HANDOVER_MOVED' }],
+      ['spent-id', { account: 'work', provider: 'claude', spent: true, why: 'HANDOVER_HELD_LIMIT' }],
       /* Judged, and there is nowhere: the worst case, and the one a report that
          only marked movable sessions would draw as healthy. */
-      ['stuck-id', { account: 'work', provider: 'claude', spent: true, to: null, why: 'HANDOVER_HELD_NO_TARGET' }],
+      ['stuck-id', { account: 'work', provider: 'claude', spent: true, why: 'HANDOVER_HELD_LIMIT' }],
       /* Judged and under its limits. */
       ['fine-id', { account: 'spare', provider: 'claude' }],
       /* Not judged at all -- nobody read this account. */
@@ -273,7 +273,7 @@ test('a card says when the sign-in behind it has run out, and says nothing when 
      start and that this one is staying, because a session keeps the account it
      started on for the life of its program. */
   const sentence = spent.find('ar-account-spent').title
-  assert.match(sentence, /would start on spare/i, 'the report did not say where the work would go next')
+  assert.match(sentence, /Wait for this account to reset.*choose an account with Switch and continue/i, 'the limit report did not name the available next steps')
   assert.match(sentence, /keeps the account it started on/i,
     'a mark that reads like a control did not say the session is staying put')
   assert.equal(spent.find('ar-account-spent').tagName, 'SPAN', 'the mark is a control somebody can press')
@@ -281,7 +281,7 @@ test('a card says when the sign-in behind it has run out, and says nothing when 
   /* NOWHERE TO GO IS ITS OWN ANSWER, and the next step it implies -- raise a
      limit, or wait for a window to reset -- is not the same one. */
   assert.equal(stuck.find('ar-account-spent').textContent, 'at its limit')
-  assert.match(stuck.find('ar-account-spent').title, /no other account is free/i)
+  assert.match(stuck.find('ar-account-spent').title, /Wait for this account to reset/i)
   assert.doesNotMatch(stuck.find('ar-account-spent').title, /would start on/i)
 
   /* MEASURED AND FINE SAYS NOTHING BEYOND THE NAME. */
@@ -300,8 +300,8 @@ test('a card says when the sign-in behind it has run out, and says nothing when 
 test('same-role cards wear their own agent accents and each dial follows its card', async () => {
   const { roleColorCss } = await import('../../src/role-colors.js')
   const agents = [
-    { id: 'node-9-00000009', name: 'Worker', role: 'worker', bornAt: 1_000 },
-    { id: 'node-10-00000010', name: 'Worker', role: 'worker', bornAt: 1_000 },
+    { id: 'node-9-dbacd1bc', name: 'Worker', role: 'worker', bornAt: 1_000 },
+    { id: 'node-10-b9c19a2d', name: 'Worker', role: 'worker', bornAt: 1_000 },
   ]
   const roster = buildAgentRoster({ agents })
   const [first, second] = roster.el.children

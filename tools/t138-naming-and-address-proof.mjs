@@ -3,7 +3,7 @@
 /* CAN A MANAGER ADDRESS THE WORKERS IT JUST SPAWNED -- ASKED OF THE SHIPPED
  * TOOL SERVER, OVER REAL STDIO JSON-RPC, FAILING FIRST.
  *
- * THE MEASUREMENT THIS ANSWERS (T138, 2026-09-16): four circles
+ * THE MEASUREMENT THIS ANSWERS (T138, 2026-09-16 03:47Z-05:05Z): four circles
  * started through agent.spawn with surface "tree" were all called "Manager" and
  * sixteen were all called "Worker"; agent_comms.local_roster listed rows that
  * were identical apart from a heartbeat; agent_comms.send_local answered
@@ -185,7 +185,7 @@ async function main() {
        fail-closed level in silence, by design, and then advertises no messenger
        at all. Guessing the path here is how tools/agent-to-agent-mcp-proof.mjs
        came to report "the payload does not advertise both messengers" about a
-       payload that advertises both -- see an internal report. */
+       payload that advertises both -- see REPORT-T138-NAMING-20260916.md. */
     const localAppData = path.join(stateRoot, 'local')
     const childEnv = { ...process.env, TOOLSENABLED_STATE_ROOT: stateRoot, LOCALAPPDATA: localAppData }
     const servicesRoot = require_(path.join(PAYLOAD, 'src/lib/durable-memory-file.js')).resolveServicesRoot({ env: childEnv })

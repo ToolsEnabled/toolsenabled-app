@@ -20,7 +20,10 @@
  */
 
 import assert from 'node:assert/strict'
+import { register } from 'node:module'
 import test from 'node:test'
+
+register('./helpers/css-stub-loader.mjs', import.meta.url)
 
 const {
   createResearchSettings, LOCAL_MODELS_SECTION, RESEARCH_SECTION, PRODUCT_SETTING_IDS, sectionOfRow,
@@ -104,3 +107,92 @@ test('the new heading is inside a group, so it cannot vanish from the page', () 
     + ' it, which is how a heading becomes unfindable without anything looking broken')
 })
 
+
+/* THE ONE BUTTON THAT GETS A LOCAL MODEL WORKING, UNDER THE HEADING A PERSON
+   LOOKS UNDER. The rows here tune a runtime; a person with no runtime needs "Set up
+   local models", which opens the popup that shows only the steps still
+   needed. Asserted on the mounted Settings page, through its own controllers:
+   the entry is drawn under the Local models heading, survives the section's
+   own repaint, and pressing it opens the popup, which asks the machine what
+   is left to do. */
+test('Settings → Local models carries Set up local models, and pressing it opens the popup', async t => {
+  const { installDomStandIn } = await import('./lib/dom-stand-in.mjs')
+  const dom = installDomStandIn()
+  const cells = new Map([['mc.settings.mode', 'advanced']])
+  const previous = {
+    localStorage: globalThis.localStorage, CustomEvent: globalThis.CustomEvent, location: globalThis.location,
+    fetch: globalThis.fetch, confirm: globalThis.confirm,
+  }
+  globalThis.localStorage = {
+    getItem: key => cells.get(key) ?? null,
+    setItem: (key, value) => cells.set(key, String(value)),
+    removeItem: key => cells.delete(key),
+  }
+  globalThis.CustomEvent = class { constructor(type, options = {}) { this.type = type; this.detail = options.detail } }
+  document.getElementById = id => document.body.querySelector('#' + id)
+  window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+  globalThis.location = window.location = { hash: '#/settings', reload() {} }
+  globalThis.confirm = () => true
+  globalThis.fetch = async () => ({ ok: false, status: 503, json: async () => ({ ok: false }), text: async () => '' })
+  const elementPrototype = Object.getPrototypeOf(document.createElement('div'))
+  const hadOuter = Object.getOwnPropertyDescriptor(elementPrototype, 'outerHTML')
+  if (!hadOuter) {
+    Object.defineProperty(elementPrototype, 'outerHTML', {
+      configurable: true,
+      get() { return this.innerHTML },
+      set(value) {
+        if (!this.parentNode) return
+        const holder = document.createElement('div')
+        holder.innerHTML = String(value)
+        const replacement = holder.firstElementChild
+        if (replacement) this.replaceWith(replacement)
+        else this.remove()
+      },
+    })
+  }
+  const asked = []
+  window.mcProviders = {
+    presence: async () => ({ ok: true, providers: [] }),
+    accounts: async () => ({ ok: true, accounts: [], active: null }),
+    detectLocal: async () => ({ ok: true, runtimes: [] }),
+    onLoginEvent: () => () => {},
+    localSetupStatus: async () => { asked.push('status'); return { ok: true, platform: 'linux', address: { url: 'http://127.0.0.1:11434', usable: true, local: true, saved: false }, installed: false, running: false, installSupported: true, chosen: { installed: false }, catalogue: [], held: [], activity: {} } },
+    onLocalSetupEvent: () => () => {},
+  }
+  window.mcShell = { getBridgeProof: async () => ({ ok: false }), getBridgeEndpoint: async () => ({ ok: false }), getBridgeTransport: async () => ({ ok: false }) }
+  window.mcSettings = {
+    stagesWrites: true,
+    read: async () => ({ ok: true, available: true, rows: ROWS }),
+    set: async (_id, value) => ({ ok: true, value }),
+  }
+  t.after(() => {
+    if (!hadOuter) delete elementPrototype.outerHTML
+    Object.assign(globalThis, previous)
+    dom.restore()
+  })
+  const settle = async (turns = 20) => { for (let i = 0; i < turns; i++) await new Promise(resolve => setImmediate(resolve)) }
+  const { resolveDataSource } = await import('../../src/data-source.js')
+  await resolveDataSource()
+  const { settingsView } = await import('../../src/views/settings.js')
+  const { categorySlug } = await import('../../src/settings-presentation.js')
+  const view = settingsView({ query: new URLSearchParams({ category: categorySlug(LOCAL_MODELS_SECTION) }), navigate() {} })
+  document.body.appendChild(view.el)
+  await settle()
+  const section = view.el.querySelector('[data-local-models-settings]')
+  assert.ok(section, 'the Local models section is mounted')
+  const entries = section.querySelectorAll('[data-local-setup-entry]')
+  assert.equal(entries.length, 1, 'one entry, under the Local models heading, after the section repainted itself')
+  const button = entries[0].querySelector('button[data-local-setup-open]')
+  assert.equal(button.textContent, 'Set up local models')
+  assert.ok(section.querySelector('[data-research-setting-row="model.name"]'), 'the rows are still there below it')
+  button.click()
+  await settle()
+  const popup = document.body.querySelector('dialog[data-local-setup]')
+  assert.ok(popup, 'pressing it opens the popup')
+  assert.equal(popup.open, true)
+  assert.deepEqual(asked, ['status'], 'the popup asks the machine what is still needed')
+  assert.equal(popup.getAttribute('data-local-setup-view'), 'install')
+  popup.dispatch('cancel')
+  view.destroy()
+  view.el.remove()
+})

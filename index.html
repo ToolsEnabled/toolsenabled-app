@@ -38,6 +38,7 @@
     } catch (e) { document.documentElement.dataset.theme = 'white' }
     try {
       var fontStacks = {
+        geist: '"Geist", "Segoe UI Variable", system-ui, -apple-system, "Noto Sans", sans-serif',
         plex: '"IBM Plex Sans Variable", "IBM Plex Sans", "Segoe UI Variable", system-ui, sans-serif',
         manrope: '"Manrope Variable", "Segoe UI Variable", system-ui, sans-serif',
         source: '"Source Sans 3 Variable", "Segoe UI Variable", system-ui, sans-serif',
@@ -46,7 +47,7 @@
         mono: '"JetBrains Mono Variable", ui-monospace, "Cascadia Mono", Consolas, monospace'
       }
       var f = localStorage.getItem('mc.font')
-      if (fontStacks[f]) document.documentElement.style.setProperty('--font-ui', fontStacks[f])
+      document.documentElement.style.setProperty('--font-ui', fontStacks[f] || fontStacks.geist)
     } catch (e) {}
   </script>
   <!-- WITH JAVASCRIPT OFF THIS PAGE RENDERED THE WORD "settings" AND NOTHING
@@ -189,9 +190,9 @@
   </aside>
 
   <!-- Public owner decisions live in Ledger → Purchases -- a
-       screen the owner goes to, not a modal that arrives at them. There is no
+       screen the owner goes to, not a modal that arrives at him. There is no
        always-mounted popup root here on purpose: mounting one is what made
-       every queued request interrupt whatever they were doing. Credential entry
+       every queued request interrupt whatever he was doing. Credential entry
        never mounts here either; it stays in the isolated native credential
        host. -->
 

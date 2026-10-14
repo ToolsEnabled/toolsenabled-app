@@ -83,9 +83,13 @@ import { cuttingAttribution, cuttingIdentity, cuttingSession } from './generate-
 import { assertSourceInstallPlan, checkReleaseNotes, packetReleaseNotes } from '../check-release-notes.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-// Derived from the same authority the fence reads, so the cut re-points exactly
-// the provider homes the fence will judge.
-const PROVIDER_HOME_NAMES = requiredNames().groups.find((group) => group.category === 'provider homes').names
+// Derive writable provider paths from both account authorities. Startup keeps
+// CLAUDE_CONFIG_DIR as an account path; a cut must still own and redirect it.
+// APPDATA and LOCALAPPDATA have their own platform-specific redirection below.
+const PROVIDER_HOME_NAMES = requiredNames().groups
+  .filter((group) => ['account paths', 'provider homes'].includes(group.category))
+  .flatMap((group) => group.names)
+  .filter((name) => OWNED_NAMES.includes(name) && !['APPDATA', 'LOCALAPPDATA'].includes(name))
 // The authoritative list of capability path overrides, owned by the shell and
 // kept in sync with capability/src by its own regression test.
 const { CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES } = createRequire(import.meta.url)('../../shell/capability-path-environment.cjs')
@@ -425,8 +429,8 @@ export function resolveExactAppSourceRef(repo, requestedRef, { resolve = revPars
  * private/capability-source.owner.json and refuses a --source-ref that
  * disagrees with it. The cut passes --engine-source-ref and never looked at
  * that file, so a worktree created earlier quietly packed whatever ITS private
- * file pinned: measured on an assembly worktree 2026-09-17, whose
- * declaration and PAYLOAD.json both read an earlier commit -- dozens of commits behind the
+ * file pinned: measured on the b4a assembly worktree 2026-09-17, whose
+ * declaration and PAYLOAD.json both read e2d443c5 -- 36 commits behind the
  * engine this cut was told to seal -- with tools/secrets-manager.ps1 absent
  * from the payload although the manifest at the tip declares it. Nothing in
  * the cut disagreed, because nothing in the cut asked. */
@@ -1057,13 +1061,13 @@ export async function createShortWindowsTempRoot({ platform = process.platform, 
  * cannot arrive without joining it. That list is the authority here; a hand
  * written one in this file would go stale the first time a seam is added.
  *
- * WHY THE CUT NEEDS IT. Measured on a development machine: the shell of every
- * agent circle arrives carrying TOOLSENABLED_STATE_ROOT and
- * TOOLSENABLED_VAULT_PATH already pointing into a live installation profile.
- * The cut overwrote exactly those two and inherited the others untouched. A
- * suite reading any of them reaches real installation state -- the incident
- * recorded in tools/test-ratchet.mjs is a measurement engine writing real
- * entries into a live ledger. Scrub first, then set this cut's own,
+ * WHY THE CUT NEEDS IT. Measured 2026-09-17: the shell of every agent circle on
+ * this box arrives carrying TOOLSENABLED_STATE_ROOT and TOOLSENABLED_VAULT_PATH
+ * already pointing into the owner's LIVE installation profile. The cut
+ * overwrote exactly those two and inherited the other 29 untouched. A suite
+ * reading any of them reaches the owner's real state -- the 2026-09-10
+ * incident recorded in tools/test-ratchet.mjs is a measurement engine writing
+ * four real entries into the LIVE ledger. Scrub first, then set this cut's own,
  * so the set the cut does not manage is empty rather than inherited. */
 export function scrubInheritedCapabilityPaths(env, { names = CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES } = {}) {
   const removed = []
@@ -1082,7 +1086,7 @@ export function assertCutEnvironmentIsolated(env, {
    * come from the shipped module; APPDATA and LOCALAPPDATA are DECLARED,
    * because capability-path-environment.test.mjs collects only names ending
    * _PATH, _FILE, _DIR, _ROOT or _DB -- right for capability overrides, wrong
-   * by construction for OS profile roots. A check drove this function with
+   * by construction for OS profile roots. Worker 89 drove this function with
    * APPDATA at the live roaming profile and LOCALAPPDATA at the live local
    * profile and it ACCEPTED both, because neither was in the derived list and
    * neither sits under the installation directory, so the live-path rule could
@@ -1169,15 +1173,16 @@ export function resolveCutWorkspaceSegments(processEnv, {
   if (typeof home !== 'string' || !home.trim()) {
     throw new Error(`${WORKSPACE_SEGMENTS_UNRESOLVED_CODE}: os.homedir() returned nothing, so no workspace directory name can be derived for the owner-data scan inside the cut.`)
   }
+  const paths = platform === 'win32' ? path.win32 : path.posix
   const seen = new Set()
   const names = []
   const contributed = []
   const read = []
-  const take = (target, source) => {
+  const take = (target, source, stateRootName = null) => {
     if (typeof target !== 'string' || !target.trim()) return
     read.push(source)
     let added = false
-    for (const segment of segmentsBelowHome(target, home, { platform })) {
+    for (const segment of segmentsBelowHome(target, home, { platform, stateRootName, stateRoots: processEnv })) {
       if (!isUsableWorkspaceSegment(segment)) continue
       const key = segment.toLowerCase()
       if (seen.has(key)) continue
@@ -1190,9 +1195,9 @@ export function resolveCutWorkspaceSegments(processEnv, {
   // The checkouts' own directory names ("app", "engine") are the product's, not
   // the owner's; the workspace is what sits ABOVE them, so each is taken from
   // its parent -- the same choice the guard makes for its own repository.
-  take(typeof sourceRepo === 'string' && sourceRepo.trim() ? path.dirname(path.resolve(sourceRepo)) : null, 'source repository')
-  take(typeof canonicalRoot === 'string' && canonicalRoot.trim() ? path.dirname(path.resolve(canonicalRoot)) : null, 'engine checkout')
-  for (const name of OWNED_NAMES) take(processEnv[name], `env:${name}`)
+  take(typeof sourceRepo === 'string' && sourceRepo.trim() ? paths.dirname(paths.resolve(sourceRepo)) : null, 'source repository')
+  take(typeof canonicalRoot === 'string' && canonicalRoot.trim() ? paths.dirname(paths.resolve(canonicalRoot)) : null, 'engine checkout')
+  for (const name of OWNED_NAMES) take(processEnv[name], `env:${name}`, name)
   if (names.length === 0) {
     throw new Error(
       `${WORKSPACE_SEGMENTS_UNRESOLVED_CODE}: no workspace directory name could be derived for the owner-data scan `

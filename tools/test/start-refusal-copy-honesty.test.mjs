@@ -107,8 +107,8 @@ test('agent-availability-copy.js does not claim the removed session-limit ceilin
 /* A REFUSAL MUST NAME THE CHEAPEST REMEDY THAT WORKS, NOT THE MOST EXPENSIVE
  * ONE THAT ALSO WOULD.
  *
- * MEASURED 2026-09-19. A close-failed circle
- * was cleared by "Remove this agent" alone: ok true, the
+ * MEASURED 2026-09-19 on the owner's own tree. A close-failed circle
+ * (node-24-d7961725) was cleared by "Remove this agent" alone: ok true, the
  * application still running, every other agent untouched. The sentence the
  * product showed for that state instead read "Close ToolsEnabled to end every
  * session, then open it again" -- so a person with ONE wedged agent was told
@@ -154,7 +154,7 @@ test('the resume close-failed sentence still has a way out when Stop does not cl
   /* Stop first is still the right order and is not being removed. What this
      refuses is a sentence whose ONLY instruction is Stop: measured the same
      day, Stop answered a bare internal error on five consecutive calls on
-     one circle, and answered MC_TREE_COMMAND_SESSION_ENDED on one call
+     node-35-4f5a2c39, and answered MC_TREE_COMMAND_SESSION_ENDED on one call
      and the internal error on the next -- so a reader who only has Stop has
      nothing left when Stop will not take. */
   assert.match(sentence, /Stop/, 'Stop is still worth trying first and should still be named')

@@ -101,8 +101,8 @@ test('the supplied clock makes both exported records deterministic and movable',
   assert.equal(movedConversationAt - firstConversationAt, movedBy, 'conversation timestamps must follow the caller’s clock')
 })
 
-/* ---- THE LIVING DEMONSTRATION (the example moves, so it feels a little
-   alive) ----
+/* ---- THE LIVING DEMONSTRATION (owner, 2026-08-26: "make it move ... just
+   make it feel alive a bit") ----
 
    A NOTE ON HOW THESE ARE WRITTEN, because the first version of them was
    worthless. The ladder above already slides with nowMs, so "a later clock

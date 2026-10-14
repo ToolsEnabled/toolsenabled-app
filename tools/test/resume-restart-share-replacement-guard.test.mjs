@@ -32,6 +32,7 @@
  * the same wall for the same neighbourhood and pins its rule the identical
  * way this does: by reading the source and asserting the structural
  * invariant the rule requires. */
+import { createAccountRecoveryCoordinator } from '../../src/account-recovery-coordinator.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -65,7 +66,7 @@ function flightIdentifierUsedBy(fnText, fnLabel) {
 test('freshStartExistingNode and resumeNodeSession single-flight against each other, not only against themselves', () => {
   /* NAMED BY THE FUNCTION, NOT BY ITS WHOLE PARAMETER LIST. Both landmarks
      used to carry their arguments verbatim, so adding one option -- as
-     an earlier fix (1041) did, giving freshStartExistingNode an
+     fix/1041-page2-interactions did, giving freshStartExistingNode an
      `afterBind` callback -- made this test red about a rename that had not
      happened. The trailing '(' still rules out the Unguarded sibling, which is
      the only other thing either name prefixes, and the end markers still pin
@@ -120,12 +121,31 @@ test('the Clear and Resume menu actions enter the guarded replacement wrappers',
   }
 })
 
-test('automatic and manual account continuation refuse an ordinary replacement already in flight', () => {
-  const source = stripBlockComments(readFileSync(join(ROOT, 'src', 'account-recovery-coordinator.js'), 'utf8'))
-  const recover = source.slice(source.indexOf('async function recover('), source.indexOf('flights.add(node.id)'))
-  assert.match(recover, /if \(isReplacing\(node\.id\)\) return/,
-    'automatic account recovery must check the shared replacement lock before reserving a flight')
-  const manual = source.slice(source.indexOf('async continueOnAnotherAccount('), source.indexOf('activeStore:'))
-  assert.match(manual, /flights\.has\(nodeId\) \|\| isReplacing\(nodeId\)\) return false/,
-    'the manual account action must obey both account recovery and ordinary replacement guards')
+test('explicit account and model continuation refuse an ordinary replacement already in flight', async () => {
+  const node = { id: 'node', sessionId: 'old-session', createdAt: 'incarnation', status: 'finished', tier: 'old-tier' }
+  const saved = { provider: 'claude', account: 'chosen', lines: [] }
+  let observe
+  const writes = []
+  const bridge = { onEvent: fn => { observe = fn; return () => {} },
+    start: async request => { writes.push(['start', request]); return { ok: false } },
+    close: async request => { writes.push(['close', request]); return { ok: true } },
+    sendAutomatic: async request => { writes.push(['send', request]); return { ok: true } } }
+  const coordinator = createAccountRecoveryCoordinator({ bridge, sessionNodeIds: new Map(),
+    canStart: () => true, canContinue: () => true, isReplacing: id => id === node.id,
+    tiers: [{ id: 'old-tier', provider: 'claude' }, { id: 'next-tier', provider: 'claude' }] })
+  try {
+    coordinator.register('computer', {
+      treeStore: { getNode: id => id === node.id ? node : null, snapshot: () => ({ nodes: [node] }),
+        setNodeStatus: (...args) => { writes.push(['status', ...args]); return { ok: true } } },
+      transcriptStore: { get: () => saved, save: (...args) => writes.push(['transcript', ...args]) },
+      handoffStore: { get: () => null, save: (...args) => writes.push(['handoff', ...args]) },
+    })
+    const target = { computerId: 'computer', nodeId: node.id, isCurrent: () => true }
+    assert.equal(await coordinator.continueOnAnotherAccount({ ...target, startOptions: { treeAccount: 'chosen' } }), false)
+    assert.equal(await coordinator.continueOnAnotherModel({ ...target, startOptions: { tier: 'next-tier' } }), false)
+    observe({ sessionId: node.sessionId, event: { type: 'account_recovery_needed', recoveryId: 'retired', handoff: 'Saved context.' } })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(writes, [], 'neither explicit continuation nor a legacy automatic ticket may replace this session')
+    assert.equal(node.sessionId, 'old-session')
+  } finally { coordinator.destroy() }
 })

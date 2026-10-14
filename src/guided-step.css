@@ -209,7 +209,7 @@
 .guided-withheld-run > .guided-summary:hover { color: var(--ink); }
 .guided-withheld-run[open] > .guided-summary { margin-bottom: var(--s2); }
 
-/* HOW OFTEN THIS WANTS SOMETHING FROM YOU (R1536).
+/* HOW OFTEN THIS WANTS SOMETHING FROM YOU (owner, R1536).
 
    First line of the block, and deliberately quiet. The question it answers --
    "is this going to ask me for something?" -- comes before every other question

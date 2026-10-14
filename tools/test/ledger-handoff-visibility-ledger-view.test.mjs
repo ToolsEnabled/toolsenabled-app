@@ -5,22 +5,13 @@
 import assert from 'node:assert/strict'
 import { register } from 'node:module'
 import test from 'node:test'
-import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { installDomStandIn } from './lib/dom-stand-in.mjs'
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 const repoRootUrl = pathToFileURL(repoRoot).href
-// The RED baseline is opt-in and names a commit from the history that
-// preceded this fix; a checkout without that history skips it by name.
-const BASELINE_REF = process.env.T1642_HANDOFF_BASELINE_REF || '0000000'
-const baselineRequested = process.env.T1642_HANDOFF_BASELINE === '1'
-const baselineAvailable = baselineRequested
-  && spawnSync('git', ['cat-file', '-e', `${BASELINE_REF}^{commit}`], { cwd: repoRoot }).status === 0
-const useBaseline = baselineRequested && baselineAvailable
-if (baselineRequested && !baselineAvailable)
-  test('the RED baseline comparison', t => t.skip(`baseline ref ${BASELINE_REF} is not in this checkout`))
+const useBaseline = process.env.T1642_HANDOFF_BASELINE === '1'
 
 register(`data:text/javascript,${encodeURIComponent(`
   import { execFileSync } from 'node:child_process'
@@ -45,7 +36,7 @@ register(`data:text/javascript,${encodeURIComponent(`
   }
   export async function load(url, context, nextLoad) {
     if (url === 'test:ledger-view-baseline') {
-      const source = execFileSync('git', ['show', ${JSON.stringify(BASELINE_REF + ':src/views/ledger.js')}], { cwd: baselineRepoRoot, encoding: 'utf8' })
+      const source = execFileSync('git', ['show', '1a4cc5b18d9ad6dd61b2b3df2106fd3bf83f7559:src/views/ledger.js'], { cwd: baselineRepoRoot, encoding: 'utf8' })
       return stub(source)
     }
     if (url === 'test:css') return stub('')

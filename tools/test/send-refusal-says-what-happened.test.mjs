@@ -1,12 +1,12 @@
 /* A SEND THAT NEVER HAPPENED MUST NOT BE REPORTED AS A DELIVERY NOBODY CAN
  * VERIFY.
  *
- * T18, cycle 2, measured on a development profile. It holds pasted pictures
- * under `paste-attachments` and, across thousands of files in
- * `node-transcripts`, ZERO rows carrying an `attachments` key --
+ * T18, cycle 2, measured on 2026-09-16 in the owner's own shape. The owner's
+ * LIVE profile holds four pasted pictures under `paste-attachments` and, across
+ * 24 045 files in `node-transcripts`, ZERO rows carrying an `attachments` key --
  * `attachmentSummaries` always pushes at least `{ name }`, so a picture that
  * rode an accepted turn would always leave one. No picture has ever ridden a
- * recorded turn there. The report was that sending images did not work.
+ * recorded turn there. The owner's report was "sending images doesnt work".
  *
  * THE SEAM. `shell/agent-command-surface.cjs`'s `'agent:send'` body checks every
  * `request.images` path against the session's own allowlist, and for a path that

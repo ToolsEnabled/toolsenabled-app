@@ -117,7 +117,7 @@ test('a session that is not test-mode is DISCARDED, never handed to a customer',
     request: async () => ({ id: 'cs_live_realone', url: 'https://pay.example/live' }),
   })
   await assert.rejects(
-    () => provider.createSession({ email: 'a@b.co', priceId: 'price_x', quantity: 1, metadata: {}, idempotencyKey: 'k', successUrl: 's', cancelUrl: 'c' }),
+    () => provider.createSession({ email: 'person-80305c9b@example.com', priceId: 'price_x', quantity: 1, metadata: {}, idempotencyKey: 'k', successUrl: 's', cancelUrl: 'c' }),
     error => /not test-mode/.test(error.reason) && /no payment link was issued/.test(error.reason)
   )
 })
@@ -128,7 +128,7 @@ test('a session flagged livemode is discarded even if its id looks like a test o
     request: async () => ({ id: 'cs_test_disguised', url: 'https://pay.example/x', livemode: true }),
   })
   await assert.rejects(
-    () => provider.createSession({ email: 'a@b.co', priceId: 'price_x', quantity: 1, metadata: {}, idempotencyKey: 'k', successUrl: 's', cancelUrl: 'c' }),
+    () => provider.createSession({ email: 'person-80305c9b@example.com', priceId: 'price_x', quantity: 1, metadata: {}, idempotencyKey: 'k', successUrl: 's', cancelUrl: 'c' }),
     /live-mode/
   )
 })
@@ -139,7 +139,7 @@ test('a reply with no usable session is refused rather than rendered as a broken
       mode: 'test', secretKey: 'sk_test_abcdefgh', apiBase: 'https://api.example/v1', request: async () => reply,
     })
     await assert.rejects(
-      () => provider.createSession({ email: 'a@b.co', priceId: 'price_x', quantity: 1, metadata: {}, idempotencyKey: 'k', successUrl: 's', cancelUrl: 'c' }),
+      () => provider.createSession({ email: 'person-80305c9b@example.com', priceId: 'price_x', quantity: 1, metadata: {}, idempotencyKey: 'k', successUrl: 's', cancelUrl: 'c' }),
       /usable checkout session/,
       `reply ${JSON.stringify(reply)} must refuse`
     )
@@ -269,7 +269,7 @@ test('a malformed address is refused before anything is recorded', async () => {
   try {
     const provider = fakeProvider()
     const api = service({ store, provider })
-    for (const email of ['', '   ', 'nope', 'a@b', 'a b@c.com', `${'x'.repeat(300)}@y.com`]) {
+    for (const email of ['', '   ', 'nope', 'a@b', 'a person-7ffac562@example.com', `${'x'.repeat(300)}@y.com`]) {
       await assert.rejects(() => api.signup({ ...GOOD, email }), error => error.state === 'refused', `email ${JSON.stringify(email)}`)
     }
     assert.equal(provider.seen.length, 0)

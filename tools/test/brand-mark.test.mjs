@@ -69,7 +69,7 @@ test('icon checks distinguish an absent file from an indeterminate read and neve
  * tools/brand-mark.mjs restates the owner's artwork as numbers so it can be
  * rasterized without an SVG engine. Restating something is how it drifts. This
  * suite reads the owner's actual file and asserts the numbers still describe
- * it, so the mark on the taskbar cannot quietly stop being the mark they sent. */
+ * it, so the mark on the taskbar cannot quietly stop being the mark he sent. */
 
 test('the rasterizer geometry still matches the owner-supplied SVG', () => {
   const svg = readText(ARTWORK)
@@ -236,8 +236,8 @@ test('the shipped favicon is the generated mark and the placeholder is gone', ()
  * A mark was briefly added to <header class="topbar">, and it broke the window
  * frame: shell/main.cjs hides the native title bar (titleBarStyle:'hidden'), so
  * that strip is not a page element, it IS the window chrome, and a new flex
- * child in .tb-left displaced the back chevron. It was seen before the
- * lane saw it. Identity is carried by the app icon, the installer icon and the
+ * child in .tb-left displaced the back chevron. The owner saw it before the
+ * lane did. Identity is carried by the app icon, the installer icon and the
  * favicon — none of which touch layout.
  *
  * This test is the tripwire so the mark cannot creep back into the frame by a

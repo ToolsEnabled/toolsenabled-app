@@ -438,7 +438,7 @@ test('observed engine exit retains its cleanup tombstone while broker retirement
   } finally { f.releaseStall() }
 })
 
-/* T1790. Measured: an account change closed the running
+/* T1790. MEASURED 2026-09-24 (Worker 8): an account change closed the running
    session first; retiring its queued messages was refused, so the close failed
    and left the session half-closed (close-failed, closeRequested still set,
    engine and tool identity still open). Every later Resume was then refused as

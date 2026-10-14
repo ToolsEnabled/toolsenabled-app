@@ -133,7 +133,7 @@
 /* The line offered on an empty tree only. Set apart from the intro so it reads
    as a suggestion rather than as another instruction.
 
-   ITS LEFT RULE IS GONE (it read as cluttered). Three
+   ITS LEFT RULE IS GONE (owner, 2026-08-18, on this panel: "messy"). Three
    blocks opened this panel in a row -- the intro, this suggestion behind a grey
    left rule, and the switched-off notice behind an amber one -- at two indents
    and with no headings between them, so they read as a stack of look-alike
@@ -166,9 +166,12 @@
   /* The frame a tipped hint is positioned against. See .tip-box below. */
   position: relative;
 }
+/* The grid above beats the browser's hidden default, and these fields are hidden from script (the typed model name
+   until Other model… is chosen, the research folder or project field), so the guard is needed here. */
+.agent-compose-field[hidden] { display: none; }
 
-/* PROVIDER, THEN MODEL, ON ONE ROW (1.0.48, owner decision:
-   provider first, then model). Two menus where there used to be one, and the second
+/* PROVIDER, THEN MODEL, ON ONE ROW (1.0.48, owner: "it should be provider,
+   then model choice"). Two menus where there used to be one, and the second
    row they would take when stacked is height the rail does not have: the
    comments above and below record Start and the brief being pushed out of
    sight every time this form grew. Side by side they cost exactly the one row
@@ -214,8 +217,10 @@
    THE TIPS, BEHIND THE LABEL THEY BELONG TO
    --------------------------------------------------------------- */
 
-/* The page 2 right panel read as cluttered, so some of the tips show only on
-   hover, in a clean box in theme, after a slightly longer delay (about 1s).
+/* Owner, 2026-08-19, on this panel for the second time: "pg 2 right pnel STILL
+   reads ugly and messy. Make some of the tips only show on hover (give it a
+   nice clean box in theme and give it a slightly longer delay like 1s) so it
+   isnt so messy".
 
    FIVE PARAGRAPHS OF FIELD HELP CAME OUT OF THE RESTING LAYOUT. Which five and
    why those five is argued in src/agent-compose-panel.js, above buildPanel():
@@ -264,8 +269,8 @@
      need to be: the label under the pointer is what keeps it up. */
   pointer-events: none;
   opacity: 0;
-  /* LEAVING IS IMMEDIATE, ARRIVING WAITS A SECOND (the slightly longer delay,
-     about 1s). The delay is on the reveal rule, not here, so a
+  /* LEAVING IS IMMEDIATE, ARRIVING WAITS A SECOND (the owner's "slightly
+     longer delay like 1s"). The delay is on the reveal rule, not here, so a
      tip that is on screen disappears the moment the pointer leaves rather than
      hanging over the next field for another second. */
   transition: opacity var(--dur-2) var(--ease);
@@ -479,6 +484,20 @@
   outline-offset: 2px;
 }
 
+/* Computers owns this consumer. The body scroller and pinned actions stay. */
+.computers:not(.home-agent-workspace) .agent-compose-title { font: 620 13.5px/1.4 var(--font-ui); text-transform: none; letter-spacing: 0; }
+.computers:not(.home-agent-workspace) .agent-compose-select,
+.computers:not(.home-agent-workspace) .agent-compose-text {
+  border: 1px solid var(--field-border); border-radius: 6px; background: var(--bg-surface);
+  color: var(--ink); padding: 6px 10px; font: 450 13.5px/1.4 var(--font-ui);
+}
+.computers:not(.home-agent-workspace) .agent-compose-select { height: 32px; min-height: 32px; }
+.computers:not(.home-agent-workspace) .agent-compose-select[aria-invalid="true"],
+.computers:not(.home-agent-workspace) .agent-compose-text[aria-invalid="true"] { border-color: var(--status-error); }
+.computers:not(.home-agent-workspace) .agent-compose-actions .ctl-btn { min-height: 32px; font: 550 13.5px/1.4 var(--font-ui); border-radius: 6px; box-shadow: none; }
+.computers:not(.home-agent-workspace) .agent-compose-hint.tip-box { background: var(--bg-surface); border-color: var(--line); box-shadow: var(--shadow-popover); }
+.computers:not(.home-agent-workspace) .agent-compose :is(select, textarea, button, input):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
 /* ---------------------------------------------------------------
    ON A PHONE THE RAIL HANDS THIS PANEL A HEIGHT IT NEVER ASKED FOR
    --------------------------------------------------------------- */
@@ -526,7 +545,7 @@
  * NOTHING IS REORDERED AND NOTHING IS REMOVED. The body still comes before the
  * action row, which still comes before the confinement line -- see the comment
  * above the action row in src/agent-compose-panel.js, which records Start being
- * pushed below the fold as a reported defect TWICE, and the comment on
+ * pushed below the fold as an owner-reported defect TWICE, and the comment on
  * `.agent-compose-body` above, which is why the body owns its own scrolling at
  * desktop width. At 1024px and wider not one declaration below applies, so the
  * pinned Start bar and the panel's own scroller are exactly as they were

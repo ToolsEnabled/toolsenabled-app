@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { TREE_BOX, TREE_CONTEXT_SIZES, TREE_STYLE_KEY, boxPort, layoutBoxTree, readTreeStyle } from '../../src/tree-box-layout.js'
+import { TREE_BOX, TREE_CONTEXT_SIZES, TREE_STYLE_KEY, boxPort, boxVideoExtent, boxVideoLane, layoutBoxTree, readTreeStyle } from '../../src/tree-box-layout.js'
 import { layoutTree, TREE_LABEL_STACK } from '../../src/tree-layout.js'
 import { StaticTreeGraph } from '../../src/tree-graph.js'
 import { TreeScope } from '../../src/tree-scope.js'
@@ -339,7 +339,7 @@ test('tree style defaults safely and preserves the explicit classic-circle prefe
  * `contextSize(...)` built every profile with `gap: 36, rowGap: 96`, so the
  * space between cards never moved while the cards ranged 244->420 wide and
  * 120->320 tall. Large was the proportionally TIGHTEST of the four, which is
- * where the cards visibly crowd together. These check the property, not
+ * where "the bubbles bunch up too much" lands. These check the property, not
  * the four numbers: pinning 27/32/36/47 here would fail against a better
  * scale and the quickest way green would be to put the literals back. */
 test('every size declares its own spacing, not one literal shared by all', () => {
@@ -379,4 +379,111 @@ test('compact sizes retain the established horizontal and vertical spacing propo
       `${name}'s rowGap (${box.rowGap}) is not Medium's proportion of its own ${box.height}px box `
       + `(${(box.height * (medium.rowGap / medium.height)).toFixed(1)})`)
   }
+})
+
+/* 1.0.49 VIDEO BOX. A 16:9 panel as wide as the box hangs 8px under an agent
+   whose video is on. Only the ranks that hold one get the extra lane, and with
+   no video the layout is the one every test above pins. */
+const videoFixtures = () => {
+  const forest = [[5, 1], [7, 3], [3, 2], [4, 1]].map(([count, fanout], index) =>
+    fleet(count, fanout).map(node => ({ ...node, id: `${index}:${node.id}`,
+      parentId: node.parentId ? `${index}:${node.parentId}` : null, treeNode: { treeId: `tree-${index}` } }))).flat()
+  const heads = Array.from({ length: 4 }, (_, index) => ({ id: `root-${index}`, name: `Tree ${index}`,
+    parentId: null, treeNode: { treeId: `tree-${index}` } }))
+  return [fleet(1), fleet(4, 1), fleet(10, 3), fleet(25, 3), fleet(12), forest, heads]
+}
+
+test('video extents are 8px plus a 16:9 panel as wide as each box size', () => {
+  const heights = Object.fromEntries(Object.entries(TREE_CONTEXT_SIZES).map(([name, { box }]) => [name, boxVideoExtent(box.width).height]))
+  assert.deepEqual(heights, { mini: 137, small: 162, medium: 180, large: 236 })
+  for (const { box } of Object.values(TREE_CONTEXT_SIZES)) {
+    assert.equal(boxVideoExtent(box.width).gap, 8)
+    assert.equal(boxVideoLane(box), 8 + boxVideoExtent(box.width).height)
+  }
+})
+
+test('no video, an empty video list, and videos on absent agents give the same layout as before', () => {
+  for (const contextSize of Object.keys(TREE_CONTEXT_SIZES)) for (const [W, H] of [[1600, 800], [875, 856], [360, 640]]) {
+    for (const nodes of videoFixtures()) {
+      const plain = layoutBoxTree({ nodes, W, H, contextSize })
+      for (const videoIds of [null, [], new Set(), ['not-in-this-tree']]) {
+        assert.deepEqual(layoutBoxTree({ nodes, W, H, contextSize, videoIds }), plain,
+          'an absent video must not move, add or reorder anything')
+      }
+    }
+  }
+})
+
+test('a rank holding a video gets rowGap plus the video extent; other ranks keep their lane', () => {
+  for (const [contextSize, { box }] of Object.entries(TREE_CONTEXT_SIZES)) {
+    const nodes = fleet(5, 1)
+    const plain = layoutBoxTree({ nodes, contextSize, W: 900, H: 700 })
+    const lane = boxVideoLane(box)
+    const video = layoutBoxTree({ nodes, contextSize, W: 900, H: 700, videoIds: ['agent-1', 'agent-3'] })
+    assert.deepEqual(video.rowOf, plain.rowOf)
+    assert.equal(video.rowYs[0], plain.rowYs[0])
+    const gaps = video.rowYs.slice(1).map((y, rank) => y - video.rowYs[rank] - box.height)
+    assert.deepEqual(gaps, [box.rowGap, box.rowGap + lane, box.rowGap, box.rowGap + lane],
+      `${contextSize}: only the ranks under a video grow, each by one video lane`)
+    for (const [id, point] of video.slots) {
+      assert.equal(point.x, plain.slots.get(id).x, 'a video never moves a box sideways')
+      assert.equal(point.y, video.rowYs[video.rowOf.get(id)])
+      assert.equal(video.radii.get(id), box.height / 2, 'the box itself keeps its size')
+    }
+    // Every sibling on a video rank shares the lane, so no box sits on a panel.
+    const wide = fleet(7, 3)
+    const shared = layoutBoxTree({ nodes: wide, contextSize, W: 1600, H: 900, videoIds: ['agent-2'] })
+    const rank = shared.rowOf.get('agent-2')
+    const plainWide = layoutBoxTree({ nodes: wide, contextSize, W: 1600, H: 900 })
+    for (let next = rank + 1; next < shared.rowYs.length; next++) {
+      assert.equal(shared.rowYs[next] - plainWide.rowYs[next], lane, 'every rank below the video moves down by one lane')
+    }
+    for (let above = 0; above <= rank; above++) assert.equal(shared.rowYs[above], plainWide.rowYs[above])
+  }
+})
+
+test('packed forests count the ranks that hold a video', () => {
+  // Four Large heads pack two by two in a laptop split. A video on a head
+  // makes its packed row one lane taller, and the second row starts under it.
+  const nodes = Array.from({ length: 4 }, (_, index) => ({ id: `root-${index}`, name: `Tree ${index}`,
+    parentId: null, treeNode: { treeId: `tree-${index}` } }))
+  const box = TREE_CONTEXT_SIZES.large.box, lane = boxVideoLane(box), pitch = box.height + box.rowGap
+  const plain = layoutBoxTree({ nodes, W: 875, H: 856, contextSize: 'large' })
+  const video = layoutBoxTree({ nodes, W: 875, H: 856, contextSize: 'large', videoIds: ['root-0'] })
+  assert.equal(plain.rowYs.length, 2, 'the fixture packs into two rows')
+  assert.deepEqual(video.rowOf, plain.rowOf)
+  assert.equal(video.rowYs[1] - video.rowYs[0], pitch + lane)
+  for (const [id, point] of video.slots) assert.equal(point.y, video.rowYs[video.rowOf.get(id)], 'slots follow the packed ranks')
+  for (const [id, rank] of video.rowOf) {
+    if (rank !== 1) continue
+    assert.ok(video.slots.get(id).y - box.height / 2 >= video.slots.get('root-0').y + box.height / 2 + lane,
+      'a box in the next packed row starts below the video panel')
+  }
+  // The packer's fit counts the lanes. On a tall split the four heads stack
+  // one per row; with a video under each, two rows of two fit better.
+  const tall = layoutBoxTree({ nodes, W: 875, H: 1400, contextSize: 'large' })
+  const tallVideo = layoutBoxTree({ nodes, W: 875, H: 1400, contextSize: 'large', videoIds: nodes.map(node => node.id) })
+  assert.equal(tall.rowYs.length, 4)
+  assert.equal(tallVideo.rowYs.length, 2, 'the packing chosen accounts for every video lane')
+  assert.equal(tallVideo.rowYs[1] - tallVideo.rowYs[0], pitch + lane)
+  // Packing keeps each tree whole, and a child starts below its parent's panel.
+  const forest = videoFixtures()[5], withIds = ['1:agent-1', '3:agent-0']
+  for (const [contextSize, profile] of Object.entries(TREE_CONTEXT_SIZES)) {
+    const withVideo = layoutBoxTree({ nodes: forest, W: 875, H: 1400, contextSize, videoIds: withIds })
+    for (const [child, parent] of withVideo.parents) {
+      const parentBottom = withVideo.slots.get(parent).y + profile.box.height / 2
+        + (withIds.includes(parent) ? boxVideoLane(profile.box) : 0)
+      assert.ok(withVideo.slots.get(child).y - profile.box.height / 2 > parentBottom, `${contextSize}: a child starts below its parent's panel`)
+    }
+    for (const [id, point] of withVideo.slots) assert.equal(point.y, withVideo.rowYs[withVideo.rowOf.get(id)])
+  }
+})
+
+test('a direct link meets the outline of a box and its video panel together', () => {
+  const box = TREE_BOX, below = boxVideoLane(box)
+  const from = { x: 0, y: 0 }
+  assert.deepEqual(boxPort(from, { x: 0, y: 1000 }, 1, 'medium', below), { x: 0, y: box.height / 2 + below },
+    'a link leaving downward starts under the panel, not across the video')
+  assert.deepEqual(boxPort(from, { x: 0, y: -1000 }, 1, 'medium', below), { x: 0, y: -box.height / 2 })
+  assert.deepEqual(boxPort(from, { x: 900, y: 0 }, 1, 'medium', 0), boxPort(from, { x: 900, y: 0 }))
 })

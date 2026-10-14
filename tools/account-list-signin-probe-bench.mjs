@@ -32,13 +32,9 @@ import { createRequire } from 'node:module'
 const require_ = createRequire(import.meta.url)
 const { createAccountRegistryStore } = require_('../shell/account-registry.cjs')
 
-/* Providers and credential-file names copied from shell/account-registry.cjs's
-   PROVIDERS table so a drift there cannot make this bench silently probe the
-   wrong filename. Signed-in/signed-out is split the way a real list mixes
-   them; 'no' and 'yes' take the same one lstat, so the split cannot change
-   the number being measured either way. */
+/* Signed-out synthetic accounts measure the registry's metadata probe cost.
+   No provider sign-in file is created by the benchmark. */
 const PROVIDERS = ['claude', 'codex']
-const CREDENTIAL_FILE = { claude: '.credentials.json', codex: 'auth.json' }
 
 function buildStore(accountCount) {
   const root = fs.mkdtempSync(path.join(process.env.BENCH_ROOT || os.tmpdir(), 'account-list-signin-bench-'))
@@ -57,9 +53,7 @@ function buildStore(accountCount) {
     const provider = PROVIDERS[index % PROVIDERS.length]
     const directory = `.account-${index}`
     fs.mkdirSync(path.join(home, directory), { recursive: true })
-    const credential = path.join(home, directory, CREDENTIAL_FILE[provider])
-    if (index % 3 !== 0) fs.writeFileSync(credential, 'x'.repeat(64)) // signed in
-    // index % 3 === 0 leaves no credential file at all: signed out
+    // All benchmark accounts are signed out; the benchmark measures metadata probes only.
     store.add({ name: `account-${index}`, provider, directory })
   }
   return { store, root }

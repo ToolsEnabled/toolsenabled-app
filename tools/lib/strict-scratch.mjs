@@ -2,7 +2,7 @@
  *
  * WHY THIS IS A MODULE AND NOT FOUR LINES INSIDE tools/test-strict.mjs.
  *
- * Measured 2026-09-11 on Linux at an earlier app commit with a default umask of 002:
+ * Measured 2026-09-11 on Linux at app 906ea9d0 with a default umask of 002:
  * `node tools/test-strict.mjs --canonical-root <engine>` reported
  *
  *   Ran 12452 tests: 12327 pass, 20 fail, 105 skipped

@@ -74,7 +74,7 @@ function fixture() {
            withholds the map until a saved-session sweep has asked the host (T407
            review). Supplied settled here: this fixture's sessions ARE this run's. */
       seatSessionEvidence: () => liveSessions,
-      sessionNodeIds: liveSessions, sessionEfforts: new Map(), sessionThreadIds: new Map(), sessionAccountNames: new Map(),
+      sessionNodeIds: liveSessions, sessionEfforts: new Map(), sessionThreadIds: new Map(), sessionAccountNames: new Map(), sessionAccountRecords: new Map(),
       nodeReplies: new Map(), composePanel: null, window: {}, mockSource: () => false,
       isWriteEnabled: () => true, START_CONTROL_FLAG: 'start',
       draftStartEffort: () => 'medium', tierEffortOf: () => 'medium', identityRoleForTreeNode: value => value,

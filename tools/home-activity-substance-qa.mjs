@@ -4,13 +4,14 @@
  *
  * THE REPORT THIS ANSWERS, twice over.
  *
- * FIRST TIME. On the installed build the list showed only "Agent run
- * 37 · started" / "did not start" and a relative time. The agent feeds that get
- * this right always carry the same three things -- which agent, what it was
- * asked, what happened.
+ * FIRST TIME. The owner, on the installed build: the list shows only "Agent run
+ * 37 · started" / "did not start" and a relative time. He named the repository
+ * whose agent feeds get this right, and what those carry is always the same
+ * three things -- which agent, what it was asked, what happened.
  *
- * SECOND TIME, and this file was passing while it was true: page 1 is a context
- * flow of all the agents, showing their outputs cleanly. The rows had grown the ask and the agent and still could
+ * SECOND TIME, and this file was passing while it was true: "on page 1 this is
+ * supposed to be a context flow of all the agents and such we want to see their
+ * outputs cleanly." The rows had grown the ask and the agent and still could
  * not show an OUTPUT, because the join read `role` and `message` off the saved
  * node and never read `reply` -- and this driver seeded every node with
  * `reply: ''`, so nothing here could have noticed. A driver that seeds a field
@@ -38,7 +39,7 @@
  * Nothing about the READ path is simulated: the page asks the shell over the
  * real channel, joins on the real key, and renders what it is given.
  *
- * AND THEN A REAL AGENT, because the panel is a FLOW and a flow that
+ * AND THEN A REAL AGENT, because the owner asked for a FLOW and a flow that
  * only ever renders history is a photograph with more columns. Part B starts a
  * live agent from the computers page with real presses and real keystrokes,
  * walks to the home screen while it is still working, and reads the row as the
@@ -81,10 +82,10 @@ const RECORDED_ONLY = process.argv.includes('--recorded-only')
 /* The runs this measures, and why each one.
  *
  *   refused   with the code the tree really raises when a build carries no
- *             launcher for the picked type. That is the state that was reported,
+ *             launcher for the picked type. That is the state the owner was in,
  *             and the row for it used to say only "did not start".
  *   answered  a run that started, was asked something, and ANSWERED. Its reply
- *             is on the node, which is the field the whole report is
+ *             is on the node, which is the field the whole owner report is
  *             about. It also has turns in the per-turn record, so its row has to
  *             say what it did.
  *   spoke     a run whose node kept no reply of its own and whose saved
@@ -419,7 +420,7 @@ async function recordedFlow(window, computerId) {
     note(refused.did === '' ? 'ok' : 'FAIL', `a refused run carries no turn line: ${JSON.stringify(refused.did)}`)
   }
 
-  /* ---- the run that ANSWERED, which is the report ---- */
+  /* ---- the run that ANSWERED, which is the owner's report ---- */
   const answered = rowFor(rows, RUN_BY_KEY.answered)
   note(answered ? 'ok' : 'FAIL', 'the run that answered is on the list')
   if (answered) {
@@ -457,8 +458,8 @@ async function recordedFlow(window, computerId) {
 
   /* ---- nothing under the list ----
      The footer used to be three sentences on every healthy record (the record
-     checks out, how many started, no ending is written down), which added
-     nothing on a healthy record.
+     checks out, how many started, no ending is written down); the owner, with
+     the card in front of him: "this little dialog box is kind of pointless".
      src/local-activity.js recordFooter now says nothing for a record that
      checks out and speaks only when the record NO LONGER does -- and this
      driver wrote the record with the product's own recorder, so it checks out.
@@ -634,44 +635,7 @@ async function liveFlow(window) {
   await shoot(window, path.join(SHOTS, 'home-activity-after-turn.png'))
 }
 
-/* The sign-in a Claude child needs, borrowed into the scratch profile for the
-   lifetime of this run and removed with it. openWindow() isolates USERPROFILE
-   and APPDATA on purpose, so a child started under it looks for a sign-in in a
-   home that has never had one. Same borrow, same reasoning, as
-   tools/claude-tree-start-proof.mjs. */
-function lendClaudeSignIn(scratch) {
-  const realHome = process.env.USERPROFILE || ''
-  const credential = path.join(realHome, '.claude', '.credentials.json')
-  if (!existsSync(credential)) return false
-  const scratchClaude = path.join(scratch, 'home', '.claude')
-  mkdirSync(scratchClaude, { recursive: true })
-  cpSync(credential, path.join(scratchClaude, '.credentials.json'))
-  const settings = path.join(realHome, '.claude.json')
-  if (existsSync(settings)) cpSync(settings, path.join(scratch, 'home', '.claude.json'))
-  const realNpm = path.join(process.env.APPDATA || '', 'npm')
-  if (existsSync(realNpm)) {
-    mkdirSync(path.join(scratch, 'roaming'), { recursive: true })
-    try { symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* already linked */ }
-  }
-  return true
-}
 
-/* TWO PROFILES, AND THE REASON IS A MEASUREMENT.
- *
- * Part A seeds both ledgers with the product's own recorders under a KEYSTORE
- * DOUBLE, because plain Node has no Electron safeStorage. The app can read
- * those records back -- history() and usage() only need the chain -- but it
- * cannot decrypt the signing key with its real keystore, so
- * mc-agent:availability answers SPAWN_RECORD_KEY_UNREADABLE and the product
- * correctly refuses to START anything. That refusal is right. It also means a
- * live agent cannot be measured in the same profile, and a first version of
- * this file discovered that by reporting the refusal as a harness state.
- *
- * So the live half gets its OWN profile with nothing seeded at all. The app
- * mints its own key, a real agent runs, and every record the rows below read is
- * one the product wrote about work it really did. That is a better measurement
- * than the seeded half, not a workaround for it.
- */
 async function recordedRun() {
   const scratch = mkdtempSync(path.join(tmpdir(), 'home-activity-recorded-'))
   let window = null
@@ -723,12 +687,8 @@ async function liveRun() {
   try {
     const staged = await stage(scratch)
     seedMachineRecord(scratch, staged.appRoot, 'standard')
-    const lent = lendClaudeSignIn(scratch)
-    note('info', lent
-      ? 'lent the scratch profile this computer\'s Claude sign-in; it lives only in the temporary profile this run deletes.'
-      : 'this computer has no Claude sign-in to lend, so the live half will report a harness state rather than a finding.')
     note('info', 'NOTHING is seeded in this profile: every record the rows below read is one the product writes about work it really does.')
-    window = await openWindow(staged.executable, scratch)
+    window = await openWindow(staged.executable, scratch, { provider: 'claude' })
     await window.evaluate(`localStorage.setItem('mc.write.agent-session', 'enabled')`)
     await window.evaluate(`location.hash = '#/computers'`)
     await delay(1200)

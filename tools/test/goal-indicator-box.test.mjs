@@ -7,7 +7,7 @@ import { commonCommandIcon } from '../../src/common-command-icons.js'
 import { goalTitleFromObjective, goalRefusalSentence } from '../../src/slash-commands.js'
 import { refusalCode } from '../../src/agent-availability-copy.js'
 
-/* R1238 / an internal report's own finding: /goal works end to end
+/* R1238 / REPORT-B5-SUB2-loop-goal.md's own finding: /goal works end to end
    but nothing on screen answers "is a goal running right now" without
    scrolling the transcript. This drives the REAL goalControlsBox declaration
    out of views/computers.js -- the same lift bounded-work-manual-stop.test.mjs
@@ -283,10 +283,10 @@ test('a goal receipt for another session is never displayed as current', async (
   assert.match(panel.querySelector('[data-goal="out"]').textContent, /could not confirm/i)
 })
 
-/* MEASURED on a development install: one rail box left on a node whose saved
-   session the host no longer held asked `goal get` on every tick of the shared
-   status bus -- tens of thousands of refusals, each an Electron "Error occurred
-   in handler" stack in the app log. The host's answer cannot change until the node does. */
+/* LIVE 2026-09-21: one rail box left on a node whose saved session the host no
+   longer held asked `goal get` on every tick of the shared status bus -- 76,380
+   refusals, each an Electron "Error occurred in handler" stack in the app log
+   (87 MB in one session). The host's answer cannot change until the node does. */
 function makeRefusingBridge(known = new Set()) {
   return {
     calls: [],
@@ -402,14 +402,14 @@ test('an ended session is asked about once, and a transient refusal is still ret
   assert.match(second.querySelector('[data-goal="out"]').textContent, /could not confirm/i)
 })
 
-/* THE THIRD SPELLING OF "THIS SESSION IS OVER".
+/* THE THIRD SPELLING OF "THIS SESSION IS OVER" (LIVE 2026-09-23, 09:20).
  *
  * The window can still own a session that shell/agent-host.cjs has already
  * dropped: ownedAgentSession() passes and readySession() answers
- * AGENT_SESSION_UNKNOWN. A development app log shows a burst of owner-host
- * `revoke` retirements within a minute, each pair followed by `mc-agent:goal`
- * refusals with that code, most of them between two retirements seconds
- * apart: the storm pattern the two cases above
+ * AGENT_SESSION_UNKNOWN. The owner's app log shows four owner-host `revoke`
+ * retirements at 09:20:10-09:21:01, each pair followed by `mc-agent:goal`
+ * refusals with that code -- nine in all, seven of them between two
+ * retirements 34 seconds apart: the storm pattern the two cases above
  * stopped for the other two codes. The box painted it as "could not
  * confirm", never memoised it, and asked again on every tick. */
 test('a session the window owns but the host has dropped is stated as not running and asked about once', async () => {

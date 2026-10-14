@@ -2,9 +2,9 @@
 
 /* A GOAL, AND WHY IT IS HOST-DRIVEN RATHER THAN ASKED OF THE PROVIDER.
  *
- * T61 (A23, overruling the record-only closure of T48): a goal set in the app
- * makes the agent work autonomously until the goal is achieved. The report on
- * the cut-1 build was that goal still had issues.
+ * T61 (owner A23, overruling the record-only closure of T48): "a goal set in
+ * the app makes the agent work autonomously until the goal is achieved". The
+ * owner's own report on the cut-1 build was "theres still issues with goal".
  *
  * THE DESIGN QUESTION THIS FILE ANSWERS. Codex 0.154 has a native persisted
  * thread-goal (set/get/clear) and the obvious build is to call it. The

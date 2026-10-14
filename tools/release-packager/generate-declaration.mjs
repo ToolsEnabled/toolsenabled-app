@@ -421,7 +421,7 @@ ${cuttingAttribution()}
 
 /* WHO ACTUALLY CUT THIS, NOT WHO WROTE THE TOOL.
  *
- * These two lines were hardcoded to one model and session id --
+ * These two lines were hardcoded to "Claude Sonnet 5 / session 6f84bf9b" --
  * the session that first wrote this generator. Every declaration since has
  * carried that name, including builds cut by other models in other sessions
  * months later, so a document whose entire purpose is honest provenance was

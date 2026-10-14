@@ -27,7 +27,7 @@ test('check-install-dir-immutable gives its packaged GUI a system-only PATH', ()
 })
 
 test('check-install-dir-immutable states the sterile state root its RunAsNode phases assert on', () => {
-  // Since an earlier engine commit a packaged payload given no TOOLSENABLED_STATE_ROOT
+  // Since engine 81b14e15 a packaged payload given no TOOLSENABLED_STATE_ROOT
   // anchors its state to the installing account's own profile (from the process
   // token, not APPDATA), so a launch that says nothing writes into the builder's
   // real per-user root and phases A, D and E fail against the scratch roots they

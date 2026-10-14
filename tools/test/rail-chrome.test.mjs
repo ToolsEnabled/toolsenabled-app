@@ -37,7 +37,7 @@ const css = readdirSync(SRC)
 const view = readFileSync(join(SRC, 'views', 'computers.js'), 'utf8')
 /* org-controls.js writes rail markup too -- the role library -- and the sweep
    originally read only computers.js, which is exactly how .role-list shipped
-   with no rule anywhere (found in a walkthrough). Every rail writer
+   with no rule anywhere (owner walkthrough, iteration 5). Every rail writer
    joins the sweep. */
 const orgControls = readFileSync(join(SRC, 'org-controls.js'), 'utf8')
 
@@ -168,9 +168,9 @@ test('the rail chat streams once and closes once', () => {
   const safetyCloseAt = completion.indexOf('railChat.sessionId === sessionId && railChat.stream')
   assert.ok(completionAt !== -1 && safetyCloseAt > completionAt, 'the stream safety-close must follow the reply delivery')
   /* EVERY surface waiting on the turn is answered, not the last one to send.
-     Both the compact card and the rail's Chat tab can send since an earlier commit, and
+     Both the compact card and the rail's Chat tab can send since 5f394a4, and
      one slot per session meant the first sender's bubble was never answered --
-     half of the reported disappearing messages in history. */
+     half of the owner's "the messages in history disappear". */
   assert.doesNotMatch(view, /cardReplies/, 'the single-slot reply map is back; one surface will be starved again')
   assert.match(view, /for \(const reply of waiting\)/, 'the turn reply no longer fans out to every waiting surface')
   // A controlsPage rebuild disposes the mounted chat FIRST -- never
@@ -180,8 +180,8 @@ test('the rail chat streams once and closes once', () => {
 })
 
 test('two rail tabs, chat first — the Actions page stays retired', () => {
-   /* Iteration 6: Actions is not its own page; it is a button on the chat.
-     The rail is Chat | Details;
+  /* Iteration 6, owner verbatim: "Actions again just shouldnt be its own
+     page it should be a button on the chat." The rail is Chat | Details;
      the verbs live in the composer's popup (data-chat-actions in
      components.js) with runPaletteAction still the one engine. */
   const view = readFileSync(join(SRC, 'views', 'computers.js'), 'utf8')
@@ -189,10 +189,10 @@ test('two rail tabs, chat first — the Actions page stays retired', () => {
     assert.match(view, new RegExp(`data-rail-tab="${tab}"`), `the ${tab} tab vanished`)
     assert.match(view, new RegExp(`data-rail-body="${tab}"`), `the ${tab} body vanished`)
   }
-  assert.ok(!/data-rail-tab="actions"/.test(view), 'the Actions tab is back as its own page — it was retired twice')
+  assert.ok(!/data-rail-tab="actions"/.test(view), 'the Actions tab is back as its own page — the owner retired it twice')
   assert.match(view, /chatActionRowsFor/, 'the chat popup lost its action rows; the verbs have no surface')
   // Chat is the default tab: its button carries .on in the markup.
-  assert.match(view, /class="on" data-rail-tab="chat"/, 'chat is no longer the default tab (defect 7: conversation first)')
+  assert.match(view, /class="on" data-rail-tab="chat"/, 'chat is no longer the default tab (owner defect 7: conversation first)')
   // The setup controls the Actions tab used to hold live on in Details.
   for (const hook of ['data-tree-profile', 'data-tree-move-select']) {
     assert.match(view, new RegExp(hook), `${hook} vanished with the Actions tab instead of moving to Details`)
@@ -200,15 +200,15 @@ test('two rail tabs, chat first — the Actions page stays retired', () => {
 })
 
 test('the split view is gone, and cannot come back through a saved preference', () => {
-   /* 2026-08-16: the split pane was retired for now -- a page ends up with two
-     views nobody keeps straight. So the
+  /* Owner, 2026-08-16: "lets throw it away for now" -- his read of the split
+     pane was that a page ends up with two views nobody keeps straight. So the
      button, the pane, its switcher and the preference read are all absent from
      the view, and this pins that absence: a stored 'mc.page2.split' key must
      find nothing that reads it. The page is single-pane, the shape every
      harness has always measured it in. */
   const view = readFileSync(join(SRC, 'views', 'computers.js'), 'utf8')
   for (const gone of ['graph-split-btn', 'mc.page2.split', 'function enableSplit', 'function disableSplit', 'splitGraph', 'splitPane', 'buildPaneSwitch']) {
-    assert.equal(view.includes(gone), false, `${gone} is back in the computers view; the split pane was removed by instruction`)
+    assert.equal(view.includes(gone), false, `${gone} is back in the computers view; the split pane was removed on the owner's instruction`)
   }
   const css = readFileSync(join(SRC, 'board.css'), 'utf8') + readFileSync(join(SRC, 'tree-graph.css'), 'utf8')
   for (const gone of ['.comp-body.is-split', '.graph-pane-2', '.graph-split-btn']) {
@@ -221,7 +221,7 @@ test('the topbar holds one position on every route', () => {
   // The chevrons are cross-page chrome: the bar reads its OWN token, never
   // the per-route page width (computers widens --page-max to 1680 and the
   // forward chevron travelled 64px with it -- measured on the installed
-  // build in a walkthrough).
+  // build, owner walkthrough iteration 5).
   assert.match(css, /--topbar-max: 1240px/, 'the topbar token vanished')
   const topbarAt = css.indexOf('.topbar {')
   const widthLine = css.slice(topbarAt, topbarAt + 2800).match(/width: min\(var\((--[a-z-]+)\)/)
@@ -330,8 +330,8 @@ test('a driver that reaches into the topbar navigation names the link it presses
 })
 
 test('the pane bar scrolls its trees slot and nowhere else', () => {
-   /* Iteration 6: one clean bar per split, with a scroll function, placed
-     well. The bar is normal flow
+  /* Iteration 6 (owner): "one nice bar per split and it should have a scroll
+     function. you have to place it nicely though." The bar is normal flow
      with three fixed slots, so the strip-over-the-title collision is
      structurally impossible; the SCROLL lives on the trees slot with its
      scrollbar hidden — never inside the seg, whose fixed 32px box rendered
@@ -339,7 +339,7 @@ test('the pane bar scrolls its trees slot and nowhere else', () => {
   const board = readFileSync(join(SRC, 'board.css'), 'utf8')
   const seg = board.slice(board.indexOf('.graph-bar-trees .graph-tree-switch {'), board.indexOf('.graph-bar-trees .graph-tree-switch {') + 700)
   assert.ok(seg.length > 100, 'the switcher seg rules left the trees slot; re-measure this bar contract')
-  assert.ok(!/overflow-x:\s*auto/.test(seg.slice(0, seg.indexOf('> button'))), 'the switcher seg regained an inner scroller; the 32px box cannot hold one')
+  assert.ok(!/overflow-\x78:\s*auto/.test(seg.slice(0, seg.indexOf('> button'))), 'the switcher seg regained an inner scroller; the 32px box cannot hold one')
   assert.match(seg, /text-overflow: ellipsis/, 'the switcher buttons lost their ellipsis budget')
   const graphCss = readFileSync(join(SRC, 'tree-graph.css'), 'utf8')
   const bar = graphCss.slice(graphCss.indexOf('.computers .graph-bar {'), graphCss.indexOf('.computers .graph-bar {') + 500)
@@ -350,8 +350,8 @@ test('the pane bar scrolls its trees slot and nowhere else', () => {
   const view = readFileSync(join(SRC, 'views', 'computers.js'), 'utf8')
   assert.match(view, /<div class="graph-bar">/, 'the main pane lost its bar')
   /* "One nice bar PER SPLIT" was iteration 6's ask, and its second half was
-     pinned here until 2026-08-16, when the split pane was retired. A contract
-     on a pane that no longer
+     pinned here until 2026-08-16, when the owner threw the split pane away
+     ("lets throw it away for now"). A contract on a pane that no longer
      exists can only fail, so that one clause retired with the pane; every
      other rule in this test is about the bar that remains and still holds. */
   /* The switcher must build AT MOUNT: every other caller is a change
@@ -362,7 +362,7 @@ test('the pane bar scrolls its trees slot and nowhere else', () => {
 })
 
 test('Details reads as prose, dims really dim, and the boxes have a floor', () => {
-  /* Iteration 6: Details was unreadable. Four measured causes,
+  /* Iteration 6: "Details is completely unreadable". Four measured causes,
      four pins: the undefined --mono token (the dim class silently inherited
      its font); the specificity tie that made dimmed lines identical to body
      lines; the mono wall (sentences now speak .rail-prose, the UI voice);
@@ -382,7 +382,7 @@ test('Details reads as prose, dims really dim, and the boxes have a floor', () =
 })
 
 test('the rail never shouts a person\'s own words, and a header outranks its body', () => {
-  /* Iteration 7: the pane was unreadable.
+  /* Iteration 7, owner: the pane was hard to read.
      Measured causes, pinned so they cannot come back:
        · the brief was painted in letterspaced CAPITALS by the base .ar rule,
          which the board override restated everything EXCEPT text-transform;
@@ -510,4 +510,17 @@ test('the Computers page has one h1 that names the page and the computer on scre
   } finally {
     try { closeView(); setExampleMode(false) } finally { world.restore() }
   }
+})
+
+test('FIX-C 10: the example chip wraps under the computer name before the name is cut short', () => {
+  /* Measured at 1280x800, 150%, chat pane open: "Computer 1" became "Com..."
+     (box 65px for a 121px name) because the chip beside it could not shrink
+     and the title was the lead slot's only shrinkable item. The chip is now
+     flex: none and the lead wraps, so the chip takes the next line. */
+  const graphCss = readFileSync(join(SRC, 'tree-graph.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const lead = graphCss.slice(graphCss.indexOf('.computers .graph-bar-lead {'), graphCss.indexOf('}', graphCss.indexOf('.computers .graph-bar-lead {')))
+  assert.match(lead, /flex-wrap:\s*wrap/, 'the lead slot does not wrap: the only way to fit is to cut the name')
+  const view = readFileSync(join(SRC, 'views', 'computers.js'), 'utf8')
+  const badge = view.slice(view.indexOf('graph-example-badge" data-example-badge'), view.indexOf('Example, not your data</span>'))
+  assert.match(badge, /flex:\s*none/, 'the example chip is shrinkable again, so it and the name shrink together')
 })

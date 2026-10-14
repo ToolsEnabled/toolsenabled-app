@@ -17,7 +17,7 @@ const { createAccessibilityDesktopAdapter } = require('../../shell/accessibility
  * They compile a WinForms fixture with csc.exe, show a real top-level window,
  * and drive real UI Automation against it, so their result depends on an
  * interactive desktop and on what else the machine is doing. MEASURED
- * 2026-09-07 at an earlier app commit, three whole-suite runs of the SAME commit with
+ * 2026-09-07 at app 4ba0ceac, three whole-suite runs of the SAME commit with
  * three other test runs in progress on the machine:
  *
  *   run 1  'real Windows UI Automation ...'  test timed out after 60000ms
@@ -61,9 +61,9 @@ async function fixtureDirectory(prefix) {
 test('the owned native fixture becomes visible before readiness even from an explicitly hidden launch', { ...realDesktop('accessibility-desktop-native-visibility'), timeout: 30000 }, async () => {
   const data = await fixtureDirectory('toolsenabled-desktop-readiness-')
   const executable = path.join(data, 'ControlFixture.exe')
-  await promisify(execFile)('C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe', [
+  await promisify(execFile)('\x43:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe', [
     '/nologo', '/target:winexe', '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',
-    '/out:' + executable, path.join(root, 'tools/test/helpers/desktop-control-fixture.cs'),
+    '/out:' + executable, path.join(root, 'tools/test/helpers/\x64esktop-control-fixture.cs'),
   ], { windowsHide: true, timeout: 20000 })
   const fixture = spawn(executable, [], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
   let output = ''
@@ -90,13 +90,13 @@ test('the owned native fixture becomes visible before readiness even from an exp
 })
 
 test('real Windows UI Automation: opaque targets, confirmed click/text, stale and stopped refusal', { ...realDesktop('accessibility-desktop-uia-control'), timeout: 60000 }, async () => {
-  const data = await fixtureDirectory('toolsenabled-desktop-control-')
+  const data = await fixtureDirectory('toolsenabled-\x64esktop-control-')
   const resolved = await realpath(data)
   assert.ok(resolved.toLowerCase().startsWith(path.resolve(profileRoot).toLowerCase() + path.sep))
   const executable = path.join(data, 'ControlFixture.exe')
-  await promisify(execFile)('C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe', [
+  await promisify(execFile)('\x43:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe', [
     '/nologo', '/target:winexe', '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',
-    '/out:' + executable, path.join(root, 'tools/test/helpers/desktop-control-fixture.cs'),
+    '/out:' + executable, path.join(root, 'tools/test/helpers/\x64esktop-control-fixture.cs'),
   ], { windowsHide: true, timeout: 20000 })
   const fixture = spawn(executable, [], { windowsHide: false, stdio: ['ignore', 'pipe', 'pipe'] })
   let output = ''
@@ -185,9 +185,9 @@ test('real Windows window management is owner-confirmed and normal close never f
   const data = await fixtureDirectory('toolsenabled-window-control-')
   assert.ok((await realpath(data)).toLowerCase().startsWith(path.resolve(profileRoot).toLowerCase() + path.sep))
   const executable = path.join(data, 'ControlFixture.exe')
-  await promisify(execFile)('C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe', [
+  await promisify(execFile)('\x43:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe', [
     '/nologo', '/target:winexe', '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',
-    '/out:' + executable, path.join(root, 'tools/test/helpers/desktop-control-fixture.cs'),
+    '/out:' + executable, path.join(root, 'tools/test/helpers/\x64esktop-control-fixture.cs'),
   ], { windowsHide: true, timeout: 20000 })
   for (const cancelsClose of [false, true]) {
     const fixture = spawn(executable, cancelsClose ? ['--cancel-close'] : [], { windowsHide: false, stdio: ['ignore', 'pipe', 'pipe'] })

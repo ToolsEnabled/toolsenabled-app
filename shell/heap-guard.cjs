@@ -4,13 +4,13 @@
  * it leaves a note.
  *
  * WHY THIS EXISTS, AND WHAT IT IS NOT A FIX FOR.
- * A development install died roughly every ten to twenty minutes with no
- * crash dump, no shutdown record, and about fifteen seconds of 100% CPU
+ * The owner's app died roughly every ten to twenty minutes on 2026-09-03 with
+ * no crash dump, no shutdown record, and about fifteen seconds of 100% CPU
  * first -- the exact signature of a V8 heap running out. Nobody had ever
  * measured the main process's heap, so "it ran out of memory" was a story, not
  * a finding.
  *
- * MEASURED on this Electron 43.3.0, an isolated instance
+ * MEASURED 2026-09-04 (lane H) on this Electron 43.3.0, an isolated instance
  * driven through 3,300 turns across 9 concurrent sessions in twelve minutes:
  *
  *   heap_size_limit  4192 MB     (v8.getHeapStatistics() in the MAIN process)

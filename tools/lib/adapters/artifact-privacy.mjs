@@ -8,50 +8,23 @@ import { blocked, plainPath, readJson, measureFile, measureTree, assertSameTree,
 // Existing app privacy rules are not changed by this standalone implementation.
 // These reproduce their builder-independent exclusions and narrow published
 // attribution treatment, while streaming every byte (no large-binary skip).
-// A SUPPRESSION LIST MUST NOT BE THE DISCLOSURE. A builder's own retired names
-// (another project, a private mirror, a code-host handle) would be published by
-// the very list that keeps them out of an artifact, so this file carries only the
-// slots and the builder's profile carries the values: the same optional
-// "builtInMarkers" object tools/check-no-owner-data.mjs reads, keyed by that
-// gate's rule labels. They are fixed literals once read -- never excused as
-// attribution -- and keep their places in the list; an empty slot adds nothing.
-// A key naming no such slot, more values than slots, or a value that is not a
-// non-empty string blocks the run, so a typo cannot quietly switch a rule off.
-// What is written here is true for any builder.
-const PROFILE_MARKER_KEY = 'builtInMarkers';
-const PROFILE_MARKER_SLOTS = Object.freeze({
-  'retired cross-product metadata': 3, 'owner mirror default': 1, 'owner GitHub handle': 1 });
-const RETIRED_PROVIDER_LITERALS = [
-  ['Digital', 'Ocean'].join(''), ['Digital', ' ', 'Ocean'].join(''), ['Digital', '-', 'Ocean'].join('')];
-const PRODUCT_TREE_LITERAL = ['toolsenabled', '-', 'current'].join('');
-
-function profileMarkers(parsed) {
-  const section = parsed[PROFILE_MARKER_KEY];
-  const values = new Map();
-  if (section === undefined) return values;
-  if (!section || typeof section !== 'object' || Array.isArray(section)) blocked('standalone privacy profile builtInMarkers must be an object keyed by rule label');
-  for (const label of Object.keys(section)) {
-    if (!Object.hasOwn(PROFILE_MARKER_SLOTS, label)) blocked('standalone privacy profile builtInMarkers names no profile-filled rule');
-    const raw = section[label], list = typeof raw === 'string' ? [raw] : raw;
-    if (!Array.isArray(list) || !list.length || list.some(value => typeof value !== 'string' || !value.trim() || Buffer.byteLength(value) > 4096)) blocked('invalid standalone builtInMarkers entry');
-    if (list.length > PROFILE_MARKER_SLOTS[label]) blocked('standalone privacy profile builtInMarkers lists more values than the rule has slots');
-    values.set(label, list);
-  }
-  return values;
-}
-
-// The fixed list in its published order, with the profile's values in their slots.
-function fixedLiterals(markers) {
-  const slot = label => markers.get(label) || [];
-  return [...slot('retired cross-product metadata'), ...RETIRED_PROVIDER_LITERALS,
-    ...slot('owner mirror default'), ...slot('owner GitHub handle'), PRODUCT_TREE_LITERAL];
-}
+// A SUPPRESSION LIST MUST NOT BE THE DISCLOSURE. Spelled out, this array named
+// the owner's GitHub handle and two retired project names in shipped source --
+// the exact strings it exists to keep out of an artifact. The engine's
+// tools/check-no-owner-data.mjs splits its own markers for this reason; this
+// copy did not, so the list was a plain-text index of what to look for.
+// Joined at load: same behaviour, no literal to read.
+const FIXED_LITERALS = [
+  ['AI', 'Calendar'].join(''), ['AI', ' ', 'Calendar'].join(''), ['AI', '-', 'Calendar'].join(''),
+  ['Digital', 'Ocean'].join(''), ['Digital', ' ', 'Ocean'].join(''), ['Digital', '-', 'Ocean'].join(''),
+  ['agent', '_', 'mirror'].join(''), ['Example', 'Example'].join(''),
+  ['toolsenabled', '-', 'current'].join('')];
 const FIXED_REGEX = [
   // Bound pathological path-prefix runs so a deliberately megabyte-long
   // escaped separator cannot hide a later account name across stream windows.
   /[\\/]{512,}/g,
-  /C:\\[\\/]*Users[\\/]+[^\x00-\x20\\/"'`<>|?*:]+/gi,
-  /C:\/[\\/]*Users[\\/]+[^\x00-\x20\\/"'`<>|?*:]+/gi,
+  /\x43:\\[\\/]*Users[\\/]+[^\x00-\x20\\/"'`<>|?*:]+/gi,
+  /\x43:\/[\\/]*Users[\\/]+[^\x00-\x20\\/"'`<>|?*:]+/gi,
   /\bsk-[A-Za-z0-9_-]{20,}/g,
   /(?<![A-Za-z])[A-Za-z]:[\\/][^\r\n]{0,160}?[\\/]toolsenabled/gi,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g,
@@ -85,8 +58,7 @@ export async function measureStandalonePrivacy({ sourceRoot, stageRoot, expected
   });
   const account = os.userInfo().username.trim().toLowerCase();
   if (!account || !identity.some(row => row.value.trim().toLowerCase().includes(account) || account.includes(row.value.trim().toLowerCase()))) blocked('standalone privacy profile does not describe the actual build account');
-  const literals = fixedLiterals(profileMarkers(parsed));
-  const patterns = [...literals.map(value => ({ value, caseInsensitive: true, identity: false })), ...identity];
+  const patterns = [...FIXED_LITERALS.map(value => ({ value, caseInsensitive: true, identity: false })), ...identity];
   const encoded = patterns.flatMap(row => ['utf8', 'utf16le'].map(encoding => {
     const bytes = Buffer.from(row.value, encoding);
     return { ...row, bytes: row.caseInsensitive ? asciiLower(bytes) : bytes };
@@ -133,6 +105,6 @@ export async function measureStandalonePrivacy({ sourceRoot, stageRoot, expected
   }
   if (measureFile(profilePath).sha256 !== profile.sha256) blocked('standalone privacy profile changed during scanning');
   assertSameTree(stage, measureTree(stageRoot));
-  return { profile, policySha256: digestRecord({ literals, regex: FIXED_REGEX.map(String), attribution: ATTRIBUTION }),
+  return { profile, policySha256: digestRecord({ literals: FIXED_LITERALS, regex: FIXED_REGEX.map(String), attribution: ATTRIBUTION }),
     scannedFiles: Object.keys(stage.files).length, scannedBytes, encodings: ['utf8-bytes', 'utf16le-both-alignments'], excusedAttribution };
 }

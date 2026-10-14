@@ -35,7 +35,7 @@ async function main() {
   await app.whenReady()
   // The 1440x960 workspace below is clamped to the desktop work area on
   // Windows; a 1024x768 session-0 desktop turns every layout check into a
-  // claim about a window nobody gets (measured 2026-09-23, an earlier commit). Report
+  // claim about a window nobody gets (measured 2026-09-23, dabd2f51). Report
   // the desktop and stop, so the suite skips by name and executes where the
   // desktop is large enough (the census Xvfb, the qualification host).
   const workArea = screen.getPrimaryDisplay().workAreaSize

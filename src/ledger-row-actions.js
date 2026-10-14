@@ -21,7 +21,7 @@ import { REQUEST_PANEL } from './tree-standing-requests.js'
 import { ANSWER_ROW, COMPLETE_ROW, DECIDE_ROW, DELETE_ROW, EXAMPLE_WRITE_NOTE, LEDGER_LIMITS, ROW_ACTIONS, ledgerRefusalSentence, utf8Bytes } from './ledger-copy.js'
 
 /* THE LEDGER'S OWN ID GRAMMAR (2026-09-07): R1..R9999 as it always was, and
-   now T and A the same shape -- the four ledger subsets share one counter
+   now T and A the same shape -- the owner's four subsets share one counter
    grammar, only the leading letter differs (LEDGER-KINDS-INTERFACE-
    20260907.md). P is deliberately absent: P's rows are not drawn by this
    module at all (src/views/ledger.js mounts approvals.js for the P tab,
@@ -130,8 +130,8 @@ export function mountLedgerRowActions(register, {
        R's verbs alone now that T, A and P have their own (see below). */
     remove: typeof bridge?.requestRemove === 'function',
     decide: typeof bridge?.requestDecide === 'function',
-    /* T's Complete and Remove, A's Answer and Decline: the engine's own
-       per-kind verbs -- completeTask, removeTask,
+    /* T's Complete and Remove, A's Answer and Decline: the engine lane's own
+       per-kind verbs (Worker 4, own branch) -- completeTask, removeTask,
        answerAsk, declineAsk. A's own Remove (removeAsk) is the engine
        store's actual fourth kind-A verb (src/lib/owner-request-store.js
        exports it alongside declineAsk); wired the same way so A's delete

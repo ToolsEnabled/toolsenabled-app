@@ -12,7 +12,7 @@ Every `tools/test/fixtures/run-*.mjs` file paints part of the product in a real,
 
 ## Receipts for required proofs
 
-A required proof discharges a ledger item (today: `run-buttons-carry-app-style.mjs` for T35, the reported unstyled controls). The driver writes `results.json`, which now carries its own identity (`driver.file`, `driver.sha256`), `platform`, `arch`, `origin` and `startedAt`. Release qualification runs
+A required proof discharges a ledger item (today: `run-buttons-carry-app-style.mjs` for T35, the owner-reported unstyled controls). The driver writes `results.json`, which now carries its own identity (`driver.file`, `driver.sha256`), `platform`, `arch`, `origin` and `startedAt`. Release qualification runs
 
 ```sh
 node tools/check-browser-proofs-discovered.mjs --receipts private/browser-proof-receipts

@@ -13,11 +13,8 @@
     "The payload is derived, not listed. `entrypoints` are the two programs",
     "the product actually starts; pack-capability-layer.mjs walks their",
     "require() graph and stages exactly the reachable files. That closure",
-    "originally contained only project JavaScript. The ordinary require graph",
-    "still rejects npm dependencies; separately pinned provider runtimes declare",
-    "their exact quota-only dependency bytes. Electron's own binary runs",
-    "the layer under ELECTRON_RUN_AS_NODE.",
-    "",
+    "contains project JavaScript and rejects npm dependencies. Electron's own",
+    "binary runs the layer under ELECTRON_RUN_AS_NODE.",
     "`dataFiles` is the part a require() walk cannot see: JSON the layer",
     "reads at runtime through readFileSync on a computed path. Each entry",
     "below was found by starting the staged payload in a directory with no",
@@ -126,7 +123,8 @@
     "src/lib/role-functions.js",
     "src/lib/app-context.js",
     "src/lib/accessibility.js",
-    "src/lib/agent-ledger-continuation.js"
+    "src/lib/agent-ledger-continuation.js",
+    "src/lib/local-model-options.js"
   ],
   "$comment_licenseTrustAnchor": [
     "config/license-trust.json IS THE ODD ONE OUT IN dataFiles, AND DELIBERATELY SO.",
@@ -197,8 +195,7 @@
     "config/dependency-acceptance.json",
     "config/uac-delegation-allowlist.json",
     "config/capability-base-profiles.json",
-    "config/license-trust.json",
-    "src/lib/providers/gemini-quota-worker-core.mjs"
+    "config/license-trust.json"
   ],
   "$comment_helperPrograms": [
     "PROGRAMS THE LAYER RUNS THAT ARE NOT JAVASCRIPT, and the reason this",
@@ -234,8 +231,8 @@
     "CODEX_HOME redirected to empty directories, and reading what it failed on.",
     "",
     "TWO HELPERS LEFT THIS LIST, AND THE ORDER MATTERS. owner-identity-profile.ps1",
-    "and private-identity-evidence.ps1 handle private identity records on the",
-    "builder's machine. They were declared here because the JavaScript that",
+    "and private-identity-evidence.ps1 stage and OCR the builder's own passport and",
+    "legal-identity records. They were declared here because the JavaScript that",
     "spawns them was staged, and a payload carrying the caller without the script is",
     "a feature that is present and broken -- worse than one that is absent. Both",
     "JavaScript modules have since left the require() closure (their tool",
@@ -252,18 +249,19 @@
     "SAME REASON THE FIRST ONE WAS. src/lib/secret-store/powershell.js resolves it",
     "as programOrStatePath(ROOT, ['tools', 'secrets-manager.ps1']) -- a computed",
     "path in a spawn argument, invisible to the require() walk, exactly like",
-    "secrets.ps1 above. Measured in the staged payload at an earlier app commit: secrets.ps1",
+    "secrets.ps1 above. Measured in the staged payload at app c8deb5e4: secrets.ps1",
     "present, secrets-manager.ps1 absent. Its absence is not a missing diagnostic.",
     "It is the whole secret LIFECYCLE half of the vault: run() fails closed with",
     "SECRET_MANAGER_NOT_INSTALLED, so inventory(), history() and mutate() all throw,",
     "which means system.credential_remove -- the product's ONE generic way for an",
     "owner to delete a stored credential -- cannot work on an installed build, and a",
-    "key the person has revoked at the provider stays on their disk with no route to",
+    "key the owner has revoked at the provider stays on his disk with no route to",
     "remove it. secrets.ps1's own 'del' verb is reachable but is deliberately not a",
     "generic export (see the clearDeviceCredential comment in src/lib/runtime.js), so",
     "there is no second door. Pinned by tools/test/vault-manager-staged.test.mjs."
   ],
   "helperPrograms": [
+    "src/lib/legacy-signin-cleanup.ps1",
     "src/lib/providers/web-inspector.py",
     "src/lib/linux-capture.py",
     "src/lib/linux-credential-prompt.py",
@@ -340,10 +338,15 @@
     "vault-host-client.js. Its require graph and the tools/vault-host.ps1 helper",
     "must ship together; otherwise every persistent vault request waits for a",
     "worker that is absent before falling back to a one-shot process. The host",
-    "dot-sources the existing secrets.ps1 under its unchanged action allowlist."
+    "dot-sources the existing secrets.ps1 under its unchanged action allowlist.",
+    "",
+    "src/lib/browser-action-cursor.js is loaded by the pinned Playwright MCP",
+    "through the gateway's computed --init-page path. Its closure must ship with",
+    "the gateway or Playwright refuses initialization before serving tools."
   ],
   "spawnedPrograms": [
     "src/lib/audit-admission-worker.js",
+    "src/lib/browser-action-cursor.js",
     "src/lib/owner-prompt-runner.js",
     "src/lib/vault-host/worker.js",
     "src/lib/vault-host/linux-worker.js",
@@ -357,8 +360,7 @@
     "tools/research-runs-worker.js",
     "tools/relay-shell.js",
     "tools/online-fra-claim-cli.js",
-    "tools/online-fra-admin-cli.js",
-    "src/lib/providers/gemini-quota-worker.mjs"
+    "tools/online-fra-admin-cli.js"
   ],
   "neutralDefaults": [
     "config/service-registry.json",
@@ -427,11 +429,11 @@
   ],
   "$comment_pinnedSource": [
     "The 1.0.39 recovery payload is staged from clean private engine commit",
-    "an earlier commit. The private capability-source",
+    "b707950fd927059ced58e5b9fd850476c24359c5. The private capability-source",
     "pointer records that same commit, and the source worktree is detached there so",
     "the selected bytes cannot advance accidentally.",
     "",
-    "That source begins at a clean earlier engine commit and overlays only the reviewed",
+    "That source begins at clean engine commit b44d0e9 and overlays only the reviewed",
     "source-derived runtime bytes plus the neutral organisation parity example. Its",
     "RELEASE-SOURCE.md records the construction. Repacking selects 299 source files",
     "and six app-owned neutral defaults: 305 payload files, 7504865 bytes, payload",
@@ -452,16 +454,16 @@
     "",
     "THE ACCOUNT LIST IS USER DATA AND IS NOT IN THIS PAYLOAD. The registry lives at",
     "<state root>/accounts.json, written by the accounts page on the machine that owns",
-    "it. A builder's own config/accounts.json names personal accounts, is",
+    "it. The builder's own config/accounts.json names his personal accounts, is",
     "classified excluded in the engine boundary, and is named in no manifest list here",
     "-- deliberately, because shipping it would ship an identity, and shipping an empty",
     "one would be a file whose only content is the absence of content. Absence already",
     "means \"no rotation\", truthfully and for free.",
-    "PRIOR: The payload is staged from engine an earlier commit, which carries BOTH lanes'",
-    "PRIOR: work, cut on the 2026-08-16 direction to incorporate everything and",
-    "PRIOR: cut. Its two parents are an earlier commit (this lane) and a second branch.",
+    "PRIOR: The payload is staged from engine merge 714622a, which carries BOTH lanes'",
+    "PRIOR: work, cut on the owner's 2026-08-16 direction: \"ok incorporate all and",
+    "PRIOR: cut\". Its two parents are 073ef11 (this lane) and 8140714 (free-cut/r7).",
     "",
-    "PRIOR: From an earlier commit, two defects the product had been shipping:",
+    "PRIOR: From 073ef11, two defects the product had been shipping:",
     "",
     "PRIOR:   7598901 -- src/playwright-gateway.js refuses to run unless its own",
     "PRIOR:   process.argv[2] is a pinned @playwright/mcp version. generateMcpConfig",
@@ -470,7 +472,7 @@
     "PRIOR:   advertised in the document and died at spawn, silently, every time.",
     "PRIOR:   Generation now REFUSES a spec the gateway would reject.",
     "",
-    "PRIOR:   an earlier commit -- enough filed /Request entries pushed the pinned owner-requests",
+    "PRIOR:   073ef11 -- enough filed /Request entries pushed the pinned owner-requests",
     "PRIOR:   block past the packet ceiling, and the packet fails closed, so agent boots",
     "PRIOR:   stopped at every scope with nothing on any surface saying why. Measured at",
     "PRIOR:   ~36 entries on the installed build. The block is now capped at a share of",
@@ -479,7 +481,7 @@
     "PRIOR:   announcing the trim in the packet and in unknowns. Nothing is deleted and",
     "PRIOR:   every withheld layer prints the path to read it.",
     "",
-    "PRIOR: From an earlier commit, the resume-and-effort work plus its base: thread/resume keeps",
+    "PRIOR: From 8140714, the resume-and-effort work plus its base: thread/resume keeps",
     "PRIOR: the conversation it returns (the parser dropped Thread.turns, which is why",
     "PRIOR: the product could only paste a summary into a new agent), codex-process",
     "PRIOR: gains resumeCodexSession, initialize declares capabilities.experimentalApi",
@@ -490,8 +492,8 @@
     "PRIOR: local-tiers-status) and the capture audit's ledger path routing through the",
     "PRIOR: state root.",
     "",
-    "PRIOR: THE EARLIER PIN NOTE EXCLUDED an earlier commit AS UNDRIVEN. That exclusion is now",
-    "PRIOR: lifted by the instruction to incorporate everything, not by anyone",
+    "PRIOR: THE EARLIER PIN NOTE EXCLUDED e421987 AS UNDRIVEN. That exclusion is now",
+    "PRIOR: lifted by the owner's instruction to incorporate everything, not by anyone",
     "PRIOR: having driven it since: the resume work reaches customers on its author's",
     "PRIOR: evidence, not this lane's. Said plainly here so the next reader knows which",
     "PRIOR: claims in this build were measured by the lane that shipped them.",
@@ -502,14 +504,5 @@
     "PRIOR: the auth-source question answered first; the local tier is a dispatch-lane",
     "PRIOR: runner with no ACP adapter. Both stay honestly refused by the shell's",
     "PRIOR: START_TIERS gate until a launcher exists that actually starts."
-  ],
-  "providerRuntimes": [
-    {
-      "id": "gemini-quota",
-      "manifest": "config/gemini-quota-runtime.json"
-    }
-  ],
-  "$comment_providerRuntimes": [
-    "Quota-only public SDK closures are built from their committed lockfiles and pinned per-file manifests. Generated files are hash checked before and during staging; extra files and symlinks are refused. This does not allow arbitrary npm imports in the ordinary capability closure."
   ]
 }

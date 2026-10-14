@@ -1,9 +1,9 @@
 /* CHOOSING WHICH OF YOUR COMPUTERS YOU ARE DRIVING, FROM INSIDE THE PRODUCT.
  *
- * THE RULE (2026-08-23): instead of choosing which computer to drive in place
- * (1), the choice is on page 2 (2), and either machine can be driven once
- * connected. (1) was the account page's per-computer rows; (2) was the
- * computers page's tab bar.
+ * THE RULING (owner, 2026-08-23, on two screenshots): "rather than selecting
+ * what computer they drive here (1) it should be added here (2) to page2 and
+ * either machine should be driveable once connected." (1) was the account
+ * page's per-computer rows; (2) was the computers page's tab bar.
  *
  * THE TWO AXES THIS SUITE EXISTS TO KEEP APART. The computers page has had a
  * tab bar since long before this feature, and its tabs are the computers listed
@@ -137,10 +137,10 @@ test('the bar lists every computer connected to the account, under the account�
   ], 'a row carries ids that are not its own computer’s, so a press would drive the wrong machine')
 })
 
-test('BOTH halves of one connection are listed, which is the rule in a sentence', () => {
+test('BOTH halves of one connection are listed, which is the owner’s ruling in a sentence', () => {
   const rows = machineTabRows(listing(DESK_AND_LAPTOP))
   assert.equal(rows.length, 2,
-    'only one computer of a two-way connection is offered — with two computers connected, the interface serves both and both are controllable')
+    'only one computer of a two-way connection is offered — "If there\'s two we need to serve both in the interface and both need to be controllable"')
   assert.ok(rows.every(row => row.trouble === null), 'a connected computer is being refused before anybody presses it')
 })
 
@@ -526,7 +526,7 @@ test('every sentence this bar can say is plain, and every one of them ends somew
  * transport, so the page resolves to the example -- and the bar whose whole job
  * is choosing a computer was the one control missing from the only screen where
  * it was needed. The first choice had to be made on the account page, which is
- * the second path that was removed.
+ * the second path the owner asked us to remove.
  *
  * The badge is about READINGS -- your org, your runs, your machine's sign-in
  * state, drawn as an example and so half true. A list of your own computers'

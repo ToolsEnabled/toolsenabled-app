@@ -36,7 +36,7 @@
   opacity: 1;
   text-wrap: pretty;
 }
-/* THE MEASURE IS WIDER THAN IT WAS (rule: more room for text).
+/* THE MEASURE IS WIDER THAN IT WAS (owner, 2026-09-23: more room for text).
    Prose holds at 96ch -- past that a line is hard to track back -- while code
    blocks and tables keep the full width of the message. */
 :root .chat-message-body[data-chat-format="markdown"] :is(.md-p, .md-list, .md-quote, .md-callout) { max-width: 96ch; }

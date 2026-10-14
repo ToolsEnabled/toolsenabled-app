@@ -85,7 +85,7 @@ export function loadEngineModel(explicit) {
  * own rule forbids is the field that put an unauthorised Team price of 299
  * inside app.asar (`shell/**` is in build.files, and check-asar-manifest
  * REQUIRES every file under it to be in the archive), in a release whose rule is
- * that no payments are collected at first public launch (R1214). It is gone.
+ * "we are NOT collecting payments at first public launch" (R1214). It is gone.
  *
  * `annualUsd` was read, but only ever as a yes/no: subscribe-service.cjs asked
  * `Number.isFinite(plan.annualUsd) && plan.annualUsd > 0` to decide whether to

@@ -80,12 +80,14 @@ test('the spent-account report reaches the cards, and only where it reached a ve
   const REPORT = {
     ok: true,
     code: null,
-    moves: [{ sessionId: 's1', agentId: 'moved', from: 'work', to: 'spare', why: 'HANDOVER_MOVED' }],
-    /* HELD IS ALSO ON A SPENT ACCOUNT. The two lists differ by whether there is
-       anywhere for the work to go next, not by whether anything is wrong --
-       marking only `moves` leaves the worst case, every account at its limit,
-       as the one drawn as healthy. */
-    held: [{ sessionId: 's2', agentId: 'stuck', from: 'work', why: 'HANDOVER_HELD_NO_TARGET' }],
+    /* Since 1.0.50 nothing moves an agent to another account: every agent on a
+       spent account is held on it (engine handover.js HANDOVER_HELD_LIMIT). A
+       stray `moves` list from an older engine marks nothing. */
+    moves: [{ sessionId: 's3', agentId: 'fine', from: 'spare', to: 'work', why: 'HANDOVER_MOVED' }],
+    held: [
+      { sessionId: 's1', agentId: 'moved', from: 'work', why: 'HANDOVER_HELD_LIMIT' },
+      { sessionId: 's2', agentId: 'stuck', from: 'work', why: 'HANDOVER_HELD_LIMIT' },
+    ],
     /* AND UNKNOWN IS NEITHER. "Nobody read this account" is not "it is fine"
        and not "it is spent"; the engine keeps a third list so a reader cannot
        fold it into one of the first two, and this reader does not. */
@@ -95,8 +97,8 @@ test('the spent-account report reaches the cards, and only where it reached a ve
   const read = agentAccountsFromAnswer(shellAnswer({ report: REPORT }))
   assert.equal(read.ok, true)
   assert.equal(read.reportReason, null)
-  assert.deepEqual(read.byAgent.get('moved'), { account: 'work', provider: 'claude', spent: true, to: 'spare', why: 'HANDOVER_MOVED' })
-  assert.deepEqual(read.byAgent.get('stuck'), { account: 'work', provider: 'claude', spent: true, to: null, why: 'HANDOVER_HELD_NO_TARGET' })
+  assert.deepEqual(read.byAgent.get('moved'), { account: 'work', provider: 'claude', spent: true, to: null, why: 'HANDOVER_HELD_LIMIT' })
+  assert.deepEqual(read.byAgent.get('stuck'), { account: 'work', provider: 'claude', spent: true, to: null, why: 'HANDOVER_HELD_LIMIT' })
   assert.deepEqual(read.byAgent.get('fine'), { account: 'spare', provider: 'claude' })
   assert.deepEqual(read.byAgent.get('unread'), { account: 'quiet', provider: 'claude' })
   assert.deepEqual([...read.byAgent.keys()], ['moved', 'stuck', 'fine', 'unread'])
@@ -123,7 +125,7 @@ test('the spent-account report reaches the cards, and only where it reached a ve
      disagree about which account this agent is on, the mark is withheld rather
      than pinned to whichever name arrived second. */
   const stale = agentAccountsFromAnswer(shellAnswer({
-    report: { ok: true, moves: [{ agentId: 'fine', from: 'work', to: 'spare', why: 'HANDOVER_MOVED' }], held: [] },
+    report: { ok: true, held: [{ agentId: 'fine', from: 'work', why: 'HANDOVER_HELD_LIMIT' }] },
   }))
   assert.deepEqual(stale.byAgent.get('fine'), { account: 'spare', provider: 'claude' },
     'a report about a different account marked this one')

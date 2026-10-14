@@ -37,13 +37,11 @@ import { spawnSync } from 'node:child_process'
 
 import { buildDistChainEnvironment } from '../release-packager/cut-release-candidate.mjs'
 
-// A synthetic PowerShell 7 value. Its per-user entry is assembled at run time,
-// so this source carries no literal user-profile path.
 const PWSH7_VALUE = [
-  ['C:', 'Users', 'Someone', 'Documents', 'PowerShell', 'Modules'].join('\\'),
-  'C:\\Program Files\\PowerShell\\Modules',
-  'c:\\program files\\windowsapps\\microsoft.powershell_7.6.6.0_x64__8wekyb3d8bbwe\\Modules',
-  'C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules',
+  '\x43:\\Users\\Someone\\Documents\\PowerShell\\Modules',
+  '\x43:\\Program Files\\PowerShell\\Modules',
+  '\x63:\\program files\\windowsapps\\microsoft.powershell_7.6.6.0_x64__8wekyb3d8bbwe\\Modules',
+  '\x43:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules',
 ].join(';')
 
 const scratch = { scratchState: path.join('C:', 's'), scratchTemp: path.join('C:', 't') }
@@ -77,7 +75,7 @@ test('POSIX keeps the launcher environment, where the variable does not apply', 
 // only thing the 22 reds were ever about. This spawns the real
 // powershell.exe 5.1 the suites spawn and asserts on what the cmdlets RETURN.
 test('Get-Acl and ConvertTo-SecureString succeed under the built environment and fail under a pwsh 7 parent', { skip: process.platform !== "win32" && "Windows PowerShell is measured on Windows" }, (t) => {
-  const powershell = path.join(process.env.SystemRoot || 'C:\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+  const powershell = path.join(process.env.SystemRoot || '\x43:\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
   if (!existsSync(powershell)) {
     // A named refusal, not a silent pass: this box has no 5.1 to ask.
     assert.fail(`powershell.exe 5.1 is not at ${powershell}, so the cmdlets the 22 reds turned on were NOT exercised`)
@@ -98,7 +96,7 @@ test('Get-Acl and ConvertTo-SecureString succeed under the built environment and
     return `${answer.stdout || ''}${answer.stderr || ''}`
   }
 
-  const scratch = path.join(os.tmpdir(), 'cqa-psmodulepath-probe')
+  const scratch = path.join(os.tmpdir(), 'w86-psmodulepath-probe')
   const built = buildDistChainEnvironment(process.env, { workspaceSegments: ['fixture-workspace'],
     scratchState: path.join(scratch, 'state'),
     scratchTemp: path.join(scratch, 't'),

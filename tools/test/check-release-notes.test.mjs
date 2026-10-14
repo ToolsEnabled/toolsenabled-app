@@ -185,7 +185,7 @@ for (const mutation of mutations) {
   })
 }
 
-/* ToolsEnabled, Inc. is the publisher. The template's closing
+/* ToolsEnabled, Inc. is the publisher (owner, 2026-09-25). The template's closing
  * parenthetical names the company twice while the copyright is still held personally;
  * it must pass. A leftover "in formation" anywhere must fail (above), and a plain
  * mention of the company must not. */

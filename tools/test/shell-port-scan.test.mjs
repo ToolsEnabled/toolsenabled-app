@@ -104,7 +104,7 @@ function assertLoopbackBinding(server, expectedPort) {
 test('the declared range is the inclusive 4601-4699 set, ascending and contiguous', () => {
   assert.equal(SHELL_HOST, '127.0.0.1')
   assert.equal(SHELL_PORT_MIN, 4601)
-  // Widened from 4609 on purpose (an earlier commit): nine ports ran out under ordinary concurrent use.
+  // Widened from 4609 on purpose (2318d7239): nine ports ran out under ordinary concurrent use.
   assert.equal(SHELL_PORT_MAX, 4699)
   assert.deepEqual(SHELL_PORTS, Array.from({ length: 99 }, (_, index) => 4601 + index))
   for (let index = 1; index < SHELL_PORTS.length; index += 1) {

@@ -61,7 +61,7 @@ for (const opened of ['before-speech', 'after-speech']) test(`rail opened ${open
   await emit({ type: 'turn_completed', status: 'completed' })
   assert.match(rail.querySelector('.chat-log').textContent, /The answer remains visible after the tools finish/, 'opening the rail after speech must still show the final answer')
   const chat = surface.root
-  /* A REPLY FOLLOWS THE WORK IT CAME AFTER (approved chat output):
+  /* A REPLY FOLLOWS THE WORK IT CAME AFTER (owner-approved chat output, 2026-09-23):
      the words before the fifteen tools stay in the reply row above them, and the
      words after them open a continuation row below them, so the live chat reads in
      the order it happened. Both rows belong to the one reply. */

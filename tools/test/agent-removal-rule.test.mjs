@@ -1,8 +1,8 @@
-/* THE RULE FOR WHO MAY REMOVE A CIRCLE, EXERCISED BY CALLING IT.
+/* THE OWNER'S RULE FOR WHO MAY REMOVE A CIRCLE, EXERCISED BY CALLING IT.
  *
- * The rule: a circle that another agent created, and that the person has
- * never prompted, may be removed by the agent above it. Once the person has
- * prompted a circle it stays, whoever created it.
+ * Owner, 2026-09-03, verbatim: "agents that were spawned by agents AND who the
+ * user hasnt prompted - THEY can be removed by parent agents. AGENTS that a
+ * user prompts even if created by another agent can remain".
  *
  * WHY THIS SUITE EXISTS BESIDE agent-lifecycle-tree-commands.test.mjs. That one
  * asserted the four combinations against a truth table WRITTEN IN THE TEST:
@@ -88,16 +88,16 @@ test("the owner's four combinations, decided by the code that decides them", asy
   assert.equal(yes.code, null)
   assert.deepEqual(allowed.removed, [allowed.worker.id], 'the view\'s own removal is the one that ran')
 
-  /* 2. Agent-made, prompted -- the person has spoken to it, so it stays even
-        though an agent created it. */
+  /* 2. Agent-made, prompted -- "AGENTS that a user prompts even if created by
+        another agent can remain". */
   const spoken = tree({ madeByAgent: true, prompted: true })
   const no = await spoken.call()
   assert.equal(no.ok, false)
   assert.equal(no.code, REMOVAL_REFUSALS.personSpoke)
   assert.deepEqual(spoken.removed, [], 'nothing was removed')
 
-  /* 3. Person-made, never prompted -- no agent created it, so it is not the
-        removable case. */
+  /* 3. Person-made, never prompted -- not "spawned by agents", so not the
+        owner's removable case. */
   const byHand = tree({ madeByAgent: false, prompted: false })
   const handNo = await byHand.call()
   assert.equal(handNo.ok, false)

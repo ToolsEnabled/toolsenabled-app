@@ -1,7 +1,8 @@
 /* THE LEDGER REGISTER'S OWNER-WAITING COLOURS.
  *
- * The rule: yellow for asks and proposals, red for real blockers waiting on the
- * person, three colours the user picks in quick settings, with per-theme sets.
+ * The owner's words, verbatim: "yellow for owner-asks/proposals, red for real
+ * owner-waiting blockers, three colours user-pickable from quick settings,
+ * per-theme sets."
  *
  * What this suite holds, and why each part is here rather than somewhere else:
  *
@@ -69,7 +70,7 @@ const THEMES = THEME_CHOICES.map(choice => choice.id)
 /* Hue in degrees from a six-digit hex colour, and null for anything that is
    not one -- an unresolved var(), a color-mix(), a keyword. Hue is what "red"
    and "yellow" are words for; a test that compared hex strings would be pinning
-   one designer's exact swatch instead of the requirement. A null hue is
+   one designer's exact swatch instead of the owner's sentence. A null hue is
    neither red nor yellow, so a colour this reader cannot measure can never
    satisfy an assertion by accident; it fails it. */
 function hueOf(value) {

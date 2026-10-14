@@ -1,7 +1,9 @@
 /* UP-ARROW REACHES THE MESSAGES STILL WAITING TO SEND, AND EDITING ONE KEEPS IT.
  *
- * As in a command prompt, pressing Up in the chat reaches the queued messages
- * so a person can edit them -- asked for after four messages were lost.
+ * Owner, verbatim: "i like how in cmd you can press the up button and edit
+ * your qued messages. it might be a weird feature but ca we let userrs press
+ * up from the chat to get to their qued messages and edit them" -- asked after
+ * four messages were lost.
  *
  * These drive the real walk with real values against the real store
  * (src/session-outbox.js), not a description of the walk's source. Every

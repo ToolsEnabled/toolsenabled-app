@@ -108,7 +108,7 @@ test('section resets follow the consolidated group and preserve unrelated and re
   assert.equal(editor.value().values.noask, 'yes')
 })
 
-// The reasoning behind each LeanBench value is documented outside the product; the page
+// The owner's paper carries the reasoning behind each LeanBench value; the page
 // shows none of it. Each field's details hold exactly the selected value, the
 // origin and source line, and the example control, and nothing else.
 test('no field renders a reasoning label: details hold only the value, its source and the example', () => {

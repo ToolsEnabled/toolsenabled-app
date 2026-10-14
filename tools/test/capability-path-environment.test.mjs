@@ -12,6 +12,12 @@ const {
   isCapabilityPathOverrideEnvironmentName,
   scrubCapabilityPathOverrides,
 } = require_(path.join(ROOT, 'shell', 'capability-path-environment.cjs'))
+const {
+  NATIVE_CLAUDE_HOME_UNUSABLE_CODE,
+  STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES,
+  fencedAccountEnvironment,
+  nativeClaudeHomeStartAnswer,
+} = require_(path.join(ROOT, 'shell', 'install-profile-guard.cjs'))
 
 /* A path-shaped name that RESTRICTS instead of redirecting. A DEV runtime sets
    TOOLSENABLED_PROVIDER_ISOLATION_ROOT on purpose (tools/lib/development-session.mjs),
@@ -20,6 +26,17 @@ const {
    isolation off, so the fence keeps it. Exactly one name may be here, and the
    test below makes it prove the restriction instead of taking it on trust. */
 const RESTRICTIVE_MARKERS = new Set(['TOOLSENABLED_PROVIDER_ISOLATION_ROOT'])
+
+/* A path-shaped name that belongs to the OTHER fence. CLAUDE_CONFIG_DIR is Claude
+   Code's own variable for the person's Claude configuration folder. Since 1.0.50
+   the packed engine reads it on purpose (src/lib/agent-session-confinement.js), so
+   the official CLI runs on the person's own sign-in, and startup keeps it instead
+   of erasing it. Scrubbing it here would take that folder away from the person.
+   It is not left unfenced: shell/install-profile-guard.cjs names it among the
+   account paths and sets aside a value in another Windows account (or one it
+   cannot follow safely), so a default Claude start refuses and says why. Exactly
+   one name may be here, and the test below makes that authority prove both halves. */
+const ACCOUNT_PATH_FENCED = new Set(['CLAUDE_CONFIG_DIR'])
 
 function sourceFiles(directory, found = []) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -46,7 +63,7 @@ test('the centralized fence covers every path-shaped override used by capability
     }
   }
   const declared = new Set(CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES)
-  assert.deepEqual([...discovered].filter(name => !declared.has(name) && !RESTRICTIVE_MARKERS.has(name)), [],
+  assert.deepEqual([...discovered].filter(name => !declared.has(name) && !RESTRICTIVE_MARKERS.has(name) && !ACCOUNT_PATH_FENCED.has(name)), [],
     'a capability filesystem override can bypass the centralized account-state fence')
   for (const required of [
     'TOOLSENABLED_STATE_ROOT', 'TOOLSENABLED_STATE_PATH', 'TOOLSENABLED_SCHEDULER_LEGACY_PATH',
@@ -59,10 +76,10 @@ test('the centralized fence covers every path-shaped override used by capability
 
 test('scrubbing is case-insensitive and leaves non-path launch facts alone', () => {
   const environment = Object.fromEntries(
-    CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES.map((name, index) => [index === 0 ? name.toLowerCase() : name, `C:\\foreign\\${index}`]),
+    CAPABILITY_PATH_OVERRIDE_ENVIRONMENT_NAMES.map((name, index) => [index === 0 ? name.toLowerCase() : name, `\x43:\\foreign\\${index}`]),
   )
   environment.TOOLSENABLED_AGENT_ID = 'worker-one'
-  environment.SystemRoot = 'C:\\Windows'
+  environment.SystemRoot = '\x43:\\Windows'
 
   assert.equal(isCapabilityPathOverrideEnvironmentName('toolsenabled_state_path'), true)
   scrubCapabilityPathOverrides(environment)
@@ -70,7 +87,7 @@ test('scrubbing is case-insensitive and leaves non-path launch facts alone', () 
     assert.equal(isCapabilityPathOverrideEnvironmentName(name), false, `${name} survived the scrub`)
   }
   assert.equal(environment.TOOLSENABLED_AGENT_ID, 'worker-one')
-  assert.equal(environment.SystemRoot, 'C:\\Windows')
+  assert.equal(environment.SystemRoot, '\x43:\\Windows')
 })
 
 test('the one restrictive marker is kept by the scrub and actually restricts', () => {
@@ -86,4 +103,35 @@ test('the one restrictive marker is kept by the scrub and actually restricts', (
     { code: 'AGENT_PROVIDER_ISOLATION_UNAVAILABLE' },
     'the marker was present without an isolation policy and the account store did not refuse',
   )
+})
+
+test('the one name left to the account-path fence is named there, kept inside the profile and set aside outside it', () => {
+  const name = 'CLAUDE_CONFIG_DIR'
+  assert.deepEqual([...ACCOUNT_PATH_FENCED], [name], 'a second name joined the account-path exemption')
+  assert.equal(isCapabilityPathOverrideEnvironmentName(name), false,
+    'the capability scrub would erase the person\u2019s own Claude configuration folder')
+  assert.ok(STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES.includes(name), `${name} is absent from the account-path fence`)
+
+  // Synthetic Windows paths and a filesystem that holds nothing: no real profile is opened.
+  const missingPaths = { lstatSync() { throw Object.assign(new Error('Synthetic missing path'), { code: 'ENOENT' }) } }
+  const profile = String.raw`${"\x58:\\Users\\SyntheticOwner"}`
+  const inside = path.win32.join(profile, 'claude-config')
+  const kept = fencedAccountEnvironment({ platform: 'win32', fencedProfile: profile,
+    environment: { USERPROFILE: profile, [name]: inside }, filesystem: missingPaths })
+  assert.equal(kept.ok, true, 'a Claude configuration folder inside the owning profile was refused')
+  assert.equal(kept.environment[name], inside, 'the account-path fence did not keep the person\u2019s folder')
+  assert.equal(kept.claudeConfigDirSetAside, undefined, 'a folder inside the owning profile was set aside')
+
+  /* Since 1.0.50 a folder in another Windows account does not end the launch: the
+     fence removes it, records why, and a default Claude start refuses with that
+     reason. It never reaches the child. */
+  const outside = String.raw`${"\x58:\\Users\\SomeoneElse\\claude-config"}`
+  const setAside = fencedAccountEnvironment({ platform: 'win32', fencedProfile: profile,
+    environment: { USERPROFILE: profile, [name]: outside }, filesystem: missingPaths })
+  assert.equal(setAside.ok, true, 'a foreign Claude configuration folder ended the whole launch')
+  assert.equal(Object.hasOwn(setAside.environment, name), false, 'a Claude configuration folder in another account reached the child')
+  assert.deepEqual(setAside.claudeConfigDirSetAside, { variable: name, reason: 'other-account' })
+  const answer = nativeClaudeHomeStartAnswer(setAside.claudeConfigDirSetAside)
+  assert.equal(answer?.blocked, true, 'a default Claude start was not refused after its folder was set aside')
+  assert.equal(answer.code, NATIVE_CLAUDE_HOME_UNUSABLE_CODE)
 })

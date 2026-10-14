@@ -100,9 +100,10 @@ test('an empty, blank, or non-string reason leaves the generic line exactly as i
 /* A VIEW TORN DOWN MID-WAIT IS A RACE, NOT A REFUSAL -- AND MUST NOT READ AS
  * AN INTERNAL ERROR.
  *
- * MEASURED: agent.remove refused MC_TREE_COMMAND_VIEW_DESTROYED, then the
- * identical command succeeded three times in the next 33 seconds; agent.spawn
- * refused it and succeeded under a minute later on a plain retry. Before this code had an entry in
+ * MEASURED, Builder 3: agent.remove refused MC_TREE_COMMAND_VIEW_DESTROYED at
+ * 06:54:06Z, then the identical command succeeded three times in the next 33
+ * seconds; agent.spawn refused it at 07:03:30Z and succeeded at 07:04:25Z on
+ * a plain retry. Before this code had an entry in
  * TREE_COMMAND_REFUSAL_SENTENCES, treeCommandRefusalSentence fell through to
  * the generic line -- indistinguishable from any other unnamed code, and
  * upstream readers rendered it as an internal error. This does not add retry

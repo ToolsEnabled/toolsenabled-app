@@ -4,7 +4,7 @@
  * fresh-start-existing-node.js's half of this contract with a plain mock
  * transcriptStore. tools/test/node-transcript-client.test.mjs pins
  * node-transcript-client.js's half in isolation. Neither, alone, proves the
- * two halves agree with each other -- and MEASURED,
+ * two halves agree with each other -- and MEASURED, Controller 2026-09-06,
  * the actual production failure was exactly a disagreement between them: the
  * real client answered `remove()` with a Promise resolving `undefined`
  * (its "nothing to remove, already the goal state" success signal), and the

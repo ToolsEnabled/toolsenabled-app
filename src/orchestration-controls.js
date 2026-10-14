@@ -1,7 +1,7 @@
 /* PAGE 2 ORCHESTRATION CONTROLS — the honest inventory.
  *
- * THE RULE THIS FILE EXISTS TO ENFORCE: never claim a control, such as
- * temperature, that the product cannot actually set.
+ * THE RULE THIS FILE EXISTS TO ENFORCE, in the owner's words:
+ * "dont lie like we cant control temperature."
  *
  * A control earns a place on this page only if changing it provably changes
  * what the spawned child process does. "The engine accepted the argument" is
@@ -44,8 +44,8 @@
  * working here. shell/agent-host.cjs START_TIERS carries every row, treeOnly
  * ones included, and tools/test/codex-astra-tier.test.mjs holds that parity.
  *
- * PROVIDER IS A FILTER, NOT A SECOND FIELD (1.0.48, owner decision:
- * provider first, then model). What stood here said separate provider and
+ * PROVIDER IS A FILTER, NOT A SECOND FIELD (1.0.48, owner: "it should be
+ * provider, then model choice"). What stood here said separate provider and
  * model menus would invent a freedom the dispatch API does not have. That is
  * still true of the WIRE: a start, a dispatch and a saved node carry exactly
  * one row id, and the engine resolves provider, model, seats and effort from
@@ -99,8 +99,8 @@ export const LAUNCH_TIERS = Object.freeze([
      src/fleet-tree-copy.js). The label is the catalog's own display name rather
      than the one-word style of the rows below: the person asked for "astra6"
      and the vendor calls it GPT-6-Astra, so the full name is what identifies
-     it. The K3 reversal makes the default effort `medium`, which is what Codex
-     does for its own model. */
+     it. The owner K3 reversal makes the default effort `medium`: "default
+     should be medium thats what codex does and we are using their model". */
   Object.freeze({ id: 'astra', provider: 'codex', label: 'GPT-6-Astra', model: 'gpt-6-astra', effort: 'medium', seats: SINGLE_SEAT_POOLS.astra }),
   /* The rest of Codex's gpt-6 line, added 2026-09-25 for 1.0.48. Ids, display
      names and efforts are read from ~/.codex/models_cache.json (codex-cli
@@ -110,13 +110,11 @@ export const LAUNCH_TIERS = Object.freeze([
      existing installation would refuse it (engine actions.js, beside TIERS).
      Their seats are nominal, like the Gemini and Grok rows' -- a tree start
      does not draw on the dispatch pools. */
-  /* `failoverTarget: false` (review P6): the automatic account-limit walk
-     (account-recovery-coordinator.js switchToAnotherModel) keeps exactly the
-     candidates it had before 1.0.48. A model added since is a choice a person
-     makes, not a stand-in the walk moves an agent onto -- the same reason it
-     skips `pinned` rows. */
-  Object.freeze({ id: 'gpt-6-sol', provider: 'codex', label: 'GPT-6-Sol', model: 'gpt-6-sol', effort: 'medium', treeOnly: true, failoverTarget: false, seats: Object.freeze(['gpt-6-sol']) }),
-  Object.freeze({ id: 'gpt-6-luna', provider: 'codex', label: 'GPT-6-Luna', model: 'gpt-6-luna', effort: 'medium', efforts: CODEX_EFFORTS_WITHOUT_ULTRA, treeOnly: true, failoverTarget: false, seats: Object.freeze(['gpt-6-luna']) }),
+
+  // Codex CLI models_cache.json, checked 2026-10-09: low through ultra.
+  Object.freeze({ id: 'gpt-6.1-sol', provider: 'codex', label: 'GPT-6.1-Sol', model: 'gpt-6.1-sol', effort: 'medium', efforts: PROVIDER_EFFORTS.codex, treeOnly: true, seats: Object.freeze(['gpt-6.1-sol']) }),
+  Object.freeze({ id: 'gpt-6-sol', provider: 'codex', label: 'GPT-6-Sol', model: 'gpt-6-sol', effort: 'medium', treeOnly: true,  seats: Object.freeze(['gpt-6-sol']) }),
+  Object.freeze({ id: 'gpt-6-luna', provider: 'codex', label: 'GPT-6-Luna', model: 'gpt-6-luna', effort: 'medium', efforts: CODEX_EFFORTS_WITHOUT_ULTRA, treeOnly: true,  seats: Object.freeze(['gpt-6-luna']) }),
   /* The gpt-5.6 rows carry the version in their label since 1.0.48: the
      vendor's GPT-6-Luna and GPT-6-Sol would otherwise share their words. */
   Object.freeze({ id: 'luna', provider: 'codex', label: 'GPT-5.6-Luna', model: 'gpt-5.6-luna', effort: 'medium', efforts: CODEX_EFFORTS_WITHOUT_ULTRA, seats: SINGLE_SEAT_POOLS.luna }),
@@ -132,15 +130,10 @@ export const LAUNCH_TIERS = Object.freeze([
   Object.freeze({ id: 'claude-fable', provider: 'claude', label: 'Fable (latest)', model: 'claude/fable', cliModel: 'fable', effort: null, seats: CLAUDE_WORKER_SEATS }),
   Object.freeze({ id: 'claude-sonnet', provider: 'claude', label: 'Sonnet (latest)', model: 'claude/sonnet', cliModel: 'sonnet', effort: null, seats: CLAUDE_WORKER_SEATS }),
   Object.freeze({ id: 'claude-opus', provider: 'claude', label: 'Opus (latest)', model: 'claude/opus', cliModel: 'opus', effort: null, seats: CLAUDE_WORKER_SEATS }),
-  /* ONE ROW PER CLAUDE MODEL, added 2026-09-25 for 1.0.48. Product decision:
-     every model a provider offers is selectable, Opus 5 and Sonnet 5
-     included. Mirrors engine TIERS row for row (ids and effort sets checked
-     there against the model catalog served on 2026-09-25 and CLI 2.1.283).
-     `pinned: true` means the row names one exact model: recovery and failover
-     never move such an agent to another model on their own (D6) -- the same
-     model on another account is fine, a different model needs the person.
-     `effort: null` on every one: an untouched start sends no --effort and the
-     model's own default applies. */
+
+  // Claude Code 2.1.295 model catalog: both 5.5 models offer low..max, including xhigh.
+  Object.freeze({ id: 'claude-sonnet-5-5', provider: 'claude', label: 'Sonnet 5.5', model: 'claude/claude-sonnet-5-5', cliModel: 'claude-sonnet-5-5', effort: null, efforts: PROVIDER_EFFORTS.claude, pinned: true, seats: CLAUDE_WORKER_SEATS }),
+  Object.freeze({ id: 'claude-haiku-5-5', provider: 'claude', label: 'Haiku 5.5', model: 'claude/claude-haiku-5-5', cliModel: 'claude-haiku-5-5', effort: null, efforts: PROVIDER_EFFORTS.claude, pinned: true, seats: CLAUDE_WORKER_SEATS }),
   Object.freeze({ id: 'claude-opus-5-5', provider: 'claude', label: 'Opus 5.5', model: 'claude/claude-opus-5-5', cliModel: 'claude-opus-5-5', effort: null, pinned: true, seats: CLAUDE_WORKER_SEATS }),
   Object.freeze({ id: 'claude-opus-5', provider: 'claude', label: 'Opus 5', model: 'claude/claude-opus-5', cliModel: 'claude-opus-5', effort: null, pinned: true, seats: CLAUDE_WORKER_SEATS }),
   Object.freeze({ id: 'claude-sonnet-5', provider: 'claude', label: 'Sonnet 5', model: 'claude/claude-sonnet-5', cliModel: 'claude-sonnet-5', effort: null, pinned: true, seats: CLAUDE_WORKER_SEATS }),
@@ -175,7 +168,7 @@ export const LAUNCH_TIERS = Object.freeze([
   /* Added 2026-09-25 for 1.0.48. The installed Gemini CLI 0.58.0 lists
      `gemini-3.1-flash-lite` in VALID_GEMINI_MODELS as its
      DEFAULT_GEMINI_FLASH_LITE_MODEL (not a preview id). */
-  Object.freeze({ id: 'gemini-3-1-flash-lite', provider: 'gemini', label: 'Gemini 3.1 Flash Lite', model: 'gemini/gemini-3.1-flash-lite', cliModel: 'gemini-3.1-flash-lite', effort: null, treeOnly: true, failoverTarget: false, seats: Object.freeze(['gemini-1']) }),
+  Object.freeze({ id: 'gemini-3-1-flash-lite', provider: 'gemini', label: 'Gemini 3.1 Flash Lite', model: 'gemini/gemini-3.1-flash-lite', cliModel: 'gemini-3.1-flash-lite', effort: null, treeOnly: true,  seats: Object.freeze(['gemini-1']) }),
   Object.freeze({ id: 'gemini-2-5-pro', provider: 'gemini', label: 'Gemini 2.5 Pro', model: 'gemini/gemini-2.5-pro', cliModel: 'gemini-2.5-pro', effort: null, treeOnly: true, seats: Object.freeze(['gemini-1']) }),
   Object.freeze({ id: 'gemini-2-5-flash', provider: 'gemini', label: 'Gemini 2.5 Flash', model: 'gemini/gemini-2.5-flash', cliModel: 'gemini-2.5-flash', effort: null, treeOnly: true, seats: Object.freeze(['gemini-1']) }),
   Object.freeze({ id: 'grok', provider: 'grok', label: 'Automatic', model: 'grok/auto', cliModel: null, effort: null, treeOnly: true, seats: Object.freeze(['grok-1']) }),
@@ -185,8 +178,8 @@ export const LAUNCH_TIERS = Object.freeze([
   Object.freeze({ id: 'grok-4-6', provider: 'grok', label: 'Grok 4.6', model: 'grok/grok-4.6', cliModel: 'grok-4.6', effort: 'xhigh', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh']), treeOnly: true, seats: Object.freeze(['grok-1']) }),
   Object.freeze({ id: 'grok-4-5', provider: 'grok', label: 'Grok 4.5', model: 'grok/grok-4.5', cliModel: 'grok-4.5', effort: null, efforts: Object.freeze(['low', 'medium', 'high']), treeOnly: true, seats: Object.freeze(['grok-1']) }),
   /* A model on the user's own GPU, in the same table as the paid ones — the
-     engine's TIERS.local row (the free local path is a full part of the
-     product, not a fallback). `cliModel: null` is load-bearing: a local
+     engine's TIERS.local row (owner, 2026-08-12: the free path is the
+     product, not a consolation). `cliModel: null` is load-bearing: a local
      node has no vendor CLI; the engine resolves the concrete model at
      dispatch from what the user has pulled, and refuses honestly if nothing
      is installed. */
@@ -198,6 +191,25 @@ export const DISPATCH_TIERS = Object.freeze(LAUNCH_TIERS.filter(tier => !tier.tr
 
 export function launchTier(id) {
   return TIER_BY_ID.get(id) || null
+}
+
+/* WHICH MODEL A USAGE ROW NAMES (1.0.50 review CM-4). A turn on a model name the
+   person typed records that name beside the row it started on (shell/main.cjs:
+   `model`, with `modelChoice` 'typed'). A typed name the record cannot hold
+   (one with \ / or :, or over 64 characters) is recorded as typed with no name
+   and reads "Other model", never the default row's name. Every other row, and
+   every row written before 1.0.50, reads as its model row. Null when the row
+   names neither. */
+export const USAGE_OTHER_MODEL = 'Other model'
+export function usageModel(turn) {
+  if (turn?.modelChoice === 'typed') {
+    const provider = launchTier(turn.tier)?.provider || ''
+    return typeof turn.model === 'string' && turn.model
+      ? { key: `typed:${provider}:${turn.model}`, label: turn.model }
+      : { key: 'typed-other', label: USAGE_OTHER_MODEL }
+  }
+  const row = typeof turn?.tier === 'string' ? launchTier(turn.tier) : null
+  return row ? { key: row.id, label: row.label } : null
 }
 
 /* A row, from its id or as given. Callers with an injected table (tests, the
@@ -427,7 +439,7 @@ export const CHAT_CHANNEL_KINDS = Object.freeze(['session', 'simulated', 'none']
  * the simulated fleet read-only. Either adds a kind with a conversation and
  * `canSend: false`, at which point the caller that meant "a conversation
  * exists" starts reporting "there is no channel to this agent" — reviving,
- * silently, exactly the defect an earlier commit fixed.
+ * silently, exactly the defect commit f4b4433 fixed.
  *
  * Adding a kind therefore forces a decision about which side of this it sits
  * on, and tools/test/node-chatbox.test.mjs pins the enum so the decision

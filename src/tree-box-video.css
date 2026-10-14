@@ -1,0 +1,82 @@
+/* 1.0.49 VIDEO BOX: the panel under an agent's box (src/tree-box-video.js).
+   16:9, as wide as the box, 8px under it. src/tree-box-layout.js reserves the
+   same height (boxVideoExtent) below every rank that holds one, so the panel
+   never sits on the next row. The box is overflow: visible, so it can hang
+   outside the box's own footprint. The rim is the agent's role colour. */
+.static-tree-graph[data-node-style="boxes"] .tree-box-video {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 2px solid color-mix(in oklab, var(--rc) 40%, var(--ink-3));
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--ink) 86%, var(--sheet));
+  cursor: default;
+  user-select: none;
+}
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box:hover > .tree-box-video,
+.static-tree-graph[data-node-style="boxes"] .tree-agent-box.selected > .tree-box-video { border-color: var(--rc); }
+.static-tree-graph[data-node-style="boxes"] .tree-box-video-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  pointer-events: none;
+}
+
+/* One caption line over the bottom of a live video: the window's title. */
+.static-tree-graph[data-node-style="boxes"] .tree-box-video-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  color: #fff;
+  background: linear-gradient(180deg, transparent, rgb(0 0 0 / .66));
+  font: 600 calc(12px * var(--tree-box-text-scale, 1))/1.3 var(--font-ui);
+}
+.static-tree-graph[data-node-style="boxes"] .tree-box-video-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Starting, closed, paused, or waiting for a new pick: the words sit in the
+   middle of a quiet panel instead of over a picture. */
+.static-tree-graph[data-node-style="boxes"] .tree-box-video:not([data-video-state="live"]) { background: color-mix(in oklab, var(--rc) 6%, var(--sheet)); }
+.static-tree-graph[data-node-style="boxes"] .tree-box-video:not([data-video-state="live"]) .tree-box-video-frame { visibility: hidden; }
+.static-tree-graph[data-node-style="boxes"] .tree-box-video[data-video-state="ended"] .tree-box-video-frame { visibility: visible; opacity: .35; }
+.static-tree-graph[data-node-style="boxes"] .tree-box-video:not([data-video-state="live"]) .tree-box-video-caption {
+  inset: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px;
+  color: var(--ink-2);
+  background: none;
+  text-align: center;
+}
+.static-tree-graph[data-node-style="boxes"] .tree-box-video[data-video-state="ended"] .tree-box-video-caption { color: #fff; }
+.static-tree-graph[data-node-style="boxes"] .tree-box-video:not([data-video-state="live"]) .tree-box-video-text { white-space: normal; }
+.static-tree-graph[data-node-style="boxes"] .tree-box-video[data-video-stalled="true"] .tree-box-video-text { white-space: normal; }
+
+.static-tree-graph[data-node-style="boxes"] .tree-box-video-action {
+  padding: 5px 12px;
+  border: 1.5px solid color-mix(in oklab, var(--rc) 50%, var(--ink-3));
+  border-radius: 2px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: 650 calc(12px * var(--tree-box-text-scale, 1))/1.2 var(--font-ui);
+  cursor: pointer;
+}
+.static-tree-graph[data-node-style="boxes"] .tree-box-video-action:hover { border-color: var(--rc); background: color-mix(in oklab, var(--rc) 12%, var(--sheet)); }
+.static-tree-graph[data-node-style="boxes"] .tree-box-video-action:focus-visible { outline: 2px solid var(--rc); outline-offset: 2px; }
+.static-tree-graph .tree-box-video [hidden] { display: none; }

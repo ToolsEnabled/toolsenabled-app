@@ -126,7 +126,7 @@ test('a failed bridged read stays distinct from an absent checkpoint', async () 
    (`recoveryHandoff`, `rememberRecoveryText`): the brief header, the recent
    conversation header and the "[message]" person marker. The fuller proof,
    which builds both shapes by RUNNING the pre-fix and current producers, is
-   tools/repro/REPRO-T366-STORED-HANDOFF-DOUBLED.mjs. */
+   tools/repro/REPRO-LANEC-T366-STORED-HANDOFF-DOUBLED.mjs. */
 const OWNER_SAID = 'Ship the renderer audit today.'
 const AGENT_SAID = 'Starting with the four providers.'
 const handoffText = ({ brief, recent }) =>

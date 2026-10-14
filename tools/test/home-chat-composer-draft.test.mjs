@@ -1,7 +1,7 @@
 /* THE COORDINATOR COMPOSER'S DRAFT MUST SURVIVE A SUBJECT-SWITCH REBUILD.
  *
- * The defect: occasional UI redraws erased what a person was typing.
- * THE TRIGGER, NAMED: src/home-chat-takeover.js's
+ * Owner, verbatim: "theres occassionally really annoying UI redraws and
+ * they erase my typing." THE TRIGGER, NAMED: src/home-chat-takeover.js's
  * mountChatTakeover exposes `show(nextId)` (the `show:` method on its
  * returned surface, wrapping the internal `show` closure), which
  * src/views/home.js:631 calls on the subject picker's own 'change' event --

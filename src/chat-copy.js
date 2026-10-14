@@ -24,6 +24,8 @@
 
 import { NODE_STATUS_WORDS, sendRefusalSentence } from './fleet-tree-copy.js'
 
+export const CHAT_AI_DISCLOSURE = 'You’re talking with an AI assistant.'
+
 /* ------------------------------------------------------- source-proved header */
 
 const recordObject = record => Boolean(record) && typeof record === 'object' && !Array.isArray(record)
@@ -45,6 +47,29 @@ export function chatHeaderPathCopy(record) {
   } catch {
     return null
   }
+}
+
+/* Account facts come from the host's start receipt or saved session metadata.
+   An explicit null means the default sign-in; a missing field is unknown. */
+export function agentAccountCopy(record = {}) {
+  const providers = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini', grok: 'Grok' }
+  const provider = Object.hasOwn(providers, record.provider) ? providers[record.provider] : null
+  let value = 'not recorded'
+  if (record.started === false) value = 'not started yet'
+  else if (typeof record.account === 'string' && record.account.trim()) {
+    const name = typeof record.displayAccount === 'string' && record.displayAccount.trim() ? record.displayAccount : record.account
+    value = provider ? `${name} (${provider})` : name
+  } else if (record.account === null) {
+    if (provider) value = `your default ${provider} sign-in`
+    else if (record.provider === 'local') value = 'no sign-in needed'
+  }
+  const text = `Account: ${value}`
+  return Object.freeze({ text, ariaLabel: text })
+}
+
+export function chatHeaderAccountCopy(record) {
+  if (!recordObject(record) || record.source !== 'session-account') return null
+  return agentAccountCopy(record)
 }
 
 export function chatHeaderStatusCopy(record) {
@@ -242,8 +267,8 @@ export const mentionInsertText = path => `Read ${path} and use it for what I ask
 export const ACTIONS_LABEL = 'Actions'
 export const ACTIONS_TITLE = 'Actions for this agent — stop, thinking depth, model, rewind and more'
 export const ACTIONS_FILTER_PLACEHOLDER = 'Filter actions, or type a /command…'
-/* THE PALETTE IS ALSO THE COMMAND LINE (a person can add on the page by hand
-   as well as direct by hand). The slash key
+/* THE PALETTE IS ALSO THE COMMAND LINE (owner, 2026-09-15: "i want to be able
+   to manually add on the page as well as manually direct"). The slash key
    opens this palette from an empty box, which meant a typed "/Request keep it
    short" had nowhere to land: the slash was swallowed and the words only
    filtered a list that has no such row. Now the slash lands in the filter,
@@ -283,18 +308,19 @@ export const actionsBuildFailedWhy = detail => 'Nothing was changed. Close this 
  * words at the BACK and printed a you-bubble for a message that had not gone
  * anywhere.
  *
- * R14: the old Send button only sent, and Send next only reordered, so a third
- * button, Send now, is needed. Three separate, always-present doors instead:
+ * The owner, 2026-09-04 (R14, verbatim): "the send now button just says send
+ * and then the send next button just moves it around we need a thrid button
+ * there for send now also." Three separate, always-present doors instead:
  * Send is the ordinary drain, live only while nothing is running. Send next
  * puts a row at the head of the queue -- unchanged from the old busy face.
- * Send now (R17: the user can send a Send now that actually interrupts the
- * agent) is the one door that may stop a
+ * Send now (R17, verbatim: "the user needs to be able to send a send now
+ * that actually interrrupts the agent") is the one door that may stop a
  * running turn to deliver its row -- see components.js paintQueueStrip for
  * the cancel-then-halt-then-deliver sequence, which runs through the
  * composer's own runStop(), never a second stop implementation. */
-/* QUEUE_SEND and QUEUE_SEND_LABEL are gone with the door they named (W18c:
-   queued items need no additional send button, since they are already sent
-   at that point). Copy for a control nobody can press is worse
+/* QUEUE_SEND and QUEUE_SEND_LABEL are gone with the door they named (W18c,
+   the owner: "in the qued items, no need for an additional send button it is
+   already sent at that point"). Copy for a control nobody can press is worse
    than no copy: the next reader has to work out whether it is dead or merely
    unused. */
 export const QUEUE_SEND_NOW = 'Send now'
@@ -313,7 +339,7 @@ export const QUEUE_SEND_NOW_LABEL = 'Send this message now, even if that means s
  * The product already had the right shape one row above. src/fleet-tree-copy.js
  * keeps a sentence per switched-off state ("This agent has not started yet.")
  * under its own note: "A disabled control that will not say why is the exact
- * class of defect reported again and again." The /goal and /loop chips spend it;
+ * class of thing the owner keeps filing." The /goal and /loop chips spend it;
  * the chip under the arrow did not. These are that sentence for the three
  * conditions syncComposer actually switches this chip off on. The enabled name
  * is unchanged, because when the act IS possible the act is the right thing to
@@ -544,9 +570,9 @@ export const CHAT_CONTEXT_FALLBACK = Object.freeze({
 export const CHIP_EFFORT_LABEL = 'Effort'
 export const CHIP_HALT_LABEL = 'Halt'
 /* THE QUEUE AND SEND CHIPS ARE GONE, W18c, and so is their copy -- the count
-   label, the three queue hints, and the SEND label. Under the arrow there
-   were a send and a queue button; the arrow sends, and the button below is
-   for Send now. Both chips called the composer's own send(): SEND
+   label, the three queue hints, and the SEND label. The owner: "under the
+   arrow is a send and a que button. The arrow should send, the button below
+   should be for send now." Both chips called the composer's own send(): SEND
    was the arrow spelled twice, and QUEUE was the arrow's busy branch spelled
    twice, since send() at a busy agent IS the queue. What no chip could do was
    interrupt, so the pair became one Send now, whose words are QUEUE_SEND_NOW

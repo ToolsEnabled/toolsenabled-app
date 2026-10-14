@@ -402,7 +402,7 @@ async function openAgentSheet(page) {
 
 /* --------------------------------------------------- content growth (M4) */
 
-/* THE UNPROVEN RISK, PROVEN OR REFUTED HERE FIRST. An earlier A/B measurement already
+/* THE UNPROVEN RISK, PROVEN OR REFUTED HERE FIRST. fleet-A's A/B already
  * refuted container height as a cause: .rail-page self-sizes in lockstep
  * with whatever height its ancestor gives it (353/353 -> 405/405, both
  * engines), so a mismatched container is not what would break the sheet.
@@ -679,7 +679,7 @@ async function measureCell(engineName, engine, cell, origin) {
 
 /* ------------------------------------------------------ the ledger override */
 
-/* THE LEDGER LINK'S OWN OVERRIDE, MEASURED AT THE GLASS (M2, approved).
+/* THE LEDGER LINK'S OWN OVERRIDE, MEASURED AT THE GLASS (M2, owner-approved).
  *
  * phone-canvas-ledger-override.test.mjs already proves the pure decision
  * function: phoneCanvasDecision({ ...DESKTOP, choice: 'auto', ledgerRoute:
@@ -745,8 +745,9 @@ async function measureLedgerOverride(engineName, engine, origin) {
       `${label}: data-phone-canvas is "${mode.phone}", not "on", on a fine-pointer desktop that followed the ?ledger=1 link — the override proven in phone-canvas-ledger-override.test.mjs is not reaching this page (pointer:coarse ${mode.coarse}, hover:hover ${mode.hover})`)
 
     /* AND THE DOWNSTREAM SURFACE IT UNLOCKS ACTUALLY RENDERS, not only the
-       attribute -- UPDATED FOR THE ROUTING LAW's SIGN-IN GATE (final ruling:
-       the ledger surface requires full online sign-in).
+       attribute -- UPDATED FOR THE ROUTING LAW's SIGN-IN GATE (owner's final
+       ruling, 2026-08-28 evening; plan of record LEDGER.md, Part 2b §A0-M
+       item 0: "The ledger surface requires FULL ONLINE SIGN-IN").
        .phone-ledger-press ROWS ARE NO LONGER THE RIGHT THING TO EXPECT HERE.
        This harness has no window.mcAccount at all (a bare vite dev server,
        no Electron, no website host-bridge.js), so src/account-state.js's own

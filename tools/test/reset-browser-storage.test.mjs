@@ -71,7 +71,7 @@ for (const source of ['user-data', 'session', 'windows-user-data']) test(`${sour
   if (source === 'windows-user-data') {
     options.path = path.win32
     options.platform = 'win32'
-    options.userData = 'C:\\ResetFixture\\linked\\..\\owned-data'
+    options.userData = '\x43:\\ResetFixture\\linked\\..\\owned-data'
     options.session = { ...f.session, storagePath: options.userData }
     options.guard = directory => ({ ok: true, resolved: path.win32.resolve(directory) })
     options.plan = { ok: true, roots: [{ kind: 'user-data', directory: path.win32.resolve(options.userData), guarded: true, present: true }] }
@@ -100,7 +100,7 @@ test('a linked ancestor is rejected before the child or its target is inspected'
 })
 
 test('Windows reparse attributes are checked from root to leaf before Node filesystem traversal', () => {
-  const userData = 'C:\\ResetFixture\\owned-data'
+  const userData = '\x43:\\ResetFixture\\owned-data'
   let queried = 0
   assert.throws(() => captureResetBrowserStorage({ userData, platform: 'win32', path: path.win32,
     guard: directory => ({ ok: true, resolved: directory }),
@@ -109,7 +109,7 @@ test('Windows reparse attributes are checked from root to leaf before Node files
     fs: { lstatSync() { assert.fail('Node must not descend after the Windows reparse refusal') } },
     checkWindowsAttributes(chain) {
       queried += 1
-      assert.deepEqual(chain, ['C:\\', 'C:\\ResetFixture', userData])
+      assert.deepEqual(chain, ['\x43:\\', '\x43:\\ResetFixture', userData])
       throw new Error('fixture non-symbolic-link reparse tag')
     },
   }), /reparse tag/)
@@ -170,7 +170,7 @@ for (const link of ['store-directory', 'descendant-directory', 'descendant-file'
 }
 
 test('Windows rejects a non-symbolic-link child reparse tag before inspecting or descending into it', () => {
-  const userData = 'C:\\ResetFixture\\owned-data'
+  const userData = '\x43:\\ResetFixture\\owned-data'
   const local = path.win32.join(userData, 'Local Storage')
   const linkedChild = path.win32.join(local, 'junction')
   const seen = [], checked = []
@@ -196,7 +196,7 @@ test('Windows rejects a non-symbolic-link child reparse tag before inspecting or
       }
     },
   }), /child reparse tag/)
-  assert.deepEqual(checked[0], ['C:\\', 'C:\\ResetFixture', userData])
+  assert.deepEqual(checked[0], ['\x43:\\', '\x43:\\ResetFixture', userData])
   assert.equal(seen.includes(linkedChild), false)
 })
 
@@ -237,7 +237,7 @@ test('the total inspection deadline refuses before a slow directory listing can 
 })
 
 test('Windows native attribute calls consume one shared inspection budget', () => {
-  const userData = 'C:\\ResetFixture\\owned-data'
+  const userData = '\x43:\\ResetFixture\\owned-data'
   let clock = 0, calls = 0
   assert.throws(() => captureResetBrowserStorage({ userData, platform: 'win32', path: path.win32,
     now: () => clock,

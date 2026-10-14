@@ -2,10 +2,10 @@
 
 /* ORDER-DEPENDENT VISIBILITY: the same controls, pressed in DIFFERENT ORDERS.
  *
- * THE DEFECT CLASS THIS HUNTS: a control
+ * THE DEFECT CLASS THIS HUNTS (owner directive, 2026-08-19 night): a control
  * that exists in the DOM but that a person cannot reach -- possibly only AFTER
  * another control was pressed, or only at one width, or only on a return visit.
- * A settings page once shipped "116 settings · 0 shown": every DOM query
+ * Tonight's settings page shipped "116 settings · 0 shown": every DOM query
  * passed while a person saw six grey headings. So nothing here reads DOM
  * presence as existence. A control "exists" only when the geometric triple
  * holds: nonzero box AND its centre is inside the viewport AND

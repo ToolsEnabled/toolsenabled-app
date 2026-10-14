@@ -74,34 +74,7 @@ export function stopStillOwnsNode(closedSessionId, currentNode) {
   )
 }
 
-/* THE SENTENCES THAT MEAN "SOMEONE STOPPED THIS CIRCLE", IN ONE PLACE.
- *
- * A stop is recorded on the tree as a status note, and the automatic
- * machinery reads that note to decide whether it may start the circle again.
- * src/account-recovery-coordinator.js calls this THE STOP FENCE: a saved
- * Autonomous+ continuation is discarded rather than resumed, and a
- * keep-trying-accounts policy is cancelled rather than retried, when the note
- * says the circle was stopped.
- *
- * THE FENCE WAS AN EXACT COMPARISON AGAINST ONE SENTENCE, 'Stopped by you.',
- * and there are two stops. The person's Stop writes that sentence
- * (src/views/computers.js, two sites). A manager's agent.stop writes
- * MANAGER_STOP_NOTE instead -- deliberately, because attribution matters and
- * "you" would be a lie -- and NOTHING read that second sentence.
- *
- * MEASURED 2026-09-24 on this checkout, tools/test/account-recovery-
- * coordinator.test.mjs with a saved continuation for a stopped circle:
- *   note 'Stopped by you.'                    -> ['read', 'stop']
- *   note 'Stopped by the assistant above it.' -> ['read', 'resume', 'attached']
- * The second is the circle coming back to life and spending turns after its
- * manager stopped it, relabelled "Autonomous+ restored this conversation" so
- * that the person reading the tree cannot tell the stop was overridden.
- *
- * So the fence asks this function rather than one string, and the note a stop
- * writes is named here beside it, so a writer and the fence cannot drift
- * apart again. The UI copy that speaks the word "you" deliberately does NOT
- * use this: only the decisions about starting a circle again do.
- */
+
 export const PERSON_STOP_NOTE = 'Stopped by you.'
 export const MANAGER_STOP_NOTE = 'Stopped by the assistant above it.'
 export const STOP_FENCE_NOTES = Object.freeze([PERSON_STOP_NOTE, MANAGER_STOP_NOTE])

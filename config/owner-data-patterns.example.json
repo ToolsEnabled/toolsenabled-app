@@ -8,13 +8,5 @@
     { "value": "Surname", "note": "Surname alone, for text that omits the given name." },
     { "value": "your-account-alias", "note": "Work/school/vendor account identifiers. These are neither names nor paths, so nothing else catches them." },
     { "value": "10.0.0.", "caseSensitive": true, "note": "Your private LAN range, if any hostname or address could be baked into a build." }
-  ],
-  "builtInMarkersNote": "Optional. Five built-in rules of tools/check-no-owner-data.mjs keep their labels and numbers but take their values from here, because a list of what to hide, spelled out in shipped source, would publish it: up to three spellings of another project of yours that must never appear in this product, the default name of your private mirror, and your code-host handle. A filled slot is a built-in rule (never excused as attribution); a slot left out reports 0. An unknown label, more values than a rule has slots, or an empty value refuses the run. Further spellings belong under patterns.",
-  "builtInMarkers": {
-    "retired cross-product metadata": ["YourOtherProduct", "Your Other Product", "Your-Other-Product"],
-    "owner mirror default": ["your_private_mirror"],
-    "owner GitHub handle": ["your-code-host-handle"]
-  },
-  "forbiddenGoogleClientPrefixesNote": "Optional. Id prefixes (for example the project number and a hyphen) of development Google OAuth clients that must never ship. tools/check-asar-manifest.mjs refuses an app.asar whose config/google-signin.json carries one; TOOLSENABLED_FORBIDDEN_GOOGLE_CLIENT_PREFIXES adds more.",
-  "forbiddenGoogleClientPrefixes": []
+  ]
 }

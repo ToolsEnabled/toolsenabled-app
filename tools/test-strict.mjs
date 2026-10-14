@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // THE ONE COMMAND THAT MEASURES THIS REPOSITORY FOR RELEASE.
 //
-// WHY IT EXISTS, measured 2026-09-07 at an earlier app commit. `npm run verify:release`
+// WHY IT EXISTS, measured 2026-09-07 at app 4ba0ceac. `npm run verify:release`
 // is an honest gate, but it inherits whatever environment invoked it, and on a
 // machine that runs this product that environment points at the LIVE
 // installation: TOOLSENABLED_STATE_ROOT, MC_CANONICAL_ROOT and TEMP are all
@@ -235,8 +235,8 @@ function main() {
   // THE PACKER NEEDS TO BE TOLD WHERE THE SOURCE TREE IS. It reads
   // `--source`, then TOOLSENABLED_SOURCE, then
   // private/capability-source.owner.json -- and it does NOT read
-  // MC_CANONICAL_ROOT. MEASURED by a gate runner at an earlier commit, from a
-  // fresh worktree with capability/ absent: this command
+  // MC_CANONICAL_ROOT. MEASURED 2026-09-07 by Controller 3's gate runner at
+  // 2c382481, from a fresh worktree with capability/ absent: this command
   // refused correctly but could never have staged anything, because it invoked
   // the packer with no source at all and got "the capability-layer source tree
   // is not configured. None of the three was set." The first version of this
@@ -252,8 +252,8 @@ function main() {
   //
   // THE SOURCE IS NOT ENOUGH: the packer also refuses a source it cannot bind
   // to an exact commit -- "the capability source has no exact commit binding.
-  // Set --source-ref, TOOLSENABLED_SOURCE_REF, or ... \"ref\"". MEASURED on a
-  // retry that set TOOLSENABLED_SOURCE and still
+  // Set --source-ref, TOOLSENABLED_SOURCE_REF, or ... \"ref\"". MEASURED
+  // 2026-09-07 by Controller 3, whose retry set TOOLSENABLED_SOURCE and still
   // exited 2 in 1s. That refusal is right: a payload packed from an unnamed
   // commit cannot be reproduced, which is the same reason this command prints
   // the engine HEAD at all. So the HEAD is resolved ONCE, here, and used both

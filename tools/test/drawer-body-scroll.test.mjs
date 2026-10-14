@@ -1,7 +1,7 @@
 /* THE QUICK-SETTINGS DRAWER REACHES ITS LAST ROW, AT EVERY TEXT SIZE.
  *
- * On the Text size control, a large text size hid parts of the window. Most of
- * that report is the viewport-unit
+ * The owner, on the Text size control: "text sizes for example large on my
+ * screen hides parts of the window". Most of that sentence is the viewport-unit
  * defect, which tools/test/text-size-window-fit.test.mjs gates. This is the
  * part of it that has nothing to do with a viewport unit, and which that sweep
  * therefore cannot see.
@@ -112,13 +112,14 @@ test('the drawer body scrolls to its last row instead of running off the window'
   )
 })
 
-/* THE ROWS THIS IS ABOUT, so a future reordering cannot quietly make the gate
-   meaningless. The 2026-08-27 measurement is only worth quoting while the
-   drawer still draws more rows than it did then; if these stop being built the
-   sentence above has to be re-measured, not re-used. */
-test('the drawer still builds the rows the measurement was taken against', () => {
+/* Keep every surviving row pinned. Glow intensity belonged to the retired Home
+   drawing subsystem; the old 890-in-630 measurement is historical, not a
+   measurement of this catalogue. Height and scroll declarations remain gated
+   above; actual current geometry belongs to the renderer acceptance matrix. */
+test('the drawer keeps its surviving rows and excludes the retired Glow control', () => {
   const source = readFileSync(path.join(SRC, 'quick-settings.js'), 'utf8')
-  for (const label of ['Show the example fleet', 'Tools your assistants may use', 'Theme', 'Font', 'Text size', 'Glow intensity', 'Reduce motion', 'This build']) {
-    assert.ok(source.includes(`>${label}<`), `the drawer stopped drawing "${label}"; the 890-in-630 measurement no longer describes it`)
+  for (const label of ['Show the example fleet', 'Tools your assistants may use', 'Theme', 'Font', 'Text size', 'Reduce motion', 'This build']) {
+    assert.ok(source.includes(`>${label}<`), `the drawer stopped drawing the surviving row "${label}"`)
   }
+  assert.ok(!source.includes('>Glow intensity<'), 'the retired drawing control must not return')
 })

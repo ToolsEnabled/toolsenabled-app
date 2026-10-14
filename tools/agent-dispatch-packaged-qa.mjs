@@ -265,7 +265,7 @@ function check(name, ok, detail = '') {
  *
  * ONLY THE NAMES BELOW EVER REACH THE CHILD, each established by reading the
  * bridge's own boot path (engine src/lib/mission-bridge/server.js and its
- * requires, at the confirmed LIVE an earlier engine commit) rather than
+ * requires, at the confirmed LIVE engine commit b7149aeb) rather than
  * assumed:
  *
  *   - SystemRoot/windir, read once from the real process.env. Windows itself
@@ -310,7 +310,7 @@ function check(name, ok, detail = '') {
  * methods (`git grep` for literal `process.env.` and for any
  * `<alias>.UPPER_NAME` read via a variable bound to `process.env`/`deps.env`,
  * then reading every hit and every file in full) against exactly these seven
- * files at an earlier commit -- src/lib/uac-delegation.js, src/lib/mission-bridge/
+ * files at b7149aeb -- src/lib/uac-delegation.js, src/lib/mission-bridge/
  * server.js, src/lib/mission-bridge/actions.js, src/lib/runtime-state-root.js,
  * src/lib/account-profile-boundary.js, src/lib/settings.js,
  * src/lib/setup/machine-record.js -- the six required, directly or
@@ -341,7 +341,7 @@ export function providerlessEnvironment(profile) {
      sandboxed under `profile` by that shared scrub -- because nothing else
      here is ever copied from what it returns. */
   const scrubbed = credentialSafeEnvironment(profile)
-  const systemRoot = process.env.SystemRoot || 'C:\\Windows'
+  const systemRoot = process.env.SystemRoot || '\x43:\\Windows'
   const windir = process.env.windir || systemRoot
   const userProfile = path.join(profile, 'no-home')
   const appData = path.join(profile, 'no-npm')

@@ -1,3 +1,9 @@
+/* 1.0.49: the video panel under an agent's box. Imported here, not from its
+   module, because src/tree-graph.js is loaded by plain node in the tests and
+   node cannot import a stylesheet. */
+@import './tree-box-video.css';
+@import './node-action-menu.css';
+
 /* Page 2's static whiteboard register. This sheet is deliberately scoped to
    .computers so FleetGraph on the agent detail route keeps its existing skin. */
 
@@ -50,7 +56,7 @@
     0 0 0 3.5px var(--focus-ring);
 }
 
-/* ONE REAL BAR PER PANE (iteration 6). The title, the switcher and
+/* ONE REAL BAR PER PANE (owner, iteration 6). The title, the switcher and
    the tools used to be absolute siblings sharing one band over the canvas —
    right-anchored shrink-to-fit vs a left-anchored title, kept apart by
    nothing but luck in their widths, and the strip painted over the title the
@@ -62,7 +68,7 @@
 /* Keep a saved wide rail from consuming the canvas when the window shrinks.
    Retain the preference so widening the window restores the requested width.
 
-   R1207 (tree width): the DEFAULT share was lowered here, and only the
+   R1207 ("widen the tree"): the DEFAULT share was lowered here, and only the
    default. `--comp-rail-width` stays the first argument of var(), so a width
    the person dragged still wins outright -- a var() fallback is read only when
    the property is not set, and src/views/computers.js sets it inline on this
@@ -101,13 +107,19 @@
    staged build, the computer's name rendered as "This..." at 1512x945 and was
    gone entirely at 1280x800, taking the whole tree switcher with it. The lead
    slot is `flex: none`, so the name is the one thing here that keeps its width;
-   a genuinely long name still ellipsises inside its own 38% budget. */
+   a genuinely long name still ellipsises inside its own 38% budget.
+   THE EXAMPLE CHIP WRAPS BEFORE THE NAME SHRINKS. The chip beside the name
+   ("Example, not your data") is `flex: none` and the lead wraps, so when the
+   bar is narrow (1280 at 150% with the chat pane open) the chip drops under
+   the name instead of the name ellipsising to "Com..." beside a whole chip. */
 .computers .graph-bar-lead {
   flex: none;
   min-width: 0;
   max-width: 100%;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  row-gap: 4px;
 }
 /* The first of the bar's two hairlines. They are drawn by the slots themselves
    rather than by divider elements, so there is nothing to leave behind when a
@@ -140,7 +152,7 @@
   font-weight: 650;
   letter-spacing: -0.01em;
 }
-/* The scroll function that was asked for lives HERE and only here: the
+/* The scroll function the owner asked for lives HERE and only here: the
    trees slot slides its buttons sideways with the scrollbar hidden (the
    .agentv-panels recipe) and tells the eye there is more via edge fades.
    The seg inside must keep its natural width — a shrunken seg is how the
@@ -169,8 +181,8 @@
 }
 .computers .graph-bar-trees::-webkit-scrollbar { display: none; }
 
-/* THE STRIP SCROLLED AND NOTHING SAID SO (nothing led to the rest
-   of the trees, and a scroller was needed).
+/* THE STRIP SCROLLED AND NOTHING SAID SO (owner, 2026-08-26: "Theres no button
+   to take me to the rest of the trees ... i need some kind of scroller").
  *
  * The scroller above is real -- overflow-x:auto, snap points, edge fades. What
  * it had was no AFFORDANCE. `scrollbar-width: none` and the two 14px mask fades
@@ -227,7 +239,7 @@
 .computers .graph-bar-trees > .graph-tree-scroll[hidden] { display: none; }
 /* THE ARROWS ARE A MOUSE CRUTCH, AND A FINGER ALREADY HAS THE GESTURE.
    phone-canvas.css hides them when the canvas is on, for a reason measured on
-   a phone: at 390px the pinned arrows sit ON TOP of the chips they
+   the owner's phone: at 390px the pinned arrows sit ON TOP of the chips they
    exist to reveal. The routing law then made canonical /app/ on a phone show
    the DESKTOP graph -- phone canvas off -- so that fix stopped covering the
    surface a phone user actually gets, and the same overlap came back on
@@ -380,15 +392,17 @@
    momentary state (a batch mid-start); `[aria-disabled="true"]` is the stated
    one — the control stays pressable so the press can be ANSWERED in words
    (the Edit/Start handlers put the sentence in the page's own status line),
-   which is the only channel a finger has. */
+   which is the only channel a finger has.
+   The face is DESIGN section 4's disabled dress: the control at 45% opacity
+   with no pointer. It used to be a dashed edge in --ink-3, which section 1
+   names among the things that looked wrong. */
 .computers .graph-tree-start[disabled],
 .computers .graph-roles-btn[disabled],
 .computers .graph-tree-start[aria-disabled="true"],
 .computers .graph-edit-btn[disabled],
 .computers .graph-edit-btn[aria-disabled="true"],
 .computers .graph-open-btn[aria-disabled="true"] {
-  color: var(--ink-3);
-  border-style: dashed;
+  opacity: .45;
   cursor: default;
 }
 .computers .graph-tree-start[aria-disabled="true"]:hover,
@@ -642,7 +656,7 @@
    THE ONE SANCTIONED ANIMATION. This sheet kills every animation on a node
    and its descendants (see the blanket rule near the top) because the tree
    is a chart, not a show. The swarm box's sweep is the deliberate exception
-   — the sweep action is always running — and it is opacity-only so
+   — owner: "the sweep action always is going" — and it is opacity-only so
    the canvas's 60fps budget never pays for transforms. The reduced-motion
    clamps at the foot of this sheet close over it. */
 .static-tree-graph .node .node-lane-box,
@@ -1002,7 +1016,7 @@
   -webkit-box-orient: vertical;
   /* -webkit-line-clamp lived here as `3` until W16e. It never took effect:
      the later, same-specificity `.cl-current, .cl-previous, .cl-chat,
-     .cl-unavailable` block below (added by an earlier commit) repeats this selector
+     .cl-unavailable` block below (added by d6063d5) repeats this selector
      and wins on line-clamp by source order, so this box's real clamp was
      always that block's value, not this one. Removed rather than left to
      disagree with the number that actually renders -- see that block for
@@ -1050,9 +1064,9 @@
    darker joints, especially where a long arm met the centre curve. */
 .static-tree-chip-overlay .monitor-brace > svg + svg { margin-top: 0; }
 
-/* THE OPEN CARD, AND THE ROOM ITS BRACES ASKED FOR (the open
-   chatbox's border braces need a little more space). Measured on the staged
-   build before the change: the gap between a
+/* THE OPEN CARD, AND THE ROOM ITS BRACES ASKED FOR (owner, 2026-08-18: "the
+   chatbox ui when open the border how the braces go it needs a bit more
+   space"). Measured on the staged build before the change: the gap between a
    brace's inner edge and the chat beside it was 2px, on both sides. The brace
    sits at x 1..13 and the content began at 15.
 
@@ -1075,18 +1089,18 @@
 .static-tree-chip-overlay .static-tree-chip.as-chat .chip-preview { display: none; }
 .static-tree-chip-overlay .static-tree-chip .chat { display: none; }
 .static-tree-chip-overlay .static-tree-chip.as-chat .chat { display: flex; animation: none; }
-/* THE BRACES ARE THE COLLAPSED MONITOR'S COSTUME, AND ONLY ITS (design
-   rule): they stay on the standard chip, and disappear the moment the
+/* THE BRACES ARE THE COLLAPSED MONITOR'S COSTUME, AND ONLY ITS (owner,
+   2026-08-24): they stay on the standard chip, and disappear the moment the
    chip becomes a conversation -- chat view and the full-window view alike. An
    earlier rule styled them INSIDE the open card (7px of air, arms stopped
-   short of the corners); that is the exact rendering that was pointed at and
+   short of the corners); that is the exact rendering the owner pointed at and
    asked to be gone. `.as-chat-full` always co-exists with `.as-chat`, so this
    one rule covers both views. */
 .static-tree-chip-overlay .static-tree-chip.as-chat .monitor-brace { display: none; }
 
 /* THE CARD'S OWN CORNER GRIP -- ITS BUILDER IS GONE, SO THE POINTER NAMES WHAT
    REPLACED IT. `see _attachChatCardResize in src/tree-graph.js` was true until
-   an earlier commit (2026-09-08) turned separate resizable cards into tabs and deleted
+   05a703e4 (2026-09-08) turned separate resizable cards into tabs and deleted
    that method with them. Nothing in src/ builds an `.as-chat-resize` element
    today -- two searches, `git grep as-chat-resize` and a recursive grep over
    the tree, find the class in this file and in the historical capture under
@@ -1232,7 +1246,7 @@
 .computers .board-page .uring .arc-glow { display: none; }
 
 /* ============================================================
-   R1198 tidy-up — the five defects named on launch
+   R1198 tidy-up — the five defects the owner named on launch
    ============================================================ */
 
 /* 3. Labels. Middle-truncation ("assi…ant", "reco…ile") destroyed the word.
@@ -1293,7 +1307,7 @@
   white-space: normal;
   text-overflow: clip;
   /* break-word, not anywhere: `anywhere` broke names mid-word at the first
-     opportunity ("Coordinat / or 1", found in a walkthrough).
+     opportunity ("Coordinat / or 1" — owner walkthrough, iteration 6).
      labelFor() now guarantees every word it emits fits one line, so this
      rule is the backstop for text it never measured, and it only breaks a
      word that would otherwise overflow the box. */
@@ -1387,7 +1401,7 @@
 .static-tree-chip-overlay .graph-chip-leader.role-observer,
 .static-tree-chip-overlay .graph-chip-leader-dot.role-observer { --rc: var(--c-observer); }
 
-/* Card copy. Every line ending in "…" is a line the owner cannot read, and they
+/* Card copy. Every line ending in "…" is a line the owner cannot read, and he
    asked for readable context: the activity lines wrap to two lines instead. */
 .static-tree-chip-overlay .cl-unavailable {
   margin-top: 3px;
@@ -1412,7 +1426,7 @@
   /* THE CLAMP HAS TO SAY SO WHEN IT CUTS. `clip` here suppressed the ellipsis
      Blink draws at a `-webkit-line-clamp` boundary, so a card too narrow for
      its own text cut off mid-word with nothing on screen saying more was
-     said -- measured on a real window: "asked: summarize th",
+     said -- measured on the owner's own window: "asked: ok look a",
      "controller was w" (Manager), "It remembers noth" (Worker 4). Nothing
      about `clip` was ever explained by the comment this rule sits under (see
      above): that comment covers only `overflow-wrap: break-word`. `ellipsis`
@@ -1429,11 +1443,11 @@
   text-overflow: ellipsis;
 }
 
-/* Zoom: a control they can see. The fit button used to appear only once they were
+/* Zoom: a control he can see. The fit button used to appear only once he was
    already lost; the cluster is always there, and states the factor.
  *
- * EVERY SELECTOR PAIR BELOW WAS BROKEN, and it is most of why this bar looked
- * so poor. Each rule read
+ * EVERY SELECTOR PAIR BELOW WAS BROKEN, and it is most of why the owner called
+ * this bar poor. Each rule read
  *
  *     .graph-bar .graph-zoomer,
  *     .static-tree-host .graph-zoomer button { ... }
@@ -1562,6 +1576,8 @@ body.reduce-motion .static-tree-graph .node .node-lane-box .lb i { opacity: 0.5;
   position: absolute; bottom: 6px; left: 10px; z-index: 7; pointer-events: none;
   padding: 3px 6px; color: var(--ink-3); background: var(--sheet); font: 11px/1.4 var(--font-ui);
 }
+/* A node card under the hint outranks it (tree-graph.js _syncPanHintCover). */
+.tree-pan-hint[data-covered] { visibility: hidden; }
 .static-tree-graph .tree-empty-node.tree-add-compact { min-width: 28px; min-height: 28px; }
 .static-tree-graph .tree-add-compact .tree-empty-mark { font-size: 16px; }
 .tree-conversations {
@@ -1722,8 +1738,19 @@ body.reduce-motion .static-tree-graph .node .node-lane-box .lb i { opacity: 0.5;
 }
 .tree-box-actions .tree-research-badge { margin-inline-end: 3px; }
 
+/* Computers canvas uses neutral surfaces; saved role colours remain accents. */
+.computers:not(.home-agent-workspace) .graph-wrap.glass,
+.computers:not(.home-agent-workspace) .rail.glass { background: var(--bg-surface); border-color: var(--line); }
+.computers:not(.home-agent-workspace) .graph-bar { background: var(--bg-surface); border-bottom-color: var(--line); }
+.computers:not(.home-agent-workspace) .static-tree-graph .tree-link {
+  stroke: var(--line-strong); stroke-width: 1.5px !important;
+}
+.computers:not(.home-agent-workspace) .static-tree-graph .tree-hierarchy-strokes > .tree-link { stroke: var(--line-strong); }
+.computers:not(.home-agent-workspace) .rail-page { color: var(--ink); }
+.computers:not(.home-agent-workspace) .rail-title { font: 620 13.5px/1.4 var(--font-ui); letter-spacing: 0; text-transform: none; }
+
 /* DETAILS PASS (2026-09-23): the example badge is the app's one example chip
    (the Home panel's and Messages'): a quiet filled mark with a dot, sentence
    case in the interface face. It was an outlined capsule in spaced mono caps. */
-.computers .graph-bar-lead .graph-example-badge::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--ink-3); }
-@media (forced-colors: active) { .computers .graph-bar-lead .graph-example-badge { border-color: CanvasText !important; } }
+.computers:not(.home-agent-workspace) .graph-bar-lead .graph-example-badge::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--ink-3); }
+@media (forced-colors: active) { .computers:not(.home-agent-workspace) .graph-bar-lead .graph-example-badge { border-color: CanvasText !important; } }

@@ -16,22 +16,28 @@ const ast = parseAst(source)
 const pageBody = ast.body.find(node => node.declaration?.id?.name === 'computersView').declaration.body.body
 const method = name => { const node = pageBody.find(node => node.id?.name === name); return source.slice(node.start, node.end) }
 
-function fixture({ active = true, endedDuringAdoption = false, mock = false, outcome = null, hostWait = null } = {}) {
+function fixture({ active = true, endedDuringAdoption = false, mock = false, outcome = null, hostWait = null, identityFailure = null } = {}) {
   let data = null
   const treeStore = createFleetTreeStore({ computerId: 'local', storage: { read: () => data, write: (_k, value) => { data = value; return true } } })
   const history = [{ who: 'you', text: 'Original task', at: 11 }, { who: 'agent', text: 'Previous reply', at: 12 }]
   let snapshot = { sessionId: active ? 'kept-session' : null, phase: active ? 'working' : 'draft', lastTurnStatus: outcome, prompt: 'Original task', transcript: history, currentText: 'Answer so far', turnId: 'kept-turn' }
-  const saved = new Map(), calls = [], binding = {}, maps = Object.fromEntries(['standaloneSettledTurns', 'sessionNodeIds', 'sessionThreadIds', 'sessionAccountNames', 'sessionEfforts', 'sessionTranscripts', 'sessionTurnText', 'sessionOpenTurns', 'nodeReplies'].map(key => [key, new Map()]))
+  const saved = new Map(), calls = [], binding = {}, maps = Object.fromEntries(['standaloneSettledTurns', 'sessionNodeIds', 'sessionThreadIds', 'sessionAccountNames', 'sessionAccountRecords', 'sessionEfforts', 'sessionTranscripts', 'sessionTurnText', 'sessionOpenTurns', 'nodeReplies'].map(key => [key, new Map()]))
   const record = { id: 'standalone:one', standalone: true, session: {
     beginPlacement: () => ({ ok: true, snapshot: structuredClone(snapshot) }), snapshot: () => structuredClone(snapshot),
     commitPlacement(value) { Object.assign(binding, value); return structuredClone(snapshot) }, cancelPlacement: () => calls.push('cancel'),
   } }
   const env = {
-    destroyed: false, mockSource: () => mock, treeStore, transcriptStore: { save: (id, value) => saved.set(id, value) }, computer: { id: 'local' },
+    destroyed: false, mockSource: () => mock, treeStore, transcriptStore: { save: (id, value) => saved.set(id, value), readLatest: async id => saved.get(id) }, computer: { id: 'local' },
     graph: { workspace: { showTrees: () => calls.push('trees') } },
     retainStartingTreeStore: () => { calls.push('retain'); return () => calls.push('release') },
     refreshTree: () => calls.push('refresh'), treeNodeName: node => node.role || 'Agent',
     rebindRailToSession: () => {},
+    identityRoleForTreeNode: value => value,
+    ensureSeatForNode: async node => { calls.push(['ensure-seat', node.id]); return identityFailure === 'seat'
+      ? { ok: false, code: 'FIXTURE_SEAT_REFUSED', reason: 'Fixture declared seat is unavailable.' } : { ok: true } },
+    roleBindingForStart: (agentId, id) => identityFailure === 'binding'
+      ? { ok: false, code: 'FIXTURE_BINDING_REFUSED', message: 'Fixture declared binding is unavailable.' }
+      : { ok: true, binding: { agentId, id, expectedOrgRevision: 1, expectedRoleRevision: 1 } },
     adoptStandaloneIntoTree, sessionTurnSucceeded, sessionTurnCancelled, nodeStatusForTurn, TURN_CANCELLED,
     ...maps, startingNodeIds: new Set(), RUN_NODE_REPLACEMENTS: createSingleFlight(),
     recordTurnActions: () => {}, deliverTurnReply: () => {},
@@ -48,6 +54,70 @@ function fixture({ active = true, endedDuringAdoption = false, mock = false, out
   const place = new Function(...Object.keys(env), `${method('treeAnchorsFor')}\n${method('nodeRequestKeys')}\n${method('nodeTreeIdentity')}\n${method('placeStandaloneAgent')}\nreturn placeStandaloneAgent`)(...Object.values(env))
   return { treeStore, maps, record, binding, calls, saved, env, place: parentId => place({ record, parentId, computerId: 'local' }) }
 }
+
+test('the page loads a host-adopted stopped circle and its next start carries the circle declared identity', async () => {
+  const h = fixture({ active: false })
+  const native = { nativeSessionId: 'native-old', threadId: 'provider-thread', provider: 'codex', account: null,
+    sourceTranscript: { computerId: 'local', nodeId: h.record.id } }
+  h.record.session.restoredNativeConversation = () => native
+  h.env.window.mcAgent.adoptTreeAddress = async request => {
+    const result = { ok: true, stopped: true, sessionId: null, ...native,
+      nodeId: request.requestKeys.threadId, treeKey: request.treeKey }
+    h.saved.set(result.nodeId, { ...native, lines: [{ who: 'you', text: 'Kept history', at: 1 }] })
+    return result
+  }
+  const result = await h.place(null)
+  assert.equal(result.ok, true)
+  assert.equal(h.treeStore.getNode(result.nodeId).sessionId, native.nativeSessionId,
+    'the stopped circle retains the recorded native session identity for its next resume')
+  assert.equal(h.maps.sessionNodeIds.has(native.nativeSessionId), false,
+    'a recorded stopped session must not be represented as a live session owned by this view')
+  assert.equal(h.treeStore.getNode(result.nodeId).status, 'interrupted')
+  const start = await h.binding.getStartOptions()
+  assert.equal(start.roleBinding.agentId, result.nodeId)
+  assert.equal(start.roleBinding.id, 'worker')
+  assert.equal(start.requestKeys.threadId, result.nodeId)
+  assert.deepEqual(h.calls.find(call => call[0] === 'ensure-seat'), ['ensure-seat', result.nodeId])
+  assert.equal(h.saved.get(result.nodeId).nativeSessionId, native.nativeSessionId)
+})
+
+test('a cache identity mismatch after host transfer keeps circle custody and withholds mounted resume controls', async () => {
+  const h = fixture({ active: false })
+  const native = { nativeSessionId: 'native-old', threadId: 'provider-thread', provider: 'codex', account: null,
+    sourceTranscript: { computerId: 'local', nodeId: h.record.id } }
+  h.record.session.restoredNativeConversation = () => native
+  h.env.window.mcAgent.adoptTreeAddress = async request => {
+    const result = { ok: true, stopped: true, sessionId: null, ...native,
+      nodeId: request.requestKeys.threadId, treeKey: request.treeKey }
+    h.saved.set(result.nodeId, { ...native, threadId: 'different-provider-thread', lines: [] })
+    return result
+  }
+  const result = await h.place(null)
+  assert.equal(result.ok, true)
+  assert.match(result.sentence, /Reopen its tree chat/)
+  assert.equal(h.binding.nativeConversation.nativeSessionId, native.nativeSessionId)
+  assert.equal(h.treeStore.getNode(result.nodeId).id, result.nodeId)
+  assert.equal(h.binding.getStartOptions, undefined, 'unconfirmed circle identity became a mounted resume')
+})
+
+for (const identityFailure of ['seat', 'binding']) test('a stopped circle refuses mounted resume when its declared ' + identityFailure + ' is unavailable', async () => {
+  const h = fixture({ active: false, identityFailure })
+  const native = { nativeSessionId: 'native-old', threadId: 'provider-thread', provider: 'codex', account: null,
+    sourceTranscript: { computerId: 'local', nodeId: h.record.id } }
+  h.record.session.restoredNativeConversation = () => native
+  h.env.window.mcAgent.adoptTreeAddress = async request => {
+    const result = { ok: true, stopped: true, sessionId: null, ...native,
+      nodeId: request.requestKeys.threadId, treeKey: request.treeKey }
+    h.saved.set(result.nodeId, { ...native, lines: [] })
+    return result
+  }
+  const result = await h.place(null)
+  assert.equal(result.ok, true)
+  await assert.rejects(h.binding.getStartOptions(), {
+    code: identityFailure === 'seat' ? 'FIXTURE_SEAT_REFUSED' : 'FIXTURE_BINDING_REFUSED',
+  })
+  assert.equal(h.binding.nativeConversation.nativeSessionId, native.nativeSessionId)
+})
 
 test('the page binds the same running session, past transcript and current turn to the new real node', async () => {
   const h = fixture(), parent = h.treeStore.addNode({ role: 'manager' }).node

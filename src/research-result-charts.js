@@ -65,9 +65,6 @@ export function createResultChart(host, { model, column }) {
   const rows = chartRows(model, column)
   if (rows.length === 0) return null
   const instance = echarts.init(host, null, { renderer: 'svg' })
-  const ink2 = readToken('--ink-2', '#4f5f70')
-  const grid = readToken('--chart-grid', 'rgba(14,23,38,0.07)')
-  const bar = readToken('--chart-cross', 'rgba(14,23,38,0.24)')
   instance.setOption({
     animation: false,
     grid: { left: 8, right: 16, top: 8, bottom: 8, containLabel: true },
@@ -78,23 +75,41 @@ export function createResultChart(host, { model, column }) {
     },
     xAxis: {
       type: 'value',
-      axisLabel: { color: ink2, fontSize: 12 },
-      splitLine: { lineStyle: { color: grid } },
     },
     yAxis: {
       type: 'category',
       data: rows.map(row => row.label),
-      axisLabel: { color: ink2, fontSize: 12 },
       axisLine: { show: false },
       axisTick: { show: false },
     },
     series: [{
       type: 'bar',
       data: rows.map(row => row.value),
-      itemStyle: { color: bar },
       barMaxWidth: 18,
     }],
   })
+  // SVG options hold literal colours and fonts. Refresh the presentation when
+  // the interface theme (or the font chooser's theme reassertion) changes.
+  const paintTheme = () => {
+    const css = getComputedStyle(host)
+    const font = css.fontFamily || readToken('--font-ui', 'system-ui, sans-serif')
+    const axisText = { color: readToken('--ink-3', css.color), fontSize: 12.5, fontFamily: font }
+    const line = readToken('--line', css.borderColor || css.color)
+    instance.setOption({
+      textStyle: { ...axisText },
+      xAxis: {
+        axisLabel: { ...axisText },
+        axisLine: { lineStyle: { color: line } },
+        splitLine: { lineStyle: { color: line } },
+      },
+      yAxis: { axisLabel: { ...axisText } },
+      series: [{ itemStyle: { color: readToken('--ink-2', css.color) } }],
+    })
+  }
+  paintTheme()
+  const themeObserver = new MutationObserver(paintTheme)
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+
   // Expose the chart as one named image with the same values as its bars.
   // ECharts' SVG text alone only exposes axis ticks to assistive technology.
   const previousAttributes = ['role', 'aria-label', 'aria-description']
@@ -110,6 +125,7 @@ export function createResultChart(host, { model, column }) {
   return {
     resize: () => instance.resize(),
     destroy: () => {
+      themeObserver.disconnect()
       instance.dispose()
       for (const [name, value] of previousAttributes) {
         if (value === null) host.removeAttribute(name)

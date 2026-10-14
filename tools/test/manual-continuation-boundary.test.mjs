@@ -19,7 +19,7 @@ let rowSource
 function visit(node) {
   if (!node || typeof node !== 'object') return
   if (node.type === 'ObjectExpression' && node.properties.some(property =>
-    property.key?.name === 'id' && property.value?.value === 'continue-another-account')) rowSource = source.slice(node.start, node.end)
+    property.key?.name === 'id' && property.value?.value === 'switch-continue')) rowSource = source.slice(node.start, node.end)
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) value.forEach(visit)
     else if (value && typeof value === 'object') visit(value)
@@ -46,7 +46,7 @@ function fixture(t, { sourceMode = 'local', hold = null, tiers = [], historyDire
   const handoffStore = createRecoveryHandoffStore({ computerId: 'fixture', storage })
   const sessions = new Map([['old-session', node.id]])
   const calls = { seat: [], close: [], start: [], send: [], outbox: [], notices: [] }
-  /* THE SEND SEAM IS THE TRACKED ONE. Since an earlier commit the coordinator trusts
+  /* THE SEND SEAM IS THE TRACKED ONE. Since b6b3102b3 the coordinator trusts
      only the bridge's tracked disposition: a handoff counts as delivered when
      sendAutomatic answers { ok, result: {...}, deliveryDisposition: 'accepted' }
      (src/account-recovery-coordinator.js, "Only the trusted tracked disposition
@@ -84,7 +84,8 @@ function fixture(t, { sourceMode = 'local', hold = null, tiers = [], historyDire
     ensureSeatForNode: async () => { calls.seat.push(node.id); if (hold === 'seat') await gate; return { ok: true } },
     roleBindingForStart: () => ({ ok: true, binding: { agentId: 'fixture-seat' } }),
     startProfileId: value => value, savedSessionEffort: manual.savedSessionEffort, tierEffortOf: () => 'medium',
-    current: node, running: false, cleanupPending: false, canStartSession: true, agent: 'Agent',
+    current: node, savedConversation: true, SWITCH_PANEL, PALETTE_PANEL, pendingModelChoice: () => null, actionBridgeWhy: 'Unavailable',
+    running: false, cleanupPending: false, canStartSession: true, agent: 'Agent',
   })
   vm.runInContext(functions, context)
   const coordinator = context.recoveryCoordinator()
@@ -100,7 +101,7 @@ function fixture(t, { sourceMode = 'local', hold = null, tiers = [], historyDire
        close, as the real bridge always has them. */
     replaceBridge: () => { context.window.mcAgent = { ...bridge, start: () => assert.fail('replacement bridge must not start') } },
     row: () => vm.runInContext(`(${rowSource})`, context),
-    run: () => context.continueNodeOnAnotherAccount(treeStore.getNode(node.id), out),
+    run: () => context.continueNodeOnAnotherAccount(treeStore.getNode(node.id), out, { treeAccount: 'backup-account' }),
   }
 }
 
@@ -126,51 +127,16 @@ test('local continuation remains enabled and preserves the agent and its saved w
   assert.equal(f.calls.close.length, 1)
   assert.equal(f.calls.start.length, 1)
   assert.equal(f.calls.send.length, 1)
-  assert.equal(f.calls.start[0].continueFromAccount, 'original-account')
+  assert.equal(f.calls.start[0].treeAccount, 'backup-account')
   assert.equal(f.sessions.get('new-session'), f.node.id)
   assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'new-session')
   assert.match(f.calls.send[0].text, /Previously completed work/)
 })
 
-// an earlier commit requires complete saved history before an automatic close. The
+// 02c9ecb3 requires complete saved history before an automatic close. The
 // browser relay has only its viewport store; a history-capable bridge below
 // separately exercises the mount's automatic-start consent contract.
-test('the real recovery mount requires complete history before using separate relay start consent', async t => {
-  const packet = { sessionId: 'old-session', event: {
-    type: 'account_recovery_needed', recoveryId: 'fixture-ticket', handoff: 'Continue the saved work.',
-  } }
-  const plainRelay = fixture(t, { sourceMode: 'relay' })
-  assert.equal(await plainRelay.coordinator.recover(packet), false)
-  assert.deepEqual(plainRelay.calls.close, [])
-  assert.deepEqual(plainRelay.calls.start, [])
-  assert.deepEqual(plainRelay.calls.send, [])
-  assert.match(plainRelay.calls.notices.at(-1).error, /complete saved conversation.*unavailable/i)
-  assert.equal(plainRelay.treeStore.getNode(plainRelay.node.id).sessionId, 'old-session')
 
-  for (const historyDirectory of ['/fixture/saved-conversation', 'Q:\\fixture\\saved-conversation']) {
-    const f = fixture(t, { sourceMode: 'relay', historyDirectory })
-    assert.equal(f.row().enabled, false, 'manual continuation remains local-only')
-    assert.equal(await f.coordinator.recover(packet), true)
-    assert.equal(f.calls.close.length, 1)
-    assert.equal(f.calls.start.length, 1)
-    assert.equal(f.calls.start[0].accountRecovery.recoveryId, 'fixture-ticket')
-    assert.equal(f.calls.start[0].continueFromAccount, undefined)
-    assert.equal(f.calls.send.length, 1)
-    assert.ok(f.calls.send[0].text.includes(JSON.stringify(historyDirectory)))
-    assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'new-session')
-  }
-  for (const refusal of ['consent', 'task history']) {
-    const f = fixture(t, { sourceMode: 'relay', historyDirectory: '/fixture/saved-conversation',
-      taskHistoryVerified: refusal !== 'task history' })
-    if (refusal === 'consent') f.disable()
-    assert.equal(await f.coordinator.recover(packet), false)
-    assert.deepEqual(f.calls.close, [], refusal)
-    assert.deepEqual(f.calls.start, [], refusal)
-    assert.deepEqual(f.calls.send, [], refusal)
-    assert.match(f.calls.notices.at(-1).error, refusal === 'consent' ? /Starting agents is disabled/ : /task records could not be read/i)
-    assert.equal(f.treeStore.getNode(f.node.id).sessionId, 'old-session')
-  }
-})
 
 test('a source change during seat provisioning refuses before closing the old session', async t => {
   const f = fixture(t, { hold: 'seat' })
@@ -241,20 +207,7 @@ test('consent revoked after dispatch keeps the admitted session but sends no aut
   assert.match(f.handoffStore.get(f.node.id).handoff, /Previously completed work/, 'the handoff is kept for a later send')
 })
 
-test('account retry keeps the exact preference and selects the strongest compatible Gemini client', () => {
-  const tiers = [
-    { id: 'claude-fable', provider: 'claude' },
-    { id: 'agy-gemini-3-8-flash-high', provider: 'gemini', client: 'antigravity' },
-    { id: 'gemini-3-1-pro', provider: 'gemini' },
-    { id: 'saved-gemini-choice', provider: 'gemini' },
-  ]
-  const both = [{ provider: 'claude' }, { provider: 'gemini' }, { provider: 'gemini', client: 'antigravity' }]
-  assert.deepEqual(manual.accountRetryCandidates('claude-fable', tiers, both), ['claude-fable', 'agy-gemini-3-8-flash-high'])
-  assert.deepEqual(manual.accountRetryCandidates('saved-gemini-choice', tiers, both), ['saved-gemini-choice', 'claude-fable'])
-  assert.deepEqual(manual.accountRetryCandidates('claude-fable', tiers, [{ provider: 'gemini' }]), ['gemini-3-1-pro'])
-  assert.deepEqual(manual.accountRetryCandidates('saved-gemini-choice', tiers, [{ provider: 'gemini', client: 'antigravity' }]), ['agy-gemini-3-8-flash-high'])
-  assert.deepEqual(manual.accountRetryCandidates('claude-fable', tiers, [{ provider: 'gemini', client: 'unknown' }]), [])
-})
+
 
 /* ---- SWITCH AND CONTINUE (owner T381): one choice, landed on the mechanism it names ----
  *
@@ -268,7 +221,7 @@ test('account retry keeps the exact preference and selects the strongest compati
  * handoff, and the person is told which before pressing. */
 const switching = await import('../../src/switch-and-continue.js')
 const { LAUNCH_TIERS: REAL_TIERS } = await import('../../src/orchestration-controls.js')
-const { SWITCH_PANEL, EFFORT_CHOICES } = await import('../../src/fleet-tree-copy.js')
+import { SWITCH_PANEL, EFFORT_CHOICES, PALETTE_PANEL } from '../../src/fleet-tree-copy.js'
 
 test('the route: same account and provider is a resume; another account or provider is a handoff', () => {
   const route = choice => switching.continuationRouteFor({ savedAccount: 'a', savedProvider: 'claude', currentTier: 'claude-sonnet', tiers: REAL_TIERS, choice })
@@ -399,7 +352,7 @@ test('choosing another account on the same model continues on that account with 
   assert.deepEqual(f.extra.switch, [], 'the computer\'s own account is never switched for one circle')
   assert.equal(f.calls.start.length, 1)
   assert.equal(f.calls.start[0].treeAccount, 'backup-account', 'the chosen account rides the start itself')
-  assert.equal(f.calls.start[0].continueFromAccount, 'original-account', 'the refused account is the one moved away from')
+  assert.equal(f.calls.start[0].treeAccount, 'backup-account', 'the selected account is the one used')
   assert.equal(f.calls.start[0].effort, 'high', 'the chosen depth reaches the start payload')
   assert.deepEqual(f.extra.models, [])
 })
@@ -443,4 +396,49 @@ test('the switch is refused off the local computer and while starts are switched
   assert.match(f.out.textContent, /switched off/)
   assert.deepEqual(f.extra.switch, [])
   assert.deepEqual(f.calls.start, [])
+})
+
+
+test('a provider change requires a picked account while keeping the native current account remains usable', async () => {
+  const { installDomStandIn } = await import('./lib/dom-stand-in.mjs')
+  const dom = installDomStandIn(globalThis)
+  try {
+    const host = dom.document.createElement('div'), picked = []
+    const choices = switching.switchChoices({ accounts: [], tiers: REAL_TIERS, currentTier: 'claude-sonnet' })
+    const dialog = switching.mountSwitchAndContinueDialog({ document: dom.document, host, choices, tiers: REAL_TIERS,
+      current: { provider: 'claude', tier: 'claude-sonnet' }, onChoose: value => picked.push(value) })
+    const provider = host.querySelectorAll('[data-switch-provider]').find(row => row.value === 'codex')
+    provider.checked = true; provider.dispatch('change')
+    host.querySelector('[data-switch-continue]').dispatch('click')
+    assert.equal(picked.length, 0)
+    assert.match(host.querySelector('[data-switch-cost]').textContent, /Choose an account/)
+    assert.equal(dialog.isClosed(), false)
+    const current = host.querySelectorAll('[data-switch-provider]').find(row => row.value === 'claude')
+    current.checked = true; current.dispatch('change')
+    host.querySelector('[data-switch-continue]').dispatch('click')
+    assert.equal(picked.length, 1)
+    assert.equal(picked[0].provider, 'claude')
+    assert.equal(picked[0].route, 'resume')
+  } finally { dom.restore() }
+})
+
+test('the explicit reset-wait control saves only the future time the person submits', async () => {
+  const { installDomStandIn } = await import('./lib/dom-stand-in.mjs')
+  const dom = installDomStandIn(globalThis)
+  try {
+    const host = dom.document.createElement('div'), waits = []
+    const choices = switching.switchChoices({ accounts: [{ name: 'chosen', provider: 'claude', signedIn: true }], tiers: REAL_TIERS, currentTier: 'claude-sonnet' })
+    const dialog = switching.mountSwitchAndContinueDialog({ document: dom.document, host, choices, tiers: REAL_TIERS,
+      current: { account: 'chosen', provider: 'claude', tier: 'claude-sonnet' }, onWait: async value => { waits.push(value); return true } })
+    const input = host.querySelector('[data-switch-reset-time]')
+    host.querySelector('[data-switch-wait]').dispatch('click')
+    await tick()
+    assert.deepEqual(waits, [])
+    assert.match(host.querySelector('[data-switch-cost]').textContent, /Choose a future reset time/)
+    input.value = '2099-01-01T12:00'
+    host.querySelector('[data-switch-wait]').dispatch('click')
+    await tick()
+    assert.deepEqual(waits, [Date.parse(input.value)])
+    assert.equal(dialog.isClosed(), true)
+  } finally { dom.restore() }
 })

@@ -51,8 +51,8 @@ Python's license and the installed wheels' license files travel with the bundle.
 The following manual provisioning workflow is for build/development machines
 and existing installations that predate the bundled runtime.
 
-The supported environment is native Windows x64, CPython 3.13.3, and an NVIDIA
-CUDA GPU. The isolated environment uses Pipecat 1.8.1,
+The tested environment is native Windows x64, CPython 3.13.3, an NVIDIA RTX 5060
+Ti with 16 GB VRAM, and driver 610.88. The isolated environment uses Pipecat 1.8.1,
 Faster Whisper 1.2.1 / CTranslate2 4.8.2, and Kokoro ONNX 0.6.1 / ONNX Runtime
 GPU 1.24.4. Direct and transitive versions are pinned. CUDA 12, cuDNN 9, cuFFT,
 cuRAND, NVRTC, and nvJitLink DLLs are installed inside the environment; there is
@@ -101,7 +101,8 @@ model inference; merely listing a GPU does not make the runtime ready.
 
 ### Linux setup and repeatable GPU proof
 
-Linux x86-64 was also exercised with CPython 3.12 and an NVIDIA CUDA GPU. Install `python3.12-venv` if the base interpreter
+Linux x86-64 was also exercised with CPython 3.12, an RTX 4070 Laptop GPU
+(8 GB), and driver 535.288.01. Install `python3.12-venv` if the base interpreter
 cannot create an environment. With explicit paths inside the owner's profile:
 
 ```sh

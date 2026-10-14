@@ -3,7 +3,7 @@
  * DECLARATION.md is the provenance document that travels WITH a release
  * candidate -- it is the thing a recipient reads to decide whether the bytes
  * they were handed are the bytes that were built. That makes it exactly the
- * wrong place for `%USERPROFILE%\...`, and yet every declaration this
+ * wrong place for `<profile-root>/<account>\...`, and yet every declaration this
  * packager has produced carried the builder's home directory in it: 11
  * occurrences of the account name across 10 lines of the 1.0.2 and 1.0.4
  * declarations, plus 7 more in each `declaration-facts.json` beside them.
@@ -47,7 +47,7 @@ export const DAY_TO_DAY_WORKTREE = 'the day-to-day worktree'
 export const BUILD_WORKTREE_TOKEN = '<isolated build worktree>'
 
 // Fields that are a builder's local machine layout and nothing else. They are
-// DELETED rather than rewritten: `%USERPROFILE%\Desktop\example-worktree` would be
+// DELETED rather than rewritten: `%USERPROFILE%\Desktop\wt-capability` would be
 // portable but still pointless to a remote verifier, and keeping a path-shaped
 // field invites the next renderer to print it.
 const LOCAL_ONLY_FIELDS = {
@@ -70,8 +70,8 @@ function homePattern(home) {
   const segments = normalizedHome.split(/[\\/]/).filter(Boolean)
   if (segments.length < 2) return null
   // Keep the leading separator. Rebuilding the pattern from only non-empty
-  // segments turns `/home/account` into `home/account`; replacing that inside
-  // `/home/account/project` then leaves `/%USERPROFILE%/project`, which is not
+  // segments turns `<profile-root>` into `home/account`; replacing that inside
+  // `<profile-root>/project` then leaves `/%USERPROFILE%/project`, which is not
   // the documented environment-root form and misstates the artifact path.
   const source = normalizedHome
     .split(/([\\/]+)/)

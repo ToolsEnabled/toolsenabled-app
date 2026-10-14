@@ -135,7 +135,7 @@ test('the row is pressable where the window can open and refuses with its reason
   }
 })
 
-/* THE PAGE OPENS BASIC (product rule T782), so a row that
+/* THE PAGE OPENS BASIC (owner direction 2026-09-20, T782), so a row that
    needs Advanced is not on screen the moment Settings opens. It still has to
    be REACHABLE from where the page opens: the section that owns it must paint
    the one press that shows that mode ("Show Advanced settings"), and the

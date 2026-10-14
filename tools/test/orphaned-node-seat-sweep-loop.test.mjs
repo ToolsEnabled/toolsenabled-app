@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { build } from 'esbuild'
 import { resolve } from 'node:path'
@@ -11,15 +11,7 @@ import {
 } from '../../src/orphaned-node-seat-sweep.js'
 
 const ROOT = resolve(import.meta.dirname, '..', '..')
-// The RED baseline is opt-in and names a commit from the history that
-// preceded this fix; a checkout without that history skips it by name.
-const BASELINE_REF = process.env.LO5_LOOP_BASELINE_REF || '0000000'
-const BASELINE_REQUESTED = process.env.LO5_LOOP_VARIANT === 'baseline'
-const BASELINE_AVAILABLE = BASELINE_REQUESTED
-  && spawnSync('git', ['-C', ROOT, 'cat-file', '-e', `${BASELINE_REF}^{commit}`]).status === 0
-const BASELINE_MODE = BASELINE_REQUESTED && BASELINE_AVAILABLE
-if (BASELINE_REQUESTED && !BASELINE_AVAILABLE)
-  test('the historical RED baseline', t => t.skip(`baseline ref ${BASELINE_REF} is not in this checkout`))
+const BASELINE_MODE = process.env.LO5_LOOP_VARIANT === 'baseline'
 
 function extractSweep(source) {
   const start = source.indexOf('  const NODE_SEAT_ID')
@@ -32,17 +24,17 @@ const SELECTED_SWEEP_SOURCE = extractSweep(readFileSync(
   resolve(ROOT, 'src/views/computers.js'),
   'utf8',
 ))
-const BASELINE_SWEEP_SOURCE = BASELINE_MODE
+const D46_SWEEP_SOURCE = BASELINE_MODE
   ? extractSweep(execFileSync(
     'git',
-    ['-C', ROOT, 'show', `${BASELINE_REF}:src/views/computers.js`],
+    ['-C', ROOT, 'show', 'd46c18f49:src/views/computers.js'],
     { encoding: 'utf8' },
   ))
   : null
 
 /* The acceptance path reads the selected Computers source and evaluates that
  * real loop with the selected source module in both source and packed layouts.
- * The historical source is loaded only by the explicit RED baseline mode. */
+ * The historical d46 source is loaded only by the explicit RED baseline mode. */
 const PATCHED_SWEEP_SOURCE = SELECTED_SWEEP_SOURCE
 const SOURCE_SWEEP_MODULE = Object.freeze({
   orphanedNodeSeatSweepProposal,
@@ -155,9 +147,9 @@ async function runSelected(mode, agentCount = 2) {
   return { sourceRun, packedRun }
 }
 
-test('the selected source loop keeps the empty-store safety boundary and historical RED control', async () => {
+test('the selected source loop keeps the empty-store safety boundary and historical d46 RED control', async () => {
   if (BASELINE_MODE) {
-    const run = await runSweep(BASELINE_SWEEP_SOURCE, 'empty', 2, SOURCE_SWEEP_MODULE)
+    const run = await runSweep(D46_SWEEP_SOURCE, 'empty', 2, SOURCE_SWEEP_MODULE)
     assert.deepEqual(run.releaseCalls.map(request => request.id), [])
     return
   }

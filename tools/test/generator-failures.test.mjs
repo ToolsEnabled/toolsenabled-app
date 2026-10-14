@@ -97,8 +97,8 @@ const value = {
   machine: { letter: 'A', role: 'fixture-observed-host' },
   mcp: { live: ['toolsenabled-readonly'], dead: [] },
   otherAgents: {
-    codex: [{ id: '01900000-0000-7000-8000-000000000001', ageMs: 60000 }],
-    claude: [{ id: '33333333-4444-4555-8666-777777777777', ageMs: 120000 }],
+    codex: [{ id: '019fd391-2fb3-7790-b530-5fa99fddcf72', ageMs: 60000 }],
+    claude: [{ id: 'b5345074-17db-4d74-9865-d1bbee818636', ageMs: 120000 }],
     activeWindowMinutes: 90
   },
   inFlight: { fleetSupervisor: { alive: true, running: 3, items: { idle: 2, parked: 1 } } },

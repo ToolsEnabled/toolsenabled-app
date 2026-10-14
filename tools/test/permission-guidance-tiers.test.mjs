@@ -1,7 +1,7 @@
 /* R1536, the three tiers, and the trap underneath them.
  *
- * Every step carries a plain expectation -- how often it requires a user step
- * (typically, sometimes, rarely) -- and that general label gives way to
+ * The owner asked for a plain expectation on every step -- "typically requires
+ * a user step, rarely, sometimes" -- and for that general label to give way to
  * the specific truth wherever we can actually read the person's computer.
  *
  * The trap is what the label may be REASONED FROM. The finding this lane

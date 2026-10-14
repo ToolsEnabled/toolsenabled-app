@@ -38,7 +38,7 @@ test('long live answers retain their beginning and ending without a hidden inner
   }
 })
 /* THE RULE CHANGED, AND THESE ASSERTIONS CHANGED WITH IT.
- * The requirement is that a live reply is visible while it streams.
+ * The owner's requirement is that a live reply is visible while it streams.
  * src/chat-readable-stream.js now holds only an unclosed fence; ordinary prose
  * is shown as it arrives. The three assertions below used to pin the opposite
  * -- an empty bubble until a sentence ended AND a space followed it -- which
@@ -69,10 +69,10 @@ test('the first visible word folds the live run, and a run the reader opened sta
      weakening. This used to read "undisplayed partial speech does not hide
      supplied live thinking": the reply was withheld, so the run above it
      stayed open because no speech ever became visible.
-     THE RULE NOW, the intended choreography:
+     THE RULE NOW, accepted by the Controller as the intended choreography:
      thinking is visible for the whole thinking phase and folds -- folded and
      still expandable, not gone -- when the reply's words start. That is
-     an earlier commit's own "fold once readable speech arrives", applied to speech that
+     d8f09572's own "fold once readable speech arrives", applied to speech that
      actually arrives. The fold is src/components.js openStream's push reaching
      `if (activity.hasText) settleActionRuns()`; if it ever changes it changes
      there, never by restoring the prose hold. */

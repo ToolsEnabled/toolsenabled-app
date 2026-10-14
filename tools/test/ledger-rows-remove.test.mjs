@@ -1,6 +1,6 @@
 // THE × ON EVERY LEDGER ROW, AND THE TWO MODULES BEHIND IT (plan P-O6).
 //
-// What was asked for was a way to take a row off the Ledger page. What
+// What the owner asked for was a way to take a row off the Ledger page. What
 // the three lists can honestly do was measured first (plan O6): an owner
 // request lives in an append-only, hash-chained overlay that is never
 // shortened and an archived request stays on every projected list until three
@@ -59,7 +59,7 @@ const REQUEST = Object.freeze({ id: 'R12', status: 'done', gateCount: 2, unmetGa
 const QUESTION = Object.freeze({ id: 'Q7', title: 'Which relay region?', status: 'open', statusClass: 'open', packageId: 'P3' })
 /* Rows in the live feed's shape (src/ledger-live.js rowOf): the person's
    words, who the rule reaches, who filed it, and the rail glyph. */
-const LIVE_ROW = Object.freeze({ id: 'R12', parentId: null, scope: 'tree', scopeKey: 'node-1-00000101', scopeLabel: null, status: 'open', state: 'open', words: 'Keep <b>the</b> tests & green.', filedBy: 'owner', filedAt: '2026-09-01T10:00:00.000Z', gateCount: 0, unmetGateCount: 0, decisions: 0, history: [], removedAt: null, removed: false })
+const LIVE_ROW = Object.freeze({ id: 'R12', parentId: null, scope: 'tree', scopeKey: 'node-1-2f6a9c3e', scopeLabel: null, status: 'open', state: 'open', words: 'Keep <b>the</b> tests & green.', filedBy: 'owner', filedAt: '2026-09-01T10:00:00.000Z', gateCount: 0, unmetGateCount: 0, decisions: 0, history: [], removedAt: null, removed: false })
 const PROPOSED_ROW = Object.freeze({ ...LIVE_ROW, id: 'R13', status: 'proposed', state: 'proposed', filedBy: 'codex', scopeLabel: 'Coordinator' })
 const REMOVED_ROW = Object.freeze({ ...LIVE_ROW, id: 'R14', status: 'removed', state: 'removed', removedAt: '2026-09-01T11:00:00.000Z', removed: true })
 const ACTIONS = Object.freeze({ edit: 'Edit', delete: 'Delete', approve: 'Approve', decline: 'Decline', groupLabel: id => `What you can do with ${id}` })
@@ -203,13 +203,13 @@ test('the R row carries the person\'s words, the reach chip and its controls as 
 
   const live = requestMarkup(LIVE_ROW, { actions: ACTIONS, copy: COPY })
   assert.match(live, /<p class="ledger-words">Keep &lt;b&gt;the&lt;\/b&gt; tests &amp; green\.<\/p>/, 'the words are not escaped')
-  assert.match(live, /<span class="ledger-scope" data-scope="tree" title="tree · …00000101">tree · …00000101<\/span>/, 'the chip does not carry the reach word and the key\'s tail in its text and tooltip')
+  assert.match(live, /<span class="ledger-scope" data-scope="tree" title="tree · …2f6a9c3e">tree · …2f6a9c3e<\/span>/, 'the chip does not carry the reach word and the key\'s tail in its text and tooltip')
   assert.match(live, /data-row-id="R12"/)
   assert.match(live, /<div class="ledger-row-editor" data-row-editor hidden><\/div>/, 'no slot for the editor')
   assert.doesNotMatch(live, /filed by your agent/, 'the person\'s own row names an agent')
   const controls = tagsWith(live, 'data-row-action')
   assert.deepEqual(controls.map(tag => [tag.attrs.get('data-row-action'), tag.attrs.get('data-id'), tag.attrs.get('data-key')]),
-    [['edit', 'R12', 'node-1-00000101'], ['delete', 'R12', 'node-1-00000101']], 'a live row does not carry Edit and Delete with id and key')
+    [['edit', 'R12', 'node-1-2f6a9c3e'], ['delete', 'R12', 'node-1-2f6a9c3e']], 'a live row does not carry Edit and Delete with id and key')
   assert.equal(controls[1].attrs.get('aria-pressed'), 'false', 'Delete does not announce its unarmed state')
   assert.ok(startTags(live).every(tag => !(tag.name === 'button' && hasClass(tag, 'ledger-row'))), 'the R row became a button')
   /* The controls sit OUTSIDE .ledger-line, after the words: never inside the

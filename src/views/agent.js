@@ -15,8 +15,8 @@ import { NO_SENDER_WIRED } from '../chat-copy.js'
 import { controlState, el, uptimeRing, buildChat } from '../components.js'
 import { PALETTE_PANEL, pasteRefusalSentence } from '../fleet-tree-copy.js'
 /* THE ONE AXIS THIS PAGE VARIES ON. The per-view live flag and the separate
-   simulated render it selected are gone (the rule: every simulated page IS the
-   UI page, with mock data). What remains is where the data comes
+   simulated render it selected are gone (owner's ruling: "all simulated pages
+   ARE the UI pages, just mock data"). What remains is where the data comes
    from — 'local', 'relay', or 'mock' — and this page renders the same way for
    all three; only the projection's SOURCE and the badge differ. */
 import { resolveDataSource, sourceIsBadged, DATA_SOURCE_EVENT, currentDataSource } from '../data-source.js'
@@ -290,7 +290,7 @@ export function roleBindingForAgentProjection(orgRead, agentId, declaredRole) {
  * turns it into words on cards. */
 function markSpentAccounts(byAgent, report) {
   if (!report || report.ok !== true) return byAgent
-  for (const list of [report.moves, report.held]) {
+  for (const list of [report.held]) {
     if (!Array.isArray(list)) continue
     for (const row of list) {
       if (!row || typeof row.agentId !== 'string' || !row.agentId) continue
@@ -748,7 +748,7 @@ function buildAgentView({ agentId, navigate }, projection, source, sessionAccoun
   /* WHAT THIS AGENT HAS ALREADY SAID, so opening its page shows the
    * conversation instead of a blank sheet.
    *
-   * Resume is part of the chat lifecycle; this page was found empty for an agent with
+   * The owner named resume; Worker 82 found this page empty for an agent with
    * a full conversation. mountAgentSessionSurface starts its transcript empty
    * and only ever fills it from live deltas, so the tree chat and the rail --
    * which keep a retained mount -- still hold every line while this page,
@@ -1086,8 +1086,8 @@ function buildAgentView({ agentId, navigate }, projection, source, sessionAccoun
      * Live, this strip printed `Controller · controller · none · enabled` three
      * lines under a roster card that had already printed the same agent's name,
      * the same role, and `On record · enabled · none` — the identical record,
-     * twice, in two different word orders. R1528 called the page cluttered,
-     * and this was the clearest instance of it.
+     * twice, in two different word orders. The owner's word for the page was
+     * "messy" (R1528) and this was the clearest instance of it.
      *
      * THE CARD IS THE SURFACE THAT SURVIVES, because it carries what the strip
      * cannot: the role dial, the runtime row, the activity line, and the
@@ -1258,8 +1258,8 @@ function buildAgentView({ agentId, navigate }, projection, source, sessionAccoun
     return `${lead} Why: ${/[.!?…]$/.test(why) ? why : `${why}.`}`
   }
 
-   /* WHERE ONE MESSAGE ENDS INSIDE A TURN. The home card showed "Said back: ...now.I
-     couldn't", and this accumulator had the same seam: words
+  /* WHERE ONE MESSAGE ENDS INSIDE A TURN. The owner read "Said back: ...now.I
+     couldn't" off the home card, and this accumulator had the same seam: words
      only ever arrive as deltas and were joined bare, which is right for the
      tokens of one message and wrong when an engine says two whole messages in
      one turn (answer, tool, answer). The engine marks the seam
@@ -1630,8 +1630,7 @@ function buildAgentView({ agentId, navigate }, projection, source, sessionAccoun
    * cover this file so re-adding one is a deliberate act with a failing test
    * attached.
    *
-   * The rule for the class: never claim a control, such as temperature, that
-  * cannot actually be set.
+   * The owner's rule for the class: "dont lie like we cant control temperature".
    * A control that moves and changes nothing is worse than a missing control,
    * because a missing control can be asked for and a moving one is believed --
    * and this one sat on the page whose banner promises that no control on it

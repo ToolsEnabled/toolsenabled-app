@@ -6,10 +6,11 @@ sources. This document is not source or release authority, and it is not proof
 that Bob's real cross-machine scenario passed. Current code and the active
 private-release protocol win; the staging proof in section 10 remains a gate.**
 
-The scenario this completes: a user, Bob, has connected his computer at home and
-his computer at work, and agents are running on both. On a friend's computer he
-signs in to the site and can check in, give commands and adjust the workflow —
-everything the real app can do — without doing any work on the friend's computer.
+The scenario this completes, in the owner's words: *"User Bob has connected his
+computer at home and his computer at work and agents are running on both… Bob
+hops on his friend's computer… logs in to our site and can check in and give
+commands and adjust the workflow, etc — everything you can do in the real app —
+except it isn't doing work on his friend's computer."*
 
 What already works: a signed-in tab opens a sealed end-to-end session to Bob's
 machine and carries mission-bridge requests through it (`src/mission-bridge.js`
@@ -683,11 +684,9 @@ offers its host; zero changes to the app bundle, zero to the 121 call sites.
 ## 9. Publication and deploy sequence
 
 This sequence is historical design rationale, not live release authority. The
-active rule is that the development repositories remain private; nothing in
-this section authorizes making either of them public. Exact
-private commits may be consumed only through authenticated provenance. A
-website gate that still requires anonymously readable public source is a stale
-blocking gate to repair, not permission to publish source. **[OWNER YES]**
+active owner rule is that the source is public: the app and the engine are
+published as `ToolsEnabled/toolsenabled-app` and `ToolsEnabled/toolsenabled-engine`.
+Exact commits may be consumed only through authenticated provenance. **[OWNER YES]**
 continues to mark the historical owner-decision points below.
 
 1. **ENGINE source lands** in the current authoritative engine worktree:
@@ -700,8 +699,9 @@ continues to mark the historical owner-decision points below.
    remote-drive settings row; `src/relay-bridge-transport.js` gains
    `timeoutMs` pass-through. *Nothing deploys.*
 3. **[OWNER YES] Engine push to the private engine repo** (the repo
-   `vendored.json` names), commit `E`.
-4. **[OWNER YES] App push to the private app repo**, commit `A`; **[OWNER YES]** app release build cut from it (the release is
+   `vendored.json` names as `ToolsEnabled/engine`), commit `E`.
+4. **[OWNER YES] App push to the private app repo** (`ToolsEnabled/app`),
+   commit `A`; **[OWNER YES]** app release build cut from it (the release is
    what puts the facade on Bob's machines — the capability payload re-packed
    so the relay child's engine modules are the new ones).
 5. **WEBSITE lands, gated on 3+4**: re-vendor the three modules from `E`/`A`,

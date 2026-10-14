@@ -72,7 +72,7 @@ const ACTIVE_HOME = '#stage > .view:not([inert]) > .home'
  * .mcp.json or an unavailable undo produces. NEITHER FUNCTION WAS EXECUTED IN
  * THIS LANE -- these scenarios need a Playwright host (TESTKIT_PLAYWRIGHT_ROOT)
  * and this one has none. Note also that `firstUseVisibleExit` has asserted
- * `continueCount === 0` since an earlier commit while an earlier commit had already made the
+ * `continueCount === 0` since c057d319 while b1ccc425 had already made the
  * review render [data-setup-open-app] for this very deferral, so it has not been
  * run against the product since 2026-09-09 either. */
 async function firstUseFinishEntersApplication(context, { readState = readFirstUseState, autonomy = 'assisted' } = {}) {

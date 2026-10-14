@@ -534,7 +534,7 @@ test('a press with an id that is not an id, or an unknown action, does nothing',
   assert.equal(register.bound(), false, 'destroy left the listener bound')
 })
 
-/* ---------- T's Complete, A's Answer (a later addition) ---------- */
+/* ---------- T's Complete, A's Answer (owner's 2026-09-07 addition) ---------- */
 
 test('Complete sends completeTask once with its globally unique id, on one press, and reloads on success', async () => {
   const bridge = recordingBridge()

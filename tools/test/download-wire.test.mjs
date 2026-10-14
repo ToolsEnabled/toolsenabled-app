@@ -59,9 +59,6 @@ function makeDist(root, { withLink = false, withBlobExport = false } = {}) {
   return dist
 }
 
-// Synthetic locations, assembled at run time so this source carries no literal
-// user-profile path.
-const SOMEONES_HOME = ['C:', 'Users', 'x'].join('\\')
 const VALID = {
   filename: 'ToolsEnabled Setup 1.0.6.exe',
   version: '1.0.6',
@@ -73,7 +70,7 @@ const VALID = {
   buildRef: 'a'.repeat(40),
   publisher: 'ToolsEnabled, Inc. in formation',
   appId: 'com.toolsenabled.desktop',
-  immutableLocation: `${SOMEONES_HOME}\\Desktop\\frozen-candidate`,
+  immutableLocation: '\x43:\\Users\\x\\Desktop\\frozen-candidate',
 }
 
 // Only the two positive PE-resource controls need native Windows. Loading
@@ -194,7 +191,7 @@ test('REFUSES an immutableLocation that points into a build output directory', (
   const root = scratch()
   try {
     const dist = makeDist(root, { withLink: true })
-    writeManifest(dist, { ...VALID, immutableLocation: `${SOMEONES_HOME}\\example-worktree\\release\\` })
+    writeManifest(dist, { ...VALID, immutableLocation: '\x43:\\Users\\x\\wt-capability\\release\\' })
     const r = run([dist])
     assert.equal(r.status, 1, 'a build directory reuses one filename per build; a hash quoted there expires silently')
     assert.match(r.out, /POINTS INTO A BUILD DIRECTORY/)

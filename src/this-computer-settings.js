@@ -1,8 +1,9 @@
 /* "This computer" — the Settings section that answers what is on this machine.
  *
  * WHERE THIS CODE COMES FROM. It is the working half of the page that used to
- * live at src/views/guide.js, called "What this copy needs". That page moved
- * into Settings, simpler and more useful, so the page's prose went and the part a
+ * live at src/views/guide.js, called "What this copy needs". The owner asked to
+ * "get rid of the what this copy needs page and put it nicely into settings and
+ * make it more simple and useful", so the page's prose went and the part a
  * person acts on -- what is installed here, which accounts exist, what a local
  * model needs -- moved here as a section of Settings.
  *
@@ -40,7 +41,6 @@ import {
   accountPanelCopy,
   providerSignInCopy,
 } from './account-panel-copy.js'
-import { applyDeferredAccountPolicy } from './setup-intent-commit.js'
 import { currentDataSource, onDesktop } from './data-source.js'
 import { readerRemedy } from './refusal-copy.js'
 import { withDeadline } from './read-deadline.js'
@@ -177,7 +177,7 @@ export function reachWord(reach, presence = null) {
 
 /* ONE ROW PER PROGRAM: THE NAME, WHAT IT REACHES, WHAT THE MACHINE SAYS, AND
    THE BUTTONS. The page put a paragraph and a numbered list under each name;
-   simpler was asked for, and the reach phrase carries the one claim of
+   the owner asked for simpler, and the reach phrase carries the one claim of
    that paragraph a person must not miss.
 
    The status line is EMPTY until the machine answers, never "checking..." and
@@ -350,7 +350,7 @@ function paintSignIn(root, presence) {
      as the fix, and it refuses an install it cannot run the same way. The
      sentence under the buttons still says what the machine reported.
 
-     NO SECOND COPY. When the machine reports the program installed,
+     NO SECOND COPY (rc-0922). When the machine reports the program installed,
      the install button no longer offers to install it again: pressing it used
      to put a second copy on the computer and let PATH order pick which one
      ran. The same button becomes the explicit choice of a private copy in
@@ -520,7 +520,7 @@ function paintSignIn(root, presence) {
   if (installed) void fillCopyLine(panel, presence.id)
 }
 
-/* WHICH COPY IS USED, WHOSE IT IS AND ITS VERSION, read from
+/* WHICH COPY IS USED, WHOSE IT IS AND ITS VERSION (rc-0922), read from
  * window.mcProviders.toolchainStatus(): words, a version and a count, never a
  * path. A copy of the app without that verb, or an answer that does not come,
  * leaves the line hidden -- the sentence above is still true without it. One
@@ -930,13 +930,32 @@ function paintAccounts(root, panel, answer) {
       return
     }
     /* A setup answer that waited for the first account is applied now (T1582). */
-    await applyDeferredAccountPolicy().catch(() => null)
     void fillAccounts(root)
   })
 
   if (removeControl.enabled) for (const button of panel.querySelectorAll('[data-account-remove]')) {
+    const name = button.dataset.accountRemove
+    const disarm = () => {
+      button.dataset.armed = 'no'
+      button.textContent = ACCOUNT_PANEL.remove
+      button.setAttribute('aria-label', ACCOUNT_PANEL.removeAccount(name))
+    }
     button.addEventListener('click', async () => {
-      const gone = await accountRemove({ name: button.dataset.accountRemove, provider: providerId })
+      /* ARMED BY ONE PRESS, DONE BY THE NEXT (REVIEW-1050 #13), as in the
+         accounts menu (src/account-switcher.js onRemove): for a folder
+         Accounts made, the removal also deletes the sign-in saved there, so
+         the first press says so and removes nothing. Left armed, it disarms
+         on its own; a redrawn panel starts unarmed. */
+      if (button.dataset.armed !== 'yes') {
+        button.dataset.armed = 'yes'
+        button.textContent = ACCOUNT_PANEL.removeArmed
+        button.setAttribute('aria-label', ACCOUNT_PANEL.removeAccountArmed(name))
+        if (out) out.textContent = readerSentence(ACCOUNT_PANEL.removeArmedNote)
+        setTimeout(() => { if (button.dataset.armed === 'yes') disarm() }, 8000)
+        return
+      }
+      disarm()
+      const gone = await accountRemove({ name, provider: providerId })
         .catch(() => null)
       /* ok MEANS THE CALL SUCCEEDED. `removed` MEANS SOMETHING WENT.
          shell/account-registry.cjs answers { ok: true, removed: false } when the
@@ -953,7 +972,7 @@ function paintAccounts(root, panel, answer) {
       if (out) {
         out.textContent = readerSentence(gone.removed === false
           ? ACCOUNT_PANEL.removeDidNothing
-          : ACCOUNT_PANEL.removeScope)
+          : gone.credentialDestroyed === true ? ACCOUNT_PANEL.removeDeletedSignIn : ACCOUNT_PANEL.removeScope)
       }
       void fillAccounts(root)
     })
@@ -1083,7 +1102,7 @@ function buildFacts() {
  *                 called with true or false once the probe settles, and called
  *                 immediately if it already has. Settings uses it to keep the
  *                 whole ROW absent, not merely the composer inside it, which is
- *                 what the rule for this control actually asks for.
+ *                 what the owner's rule for this control actually asks for.
  *                 Returns a function that stops listening.
  *   destroy()     releases the login-event subscription and stops every pending
  *                 read from painting. It is the only thing here that outlives
@@ -1103,8 +1122,8 @@ export function createThisComputerSettings() {
    *
    * Every other absent-or-unready control here is offered anyway, DISABLED,
    * with a reason beside it (see paintSignIn and paintAccounts above). This one
-   * is different by rule: the door is absent when the backend does not answer,
-   * never a dead button. So it starts `hidden` in the markup below and is
+   * is different by owner ruling: "door absent when the backend doesn't answer,
+   * never a dead button." So it starts `hidden` in the markup below and is
    * revealed ONLY on a confirmed `available: true` from
    * src/feedback-compose.js's probeFeedbackAvailable -- everything else,
    * including a probe that could not even run, leaves it exactly as it was:

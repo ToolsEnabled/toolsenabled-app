@@ -1,5 +1,5 @@
-/* THE DIAGNOSTIC FILES PANEL IS ON THE PAGE (product rule T782/T783). The
- * panel module has its own suite (diagnostic-settings.test.mjs);
+/* THE DIAGNOSTIC FILES PANEL IS ON THE PAGE (owner direction 2026-09-20,
+ * T782/T783). The panel module has its own suite (diagnostic-settings.test.mjs);
  * this one drives settingsView() itself, the way
  * settings-compare-files-row-reaches-the-page.test.mjs does, and reads what it
  * painted: the panel sits in Data & Privacy behind the Advanced gate, beside

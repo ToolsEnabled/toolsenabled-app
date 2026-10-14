@@ -1,7 +1,7 @@
 # Renders the app's own dev server in headless Chrome over CDP and prints the
 # real, painted box widths for the home (page 1) and computers (page 2)
 # routes at one or more viewport widths. This is the rendered measurement
-# the page-width fix relies on -- CSS source alone cannot tell you what a min()
+# lane W28's report cites -- CSS source alone cannot tell you what a min()
 # or a two-column grid actually paints, only Chrome's own layout engine can.
 #
 # No jsdom/puppeteer/playwright package is vendored in this repo's

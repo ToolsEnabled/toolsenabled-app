@@ -1,5 +1,5 @@
 /* W22 agent-run-lag. main-lag.log's blocker column reads "unattributed" for
- * 268 of 280 recorded stalls (2026-09-04) because the tree
+ * 268 of 280 recorded stalls (Manager 3, 2026-09-04) because the tree
  * courier's own work -- a setInterval, not an ipcMain handler -- was never
  * wrapped in shell/main-lag.cjs's note()/span() door. This test asserts the
  * BEHAVIOUR the wrapping exists to produce: given a real createMainLagMonitor
@@ -127,7 +127,7 @@ test('a courier round with mainLag wired in attributes its worst span to a named
   }
 })
 
-test('the heartbeat mutation call is attributed at its own call site, isolated from the rest of the per-circle pass', async () => {
+test('the heartbeat mutation call is attributed at its own call site, isolated from the rest of the per-circle pass (Manager 3, M7)', async () => {
   const workdir = mkdtempSync(path.join(SCRATCH, 'heartbeat-'))
   const directory = require_(DIRECTORY)
   const provider = require_(PROVIDER)

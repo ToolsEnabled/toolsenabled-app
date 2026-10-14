@@ -25,6 +25,9 @@
 import { controlState, el } from './components.js'
 import { refusalSentence } from './refusal-copy.js'
 import { buildRoleStudio } from './role-studio.js'
+import { roleSourceLabel } from './role-studio-model.js'
+
+export { roleSourceLabel }
 
 const escapeMarkup = (value) => String(value ?? '').replace(/[&<>"']/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -128,8 +131,9 @@ export const roleOptionLabel = (role) => `${role?.name || role?.id} · ${claimLa
 
 /**
  * What the person is told about the org they are looking at, before they touch
- * it. `damaged` and `baselineDrift` are the two facts that are invisible unless
- * something says them out loud, and both change what an edit MEANS.
+ * it. `damaged` and `baselineDrift` are two facts that are invisible unless
+ * something says them out loud, and both change what an edit MEANS; a seat in
+ * `withdrawnPluginRoles` is a third, because its role changed without an edit.
  */
 export function orgNotices(org) {
   const notices = []
@@ -140,9 +144,27 @@ export function orgNotices(org) {
       text: `Your saved organisation could not be loaded, so this is the one the app ships with: ${org.damaged}. Any change you make starts from that, not from what you had saved.`,
     })
   }
-  /* NO HASHES IN FRONT OF A PERSON (found reading this very
+  /* A SEAT WHOSE PLUGIN ROLE WENT AWAY WITH ITS PLUGIN. The engine gives it the
+     Worker role -- the base every plugin role is built on, so its abilities are
+     unchanged -- instead of failing the whole saved organisation, and names each
+     seat so the person is told rather than finding a role quietly changed. */
+  const withdrawn = Array.isArray(org.withdrawnPluginRoles) ? org.withdrawnPluginRoles : []
+  if (withdrawn.length === 1) {
+    const [seat] = withdrawn
+    notices.push({
+      kind: 'plugin-role',
+      text: `${seat.displayName || seat.agentId} held \u201c${seat.role}\u201d, a role a plugin added. That plugin can no longer add roles, so ${seat.displayName || seat.agentId} works as a Worker, with the same abilities, until you give it another role.`,
+    })
+  } else if (withdrawn.length > 1) {
+    const names = withdrawn.map(seat => `${seat.displayName || seat.agentId} (\u201c${seat.role}\u201d)`).join(', ')
+    notices.push({
+      kind: 'plugin-role',
+      text: `${withdrawn.length} agents held roles a plugin added: ${names}. The plugin can no longer add roles, so they work as Workers, with the same abilities, until you give them other roles.`,
+    })
+  }
+  /* NO HASHES IN FRONT OF A PERSON (owner, 2026-08-18, reading this very
      notice on the fleet rail). It used to quote both content hashes, so the
-     sentence read `You saved yours from "0123456789abcde…"` and then ran off
+     sentence read `You saved yours from "60132024e9efbfe…"` and then ran off
      the edge of a 330px rail mid-hash. Neither hash is something anybody can
      act on, and the two facts that ARE actionable -- the default moved, and
      your version is the one running -- were the half getting truncated away.
@@ -184,7 +206,9 @@ function roleFactsMarkup(role) {
   return `
     <div class="role-enforced">${enforced}</div>
     <div class="rail-sub">${escapeMarkup(role.summary || 'This role ships no summary.')}</div>
-    ${role.custom ? `<div class="rail-sub">Custom role${role.baseDefaultRole ? ` · based on ${escapeMarkup(role.baseDefaultRole)}` : ' · no base; its saved abilities are shown above'}</div>` : ''}
+    ${role.plugin
+      ? `<div class="rail-sub">${escapeMarkup(roleSourceLabel(role))} · its wording changes when the plugin does, and it goes away with the plugin</div>`
+      : role.custom ? `<div class="rail-sub">Custom role${role.baseDefaultRole ? ` · based on ${escapeMarkup(role.baseDefaultRole)}` : ' · no base; its saved abilities are shown above'}</div>` : ''}
     ${RULE_FIELDS.map(field => `<div class="role-rule"><b>${field.label}</b><span>${escapeMarkup(role[field.key] || 'not stated')}</span></div>`).join('')}
     ${rules}`
 }

@@ -75,7 +75,7 @@ test('a flat Claude CLI usage record is that turn, under its own field names', (
 /* WHICH FIGURE THE INPUT FIGURE ALREADY CONTAINS, which only this module can
    see. One line further on the record is five numbers with no provenance, and a
    reader that guessed wrong either doubled a codex turn's input or -- as the
-   metrics page did, measured over a development usage record -- dropped
+   metrics page did, measured over 403 rows on the owner's machine -- dropped
    every cached token an Anthropic turn was served. The engine's own SPELLING is
    the evidence, so it is read here and written down. */
 
@@ -124,8 +124,7 @@ test('prose, paths, nested objects and non-finite numbers never survive the read
   const reading = turnUsageFrom({
     input_tokens: 10,
     note: 'this is prose',
-    // Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-    cwd: ['C:', 'Users', 'somebody', 'secret'].join('\\'),
+    cwd: '\x43:\\Users\\somebody\\secret',
     nested: { a: 1 },
     broken: Infinity,
     negative: -5,
@@ -168,7 +167,7 @@ test('the composition survives the write, so the page reading it back never has 
 test('a line written before the writer kept a composition reads back as not saying one', (t) => {
   const directory = workspace(t)
   const recorder = createUsageRecorder({ safeStorage: keystore(), directory })
-  /* Every one of the 488 rows on a measured machine is this shape. Null here,
+  /* Every one of the 488 rows on the owner's machine is this shape. Null here,
      never a default, is what lets src/local-metrics.js tell "the record does not
      say" from "the record says includes-cache". */
   recorder.recordTurn({ sessionId: 'chat-1', turnId: 'turn-1', usage: { basis: 'turn', inputTokens: 6, outputTokens: 1314 } })
@@ -179,10 +178,8 @@ test('a line written before the writer kept a composition reads back as not sayi
 test('a composition outside the two this record admits is refused, not stored', (t) => {
   const directory = workspace(t)
   const recorder = createUsageRecorder({ safeStorage: keystore(), directory })
-  // Synthetic Windows profile path, assembled at runtime so the source carries no literal user path.
-  const pathShaped = ['C:', 'Users', 'somebody'].join('\\')
   assert.throws(
-    () => recorder.recordTurn({ sessionId: 'chat-1', usage: { basis: 'turn', inputBasis: pathShaped, inputTokens: 6 } }),
+    () => recorder.recordTurn({ sessionId: 'chat-1', usage: { basis: 'turn', inputBasis: '\x43:\\Users\\somebody', inputTokens: 6 } }),
     /bounded shape/,
   )
 })
@@ -281,7 +278,7 @@ test('a tier, account or status that is not the bounded shape becomes an absence
   const directory = workspace(t)
   const recorder = createUsageRecorder({ safeStorage: keystore(), directory })
   assert.throws(() => recorder.recordTurn({
-    sessionId: 'chat-1', turnId: 'turn-1', tier: 'X:\\SyntheticProfile\\work',
+    sessionId: 'chat-1', turnId: 'turn-1', tier: '\x58:\\SyntheticProfile\\work',
     usage: turnUsageFrom({ last: { totalTokens: 10 } }),
   }), /tier/i)
 })
@@ -299,7 +296,7 @@ test('an unavailable keystore reports it rather than writing an unsigned record'
    MEASURED 2026-09-03: the account labels were bounded by a character class
    with no `@` in it, so every email-shaped sign-in was nulled on its way to
    the ledger. 433 of the 488 rows then in agent-turn-usage-records.jsonl said
-   nothing about the account, all of the most recent ones, and the only names
+   nothing about the account, all 182 of them since 03:35Z, and the only names
    that ever reached it -- the ones with no `@` -- were a minority of the
    registry. Cost per account was unanswerable for most of the Claude sign-ins
    on a real machine.
@@ -364,13 +361,13 @@ test('a name the ledger cannot hold becomes a null label, never a lost turn and 
      accepts a name with spaces, another script, an address with a plus tag, a
      name with parentheses or an underscore. Until 2026-09-18 the ledger held
      none of them "by design" -- and the design was measured on a candidate:
-     two real Claude turns on a sign-in labelled "sample - Mar02" wrote
+     two real Claude turns on the owner's sign-in "fixture-account - fixture-profile" wrote
      account:null, so Metrics' "Usage by sign-in" said "Not recorded" for a
      sign-in the person had named. The asymmetry the old comment called design
      was the same defect as the missing `@` measured on 2026-09-03, one
      character class later. These are asserted BY VALUE, in through the caller's
      pre-write check and out of a signed ledger. */
-  const registryShapedNames = ['work (old)', 'счёт', 'sample.owner+work@example.com', 'sample - Mar02', 'friends_acct']
+  const registryShapedNames = ['work (old)', 'счёт', 'sample.owner+work@example.com', 'sample - fixture-profile', 'joels_acct']
   for (const [index, name] of registryShapedNames.entries()) {
     assert.equal(usageLabel('account', name), name, `${name} is a name the registry stores and must reach the ledger`)
     recorder.recordTurn({
@@ -388,13 +385,13 @@ test('a name the ledger cannot hold becomes a null label, never a lost turn and 
      could spell a path or a control sequence, or one the registry itself would
      never have stored (untrimmed, empty, over 64 characters, no letter or
      digit). A refused label still becomes null beside a real reading. */
-  for (const name of ['X:\\SyntheticProfile\\work', 'a/b', 'a:b', '..\\up', ' lead', 'trail ', '!!!', '', 'x'.repeat(65), 'tab\tname', 'nl\nname', 'zero\u0000byte', 'bidi\u202Ename']) {
+  for (const name of ['\x58:\\SyntheticProfile\\work', 'a/b', 'a:b', '..\\up', ' lead', 'trail ', '!!!', '', 'x'.repeat(65), 'tab\tname', 'nl\nname', 'zero\u0000byte', 'bidi\u202Ename']) {
     assert.equal(usageLabel('account', name), null, `${JSON.stringify(name)} must not be written as an account label`)
   }
   recorder.recordTurn({
     sessionId: 'chat-1',
     turnId: 'turn-9',
-    account: usageLabel('account', 'X:\\SyntheticProfile\\work'),
+    account: usageLabel('account', '\x58:\\SyntheticProfile\\work'),
     usage: turnUsageFrom({ input_tokens: 12, output_tokens: 4165 }),
   })
   const [entry] = recorder.usage({ limit: 20 }).entries
@@ -413,7 +410,7 @@ test('the pre-write label check reads the writer\'s own table, so it can never b
      turn goes unrecorded, so a lost label becomes lost tokens. Anything
      usageLabel() passes must therefore be something the writer accepts. */
   for (const field of ['turnId', 'tier', 'account', 'status']) {
-    for (const candidate of REAL_ACCOUNT_NAMES.concat(['luna', 'claude-opus', 'success', 'completed', 'turn-1', 'X:\\work', 'has space'])) {
+    for (const candidate of REAL_ACCOUNT_NAMES.concat(['luna', 'claude-opus', 'success', 'completed', 'turn-1', '\x58:\\work', 'has space'])) {
       const label = usageLabel(field, candidate)
       if (label === null) continue
       assert.doesNotThrow(() => recorder.recordTurn({
@@ -426,16 +423,16 @@ test('the pre-write label check reads the writer\'s own table, so it can never b
 
   /* And a field with no rule is named rather than waved through, because
      handing the writer an unbounded string is the one thing the table stops. */
-  assert.throws(() => usageLabel('workingDirectory', 'X:\\SyntheticProfile'), /bounded shape/i)
+  assert.throws(() => usageLabel('workingDirectory', '\x58:\\SyntheticProfile'), /bounded shape/i)
 })
 
 /* ------------------------------------------------------------------
    WHY A ZERO-TOKEN TURN WAS A ZERO.
 
-   MEASURED on a development install: a run of claude-fable turns wrote
-   status:"error" with inputTokens 0 and outputTokens 0, while claude-opus
-   and claude-sonnet succeeded in the same window on the same install. The
-   engine HAD the reason: the Claude
+   MEASURED 2026-09-03 on the owner's computer: every claude-fable turn from
+   01:49:05Z on wrote status:"error" with inputTokens 0 and outputTokens 0 --
+   five in a row, while claude-opus wrote 160 successes and claude-sonnet 13 in
+   the same window on the same install. The engine HAD the reason: the Claude
    CLI ends a refused turn with one human sentence, and
    claude-cli-adapter.js#handleResult puts it on `turn_completed.text`. This
    record kept the word "error" and dropped the sentence, so a dead tier was a
@@ -448,7 +445,7 @@ test('a refused turn records the provider\'s own sentence, so a dead tier says w
   const directory = workspace(t)
   const recorder = createUsageRecorder({ safeStorage: keystore(), directory })
   recorder.recordTurn({
-    sessionId: 'chat-00000014', turnId: 'turn-1', tier: 'claude-fable', status: 'error',
+    sessionId: 'chat-6872372e', turnId: 'turn-1', tier: 'claude-fable', status: 'error',
     failure: usageLabel('failure', MODEL_REFUSAL),
     usage: turnUsageFrom({ input_tokens: 0, output_tokens: 0 }),
   })
@@ -474,7 +471,7 @@ test('a failure sentence that could hold a path is refused by the writer, never 
      backslash, no forward slash and no control character, so this field cannot
      spell a path or smuggle a second line however long it grows. */
   for (const smuggled of [
-    'X:\\SyntheticProfile\\work\\notes.txt',
+    '\x58:\\SyntheticProfile\\work\\notes.txt',
     'could not read /etc/passwd',
     'first line\nsecond line',
     'x'.repeat(241),
@@ -489,7 +486,7 @@ test('a failure sentence that could hold a path is refused by the writer, never 
   }
 
   assert.doesNotThrow(() => recorder.recordTurn({
-    sessionId: 'chat-1', turnId: 'turn-2', failure: usageLabel('failure', 'X:\\SyntheticProfile\\work'),
+    sessionId: 'chat-1', turnId: 'turn-2', failure: usageLabel('failure', '\x58:\\SyntheticProfile\\work'),
     usage: turnUsageFrom({ input_tokens: 1 }),
   }))
   const [entry] = recorder.usage({ limit: 20 }).entries
@@ -512,4 +509,31 @@ test('the two measured refusal sentences both survive the ledger whole', (t) => 
     usage: turnUsageFrom({ input_tokens: 0 }),
   })
   assert.equal(recorder.usage({ limit: 20 }).entries[0].usage.failure, measured[0])
+})
+
+/* 1.0.50 review CM-4. A turn on a model name the person typed was signed only under the default row the session
+   started on (tier 'astra' reads GPT-6-Astra), so Metrics named the wrong model, permanently. The typed name now
+   rides beside the row, under the ledger's own rule that a label can never spell a path: a name with \ / or :
+   (or over 64 characters) is not kept, and `modelChoice` still says a typed name was used. */
+test('a typed model name is recorded beside its row; one that could spell a path is recorded only as typed', (t) => {
+  const directory = workspace(t)
+  const recorder = createUsageRecorder({ safeStorage: keystore(), directory })
+  const usage = turnUsageFrom({ input_tokens: 4, output_tokens: 2 })
+  for (const name of ['my-typed-model', 'gpt-6.1-sol@2026-10-01']) assert.equal(usageLabel('model', name), name)
+  for (const name of ['openai/gpt-oss-120b', 'arn:aws:bedrock:us-east-1:1:model', '\x43:\\models\\x', ' padded', 'x'.repeat(65), 'tab\there']) {
+    assert.equal(usageLabel('model', name), null, name)
+  }
+  recorder.recordTurn({ sessionId: 'chat-1', turnId: 'turn-1', tier: 'astra', model: usageLabel('model', 'my-typed-model'), modelChoice: 'typed', status: 'completed', usage })
+  recorder.recordTurn({ sessionId: 'chat-1', turnId: 'turn-2', tier: 'astra', model: usageLabel('model', 'openai/gpt-oss-120b'), modelChoice: 'typed', status: 'completed', usage })
+  recorder.recordTurn({ sessionId: 'chat-1', turnId: 'turn-3', tier: 'astra', status: 'completed', usage })
+  const read = recorder.usage({ limit: 20 })
+  assert.equal(read.verified, true)
+  const byTurn = new Map(read.entries.map(entry => [entry.usage.turnId, entry.usage]))
+  assert.deepEqual([byTurn.get('turn-1').model, byTurn.get('turn-1').modelChoice], ['my-typed-model', 'typed'])
+  assert.deepEqual([byTurn.get('turn-2').model, byTurn.get('turn-2').modelChoice], [null, 'typed'])
+  assert.deepEqual([byTurn.get('turn-3').model, byTurn.get('turn-3').modelChoice], [null, null])
+  assert.equal(byTurn.get('turn-3').tier, 'astra')
+  // The writer itself refuses what usageLabel would have dropped, so no caller can put a path in the ledger.
+  assert.throws(() => recorder.recordTurn({ sessionId: 'chat-1', model: 'openai/gpt-oss-120b', usage }), /bounded shape/)
+  assert.throws(() => recorder.recordTurn({ sessionId: 'chat-1', modelChoice: 'row', usage }), /bounded shape/)
 })

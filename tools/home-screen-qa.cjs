@@ -1,7 +1,7 @@
 'use strict'
 
 /* Read the home screen of an exact UNPACKED candidate and check the properties
- * reported broken, on the rendered DOM rather than on the source.
+ * the owner reported broken, on the rendered DOM rather than on the source.
  *
  * WHY THIS EXISTS SEPARATELY FROM tools/test/home-screen.test.mjs.
  *
@@ -11,7 +11,7 @@
  * it is not a theoretical gap -- is a RENDERER that has stopped rendering that
  * decision. Blanking the facts on their way to the screen left every source
  * pattern that suite looks for still present in the file, and it stayed green
- * over a home screen with nothing under the ring.
+ * over a home screen with nothing on Home.
  *
  * So this reads what is actually on the glass. It launches the packaged
  * application against a throwaway profile, drives it over the DevTools
@@ -387,14 +387,12 @@ const READ_HOME = `(() => {
   return {
     present: true,
     mode: home.dataset.mode,
-    caption: text(home.querySelector('.uring-caption')),
-    headline: text(home.querySelector('.uring-sub')),
-    headlineVisible: shown(home.querySelector('.uring-sub')),
+    caption: text(home.querySelector('.home-overview-title h1')),
+    headline: text(home.querySelector('.home-overview-title p')),
+    headlineVisible: shown(home.querySelector('.home-overview-title p')),
     facts: [...home.querySelectorAll('.home-fact')].filter(shown).map(node => text(node.querySelector('span'))),
     factsInDom: home.querySelectorAll('.home-fact').length,
     panelBodyVisible: shown(home.querySelector('.session-log')),
-    digitsHidden: Boolean(home.querySelector('.uring-digits')?.hidden),
-    digits: [...home.querySelectorAll('.uring-digits .n.cur')].map(text),
     panelTitle: text(home.querySelector('[data-panel-title]')),
     panelBadge: home.querySelector('[data-panel-badge]')?.hidden ? '' : text(home.querySelector('[data-panel-badge]')),
     panelBody: text(home.querySelector('.session-log')),
@@ -510,7 +508,7 @@ async function main() {
         /* Wait for the first-paint gate: the screen deliberately renders
            nothing until its local reads answer, so an empty caption here is
            "not ready yet", not a failure. */
-        if (reading?.present && reading.caption) { home = reading; break }
+        if (reading?.present && reading.caption && reading.mode !== 'loading' && reading.panelTitle) { home = reading; break }
       } catch { /* the page is between renders */ }
     }
 
@@ -521,10 +519,10 @@ async function main() {
     const everything = [...sentences, home.panelBody].join('\n')
 
     check('the screen rendered at all', home.present && Boolean(home.caption))
-    check('the ring states one headline, and it is on the glass',
+    check('Home states one headline, and it is on the glass',
       Boolean(home.headline) && home.headlineVisible === true,
       `${JSON.stringify(home.headline)} visible=${home.headlineVisible}`)
-    check('at least one fact is VISIBLY stated under the ring, and never more than three',
+    check('at least one fact is VISIBLY stated on Home, and never more than three',
       home.facts.length >= 1 && home.facts.length <= 3,
       `${home.facts.length} visible of ${home.factsInDom} in the DOM: ${JSON.stringify(home.facts)}`)
     check('the panel is titled', Boolean(home.panelTitle), JSON.stringify(home.panelTitle))
@@ -550,10 +548,6 @@ async function main() {
 
     const punctuation = README_PUNCTUATION.filter(([character]) => sentences.some((s) => s.includes(character)))
     check('the screen does not punctuate like a README', punctuation.length === 0, punctuation.map(([, name]) => name).join(', '))
-
-    check('the clock shows real numbers or is not shown at all',
-      home.digitsHidden || (home.digits.length > 0 && home.digits.every((digit) => /^[0-9]+$/.test(digit))),
-      `hidden=${home.digitsHidden} digits=${JSON.stringify(home.digits)}`)
 
     /* THE RULE THE PRODUCT STATES ABOUT ITS OWN COMPOSER, CHECKED WHERE IT CAN
        STILL COME OUT FALSE.

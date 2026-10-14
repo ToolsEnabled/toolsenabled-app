@@ -13,7 +13,9 @@
   border-radius: 10px;
   box-shadow: 0 3px 16px #0005;
 }
-.accessibility-confirmation { left: 12px; }
+.accessibility-confirmation { left: 12px; z-index: 860; }
+.accessibility-confirmation-actions { position: sticky; bottom: -12px; display: flex; flex-wrap: wrap; background: var(--bg, #101820); padding-block: 4px; }
+.accessibility-confirmation [data-accessibility-preview] { max-height: calc(25vh / var(--zoom, 1)); overflow: auto; }
 .accessibility-confirmation[hidden] { display: none; }
 .accessibility-confirmation h2 { margin-top: 0; font-size: 16px; }
 .accessibility-controls { padding-block: 12px; }

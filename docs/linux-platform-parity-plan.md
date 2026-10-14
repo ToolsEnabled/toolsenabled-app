@@ -1,7 +1,7 @@
 # Linux platform parity: design and acceptance plan
 
 2026-09-05. Development plan, not a release certificate or a claim that every
-feature works on Linux. Baseline inspected: an earlier app commit, an earlier engine commit.
+feature works on Linux. Baseline inspected: app `387cff94`, engine `8a1392e5`.
 Implementation lanes below are being integrated separately from that baseline.
 
 ## Product decision

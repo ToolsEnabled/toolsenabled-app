@@ -1,4 +1,4 @@
-/* MEASURED: agent.restart refused four different
+/* MEASURED, Controller 2026-09-06: agent.restart refused four different
  * circles with MC_TREE_COMMAND_TRANSCRIPT_RESET_FAILED. Half of that defect
  * was fresh-start-existing-node.js reading an async remove() synchronously
  * (tools/test/tree-node-command-fresh-start-behavior.test.mjs pins that half);

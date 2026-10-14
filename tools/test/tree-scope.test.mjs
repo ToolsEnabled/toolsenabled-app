@@ -84,6 +84,6 @@ test('tree counts are singular for one and plural otherwise', async () => {
   assert.match(scope.branchSummaryText({ total: 1 }), /^1 agent in this branch/)
   assert.match(scope.branchSummaryText({ total: 2 }), /^2 agents in this branch/)
   const { branchRemovalConfirmation } = await import('../../src/tree-node-removal.js')
-  assert.match(branchRemovalConfirmation('Controller (aaaa0003)', 2), /Controller \(aaaa0003\) and the 1 agent below it \(2 agents total\)/)
+  assert.match(branchRemovalConfirmation('Controller (3a5f460c)', 2), /Controller \(3a5f460c\) and the 1 agent below it \(2 agents total\)/)
   assert.match(branchRemovalConfirmation('Manager', 4), /Manager and all 3 agents below it \(4 agents total\)/)
 })

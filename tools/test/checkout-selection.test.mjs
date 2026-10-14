@@ -6,9 +6,9 @@
 //   1. Cash today and the recurring annual commitment are computed separately
 //      and are allowed to disagree. Conflating them is how somebody agrees to
 //      "$9.99" and finds out it was $9.99 a month.
-//   2. confirm() refuses without a named principal. That is the stated
-//      condition -- no finished form without a real signed-in user -- and it
-//      is enforced in the store, not only by a
+//   2. confirm() refuses without a named principal. That is the owner's own
+//      condition -- "if i am not logged in as a real user ... i refuse to
+//      finish the form" -- and it is enforced in the store, not only by a
 //      disabled button, so a caller that skips the UI gets the same answer.
 
 import assert from 'node:assert/strict'
@@ -295,8 +295,8 @@ test('selecting the recommended items in a group skips the ones that cannot be b
 })
 
 test('the cart starts empty even when items are marked recommended', () => {
-  // A running total they did not assemble is the one number here they might act on
-  // while believing they chose it.
+  // A running total he did not assemble is the one number here he might act on
+  // while believing he chose it.
   const catalog = catalogOf([item({ id: 'line-a', defaultSelected: true }), item({ id: 'line-b', defaultSelected: true })])
   const { store } = storeOn(catalog)
   assert.equal(store.summary().count, 0)
@@ -331,11 +331,11 @@ test('an item that has since lost its price is dropped and reported, not silentl
   assert.deepEqual(memory.raw().selections, [], 'the drop is persisted, so it cannot come back next launch')
 })
 
-test('an item that has since acquired a blocker is KEPT, because they can still choose it', () => {
+test('an item that has since acquired a blocker is KEPT, because he can still choose it', () => {
   // The mirror of the test above, and the distinction matters: losing a price
   // makes a line impossible to total, which is a drop. Acquiring a blocker
-  // makes it inadvisable, which is a warning they must read rather than a
-  // silent removal of a choice they made.
+  // makes it inadvisable, which is a warning he must read rather than a
+  // silent removal of a choice he made.
   const catalog = catalogOf([item({
     id: 'thing',
     firstYearUsd: 10,
@@ -358,7 +358,7 @@ test('an item that vanished from the catalogue is dropped and reported', () => {
 
 test('a price that moved under a saved choice is KEPT and reported, never silently re-totalled', () => {
   // The cheap-first-year trap in miniature: the choice stands, the new price is
-  // used, and they are told the number changed.
+  // used, and he is told the number changed.
   const catalog = catalogOf([item({ id: 'thing', firstYearUsd: 51.8 })])
   const seed = { v: 1, selections: [{ id: 'thing', qty: 1, pricedAtCents: 2_812 }], confirmed: null }
   const { store } = storeOn(catalog, seed)
@@ -484,7 +484,7 @@ test('nothing in a confirmed record resembles a receipt or a transaction', () =>
 })
 
 test('changing the selection clears a previous confirmation', () => {
-  // A record saying they approved one line must not survive them adding a second.
+  // A record saying he approved one line must not survive him adding a second.
   const catalog = catalogOf([item({ id: 'line-a' }), item({ id: 'line-b' })])
   const { store } = storeOn(catalog)
   store.setSelected('line-a', true)

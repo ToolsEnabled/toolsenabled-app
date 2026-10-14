@@ -11,9 +11,9 @@ const PAIR_HELPER = 'tests/lib/settings-source-pair.js'
 const ENVIRONMENT_HELPER = 'tests/lib/isolated-environment.js'
 const FIXTURE_HELPER = 'tools/test/lib/source-fixture-root.mjs'
 const REFS = /^[a-f0-9]{40}$/
-const REGISTERED_GIT = process.platform === 'win32' ? 'C:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git'
+const REGISTERED_GIT = process.platform === 'win32' ? '\x43:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git'
 const NULL_DEVICE = process.platform === 'win32' ? 'NUL' : '/dev/null'
-const GIT_ENV = Object.freeze({ HOME: process.platform === 'win32' ? 'NUL' : '/nonexistent', PATH: process.platform === 'win32' ? 'C:\\Windows\\System32' : '/nonexistent',
+const GIT_ENV = Object.freeze({ HOME: process.platform === 'win32' ? 'NUL' : '/nonexistent', PATH: process.platform === 'win32' ? '\x43:\\Windows\\System32' : '/nonexistent',
   LANG: 'C', LC_ALL: 'C', GIT_EXEC_PATH: process.platform === 'win32' ? 'NUL' : '/nonexistent',
   GIT_CONFIG_SYSTEM: process.platform === 'win32' ? 'NUL' : '/dev/null', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null',
   GIT_CONFIG_NOSYSTEM: '1', GIT_NO_LAZY_FETCH: '1', GIT_OPTIONAL_LOCKS: '0' })
@@ -61,18 +61,12 @@ function selectorMatchesRoot(value, bound) {
   return samePath(real, resolved) && samePath(resolved, bound)
 }
 
-// The Dev account's Windows profile. The account name is a placeholder, and the
-// path is joined at run time so the source carries no literal profile path.
-function devAccountHome() {
-  return path.win32.join('C:\\', 'Users', 'BuildAccount-Dev')
-}
-
 function validateWindowsFixtureIdentity() {
   if (process.platform !== 'win32') return
   const os = require('node:os')
-  const allowedHome = devAccountHome()
+  const allowedHome = '\x43:\\Users\\fixture-profile'
   if (!samePath(os.userInfo().homedir, allowedHome) || !samePath(os.homedir(), allowedHome))
-    fail('Windows fixture and engine state require the BuildAccount-Dev profile')
+    fail('Windows fixture and engine state require the fixture-profile profile')
   const explicit = process.env.TOOLSENABLED_WINDOWS_FIXTURE_PARENT
   if (explicit !== undefined) {
     if (typeof explicit !== 'string' || !path.isAbsolute(explicit)) fail('explicit fixture parent must be absolute')
@@ -91,8 +85,8 @@ function engineStateBase(fixtureRoot, isolatedTemporaryRoot) {
   // Windows, even when TEMP/TMPDIR point at the descriptor fixture. Refuse
   // a foreign profile lexically before invoking or probing that producer.
   const home = require('node:os').homedir()
-  const allowedHome = devAccountHome()
-  if (!samePath(home, allowedHome)) fail('Windows engine state requires the BuildAccount-Dev profile')
+  const allowedHome = '\x43:\\Users\\fixture-profile'
+  if (!samePath(home, allowedHome)) fail('Windows engine state requires the fixture-profile profile')
   const expected = path.join(allowedHome, 'AppData', 'Local', 'Temp')
   const produced = isolatedTemporaryRoot()
   if (!samePath(produced, expected)) fail('engine temporary-root producer differs from the owned account temp')

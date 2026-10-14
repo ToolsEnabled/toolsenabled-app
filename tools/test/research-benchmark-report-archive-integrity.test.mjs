@@ -27,7 +27,7 @@ import { researchReportFiles } from '../../src/benchmark/report.mjs'
 // rendered into the report, and an earlier marker containing the words being
 // searched for made a negative assertion fail and would have made the positive
 // ones pass for the wrong reason.
-const REVIEWER = 'REPORT FIXTURE MARKER ONLY'
+const REVIEWER = 'RP1 REPORT FIXTURE MARKER ONLY'
 const sources = async () => Object.fromEntries(await Promise.all(RUNTIME_FILES.map(async file =>
   [file, await readFile(new URL('../../src/benchmark/' + file, import.meta.url), 'utf8')])))
 
@@ -39,12 +39,14 @@ async function frozenHere() {
 }
 
 // An archive frozen by a build whose readiness output differed: internally
-// consistent, and not rebuildable here.
+// consistent, and not rebuildable here. This is efaa64a2's situation exactly.
+// An archive frozen by a build whose readiness output differed: internally
+// consistent, and not rebuildable here. This is efaa64a2's situation exactly.
 // Its journal is rebound to it, because a real archive's evidence carries the
 // project digest of the archive it came from.
 async function frozenElsewhere(project, events, mutate = body => {
   // A blocker this build's readiness does not produce, so the rebuild here
-  // differs exactly as a readiness fix makes an older archive differ on this tree.
+  // differs exactly as B1's readiness fix makes efaa64a2 differ on this tree.
   body.readiness = { ...body.readiness, blockers: [{ code: 'fixture-recorded-elsewhere', path: 'protocol.grading.kind', message: 'Recorded by a build whose readiness output differed.' }] }
 }) {
   const { sha256: _previous, ...body } = structuredClone(project)

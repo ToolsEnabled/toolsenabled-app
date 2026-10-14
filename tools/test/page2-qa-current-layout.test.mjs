@@ -58,7 +58,7 @@ test('the actual Box assertion pins every drawn card, not the older circle treat
 })
 
 /* THE RIM IS AUTHORED AS A SCALING PROPERTY NOW, NOT AS A px LITERAL.
-   an earlier commit made the node rule declare --circle-stroke: clamp(0.85px, ...) and set
+   b9074f5e made the node rule declare --circle-stroke: clamp(0.85px, ...) and set
    its border from it, so the drive's old `authoredBorderWidth === '1.5px'` read
    null and reported "flat node material" FAILED against a rim the product draws
    deliberately (measured 2026-09-11: borderWidth 1px, authoredBorderWidth null,

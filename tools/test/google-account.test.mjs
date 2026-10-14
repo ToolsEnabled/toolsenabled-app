@@ -168,9 +168,9 @@ test('local accounts still work, side by side, and neither can shadow the other'
   const directory = scratch()
   try {
     const store = createAccountStore({ directory })
-    const local = await store.createAccount({ username: 'alex', displayName: 'Alex', password: PASSWORD })
+    const local = await store.createAccount({ username: 'Example', displayName: 'Example', password: PASSWORD })
     assert.equal(local.ok, true, local.reason)
-    const signedIn = await store.signIn({ username: 'alex', password: PASSWORD })
+    const signedIn = await store.signIn({ username: 'Example', password: PASSWORD })
     assert.equal(signedIn.ok, true)
     assert.equal(store.current().account.signInMethod, 'local')
     assert.equal(store.current().account.email, null)
@@ -182,14 +182,14 @@ test('local accounts still work, side by side, and neither can shadow the other'
 
     /* A local username can never contain `@`, so the two name spaces cannot
        collide -- checked rather than asserted in prose. */
-    assert.equal(normalizeIdentityEmail('alex'), null)
+    assert.equal(normalizeIdentityEmail('Example'), null)
     const collide = await store.createAccount({ username: 'probe.user@example.com', displayName: '', password: PASSWORD })
     assert.equal(collide.ok, false)
     assert.equal(collide.code, 'ACCOUNT_USERNAME_INVALID')
 
     /* And the local account's password still works after all of that. */
     store.signOut()
-    assert.equal((await store.signIn({ username: 'alex', password: PASSWORD })).ok, true)
+    assert.equal((await store.signIn({ username: 'Example', password: PASSWORD })).ok, true)
   } finally { rmSync(directory, { recursive: true, force: true }) }
 })
 

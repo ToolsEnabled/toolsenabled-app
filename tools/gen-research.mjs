@@ -1,4 +1,4 @@
-/** Generate the owner-scoped research-suite projection from a directory of curated reports. */
+/** Generate the owner-scoped research-suite projection from curated Desktop reports. */
 import { statSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -17,89 +17,89 @@ import {
 const DOMAIN = 'research'
 const OWNER_SCOPE = 'local-owner'
 const RESEARCH_ROOT = requiredRoot('MC_RESEARCH_ROOT', 'the absolute path of the directory holding the curated reports')
-const OWNER_AUTHORIZATION_PATTERN = /\bRESTRICTED-RESEARCH\b|\bLEAN(?:-| )Bench\b/i
+const OWNER_AUTHORIZATION_PATTERN = /\bLLMBenchmarking\b|\bLEAN(?:-| )Bench\b/i
 
 const SAFE_REPORTS = Object.freeze([
   {
-    id: 'status-report-2026-08-01',
-    path: 'status-report-2026-08-01.md',
-    summary: 'A point-in-time operational status report on one installation.',
+    id: 'toolsenabled-machine-b-status-2026-08-01',
+    path: 'TOOLSENABLED-MACHINE-B-STATUS-REPORT-2026-08-01.md',
+    summary: 'A point-in-time operational assessment of ToolsEnabled on Machine B covering the broker, fleet, dashboard, bridge, scheduler, audit, and owner-request surfaces. It distinguishes live observations from historical audit claims and identifies integration and truthful-operations risks.',
   },
   {
-    id: 'coordinator-audit-2026-08-04',
-    path: 'coordinator-audit-2026-08-04.md',
-    summary: 'An audit of coordinator behavior that groups recurring failures into design problems.',
+    id: 'toolsenabled-coordinator-audit-2026-08-04',
+    path: 'ToolsEnabled-COORDINATOR-AUDIT-2026-08-04.md',
+    summary: 'An audit of post-council coordinator behavior and system artifacts that groups recurring failures into foundational design problems. It emphasizes mechanical authority, three-state observability, actuated monitoring, closure evidence, and enforcement at chokepoints.',
   },
   {
-    id: 'full-audit-2026-08-03',
-    path: 'full-audit-2026-08-03.md',
-    summary: 'A full-system audit focused on architecture and onboarding, with a ranked findings set.',
+    id: 'toolsenabled-full-audit-2026-08-03',
+    path: 'ToolsEnabled-FULL-AUDIT-2026-08-03.md',
+    summary: 'A full-system audit focused on architecture and onboarding, with a verified ranked findings set and candidate improvements. Its executive summary highlights repeated false-health patterns across live system surfaces.',
   },
   {
-    id: 'issues-report-2026-08-04',
-    path: 'issues-report-2026-08-04.md',
-    summary: 'An account of failures with proposed structural fixes.',
+    id: 'toolsenabled-issues-report-2026-08-04',
+    path: 'ToolsEnabled-Issues-Report-2026-08-04.md',
+    summary: 'A coordinator-authored account of failures caused by per-tree state divergence and checks that confuse lack of visibility with failure. It proposes structural fixes for canonical-path identity and uncertainty-aware status reporting.',
   },
   {
-    id: 'plan-audit-2026-08-04',
-    path: 'plan-audit-2026-08-04.md',
-    summary: 'An independent review of a stabilization plan and the defects to resolve before running it.',
+    id: 'toolsenabled-plan-audit-2026-08-04',
+    path: 'ToolsEnabled-PLAN-AUDIT-2026-08-04.md',
+    summary: 'An independent review of the cross-machine stabilization plan using multiple audit lenses. It concludes the diagnosis is largely sound but documents ordering, data-loss, verification, and executability defects that must be resolved before running the plan.',
   },
   {
-    id: 'report-corpus-research-audit-2026-08-06',
-    path: 'report-corpus-research-audit-2026-08-06.md',
-    summary: 'A research audit of the report corpus and a roadmap for defensible studies.',
+    id: 'toolsenabled-report-corpus-research-audit-2026-08-06',
+    path: 'ToolsEnabled-Report-Corpus-Research-Audit-2026-08-06.md',
+    summary: 'A research audit of the ToolsEnabled report corpus and a roadmap for defensible studies. It identifies provenance, benchmark-validity, liveness, governance, and estimator-correction opportunities while stating the corpus limits.',
   },
   {
-    id: 'handoff-2026-08-07',
+    id: 'mission-control-handoff-2026-08-07',
     path: 'HANDOFF.md',
-    summary: 'A transfer document mapping the current trees and the highest-priority runtime handoff.',
+    summary: 'A transfer document mapping the canonical, retired, and Mission Control trees and recording the highest-priority runtime handoff. It documents that Mission Bridge execution requires an interactive logged-in session and includes the observed proof point for that fix.',
   },
 ])
 
-const AUTHORIZATION_REASON = 'The report is identified as restricted research material; R198 requires explicit owner authorization before content use.'
+const AUTHORIZATION_REASON = 'The report is identified as LLMBenchmarking/LEAN-Bench-derived or -about; R198 requires explicit owner authorization before content use.'
 const FLAGGED_REPORTS = Object.freeze([
   {
-    id: 'restricted-research-corpus-audit-2026-08-06',
-    title: 'Research corpus audit — 2026-08-06',
-    path: 'restricted/research-corpus-audit-2026-08-06.md',
+    id: 'ai-research-initiatives-full-corpus-audit-2026-08-06',
+    title: 'AI Research Initiatives Full Corpus Audit — 2026-08-06',
+    path: 'currentWork86/AI-Research-Initiatives-Full-Corpus-Audit-2026-08-06.md',
     authorizationReason: AUTHORIZATION_REASON,
   },
   {
-    id: 'restricted-benchmark-iteration-report',
-    title: 'Benchmark iteration report',
-    path: 'restricted/benchmark-iteration-report.md',
+    id: 'llmbenchmarking-current-iteration-report',
+    title: 'LLMBenchmarking current iteration report',
+    path: 'currentWork86/LLMBenchmarking-current-iteration-report.md',
     authorizationReason: AUTHORIZATION_REASON,
   },
   {
-    id: 'restricted-research-extension-report',
-    title: 'Research extension report',
-    path: 'restricted/research-extension-report.md',
+    id: 'review-research-extension-report',
+    title: 'review research extension report',
+    path: 'currentWork86/review-research-extension-report.md',
     authorizationReason: AUTHORIZATION_REASON,
   },
   {
-    id: 'benchmark-audit-markdown',
-    title: 'Benchmark audit (Markdown)',
-    path: 'BENCHMARK-AUDIT.md',
+    id: 'lean-bench-audit-markdown',
+    title: 'LEAN-BENCH audit (Markdown)',
+    path: 'LEAN-BENCH-AUDIT.md',
     authorizationReason: AUTHORIZATION_REASON,
   },
   {
-    id: 'benchmark-audit-html',
-    title: 'Benchmark audit (HTML)',
-    path: 'BENCHMARK-AUDIT.html',
+    id: 'lean-bench-audit-html',
+    title: 'LEAN-BENCH audit (HTML)',
+    path: 'LEAN-BENCH-AUDIT.html',
     authorizationReason: AUTHORIZATION_REASON,
   },
   {
-    id: 'benchmark-audit-pdf',
-    title: 'Benchmark audit (PDF)',
-    path: 'BENCHMARK-AUDIT.pdf',
+    id: 'lean-bench-audit-pdf',
+    title: 'LEAN-BENCH audit (PDF)',
+    path: 'LEAN-BENCH-AUDIT.pdf',
     authorizationReason: AUTHORIZATION_REASON,
   },
   {
-    id: 'restricted-product-iteration-report',
-    title: 'Product iteration report',
-    path: 'restricted/product-iteration-report.md',
-    authorizationReason: 'The first-50-lines mechanical screen found restricted research material; owner authorization is required before content use or safe-set reclassification.',
+    id: '\x74oolsenabled-current-iteration-report',
+    title: 'ToolsEnabled current iteration report',
+    path: 'currentWork86/\x54oolsEnabled-current-iteration-report.md',
+    authorizationReason: 'The first-50-lines mechanical screen found LLMBenchmarking; owner authorization is required before content use or safe-set reclassification.',
   },
 ])
 

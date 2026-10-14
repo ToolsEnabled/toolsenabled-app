@@ -56,7 +56,7 @@ const manifest = {
   candidate: report.expectedBase, engine: report.engine, engineExecuted: false,
   sourceHashes: report.sourceHashes,
   files: Object.fromEntries(Object.keys(requests).map(name => [`${name}.json`, sha256(fs.readFileSync(path.join(output, `${name}.json`)))])),
-  control: 'A manager reviews; Controller binds disposable profiles, candidate executable, process and CDP target. NO PRUNE.',
+  control: 'Manager 2 reviews; Controller binds disposable profiles, candidate executable, process and CDP target. NO PRUNE.',
 }
 fs.writeFileSync(path.join(output, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' })
 console.log(JSON.stringify({ output, status: manifest.status, requests: Object.keys(requests) }, null, 2))

@@ -9,7 +9,7 @@ const { KEYS, FLAG_IDS, ownedPath, readOwnedJSON } = require('./page2-native-fir
 const hash = value => crypto.createHash('sha256').update(value).digest('hex')
 const NO_CONSENT = Object.freeze({ ok: true, recorded: false, sequence: null, atMs: null, via: null })
 const requestedAnswers = roots => ({ autonomy: 'assisted', screens: 'live', workspaceRoots: roots,
-  approvals: 'other-work', attach: 'fork', ideImport: 'ask', failover: 'manual' })
+  approvals: 'other-work', attach: 'fork', ideImport: 'ask' })
 
 // This actual callback is serialized by Playwright. It has no module closure
 // dependencies and is separately exercised against controlled read-only IPC.
@@ -25,7 +25,7 @@ async function observeGuidedIPC(keys) {
       approval: settings.rows?.find(row => row.id === 'agent.blocked_question'), rejected: settings.rejected },
     editor: await window.mcSetup.editorSessionState({ discover: false }),
     workspace: await window.mcSetup.workspaceState(), tierConsent: await window.mcSetup.tierConsent(),
-    accounts: { ok: accounts.ok, damaged: accounts.damaged === true, count: accounts.accounts?.length, policy: accounts.policy } }
+    accounts: { ok: accounts.ok, damaged: accounts.damaged === true, count: accounts.accounts?.length } }
 }
 function optionalJSON(qaRoot, file) {
   return ownedPath(qaRoot, file, { missing: true }) ? readOwnedJSON(qaRoot, file) : { file, absent: true }
@@ -48,7 +48,7 @@ async function readGuidedState(context) {
   assert.equal(state.settings.valuesPath, paths.settings, 'Settings must name the exact canonical generated leaf')
   assert.equal(state.editor.ok, true); assert.equal(state.workspace.ok, true); assert.equal(state.workspace.available, true)
   assert.equal(state.accounts.ok, true); assert.equal(state.accounts.damaged, false); assert.equal(state.accounts.count, 0)
-  assert.equal(state.accounts.policy.selectionMode, 'priority', 'Absent accounts retain their read-only default; no manual account policy was written')
+
   assert.deepEqual(state.tierConsent, NO_CONSENT, 'Unavailable consent is not evidence of no confirmed full access')
   state.disk = Object.fromEntries(Object.entries(paths).map(([key, file]) => [key, optionalJSON(context.paths.qaRoot, file)]))
   const values = state.disk.prefs.absent ? {} : state.disk.prefs.value.values
@@ -115,7 +115,7 @@ function assertGuidedSaved(state, workspace) {
   assert.equal(state.settings.approval.provenance.source, 'user'); assert.equal(state.editor.importPolicy, 'none')
   assert.equal(state.disk.settings.value.values['agent.blocked_question'], 'Stop and wait for me')
   assert.equal(state.disk.consent.value.importPolicy, 'none')
-  assert.equal(state.accounts.policy.selectionMode, 'priority'); assert.deepEqual(state.tierConsent, NO_CONSENT)
+   assert.deepEqual(state.tierConsent, NO_CONSENT)
   assert.equal(state.custody.starts, 0); assert.equal(state.custody.registry.absent, true); assert.equal(state.custody.codexHomeEmpty, true)
   return state
 }

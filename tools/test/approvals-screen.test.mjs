@@ -12,7 +12,7 @@
 //      dismiss submits the defaults, and false of a screen the owner scrolls
 //      away from -- there the request simply stays queued.
 //   3. The auto-mount has to be gone, or committing this work quietly reships
-//      the popup that is no longer to be shown.
+//      the popup the owner asked us to stop showing him.
 
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -169,7 +169,7 @@ test('the owner prompt module no longer mounts itself', async () => {
   assert.doesNotMatch(html, /src\/owner-popup\.js/, 'the popup module is no longer loaded as a page script')
 })
 
-/* THE FOLD-IN: approvals.js's card renderer is no
+/* THE OWNER'S FOLD-IN (2026-09-07): approvals.js's card renderer is no
    longer its own ring stop -- it mounts inside the ledger's P tab (see
    src/views/ledger.js). The old #/approvals address must still resolve
    to something on screen, not a dead route, so this test now asks the same

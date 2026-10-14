@@ -13,7 +13,7 @@ export class TreeWindows {
       computer: main.computer, rootId, nodeStyle: main.nodeStyle, circleCards: main.circleCards, cardSize: main.cardSize, compactControls: true, chatOwner: main,
       screenChips: true, contextFeed: main.contextFeed, edges: main.declaredEdges,
       communicationLinks: main.communicationLinks, onRootChange,
-      onOpenControls: main.onOpenControls, onContact: main.onContact, onEmptyPress: main.onEmptyPress,
+      nodeActions: main.nodeActions, onOpenControls: main.onOpenControls, onContact: main.onContact, onEmptyPress: main.onEmptyPress,
       canExtend: main.canExtend, extensionPoints: main.extensionPoints, canDrag: main.canDrag,
       onReparent: main.onReparent, canReparent: main.canReparent, onDetachToNewTree: main.onDetachToNewTree,
       onDropRefused: main.onDropRefused,

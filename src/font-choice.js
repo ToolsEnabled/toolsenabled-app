@@ -4,13 +4,20 @@
 
 export const FONT_EVENT_ID = 'ui_font'
 export const FONT_STORAGE_KEY = 'mc.font'
-export const DEFAULT_FONT = 'plex'
+export const DEFAULT_FONT = 'geist'
+export const MONO_FONT_STACK = '"Geist Mono", "Cascadia Mono", ui-monospace, "DejaVu Sans Mono", monospace'
 
 export const FONT_CHOICES = Object.freeze([
   Object.freeze({
+    id: 'geist',
+    label: 'Geist',
+    description: 'Precise · current default',
+    stack: '"Geist", "Segoe UI Variable", system-ui, -apple-system, "Noto Sans", sans-serif',
+  }),
+  Object.freeze({
     id: 'plex',
     label: 'IBM Plex Sans',
-    description: 'Balanced · current default',
+    description: 'Balanced letter shapes',
     stack: '"IBM Plex Sans Variable", "IBM Plex Sans", "Segoe UI Variable", system-ui, sans-serif',
   }),
   Object.freeze({
@@ -92,4 +99,15 @@ export function applyFontChoice(id) {
   const theme = document.documentElement.dataset.theme
   if (theme) document.documentElement.dataset.theme = theme
   return choice.id
+}
+
+/** Refresh existing themed canvases once the bundled faces finish loading.
+ * No font API means no refresh, rather than claiming the faces loaded. */
+export async function refreshThemedFonts(documentRef = globalThis.document) {
+  if (!documentRef?.fonts?.ready) return false
+  await documentRef.fonts.ready
+  const root = documentRef.documentElement
+  if (!root?.dataset?.theme) return false
+  root.dataset.theme = root.dataset.theme
+  return true
 }

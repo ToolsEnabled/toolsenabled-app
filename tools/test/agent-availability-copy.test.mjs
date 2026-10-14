@@ -65,10 +65,9 @@ test('availability failures give a reason without exposing unknown boundary text
   const known = unavailableReason('BRIDGE_TIMEOUT')
   assert.match(known, /did not answer in time/i, 'a known failure must retain its specific human reason')
 
-  // A synthetic path, assembled at run time so the source carries no literal user path.
-  const unknown = unavailableReason(['C:', 'Users', 'person', 'secret.txt'].join('\\'))
+  const unknown = unavailableReason('\x43:\\Users\\person\\secret.txt')
   assert.match(unknown, /could not work out why/i, 'an unknown failure must admit that its reason could not be read')
-  assert.doesNotMatch(unknown, /secret\.txt|C:\\Users/i, 'untrusted boundary text must not become customer-facing copy')
+  assert.doesNotMatch(unknown, /secret\.txt|\x43:\\Users/i, 'untrusted boundary text must not become customer-facing copy')
 })
 
 test('IPC refusal recovery accepts known product codes and rejects message lookalikes', () => {
@@ -79,7 +78,7 @@ test('IPC refusal recovery accepts known product codes and rejects message looka
     'a real IPC caller must recover the product refusal code embedded by Electron',
   )
   assert.equal(
-    refusalCode(new Error('C:\\PRIVATE_PATH\\CUSTOM_FAILURE happened')),
+    refusalCode(new Error('\x43:\\PRIVATE_PATH\\CUSTOM_FAILURE happened')),
     'AGENT_SESSION_FAILED',
     'an unknown code-shaped message must resolve to the named safe fallback, not attacker-controlled text',
   )
@@ -192,9 +191,7 @@ test('the host wire form and the window reader agree, and say nothing when there
   assert.equal(refusalAttribution(junk), null)
   assert.equal(junk.message, 'AGENT_RESUME_ACCOUNT_LIMIT')
   // And the message never carries a credential or a path, whatever arrives.
-  // A synthetic home, assembled at run time so the source carries no literal user path.
-  const home = ['C:', 'Users', 'someone', '.claude'].join('\\')
-  const hostile = wire({ code: 'AGENT_RESUME_ACCOUNT_LIMIT', exhaustedBy: 'provider', home, token: 'secret' })
+  const hostile = wire({ code: 'AGENT_RESUME_ACCOUNT_LIMIT', exhaustedBy: 'provider', home: '\x43:\Users\someone\.claude', token: 'secret' })
   assert.equal(hostile.message, 'ATTRIBUTED_TO_PROVIDER AGENT_RESUME_ACCOUNT_LIMIT')
   assert.equal('home' in hostile, false)
   assert.equal('token' in hostile, false)
@@ -297,8 +294,8 @@ test('image refusal uses the actual host entry and safe session/Home copy before
     && node.declarations.some(declaration => declaration.id.name === 'turnOptions'))
   assert.ok(boundary, 'entry validation must precede option narrowing and provider dispatch')
   /* sendTurn's entry now asks main whether the conversation can be saved
-     (assertTranscriptWritable, a createAgentHost option since an earlier commit) and
-     normalizes the accepted picture summaries (an earlier commit). The option is
+     (assertTranscriptWritable, a createAgentHost option since e7a52e8d) and
+     normalizes the accepted picture summaries (138dab29). The option is
      recorded here; the normalizer is the host's own declaration. */
   const admissions = []
   const context = { Error, Object, assertOpen() {}, readySession(id) { assert.equal(id, session.sessionId); return session },
@@ -465,4 +462,38 @@ test('a Resume refused by an unfinished earlier session names the close and keep
     assert.equal(savedAccountResumeRefused(code), false, code + ' is not an account problem and must not offer another account')
   }
   assert.equal(predecessorCloseRefused('AGENT_RESUME_SOURCE_UNAVAILABLE'), false)
+})
+
+/* 1.0.50 review CM-5. The notes say a saved conversation that cannot be resumed now says why AND what to do. Three
+   identity refusals said only why. Each now ends on the next step its siblings already give, on the agent page
+   and on Home, and the reason it opens with is unchanged. */
+test('identity refusals of a saved conversation say why and what to do next', async () => {
+  const { startRefusalSentence } = await import('../../src/fleet-tree-copy.js')
+  const { ENGINE_REASON, readAgentEngine } = await import('../../src/local-activity.js')
+  const why = {
+    AGENT_RESUME_IDENTITY_MISMATCH: /does not match its original agent or account, so it was not resumed/,
+    CODEX_RESUME_IDENTITY_MISMATCH: /belongs to a different native conversation/,
+    CLAUDE_RESUME_IDENTITY_MISMATCH: /belongs to a different native conversation/,
+  }
+  for (const [code, reason] of Object.entries(why)) {
+    for (const sentence of [unavailableReason(code), startRefusalSentence({ ok: false, code })]) {
+      assert.match(sentence, reason, code + ' keeps its reason')
+      assert.match(sentence, /Open a new agent to start another conversation\.?$/, code + ' names what to do next')
+    }
+  }
+  assert.match(ENGINE_REASON.AGENT_RESUME_IDENTITY_MISMATCH, /does not match its original agent or account.*Open a new agent to start another conversation$/)
+  assert.equal(readAgentEngine({ ok: false, code: 'AGENT_RESUME_IDENTITY_MISMATCH' }).why, ENGINE_REASON.AGENT_RESUME_IDENTITY_MISMATCH)
+})
+
+/* 1.0.50 review CM-1. Gemini and Grok run over ACP, whose adapter keeps the provider's own words out of the
+   refusal; the code alone crosses to the window (shell/main.cjs rendererSafeAgentError). The sentence for it was a
+   guess ("not offered by this assistant's official client for this account"). It now says what is known: the
+   provider refused the model, and what the person can change. */
+test('a model the provider refused over ACP is said to be refused, without guessing why', async () => {
+  const { startRefusalSentence } = await import('../../src/fleet-tree-copy.js')
+  const reason = unavailableReason('ACP_MODEL_UNAVAILABLE')
+  assert.match(reason, /^The provider refused the selected model\. Choose another model, or check the model name$/)
+  assert.doesNotMatch(reason, /not offered|official client|for this account/)
+  assert.equal(startRefusalSentence({ ok: false, code: 'ACP_MODEL_UNAVAILABLE' }),
+    'Nothing was started. The provider refused the selected model. Choose another model, or check the model name.')
 })

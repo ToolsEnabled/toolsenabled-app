@@ -1,8 +1,8 @@
 /* SETTINGS -> SETUP: everything the walkthrough decided, where it can be found.
  *
- * The requirement has a second half that is easy to miss: the walkthrough may
- * infer, but inference the user cannot see or correct is a trust problem. So
- * every setting the three questions produce has to be
+ * The owner's requirement has a second half that is easy to miss: the
+ * walkthrough may infer, but "inference the user cannot see or correct is a
+ * trust problem". So every setting the three questions produce has to be
  * reachable afterwards, including the ones nobody was asked about.
  *
  * Most of them already are. The six write-action flags are rows in Settings ->
@@ -39,13 +39,13 @@ import { matchesSettingQuery } from './product-settings-layout.js'
 /* The same three answers this lane owes every withheld switch -- what is off,
    what would turn it on, what that gains and risks -- reached from the place a
    person arrives at LATER, rather than only on the walkthrough they may have
-   taken weeks ago (R1529). */
+   taken weeks ago (owner, R1529). */
 import { withheldMarkup } from './guided-step.js'
 /* The screens answer lands on ONE switch now: the example toggle owned by
    src/data-source.js, which replaced the seven per-view live flags. */
 import { currentDataSource, isExampleMode, setExampleMode } from './data-source.js'
 import { WRITE_ACTION_FLAGS, isWriteEnabled, setWriteEnabled } from './write-flags.js'
-/* THE MOMENT OF CHOOSING FULL ACCESS (rule X4). The widest level
+/* THE MOMENT OF CHOOSING FULL ACCESS (owner, X4, 2026-08-15). The widest level
    is not written on the press: the risk is stated in the Terms' own words, on
    this row, and the person is asked. The words, the gate and the sentence about
    what the record holds all come from one module, so this row and the
@@ -82,7 +82,7 @@ import {
    this settings row. DOM-free, so this file supplies its own markup wrapper. */
 import { localModelReadiness } from './setup-review-readiness.js'
 /* The one door to the actual install/download controls, which live in
-   Settings, under "This computer" (by rule: they are drawn
+   Settings, under "This computer" (owner ruling via fleet-B: they are drawn
    from PROVIDER_SETUP, never a second install path here -- this row is a
    summary and a door, not a third way to install Ollama). */
 import { GUIDE_HREF } from './first-run-needs.js'
@@ -101,10 +101,7 @@ export const SETUP_PROFILE_SETTING_COUNT = 8
 // visible words in the search index so this optional setup stays discoverable.
 const SANDBOX_SETUP_NAME = 'Docker and sandbox setup (optional)'
 const SANDBOX_SETUP_DESCRIPTION = 'Docker is needed for sandbox execution, not normal Claude or Codex agents or tree delegation. Open setup and continue to the review page for a readiness check and preparation of the ToolsEnabled sandbox image. Expand “Set up Docker (optional)” there for installation guidance. Opening setup does not install Docker or grant permissions.'
-const ACCOUNT_SELECTION_NAME = 'Default account selection'
-const ACCOUNT_SELECTION_DESCRIPTION = 'The default rule for choosing provider accounts when new sessions start.'
 /* The Accounts menu lives only on Computers; this address opens it there (T1588). */
-export const ACCOUNTS_MENU_HREF = '#/computers?accounts=open'
 
 /* WHY THE FOLDER WAS REFUSED, WHICHEVER WAY THE SHELL SAID IT.
  *
@@ -145,7 +142,7 @@ const BARE_IDENTIFIER = /^[A-Z][A-Z0-9_]*$/
    'setup.tier.choose' on 'tier:<level>', intent first, and answers one of:
      - auditing off (T782): recorded is the engine's exact not-required
        object for the outcome, and intentAudit -- a TOP-LEVEL field beside
-       it, never inside it -- is the exact
+       it, never inside it (Controller review of v3, F5) -- is the exact
        object for the intent; both are read through auditReceiptDisposition
        (M10's contract: every field, no extra, this action and target) --
        'not-required';
@@ -327,9 +324,8 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
     const generation = ++profileEdit
     const write = async () => {
       const intent = policyDraft ? await policyDraft.committedValues(profile.intent, {
-        requireAccount: resetIntents || intentFields?.includes('failover'),
       }) : profile.intent
-      const previous = policyDraft ? { ...savedIntents, approvals: intent.approvals, ideImport: intent.ideImport, failover: intent.failover } : savedIntents
+      const previous = policyDraft ? { ...savedIntents, approvals: intent.approvals, ideImport: intent.ideImport } : savedIntents
       const applied = await applySetupIntentChanges(previous, intent)
       // In Settings each affected preference has its own shared draft key.
       // This last receipt cannot replay a preset over a later explicit edit.
@@ -343,8 +339,8 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
       answers = savedAnswers
       profileBaseline = deriveProfile(savedAnswers).answers
       savedIntents = { ...intent }
-      feedback = { tone: applied.deferred.length ? 'warn' : 'good', title: 'Setup settings saved',
-        detail: applied.deferred.join(' ') || 'The saved answers and their working policies now agree.' }
+      feedback = { tone: 'good', title: 'Setup settings saved',
+        detail: 'The saved answers and their working policies now agree.' }
       refresh()
       void loadEditorSessions()
     }
@@ -352,12 +348,12 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
       // Stage synchronously, before a native policy read yields. A subsequent
       // click in App permissions or What the screens show must stay later.
       stagePreferences(profile, { writeFlags, screens })
-      const changes = Object.fromEntries(['approvals', 'ideImport', 'failover']
+      const changes = Object.fromEntries(['approvals', 'ideImport']
         .filter(field => resetIntents || (intentFields ? intentFields.includes(field) : next[field] !== previousAnswers[field]))
         .map(field => [field, profile.intent[field]]))
       return policyDraft.stage(changes).then(() => {
         if (generation !== profileEdit || !hostRoot) return
-        const comparable = value => JSON.stringify({ ...value, approvals: null, ideImport: null, failover: null })
+        const comparable = value => JSON.stringify({ ...value, approvals: null, ideImport: null })
         if (comparable(profile.answers) === comparable(profileBaseline)
             && !PROFILE_SAVE_DEPENDENCIES.some(key => draft.has(key))) {
           draft.unstage('setup:profile')
@@ -391,9 +387,9 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
         : 'This installed copy cannot change the permission level. Update the app, then try again.',
     })
     /* THE PERMISSION LEVEL IS A SLIDER, NOT A ROW OF BUTTONS, and the axis is
-       protection. A vertical slider: the higher it is, the more protected and
-       the more restricted the agents; at the bottom the agents are not
-       restricted at all -- the user's choice, with a warning.
+       protection. Owner, 2026-08-26: "a slider; up and down and the higher up
+       the more protected the more restricted the agents, at the bottom the
+       agents are not at all restricted -- users choice -- we warn them."
        TIER_CHOICES is already ordered most-protected first, so the visual
        column keeps that order: guided sits at the top, unrestricted at
        the bottom, and moving down is visibly moving toward less protection.
@@ -478,7 +474,7 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
    * setup" pattern this whole file is named for, applied to the one thing
    * setup's review step and this settings row can BOTH honestly say: whether
    * a local runtime is currently answering. The actual install/download
-   * controls are NOT here; a design ruling put those on guide.js's
+   * controls are NOT here; owner ruling via fleet-B put those on guide.js's
    * PROVIDER_SETUP, the product's one existing "install/sign in to a
    * provider" home, so this row does not become a second, thinner copy of
    * that UI. This is the "door", not a duplicate room. */
@@ -776,37 +772,16 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
     refresh()
   }
 
-  function accountPolicyRowMarkup() {
-    const state = policyDraft.accountState()
-    const error = policyDraft.error('failover')
-    const description = [
-      ACCOUNT_SELECTION_DESCRIPTION,
-      state.known ? `Saved default: ${state.label}.` : error,
-      /* T1588: the place is named where a person can find it, and the row
-         carries the door to it. There is no Accounts page; the menu is on
-         Computers, top right. */
-      'Provider overrides, detailed ranking, percentage choices, and continuing after a limit are managed in the Accounts menu on Computers.',
-      state.known && !state.applicable ? 'Add a provider account in the Accounts menu on Computers before changing this rule.' : '',
-      state.known && state.applicable && !state.writable ? 'This installed copy cannot change the rule. Update ToolsEnabled and try again.' : '',
-    ].filter(Boolean).join(' ')
-    const controls = state.known && state.applicable && state.writable
-      ? segMarkup('intent:failover', [
-        { value: 'manual', label: 'Use the selected account' },
-        { value: 'auto', label: 'Choose accounts automatically' },
-      ], effectiveIntents().failover, ACCOUNT_SELECTION_NAME)
-      : '<span class="settings-desc">Account selection cannot be changed. The note in this row says why.</span>'
-    return rowMarkup(ACCOUNT_SELECTION_NAME, description,
-      `${controls}<a class="ctl-btn" href="${ACCOUNTS_MENU_HREF}" data-setup-profile-open-accounts>Open the Accounts menu</a><button type="button" class="ctl-btn" data-setup-profile-action="refresh-account-policy"${busy ? ' disabled' : ''}>Refresh account policy</button>`, 'failover')
-  }
+
 
   function markup({ searchResult = false } = {}) {
     const profile = derived()
     const effectiveProfile = { ...profile, writeFlags: effectiveWriteFlags() }
     const currentTier = tier()
     const tierChoice = TIER_CHOICES.find(choice => choice.tier === currentTier)
-    const autonomy = policyDraft && (!policyKnown || ['approvals', 'ideImport', 'failover'].some(id => policyDraft.error(id))) ? 'unknown' : matchingAutonomy({ tier: currentTier,
+    const autonomy = policyDraft && (!policyKnown || ['approvals', 'ideImport'].some(id => policyDraft.error(id))) ? 'unknown' : matchingAutonomy({ tier: currentTier,
       writeFlags: effectiveProfile.writeFlags, intent: effectiveIntents(profile),
-      accountApplicable: policyDraft ? policyDraft.accountState().applicable : true, preferred: answers.autonomy })
+      preferred: answers.autonomy })
     const autonomyDescription = (currentTier === 'guided' && ['assisted', 'autonomous'].includes(autonomy)
       ? 'This preset is limited by the current permission level. ToolsEnabled permission questions stop and wait for you; app approval and reply controls stay off.'
       : AUTONOMY_CHOICES.find(choice => choice.value === autonomy)?.detail)
@@ -834,7 +809,7 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
              control they went looking for is the thing this row removed. It is
              gated on the DERIVED profile, so a level that refused the flag would
              show it too. */
-          `${autonomyDescription} These presets cover the action switches and four consent rows in Setup. Notifications remain your separate choice. Switched on${draft?.dirty ? ' in the pending choices' : ' now'}: ${WRITE_ACTION_FLAGS.filter(flag => effectiveProfile.writeFlags[flag.id]).map(flag => flag.label).join(', ') || 'nothing that acts'}.${
+          `${autonomyDescription} These presets cover the action switches and three consent rows in Setup. Notifications remain your separate choice. Switched on${draft?.dirty ? ' in the pending choices' : ' now'}: ${WRITE_ACTION_FLAGS.filter(flag => effectiveProfile.writeFlags[flag.id]).map(flag => flag.label).join(', ') || 'nothing that acts'}.${
             profileCanStartAnAgent(effectiveProfile)
               ? ''
               : ` ${AUTONOMY_CHOICES.find(choice => choice.value === answers.autonomy)?.consequence || 'No control that starts an agent is shown until this is changed.'}`
@@ -850,11 +825,11 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
         )}
         ${rowMarkup(
           'The recommended answers, in one press',
-          'Sets the two rows above and the four below to what the walkthrough recommends. The permission level is not touched, and full access is never part of this.',
+          'Sets the two rows above and the three below to what the walkthrough recommends. The permission level is not touched, and full access is never part of this.',
           `<button type="button" class="ctl-btn" data-setup-profile-action="recommended" ${busy ? 'disabled' : ''}>Use recommended answers</button>`,
           'recommended',
         )}
-        ${PROFILE_INTENT.map(field => field.id === 'failover' && policyDraft ? accountPolicyRowMarkup() : rowMarkup(
+        ${PROFILE_INTENT.map(field => rowMarkup(
           field.name,
           /* Each row names its actual consumer or current read failure. */
           `${field.desc} ${policyDraft?.error(field.id) || (field.enforced ? INTENT_IN_USE : INTENT_RECORDED_ONLY)}`,
@@ -1251,7 +1226,6 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
       next = { ...answers, screens: value }
     } else if (target.startsWith('intent:')) {
       const field = intentField(target.slice('intent:'.length))
-      if (field?.id === 'failover' && policyDraft && (!policyDraft.accountState().applicable || !policyDraft.accountState().writable)) return
       if (!field || !intentChoiceAllowed(field, value) || value === effectiveIntents()[field.id]) return
       next = { ...answers, [field.id]: value }
     }
@@ -1273,7 +1247,6 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
     const action = event.target.closest('[data-setup-profile-action]')
     if (!action || !hostRoot?.contains(action)) return
     if (action.dataset.setupProfileAction === 'walkthrough') { navigate('#/setup'); return }
-    if (action.dataset.setupProfileAction === 'refresh-account-policy') { void policyDraft?.refreshAccounts().then(() => refresh()); return }
     if (action.dataset.setupProfileAction === 'recommended') { applyRecommended(); return }
     if (action.dataset.setupProfileAction === 'check-editors') {
       editorSelectionText = hostRoot?.querySelector('[data-editor-selected-ids]')?.value || ''
@@ -1295,8 +1268,7 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
     if (!normalized) return true
     const haystack = [
       SANDBOX_SETUP_NAME, SANDBOX_SETUP_DESCRIPTION,
-      ACCOUNT_SELECTION_NAME, ACCOUNT_SELECTION_DESCRIPTION, policyDraft?.accountState().label || '',
-      'setup permission level tier guided standard unrestricted workspace working folder folders autonomy acting on its own how much it does without asking approvals attach adopt fork mirror editor import account failover sign in walkthrough first run screens demonstration live recommended answers one press',
+      'setup permission level tier guided standard unrestricted workspace working folder folders autonomy acting on its own how much it does without asking approvals attach adopt fork mirror editor import sign in walkthrough first run screens demonstration live recommended answers one press',
       ...TIER_CHOICES.map(choice => `${choice.label} ${choice.detail}`),
       ...AUTONOMY_CHOICES.map(choice => `${choice.label} ${choice.detail}`),
       ...SCREENS_CHOICES.map(choice => `${choice.label} ${choice.detail}`),
@@ -1335,12 +1307,12 @@ export function createSetupProfileSettings({ stageWrite = null, draft = null, pr
   }
 
   function profileState({ saved = false } = {}) {
-    const errors = policyDraft ? ['approvals', 'ideImport', 'failover'].map(id => policyDraft.error(id)).filter(Boolean) : ['The policy controls could not be read from this computer. Press Read saved values to try again.']
+    const errors = policyDraft ? ['approvals', 'ideImport'].map(id => policyDraft.error(id)).filter(Boolean) : ['The policy controls could not be read from this computer. Press Read saved values to try again.']
     const savedProfile = saved ? deriveProfile(readStoredProfile()?.answers || SAFE_ANSWERS, { tier: SETUP_RESOLUTION.tier, writeFlagIds: WRITE_FLAG_IDS }) : null
     return { tier: saved ? SETUP_RESOLUTION.tier : tier(),
       writeFlags: saved ? Object.fromEntries(WRITE_FLAG_IDS.map(id => [id, isWriteEnabled(id)])) : effectiveWriteFlags(),
       intent: saved ? { ...savedProfile.intent, ...policyDraft?.savedValues() } : effectiveIntents(),
-      accounts: policyDraft?.accountState(), ready: policyKnown && errors.length === 0, errors }
+      ready: policyKnown && errors.length === 0, errors }
   }
 
   return Object.freeze({ markup, matches, bind, afterRender, destroy,

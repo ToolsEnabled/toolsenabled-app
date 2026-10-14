@@ -1,6 +1,6 @@
 /* A REMEMBERED FAILURE IS A DEAD PAGE UNTIL YOU LEAVE IT.
  *
- * THE REQUIREMENT: page 2 must not get stuck after a very long wait.
+ * THE OWNER'S REQUIREMENT: page 2 must not "get stuck ... after super long".
  * This is that, in its most literal form.
  *
  * prepareBridgeOnce() memoises an expensive check — bridgeStatus() parses every

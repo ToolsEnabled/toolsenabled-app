@@ -359,6 +359,42 @@ test('a command arriving after view teardown is retained until the visible tree 
   assert.equal(queue.latch(), null)
 })
 
+/* B38: the router retires a view in the same swap that mounts its replacement,
+   so when the retired copy answers VIEW_DESTROYED the page on screen may
+   already be a live Computers view for the same computer. That view takes the
+   request; rendering again would retire it too and mount a third copy. */
+test('a view retired under a command hands it to the Computers view already replacing it, without rebuilding the page', async () => {
+  const bridge = bridgeStub()
+  let queue
+  let renders = 0
+  const ran = []
+  const replacement = {
+    async runTreeNodeCommand(command) {
+      ran.push(`replacement:${command.requestId}`)
+      return { ok: true, code: null, nodeId: 'node-reserved-1', sessionId: 'replacement-session', threadId: null }
+    },
+  }
+  const retired = {
+    async runTreeNodeCommand(command) {
+      ran.push(`retired:${command.requestId}`)
+      /* The second mount lands while this copy is starting the circle: the
+         swap makes the new view current, then this copy learns it is gone. */
+      queue.setCurrent({ route: { name: 'computers', comp: 'this-computer' }, view: replacement })
+      return { ok: false, code: 'MC_TREE_COMMAND_VIEW_DESTROYED', retryable: true, retryAfterMs: 0,
+        nodeId: 'node-reserved-1', sessionId: null, threadId: null }
+    },
+  }
+  queue = loadQueue({ view: retired, mcTreeCommand: bridge.mcTreeCommand, onRender: () => { renders += 1 } })
+  bridge.request(createPayload(REQUEST_A, { reservedNodeId: 'node-reserved-1' }))
+  await settle()
+  assert.equal(renders, 0, 'the live replacement is already on screen; rendering again would retire it')
+  assert.deepEqual(ran, [`retired:${REQUEST_A}`, `replacement:${REQUEST_A}`])
+  assert.deepEqual(bridge.completions.map(result => [result.requestId, result.ok, result.sessionId]),
+    [[REQUEST_A, true, 'replacement-session']])
+  assert.equal(queue.pending.size, 0)
+  assert.equal(queue.latch(), null)
+})
+
 test('a newer broker request supersedes a deferred remount request before the new view mounts', async () => {
   const bridge = bridgeStub()
   const timers = []

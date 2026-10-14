@@ -1,5 +1,5 @@
-/* AGENTS AT A GLANCE — the pure half, called with values. The contents carry
- * more useful, easy, on-demand information.
+/* AGENTS AT A GLANCE — the pure half, called with values. Owner, 2026-09-19:
+ * "the contents inside need to have more useful, easy, on demand info."
  *
  * For the panel's scope: what each agent is doing right now and since when,
  * what is waiting on the owner, the last result per agent, grouped by tree.
@@ -186,8 +186,11 @@ test("the view's tree records carry what the tree saved for each member", async 
       { id: 'n2', treeId: 'tree-seed-1', parentId: 'n1', role: 'builder', nameOrdinal: 1, message: 'Wrap long account names.', status: 'interrupted', statusNote: 'Stopped by you.', reply: 'Halfway', sessionId: 's2', tier: '', effort: '', createdAt: iso(NOW), updatedAt: iso(NOW) },
       { id: 'n3', treeId: 'tree-seed-1', parentId: 'n1', role: 'builder', nameOrdinal: 2, message: '', status: 'draft', statusNote: '', reply: '', sessionId: null, tier: '', effort: '', createdAt: iso(NOW), updatedAt: iso(NOW) },
     ] }))
+  /* liveSessions is the view's own observed stream (src/views/home.js), which
+     now decides each record's liveKeys. None of these members is being watched,
+     so it is empty here, as it is in a view that has observed nothing yet. */
   const context = vm.createContext({
-    sample: false, window: { localStorage: storage }, FLEET: { machines: [{ id: 'this-computer' }] }, conversations: new Map(),
+    sample: false, window: { localStorage: storage }, FLEET: { machines: [{ id: 'this-computer' }] }, conversations: new Map(), liveSessions: new Map(),
     createFleetTreeStore: trees.createFleetTreeStore, safeTreeStorage: trees.safeTreeStorage, nodeDisplayName: trees.nodeDisplayName,
     treeStatus: trees.treeStatus, treeDisplayName: trees.displayName, ROLES, Object, Map, Set, Array,
   })
@@ -202,12 +205,12 @@ test("the view's tree records carry what the tree saved for each member", async 
   assert.deepEqual(b.groups[0].lines.map(line => line.word), ['Finished', 'Stopped by you', 'Not started yet'])
 })
 
-// T1514: two agents set with the default role are named 'Agent (fa51c0de)'
-// and 'Agent (2b7e9a14)'; their monograms read 'A(' because only spaces,
+// T1514: two agents set with the default role are named 'Agent (f885ad47)'
+// and 'Agent (250d6913)'; their monograms read 'A(' because only spaces,
 // underscores and hyphens split the name.
 test('a monogram is letters and digits only, also for names with a bracketed suffix', () => {
-  assert.equal(agentMonogram('Agent (fa51c0de)'), 'AF')
-  assert.equal(agentMonogram('Agent (2b7e9a14)'), 'A2')
+  assert.equal(agentMonogram('Agent (f885ad47)'), 'AF')
+  assert.equal(agentMonogram('Agent (250d6913)'), 'A2')
   assert.equal(agentMonogram('worker one'), 'WO')
   assert.equal(agentMonogram('gem-lane-2'), 'GL')
   assert.equal(agentMonogram('terra_01'), 'T0')
@@ -216,5 +219,5 @@ test('a monogram is letters and digits only, also for names with a bracketed suf
   assert.equal(agentMonogram('Écrivain «deux»'), 'ÉD')
   assert.equal(agentMonogram(''), '?')
   assert.equal(agentMonogram('()'), '?')
-  for (const name of ['Agent (fa51c0de)', 'a.b', '#1 builder', 'x — y']) assert.match(agentMonogram(name), /^[\p{L}\p{N}]{1,2}$/u, name)
+  for (const name of ['Agent (f885ad47)', 'a.b', '#1 builder', 'x — y']) assert.match(agentMonogram(name), /^[\p{L}\p{N}]{1,2}$/u, name)
 })

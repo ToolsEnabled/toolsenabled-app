@@ -2,7 +2,7 @@
 
 /* THE HALF OF A USER SETTING THAT DID NOT EXIST: A WAY TO CHANGE IT.
  *
- * The rule, stated and re-stated: a user setting is a registry row, a
+ * The owner's rule, stated and re-stated: a user setting is a registry row, a
  * real enforcement, AND a control in the software -- or it is a lie. The
  * research rows had two of the three. `research.pipeline`, `research.runner_agent`,
  * `research.runner_process` and `research.runner_http` are declared in the
@@ -110,7 +110,7 @@ const WRITABLE_IDS = Object.freeze([
      the module and the catalogue that carries the row. */
   'agent.capability_recall',
   /* WHETHER AN AGENT WORKS THROUGH THIS PRODUCT'S TOOLS OR THE CLI'S OWN
-     BUILT-IN ONES -- the owner's feature and their name for it, shipped ON.
+     BUILT-IN ONES -- the owner's feature and his name for it, shipped ON.
      Admitted under this list's own rule, with the drive attached and passing:
      the payload's src/lib/agent-api-policy.js is the row's named enforcer, and
      tools/test/agent-api-setting-drive.test.mjs presses THIS writer, reads the
@@ -124,9 +124,10 @@ const WRITABLE_IDS = Object.freeze([
      row's two declared spawn paths ignored. The engine had that wiring the
      whole time; the payload did not, and the payload is what a person runs. */
   'agent.agent_api',
-  /* WHETHER AGENTS MAY EDIT THIS PRODUCT'S OWN SOURCE IN A CHECKOUT (with tool
-     sets on Only the host write fence refused every lane's checkout edit, so
-     this is a switch in settings). Shipped OFF. Drawn directly under Available tool sets because it
+  /* WHETHER AGENTS MAY EDIT THIS PRODUCT'S OWN SOURCE IN A CHECKOUT (owner,
+     2026-09-19: with tool sets on Only the host write fence refused every
+     lane's checkout edit -- "there needs to be a switch in settings for
+     this"). Shipped OFF. Drawn directly under Available tool sets because it
      is the same subject: Only makes ToolsEnabled's file tools the only way an
      agent can write, and this row decides whether those tools may touch
      src/, shell/ and the other product code folders inside a checkout. Its
@@ -140,9 +141,9 @@ const WRITABLE_IDS = Object.freeze([
   'agent.close_asks',
   'agent.persistent_continuation',
   'agent.blocked_question',
-  /* WHERE AN ASSISTANT'S OWN ASSISTANTS APPEAR (an assistant may start another
-     through the ToolsEnabled API as a non-tree agent or as a full user-toggled
-     agent, settled in settings). Drawn next to the
+  /* WHERE AN ASSISTANT'S OWN ASSISTANTS APPEAR (owner, 2026-09-02: an
+     assistant may start another "via toolsenabled api as non tree agents or
+     ... as full user toggled agents", settled in settings). Drawn next to the
      Agent API row because it is the same subject, and NOT nested under it,
      because that row decides whether an assistant also keeps its own built-in
      tool for this and turning it off does not stop agent.spawn -- a nested row
@@ -156,10 +157,11 @@ const WRITABLE_IDS = Object.freeze([
   'agent.message_delivery',
   'agent.message_queue_seconds',
   'rules.require_read_each_turn',
-  /* WHO ADDS STANDING RULES (manually on the Ledger page only; the Ledger page
-     and /request; or agents too, as before). One three-way choice over every
-     door into the rules ledger. It supersedes the on/off switch
-     rules.capture_spoken (O7, a plain on/off), which stays in the payload's
+  /* WHO ADDS STANDING RULES (owner, 2026-09-15: "either manually on the
+     ledger page only, or ledger page and /request, or agent and such like
+     now"). One three-way choice over every door into the rules ledger. It
+     supersedes the on/off switch rules.capture_spoken (O7; the owner's ruling,
+     2026-08-22: "i think just on or off is fine"), which stays in the payload's
      catalogue and is kept in step by the payload's src/lib/settings.js: a
      chosen answer here sets the switch (on only for "Agents too"), so every
      reader built on the switch -- the payload's src/lib/r-ledger-agent-gate.js,
@@ -174,8 +176,8 @@ const WRITABLE_IDS = Object.freeze([
      tools/test/owner-turn-spool.test.mjs and request-contract.test.mjs drive
      both sides of it. */
   'rules.filing_from',
-  /* ITS ONE SUB-SETTING (O7 improvements: a user setting, default no, nested
-     below it in settings). With it on,
+  /* ITS ONE SUB-SETTING (O7 improvements; owner, 2026-08-22: "this is more
+     of a user setting. default no. nest it below in settings"). With it on,
      an agent that is not sure files nothing and ends its reply with one short
      question. Same enforcer -- the gate reads it beside the switch
      (loadAgentFilingMode().askWhenUnsure) and shell/agent-host.cjs hands it
@@ -184,8 +186,8 @@ const WRITABLE_IDS = Object.freeze([
      the same `user` stamp, because the gate's provenance rule applies to it
      too. Directly after its parent: the page draws rows in THIS order. */
   'rules.ask_when_unsure',
-  /* THE SWITCH'S SECOND SUB-SETTING (product rule: one canonical ledger; an
-     agent's filing may wait for the person). With it on,
+  /* THE SWITCH'S SECOND SUB-SETTING (owner directive, 2026-09-02: one
+     canonical ledger; an agent's filing may wait for the person). With it on,
      a rule an agent files lands as a proposal the person approves or declines
      on the Ledger page before any agent treats it as in force; off (the
      default), it counts the moment it is filed. Its enforcer is the payload's
@@ -196,18 +198,18 @@ const WRITABLE_IDS = Object.freeze([
      hands the same reading to the duty paragraph at every session start.
      Directly after its sibling: the page draws rows in THIS order. */
   'rules.agent_filed_needs_approval',
-  /* WHETHER A PROGRAM OUTSIDE THIS APP MAY DRIVE IT (an agent may be allowed
-     to press buttons from outside, as a setting rather than a standard).
-     Shipped OFF. Its
+  /* WHETHER A PROGRAM OUTSIDE THIS APP MAY DRIVE IT (owner, 2026-09-02: "the
+     version on my computer SHOULD allow you an agent to touch buttons from the
+     outside and this should be a setting not a standard"). Shipped OFF. Its
      enforcer is the payload's src/lib/outside-control.js, read by
      shell/outside-control.cjs before Electron is ready, under the same
      provenance rule as agent.tool_approvals: this writer's `user` stamp is
      what makes a true count. tools/test/outside-control.test.mjs drives the
      shell half and checks the payload, this list and the manifest agree. */
   'app.outside_control',
-  /* HOW FAST ASSISTANTS' TOOL CALLS ARE HANDLED (calls stay secure and
-     tracked without slowing a user down, even with 1000 agents making tool
-     calls). fast (the default) runs calls side by side
+  /* HOW FAST ASSISTANTS' TOOL CALLS ARE HANDLED (owner, 2026-09-03: "keep
+     things secure and tracked but do not slow down a user with even 1000
+     agents making tool calls"). fast (the default) runs calls side by side
      and saves their activity records in batches on a helper thread; strict
      is the older one-at-a-time behaviour. Its enforcers are the payload's
      src/lib/throughput-mode.js (the reader), src/lib/tool-registry.js and
@@ -225,9 +227,9 @@ const WRITABLE_IDS = Object.freeze([
   'capability.elevation_survives_restart',
   'agent.message_screening',
   'audit.enabled',
-  /* KEEP METRICS HISTORY ON THIS COMPUTER (product rule: a setting, visible
-     without the audit, switched on by default for every install). On by
-     default. The payload's src/lib/runtime-policy.js
+  /* KEEP METRICS HISTORY ON THIS COMPUTER (owner decision 2026-09-23: "lets
+     make that a setting and turn mine on so i see it without audit and make
+     that default"). On by default. The payload's src/lib/runtime-policy.js
      resolves it into the captured audit policy, and shell/main.cjs reads it
      there: recordSpawnIntent, recordSpawnOutcome and recordSessionEndImpl
      keep the app's own run records, the agent start binds token recording,
@@ -258,7 +260,7 @@ const WRITABLE_IDS = Object.freeze([
      values the system maintains and shows (capability.tier, the captured-rule
      list, the workspace roots). Classified that way, the model a person's own
      computer answers with became a value they could read and not choose, and
-     it was reported as local models not working. Nothing in the writer
+     the owner reported it as local models not working. Nothing in the writer
      consults the control class: setProductSetting checks this list and the
      registry entry, so listing them is what makes them choosable.
 
@@ -659,8 +661,8 @@ function setProductSetting({ id, value, confirmation }, options = {}) {
   }
 
   const current = before.document || {}
-  const values = plainObject(current.values) ? { ...current.values } : {}
-  const provenance = plainObject(current.provenance) ? { ...current.provenance } : {}
+  const values = plainObject(current.values) ? Object.fromEntries(Object.entries(current.values).filter(([key]) => registry.byId.has(key))) : {}
+  const provenance = plainObject(current.provenance) ? Object.fromEntries(Object.entries(current.provenance).filter(([key]) => registry.byId.has(key))) : {}
   const revision = Number.isFinite(current.revision) ? current.revision : 0
 
   values[id] = value
@@ -681,7 +683,7 @@ function setProductSetting({ id, value, confirmation }, options = {}) {
     provenance[change.id] = { ...provenance[id] }
   }
 
-  const document = { ...current, values, provenance, revision: revision + 1 }
+  const document = { ...(current.workingProfile ? { workingProfile: current.workingProfile } : {}), values, provenance, revision: revision + 1 }
 
   try {
     writeDocumentAtomic(valuesPath, document)
@@ -749,7 +751,7 @@ function setProductSettingsMany(request, options = {}) {
      chose; without the receipt the page cannot tell a value the profile put
      there from one the person picked themselves afterwards, and re-picking the
      profile silently replays the preset over the person's own later choice
-     (the reported defect: settings kept not saving). */
+     (owner, 2026-09-15: "my settings keep not saving"). */
   let items = request, workingProfile = null
   if (plainObject(request) && Array.isArray(request.items)) {
     items = request.items
@@ -798,8 +800,8 @@ function setProductSettingsMany(request, options = {}) {
     if (!registry.byId.has(id)) return reject('SETTING_NOT_DECLARED', `"${id}" is not declared by this copy. No setting was changed.`)
   }
   const current = before.document || {}
-  const values = plainObject(current.values) ? { ...current.values } : {}
-  const provenance = plainObject(current.provenance) ? { ...current.provenance } : {}
+  const values = plainObject(current.values) ? Object.fromEntries(Object.entries(current.values).filter(([key]) => registry.byId.has(key))) : {}
+  const provenance = plainObject(current.provenance) ? Object.fromEntries(Object.entries(current.provenance).filter(([key]) => registry.byId.has(key))) : {}
   const atMs = Date.now()
   for (const { id, value } of items) {
     values[id] = value
@@ -827,7 +829,7 @@ function setProductSettingsMany(request, options = {}) {
      ignores the rest, so this key travels with the file without changing
      what it enforces. */
   const receipt = workingProfile ? { workingProfile: { id: workingProfile, atMs } } : {}
-  const document = { ...current, values, provenance, revision, ...receipt }
+  const document = { ...(current.workingProfile ? { workingProfile: current.workingProfile } : {}), values, provenance, revision, ...receipt }
   const candidatePath = `${valuesPath}.${crypto.randomUUID()}.candidate`
   let candidate
   try {

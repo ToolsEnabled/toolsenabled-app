@@ -1,3 +1,4 @@
+import { startExplicitContinuation } from './lib/explicit-continuation.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -103,7 +104,7 @@ function retainedImageBridge(world) {
   bridge.start = async request => {
     starts.push({ sessionId: request.sessionId, replacesSessionId: request.replacesSessionId })
     await gate.promise
-    return { ok: true, sessionId: successor, threadId: 't839-image-thread-successor' }
+    return { ok: true, sessionId: successor, threadId: 't839-image-thread-successor', account: request.treeAccount }
   }
   bridge.send = async () => ({ ok: true, turnId: 'synthetic-person-turn' })
   bridge.sendAutomatic = async () => ({ ok: true, deliveryDisposition: 'accepted', result: { ok: true } })
@@ -195,10 +196,8 @@ test('real Computers coordinator transfers and dispatches retained synthetic ima
   world.storage.setItem('mc.write.agent-session', 'enabled')
   view = await mountView(world, { computerId: COMPUTER_ID })
   assert.ok(view.el.classList.contains('computers'), 'the real Computers view must mount')
-  image.emit({
-    sessionId: predecessor,
-    event: { type: 'account_recovery_needed', recoveryId: 't839-image-recovery', handoff: 'Continue the synthetic image work.' },
-  })
+  await startExplicitContinuation({ computerId: COMPUTER_ID, nodeId,
+    sessionId: predecessor, emit: image.emit })
   await until(() => image.starts.length === 1, 'the real coordinator never reached native successor start')
   assert.deepEqual(image.closes.map(row => row.sessionId), [predecessor], 'the actual coordinator must close its predecessor')
   assert.ok(image.imageCalls.some(row => row.operation === 'read'), 'the coordinator-owned host must read retained custody before close')

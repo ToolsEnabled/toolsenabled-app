@@ -1,8 +1,8 @@
 /* CAN A DRAGGED NODE ACTUALLY REACH THE SLOT IT IS BEING DRAGGED ONTO?
  *
- * Editing had worked -- dragging a node to a new node slot on the
- * same tree, a new tree or a different tree -- and then on page 2 nodes could
- * no longer be dropped onto the new bubbles.
+ * Owner, 2026-08-18: "edit had been working; drag a node to a new node slot;
+ * on the same tree, on a new tree, or on a different tree. On pg2 you cant
+ * drag and drop the nodes onto the new bubbles anymore."
  *
  * NOBODY EVER MEASURED THIS. tools/test/tree-drag-contract.test.mjs pins the
  * drag RULES at source level, and tools/page2-qa.cjs is the only driver that

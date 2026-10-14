@@ -1,4 +1,4 @@
-/* THE METRICS FOOTER VERDICT (BUG08), in its own
+/* THE METRICS FOOTER VERDICT (BUG08, root review 2026-09-21), in its own
  * module so it is the ACTUAL footer expression, unit-tested by value rather
  * than by a source pattern, without pulling the whole Metrics view (and its
  * CSS/chart imports) into a test.

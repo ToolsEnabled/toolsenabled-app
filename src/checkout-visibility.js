@@ -9,7 +9,7 @@
 // product's, so the question was never put and the file travelled. #/checkout
 // was an unconditional stop on the navigation ring, so on a stranger's fresh
 // install the builder's internal purchase list sat one click back from home:
-// internal repo paths, internal request ids, their own second-person
+// internal repo paths, internal request ids, his own second-person
 // deliberations, and a written admission that the installer is unsigned.
 //
 // THE ABSENCE THAT WAS READ AS CONSENT was in the packaging: an unclassified

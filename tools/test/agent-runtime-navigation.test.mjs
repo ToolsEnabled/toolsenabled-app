@@ -27,7 +27,8 @@ function fixture(t, { send = async () => ({ ok: true }), queued = [] } = {}) {
   const coordinator = createAccountRecoveryCoordinator({ sessionNodeIds: owned,
     canStart: () => allowed, canContinue: () => allowed,
     bridge: { onEvent: fn => { events.add(fn); return () => events.delete(fn) },
-      send: args => { sent.push(args); return send(args) } },
+      send: args => { sent.push(args); return send(args) },
+      sendAutomatic: async args => { sent.push(args); return { ok: true, deliveryDisposition: 'accepted', result: await send(args) } } },
     outbox: { takeNext: () => queue.shift(), confirmDelivered: (_session, entry) => confirmed.push(entry),
       requeueFront: (_session, entry) => queue.unshift(entry) } })
   const context = { treeStore, transcriptStore }

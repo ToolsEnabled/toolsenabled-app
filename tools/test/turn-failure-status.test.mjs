@@ -128,18 +128,18 @@ test('the palette owns an honest sentence for saved-but-unreachable turns', () =
     'the saved-conversation state reuses the never-sent sentence — the measured lie')
 })
 
-/* T1509. A recorded usage-limit ending (reset time in the local clock) as the
-   engine now emits it: the card's reply and its
+/* T1509. The recorded usage-limit ending (2026-09-22 12:01Z, reset Sep 29 2:13
+   AM in the owner's clock) as the engine now emits it: the card's reply and its
    note carry the limit, the reset time and the Accounts menu, whole, inside the
    note limit the store enforces. */
-test('a recorded usage-limit ending puts the limit, its reset time and the Accounts menu on the card', () => {
-  const sentence = 'This Codex account has reached its usage limit. The limit resets Sep 29, 3:00 AM. Until then, choose another account in the Accounts menu.'
+test('a recorded usage-limit ending puts the limit, its reset time and Switch and continue on the card', () => {
+  const sentence = 'This Codex account has reached its usage limit. The limit resets Sep 29, 2:13 AM. Until then, use Switch and continue to move this agent to another account.'
   const packet = { sessionId: 's1', event: { type: 'turn_completed', threadId: 't1', turnId: 'turn-1', status: 'failed', text: sentence,
-    payload: { limit: 'usage', resetsAt: '2026-09-29T10:00:00.000Z' } } }
+    payload: { limit: 'usage', resetsAt: '2026-09-29T09:13:00.000Z' } } }
   const engineSentence = sessionTurnFailureText(packet, 's1')
   assert.equal(engineSentence, sentence)
   const words = turnCompletionWords({ succeeded: false, spoken: '', engineSentence })
   assert.equal(words, TURN_FAILED.reply(sentence))
-  assert.match(words, /usage limit.*resets Sep 29, 3:00 AM.*Accounts menu/)
+  assert.match(words, /usage limit.*resets Sep 29, 2:13 AM.*Switch and continue/)
   assert.ok(words.length <= FLEET_TREE_LIMITS.maxNoteChars, 'the card note would cut the reset time off')
 })

@@ -1,17 +1,18 @@
 /* R1238 -- NO PROVIDER IS SILENTLY MISSING FROM THE SWITCH DIALOG.
  *
- * The report: switching models mid-session between Codex, Claude, local, Grok
- * and Gemini had been built, and the button had become hidden.
+ * OWNER, verbatim: "why cant i choose to switch models between codex or claude
+ * or local or grok or gemini mid session. this was built. why does the button
+ * hide now".
  *
- * WHAT WAS WRONG, measured on the assembly at an earlier commit. The chat surface was
+ * WHAT WAS WRONG, measured on the assembly at 5abdbf23. The chat surface was
  * already fine: the conversation's model chip carries a running thread onto
  * another provider through the T137 continuation path, and the T158 suites drive
  * a real claude->codex switch. The circle's "Switch and continue" dialog was the
  * odd one out -- src/switch-and-continue.js switchChoices() filtered with
  * `row.provider !== 'local' && !row.treeOnly`, and every grok and gemini tier in
- * LAUNCH_TIERS carries treeOnly:true. Three of the five providers named were
- * not refused, they were ABSENT, which from the outside is what a hidden
- * button looks like.
+ * LAUNCH_TIERS carries treeOnly:true. Three of the five providers the owner
+ * named were not refused, they were ABSENT, which from the outside is what "the
+ * button hides" looks like.
  *
  * THE TWO THINGS THIS SUITE EXISTS TO STOP.
  *
@@ -52,13 +53,13 @@ const rowsFor = (currentTier = SESSION_TIER, options = {}) =>
    It was written as LAUNCH_TIERS.filter(t => t.provider !== 'local' && !t.treeOnly),
    which re-derives the expectation from the same table the code reads -- so a
    new tier would move the expectation with it and this case would keep passing
-   while the pickable set silently grew. A review caught that. Naming
+   while the pickable set silently grew. Builder 7's review caught that. Naming
    the seven means a new tier fails here and somebody decides on purpose.
-   Decided on purpose for 1.0.48 (product decision: Opus 5 and Sonnet 5 are offered): the ten
+   Decided on purpose for 1.0.48 (owner: "I need opus5 and sonnet5"): the ten
    one-model Claude rows are dispatchable, so they join the default set. The
    two gpt-6 Codex rows added with them are treeOnly and do not. */
 const PREVIOUSLY_OFFERED = ['astra', 'luna', 'terra', 'sol', 'claude-fable', 'claude-sonnet', 'claude-opus',
-  'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-fable-5-1', 'claude-fable-5', 'claude-haiku-4-5',
+  'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-fable-5-1', 'claude-fable-5', 'claude-haiku-4-5',
   'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6']
 
 test('every tier in the product table gets a row -- none is dropped', () => {
@@ -66,10 +67,10 @@ test('every tier in the product table gets a row -- none is dropped', () => {
     'the dialog must draw the launch table in full, in the order it was handed')
 })
 
-test('each of the five named providers reaches the list', () => {
+test('each of the five providers the owner named reaches the list', () => {
   const providers = new Set(rowsFor().map(row => row.provider))
   for (const named of ['codex', 'claude', 'local', 'grok', 'gemini']) {
-    assert.ok(providers.has(named), `${named} is required and no row carries that provider`)
+    assert.ok(providers.has(named), `the owner asked for ${named} and no row carries that provider`)
   }
 })
 

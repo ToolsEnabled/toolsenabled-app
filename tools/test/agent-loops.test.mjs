@@ -148,8 +148,8 @@ test('a full loop stays strictly inside the cap the engine would refuse at', () 
 })
 
 test('a loop never takes a tree seat: its runs are engine launches, one live at a time, not tree children', async () => {
-   /* Loops and grids do not need to be tied together or to any of this. The
-     tree seats four live children under one parent; a
+  /* The owner, 2026-09-11: "loops and grids dont even need to be tied together
+     or to any of this". The tree seats four live children under one parent; a
      loop nests up to seven runs under its first. That is only safe if a loop
      never touches the tree store, so this proves it three ways. */
 

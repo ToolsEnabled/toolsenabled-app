@@ -313,8 +313,9 @@ test('the row controls are drawn only for the verbs the bridge has, and a broken
   missing.view.destroy()
 })
 
-/* THE RESOLVE ACTION: a standing R row (open, in-progress, partial,
-   blocked-external) moves to one of RESOLUTION_STATUSES -- so Resolve is gated on the STATUS, not the rail
+/* THE OWNER'S RESOLVE ACTION (2026-09-07): "a standing R row (open,
+   in-progress, partial, blocked-external) moves to one of
+   RESOLUTION_STATUSES" -- so Resolve is gated on the STATUS, not the rail
    state (a gated row is still standing; the gate is a different axis), it
    is drawn only with the bridge verb, and it must never appear on a row
    that has already stopped standing (done, not-possible-as-asked,
@@ -369,7 +370,7 @@ test('Resolve is drawn on a standing R row only, and only with the bridge verb',
   kinds.view.destroy()
 })
 
-/* THE SIX-TILE SUMMARY STRIP STAYS COARSE (by rule):
+/* THE SIX-TILE SUMMARY STRIP STAYS COARSE (Controller's ruling, 2026-09-07):
    the row's own rail glyph is exact (STATE in src/views/ledger.js), but the
    strip was not redrawn for this feature, so a blocked-external row still
    counts in the existing 'blocked' tile and a partial row still counts in
@@ -673,7 +674,7 @@ test('the feed shapes every record once and classifies its glyph from the ledger
     [{ status: 'open' }, 'open'],
     [{ status: 'open', unmetGateCount: 2 }, 'gated'],
     [{ status: 'in-progress' }, 'in-progress'],
-    /* THE RESOLVE ACTION: four statuses that used to
+    /* THE OWNER'S RESOLVE ACTION (2026-09-07): four statuses that used to
        collapse into a neighbour now read their own rail mark. A gated
        partial row still reads 'gated' -- the gate axis is unchanged --
        but an ungated one is 'partial', its own state, not 'in-progress'. */
@@ -699,7 +700,7 @@ test('the feed shapes every record once and classifies its glyph from the ledger
   assert.equal(rowOf({ id: 'R9', status: 'open', filedBy: '' }).filedBy, 'owner')
 })
 
-/* THE FOUR LEDGER SUBSETS. Until the engine lands `kind`
+/* THE OWNER'S FOUR SUBSETS (2026-09-07). Until the engine lane lands `kind`
    on the store, the ONLY honest source for it is the id's own letter, and a
    record whose id does not start with one of the four kind letters is R --
    matching every id this ledger minted before this feature existed. */

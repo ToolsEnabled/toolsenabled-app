@@ -1,7 +1,7 @@
 /* NO UNACCOUNTED-FOR NEGATIVE MARGIN REACHES THE TRANSCRIPT -- THE WHOLE BUG
  * CLASS, IN EVERY STYLESHEET THAT ACTUALLY PAINTS IT, NOT JUST ONE OF THEM.
  *
- * Reported: text overlapped tool use. tools/test/chat-action-run-overlap.test.mjs
+ * Owner: "text overlaps tool use." tools/test/chat-action-run-overlap.test.mjs
  * pins the ONE cause that was found and fixed: an unscoped
  * `.chat-action + .chat-action { margin-top: calc(-1 * var(--s1)); }` drew a
  * tool call's own name and command 4px up into the row above it, because the
@@ -181,7 +181,7 @@ test('no selector reaching into the transcript carries a negative margin, in any
     ALLOWED_NEGATIVE_MARGIN_RULES,
     'a new negative margin reaches a transcript row -- in this file or another stylesheet the app loads alongside it. ' +
       'src/main.js imports every view eagerly, so every src/*.css file shares the transcript\'s cascade from boot, not ' +
-      'only src/styles.css. Every entry above the allowed one is the text-overlaps-tool-use defect class recurring ' +
+      'only src/styles.css. Every entry above the allowed one is the "text overlaps tool use" defect class recurring ' +
       'at a different selector or a different file -- read the rule named in the diff, find the flex gap (if any) it ' +
       'actually has to spend, and scope it the way chat-action-run-overlap.test.mjs already documents for the one ' +
       'rule that needed it.',

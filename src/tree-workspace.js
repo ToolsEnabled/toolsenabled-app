@@ -1,3 +1,5 @@
+import { conversationNavigationFor } from './tree-conversation-navigation.js'
+import { bindNodeMenuGestures, openNodeActionMenu, nodeMenuRows } from './node-action-menu.js'
 import { el } from './components.js'
 import { paintRoleColor } from './role-colors.js'
 import { mountStandaloneAgent, standaloneStartChoices, defaultStandaloneStart, standaloneStartFrom, standaloneStartChangedSentence, STANDALONE_RESTORE_COPY } from './tree-standalone-agent.js'
@@ -5,6 +7,7 @@ import { PROVIDER_CHOICES, START_PANEL, effortChoicesFor, providerDefaultTier, t
 import { offeredEffort } from './orchestration-controls.js'
 import { placeStandaloneAgent } from './tree-standalone-placement.js'
 import { textZoom } from './text-size.js'
+import { OTHER_MODEL_VALUE, OTHER_MODEL_LABEL, MODEL_NAME_HELP, customModelTier, modelIdProblem, modelEffortRow } from './model-picker.js'
 
 const STANDALONE_NOTICE_KEY = 'mc.tree.standalone-notice.v1'
 const STANDALONE_DRAG_TYPE = 'application/x-toolsenabled-standalone-agent'
@@ -135,6 +138,9 @@ export class TreeWorkspace {
             <label class="tree-agent-spawn-field"><span>${START_PANEL.tierLabel}</span>
               <select class="tree-agent-spawn-select" data-spawn-field="tier"></select></label>
           </div>
+          <label class="tree-agent-spawn-field" data-spawn-model-field hidden><span>Model name</span>
+            <input type="text" class="tree-agent-spawn-select" data-spawn-field="model" aria-label="Model name" autocomplete="off" spellcheck="false">
+            <small>${MODEL_NAME_HELP}</small></label>
           <label class="tree-agent-spawn-field"><span>Effort</span>
             <select class="tree-agent-spawn-select" data-spawn-field="effort"></select></label>
           <p class="tree-agent-spawn-why" role="status" hidden></p>
@@ -164,6 +170,8 @@ export class TreeWorkspace {
     </section>`)
     graph.chatShelf = this.root
     graph.chatTabs = this.root.querySelector('.tree-chat-tabs')
+    this.disposeTabMenu = bindNodeMenuGestures(graph.chatTabs, (event, keyboard) => this.openTabMenu(event, keyboard),
+      { allowTouch: () => !graph.editMode })
     graph.chatPicker = this.root.querySelector('.tree-chat-picker')
     graph.chatChooser = this.root.querySelector('.tree-chat-chooser')
     graph.chatTrack = this.root.querySelector('.tree-conversation-track')
@@ -272,12 +280,12 @@ export class TreeWorkspace {
       const opened = this._spawnOpened = (this._spawnOpened || 0) + 1
       /* The opening depth rides with the opening model. A start with no depth
          is "Model default" (''), which is that menu's own first row. */
-      this._fillSpawnTiers(opening?.tier, opening ? (opening.effort ?? '') : undefined)
+      this._fillSpawnTiers(opening?.tier, opening ? (opening.effort ?? '') : undefined, opening?.model ?? null)
       const refresh = this.graph.standaloneAgent?.refreshTierChoices
       if (typeof refresh === 'function') {
         Promise.resolve().then(() => refresh()).then(() => {
           // Only the pop-up that asked: a late answer must not re-pick another door's model.
-          if (!this._destroyed && !notice.hidden && !this._spawnTouched && opened === this._spawnOpened) this._fillSpawnTiers(opening?.tier)
+          if (!this._destroyed && !notice.hidden && !this._spawnTouched && opened === this._spawnOpened) this._fillSpawnTiers(opening?.tier, opening?.effort, opening?.model ?? null)
         }, () => {})
       }
       this._spawnApply = fromTab ? apply : null
@@ -297,8 +305,8 @@ export class TreeWorkspace {
     this.root.querySelector('.tree-new-agent').addEventListener('click', () => {
       /* ALWAYS THE CHOOSER. It used to skip to a chat once the notice had
          been seen, which left a person with a conversation they never chose
-         a program for -- + opens a pop-up menu that chooses what to spawn.
-         The explanation below it is still shown once;
+         a program for -- the owner, 2026-09-17: "Give it a pop up menu to
+         select what to spawn". The explanation below it is still shown once;
          the choice is asked every time, because it is a different answer
          every time. */
       this.openSpawnChooser()
@@ -306,6 +314,7 @@ export class TreeWorkspace {
     const spawnProvider = () => this.root.querySelector('.tree-agent-notice [data-spawn-field=provider]')
     const spawnTier = () => this.root.querySelector('.tree-agent-notice [data-spawn-field=tier]')
     const spawnEffort = () => this.root.querySelector('.tree-agent-notice [data-spawn-field=effort]')
+    const spawnModel = () => this.root.querySelector('.tree-agent-notice [data-spawn-field=model]')
     /* A NEW PROVIDER: its models, its default model (Codex GPT-6-Astra, Claude
        the moving "Opus (latest)", anyone else their first row this computer
        can start -- providerDefaultTier, the rule the start panel uses), that
@@ -322,10 +331,19 @@ export class TreeWorkspace {
       this._spawnTouched = true
       this._showSpawnEfforts(spawnTier().value)
       this._paintSpawnContinue()
+      if (spawnTier().value === OTHER_MODEL_VALUE) spawnModel()?.focus()
+    })
+    spawnModel()?.addEventListener('input', () => {
+      this._spawnTouched = true
+      this._showSpawnEfforts(spawnTier().value, spawnEffort()?.value)
+      this._paintSpawnContinue()
     })
     this.root.querySelector('.tree-agent-continue').addEventListener('click', () => {
+      const other = spawnTier()?.value === OTHER_MODEL_VALUE
+      if (other && modelIdProblem(spawnModel()?.value)) { this._paintSpawnContinue(); spawnModel()?.focus(); return }
       try { localStorage.setItem(STANDALONE_NOTICE_KEY, 'true') } catch { /* the tab can still open */ }
-      const picked = { tier: spawnTier()?.value, effort: spawnEffort()?.value }
+      const picked = { tier: other ? customModelTier(spawnProvider()?.value) : spawnTier()?.value, effort: spawnEffort()?.value,
+        ...(other ? { model: spawnModel().value } : {}) }
       const apply = this._spawnApply
       const door = this.closeSpawnChooser()
       /* A tab's door changes that tab (B25); only the + door opens one. */
@@ -374,6 +392,7 @@ export class TreeWorkspace {
     this.root.addEventListener('keydown', event => this.keydown(event))
     let resume = null
     for (const record of this.retainedStandalone?.values() || []) {
+      record.session.setTranscript?.(graph.standaloneAgent?.transcript || null)
       record.workspace = this
       record.parkedDraftSink = null
       this.standalone.set(record.id, record)
@@ -382,7 +401,7 @@ export class TreeWorkspace {
       delete record.resumeChat
     }
     /* THE TABS THAT WERE OPEN AT THE LAST QUIT COME BACK (B4, 1.0.48; the
-       owner decided to reopen them). A restart or a reload gives this page a new
+       owner: "Yes, reopen them"). A restart or a reload gives this page a new
        document, so the retained tabs above are gone and only the list of open
        tabs remembers them. Their ids are held HERE, synchronously, before the
        Computers view's seat sweep can run, so a tab that never sent (and so
@@ -488,8 +507,8 @@ export class TreeWorkspace {
     return usable.length ? usable : tierChoicesFor([...solo]).filter(row => solo.has(row.id))
   }
 
-  /* PROVIDER, THEN MODEL, THEN DEPTH (1.0.48, owner decision: provider
-     first, then model). The Provider menu is a filter over the rows, never a
+  /* PROVIDER, THEN MODEL, THEN DEPTH (1.0.48, owner: "it should be provider,
+     then model choice"). The Provider menu is a filter over the rows, never a
      field of the start: what the pop-up hands on is still { tier, effort }, and
      the Model menu keeps data-spawn-field="tier" with row ids as its values.
 
@@ -498,7 +517,7 @@ export class TreeWorkspace {
      survives only while the model does: `preferredEffort` when opening on
      `preferred`, the one on screen when the model did not move, and that
      model's own default otherwise. */
-  _fillSpawnTiers(preferred = null, preferredEffort = undefined) {
+  _fillSpawnTiers(preferred = null, preferredEffort = undefined, preferredModel = null) {
     const provider = this.root.querySelector('.tree-agent-notice [data-spawn-field=provider]')
     const tier = this.root.querySelector('.tree-agent-notice [data-spawn-field=tier]')
     const effort = this.root.querySelector('.tree-agent-notice [data-spawn-field=effort]')
@@ -519,13 +538,16 @@ export class TreeWorkspace {
     provider.replaceChildren(...PROVIDER_CHOICES
       .filter(choice => rows.some(row => tierProvider(row.id) === choice.id))
       .map(choice => spawnOption(choice.id, choice.label)))
-    this._showSpawnProvider(tierProvider(pick), pick, keep)
+    /* A typed name belongs to the row it was typed under (1.0.50 review CM-6). When that row cannot start and the
+       pick falls back to another provider, the name stays behind: carried along, it filled the fallback
+       provider's Other model… and confirming scheduled, say, a Codex start with a Claude model name. */
+    this._showSpawnProvider(tierProvider(pick), pick, keep, pick === preferred ? preferredModel : null)
   }
 
   /* One provider's rows in the Model menu, `tierId` chosen, and its depths.
      A row this computer cannot start stays drawn with its reason and cannot be
      picked, as in the start panel. */
-  _showSpawnProvider(providerId, tierId, keepEffort = undefined) {
+  _showSpawnProvider(providerId, tierId, keepEffort = undefined, model = null) {
     const provider = this.root.querySelector('.tree-agent-notice [data-spawn-field=provider]')
     const tier = this.root.querySelector('.tree-agent-notice [data-spawn-field=tier]')
     if (!provider || !tier) return
@@ -536,7 +558,12 @@ export class TreeWorkspace {
       option.disabled = row.enabled === false
       return option
     }))
-    tier.value = rows.some(row => row.id === tierId) ? tierId : rows[0]?.id || ''
+    const defaultRow = rows.find(row => row.id === customModelTier(providerId))
+    const other = spawnOption(OTHER_MODEL_VALUE, OTHER_MODEL_LABEL)
+    other.disabled = !defaultRow || defaultRow.enabled === false
+    tier.appendChild(other)
+    this.root.querySelector('.tree-agent-notice [data-spawn-field=model]').value = model ?? ''
+    tier.value = model != null ? OTHER_MODEL_VALUE : rows.some(row => row.id === tierId) ? tierId : rows[0]?.id || ''
     this._showSpawnEfforts(tier.value, keepEffort)
     this._paintSpawnContinue()
   }
@@ -549,9 +576,14 @@ export class TreeWorkspace {
   _showSpawnEfforts(tierId, keep = undefined) {
     const effort = this.root.querySelector('.tree-agent-notice [data-spawn-field=effort]')
     if (!effort) return
-    const choices = effortChoicesFor(tierId)
+    const provider = this.root.querySelector('.tree-agent-notice [data-spawn-field=provider]')?.value
+    const model = this.root.querySelector('.tree-agent-notice [data-spawn-field=model]')
+    const other = tierId === OTHER_MODEL_VALUE
+    this.root.querySelector('[data-spawn-model-field]').hidden = !other
+    const row = other ? modelEffortRow(customModelTier(provider), model?.value) : tierId
+    const choices = effortChoicesFor(row)
     effort.replaceChildren(...choices.map(choice => spawnOption(choice.id, choice.label)))
-    const wanted = keep === '' ? '' : offeredEffort(tierId, keep) || null
+    const wanted = keep === '' ? '' : offeredEffort(row, keep) || null
     effort.value = choices.some(choice => choice.id === wanted) ? wanted
       : (choices.find(choice => choice.isDefault) || choices[0])?.id ?? ''
   }
@@ -563,14 +595,20 @@ export class TreeWorkspace {
     const tier = this.root.querySelector('.tree-agent-notice [data-spawn-field=tier]')
     const confirm = this.root.querySelector('.tree-agent-continue')
     if (!tier || !confirm) return
-    const row = (this._spawnRows || []).find(entry => entry.id === tier.value)
-    confirm.disabled = !row || row.enabled === false
+    const other = tier.value === OTHER_MODEL_VALUE
+    const provider = this.root.querySelector('.tree-agent-notice [data-spawn-field=provider]')?.value
+    const model = this.root.querySelector('.tree-agent-notice [data-spawn-field=model]')
+    const problem = other ? modelIdProblem(model?.value) : ''
+    if (problem) model?.setAttribute('aria-invalid', 'true')
+    else model?.removeAttribute('aria-invalid')
+    const row = (this._spawnRows || []).find(entry => entry.id === (other ? customModelTier(provider) : tier.value))
+    confirm.disabled = !row || row.enabled === false || Boolean(problem)
     /* AND WHY, BESIDE IT (review P9). The reason used to live only at the end
        of an option label the narrow Model menu cuts off, so "Open agent tab"
        went grey with nothing on screen saying why. */
     const why = this.root.querySelector('.tree-agent-notice .tree-agent-spawn-why')
     if (why) {
-      const sentence = row && row.enabled === false ? row.label || '' : ''
+      const sentence = row && row.enabled === false ? row.label || '' : problem
       why.textContent = sentence
       why.hidden = !sentence
     }
@@ -829,6 +867,10 @@ export class TreeWorkspace {
       let record
       const session = mountStandaloneAgent(panel, { id, name, ...agent, start, seat,
         restored: { lines: Array.isArray(saved?.lines) ? saved.lines : [], before: saved?.before || null,
+          threadId: saved?.threadId || null, provider: saved?.provider || null,
+          ...(saved && Object.hasOwn(saved, 'account') ? { account: saved.account } : {}),
+          nativeSessionId: saved?.nativeSessionId || null,
+          resumeIdentityError: saved?.resumeIdentityError || null,
           recoveryDirectory: saved?.recoveryDirectory || null, unreadable, notes, cause,
           // The session it had at quit, whose waiting messages the next session takes (B4 step 11).
           sessionId: typeof entry.sessionId === 'string' && entry.sessionId ? entry.sessionId : null },
@@ -873,6 +915,8 @@ export class TreeWorkspace {
     for (const tab of this.graph.chatTabs.querySelectorAll('[data-workspace-id]')) {
       const selected = this.mode === 'trees' && tab.dataset.workspaceId === board.activeId
       tab.setAttribute('aria-selected', String(selected))
+      tab.setAttribute('aria-haspopup', 'menu')
+      tab.setAttribute('aria-keyshortcuts', 'Shift+F10 ContextMenu')
       tab.tabIndex = selected ? 0 : -1
       tab.parentElement.classList.toggle('is-active', selected && tab !== this.home)
     }
@@ -993,6 +1037,8 @@ export class TreeWorkspace {
       tab.draggable = !!record.standalone && !record.treeNodeId && !record.placementPending && !graph.editMode && !graph._linkMode
       tab.tabIndex = selected ? 0 : -1
       tab.setAttribute('aria-selected', String(selected))
+      tab.setAttribute('aria-haspopup', 'menu')
+      tab.setAttribute('aria-keyshortcuts', 'Shift+F10 ContextMenu')
       wrapper.classList.toggle('is-active', selected)
       wrapper.querySelector('.tree-chat-tab-close').setAttribute('aria-label', `Close ${record.agent.name} tab`)
       wrapper.querySelector('.tree-chat-tab-close').disabled = !!record.placementPending
@@ -1017,6 +1063,70 @@ export class TreeWorkspace {
       this.placementPopover.querySelector('.tree-standalone-place-confirm').disabled = pending
       this.placementPopover.querySelector('select').disabled = pending
     }
+  }
+
+  openTabMenu(event, keyboard = false) {
+    const anchor = event.target.closest?.('.tree-chat-tab')
+    const record = anchor && this.record(anchor.dataset.agentId)
+    if (!record?.chatOpen) return
+    if (!record.standalone) {
+      this.graph._openNodeContextMenu(event, keyboard, { anchor, record })
+      return
+    }
+    event.preventDefault(); event.stopPropagation()
+    const open = id => {
+      this.mode = 'chat'; this.graph.activeChatId = record.id; this.sync()
+      if (id !== undefined) record.session.openActions?.(id)
+      else record.session.focus()
+    }
+    const navigation = () => {
+      const row = (id, label, enabled, disabledHint, run) => ({ id, label, enabled, disabledHint,
+        run: ctx => { ctx.close(false); run() } })
+      const edit = 'Finish editing the tree first.'
+      return [
+        ...(this.mode !== 'chat' ? [row('open-chat', 'Open chat', !this.graph.editMode, edit, () => open())] : []),
+        ...(!record.treeNodeId ? [row('add-to-tree', 'Add to tree', !record.placementPending && !this.graph.editMode && !this.graph._linkMode,
+          record.placementPending ? 'Wait until it has been added to the tree.' : this.graph._linkMode ? 'Stop linking first.' : edit, () => this.showPlacementPicker(record))] : []),
+        row('all-actions', 'All actions', true, '', () => open(null)),
+        row('close-tab', 'Close tab', !record.placementPending && !this.graph.editMode,
+          record.placementPending ? 'Wait until it has been added to the tree.' : edit, () => this.close(record)),
+      ]
+    }
+    this.tabMenu = openNodeActionMenu({ anchor, fallback: this.home, title: record.agent.name, keyboard,
+      point: keyboard ? null : { x: event.clientX, y: event.clientY },
+      rows: () => nodeMenuRows(record.session.actionRows?.() || [], navigation()),
+      subscribe: record.session.subscribeActions, openInChat: open,
+      valid: () => !this._destroyed && this.record(record.id) === record && record.chatOpen,
+    })
+  }
+
+  restoreNavigation() {
+    const graph = this.graph
+    const scope = graph.standaloneAgent?.persistenceKey
+    if (!scope) return
+    const saved = conversationNavigationFor(this.root.ownerDocument).take(scope, (id, standalone) => standalone
+      ? this.standalone.get(id) : graph._agentFor(id)?.treeNode)
+    if (!saved) return
+    for (const tab of saved.tabs) {
+      if (tab.standalone) continue
+      const agent = graph._agentFor(tab.id)
+      if (!agent || agent.treeScope?.group) continue
+      const record = graph.nodes.get(tab.id) || graph._createRecord(agent, false)
+      if (!record.chatOpen) graph.openChat(record, { focus: false })
+      record.chatPinned = record.chatOpen
+    }
+    graph.activeChatId = saved.activeId
+    this.mode = saved.mode
+    this.sync()
+  }
+
+  rememberNavigation() {
+    const scope = this.graph.standaloneAgent?.persistenceKey
+    if (!scope) return
+    const tabs = [...this.graph.chatTabs.querySelectorAll('.tree-chat-tab')]
+      .map(tab => this.record(tab.dataset.agentId)).filter(record => record?.chatOpen && record.chatPinned)
+      .map(record => ({ id: record.id, createdAt: record.agent.treeNode?.createdAt, standalone: record.standalone === true }))
+    conversationNavigationFor(this.root.ownerDocument).save(scope, { tabs, activeId: this.graph.activeChatId, mode: this.mode })
   }
 
   focusTab(id) {
@@ -1110,7 +1220,10 @@ export class TreeWorkspace {
 
   destroy() {
     if (this._destroyed) return
+    this.rememberNavigation()
     this._destroyed = true
+    this.tabMenu?.close(false)
+    this.disposeTabMenu?.()
     clearTimeout(this.placementStatusTimer)
     this.hidePlacementPicker()
     this.clearStandaloneDrag()

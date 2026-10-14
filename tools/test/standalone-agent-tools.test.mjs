@@ -1,7 +1,7 @@
 /* T286/T88 ITEM 2: A SOLO AGENT GETS THE SAME TOOLS AS A TREE AGENT.
  *
- * The standalone agent could not pick a model or effort level or
- * use any tools, although it is the same agent system.
+ * The owner, 2026-09-17: "your agent cant even pick a model or effort level or
+ * use any tools. I TOLD YOU THIS", and on 09-15 "its the same agent system".
  *
  * THE SUSPICION THIS CLOSES, and it was mine. A standalone session is
  * anonymous by construction: mountStandaloneAgent is deliberately absent from

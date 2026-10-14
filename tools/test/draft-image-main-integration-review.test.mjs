@@ -27,7 +27,7 @@ function walk(node, visit) {
     else if (value && typeof value === 'object') walk(value, visit)
   }
 }
-const functionNames = ['agentIpcError', 'agentPayload', 'boundedAgentString', 'parseAgentStart',
+const functionNames = ['agentIpcError', 'agentPayload', 'boundedAgentString', 'boundedAgentModel', 'parseAgentStart',
   'parseAgentSessionCommand', 'parseAgentPasteAttachment', 'getImageOwnerContext', 'readImageOwnerContext',
   'accountPrincipal', 'invalidateImageDrafts', 'invalidateEndedRecovery', 'verifiedDraftComputerId', 'registerImageDraft',
   'imageDraftRecord', 'runImageDraftStart', 'pasteImageDraft', 'runImageQueue', 'readSavedFleetTrees', 'getEndedSessionRecovery',
@@ -203,7 +203,7 @@ async function setup(t) {
   deps.sessionCreated = api.sessionCreated
   deps.imageQueue = request => { state.queueCalls.push(request); return api.runImageQueue(request, principal) }
   deps.savePasteAttachment = env.savePasteAttachmentToDisk
-  /* main's event callback is async since an earlier commit: display waits for
+  /* main's event callback is async since 138dab29: display waits for
      transcript capture. Keep each delivery the host is handed, so a test can
      wait for the real terminal fan-out to reach the window. */
   const unsubscribe = host.onEvent(packet => {

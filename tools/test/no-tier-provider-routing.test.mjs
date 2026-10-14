@@ -1,11 +1,11 @@
 // WHICH ENGINE A NO-TIER START REACHES, ON A MACHINE THAT ONLY HAS ONE.
 //
-// THE DEFECT, found by cross-machine testing on a Claude-only foreign
-// machine: with no ~/.codex/auth.json anywhere, pressing Start from the agent
+// THE DEFECT, driven on a Claude-only foreign machine by the cross-machine
+// lane: with no ~/.codex/auth.json anywhere, pressing Start from the agent
 // page refused -- even with Claude installed and signed in -- because the
 // no-tier start path assumed a CODEX confinement plan regardless of what the
-// machine actually has. Provider-login work fixed the refusal's WORDS
-// (an earlier commit); this suite pins the ROUTING: the no-tier default resolves from
+// machine actually has. The provider-login lane fixed the refusal's WORDS
+// (6a3ab66); this suite pins the ROUTING: the no-tier default resolves from
 // the machine's real presence, per provider.
 //
 // Asserted on WHICH FIXTURE ENGINE RECORDED THE START, never on source text:

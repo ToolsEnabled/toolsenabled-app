@@ -22,7 +22,7 @@ let source = readFileSync(new URL('../../src/quick-settings.js', import.meta.url
   .replace(/import \{\s*readPhoneLedgerChoice,\s*setPhoneLedgerChoice,\s*\} from '\.\/phone-ledger\.js'/,
     "const readPhoneLedgerChoice = () => 'off'; const setPhoneLedgerChoice = () => null")
   .replace("from './data-source.js'", `from ${JSON.stringify(dataSourceUrl)}`)
-for (const file of ['theme-choice.js', 'appearance-persistence.js', 'font-choice.js', 'text-size.js', 'agent-api-setting.js', 'audit-performance-settings.js', 'settings-numeric.js', 'home-status-quick-settings.js', 'home-circle-choice.js', 'home-circle-clock.js', 'home-circle-playful-moment.js']) {
+for (const file of ['theme-choice.js', 'appearance-persistence.js', 'font-choice.js', 'text-size.js', 'agent-api-setting.js', 'audit-performance-settings.js', 'settings-numeric.js', 'home-status-quick-settings.js']) {
   source = source.replace(`from './${file}'`, `from ${JSON.stringify(new URL(`../../src/${file}`, import.meta.url).href)}`)
 }
 const { renderQuickSettings } = await import(`data:text/javascript,${encodeURIComponent(source)}`)
@@ -75,7 +75,6 @@ const cases = [
   { id: 'theme', key: 'mc.theme', value: 'black', run: f => f.press('[data-theme="black"]'), check: f => assert.equal(f.live().theme, 'black') },
   { id: 'font', key: 'mc.font', value: 'manrope', run: f => f.press('[data-font="manrope"]'), check: f => assert.equal(f.live().font, fontStack('manrope')) },
   { id: 'text', key: 'mc.text', value: '1.12', run: f => f.press('[data-text="1.12"]'), check: f => { assert.equal(f.live().zoom, '1.12'); assert.equal(f.live().scale, '1.12') } },
-  { id: 'glow', key: 'mc.set.glow', value: '51', run: f => { const input = f.node('#set-glow'); input.value = '51'; input.dispatchEvent({ type: 'input' }) }, check: f => { assert.equal(f.live().glow, '0.51'); assert.equal(f.node('#set-glow').style.getPropertyValue('--fill'), '25.5%') } },
   { id: 'motion', key: 'mc.set.reduce_motion', value: 'true', run: f => { const input = f.node('#set-motion'); input.checked = true; input.dispatchEvent({ type: 'change' }) }, check: f => assert.equal(f.live().motion, true) },
   { id: 'example', key: 'mc.example', value: 'on', run: f => { const input = f.node('[data-quick-example]'); input.checked = true; input.dispatchEvent({ type: 'change' }) }, check: () => assert.equal(isExampleMode(), true) },
 ]
@@ -93,7 +92,6 @@ for (const entry of cases) test(`${entry.id}: failed save preserves prior live/c
     assert.match(f.error(entry.id).textContent, /could not be saved.*Try again/)
     if (entry.id === 'motion') assert.equal(f.node('#set-motion').checked, false)
     if (entry.id === 'example') { assert.equal(f.node('[data-quick-example]').checked, false); assert.equal(isExampleMode(), false) }
-    if (entry.id === 'glow') { assert.equal(f.node('#set-glow').value, '100'); assert.equal(f.node('#set-glow').style.getPropertyValue('--fill'), '50%') }
     f.fail(null); entry.run(f)
     assert.equal(f.values.get(entry.key), entry.value)
     assert.equal(f.operations.length, 1)
@@ -104,11 +102,10 @@ for (const entry of cases) test(`${entry.id}: failed save preserves prior live/c
   } finally { f.restore() }
 })
 
-test('returning glow, motion and example to defaults preserves non-default values when removal fails', () => {
+test('returning motion and example to defaults preserves non-default values when removal fails', () => {
   const f = fixture({ seed: { 'mc.set.glow': '51', 'mc.set.reduce_motion': 'true', 'mc.example': 'on' }, glow: 51, motion: true })
   try {
     const choices = [
-      ['mc.set.glow', '#set-glow', node => { node.value = '100'; node.dispatchEvent({ type: 'input' }) }],
       ['mc.set.reduce_motion', '#set-motion', node => { node.checked = false; node.dispatchEvent({ type: 'change' }) }],
       ['mc.example', '[data-quick-example]', node => { node.checked = false; node.dispatchEvent({ type: 'change' }) }],
     ]
@@ -116,12 +113,12 @@ test('returning glow, motion and example to defaults preserves non-default value
       const previous = f.live(); f.fail(key); change(f.node(selector))
       assert.deepEqual(f.live(), previous); assert.ok(f.values.has(key)); assert.equal(f.events.length, 0)
     }
-    assert.equal(f.node('#set-glow').value, '51'); assert.equal(f.node('#set-motion').checked, true); assert.equal(f.node('[data-quick-example]').checked, true)
+    assert.equal(f.node('#set-motion').checked, true); assert.equal(f.node('[data-quick-example]').checked, true)
     f.fail(null)
     for (const [, selector, change] of choices) change(f.node(selector))
-    assert.equal(f.values.size, 0); assert.equal(f.operations.length, 3)
+    assert.equal(f.values.size, 1); assert.equal(f.values.get('mc.set.glow'), '51'); assert.equal(f.operations.length, 2)
     assert.ok(f.operations.every(operation => operation.kind === 'remove'))
-    assert.equal(f.live().glow, '1'); assert.equal(f.live().motion, false); assert.equal(isExampleMode(), false)
+    assert.equal(f.live().motion, false); assert.equal(isExampleMode(), false)
   } finally { f.restore() }
 })
 
@@ -225,5 +222,18 @@ test('150% and 200% drawer choices persist before applying, survive reopen and r
     assert.equal(f.values.get('mc.text'), '1')
     assert.equal(f.live().zoom, '')
     assert.equal(f.live().scale, '')
+  } finally { f.restore() }
+})
+
+
+test('retired drawing controls leave saved Glow and circle values untouched', () => {
+  const seed = { 'mc.set.glow': '51', 'mc.set.home_circle_style': 'standard', 'mc.set.home_circle_motion': 'animate', 'mc.home.circle.clock': 'seconds' }
+  const f = fixture({ seed })
+  try {
+    for (const selector of ['#set-glow', '#circle-seg', '#circle-clock-seg']) assert.equal(Boolean(f.node(selector)), false, `${selector} is retired`)
+    f.render()
+    assert.equal(f.operations.length, 0)
+    assert.deepEqual(Object.fromEntries(f.values), seed)
+    for (const status of ['clear', 'attention', 'blocked']) assert.ok(f.node(`[data-home-color="${status}"]`))
   } finally { f.restore() }
 })

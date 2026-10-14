@@ -250,11 +250,52 @@ function readAgentActors(module) {
   return Object.freeze([...new Set(values)])
 }
 
+/* PLUGINS COME UP IN THIS PROCESS BEFORE ANYTHING IN IT LOADS THE TOOL REGISTRY.
+ *
+ * The owner host below runs in this process, so the tools a granted plugin adds
+ * have to be in THIS process's registry. src/lib/tool-pack-registry.js freezes the
+ * moment src/lib/tool-registry.js is first loaded, and shell/main.cjs loads it long
+ * before the owner host starts: its organisation record is built at load, and the
+ * payload's custom-role store requires the registry to describe role functions.
+ * So the broker's own activate() call (src/mcp-server.js, required by owner-host.js)
+ * comes too late here; with a plugin granted `subprocess` it refuses, rather than
+ * start an owner host whose plugin tools silently do not exist. main.cjs calls
+ * this as soon as it has published the state root, before any capability module
+ * is loaded, and the broker's later call returns the same pass: activate() is
+ * idempotent per module, and both resolve the same file in the same payload.
+ *
+ * NEVER FATAL, AND NEVER SILENT. A payload older than the plugin host has no
+ * activation module, and a pass can fail (a state store that will not open);
+ * either way the answer says so and the app starts as it did before plugins
+ * existed. What each plugin did -- activated, skipped, refused and why -- is the
+ * pass's own status, returned unchanged. */
+const PLUGIN_ACTIVATION_MODULE = path.join('src', 'lib', 'plugin-activation.js')
+
+function activatePayloadPlugins({ root, load = require, exists = fs.existsSync } = {}) {
+  if (!root) return failure('PLUGIN_PAYLOAD_ABSENT', 'No capability payload is present, so no plugin was brought up.')
+  const entry = path.join(root, PLUGIN_ACTIVATION_MODULE)
+  if (!exists(entry)) return failure('PLUGIN_ACTIVATION_ABSENT', 'This capability payload does not carry plugins.')
+  try {
+    const activation = load(entry)
+    activation.activate()
+    const status = activation.status()
+    if (!status || status.ok !== true) {
+      return failure(status?.code || 'PLUGIN_ACTIVATION_FAILED', status?.reason || 'The plugins on this computer could not be read.')
+    }
+    return { ok: true, status }
+  } catch (error) {
+    return failure(
+      typeof error?.code === 'string' ? error.code : 'PLUGIN_ACTIVATION_FAILED',
+      typeof error?.message === 'string' ? error.message : 'The plugins on this computer could not be brought up.',
+    )
+  }
+}
+
 /* The agent-session authority belongs to the app instance, not to a scheduled
  * task and not to a disk-readable control bearer.  The payload module owns the
  * pipe/data plane; this shell retains the only bind/revoke references in
  * memory and injects them into createAgentHost(). */
-async function startAppOwnedOwnerHost({ root, resolveTaskLedgerWriter = null, mainLag = null } = {}) {
+async function startAppOwnedOwnerHost({ root, resolveTaskLedgerWriter = null, mainLag = null, onLegacySignInCleanup = null } = {}) {
   if (!root) return failure('OWNER_HOST_PAYLOAD_ABSENT', 'The installed agent-session authority is unavailable.')
   const payload = readPayloadRecord(root)
   if (!payload.ok) return payload
@@ -268,6 +309,7 @@ async function startAppOwnedOwnerHost({ root, resolveTaskLedgerWriter = null, ma
       return failure('OWNER_HOST_MODULE_INVALID', 'The installed agent-session authority cannot be loaded.')
     }
     const host = module.createOwnerHost({
+      ...(typeof onLegacySignInCleanup === 'function' ? { onLegacySignInCleanup } : {}),
       ...(typeof resolveTaskLedgerWriter === 'function' ? { resolveTaskLedgerWriter } : {}),
       /* The owner host runs agent tool calls in this process, so their
          synchronous work is main-thread time. Handing it the stall monitor
@@ -401,6 +443,7 @@ function reapProcessTree(pid, { spawnSync = require('node:child_process').spawnS
 module.exports = {
   PAYLOAD_RECORD,
   START_TIMEOUT_MS,
+  activatePayloadPlugins,
   childEnvironment,
   guiEnvironment,
   readAgentActors,

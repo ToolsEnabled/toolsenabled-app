@@ -53,6 +53,7 @@
 // The default is also provider-free. Steering is deliberately manual because
 // it starts a signed-in provider session.
 
+import { providerLaunchEnvironment } from './lib/provider-launch-environment.cjs'
 import { spawn } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -319,22 +320,8 @@ async function withApp(scratch, executable, label, seed, body, { signedInCodexHo
   delete environment.ELECTRON_RUN_AS_NODE
   environment.LOCALAPPDATA = path.join(profile, 'local')
   environment.USERPROFILE = path.join(profile, 'home')
-  /* CODEX_HOME IS THE ONE THING A SCENARIO MAY UN-STERILISE, and only the
-     steering scenario asks for it.
-     A genuinely empty profile has no CLI sign-in, so no session can start, so
-     there is nothing to steer -- and a run that cannot start a session cannot
-     report anything about the controls that steer one. The steering scenario
-     therefore points CODEX_HOME at this account's existing CLI sign-in, which
-     is the state every real user of the product is in. It reads that directory
-     and never copies, prints or writes it, and the app's own records
-     (LOCALAPPDATA) and the confinement probe's home (USERPROFILE) stay in
-     scratch, so nothing this run does touches the real installation. */
-  if (signedInCodexHome && process.env.USERPROFILE) {
-    environment.CODEX_HOME = path.join(process.env.USERPROFILE, '.codex')
-  } else {
-    environment.CODEX_HOME = path.join(profile, 'home', '.codex')
-    mkdirSync(environment.CODEX_HOME, { recursive: true })
-  }
+  // Steering opts into the caller-selected existing home or environment API key.
+  if (signedInCodexHome) Object.assign(environment, providerLaunchEnvironment('codex', environment))
 
   const startupLog = []
   const child = spawn(executable, [

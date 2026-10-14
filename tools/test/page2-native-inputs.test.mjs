@@ -23,7 +23,7 @@ test('portable native input validation refuses escapes and ancestor links before
     fs.writeFileSync(path.join(outside, 'entry.cjs'), 'outside data')
     fs.writeFileSync(path.join(runtime, 'entry.cjs'), 'owned input')
     fs.symlinkSync(outside, path.join(runtime, 'escape'), process.platform === 'win32' ? 'junction' : 'dir')
-    for (const relative of ['../outside/entry.cjs', '/entry.cjs', 'C:/entry.cjs', '..\\outside\\entry.cjs', 'escape/entry.cjs', 'node_modules/entry.cjs', '.git/config']) {
+    for (const relative of ['../outside/entry.cjs', '/entry.cjs', '\x43:/entry.cjs', '..\\outside\\entry.cjs', 'escape/entry.cjs', 'node_modules/entry.cjs', '.git/config']) {
       assert.throws(() => manifestFile(runtime, relative), /manifest paths|symbolic links|junctions/)
     }
     assert.equal(manifestFile(runtime, 'entry.cjs'), path.join(runtime, 'entry.cjs'))

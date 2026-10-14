@@ -1,7 +1,7 @@
 /* BOTH VAULT PROGRAMS SHIP, NOT JUST THE ONE.
  *
  * WHAT WAS MEASURED, AND WHERE. In the staged capability payload beside app
- * an earlier commit: `tools/secrets.ps1` present, `tools/secrets-manager.ps1` ABSENT --
+ * c8deb5e4: `tools/secrets.ps1` present, `tools/secrets-manager.ps1` ABSENT --
  * while the engine source tree carries both (`git ls-files` in the engine
  * repository lists `tools/secrets-manager.ps1`). `tools/capability-manifest.json`
  * declared the first in `helperPrograms` and not the second.
@@ -15,7 +15,7 @@
  * product's ONE generic way for an owner to delete a stored credential --
  * `src/lib/runtime.js` deliberately exports no generic `deleteSecret(key)` (see
  * the comment above `clearDeviceCredential`, which says why). So on an
- * installed build a key the owner had revoked at their provider stayed on their
+ * installed build a key the owner had revoked at his provider stayed on his
  * disk with no route in the product to take it off.
  *
  * WHY A MANIFEST CHECK AND NOT A WALK. The manifest's own

@@ -1,13 +1,13 @@
 // THE LEDGER PAGE TELLS ONE STORY PER STATE, AND THE STATES ARE NOT THE SAME.
 //
-// The R-ledger panel was not human-friendly. What it showed was one state told
-// three ways at once -- "could not be read" in
+// The owner: the R-ledger panel "is a mess (not human friendly)". What he was
+// looking at was one state told three ways at once -- "could not be read" in
 // the register's accessible name and in its counter, a calm "this copy does not
 // keep one, so there is nothing here to show" in the paragraph between them,
 // and below that two forms whose fields described themselves in terms of a list
 // that was not on the screen.
 //
-// The cause was a half-applied repair. an earlier commit rewrote ONE line -- the
+// The cause was a half-applied repair. Commit 1bdcce7 rewrote ONE line -- the
 // body paragraph -- and left the failure chrome around it alone. Nothing could
 // catch that, because nothing could see the paragraph and the chrome at the
 // same time: they were both composed inside a closure in a view that imports a
@@ -95,7 +95,7 @@ test('an empty register and an unreadable one do not share a single word of thei
   /* THE EMPTY STATE IS A DOOR NOW, NOT A VERDICT. The installed application
      keeps the person's own ledger since 2026-09-02, so "this copy does not
      keep one" stopped being true; the sentence names the two ways to file. */
-  /* The file box sits above the list, so "below"
+  /* The file box sits above the list (owner, 2026-09-15), so "below"
      pointed away from it (T1262). */
   assert.match(LEDGER_EMPTY.body, /File a request above/, 'the empty state must point at the file box')
   assert.match(LEDGER_EMPTY.body, /\/Request/, 'and at the chat command')
@@ -265,7 +265,7 @@ test('the hide-row copy is exported, says it is a hide on this screen only, and 
 
 /* THE ANCHORS BELOW USED TO POINT AT THE SIMULATED RENDER, which is gone: one
    render path, fed by a fetched register or by src/sample-ledger.js, per the
-   rule that the simulated pages ARE the UI pages with mock data.
+   owner's ruling that the simulated pages ARE the UI pages with mock data.
    What this suite can hold without a browser is the wiring: the view draws
    its data through the source axis, its example marking follows the axis's
    one badge rule, and nothing leans on the modules being deleted. */
@@ -350,8 +350,8 @@ test('the live-register copy is frozen, plain, and never paints a person\'s own 
   assert.match(EMPTY_LIST.r, /File one above/)
 })
 
-/* THE SIX RESOLUTION STATUSES, IN THE STORE'S OWN ORDER (the Resolve
-   action). The engine export names them
+/* THE SIX RESOLUTION STATUSES, IN THE STORE'S OWN ORDER (owner's Resolve
+   action, 2026-09-07). Worker's engine export names them
    in-progress, partial, blocked-external, done, not-possible-as-asked,
    superseded; this is that same order, in the register's own words, for
    the picker the Resolve control opens. */

@@ -65,7 +65,7 @@ function createResearchDelegationAuthority({ readParent, normalizeRequest, valid
       refuse('Research setup requires a fresh session request.')
     }
     const forbidden = ['delegationToken', 'resumeThreadId', 'resumeAccount', 'replacesSessionId',
-      'continueFromAccount', 'accountRecovery', 'accountRetry', 'editorForkReceipt', 'editorFork',
+      'editorForkReceipt', 'editorFork',
       'boundedWork', 'boundedWorkPermit', 'delegationPermit']
     const validRequest = () => {
       if (typeof owner !== 'string' || !owner || typeof request.sessionId !== 'string' || !request.sessionId
@@ -145,8 +145,8 @@ function createResearchDelegationAuthority({ readParent, normalizeRequest, valid
           || request.tier !== record.tier || request.agentAuthority?.roleId !== record.role
           || !request.agentId || request.agentId !== record.nodeId
           || JSON.stringify(normalizeRequest(request.research)) !== JSON.stringify(record.research)
-          || ['resumeThreadId', 'resumeAccount', 'replacesSessionId', 'continueFromAccount', 'accountRecovery',
-            'accountRetry', 'editorFork', 'boundedWork'].some(key => request[key] !== undefined)) {
+          || ['resumeThreadId', 'resumeAccount', 'replacesSessionId',
+            'editorFork', 'boundedWork'].some(key => request[key] !== undefined)) {
         refuse('The research start token belongs to a different child, owner, scope or set of inputs.')
       }
       return Object.freeze({

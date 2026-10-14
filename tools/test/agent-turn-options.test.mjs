@@ -5,31 +5,17 @@ import { resolve } from 'node:path'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import { parseAst } from 'rollup/parseAst'
+import { ENGINE_ROOT, mainModelParsers } from './native-model-test-support.mjs'
 
 const require_ = createRequire(import.meta.url)
 const ROOT = resolve(import.meta.dirname, '..', '..')
 const read = file => readFileSync(resolve(ROOT, file), 'utf8')
-const { narrowTurnOptions } = require_(resolve(ROOT, 'shell', 'agent-host.cjs'))
+const { narrowTurnOptions: productionNarrowTurnOptions } = require_(resolve(ROOT, 'shell', 'agent-host.cjs'))
 const { createAgentCommandSurface, REQUIRED_DEPS } = require_(resolve(ROOT, 'shell', 'agent-command-surface.cjs'))
 
-// Execute the actual strict parsers without starting main.cjs or Electron.
-const MAIN = read('shell/main.cjs')
-const mainAst = parseAst(MAIN)
-const parserNames = ['agentIpcError', 'agentPayload', 'boundedAgentString', 'parseAgentSend', 'parseAgentSessionCommand']
-const parserCode = parserNames.map(name => {
-  const nodes = mainAst.body.filter(node => node.type === 'FunctionDeclaration' && node.id.name === name)
-  assert.equal(nodes.length, 1, `The actual ${name} parser must be unambiguous`)
-  return MAIN.slice(nodes[0].start, nodes[0].end)
-})
-const limitNames = ['MAX_SESSION_ID_LENGTH', 'MAX_TURN_TEXT_LENGTH']
-const limitCode = limitNames.map(name => {
-  const nodes = mainAst.body.filter(node => node.type === 'VariableDeclaration')
-    .flatMap(node => node.declarations).filter(node => node.id.name === name)
-  assert.equal(nodes.length, 1, `The actual ${name} limit must be unambiguous`)
-  return `const ${MAIN.slice(nodes[0].start, nodes[0].end)};`
-})
-const parsers = new Function([...limitCode, ...parserCode,
-  'return { parseAgentSend, parseAgentSessionCommand, MAX_SESSION_ID_LENGTH };'].join('\n'))()
+const narrowTurnOptions = (plan, requested, tiers) =>
+  productionNarrowTurnOptions(plan, requested, tiers, { engineRoot: ENGINE_ROOT })
+const parsers = { ...mainModelParsers(), MAX_SESSION_ID_LENGTH: 128 }
 
 function commandSurfaceForTurnTest() {
   const calls = []
@@ -84,7 +70,7 @@ test('the plan-owned axes refuse BY NAME, whatever the value', () => {
     { sandbox: 'danger-full-access' },
     { approvalPolicy: 'on-request' },
     { approvalPolicy: 'never' },
-    { cwd: 'C:/anywhere' },
+    { cwd: '\x43:/anywhere' },
     { serviceTier: 'priority' },
     { lastTurnId: 'turn-1' },
   ]) {
@@ -94,11 +80,10 @@ test('the plan-owned axes refuse BY NAME, whatever the value', () => {
   }
 })
 
-test('a model without a launcher refuses like the start channel does', () => {
-  assert.throws(() => narrowTurnOptions(PLAN, { model: 'claude/opus' }, TIERS),
-    error => error.code === 'AGENT_TIER_NO_LAUNCHER')
-  assert.throws(() => narrowTurnOptions(PLAN, { model: 'gpt-9-imaginary' }, TIERS),
-    error => error.code === 'AGENT_TIER_UNKNOWN')
+test('catalog membership does not admit or refuse a native model ID', () => {
+  for (const model of ['claude/opus', 'gpt-9-imaginary', 'vendor/model:v9']) {
+    assert.deepEqual(narrowTurnOptions(PLAN, { model }, TIERS), { model, approvalPolicy: 'never' })
+  }
 })
 
 test('the send channel takes model and images, and images only from the picker', async () => {
@@ -229,8 +214,15 @@ test('the host passes images and narrowed options to the adapter, and the plan i
   assert.equal(turnDeclarations.length, 1, 'sendTurn must bind its narrowed turn options once')
   const turnDeclaration = turnDeclarations[0]
   const send = host.slice(sendFunction.start, sendFunction.end)
-  assert.match(host.slice(turnDeclaration.start, turnDeclaration.end), /narrowTurn\(session\.planThreadOptions, options\)/,
-    'per-turn options are no longer narrowed against the SAME plan that bound the thread')
+  const session = { planThreadOptions: { approvalPolicy: 'never' }, provider: 'codex', effort: 'medium' }
+  const options = { model: 'vendor/model:v9' }
+  const received = []
+  const evaluated = new Function('narrowTurn', 'session', 'options',
+    'return ' + host.slice(turnDeclaration.init.start, turnDeclaration.init.end))(
+      (...args) => { received.push(args); return args[1] }, session, options)
+  assert.equal(evaluated, options)
+  assert.equal(received[0][0], session.planThreadOptions, 'the session plan must bind turn narrowing')
+  assert.equal(received[0][1], options, 'the requested turn values must reach narrowing')
   // Evaluate the actual adapter call, independently of its Promise wrapper
   // and indentation. Both reviewed arguments must survive together; absent
   // options must remain absent.

@@ -68,7 +68,7 @@ async function fixture(t, { closeError = false, unsigned = false, wrongSession =
     sessionPendingApprovals: new Map(), clearInlineApproval: () => {},
     retireTreeSessionRuntime: sessionId => routes.delete(sessionId),
     outboxClearSession: () => 0, resetSessionMetrics: () => {},
-    // Stop consults the account recovery coordinator (an earlier commit); this fixture runs with none.
+    // Stop consults the account recovery coordinator (d839fa41); this fixture runs with none.
     recoveryCoordinator: () => null,
     startBoundedChild: async request => {
       const index = ++starts, id = `node-${index}`, sessionId = `session-${index}`

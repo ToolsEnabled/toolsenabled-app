@@ -15,7 +15,7 @@ test('three independent colors use theme defaults until deliberately overridden'
   assert.deepEqual(HOME_STATUS_COLOR_SETTINGS.map(item => item.status), ['clear', 'attention', 'blocked'])
   for (const { status } of HOME_STATUS_COLOR_SETTINGS) {
     assert.equal(currentHomeStatusColor(status, f.storage), 'auto')
-    assert.equal(new Set(['white', 'tan', 'black', 'ember', 'cobalt'].map(theme => defaultHomeStatusColors(theme)[status])).size, 5)
+    for (const theme of ['white', 'tan', 'black', 'ember', 'cobalt']) assert.equal(resolvedHomeStatusColor(status, theme, 'auto'), defaultHomeStatusColors(theme)[status])
   }
   setHomeStatusColor('attention', '#Ab9012', f)
   assert.equal(currentHomeStatusColor('attention', f.storage), '#ab9012')

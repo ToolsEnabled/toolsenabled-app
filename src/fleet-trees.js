@@ -4,14 +4,15 @@ import { normalizePendingEditorFork } from './editor-attachment-drafts.js'
 import { normalizeSlotAccountChoice } from './slot-account-choice.js'
 import { sessionEndedWithApp } from './tree-session-liveness.js'
 import { launchTier, offeredEffort, tierDefaultEffort } from './orchestration-controls.js'
+import { modelIdProblem, modelEffortRow, nextModelChoiceProblem } from './model-picker.js'
 
 /* THE TREES A PERSON BUILDS BY HAND. The state, not the drawing.
  *
- * This surface is described in four sentences, and every rule in this
+ * The owner described this surface in four sentences, and every rule in this
  * file exists to keep one of them literally true rather than approximately
  * true:
  *
- *   1. The node tree is EMPTY unless the user has started a session — nothing
+ *   1. "the node tree is EMPTY unless the user has started a session" — nothing
  *      is pre-populated. A fresh computer holds no trees and no agents, and
  *      this module has no seed data of any kind. That is a deliberate reversal
  *      of src/fleet-profile.js, which ships a labelled sample fleet on purpose
@@ -100,7 +101,7 @@ export const fleetTreesStorageKey = computerId => `${STORAGE_KEY_BASE}:${compute
    `medium` it used to be given. A row this build does not know keeps the old
    precedence untouched, so the shell's own refusal still names it. */
 export function draftStartEffort(node, { override = null, tierDefault = null } = {}) {
-  const row = launchTier(node?.tier)
+  const row = modelEffortRow(node?.tier, node?.model)
   if (!row) return override || node?.effort || tierDefault
   for (const value of [override, node?.effort, tierDefault]) {
     const offered = offeredEffort(row, value)
@@ -223,8 +224,8 @@ export function nodeSavedForm(node) {
    THE RUN CLOCK — what the circle on page 2 is allowed to count
    ===================================================================
  *
- * THE DEFECT: the timers were not always accurate to the time an agent ran --
- * sometimes they logged time it was not running.
+ * THE DEFECT, in the owner's words: "their timeers not always accurate to
+ * their time ran - sometimes it logs time they werent running."
  *
  * The canvas clock counted `now - createdAt`, and `createdAt` is the moment
  * the CIRCLE was drawn, not the moment the agent started. A placeholder is
@@ -390,7 +391,7 @@ const addressNameKey = value => String(value || '').trim().toLowerCase()
    deliberate and stays. What it costs is a surface showing circles from more than
    one tree, where the label alone stops answering "which one". This returns the
    first eight-hex block of the id, which is the same fragment the roster and
-   app context already print (node-24-1a2b3c4d...), so the suffix a person reads
+   app context already print (node-24-3839c9e0...), so the suffix a person reads
    here matches the id they see elsewhere. Deterministic, derived only from the
    id, and never stored: nothing about naming or identity changes. */
 const shortNodeId = id => {
@@ -559,7 +560,7 @@ export function parseFleetTrees(value, { computerId = null } = {}) {
   if (raw.trees.length > FLEET_TREE_LIMITS.maxTrees) return EMPTY_FLEET_TREES
   if (raw.nodes.length > FLEET_TREE_LIMITS.maxNodes) return EMPTY_FLEET_TREES
 
-  /* ONE ID SPACE FOR TREES AND AGENTS TOGETHER. The rule is that ids are
+  /* ONE ID SPACE FOR TREES AND AGENTS TOGETHER. The owner's rule is that ids are
      unique per computer, and the cheapest way for that to stay true under every
      future reader is for it to be true of the ids themselves rather than of
      each list separately. A caller holding a bare id is then never one lookup
@@ -713,6 +714,9 @@ export function parseFleetTrees(value, { computerId = null } = {}) {
          restart guidance, not shape. Absent means the record predates the
          field, and a restart falls back to the default tier and says so. */
       tier: typeof entry.tier === 'string' ? entry.tier.slice(0, 64) : '',
+      // Keep a saved explicit name intact; start validation refuses damaged values.
+      ...(entry.model == null ? {} : { model: entry.model }),
+      ...(entry.nextModelChoice == null ? {} : { nextModelChoice: entry.nextModelChoice }),
       /* Effort was added after tier. Old records therefore read as empty and
          keep the tier-derived fallback they had before this field existed. */
       effort: typeof entry.effort === 'string' ? entry.effort.slice(0, 64) : '',
@@ -729,7 +733,7 @@ export function parseFleetTrees(value, { computerId = null } = {}) {
          anyone measured about it is `updatedAt`. Counting from `runStartedAt`
          to Date.now() instead would bill the agent for every hour the
          application was SHUT, which is the largest and most literal form of
-         logging time an agent was not running.
+         the owner's "logs time they werent running".
          `runMs: null` is the pre-field record — see advanceRunClock. */
       ...loadedRunClock(entry),
       sessionId,
@@ -813,7 +817,7 @@ function defaultIdFactory() {
  *
  * ONE STORE IS ONE COMPUTER. That is why every read here is already scoped and
  * `listTrees()` takes no argument: "the trees on this computer" is the question
- * asked, and a store that also answered it for other computers would
+ * the owner asked, and a store that also answered it for other computers would
  * invite a screen to draw one computer's structure under another's name.
  *
  * MUTATIONS ARE REPORTED, NOT THROWN. Every write returns a frozen
@@ -983,9 +987,9 @@ export function createFleetTreeStore({
      answers -- for as long as a stalled main process takes. snapshot() used to
      make it for every caller, and the Computers view takes a snapshot to look up
      one node's name, once per node, on every render and every streamed event.
-     MEASURED on a development install with dozens of saved nodes: it read
-     hundreds of times per five seconds, and the real mount of that forest
-     read over a thousand times to mount, 171 per twenty streamed deltas and 258 per finished
+     MEASURED 2026-09-21: the LIVE generation (app d46c18f49, 76 saved nodes) read
+     232 to 357 times per five seconds, and the real mount of a 76-node forest
+     read 1035 times to mount, 171 per twenty streamed deltas and 258 per finished
      turn, none of them wanting a width or a depth (T837).
 
      So a snapshot asks for them only when its `slotBounds` is read, and once per
@@ -1461,7 +1465,7 @@ export function createFleetTreeStore({
      * yet know either, and a caller that thinks it does is describing a launch
      * rather than a placeholder.
      */
-    addNode({ treeId = null, parentId = null, role = '', message = '', tier = '', effort = '', madeByAgent = false, reservedNodeId = null, pendingEditorFork = null, treeKind = null } = {}) {
+    addNode({ treeId = null, parentId = null, role = '', message = '', tier = '', effort = '', model = null, madeByAgent = false, reservedNodeId = null, pendingEditorFork = null, treeKind = null } = {}) {
       const blocked = beforeMutation()
       if (blocked) return blocked
       const checkpoint = structuralCheckpoint()
@@ -1479,6 +1483,7 @@ export function createFleetTreeStore({
       if (reservedNodeId !== null && (!safeIdentifier(reservedNodeId) || nodes.has(reservedNodeId))) {
         return refuse('The reserved name for this agent is invalid or already in use.')
       }
+      if (model != null && modelIdProblem(model)) return refuse(modelIdProblem(model))
       const cleanTier = optionalOneLine(tier, 64)
       if (cleanTier === null) {
         return refuse('Keep the tier to one line of 64 characters or fewer.')
@@ -1556,6 +1561,7 @@ export function createFleetTreeStore({
         reply: '',
         tier: cleanTier,
         effort: cleanEffort,
+        ...(model == null ? {} : { model }),
         ...(editorSource ? { pendingEditorFork: editorSource } : {}),
         /* 0, not null: this node is measured from birth, and it has run for
            none of it yet. null is reserved for records written before the run
@@ -1565,16 +1571,17 @@ export function createFleetTreeStore({
         sessionId: null,
         /* WHO MADE THIS CIRCLE, AND WHETHER THE PERSON HAS EVER SPOKEN TO IT.
 
-           The rule for removal: agents spawned by agents that the user has
-           not prompted can be removed by their parent agents; an agent the
-           user has prompted remains, even if another agent created it.
+           The owner's rule for removal, verbatim 2026-09-03: "agents that were
+           spawned by agents AND who the user hasnt prompted - THEY can be
+           removed by parent agents. AGENTS that a user prompts even if created
+           by another agent can remain".
 
            Both halves are FACTS ABOUT WHAT HAPPENED, recorded where they
            happen, never claimed by the caller asking for a removal. A circle
            made by hand is false here and stays false; a circle an assistant
            made is marked at the moment it is made. `promptedByPerson` is set
            the first time a person's own turn reaches it and is never unset --
-           the rule is about whether they ever spoke to it, not about
+           the owner's rule is about whether they ever spoke to it, not about
            whether they spoke recently. */
         createdByAgent: madeByAgent === true,
         promptedByPerson: false,
@@ -1593,7 +1600,7 @@ export function createFleetTreeStore({
      * the person a brief their agent never received. Editing is refused with a
      * sentence saying so, rather than accepted and quietly dropped.
      */
-    setNodeLaunchPreferences(nodeId, { tier, effort, accountChoice } = {}) {
+    setNodeLaunchPreferences(nodeId, { tier, effort, model, nextModelChoice, accountChoice } = {}) {
       const blocked = beforeMutation()
       if (blocked) return blocked
       const node = nodes.get(nodeId)
@@ -1604,6 +1611,14 @@ export function createFleetTreeStore({
         const clean = optionalOneLine(value, 64)
         if (clean === null) return refuse('Keep the next session settings to one line of 64 characters or fewer.')
         fields[key] = clean
+      }
+      if (nextModelChoice !== undefined) {
+        if (nextModelChoice !== null && nextModelChoiceProblem(nextModelChoice)) return refuse(nextModelChoiceProblem(nextModelChoice))
+        fields.nextModelChoice = nextModelChoice === null ? null : { tier: nextModelChoice.tier, model: nextModelChoice.model, effort: nextModelChoice.effort || null }
+      }
+      if (model !== undefined) {
+        if (model !== null && modelIdProblem(model)) return refuse(modelIdProblem(model))
+        fields.model = model
       }
       if (accountChoice !== undefined) {
         const normalized = normalizeSlotAccountChoice(accountChoice)
@@ -1718,8 +1733,8 @@ export function createFleetTreeStore({
          of everything underneath would show a person a structure they did not
          draw. But the measured first-run reality (2026-08-13) is that every
          agent starts as its own single-node tree — the top-level "+" makes
-         one each — so connecting two agents IS a cross-tree move, and that
-         move is a supported request. The rewrite is now the deliberate,
+         one each — so "connect these two" IS a cross-tree move, and the owner
+         asked for exactly that in words. The rewrite is now the deliberate,
          stated meaning of the move: the node and everything under it join the
          parent's tree, and a tree left empty is removed rather than kept as
          an invisible husk that blocks the one-empty-tree rule. */
@@ -1828,8 +1843,8 @@ export function createFleetTreeStore({
 
     /**
      * The drag OUT of a tree, as a verb: this node and everything under it
-     * become their own tree. A node can be dragged out into its own separate
-     * tree. The inverse of the cross-tree move
+     * become their own tree. The owner's ask, verbatim: nodes should be
+     * "dragged to its own seperate tree". The inverse of the cross-tree move
      * above, built from the same pieces — treeId restamped across the branch,
      * a source tree left empty removed rather than kept as an invisible husk
      * — and refused with createTree's own sentence at the same cap, so the
@@ -1948,8 +1963,8 @@ export function createFleetTreeStore({
      */
     /* THE PERSON HAS SPOKEN TO THIS CIRCLE, recorded once and never unset.
 
-       It is what the removal rule turns on: an agent the user has prompted
-       remains, even if another agent created it. Called from the
+       It is what the owner's removal rule turns on: "AGENTS that a user
+       prompts even if created by another agent can remain". Called from the
        one place a person's own turn is sent, so an assistant cannot set it
        and cannot clear it. Idempotent: saying it twice is the same fact. */
     markPromptedByPerson(nodeId) {
@@ -2106,8 +2121,8 @@ export function createFleetTreeStore({
  * WHAT IS STORED is the record above: a flat list of agents, each naming its
  * tree and its parent, each starting as a DRAFT. The draft is not an
  * implementation convenience that a tidier record could do without — it is the
- * interaction that was asked for. A person presses an empty node, and THEN the panel
- * asks them for a role and a message. A record with no draft cannot represent
+ * interaction the owner asked for. He presses an empty node, and THEN the panel
+ * asks him for a role and a message. A record with no draft cannot represent
  * the moment between the press and the start, which is the only moment the
  * panel exists to fill.
  *
@@ -2130,8 +2145,9 @@ export function createFleetTreeStore({
  * (MAX_DEPTH, held equal); maxChildren is the tree's OWN width, and the guard
  * holds it at or below the engine's MAX_FAN_OUT, which stays the backstop.
  */
-/* FOUR UNDER ONE, by a recorded decision: ship with width four and defer the
- * 8:1 implementation and its research. It was eight, the engine's MAX_FAN_OUT, which stays eight
+/* FOUR UNDER ONE, by the owner's decision of 2026-09-11: "ok it sounds like
+ * shipping with 4 width is best. we will defer the 8:1 implementation and
+ * research for now". It was eight, the engine's MAX_FAN_OUT, which stays eight
  * as the backstop for every nested launch; this is the tree's own seat width,
  * and loops and research grids are not tied to it. Depth is unchanged.
  *
@@ -2149,8 +2165,8 @@ export const TREE_BOUNDS = Object.freeze({
 /* THE ONE TREE THE AGENT-TREE WIDTH DOES NOT APPLY TO. A research grid run
  * locally (src/research-experiments.js) is a tree its dispatcher builds for
  * itself: the first cell is the root and every other cell its child, up to the
- * grid's own MAX_LOCAL_CELLS. Loops and grids do not need to be tied together
- * or to any of this. So a tree the dispatcher marks
+ * grid's own MAX_LOCAL_CELLS. The owner, 2026-09-11: "loops and grids dont even
+ * need to be tied together or to any of this". So a tree the dispatcher marks
  * `kind: 'experiment'` -- an explicit field set at creation, never a name or a
  * role -- seats EXPERIMENT_TREE_MAX_CHILDREN under one parent, which mirrors
  * the engine's MAX_FAN_OUT (eight), the only backstop: exactly what such a
@@ -2307,7 +2323,7 @@ export function nodeDisplayName(node, nodes = [], { roleLabel = role => String(r
  * (shell/agent-command-surface.cjs passes it through, shell/agent-host.cjs
  * fileStandingRequest defaults it to null), so every rule an agent files, and
  * every rule filed before labels existed, arrives with nothing but the key.
- * Reading `node-2-0b5e0c0a-0000-4000-8000-000000000002` is not an answer to
+ * Reading `node-2-6c518599-05aa-4c77-a154-cefe49b278ed` is not an answer to
  * "who is this rule for".
  *
  * BOTH IDS MAP TO THE SAME WORDS, deliberately: a session belongs to exactly

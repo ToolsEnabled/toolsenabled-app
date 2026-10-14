@@ -3,14 +3,18 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
+import { ENGINE_ROOT } from './native-model-test-support.mjs'
 
 const require_ = createRequire(import.meta.url)
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const {
   boundedEngineExit,
-  narrowTurnOptions,
+  narrowTurnOptions: productionNarrowTurnOptions,
   observeEngineExit,
 } = require_(path.join(ROOT, 'shell', 'agent-host.cjs'))
+
+const narrowTurnOptions = (plan, requested, tiers) =>
+  productionNarrowTurnOptions(plan, requested, tiers, { engineRoot: ENGINE_ROOT })
 
 const START_TIERS = Object.freeze({
   luna: Object.freeze({ provider: 'codex', model: 'gpt-5.1-codex-mini' }),
@@ -34,7 +38,7 @@ test('turn options preserve the plan ceiling while accepting a caller-selected C
 })
 
 test('renderer-selected models enforce the host length bound without rejecting its boundary', () => {
-  const boundaryModel = 'm'.repeat(128)
+  const boundaryModel = 'm'.repeat(2048)
   const tiersAtBoundary = Object.freeze({
     boundary: Object.freeze({ provider: 'codex', model: boundaryModel }),
   })
@@ -42,23 +46,23 @@ test('renderer-selected models enforce the host length bound without rejecting i
   assert.deepEqual(
     narrowTurnOptions({}, { model: boundaryModel }, tiersAtBoundary),
     { model: boundaryModel },
-    'a legitimate 128-character model must be accepted at the documented boundary',
+    'a legitimate 2048-character model must be accepted at the documented boundary',
   )
 
-  const overlongModel = 'm'.repeat(129)
+  const overlongModel = 'm'.repeat(2049)
   assert.throws(
     () => narrowTurnOptions({}, { model: overlongModel }, {
       overlong: { provider: 'codex', model: overlongModel },
     }),
     error => error?.code === 'AGENT_HOST_INVALID_ARGUMENT'
       && /model/.test(error.message)
-      && /at most 128 characters/.test(error.message),
-    'a renderer-supplied model beyond 128 characters must carry the host argument refusal',
+      && /at most 2048 characters/.test(error.message),
+    'a renderer-supplied model beyond 2048 characters must carry the host argument refusal',
   )
 })
 
 test('renderer-selected models reject non-string values rather than coercing them', () => {
-  const boundaryModel = 'm'.repeat(128)
+  const boundaryModel = 'm'.repeat(2048)
   const tiersAtBoundary = Object.freeze({
     boundary: Object.freeze({ provider: 'codex', model: boundaryModel }),
   })
@@ -79,20 +83,10 @@ test('turn option refusals identify both the forbidden choice and why it was ref
       && /not a renderer choice/i.test(error.message),
     'a renderer-owned approval policy must be refused with a useful reason',
   )
-  assert.throws(
-    () => narrowTurnOptions({}, { model: 'codex-model-not-in-start-tiers' }, START_TIERS),
-    error => error?.code === 'AGENT_TIER_UNKNOWN'
-      && /codex-model-not-in-start-tiers/.test(error.message)
-      && /unknown model/i.test(error.message),
-    'an unknown model must be refused by name and distinguished from an unavailable launcher',
-  )
-  assert.throws(
-    () => narrowTurnOptions({}, { model: 'claude-sonnet-4-5' }, START_TIERS),
-    error => error?.code === 'AGENT_TIER_NO_LAUNCHER'
-      && /sonnet/i.test(error.message)
-      && /no launcher/i.test(error.message),
-    'a known model without this launcher must be distinguished from an unknown model',
-  )
+  for (const model of ['codex-model-not-in-start-tiers', 'vendor/model:v9', 'claude-sonnet-4-5']) {
+    assert.deepEqual(narrowTurnOptions({}, { model }, START_TIERS), { model },
+      'the provider owns admission of valid exact identifiers')
+  }
 })
 
 test('exit observation reports supported evidence once and stays unknown when evidence cannot be read', () => {
@@ -144,7 +138,7 @@ test('host-bounded exit evidence rejects hostile codes and signal strings', () =
   for (const [hostile, expected] of [
     [{ code: 2_147_483_648, signal: 'SIGTERM' }, { code: null, signal: 'SIGTERM' }],
     [{ code: 1.5, signal: 'SIGTERM\nforged' }, { code: null, signal: null }],
-    [{ code: Number.NaN, signal: 'C:\\private\\signal' }, { code: null, signal: null }],
+    [{ code: Number.NaN, signal: '\x43:\\private\\signal' }, { code: null, signal: null }],
     [{ code: '0', signal: 'sigterm' }, { code: null, signal: null }],
     [{ code: 0, signal: 'A'.repeat(33) }, { code: 0, signal: null }],
     [Object.create({ code: 7, signal: 'SIGTERM' }), { code: null, signal: null }],

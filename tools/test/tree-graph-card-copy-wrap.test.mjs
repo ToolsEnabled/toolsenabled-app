@@ -1,16 +1,16 @@
 /* TREE CARD ACTIVITY LINES MUST NOT BREAK MID-WORD.
  *
- * In a real capture (two independent reports, 2026-09-02 and
+ * Owner, in a real capture (two independent reports, 2026-09-02 and
  * 2026-09-03): a tree card's activity line read "asked: ROLE: MANAGER
- * working in C:\path\to\Proj…" — cut off mid-word, reported as "tree
+ * working in <profile-root>/ToolsEnabled-…" — cut off mid-word, reported as "tree
  * cards clip mid-word" and left "not investigated in code" both times.
  *
  * THE MECHANISM WAS ALREADY FOUND ONCE IN THIS EXACT FILE, for a different
- * selector. An earlier commit ("The tree acts like before again"), 2026-08-15,
+ * selector. Commit c06c44c ("The tree acts like before again"), 2026-08-15,
  * on `.node-name .nn-t`:
  *
  *   "break-word, not anywhere: `anywhere` broke names mid-word at the first
- *    opportunity ('Coordinat / or 1', found in a walkthrough).
+ *    opportunity ('Coordinat / or 1' — owner walkthrough, iteration 6).
  *    ... this rule is the backstop for text it never measured, and it only
  *    breaks a word that would otherwise overflow the box."
  *
@@ -93,7 +93,7 @@ function cardCopyRuleFor(css, selector) {
 test('the tree card activity lines break mid-word only as a last resort, never at the first character', () => {
   const css = stripComments(readFileSync(CSS_PATH, 'utf8'))
 
-  // The exact selector group the reported capture is inside: an untouched
+  // The exact selector group the owner's capture is inside: an untouched
   // agent's `current`/`previous`/`chat`/`unavailable` line, and the card's
   // own name — none of it pre-measured, all of it wrapped across 2 lines.
   for (const selector of [
@@ -103,8 +103,8 @@ test('the tree card activity lines break mid-word only as a last resort, never a
     const rule = cardCopyRuleFor(css, selector)
     assert.doesNotMatch(rule, /overflow-wrap:\s*anywhere/,
       `${selector} forces a break at the first character once its 2-line box runs out of room -- ` +
-      `measured on '.node-name .nn-t' (an earlier commit): this is what turned "Coordinator" into ` +
-      `"Coordinat" / "or 1", and is a reported "C:\\path\\to\\Proj…" cut mid-word. ` +
+      `measured on '.node-name .nn-t' (commit c06c44c): this is what turned "Coordinator" into ` +
+      `"Coordinat" / "or 1", and is the owner's own reported "\x43:\\Users\\ToolsEnabled-…" cut mid-word. ` +
       'Use overflow-wrap: break-word, which only breaks mid-word once normal wrapping has nowhere left to go.')
     assert.match(rule, /overflow-wrap:\s*break-word/,
       `${selector} must divide its forced wrap the same way '.node-name .nn-t' does: overflow-wrap: break-word`)
@@ -112,8 +112,9 @@ test('the tree card activity lines break mid-word only as a last resort, never a
 })
 
 test('a card too narrow for its clamped text still tells the reader more was said', () => {
-  // Measured on a running window: a narrow card cut its activity line and its
-  // name mid-word with no mark that anything was missing -- "asked: summarize th",
+  // Measured on the owner's own running window (captures/m4-w16-chat-text-20260904.png,
+  // captures/m4-w16-card-text-detail.png): a narrow card cut its activity line and its
+  // name mid-word with no mark that anything was missing -- "asked: ok look a",
   // "controller was w", "It remembers noth". `-webkit-line-clamp` only draws the
   // ellipsis Blink owes a clamped box when `text-overflow` is `ellipsis`; `clip`
   // (or the UA default) suppresses it. This asserts the reader-visible outcome --
@@ -127,7 +128,7 @@ test('a card too narrow for its clamped text still tells the reader more was sai
     assert.match(rule, /text-overflow:\s*ellipsis/,
       `${selector}'s 2-line clamp must draw an ellipsis when it cuts off text -- ` +
       'text-overflow: clip (or no text-overflow at all) leaves a truncated card silent about ' +
-      'the words it dropped, which is the "asked: summarize th" / "controller was w" capture.')
+      'the words it dropped, which is the owner\'s own "asked: ok look a" / "controller was w" capture.')
     assert.doesNotMatch(rule, /text-overflow:\s*clip/,
       `${selector} must not silence the clamp's ellipsis with text-overflow: clip`)
   }
@@ -136,7 +137,7 @@ test('a card too narrow for its clamped text still tells the reader more was sai
 test('no rule in tree-graph.css reaches for overflow-wrap: anywhere', () => {
   // A sweep, so the NEXT card-copy-shaped rule is caught here too, not only
   // the two named above. break-word is the one proven-safe spelling in this
-  // file (see .node-name .nn-t, an earlier commit) for a box that must not
+  // file (see .node-name .nn-t, commit c06c44c) for a box that must not
   // break its own words at the first opportunity.
   const css = stripComments(readFileSync(CSS_PATH, 'utf8'))
   const offences = (css.match(/[.#][^{}]*\{[^{}]*overflow-wrap:\s*anywhere[^{}]*\}/g) || [])

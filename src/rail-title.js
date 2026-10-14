@@ -1,7 +1,7 @@
 /* THE NAV ROW IS THE SAME ROW ON EVERY PAGE.
  *
- * Defect 6: the arrow buttons appear at the same location on every page, so a
- * user does not have to move the mouse to click through.
+ * Owner defect 6: "make sure the arrow buttons show up at the same location on
+ * every page so a user doesnt have to move their mouse to click through."
  * Before this module, each rail page hand-built its own title line: some had a
  * back button, some had none (the row then collapsed shorter), and every back
  * label named its destination ("‹ Fleet overview", "‹ Statistics"), which

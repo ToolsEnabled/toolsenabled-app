@@ -1,17 +1,17 @@
 // BEFORE ANOTHER ASSISTANT IS STARTED, WHETHER THIS COMPUTER HAS ROOM FOR ONE.
 //
-// THE INCIDENT. A development install resumed several assistants within a few
-// minutes and died with the CPU pegged. Nothing
+// THE INCIDENT. On 2026-09-03 the owner's app resumed nine assistants between
+// 21:15:50 and 21:24:31 local and died at 21:26:20 with the CPU pegged. Nothing
 // in the product had ever measured what one assistant costs, and nothing asked
 // the machine whether it could hold another.
 //
-// WHAT ONE COSTS, MEASURED (raw output kept with the crash investigation):
+// WHAT ONE COSTS, MEASURED (raw output in REPORT-crash-20260903/evidence/C/):
 //   claude.exe             540-623 MB private   claude-cli-and-os-memory.txt
 //   toolsenabled server     65 MB private        measure-toolsenabled-calls.json
 //   toolsenabled-readonly   60 MB private        measure-toolsenabled-readonly-calls.json
 //   -> 665-748 MB per assistant. The gate uses 768 MB and keeps 2 GB in reserve.
 //
-// THE RULE THIS SUITE ENFORCES: never gate the person silently, and at
+// THE OWNER'S RULE THIS SUITE ENFORCES: never gate the person silently, and at
 // most one warning. So the refusal carries the numbers it refused on, and a
 // second press with acknowledgeLowMemory starts the assistant anyway.
 

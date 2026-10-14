@@ -28,7 +28,7 @@ function walk(dir, keep, found = []) {
   return found
 }
 
-// The grouped Home guard was introduced by an earlier commit. A pure :is/:where
+// The grouped Home guard was introduced by abf7196c7. A pure :is/:where
 // union has the same subject classes as its alternatives; intersections,
 // descendant requirements, attributes and other pseudo-classes do not.
 function positiveSubjectParts(subject) {

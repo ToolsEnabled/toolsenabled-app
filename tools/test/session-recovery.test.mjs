@@ -1,5 +1,5 @@
-// Messaging a dead agent just works (iteration 6: the sessionGone refusal kept
-// appearing where a recovery belongs).
+// Messaging a dead agent just works (iteration 6, owner: "We still get this
+// message" — the sessionGone refusal standing where a recovery belongs).
 //
 // The pins here are the recovery's ORDER, because the order is the
 // correctness: the phantom you-line strips BEFORE the resume reads the saved
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
 import vm from 'node:vm'
 import { refusalCode } from '../../src/agent-availability-copy.js'
-import { QUEUE_PANEL, sendFailureIsUnconfirmed, sendRefusalSentence } from '../../src/fleet-tree-copy.js'
+import { QUEUE_PANEL, sendFailureIsUnconfirmed, sendFailureWasAccepted, sendRefusalSentence } from '../../src/fleet-tree-copy.js'
 import { functionSource, realOutbox } from './fixtures/recovery-outbox.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -90,6 +90,7 @@ function refusedSendFixture(code, { attachments, recoveryAttempted = false, queu
   const send = vm.runInNewContext(`(${view.slice(begin, end + 4)})`, {
     notePersonSpokeTo: () => events.push(['person']), treeStore: {}, parseSlashCommand: () => null,
     nodeBusy: () => busy, pendingModelChoice: () => applying ? { applying: true } : null,
+    nodeReplacementFlight: { busy: () => false },
     outboxEnqueue(sessionId, text) { events.push(['outbox', sessionId, text]); return { ok: true, sentence: 'queued locally' } },
     withResearchTreeBinding: bridge => bridge,
     sessionModelOverride: new Map(), sessionPendingImages: new Map(),
@@ -99,7 +100,7 @@ function refusedSendFixture(code, { attachments, recoveryAttempted = false, queu
     stripPhantomYouLine: (target, session, text) => events.push(['strip', target, session, text]),
     recoverDeadSessionSend: (...args) => { events.push(['recover']); recoveries.push(args) },
     queueForSession: (target, text) => { events.push(['queue', target, text]); return queueResult },
-    refusalCode, QUEUE_PANEL, sendFailureIsUnconfirmed, queuedSendRefusalSentence: sendRefusalSentence,
+    refusalCode, QUEUE_PANEL, sendFailureIsUnconfirmed, sendFailureWasAccepted, queuedSendRefusalSentence: sendRefusalSentence,
   })
   send(node, 'keep these words', callbacks)
   return { events, failures, recoveries, queued, requests, node, callbacks }
@@ -241,7 +242,7 @@ test('the recovery is bounded and the honest dead end survives it', () => {
     'the sessionGone sentence no longer backs the recovery — a failed resume goes silent')
   assert.match(recovery, /RECOVERED_SESSION\.reconnecting/, 'the recovery no longer says what it is doing')
   /* The cost sentence is said only where a cost was paid. A real resume
-     re-sends nothing, so promising tokens up front would be charging them in
+     re-sends nothing, so promising tokens up front would be charging him in
      words for something that did not happen. */
   // The engine/summary/bare/ready behavioral cases above verify which notice
   // reaches the composer; the ready path carries history with the first intent.

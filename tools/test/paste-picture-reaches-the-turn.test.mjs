@@ -1,7 +1,7 @@
 /* A PICTURE PASTED IN A REAL WINDOW REACHES THE MESSAGE THE PROVIDER IS SENT.
  *
- * T18: images pasted into chat were not sent to the agent and caused an error.
- * Six suites already covered pasting and all six were green
+ * T18, the owner: "images paste into chat but DONT get sent to the agent and
+ * cause an error." Six suites already covered pasting and all six were green
  * while the feature was broken, because every one of them stops at the app
  * boundary. This one does not: it drives the real Computers view in a real
  * hidden Electron window with its own user-data-dir, dispatches a real
@@ -16,7 +16,7 @@
  * picture that arrived is the picture that was pasted" is a comparison and not
  * a coincidence.
  *
- * RED/GREEN: the adapter half is RED at an earlier engine commit (the blanket
+ * RED/GREEN: the adapter half is RED at engine 16462165 (the blanket
  * CLAUDE_CLI_IMAGES_UNSUPPORTED refusal) and GREEN with the delivery fix. Point
  * MC_T18_ENGINE_ROOT at either tree to see it.
  */
@@ -94,8 +94,8 @@ test('a real paste in the full conversation and in the rail puts the pasted pict
     const adapter = new ClaudeCliAdapter({
       transport: { send: message => written.push(message), onData() {}, close() {}, kill() {} },
     })
-    adapter.threadId = '00000000-0000-4000-8000-0000000000e1'
-    const turnPromise = adapter.sendTurn({ threadId: '00000000-0000-4000-8000-0000000000e1', text: turn.text, images: turn.images })
+    adapter.threadId = '7cf7c88e-6912-4388-a181-78aef262c494'
+    const turnPromise = adapter.sendTurn({ threadId: '7cf7c88e-6912-4388-a181-78aef262c494', text: turn.text, images: turn.images })
     turnPromise.catch(() => { /* the turn never completes here; the written message is what is under test */ })
     await new Promise(resolve => setImmediate(resolve))
 

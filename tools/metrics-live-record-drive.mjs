@@ -6,8 +6,8 @@
  * shipped rendering perfectly while every tile on it said
  * "unavailable · No local agent fleet host detected on this machine." on every
  * install, for ever, because it read a file written at BUILD time on the
- * builder's machine. It was hit on a real install, where it looked like an
- * account problem.
+ * builder's machine. The owner hit it himself and asked whether it was his
+ * account.
  *
  * So this file measures the only thing that settles it: a fresh profile with
  * nothing in it, the metrics page read BEFORE anything has run, then a REAL
@@ -19,9 +19,9 @@
  * resources/capability, this tree's dist/ and shell/ overlaid by stage() in
  * tools/test-account-harness.mjs. It NEVER touches the installed copy under
  * %LOCALAPPDATA%\\Programs\\toolsenabled: a harness pointed at the owner's live
- * install once desynced their audit ledger, and openWindow() redirects APPDATA,
- * LOCALAPPDATA, USERPROFILE and CODEX_HOME into a scratch profile that this run
- * deletes.
+ * install once desynced his audit ledger, and openWindow() redirects APPDATA,
+ * LOCALAPPDATA and USERPROFILE into scratch. The provider CLI uses --codex-home
+ * in place, or an environment API key.
  *
  * WHY CODEX AND NOT CLAUDE. The Claude quota on this machine is at zero until
  * 2026-08-21, and a run that cannot get an answer cannot tell a connected page
@@ -185,30 +185,10 @@ async function main() {
     console.log('staging the packaged build (never the installed copy)...')
     const staged = await stage(scratch)
 
-    /* The Codex sign-in is LENT to the scratch profile, exactly as
-       tools/claude-tree-start-proof.mjs lends the Claude one and for the same
-       reason: openWindow() redirects CODEX_HOME into this temporary directory,
-       so a child started under it would otherwise look for a sign-in in a home
-       that has never had one. Nothing in the product path reads the copy; the
-       CLI authenticates itself, as it does in the person's own terminal. The
-       file lives only in the directory this run deletes. */
-    const realCodex = path.join(process.env.USERPROFILE || '', '.codex', 'auth.json')
-    if (!existsSync(realCodex)) {
-      note('FAIL', 'HARNESS STATE: this computer has no Codex sign-in to lend, so no real run could be caused and nothing below would be a measurement.')
-      return
-    }
-    const scratchCodex = path.join(scratch, 'home', '.codex')
-    mkdirSync(scratchCodex, { recursive: true })
-    cpSync(realCodex, path.join(scratchCodex, 'auth.json'))
-    const realNpm = path.join(process.env.APPDATA || '', 'npm')
-    if (existsSync(realNpm)) {
-      mkdirSync(path.join(scratch, 'roaming'), { recursive: true })
-      try { symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* already linked */ }
-    }
-    note('info', 'lent the scratch profile this computer’s Codex sign-in; it lives only in the temporary profile this run deletes.')
+    // The official CLI uses the caller-selected provider home or environment API key.
 
     seedMachineRecord(scratch, staged.appRoot, 'standard')
-    window = await openWindow(staged.executable, scratch)
+    window = await openWindow(staged.executable, scratch, { provider: 'codex' })
 
     /* MEASURED, NOT REASONED. Everything above says this run is isolated -- a
        redirected APPDATA, a --user-data-dir on the scratch profile, and a

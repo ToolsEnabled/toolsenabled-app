@@ -32,11 +32,8 @@
  *      truth about the saved messages instead of "You have not sent it a
  *      message yet."
  *
- * THE SIGN-IN IS LENT, NEVER READ. Same technique as
- * tools/claude-tree-start-proof.mjs and for the same reason: the profile is
- * isolated (a driver that ran against the real home once desynced the owner's
- * audit ledger), so the scratch home is given the two files the CLI reads and
- * the npm layout is junctioned. The product path then authenticates itself.
+ * Use --claude-config-dir for the existing provider home in place, or
+ * ANTHROPIC_API_KEY from the environment. Product state stays in scratch.
  *
  * IT SPENDS REAL MONEY on the person's own subscription, so it is a tool and
  * never a default test target.
@@ -301,24 +298,16 @@ async function main() {
     }
     note('ok', `installed to ${installDir}`)
 
-    /* The profile: isolated everything, with the Claude sign-in lent and npm
-       junctioned — see the module header. */
+    /* Product state is isolated; the CLI uses the explicit provider home. */
     for (const leaf of ['local', 'roaming', 'home', 'userdata']) mkdirSync(path.join(scratch, leaf), { recursive: true })
-    const realHome = process.env.USERPROFILE || ''
-    const credential = path.join(realHome, '.claude', '.credentials.json')
-    if (!existsSync(credential)) { note('FAIL', 'HARNESS STATE: no Claude sign-in on this computer to lend'); return }
-    mkdirSync(path.join(scratch, 'home', '.claude'), { recursive: true })
-    cpSync(credential, path.join(scratch, 'home', '.claude', '.credentials.json'))
-    const settings = path.join(realHome, '.claude.json')
-    if (existsSync(settings)) cpSync(settings, path.join(scratch, 'home', '.claude.json'))
     const realNpm = path.join(process.env.APPDATA || '', 'npm')
     if (existsSync(realNpm)) {
       try { symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* linked */ }
     }
     mkdirSync(path.join(scratch, 'home', 'Documents'), { recursive: true })
-    note('info', 'profile isolated; Claude sign-in lent into the scratch home; npm junctioned')
+    note('info', 'product profile isolated; provider home supplied in place; npm junctioned')
 
-    window = await openWindow(executable, scratch)
+    window = await openWindow(executable, scratch, { provider: 'claude' })
     note('ok', `launched pid ${window.timeline.pid}`)
 
     console.log('\n[1] DEFECT 3 SCENE 1: the real setup walkthrough, driven')
@@ -478,7 +467,7 @@ async function main() {
 
     console.log('\n[5] DEFECT 4: restart, and read the Rewind row')
     await closeWindow(window)
-    window = await openWindow(executable, scratch)
+    window = await openWindow(executable, scratch, { provider: 'claude' })
     await window.evaluate(`location.hash = '#/computers'`)
     await delay(1200)
     await window.evaluate(`location.reload()`)

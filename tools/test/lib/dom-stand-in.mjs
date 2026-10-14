@@ -59,7 +59,7 @@ export class Element {
          view's own load path that lands in the load's catch, so the suite reads
          a page that refused its fleet -- a harness gap reported as a product
          defect. Returns the removed value, as the DOM's own does.
-         Ported from an earlier commit (app repo, "computers: wait for the projection a
+         Ported from 4d3cfab9 (app repo, "computers: wait for the projection a
          tree command needs, not only the first boot"). */
       removeProperty(name) {
         const had = Object.hasOwn(this, name) ? String(this[name]) : ''
@@ -288,12 +288,8 @@ export class Element {
   focus() { if (this.ownerDocument) this.ownerDocument.activeElement = this }
   scrollIntoView() {}
   getBoundingClientRect() { return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 } }
-  /* NO DRAWING CONTEXT, WHICH IS AN ANSWER RATHER THAN A GAP. src/corona-gl.js
-     documents null as the supported reply -- "returns null, deliberately,
-     rather than throwing, when WebGL2 is unavailable" -- and the caller falls
-     back to the CPU field renderer. Without this method the same question
-     threw a TypeError, so any view that mounts the uptime ring could not be
-     built here at all. */
+  /* A stand-in has no drawing context. Canvas callers receive the supported
+     null response so their unavailable-context behavior can still be tested. */
   getContext() { return null }
   get isConnected() {
     const document = this.ownerDocument

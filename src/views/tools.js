@@ -1,8 +1,8 @@
 /* /tools — every tool your assistants can reach, and your answer for each one.
  *
- * Two requirements together: on the tool pop-up every tool has three states
- * (enabled, permissions required, disabled), and tools get their own settings
- * page. This is the page.
+ * The owner asked for two things in one breath: "on the tool pop up every tool
+ * needs 3 states: enabled; permissions required; disabled", and "it can really
+ * just be its own tools settings page". This is the page.
  *
  * WHAT IT REPLACES, AND WHY A DRAWER COULD NOT CARRY IT. The list used to be a
  * strip of checkboxes inside the quick-settings drawer, on one route, with two
@@ -94,6 +94,16 @@ export function toolsView() {
           <p class="tools-eyebrow">This computer</p>
           <h1 class="tools-h1">Tools</h1>
           <p class="tools-lede">Every tool your assistants can reach on this computer. Each one has three answers: use it, ask you first, or leave it off. A change reaches the assistants you start afterwards; the ones already running keep the tools they started with.</p>
+          <!-- THE DOOR TO /plugins, AND THE ONLY ONE.
+               Plugins are not a ring stop: a person who has added none never needs
+               the page, and a stop one click from home is what put a builder's own
+               purchase list in front of every install once already. But a person
+               asking "what can my assistants reach?" is already HERE, and a tool a
+               plugin added is answered for on this page like any other -- so the
+               place its permissions are decided has to be reachable from here, or
+               it is reachable only by typing an address. -->
+          <p class="tools-lede tools-plugins-link">Tools can also come from a plugin you added yourself.
+            <a href="#/plugins">Decide what your plugins may do</a>.</p>
         </div>
       </header>
       <div class="tools-layout">

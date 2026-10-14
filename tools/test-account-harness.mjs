@@ -34,7 +34,7 @@
  * - It never claims a launch from an exit code. `openWindow` records a timeline
  *   -- spawn time, pid, the moment a debuggable page answered, exit code and
  *   exit time, and the tail of stdout/stderr -- because the acceptance matrix
- *   this lane reuses (an internal acceptance matrix)
+ *   this lane reuses (Desktop MACHINE-B-REPLACEMENT-BUILD-ACCEPTANCE-MATRIX.md)
  *   names "exit code 0" and "empty stdout" as evidence that is not sufficient.
  *   A window that never appeared reports `windowAt: null`, not a pass.
  *
@@ -44,6 +44,7 @@
  * an exit code that reads like an ordinary failure.
  */
 
+import { providerLaunchEnvironment } from './lib/provider-launch-environment.cjs'
 import { spawn } from 'node:child_process'
 import crypto from 'node:crypto'
 import {
@@ -434,8 +435,8 @@ async function overlayCurrentSource(app, scratch) {
    * THE GAP, MEASURED ON THE DAY IT MATTERED. dist/ and shell/ were overlaid
    * from this tree and `resources/capability` was whatever the last
    * `npm run dist` happened to leave in release/win-unpacked. On 2026-08-17 that
-   * directory was cut, and capability/src/lib/agent-engine/ took the Claude
-   * engine hours later, so every packaged driver in this repo was driving a
+   * directory was cut at 13:06 and capability/src/lib/agent-engine/ took the
+   * Claude engine at 18:55, so every packaged driver in this repo was driving a
    * payload with NO claude-cli-process.js in it. shell/agent-host.cjs gates the
    * Claude tiers on a require() of exactly that file, so every one of those runs
    * would have reported "this copy carries no launcher" -- about a build that
@@ -616,7 +617,7 @@ export function isProviderCredentialName(name) {
  * a machine that does not set it, this lands on exactly the path the homedir
  * fallback already resolved to, so no drive changes behaviour.
  */
-export function environmentFor(profile) {
+export function environmentFor(profile, { provider = null, argv, source } = {}) {
   /* The profile root is an ANCESTOR of the userData every openWindow() launch
      selects, and the Linux launch refuses an ancestor anyone else could write
      (see makePrivateDirectory). Created here, 0700, rather than by whichever
@@ -672,7 +673,7 @@ export function environmentFor(profile) {
       mkdirSync(environment[name], { recursive: true })
     }
   }
-  return environment
+  return provider ? providerLaunchEnvironment(provider, environment, { argv, source }) : environment
 }
 
 async function freePort() {
@@ -984,13 +985,13 @@ const VISIBLE_FN = `(selector) => {
  * launched" is expected to quote the timeline rather than the absence of an
  * error.
  */
-export async function openWindow(executable, profile, { extraArgs = [] } = {}) {
+export async function openWindow(executable, profile, { extraArgs = [], provider = null } = {}) {
   const port = await freePort()
   const timeline = {
     spawnedAt: Date.now(), pid: null, windowAt: null, exitCode: null, exitedAt: null,
     stdout: '', stderr: '',
   }
-  const environment = environmentFor(profile)
+  const environment = environmentFor(profile, { provider })
   /* THE APPLICATION IS STILL THE THING THAT RUNS; THE CONFINEMENT IS NOT A
      SUBSTITUTE FOR IT. Measured 2026-09-11 against the 1.0.44 candidate's own
      linux-unpacked tree: launched directly on a stock Ubuntu desktop the

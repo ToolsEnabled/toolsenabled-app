@@ -13,7 +13,7 @@
  * The previous harness set MC_BRIDGE_PROOF_FILE so the shell would report
  * source 'env' and NOT report a supervised layer, which let the renderer's
  * `?bridge=` developer override select a stub the harness had started. Commit
- * an earlier commit fenced that variable out of packaged builds because HKCU\Environment
+ * 17a0483 fenced that variable out of packaged builds because HKCU\Environment
  * is user-writable without elevation, so the variable was never proof that a
  * developer was present. Re-enabling that path for the test would reopen exactly
  * the hole the fence closed, so the harness stops using it: instead of

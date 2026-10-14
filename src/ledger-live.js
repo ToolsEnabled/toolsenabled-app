@@ -27,7 +27,7 @@ const OWNER_SNAPSHOT_BUDGET_MS = 1000
 /* Which glyph a record wears on the page's left rail. The status vocabulary is
    the ledger's own (proposed, open, in-progress, partial, blocked-external,
    done, not-possible-as-asked, superseded, declined, removed).
-   THE RESOLVE ACTION: the person's own Resolve control
+   THE OWNER'S RESOLVE ACTION (2026-09-07): the owner's own Resolve control
    (src/views/ledger.js) moves a standing row to one of RESOLUTION_STATUSES --
    in-progress, partial, blocked-external, done, not-possible-as-asked,
    superseded -- and four of those used to collapse into a neighbour here
@@ -101,8 +101,8 @@ const decisionOf = value => (value && typeof value === 'object' && typeof value.
     })
   : null)
 
-/* THE FOUR LEDGER SUBSETS: R for rules, T for tasks, A for
-   asks, P for purchases. The engine is adding a `kind` field to
+/* THE OWNER'S FOUR SUBSETS (2026-09-07): R for rules, T for tasks, A for
+   asks, P for purchases. The engine lane (L1) is adding a `kind` field to
    every stored record; until it lands, a record carries none, and the ONLY
    honest thing this reader can do is what the shared interface says --
    derive it from the id's own letter, and call a record with no letter it

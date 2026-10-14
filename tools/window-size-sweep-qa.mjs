@@ -189,7 +189,7 @@ const CASES = scaleMatrix({ sizes: SIZES, osScale: OS_SCALE, textSizes: TEXT_SIZ
      .static-tree-node    an agent bubble on the canvas (src/tree-graph.js);
                           selecting one is what reveals the named door
      .graph-open-btn      "Open agent detail" in the named-controls strip
-                          (src/views/computers.js). Since an earlier commit it is aimed
+                          (src/views/computers.js). Since 18ef5e7 it is aimed
                           at the first DECLARED seat and VISIBLE with no
                           selection on a fresh install; selecting a node aims
                           it at that node instead
@@ -301,7 +301,7 @@ function appExecutable(appRoot) {
 }
 
 function systemOnlyPath() {
-  const root = process.env.SystemRoot || 'C:\\Windows'
+  const root = process.env.SystemRoot || '\x43:\\Windows'
   return [
     path.join(root, 'system32'),
     root,
@@ -439,8 +439,8 @@ const PS_RESIZE = [
   '"@',
   '# SPEAK PHYSICAL PIXELS, BEFORE TOUCHING A SINGLE WINDOW.',
   '# PowerShell is DPI-unaware by default, so Windows virtualises every',
-  '# coordinate it passes to SetWindowPos through the SYSTEM dpi (e.g. 125%)',
-  '# while the app window is per-monitor aware (e.g. at 137.5%). Asking a per-monitor',
+  '# coordinate it passes to SetWindowPos through the SYSTEM dpi (125% here)',
+  '# while the app window is per-monitor aware at 137.5%. Asking a per-monitor',
   '# aware window for a size in virtualised units is a documented mess and it',
   '# behaved like one: the first call, with cy=768, produced a window 65535',
   '# physical pixels tall. Declaring awareness first removes the translation',
@@ -515,8 +515,8 @@ const PS_RESIZE = [
   'if (-not [SweepWin32]::IsWindowVisible($best)) { [void][SweepWin32]::ShowWindow($best, 4); Start-Sleep -Milliseconds 200 }',
   '# SWP_NOMOVE(0x2) | SWP_NOZORDER(0x4) | SWP_NOACTIVATE(0x10).',
   '# THE WINDOW IS NEVER MOVED, and that is a measurement, not a preference.',
-  '# Monitors can run at a different scale than the system DPI, so a window',
-  '# dragged between them crosses a DPI boundary; doing it',
+  '# The two panels on this machine run at 137.5% while the system DPI is 125%,',
+  '# so a window dragged from one to the other crosses a DPI boundary; doing it',
   '# from a DPI-unaware caller made Chromium answer WM_DPICHANGED with a window',
   '# 65535 physical pixels tall, and every viewport read afterwards was of that.',
   '# Sizing in place keeps one DPI for the whole sweep. NOT SWP_FRAMECHANGED',
@@ -839,25 +839,9 @@ const MEASURE = `(() => {
     const tag = node.tagName.toUpperCase()
     if (visuallyHidden(node, style, box)) continue
 
-    /* --- DECORATIVE BLEED IS NOT CUT-OFF CONTENT ---
-     *
-     * MEASURED: canvas.cres-gl, the corona behind the home ring, is about 3.4x
-     * the ring's radius by owner-reviewed constants (src/crescent-mount.js), it
-     * is aria-hidden="true" with pointer-events: none, and .view's
-     * overflow: hidden clips it against a box flush with the window edge. A
-     * person sees a clean ring with a faded glow: no scrollbar, nothing
-     * reachable lost, nothing to read cut in half. This sweep reported it as
-     * content cut off with no way to reach it, at every window size, because its
-     * rule is "clipped, and no SCROLLABLE ancestor" and an overflow: hidden
-     * ancestor is never an exemption -- correctly, for real content.
-     *
-     * aria-hidden="true" is the narrow exemption, and it is narrow on purpose:
-     * it is the author's own declaration that the element carries nothing a
-     * person is meant to receive, and it is the same declaration a screen reader
-     * acts on. An element with words in it that somebody is supposed to read
-     * cannot carry that attribute without already being a defect of its own. The
-     * exemption is not extended to overflow: hidden ancestors in general, which
-     * would excuse every genuinely clipped thing on every screen. */
+    /* Author-declared decorative regions are excluded from readable-content
+       clipping. The exemption remains aria-hidden only: a hidden overflow
+       ancestor alone never excuses unreachable words or controls. */
     const decorativeOnly = node.closest('[aria-hidden="true"]') !== null
 
 
@@ -1382,8 +1366,8 @@ async function main() {
            declared organisation the empty graph offers "See an example agent".
            On a fresh install with a declared organisation -- the state every
            packaged copy actually opens in -- the tree is EMPTY BY DESIGN
-           (an earlier commit) and the door is `.graph-open-btn`, aimed at the first
-           DECLARED seat and visible with NO selection since an earlier commit ("The only
+           (5cc2f09) and the door is `.graph-open-btn`, aimed at the first
+           DECLARED seat and visible with NO selection since 18ef5e7 ("The only
            door to the page that starts an agent opened after you had started
            one"). With running agents there are nodes, a node is selected
            first, and the same button opens THAT node. The middle door is the

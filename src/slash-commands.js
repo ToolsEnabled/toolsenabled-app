@@ -37,7 +37,7 @@ const BY_NAME = new Map(SLASH_COMMANDS.map(command => [command.name, command]))
  * already talking. These are NOT palette actions: nothing on the Actions page
  * files a rule, so they carry a scope instead of an action id and the view
  * routes kind:'request' to the product's own filing seam. The engine's
- * r-ledger module is the ground truth for the four
+ * r-ledger module (owner design 2026-08-15) is the ground truth for the four
  * scopes; the words after the command are the rule, verbatim.
  *
  * `word` is what the parser's lowercasing produces; `spoken` is how the
@@ -53,8 +53,9 @@ const REQUEST_BY_WORD = new Map(REQUEST_COMMANDS.map(command => [command.word, c
 const REQUEST_BY_SCOPE = new Map(REQUEST_COMMANDS.map(command => [command.scope, command]))
 
 /* THE /TASK FAMILY — built the same way as /Request, for the ledger's T
- * subset (T for tasks: recurring loop tasks, or tasks with a definite
- * completion; agents may complete and remove them). Same four scopes, same grammar; the words after
+ * subset (owner, 2026-09-06: "T for tasks, these can be recurring loop tasks
+ * or tasks that have a definitve completion - these tasks can be completed
+ * and removed by agents"). Same four scopes, same grammar; the words after
  * the command are the task, verbatim. Whether a filed task is one-shot or
  * recurring is not said in the command line — that is the task's own
  * lifecycle, set where it is completed or scheduled, not typed here. */
@@ -69,7 +70,7 @@ const TASK_BY_WORD = new Map(TASK_COMMANDS.map(command => [command.word, command
 const TASK_BY_SCOPE = new Map(TASK_COMMANDS.map(command => [command.scope, command]))
 
 /* THE /ASK FAMILY — built the same way as /Request, for the ledger's A
- * subset (A for asks: things agents need from the person).
+ * subset (owner, 2026-09-06: "Asks for things agents need from the owner").
  * Same four scopes, same grammar; the words after the command are the
  * question, verbatim. */
 export const ASK_COMMANDS = Object.freeze([
@@ -88,9 +89,10 @@ const ASK_BY_SCOPE = new Map(ASK_COMMANDS.map(command => [command.scope, command
  * WHAT THIS USED TO SAY, AND WHY IT IS WRONG. The note here read "A GOAL IS A
  * QUEUE RECORD, NOT AN AGENT COMMAND", and the usage sentence below told a
  * person "Nothing was recorded and no agent was started." That is the defect
- * reported as goal still having issues: ledger T61, A23, overruling the
- * record-only closure of T48 -- a goal set in the app makes the agent work
- * autonomously until the goal is achieved; it is NOT record-only. Typing what you want done and getting a queue row and an idle
+ * the owner reported as "theres still issues with goal": ledger T61, owner
+ * A23, overruling the record-only closure of T48 -- "a goal set in the app
+ * makes the agent work autonomously until the goal is achieved. It is NOT
+ * record-only." Typing what you want done and getting a queue row and an idle
  * agent is not a goal.
  *
  * SO `/goal <objective>` NOW SETS A GOAL ON THE RUNNING AGENT, and the R id

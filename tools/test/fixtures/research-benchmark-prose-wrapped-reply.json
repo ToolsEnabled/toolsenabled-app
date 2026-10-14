@@ -1,5 +1,5 @@
 {
-  "provenance": "One model reply kept only as a real response shape from a development run that leaked tools to the model and does not qualify; it is never a qualifying measurement.",
+  "provenance": "One reply retained by a lean-bench run (5b6ed8d2, trial flat-canary.claude-cli.1, attempt 1). That run leaked tools to the model and does not qualify; the reply is kept only as a real response shape, never as a qualifying measurement.",
   "recordedGrade": {
     "passed": false,
     "score": 0,

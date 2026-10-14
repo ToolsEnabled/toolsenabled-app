@@ -1,9 +1,9 @@
 # Proposed Linux direct-FRA authority contract
 
 2026-09-05. Design for implementation and qualification, not implemented support
-or a release verdict. Reviewed an earlier engine commit;
+or a release verdict. Reviewed engine `10b29b629154b87923731e21cc8fc226ef78b0dd`;
 the five authority/binding/workspace/manifest modules below are unchanged in
-an earlier commit. This documentation changes no runtime,
+`6a6f57a90a0372b5ddcac14307446d81413f0e2d`. This documentation changes no runtime,
 permissions, enrollment, receipts, capability manifests, or LIVE selection.
 
 See the [platform parity plan](linux-platform-parity-plan.md) for adjacent

@@ -29,12 +29,12 @@
  * WHAT IT DOES NOT DO. It signs nothing in, spends nothing, decides nothing and
  * reads no vault record. It creates a THROWAWAY account in a sterile profile,
  * because the row is only drawn for a signed-in person and driving the owner's
- * own account would need their password, which a harness may not have.
+ * own account would need his password, which a harness may not have.
  *
  * THE PROFILE IS STERILE AND THE STATE ROOT WITH IT. --user-data-dir moves
  * Electron's userData, and shell/main.cjs derives CAPABILITY_STATE_ROOT from
  * that, so this run cannot read, write or disturb the owner's installed copy.
- * That is also why the prompt count it observes is 0 rather than the installed copy's: this
+ * That is also why the prompt count it observes is 0 rather than his 10: this
  * measures the SHAPE of the read, and the store comparison in step 3 is what
  * carries the split.
  *

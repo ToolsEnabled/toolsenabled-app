@@ -5,6 +5,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 
 import startupRefusal from '../../shell/startup-refusal.cjs'
+import { THEME_SEED as THEME_SEEDS } from '../../shell/theme-seed.cjs'
 
 const { reportStartupRefusal } = startupRefusal
 
@@ -99,6 +100,7 @@ test('an unavailable interactive dialog falls back to the same coded stderr refu
 test('all early profile and environment refusals use the headless-safe reporter', () => {
   const main = readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf8')
   const earlyChecks = [
+    ['linuxInstalledAdmission', 1],
     ['installProfileCheck', 1],
     ['runtimeProfileCheck', 1],
     ['devUserDataCheck', 1],
@@ -136,6 +138,7 @@ async function sourcePageFixture({ paths, packaged = false, files = new Map(), r
   let handler
   const sandbox = {
     path: paths, URL, DIST: dist, app: { isPackaged: packaged }, shellOrigin: origin.origin,
+    THEME_SEED: THEME_SEEDS,
     MIME: { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json' },
     http: { createServer(fn) { handler = fn; return { on() {} } } },
     fs: { readFile(file, callback) {
@@ -179,11 +182,7 @@ async function sourcePageFixture({ paths, packaged = false, files = new Map(), r
 // own source here, so the page is checked against the real strip and the real
 // theme seeds rather than a copy of their numbers.
 const PRELOAD_SOURCE = readFileSync(new URL('../../shell/fleet-profile-preload.cjs', import.meta.url), 'utf8')
-const SHELL_SOURCE = readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf8')
 const TITLE_STRIP_HEIGHT = Number(/const TITLEBAR_HEIGHT = (\d+)/.exec(PRELOAD_SOURCE)?.[1])
-const THEME_SEEDS = Object.fromEntries([...(/const THEME_SEED = \{([\s\S]*?)\n\}/.exec(SHELL_SOURCE)?.[1] || '')
-  .matchAll(/(\w+): \{ bg: '(#[0-9a-f]{6})', ink: '(#[0-9a-f]{6})' \}/gi)]
-  .map(([, theme, bg, ink]) => [theme, { bg: bg.toLowerCase(), ink: ink.toLowerCase() }]))
 
 function relativeLuminance(hex) {
   const [r, g, b] = [1, 3, 5].map(at => parseInt(hex.slice(at, at + 2), 16) / 255)

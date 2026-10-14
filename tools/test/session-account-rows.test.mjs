@@ -38,11 +38,11 @@ test('a session that pinned an account answers one row carrying the name and the
       sessionId: 's1',
       agentId: 'coordinator-1',
       account: { name: 'work', provider: 'claude' },
-      pinnedHome: 'C:/homes/claude/work',
+      pinnedHome: '\x43:/homes/claude/work',
     },
   ])
   assert.deepEqual([...rows], [{
-    sessionId: 's1', agentId: 'coordinator-1', account: 'work', provider: 'claude', pinnedHome: 'C:/homes/claude/work',
+    sessionId: 's1', agentId: 'coordinator-1', account: 'work', provider: 'claude', pinnedHome: '\x43:/homes/claude/work',
   }])
   assert.ok(Object.isFrozen(rows), 'a caller must not be able to edit the host\'s answer')
   assert.ok(Object.isFrozen(rows[0]))

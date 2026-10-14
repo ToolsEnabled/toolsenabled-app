@@ -24,7 +24,7 @@ const MAIN = readFileSync(new URL('../../shell/main.cjs', import.meta.url), 'utf
 
 // Exactly 43 base64url characters, the shape shell/bridge-proof.cjs enforces.
 const PROOF_TOKEN = 'bridge-env-path-fixture-bootstrap-proof-001'.padEnd(43, '0')
-const PROOF_FILE = 'C:\\fixture\\proof.json'
+const PROOF_FILE = '\x43:\\fixture\\proof.json'
 const envWith = () => ({ [PROOF_ENV]: PROOF_FILE })
 const readsProofFile = () => JSON.stringify({ token: PROOF_TOKEN })
 
@@ -151,13 +151,13 @@ test('the diagnostic never throws, so it cannot crash the boot it is diagnosing'
     rmSync() { throw new Error('locked') },
   }
   assert.deepEqual(
-    recordEnvProofRefusal({ directory: 'C:\\nope', refused: true, fs: exploding, path }),
-    { written: false, cleared: false, file: path.join('C:\\nope', REFUSAL_RECORD_NAME) },
+    recordEnvProofRefusal({ directory: '\x43:\\nope', refused: true, fs: exploding, path }),
+    { written: false, cleared: false, file: path.join('\x43:\\nope', REFUSAL_RECORD_NAME) },
   )
-  assert.doesNotThrow(() => recordEnvProofRefusal({ directory: 'C:\\nope', refused: false, fs: exploding, path }))
+  assert.doesNotThrow(() => recordEnvProofRefusal({ directory: '\x43:\\nope', refused: false, fs: exploding, path }))
   assert.deepEqual(
     recordEnvProofRefusal({
-      directory: 'C:\\nope',
+      directory: '\x43:\\nope',
       refused: true,
       fs: exploding,
       path: { join() { throw new TypeError('invalid path') } },

@@ -1,9 +1,9 @@
 /* 1.0.48 PROVIDER-THEN-MODEL PICKER, UI STAGE 3: SWITCHING A MODEL.
  *
- * Owner decision for 1.0.48: every model a provider offers is selectable,
- * chosen as provider first, then model (for example Opus 5 and Sonnet 5 on
- * Claude), and a person can switch a running or stopped agent to any of
- * them.
+ * Owner, verbatim: "users need to be able to select all the models from the
+ * providers. it should be provider, then model choice. Becuasee for example I
+ * need opus5 and sonnet5 for the claude red im approved for. SO make sure users
+ * can do that".
  *
  * The three places a running or stopped agent changes model, and the one place
  * it changes depth while running:
@@ -67,7 +67,8 @@ test('Switch model opens on the providers, and each provider stage lists only th
     await waitFor(() => Boolean(ctx.liveChat().querySelector('.chat-actions-back')), `the ${provider.label} stage`)
     const rows = actionRows(ctx.liveChat())
     const expected = LAUNCH_TIERS.filter(tier => tier.provider === provider.id)
-    assert.equal(rows.length, expected.length, `${provider.label}: one row per ${provider.label} model and nothing else`)
+    assert.equal(rows.length, expected.length + 1, `${provider.label}: catalog models and a custom model choice`)
+    assert.equal(labelOf(rows.at(-1)), 'Other model…')
     expected.forEach((tier, index) => {
       assert.ok(labelOf(rows[index]).endsWith(`${tier.label} · ${tierProviderWord(tier.id)}`),
         `${provider.label}: row ${index} is ${tier.id}, in table order, and names its provider: ${labelOf(rows[index])}`)
@@ -79,10 +80,16 @@ test('Switch model opens on the providers, and each provider stage lists only th
 
 for (const [label, tier, from] of [['Opus 5 · Claude', 'claude-opus-5', { fromTier: 'claude-sonnet', provider: 'claude' }],
   ['Sonnet 5 · Claude', 'claude-sonnet-5', { fromTier: 'astra', provider: 'codex' }]]) {
-  test(`${label} is reachable from a running ${from.provider} conversation, and it starts on ${tier}`,
+  test(`${label} is reachable from ${from.provider}; continuation honors the destination account requirement`,
     { skip: payloadSkip }, async t => {
-    const ctx = await runningCircle(t, { replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) }, from)
+    const ctx = await runningCircle(t, { initialThreadId: 'picker-saved-thread', replacementStart: async (_, sessionId) => ({ ok: true, sessionId, account: 'picker-signed-in-account' }) }, { ...from, initialAccount: 'picker-signed-in-account' })
     await pressContinueRow(ctx, `Continue on ${label}`)
+    if (from.provider !== 'claude') {
+      assert.equal(startedRequests(ctx).length, 0, 'a provider change requires an explicitly chosen destination account')
+      assert.equal(ctx.readNode().tier, from.fromTier)
+      assert.ok(ctx.view.el.textContent.includes('Choose an account before continuing on another provider.'))
+      return
+    }
     await waitFor(() => startedRequests(ctx).length === 1, 'the pressed row to start its replacement')
     const request = startedRequests(ctx)[0].request
     assert.equal(request.tier, tier, 'the replacement runs the pinned model the person pressed')
@@ -95,7 +102,7 @@ for (const [label, tier, from] of [['Opus 5 · Claude', 'claude-opus-5', { fromT
 /* Sonnet at high: Opus 5 takes high, Haiku 4.5 takes no depth at all and its
    CLI refuses one. Measured before this change: --effort high reached Haiku. */
 test('a depth carried onto a model that takes none is dropped: Sonnet at high continued on Haiku 4.5', { skip: payloadSkip }, async t => {
-  const ctx = await runningCircle(t, { replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) }, { effort: 'high' })
+  const ctx = await runningCircle(t, { initialThreadId: 'picker-saved-thread', replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) }, { effort: 'high', initialAccount: 'picker-signed-in-account' })
   assert.equal(ctx.readNode().effort, 'high', 'the fixture circle was set to high')
   await pressContinueRow(ctx, 'Continue on Haiku 4.5 · Claude')
   await waitFor(() => startedRequests(ctx).length === 1, 'the Haiku replacement')
@@ -104,7 +111,7 @@ test('a depth carried onto a model that takes none is dropped: Sonnet at high co
 })
 
 test('a depth the new model takes still travels with it: Sonnet at high continued on Opus 5', { skip: payloadSkip }, async t => {
-  const ctx = await runningCircle(t, { replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) }, { effort: 'high' })
+  const ctx = await runningCircle(t, { initialThreadId: 'picker-saved-thread', replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) }, { effort: 'high', initialAccount: 'picker-signed-in-account' })
   await pressContinueRow(ctx, 'Continue on Opus 5 · Claude')
   await waitFor(() => startedRequests(ctx).length === 1, 'the Opus 5 replacement')
   assert.equal(startedRequests(ctx)[0].request.tier, 'claude-opus-5')
@@ -119,7 +126,7 @@ for (const [tier, effort] of [['claude-haiku-4-5', undefined], ['claude-opus-5',
     { skip: payloadSkip }, async t => {
     sharedBridge.startableTiers = async () => ({ ok: true, tiers: LAUNCH_TIERS.map(row => row.id) })
     t.after(() => { delete sharedBridge.startableTiers })
-    const ctx = await runningCircle(t, { replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) }, { effort: 'high' })
+    const ctx = await runningCircle(t, { initialThreadId: 'picker-saved-thread', replacementStart: async (_, sessionId) => ({ ok: true, sessionId }) }, { effort: 'high', initialAccount: 'picker-signed-in-account' })
     const chat = ctx.liveChat(); chat.openActions()
     chat.querySelectorAll('.chat-actions-row').find(row => /Switch and continue/.test(row.textContent)).dispatch('click')
     await waitFor(() => document.body.querySelector('.switch-continue'), 'the Switch and continue dialog')
@@ -261,17 +268,21 @@ test('Switch and continue opens with the keyboard on the checked provider', asyn
    "Any signed-in account" (checked) directly above "No other signed-in account
    is registered. Add one on the Accounts page, or pick another model or
    depth." The note is about the provider whose account can be kept. */
-test('another provider with no registered account does not contradict "Any signed-in account"', async () => {
+test('another provider with no registered account names the missing account and refuses continuation', async () => {
   const { installDomStandIn } = await import('./lib/dom-stand-in.mjs')
   const dom = installDomStandIn(globalThis)
   try {
-    const { host } = mountDialog(dom)
+    let chosen = null
+    const { host } = mountDialog(dom, { onChoose: value => { chosen = value } })
     const note = host.querySelector('[data-switch-no-accounts]')
     choose(host, '[data-switch-provider]', 'gemini')
     const any = host.querySelector('[data-switch-any-account]')
-    assert.equal(shown(any.querySelector('input')), true)
-    assert.equal(any.querySelector('input').checked, true)
-    assert.equal(shown(note), false, 'the "no other account" note sat under a checked "Any signed-in account"')
+    assert.equal(any, null)
+    assert.equal(host.querySelectorAll('[data-switch-account]').filter(shown).length, 0)
+    assert.equal(shown(note), true)
+    host.querySelector('[data-switch-continue]').dispatch('click')
+    assert.equal(chosen, null)
+    assert.equal(host.querySelector('[data-switch-cost]').textContent, 'Choose an account for this provider before continuing.')
 
     /* Where the account CAN be kept and no other is registered, it still says so. */
     const choices = switchChoices({ accounts: [], tiers: LAUNCH_TIERS, efforts: EFFORT_CHOICES, currentTier: 'claude-sonnet',
@@ -293,12 +304,13 @@ test('a provider change narrows the accounts, the models and the depths together
     assert.deepEqual(visibleValues(host, '[data-switch-model]'), LAUNCH_TIERS.filter(tier => tier.provider === 'codex').map(tier => tier.id))
     assert.equal(checkedValue(host, '[data-switch-model]'), 'astra', 'Codex lands on its default model')
     const accounts = host.querySelectorAll('[data-switch-account]').filter(shown)
-    assert.deepEqual(accounts.map(input => input.value), ['work-codex', ''], 'Codex accounts, then "any signed-in account"')
-    assert.ok(accounts[1].hasAttribute('data-switch-any') && accounts[1].checked, 'a Claude account cannot be kept on Codex')
+    assert.deepEqual(accounts.map(input => input.value), ['work-codex'], 'only registered Codex accounts are offered')
+    assert.equal(accounts[0].checked, false, 'the person chooses the destination account')
+    choose(host, '[data-switch-account]', 'work-codex')
     assert.deepEqual(visibleValues(host, '[data-switch-effort]'), effortChoicesFor('astra').map(choice => choice.id))
     assert.equal(checkedValue(host, '[data-switch-effort]'), 'medium', 'GPT-6-Astra\'s own default')
     host.querySelector('[data-switch-continue]').dispatch('click')
-    assert.deepEqual(chosen, { account: null, provider: 'codex', tier: 'astra', effort: 'medium', route: 'handoff' })
+    assert.deepEqual(chosen, { account: 'work-codex', provider: 'codex', tier: 'astra', effort: 'medium', route: 'handoff' })
   } finally { dom.restore() }
 })
 
@@ -310,12 +322,13 @@ test('Opus 5 and Sonnet 5 are reachable in the dialog, with Claude\'s depths and
       let chosen = null
       const { host } = mountDialog(dom, { currentTier: 'astra', onChoose: value => { chosen = value } })
       choose(host, '[data-switch-provider]', 'claude')
+      choose(host, '[data-switch-account]', 'approved')
       choose(host, '[data-switch-model]', tier)
       assert.deepEqual(visibleValues(host, '[data-switch-effort]'), ['', ...CLAUDE_DEPTHS], `${tier}: "Model default", then low to max`)
       assert.equal(checkedValue(host, '[data-switch-effort]'), '', `${tier}: a Codex depth does not follow the agent to Claude`)
       choose(host, '[data-switch-effort]', 'high')
       host.querySelector('[data-switch-continue]').dispatch('click')
-      assert.deepEqual(chosen, { account: null, provider: 'claude', tier, effort: 'high', route: 'handoff' })
+      assert.deepEqual(chosen, { account: 'approved', provider: 'claude', tier, effort: 'high', route: 'handoff' })
     }
   } finally { dom.restore() }
 })

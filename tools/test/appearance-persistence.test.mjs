@@ -16,7 +16,7 @@
  * reduce motion off `document.body.classList`, and neither branch of
  * applyValue() ever called writeStored(). The controls were real, they applied
  * instantly, and the choice was thrown away when the window closed -- the exact
- * shape that has been filed twice (some settings buttons did not work).
+ * shape the owner has filed twice ("some of my settings buttons dont work").
  *
  * WHY THE RULES BELOW ARE THE RULES.
  *
@@ -41,6 +41,7 @@ import fs from 'node:fs'
 import vm from 'node:vm'
 import * as appearance from '../../src/appearance-persistence.js'
 import { applyTextSize } from '../../src/text-size.js'
+import { refreshThemedFonts } from '../../src/font-choice.js'
 
 import {
   APPEARANCE_STORAGE_UNAVAILABLE,
@@ -182,15 +183,15 @@ test('a launch with nothing stored leaves the document alone', () => {
   assert.equal(documentRef.classes.size, 0)
 })
 
-test('a launch with both stored applies both', () => {
+test('a launch preserves retired glow and applies stored reduce motion', () => {
   const documentRef = fakeDocument()
   const storage = fakeStorage({ [GLOW_KEY]: '51', [REDUCE_MOTION_KEY]: 'true' })
   const applied = applyAppearance({ documentRef, storage })
-  assert.deepEqual(applied, { glow: 51, reduceMotion: true })
-  assert.equal(documentRef.properties.get('--glow'), '0.51')
+  assert.deepEqual(applied, { glow: null, reduceMotion: true })
+  assert.equal(documentRef.properties.has('--glow'), false)
+  assert.equal(storage.map.get(GLOW_KEY), '51', 'retired choice remains saved')
   assert.equal(documentRef.body.classList.contains('reduce-motion'), true)
   assert.deepEqual(documentRef.operations, [
-    ['property', '--glow', '0.51'],
     ['class', 'reduce-motion', true],
   ])
 })
@@ -266,6 +267,7 @@ function hydrationFixture(accountAppearance = ACCOUNT_APPEARANCE) {
       applyStoredAppearance: () => applyAppearance({ documentRef, storage }),
       bindAppearanceAccountChanges: () => appearance.bindAppearanceAccountChanges({ windowRef: window, documentRef, storage }),
       initializeRoleColors() {}, startHandControls() {},
+      refreshThemedFonts: () => refreshThemedFonts(documentRef),
     })
   }
   return {
@@ -286,12 +288,12 @@ function assertDeviceTextAndFont(f) {
 test('delayed account hydration applies its glow and motion alongside theme without changing device text/font', async () => {
   const f = hydrationFixture()
   f.boot()
-  assert.equal(f.documentRef.properties.get('--glow'), '1.8')
+  assert.equal(f.documentRef.properties.has('--glow'), false)
   assert.equal(f.documentRef.documentElement.dataset.theme, 'black')
   await f.finishInitial()
   assert.equal(f.storage.getItem(GLOW_KEY), '40')
   assert.equal(f.documentRef.documentElement.dataset.theme, 'cobalt')
-  assert.equal(f.documentRef.properties.get('--glow'), '0.4', 'display must match the effective hydrated account setting')
+  assert.equal(f.documentRef.properties.has('--glow'), false, 'retired decoration is ignored across hydrated accounts')
   assert.equal(f.documentRef.body.classList.contains('reduce-motion'), false)
   assertDeviceTextAndFont(f)
 })
@@ -300,7 +302,7 @@ test('switching to an account without appearance choices clears the prior accoun
   const f = hydrationFixture({ ...ACCOUNT_APPEARANCE, [REDUCE_MOTION_KEY]: 'true' })
   await f.finishInitial()
   f.boot()
-  assert.equal(f.documentRef.properties.get('--glow'), '0.4')
+  assert.equal(f.documentRef.properties.has('--glow'), false)
   assert.equal(f.documentRef.body.classList.contains('reduce-motion'), true)
   await f.switchTo(ACCOUNT_B)
   assert.equal(f.storage.getItem(GLOW_KEY), null)
@@ -317,7 +319,7 @@ test('signing out reapplies the retained device appearance without changing its 
   await f.switchTo(null)
   assert.equal(f.storage.getItem(GLOW_KEY), '180')
   assert.equal(f.documentRef.documentElement.dataset.theme, 'black')
-  assert.equal(f.documentRef.properties.get('--glow'), '1.8')
+  assert.equal(f.documentRef.properties.has('--glow'), false)
   assert.equal(f.documentRef.body.classList.contains('reduce-motion'), true)
   assertDeviceTextAndFont(f)
 })

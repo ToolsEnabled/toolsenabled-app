@@ -37,9 +37,9 @@
  * five methods and `length`, so a caller asking what was stored got
  *   Object.keys(localStorage)    -> ['getItem','setItem','removeItem','clear','key','length']
  *   Object.entries(localStorage) -> those names paired with the FUNCTIONS
- * confidently, with no error. A probe took that as a backup of a development
- * install's settings, called clear(), and wrote the six pairs back: every
- * tree, agent node and preference went, and the record was left
+ * confidently, with no error. On 2026-09-20 a probe took that as a backup of
+ * the owner's settings, called clear(), and wrote the six pairs back: six
+ * trees, 82 agent nodes and every preference went, and the record was left
  * holding keys literally named `getItem`, `clear` and `length`. Two shipped
  * tools read the store that way today -- tools/four-defects-drive.mjs:316 and
  * tools/home-activity-substance-qa.mjs:367.
@@ -53,8 +53,8 @@
  * it still counts in length and still appears in key(i) -- verified against
  * node --experimental-webstorage, which implements the same algorithm.
  *
- * That rule is the whole point on a record that holds such junk names as
- * DATA: a store where `localStorage.getItem` stopped being a function
+ * That rule is the whole point on the owner's record, which holds all six junk
+ * names as DATA: a store where `localStorage.getItem` stopped being a function
  * would take the application down on the next line. The cost is that such a
  * key cannot appear in Object.keys/entries, so its existence is said out loud
  * once at install instead of being left for a backup to come up short on.
@@ -224,7 +224,7 @@
    * (`mc.set.*`), and the purchase selection (`mc.checkout.v1`) belong to WHOEVER
    * IS SIGNED IN. Before this, all three were written to the one device record,
    * last-writer-wins, so a second person on the same Windows login opened the app
-   * wearing the first person's theme, settings and ticked purchase lines. Their
+   * wearing the first person's theme, settings and ticked purchase lines. His
    * name and card were already safe; these were not.
    *
    * WHEN SIGNED IN, an account-scoped key is:
@@ -360,9 +360,11 @@
       // Fleet saves carry the page's prior whole-cell value. MAIN compares it
       // atomically before admission so a stale page cannot erase another slot.
       var writeArgs = [name, text]
-      if (/^mc\.fleet\.trees\.v1:/.test(name)) writeArgs.push(cache.has(name) ? cache.get(name) : null)
-      demand(callBridge('write', writeArgs), 'save', name)
-      cache.set(name, text)
+      var permissionProfile = name === 'mc.action-permissions.v1'
+      if (permissionProfile || /^mc\.fleet\.trees\.v1:/.test(name)) writeArgs.push(cache.has(name) ? cache.get(name) : null)
+      var written = callBridge('write', writeArgs)
+      demand(written, 'save', name)
+      cache.set(name, permissionProfile && typeof written.value === 'string' ? written.value : text)
     },
     removeItem: function removeItem(key) {
       var name = String(key)

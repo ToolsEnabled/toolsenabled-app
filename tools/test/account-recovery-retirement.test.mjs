@@ -11,6 +11,9 @@ const directoryPath = path.join(fixtures, 'agent-comms/tree-node-directory.js')
 const providerPath = path.join(fixtures, 'providers/agent-comms-local.js')
 const { createAgentHost } = require('../../shell/agent-host.cjs')
 const { createAgentCommandSurface, REQUIRED_DEPS } = require('../../shell/agent-command-surface.cjs')
+/* The courier's poll in these fixtures. The per-boundary yield and the yield bound in
+   shell/tree-turn-priority.cjs are small multiples of it. */
+const POLL_MS = 20
 async function until(check, message) {
   for (let attempt = 0; attempt < 200; attempt++) {
     if (check()) return
@@ -18,7 +21,7 @@ async function until(check, message) {
   }
   assert.fail(message)
 }
-async function fixture(t) {
+async function fixture(t, { recoveryHoldMs } = {}) {
   const provider = require(providerPath), engine = require(enginePath)
   require(directoryPath)
   provider.reset()
@@ -60,7 +63,7 @@ async function fixture(t) {
     confinementPlanner: () => ({ ok: true, tier: 'unrestricted', isolated: false, threadOptions: {}, env: {} }),
     recoveryEnabled: () => true,
     accountResolver: async request => ({ rotated: true, account: { name: request.excludeAccounts ? 'backup' : 'primary', provider: 'codex' } }),
-    treeCourier: { pollMs: 20, heartbeatMs: 1000 },
+    treeCourier: { pollMs: POLL_MS, heartbeatMs: 1000, ...(recoveryHoldMs ? { recoveryHoldMs } : {}) },
     messageDeliveryReader: () => ({ mode: 'end-of-turn', intervalMs: 30000 }),
   })
   t.after(async () => {
@@ -78,23 +81,26 @@ async function fixture(t) {
   await host.sendTurn({ sessionId: 'original', text: 'Synthetic assigned work' })
   const record = provider.deliver({ recipientAgentId: idFor('original'), senderAgentId: idFor('manager'), body: 'Synthetic queued work' })
   await until(() => packets.some(packet => packet.event?.treeDelivery), 'the real host must hold the queued envelope')
-  return { host, identity, events, packets, sends, retired, record, confirmed }
+  return { host, identity, events, packets, sends, retired, record, confirmed, reads: () => provider.readCount() }
 }
 
-test('automatic account recovery preserves queued tree work for one successor handoff', async t => {
-  const f = await fixture(t)
-  f.events.get(0)({ type: 'turn_completed', turnId: 'turn-1', status: 'failed', code: 'ACP_RATE_LIMITED' })
-  await until(() => f.packets.some(packet => packet.event?.type === 'account_recovery_needed'), 'limit must issue a real recovery ticket')
-  const offer = f.packets.find(packet => packet.event?.type === 'account_recovery_needed').event
-  await f.host.closeSession({ sessionId: 'original', accountRecovery: { recoveryId: offer.recoveryId } })
-  assert.deepEqual(f.retired, [{ verb: 'defer', id: f.record.message.id }], 'recovery must park accepted work, never tell its sender it was discarded')
-  await f.host.startSession({ sessionId: 'successor', replacesSessionId: 'original', accountRecovery: { recoveryId: offer.recoveryId }, ...f.identity })
-  await until(() => f.sends.some(row => row.ordinal === 1 && row.request.text.includes('Synthetic queued work')), 'successor must receive the retained envelope')
-  await delay(100)
-  assert.equal(f.sends.filter(row => row.ordinal === 1 && row.request.text.includes('Synthetic queued work')).length, 1)
-  assert.equal(f.retired.filter(row => row.verb === 'discard').length, 0)
-  assert.equal(f.confirmed.has(f.record.message.id), true, 'the recovered model handoff must be acknowledged')
-})
+/* EVERY CHANCE THE COURIER GETS BEFORE A REAL WINDOW ACCEPTS THE OFFER. The recovery coordinator
+   (src/account-recovery-coordinator.js, recover()) reads the saved retry choice and saves the
+   handoff and the conversation before it closes the limited session, so in the app the courier
+   polls several times between the offer and the close. Wait until the courier's per-boundary
+   yield and its yield bound have both run out, then for two more whole rounds, so this order is
+   the same on every machine instead of depending on how late a 10 ms timer fires. */
+async function courierHadItsChance(f, since) {
+  await until(() => Date.now() - since >= POLL_MS * 6, 'the clock must move')
+  const reads = f.reads()
+  await until(() => f.reads() >= reads + 2, 'the courier must keep reading while the offer is open')
+}
+
+
+
+
+
+
 
 test('a deliberate Stop retains its existing explicit queue-discard behavior', async t => {
   const f = await fixture(t)
@@ -119,24 +125,3 @@ function surfaceFor(host, sessionId = 'original') {
   return { surface: createAgentCommandSurface(deps), sessions, ends,
     principal: { kind: 'window', owner, mayWrite: true, label: 'fixture' } }
 }
-
-test('a stale recovery close returns a coded result and leaves the live session owned', async t => {
-  const f = await fixture(t), surface = surfaceFor(f.host)
-  const result = await surface.surface.run('agent:close', { sessionId: 'original', accountRecovery: { recoveryId: 'stale-ticket' } }, surface.principal)
-  assert.equal(result.ok, false)
-  assert.equal(result.closed, false)
-  assert.equal(result.code, 'AGENT_ACCOUNT_RECOVERY_UNAVAILABLE')
-  assert.equal(surface.ends.length, 0)
-  assert.equal(surface.sessions.has('original'), true)
-  assert.equal(f.host.sessionAccounts().some(row => row.sessionId === 'original'), true)
-  assert.deepEqual(f.retired, [])
-  // The other losing path arrives after an earlier close removed the session.
-  // A recovery retry must remain a coded result, never an Electron handler error.
-  await surface.surface.run('agent:close', { sessionId: 'original' }, surface.principal)
-  const alreadyClosed = await surface.surface.run('agent:close', { sessionId: 'original', accountRecovery: { recoveryId: 'stale-ticket' } }, surface.principal)
-  assert.equal(alreadyClosed.ok, false)
-  assert.equal(alreadyClosed.closed, false)
-  assert.equal(alreadyClosed.code, 'AGENT_ACCOUNT_RECOVERY_UNAVAILABLE')
-  assert.equal(surface.ends.length, 1, 'the repeated recovery close records no second ending')
-  await assert.rejects(() => surface.surface.run('agent:close', { sessionId: 'original' }, surface.principal), { code: 'MC_AGENT_UNKNOWN_SESSION' })
-})

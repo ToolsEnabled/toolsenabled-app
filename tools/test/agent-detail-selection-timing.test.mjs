@@ -60,7 +60,7 @@ async function fixture(t, { child = false } = {}) {
 
 // Actual computersView and StaticTreeGraph over the provided DOM stand-in.
 // Historical native input exposed stale selection at 0/80ms. The current
-// Page 2 contract: pressing a card -- a box, or a circle's
+// Page 2 contract (owner, 2026-09-10): pressing a card -- a box, or a circle's
 // context card -- opens side controls; double-clicking an agent opens its
 // conversation tab; Fleet overview returns to the trees. Drive those doors.
 for (const delay of [0, 80]) test(`the card Chat button after a mouse press at ${delay}ms uses the selected target`, async t => {

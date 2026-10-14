@@ -7,6 +7,21 @@ export const MANAGED_SLOT_ACTIONS = Object.freeze({
   'set-node-role': 'role',
 })
 
+/* ONLY THE PERSON MOVES AN AGENT TO ANOTHER ACCOUNT (1.0.50 review, accounts A).
+   Automatic account switching is gone: an agent runs only on the account the
+   person chose for it. A command that names a managing session came from an
+   agent, so its account change -- or its provider change, which lands the
+   agent on another account too -- is refused here, as it already is in the
+   main process (shell/tree-slot-configuration.cjs). The person's own Switch
+   and continue, and the owner's coordinator spool, name no managing session. */
+export const PERSON_ONLY_SLOT_FIELDS = Object.freeze(['account', 'provider'])
+export const PERSON_ONLY_SLOT_REASON = 'Only the person can move an agent to another account or provider. Tell the person, or wait for its account’s limit to reset.'
+export function personOnlySlotChange(command) {
+  const field = Object.hasOwn(MANAGED_SLOT_ACTIONS, command?.action) ? MANAGED_SLOT_ACTIONS[command.action] : null
+  return Boolean(field && PERSON_ONLY_SLOT_FIELDS.includes(field)
+    && typeof command.parentSessionId === 'string' && command.parentSessionId !== '')
+}
+
 // Resolve a requested value against the same lists used by the user's controls.
 // This is a plan only: the existing continuation/effort/role paths own applying
 // it, and native admission plus the renderer's current-identity check own scope.

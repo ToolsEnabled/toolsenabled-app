@@ -20,7 +20,7 @@ const HELP_PAGE = path.join(REPO_ROOT, 'public', 'help', 'getting-started.html')
  * checksum a filename from a release they do not have is the one moment the page
  * cannot afford to be stale.
  *
- * Measured at an earlier app commit: the command block named 1.0.6 while package.json
+ * Measured at app 6909208e: the command block named 1.0.6 while package.json
  * said 1.0.42 -- thirty-six releases apart, and five months of drift that no
  * check would have caught.
  *

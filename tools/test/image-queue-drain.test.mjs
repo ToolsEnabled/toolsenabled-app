@@ -96,3 +96,29 @@ test('mismatched dispatch receipt identity never acknowledges this envelope',asy
  const f=fixture(async()=>({ok:true,deliveryDisposition:'accepted',sessionId:'replacement'}))
  assert.equal((await f.drain.drain()).state,'unknown')
 })
+
+
+test('automatic image dispatch rechecks safety after the queue read, while explicit dispatch names its intent', async () => {
+ let blocked=false,releaseRead,enteredRead
+ const entered=new Promise(resolve=>{enteredRead=resolve})
+ const readGate=new Promise(resolve=>{releaseRead=resolve})
+ const calls=[]
+ const owner={isCurrent:value=>value===context}
+ const bridge={imageQueue:async request=>{
+  calls.push(request)
+  if(request.operation==='read'){
+   enteredRead();await readGate
+   return{ok:true,operation:'read',result:{version:1,generation:'g',destinationSessionId:'s',entries:[{envelopeId:'pending',state:'not-sent'}]}}
+  }
+  return{...request,ok:true,attemptId:'a',deliveryDisposition:'accepted'}
+ }}
+ const drain=createImageQueueDrain({bridge,owner,ownerContext:context,conversationId:'c',sessionId:'s',
+  mayDrain:({explicit=false}={})=>explicit||!blocked})
+ try{
+  const pending=drain.drain();await entered;blocked=true;releaseRead()
+  assert.equal((await pending).state,'held')
+  assert.equal(calls.filter(r=>r.operation==='dispatch').length,0)
+  assert.equal((await drain.drain({explicit:true,targetEnvelopeId:'pending'})).state,'accepted')
+  assert.equal(calls.filter(r=>r.operation==='dispatch').length,1)
+ }finally{releaseRead();drain.dispose()}
+})

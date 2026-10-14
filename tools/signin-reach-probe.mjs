@@ -294,7 +294,7 @@ async function main() {
       shut.every(group => group.contentsList !== 'NO LIST' && group.contentsList.count > 0),
       shut.map(group => `${group.id}:${group.contentsList === 'NO LIST' ? 'none' : group.contentsList.count}`).join(' | '))
 
-    // ---- 6. the same question at the named widths ----
+    // ---- 6. the same question at the widths the owner named ----
     for (const width of [1024, 1440, 1920]) {
       await resize(window, width)
       const at = await window.visibility(SIGN_IN)

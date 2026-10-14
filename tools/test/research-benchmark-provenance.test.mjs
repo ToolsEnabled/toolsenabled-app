@@ -23,7 +23,8 @@ test('the shipped registry validates and lives in a runtime file every project a
   // An export must regenerate its own attributions, so the registry lives in
   // pinned runtime bytes -- inside lean-codegen.mjs, not in a new module. A new
   // runtime module changes the schema-2 inventory, and study.mjs then refuses
-  // every version-2 project frozen before it.
+  // every version-2 project frozen before it (measured 2026-09-10 on the run of
+  // record efaa64a2).
   assert.ok(RUNTIME_FILES.includes('lean-codegen.mjs'))
   assert.ok(!RUNTIME_FILES.includes('provenance.mjs'), 'a separate provenance runtime module would break earlier frozen projects')
 })
@@ -145,7 +146,7 @@ test('ATTRIBUTIONS.md and provenance.json state the reuse position without inven
 })
 
 test('the canonical JSON entry does not claim RFC 8785 conformance it has not proven', () => {
-  // The rule, made mechanical: an unproven citation is a defect. If
+  // The owner's rule, made mechanical: an unproven citation is a defect. If
   // someone later proves conformance they must also add the test, not just
   // the sentence.
   const canonicalEntry = provenanceEntry('canonical-json')

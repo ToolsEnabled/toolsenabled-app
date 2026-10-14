@@ -33,7 +33,7 @@
 .EXAMPLE
   # Already-received file, filesystem hand-off:
   powershell -File verify-candidate.ps1 `
-    -ExistingFile "$env:USERPROFILE\Downloads\ToolsEnabled Setup 1.0.2.exe" `
+    -ExistingFile "<checkout-root> Setup 1.0.2.exe" `
     -ExpectedBytes 100286107 -ExpectedSha256 "68082E56818047665EAD88CABD41C0843F535E1F77057C8DB428EFF6C7554560"
 #>
 param(

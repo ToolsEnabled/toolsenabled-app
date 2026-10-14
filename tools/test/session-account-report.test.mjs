@@ -41,14 +41,14 @@ const readOnly = Object.freeze({ kind: 'window', owner: { id: 'webContents-1' },
    a session id, the declared agent bound at start, the account, the program,
    and the confined home directory. */
 const HOST_ROWS = Object.freeze([
-  Object.freeze({ sessionId: 's1', agentId: 'coordinator-1', account: 'work', provider: 'claude', pinnedHome: 'C:\\homes\\claude\\work' }),
-  Object.freeze({ sessionId: 's2', agentId: null, account: 'spare', provider: 'codex', pinnedHome: 'C:\\homes\\codex\\spare' }),
+  Object.freeze({ sessionId: 's1', agentId: 'coordinator-1', account: 'work', provider: 'claude', pinnedHome: '\x43:\\homes\\claude\\work' }),
+  Object.freeze({ sessionId: 's2', agentId: null, account: 'spare', provider: 'codex', pinnedHome: '\x43:\\homes\\codex\\spare' }),
 ])
 
 /* Only what agent:session-accounts touches is real; every other dependency is
    the right kind and nothing else, because construction checks kinds and this
    file runs exactly one command. */
-function deps({ rows = HOST_ROWS, host = undefined, engine = undefined, usageCache = null, capabilityRoot = 'C:\\fake\\capability' } = {}) {
+function deps({ rows = HOST_ROWS, host = undefined, engine = undefined, usageCache = null, capabilityRoot = '\x43:\\fake\\capability' } = {}) {
   const calls = []
   const note = (name, ...args) => { calls.push({ name, args }) }
   const nothing = () => ({})
@@ -103,7 +103,7 @@ function deps({ rows = HOST_ROWS, host = undefined, engine = undefined, usageCac
     readAccountUsageCache: async () => { note('readAccountUsageCache'); return usageCache },
     MAX_SESSION_ID_LENGTH: 64,
     AGENT_EFFORT_VALUES: ['low', 'medium', 'high'],
-    WORKSPACE_ROOT: 'C:\\fake\\workspace',
+    WORKSPACE_ROOT: '\x43:\\fake\\workspace',
   }
   return Object.assign(record, { calls, names: () => calls.map(entry => entry.name) })
 }

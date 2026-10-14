@@ -1,7 +1,7 @@
 /* 1.0.48 PICKER, UI 4: PROVIDER, THEN MODEL, IN THE RAIL'S START-WORK BOXES.
  *
- * Owner decision: every model a provider offers is selectable, chosen as
- * provider first, then model.
+ * Owner: "users need to be able to select all the models from the providers.
+ * it should be provider, then model choice".
  *
  * The tree agent's own Launch, Team and Loop boxes (views/computers.js
  * nativeBoundedWorkBox) and the dispatch boxes a lane agent gets

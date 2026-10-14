@@ -18,6 +18,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import vm from 'node:vm'
+import { parseAst } from 'rollup/parseAst'
 import { fileURLToPath } from 'node:url'
 
 import { installDomStandIn } from './lib/dom-stand-in.mjs'
@@ -127,25 +128,42 @@ test('offerSwitchAndContinue hands the dialog the reason it was given', async ()
   }
 })
 
-/* EVERY CALLER SAYS WHY. The Actions row is the person's own choice; the other
-   three open on an account refusal (the Resume press after keep-trying gave
-   up, the Resume press itself, and the recovery coordinator's switchOffer). */
-test('every call site in the view passes its reason explicitly', () => {
+/* Evaluate the actual view call expressions with distinct refusal values.
+   Removed automatic recovery routes need not be kept alive to satisfy a count. */
+test('view callers pass the actual by-hand or refusal reason and account', () => {
   const source = fs.readFileSync(path.join(SRC, 'views/computers.js'), 'utf8')
-  const calls = [...source.matchAll(/offerSwitchAndContinue\(([^\n]*)\)/g)]
-    .filter(match => !/async function offerSwitchAndContinue\(/.test(source.slice(match.index - 15, match.index + 30)))
-    .map(match => match[1])
-  assert.equal(calls.length, 4, 'the view opens the dialog from four places: ' + JSON.stringify(calls))
-  for (const args of calls) assert.match(args, /reason: SWITCH_OPEN_REASON\.(byHand|accountRefused)/, 'no reason given: ' + args)
-  const byHand = calls.filter(args => /SWITCH_OPEN_REASON\.byHand/.test(args))
-  assert.equal(byHand.length, 1, 'one by-hand route: Actions > Switch and continue')
-  assert.match(byHand[0], /^fresh\(\), \{ reason: SWITCH_OPEN_REASON\.byHand, refusedAccount: null \}$/)
-  for (const args of calls.filter(args => !byHand.includes(args))) {
-    assert.match(args, /reason: SWITCH_OPEN_REASON\.accountRefused, sentence: /, 'a failure route carries its refusal sentence')
+  const calls = []
+  function visit(node) {
+    if (!node || typeof node !== 'object') return
+    if (node.type === 'CallExpression' && node.callee?.name === 'offerSwitchAndContinue') calls.push(node)
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit)
+      else if (value && typeof value === 'object') visit(value)
+    }
   }
-  const palette = source.slice(source.indexOf("{ id: 'switch-continue', group: agent"), source.indexOf("{ id: 'child', group: agent"))
-  assert.match(palette, /offerSwitchAndContinue\(fresh\(\), \{ reason: SWITCH_OPEN_REASON\.byHand/, 'the Actions row is the by-hand route')
-  const offer = declaredFunctionSource(source, 'offerSwitchAndContinue')
-  assert.match(offer, /\{ reason = '', sentence = '', refusedAccount = null \} = \{\}/, 'the opener takes the reason')
-  assert.match(offer, /mountSwitchAndContinueDialog\(\{ document, host, reason, refusalSentence: sentence,/, 'and hands it to the dialog')
+  visit(parseAst(source))
+  const node = { id: 'chosen-node' }
+  const saved = { account: 'saved-account' }
+  const result = { sentence: 'Resume refused.', switchOffer: { sentence: 'Continuation refused.', account: 'offered-account' } }
+  const seen = new Set()
+  for (const call of calls) {
+    let received
+    const offerSwitchAndContinue = (target, options) => { received = { target, options } }
+    new Function('offerSwitchAndContinue', 'node', 'fresh', 'saved', 'result', 'SWITCH_OPEN_REASON',
+      source.slice(call.start, call.end))(offerSwitchAndContinue, node, () => node, saved, result, SWITCH_OPEN_REASON)
+    assert.equal(received.target, node)
+    const options = received.options
+    seen.add(options.reason)
+    if (options.reason === SWITCH_OPEN_REASON.byHand) {
+      assert.equal(options.refusedAccount, null)
+      assert.equal(options.sentence, undefined)
+    } else {
+      assert.equal(options.reason, SWITCH_OPEN_REASON.accountRefused)
+      const expected = options.sentence === result.sentence
+        ? { sentence: result.sentence, account: saved.account } : result.switchOffer
+      assert.equal(options.sentence, expected.sentence)
+      assert.equal(options.refusedAccount, expected.account)
+    }
+  }
+  assert.deepEqual(seen, new Set([SWITCH_OPEN_REASON.byHand, SWITCH_OPEN_REASON.accountRefused]))
 })

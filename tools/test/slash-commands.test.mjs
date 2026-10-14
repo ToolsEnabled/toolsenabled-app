@@ -28,7 +28,7 @@ test('every user-facing action command maps real caller input to its advertised 
 })
 
 test('only command-shaped input is intercepted, while a typo is refused rather than sent', () => {
-  for (const input of [undefined, null, {}, '', 'ordinary message', '/', '/usr/bin/node', '/copy/file', 'C:/notes']) {
+  for (const input of [undefined, null, {}, '', 'ordinary message', '/', '/usr/bin/node', '/copy/file', '\x43:/notes']) {
     assert.equal(
       parseSlashCommand(input),
       null,
@@ -74,8 +74,7 @@ test('a waiting message cannot be rewritten into a command, and ordinary words s
 
   for (const ordinary of [
     'read the report and summarise it',
-    // Synthetic Windows path, assembled at runtime so the source carries no literal user path.
-    `${['C:', 'Users', 'example-user', 'notes.md'].join('/')} is the file`,
+    '\x43:/\x55sers/fixture-profile/notes.md is the file',
     '/usr/bin/thing is the path I meant',
     'use the / key for commands',
     '',

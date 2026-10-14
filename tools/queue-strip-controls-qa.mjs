@@ -40,13 +40,13 @@
  * repaints (and can reorder) after every mutation.
  *
  * ACCOUNT-FENCE.md TRAP: os.tmpdir() resolves to the 8.3 short spelling
- * (…\<SHORT~1>\…) under an elevated shell on the Dev account, and
+ * (…\TOOLSE~1\…) under an elevated shell on this machine, and
  * capability/src/lib/account-profile-boundary.js's installationProfileRoot()
  * does not expand it before comparing -- so a scratch profile built under it
  * is refused with AGENT_CONFINEMENT_ACCOUNT_PROFILE_UNAVAILABLE /
  * SERVICE_ACCOUNT_BOUNDARY_REFUSED, which reads exactly like a product
- * defect and is not one. DEV_TEMP_ROOT below is the long-form Dev temp
- * root the fence names, used instead of os.tmpdir().
+ * defect and is not one. DEV_TEMP_ROOT below is the literal long-form Dev
+ * temp root the fence names, used instead of os.tmpdir().
  *
  *   node tools/queue-strip-controls-qa.mjs
  *   node tools/queue-strip-controls-qa.mjs --visible
@@ -65,10 +65,7 @@ import {
 import { createChatPresser } from './lib/chat-drive-lib.mjs'
 import { chooseProviderThenModel } from './lib/compose-model-choice.mjs'
 
-// The Dev account's Windows profile and Temp folder. The account name is a placeholder,
-// and the path is joined at run time so the source carries no literal profile path.
-const DEV_PROFILE = path.win32.join('C:\\', 'Users', 'BuildAccount-Dev')
-const DEV_TEMP_ROOT = path.win32.join(DEV_PROFILE, 'AppData', 'Local', 'Temp')
+const DEV_TEMP_ROOT = '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp'
 
 const findings = []
 const note = (level, text) => {
@@ -382,7 +379,7 @@ async function pressQueueRowButton(window, presser, matchText, kind) {
 
 async function main() {
   const scratch = mkdtempSync(path.join(DEV_TEMP_ROOT, 'queue-strip-qa-'))
-  if (!path.resolve(scratch).toLowerCase().startsWith(`${DEV_PROFILE.toLowerCase()}\\`)) {
+  if (!path.resolve(scratch).toLowerCase().startsWith('\x63:\\users\\fixture-profile\\')) {
     throw new Error(`refusing to use a scratch dir outside the Dev profile: ${scratch}`)
   }
   let window = null

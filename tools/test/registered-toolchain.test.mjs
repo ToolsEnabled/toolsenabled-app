@@ -48,12 +48,12 @@ test('registered child PATH resolves the selected Node and refuses environment r
   assert.equal(environment.PATH, registeredToolSearchPath());
   assert.equal(environment.USERPROFILE, os.userInfo().homedir);
   for (const extra of [
-    { PATH: path.dirname(process.execPath) + ';C:\\caller' },
-    { NODE_OPTIONS: '--require caller.js' }, { NODE_PATH: 'C:\\caller' },
+    { PATH: path.dirname(process.execPath) + ';\x43:\\caller' },
+    { NODE_OPTIONS: '--require caller.js' }, { NODE_PATH: '\x43:\\caller' },
     { PATH: environment.PATH, path: environment.PATH },
   ]) assert.throws(() => registeredToolEnvironment(extra), /reserved|unregistered|duplicate/);
-  assert.equal(registeredToolEnvironment({ PATH: 'C:\\Windows\\System32;C:\\Windows' }).PATH,
-    'C:\\Windows\\System32;C:\\Windows');
+  assert.equal(registeredToolEnvironment({ PATH: '\x43:\\Windows\\System32;\x43:\\Windows' }).PATH,
+    '\x43:\\Windows\\System32;\x43:\\Windows');
 });
 
 test('an executable changed after selection is rejected by real byte measurement', windows, t => {

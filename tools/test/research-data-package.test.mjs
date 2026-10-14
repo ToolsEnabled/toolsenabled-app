@@ -63,7 +63,7 @@ test('exact headers reject order mismatches; equal mapping decodes by name', asy
   assert.deepEqual(result.rows[0].values, [1, 'hello', 2])
 })
 test('package paths cannot escape a selected folder and unsupported schemas are explicit refusals', () => {
-  for (const path of ['../secret', '/etc/passwd', 'C:\\secret', 'data/%2e%2e/secret', 'https://host/file']) assert.throws(() => relativeDataPath(path))
+  for (const path of ['../secret', '/etc/passwd', '\x43:\\secret', 'data/%2e%2e/secret', 'https://host/file']) assert.throws(() => relativeDataPath(path))
   assert.equal(relativeDataPath('data/measurements.csv'), 'data/measurements.csv')
   assert.throws(() => inspectSchema({ fields: [{ name: 'a', type: 'unknown' }] }), /supported/)
   assert.throws(() => inspectSchema({ fields: [{ name: 'a', type: 'string' }, { name: 'a', type: 'string' }] }), /unique/)

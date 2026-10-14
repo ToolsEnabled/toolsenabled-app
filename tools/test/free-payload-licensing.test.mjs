@@ -59,7 +59,7 @@ const PAYLOAD_ROOTS = ['capability', 'release/win-unpacked/resources/capability'
   .map((relative) => path.join(REPO_ROOT, relative))
   .filter((root) => existsSync(root))
 
-// The three modules ruled paid on 2026-08-11. Named as payload-relative
+// The three modules the owner ruled paid on 2026-08-11. Named as payload-relative
 // paths because that is how the boundary manifest names them and how they would
 // appear in the payload; a rename shows up as a failure to find the file rather
 // than as a silent pass on a path that no longer exists.
@@ -143,7 +143,7 @@ function freshInstall(t) {
    * whose handle has been closed but not yet released still answers EBUSY, and
    * without retries that lands as `failureType: 'hookFailed'` against whichever
    * test happened to finish last -- a teardown race reported as a product
-   * failure. MEASURED 2026-09-07 at an earlier commit, whole-suite run: "EBUSY: resource
+   * failure. MEASURED 2026-09-07 at 4ba0ceac, whole-suite run: "EBUSY: resource
    * busy or locked, rmdir '...\\free-payload-licensing-zH0rdY\\install'" failed
    * the E1 case, whose own assertions had all passed. */
   t.after(() => rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }))

@@ -1,16 +1,6 @@
-/* The rules that stop a Codex Cloud launch, and the ones that follow it.
- *
- * Every test here is an ABSENCE test, because absence is what this feature gets
- * wrong when it gets it wrong: an environment list that was never read, an
- * environment missing from a list that could not be completed, an environment
- * with no readable repository, a branch nobody supplied. Each of those must
- * refuse and must post NOTHING -- a launch is real, billable and uncancellable,
- * so "we could not check" may never resolve to "go ahead".
- *
- * The watch half is here for the mirror of the same rule: UNKNOWN must not end
- * the watch (the capability layer says UNKNOWN for a task its bounded search
- * did not reach), and the watch must end on its own budget rather than run
- * forever.
+/* Person-entered Cloud launch behavior: explicit account, ID validation,
+ * confirmation, immutable receipts, real refusals and bounded status watches.
+ * Bridge replies are injected; no provider is contacted.
  */
 import assert from 'node:assert/strict'
 import { beforeEach, test } from 'node:test'
@@ -28,7 +18,7 @@ beforeEach(() => {
   globalThis.CustomEvent = class { constructor(type, init = {}) { this.type = type; this.detail = init.detail } }
 })
 
-const { createCloudTaskController, TERMINAL_CLOUD_STATES } = await import('../../src/cloud-tasks-controller.js')
+const { createCloudTaskController, readRemembered, TERMINAL_CLOUD_STATES } = await import('../../src/cloud-tasks-controller.js')
 
 const READY = Object.freeze({ ok: true, code: null, note: 'Codex Cloud ready.' })
 const ENVIRONMENT = 'a'.repeat(32)
@@ -97,46 +87,57 @@ function manualTimers() {
   }
 }
 
-test('a launch is refused when the authorized environments have never been read', async () => {
+test('a valid person-entered ID can arm without a discovered environment list', () => {
   const io = recorder()
   const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
-  controller.arm({ environment: ENVIRONMENT, branch: 'main', prompt: 'read the readme' })
-  assert.equal(controller.isArmed(), false)
-  assert.equal(controller.getState().launchTone, 'refused')
-  assert.match(controller.getState().launchMessage, /have not been read yet/)
-  assert.deepEqual(io.calls, [], 'nothing may be posted when the binding is unknown')
+  controller.arm({ repository: 'Owner/repo', environment: ENVIRONMENT, branch: 'topic', prompt: 'read the readme', account: 'first' })
+  assert.equal(controller.isArmed(), true)
+  assert.match(controller.getState().launchMessage, /provider has not confirmed its repository binding/i)
+  assert.match(controller.getState().launchMessage, /ToolsEnabled cannot confirm that this environment points at Owner\/repo/)
+  assert.deepEqual(io.calls, [], 'arming never posts a launch')
 })
 
-test('an environment missing from an INCOMPLETE reading is unproven, not unauthorized', async () => {
-  const io = recorder({ 'cloud-accounts': accountsReply({ environments: [bound()], complete: false }) })
+test('unavailable and stale catalog readings do not turn a typed ID into provider confirmation', async () => {
+  for (const reading of [
+    accountsReply({ environments: [], complete: false }),
+    accountsReply({ complete: true }),
+    accountsReply({ environments: [bound({ repository: null, launchable: false })] }),
+  ]) {
+    const io = recorder({ 'cloud-accounts': reading })
+    const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
+    await controller.loadAccounts()
+    controller.arm({ repository: 'Owner/repo', environment: OTHER_ENVIRONMENT, branch: 'topic', prompt: 'read the readme', account: 'first' })
+    assert.equal(controller.isArmed(), true)
+    assert.match(controller.getState().launchMessage, /provider has not confirmed/i)
+    assert.equal(io.calls.filter(call => call.action === 'cloud-launch').length, 0)
+  }
+})
+
+test('a missing account refuses before confirmation or posting, even if an account default exists', async () => {
+  const io = recorder({ 'cloud-accounts': accountsReply() })
   const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
   await controller.loadAccounts()
-  controller.arm({ environment: OTHER_ENVIRONMENT, branch: 'main', prompt: 'read the readme' })
-  assert.equal(controller.isArmed(), false)
-  assert.match(controller.getState().launchMessage, /reading was incomplete/)
+  for (const account of [undefined, null, '', '   ']) {
+    controller.arm({ repository: 'Owner/repo', environment: ENVIRONMENT, branch: 'topic', prompt: 'read the readme', account })
+    await controller.confirm()
+    assert.equal(controller.isArmed(), false)
+    assert.match(controller.getState().launchMessage, /Choose a Codex account/)
+  }
   assert.equal(io.calls.filter(call => call.action === 'cloud-launch').length, 0)
 })
 
-test('an environment missing from a COMPLETE reading is refused as unauthorized', async () => {
-  const io = recorder({ 'cloud-accounts': accountsReply({ complete: true }) })
+test('invalid IDs refuse and valid 32-character lowercase hex IDs keep their value', () => {
+  const io = recorder()
   const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
-  await controller.loadAccounts()
-  controller.arm({ environment: OTHER_ENVIRONMENT, branch: 'main', prompt: 'read the readme' })
-  assert.match(controller.getState().launchMessage, /not one the configured accounts are authorized for/)
-  assert.equal(io.calls.filter(call => call.action === 'cloud-launch').length, 0)
-})
-
-test('an environment with no single source repository cannot be launched into', async () => {
-  const io = recorder({
-    'cloud-accounts': accountsReply({
-      environments: [bound({ repository: null, launchable: false, reason: 'This environment is bound to 2 repositories, so which one a task would land in cannot be established here.' })],
-    }),
-  })
-  const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
-  await controller.loadAccounts()
-  controller.arm({ environment: ENVIRONMENT, branch: 'main', prompt: 'read the readme' })
-  assert.match(controller.getState().launchMessage, /bound to 2 repositories/)
-  assert.equal(io.calls.filter(call => call.action === 'cloud-launch').length, 0)
+  for (const environment of ['', 'a'.repeat(31), 'a'.repeat(33), 'g'.repeat(32), 'A'.repeat(32)]) {
+    controller.arm({ repository: 'Owner/repo', environment, branch: 'topic', prompt: 'read the readme', account: 'first' })
+    assert.equal(controller.isArmed(), false)
+    assert.match(controller.getState().launchMessage, /exactly 32 characters/)
+  }
+  controller.arm({ repository: 'Owner/repo', environment: ' 0123456789abcdef0123456789abcdef ', branch: 'topic', prompt: 'read the readme', account: 'first' })
+  assert.equal(controller.isArmed(), true)
+  assert.match(controller.getState().launchMessage, /0123456789abcdef0123456789abcdef/)
+  assert.deepEqual(io.calls, [])
 })
 
 test('a blank branch refuses instead of defaulting to one nobody chose', async () => {
@@ -144,7 +145,7 @@ test('a blank branch refuses instead of defaulting to one nobody chose', async (
   const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
   await controller.loadAccounts()
   for (const branch of ['', '   ', undefined]) {
-    controller.arm({ environment: ENVIRONMENT, branch, prompt: 'read the readme' })
+    controller.arm({ repository: 'Owner/repo', environment: ENVIRONMENT, branch, prompt: 'read the readme', account: 'first' })
     assert.equal(controller.isArmed(), false, `branch ${JSON.stringify(branch)} must not arm`)
     assert.equal(controller.getState().launchTone, 'refused')
     assert.match(controller.getState().launchMessage, /branch is required/)
@@ -152,7 +153,7 @@ test('a blank branch refuses instead of defaulting to one nobody chose', async (
   assert.equal(io.calls.filter(call => call.action === 'cloud-launch').length, 0)
 })
 
-test('an armed launch declares the repository the discovered environment is bound to', async () => {
+test('a confirmed launch forwards the typed ID, provenance and chosen account and freezes the receipt', async () => {
   const io = recorder({
     'cloud-accounts': accountsReply(),
     'cloud-tasks': { ok: true, receipt: { action: 'cloud-tasks', tasks: [], account: { name: 'first' } } },
@@ -167,7 +168,12 @@ test('an armed launch declares the repository the discovered environment is boun
         environment: ENVIRONMENT,
         environmentLabel: 'Owner/repo',
         repository: 'Owner/repo',
-        declaredRepository: 'Owner/repo',
+        repositoryBinding: {
+          source: 'person-entered',
+          confirmation: 'unconfirmed',
+          providerConfirmed: false,
+          message: 'The environment ID was entered by the person. The provider has not confirmed its repository binding.',
+        },
         branch: 'main',
         account: { name: 'first', role: 'work', usedPercent: 4 },
         accountsConsidered: ['first'],
@@ -181,20 +187,27 @@ test('an armed launch declares the repository the discovered environment is boun
   const controller = createCloudTaskController({ postAction: io.postAction, availability: READY, timers: clock.timers })
   await controller.loadAccounts()
 
-  controller.arm({ environment: ENVIRONMENT, branch: 'main', prompt: 'read the readme' })
+  controller.arm({ repository: 'Owner/repo', environment: ENVIRONMENT, branch: 'main', prompt: 'read the readme', account: 'first' })
   assert.equal(controller.isArmed(), true)
-  assert.match(controller.getState().launchMessage, /in Owner\/repo on branch main/)
+  assert.match(controller.getState().launchMessage, /on branch main/)
+  assert.match(controller.getState().launchMessage, /provider has not confirmed/)
   assert.equal(io.calls.filter(call => call.action === 'cloud-launch').length, 0, 'arming may not send')
 
   await controller.confirm()
   const sent = io.calls.find(call => call.action === 'cloud-launch')
   assert.ok(sent, 'the confirming call sends the launch')
+  assert.equal(sent.body.environmentSource, 'person-entered')
+  assert.equal(sent.body.account, 'first')
   assert.equal(sent.body.repository, 'Owner/repo')
+  assert.match(controller.getState().launchMessage, /provider has not confirmed/)
   assert.equal(sent.body.confirmed, true)
   assert.equal(sent.body.environment, ENVIRONMENT)
 
   const receipt = controller.getState().receipt
   assert.ok(Object.isFrozen(receipt), 'the receipt is immutable')
+  assert.ok(Object.isFrozen(receipt.repositoryBinding))
+  assert.equal(receipt.repositoryBinding.providerConfirmed, false)
+  assert.match(controller.getState().launchMessage, /provider has not confirmed/)
   assert.deepEqual(
     {
       taskId: receipt.taskId,
@@ -212,21 +225,24 @@ test('an armed launch declares the repository the discovered environment is boun
     },
   )
   assert.equal(clock.pending(), 1, 'a successful launch starts watching the task')
+  assert.equal(io.calls.find(call => call.action === 'cloud-tasks').body.account, 'first')
+  controller.destroy()
 })
 
 test('a launch the provider did not confirm leaves no receipt and starts no watch', async () => {
   const io = recorder({
     'cloud-accounts': accountsReply(),
-    'cloud-launch': { ok: true, receipt: { action: 'cloud-launch', launched: false, state: 'UNKNOWN', taskId: null, message: 'the CLI confirmed nothing' } },
+    'cloud-launch': { ok: true, receipt: { action: 'cloud-launch', launched: false, state: 'UNKNOWN', taskId: null, message: 'the CLI confirmed nothing', repositoryBinding: { message: 'Provider binding remains unconfirmed for this entered ID.' } } },
   })
   const clock = manualTimers()
   const controller = createCloudTaskController({ postAction: io.postAction, availability: READY, timers: clock.timers })
   await controller.loadAccounts()
-  controller.arm({ environment: ENVIRONMENT, branch: 'main', prompt: 'read the readme' })
+  controller.arm({ repository: 'Owner/repo', environment: ENVIRONMENT, branch: 'main', prompt: 'read the readme', account: 'first' })
   await controller.confirm()
   assert.equal(controller.getState().receipt, null)
   assert.equal(clock.pending(), 0)
   assert.match(controller.getState().launchMessage, /may or may not have been created/)
+  assert.match(controller.getState().launchMessage, /Provider binding remains unconfirmed for this entered ID/)
 })
 
 test('the watch keeps checking through UNKNOWN and stops on a terminal state', async () => {
@@ -294,7 +310,7 @@ test('a refused account read leaves the environment list unloaded rather than em
      list line is now SILENT, because the line above has already said it. */
   assert.equal(state.listMessage, '')
   assert.equal(state.listCode, null)
-  controller.arm({ environment: ENVIRONMENT, branch: 'main', prompt: 'read the readme' })
+  controller.arm({ repository: 'Owner/repo', environment: ENVIRONMENT, branch: 'main', prompt: 'read the readme' })
   assert.equal(controller.isArmed(), false)
 })
 
@@ -332,4 +348,66 @@ test('nobody signed in is an empty state with one next action, not a refusal', a
 
 test('the terminal set is exactly the three states that end a task', () => {
   assert.deepEqual([...TERMINAL_CLOUD_STATES], ['SUCCEEDED', 'FAILED', 'CANCELLED'])
+})
+
+test('the first click captures the account, ID and branch that confirmation sends', async () => {
+  const io = recorder({ 'cloud-launch': { ok: false, code: 'BRIDGE_GUARD_REFUSED', reason: 'Approval was refused.' } })
+  const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
+  await controller.click({ repository: 'Person/declared', environment: ENVIRONMENT, branch: 'topic', prompt: 'original task', account: 'first' })
+  await controller.click({ repository: 'Other/different', environment: OTHER_ENVIRONMENT, branch: 'other', prompt: 'changed task', account: 'second' })
+  assert.deepEqual(io.calls, [{ action: 'cloud-launch', body: {
+    environment: ENVIRONMENT, environmentSource: 'person-entered', repository: 'Person/declared', branch: 'topic',
+    prompt: 'original task', account: 'first', confirmed: true,
+  } }])
+})
+
+test('provider and bridge refusals stay visible in plain words without a second launch', async () => {
+  for (const [code, reason] of [
+    ['BRIDGE_CLOUD_REPOSITORY_MISMATCH', 'The environment belongs to a different repository.'],
+    ['BRIDGE_CLOUD_ENVIRONMENT_NOT_AUTHORIZED', 'This account cannot use that environment.'],
+    ['CLOUD_MIRROR_STALE', 'The mirror needs a fresh publication.'],
+    ['CLOUD_ACCOUNT_UNAVAILABLE', 'The chosen account is unavailable.'],
+    ['BRIDGE_GUARD_REFUSED', 'Approval was refused.'],
+  ]) {
+    const io = recorder({ 'cloud-launch': { ok: false, code, reason } })
+    const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
+    controller.arm({ repository: 'Owner/repo', environment: ENVIRONMENT, branch: 'topic', prompt: 'read the readme', account: 'first' })
+    await controller.confirm()
+    assert.equal(controller.getState().launchTone, 'refused')
+    assert.equal(controller.getState().launchCode, code)
+    assert.ok(controller.getState().launchMessage.includes(reason), 'the actual refusal remains visible')
+    assert.match(controller.getState().launchMessage, /Refresh the task list/)
+    assert.doesNotMatch(controller.getState().launchMessage, new RegExp(code))
+    assert.equal(io.calls.length, 1)
+  }
+})
+
+test('a missing or malformed repository refuses before confirmation or posting', async () => {
+  const io = recorder()
+  const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
+  for (const repository of [undefined, null, '', 'owner', 'owner/repo/extra', 'owner/re po', 'owner/\nrepo', 'https://github.com/owner/repo', 'x'.repeat(101) + '/repo']) {
+    controller.arm({ environment: ENVIRONMENT, repository, branch: 'topic', prompt: 'read the readme', account: 'first' })
+    await controller.confirm()
+    assert.equal(controller.isArmed(), false)
+    assert.match(controller.getState().launchMessage, /repository as owner\/name/)
+    assert.equal(controller.getState().launchTone, 'refused')
+  }
+  assert.deepEqual(io.calls, [], 'invalid declarations never post')
+})
+
+test('the declared repository, environment and branch are remembered together', () => {
+  const io = recorder()
+  const controller = createCloudTaskController({ postAction: io.postAction, availability: READY })
+  controller.arm({ environment: ENVIRONMENT, repository: ' Person/chosen-repository ', branch: 'topic', prompt: 'read the readme', account: 'first' })
+  assert.equal(controller.isArmed(), true)
+  assert.deepEqual(readRemembered(), { environment: ENVIRONMENT, repository: 'Person/chosen-repository', branch: 'topic' })
+  controller.arm({ environment: OTHER_ENVIRONMENT, repository: '', branch: 'other', prompt: 'read the readme', account: 'first' })
+  assert.deepEqual(readRemembered(), { environment: ENVIRONMENT, repository: 'Person/chosen-repository', branch: 'topic' }, 'a refused request does not overwrite the valid declaration')
+})
+
+test('legacy saved values leave the repository blank and malformed saved repositories are not offered', () => {
+  for (const repository of [undefined, 'owner/repo/extra', 'owner/\nrepo']) {
+    localStorage.setItem('mc.cloud.last', JSON.stringify({ environment: ENVIRONMENT, repository, branch: 'saved-topic' }))
+    assert.deepEqual(readRemembered(), { environment: ENVIRONMENT, repository: '', branch: 'saved-topic' })
+  }
 })

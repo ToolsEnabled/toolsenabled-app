@@ -40,7 +40,7 @@
  * toolsenabled.* tool. "Configured" and "connected" are two claims, and this file
  * is only the first one.
  *
- * An internal report (2026-08-28). Mutation watch: a green
+ * REPORT-C1-assistant-config-runtime (2026-08-28). Mutation watch: a green
  * 7/7 run was challenged by deleting ELECTRON_RUN_AS_NODE from the staged
  * generateMcpConfig output. This file then failed in both the all-tier
  * startability assertion (guided named ToolsEnabled.exe without Node mode)

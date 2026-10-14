@@ -10,6 +10,18 @@ const safeRelative = value => typeof value === 'string' && value.length > 0 &&
 // place in the full census. A companion platform must execute the same case
 // against the same source/harness; a named omission is still an obligation.
 const NATIVE_LINUX_CASES = Object.freeze([
+  ["tools/test/linux-installed-measurement.test.mjs", "typed measurement executes the actual fixed-root reader and refuses unbound evidence"],
+  ["tools/test/linux-qualification-transport-bindings.test.mjs", "synthetic transport positive control preserves nonce/profile and unqualified state"],
+  ["tools/test/linux-qualification-transport-bindings.test.mjs", "synthetic replay control refuses a changed nonce"],
+  ["tools/test/linux-qualification-transport-bindings.test.mjs", "standard request must refuse a privileged response role"],
+  ["tools/test/linux-qualification-transport-bindings.test.mjs", "changed base image bytes must refuse before admission"],
+  ["tools/test/linux-qualification-transport-bindings.test.mjs", "QMP and RPC endpoints must belong to the declared process"],
+  ["tools/test/linux-qualification-transport-bindings.test.mjs", "a later attestation must retain the initially measured machine identity"],
+  ["tools/test/linux-qualification-transport-bindings.test.mjs", "artifact input share must not resolve outside the dedicated machine root"],
+  ["tools/test/linux-qualification-transport-bindings.test.mjs", "changed process start refuses the next request"],
+  ["tools/test/linux-qualification-transport-bindings.test.mjs", "invalid command/profile bounds refuse without RPC dispatch"],
+  ["tools/test/linux-qualification-artifact-staging.test.mjs", "linked artifact input refuses before creating anything outside the machine root"],
+  ['tools/test/linux-installed-measurement-staging.test.mjs', 'host-only measurement staging admits exact files and refuses unsafe copy boundaries'],
   ['tools/test/owner-administration.test.mjs', 'trusted native actions read fixed private context and a matching signed-reply inbox'],
   ['tools/test/owner-administration.test.mjs', 'native pairing reads current consent instead of accepting it from the renderer'],
   ['tools/test/owner-administration.test.mjs', 'missing malformed wrong-profile unknown-field and unsafe-permission configs refuse without calls'],

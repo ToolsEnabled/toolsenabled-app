@@ -123,7 +123,18 @@ export function repairDoubledHandoff(value) {
 
 // Every record leaving this store goes through here, so no caller has to know
 // the repair exists and no caller can forget it.
+function checkpointFields(record) {
+  if (!record || typeof record !== 'object') return record
+  const result = Object.fromEntries(['v', 'handoff', 'sessionId', 'recoveryId', 'kind', 'conversation', 'safetyHold', 'limitWait'].filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]))
+  const safetyHold = record.safetyHold || record.retryPolicy?.safetyHold
+  if (safetyHold && typeof safetyHold.nodeId === 'string' && typeof safetyHold.sessionId === 'string') {
+    result.safetyHold = { nodeId: safetyHold.nodeId, sessionId: safetyHold.sessionId }
+  }
+  return result
+}
+
 function repairedRecord(record) {
+  record = checkpointFields(record)
   if (!record || typeof record.handoff !== 'string') return record
   const handoff = repairDoubledHandoff(record.handoff)
   return handoff === record.handoff ? record : { ...record, handoff }
@@ -135,7 +146,7 @@ export function createRecoveryHandoffStore({ computerId, storage, bridge = null,
   const store = {
     save(nodeId, value) {
       if (!usable(nodeId, value)) return false
-      try { return storage.write(key(nodeId), { v: 1, ...value }) === true } catch { return false }
+      try { return storage.write(key(nodeId), { ...checkpointFields(value), v: 1 }) === true } catch { return false }
     },
     get(nodeId) {
       try {
@@ -158,7 +169,7 @@ export function createRecoveryHandoffStore({ computerId, storage, bridge = null,
     if (!usable(nodeId, value)) {
       answer = { ok: false, error: { code: value?.handoff?.length > MAX_HANDOFF_CHARS ? 'RECOVERY_RECORD_TOO_LARGE' : 'RECOVERY_RECORD_INVALID' } }
     } else {
-      try { answer = await bridge.save({ computerId, nodeId, record: { v: 1, ...value } }) }
+      try { answer = await bridge.save({ computerId, nodeId, record: { ...checkpointFields(value), v: 1 } }) }
       catch { answer = { ok: false, error: { code: 'RECOVERY_WRITE_FAILED' } } }
     }
     try { onWriteResult(nodeId, answer) } catch { /* a notice must not change durability */ }

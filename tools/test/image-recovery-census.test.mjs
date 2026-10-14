@@ -38,7 +38,7 @@ for (const file of REQUIRED) {
 }
 
 test('the existing strict test:data invocation includes every image/recovery census suite', () => {
-  // an earlier commit: the glob is expanded by tools/run-data-tests.mjs (T542 bounded halves).
+  // 435db7db: the glob is expanded by tools/run-data-tests.mjs (T542 bounded halves).
   const command = 'node tools/check-node-version.mjs && node tools/run-data-tests.mjs --import=./tools/test/lib/isolate-native-state-root.mjs --test-reporter=tap --test-concurrency=1 tools/test/*.test.mjs';
   assert.equal(selection.aliases['test:data'], command);
   assert.equal(SOURCE_MANIFESTS.app.aliases['test:data'], command);

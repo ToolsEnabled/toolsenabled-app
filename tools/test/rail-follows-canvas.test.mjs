@@ -19,7 +19,7 @@
  * THE CONSTRAINT HELD HERE, which is the part that could destroy work if it
  * slipped: leaving the rail must not touch the transcripts or the streaming
  * accumulator. tools/chat-history-drive.mjs scenarios E and F proved the
- * conversation survives tree switches (10/10, 9/9, an earlier commit); the last test in
+ * conversation survives tree switches (10/10, 9/9, a0764ef); the last test in
  * this file refuses any write to the session layer from the follow path, so
  * a green E and F cannot be un-proven from here.
  *
@@ -180,7 +180,7 @@ test('a rail that is not showing a tree node is left alone', () => {
 /* --------------------------- the constraint ------------------------------ */
 
 test('leaving the rail never touches the conversation or the stream', () => {
-  /* chat-history-drive scenarios E and F (an earlier commit) proved the transcript and
+  /* chat-history-drive scenarios E and F (a0764ef) proved the transcript and
      the mid-turn accumulator survive tree switches. The follow path must stay
      incapable of un-proving that: it may decide and it may show the overview,
      and nothing else. */

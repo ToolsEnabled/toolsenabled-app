@@ -6,6 +6,7 @@ import vm from 'node:vm'
 import shutdown from '../../shell/research-shutdown.cjs'
 import appQuit from '../../shell/app-shutdown.cjs'
 import auditIdentity from '../../shell/audit-identity-settings.cjs'
+import { themeSeed } from '../../shell/theme-seed.cjs'
 
 const { createAppShutdownCoordinator } = shutdown
 const { createAppQuitGate } = appQuit
@@ -696,9 +697,9 @@ test('actual window startup cannot resume into another window after quit crosses
   const sandbox = {
     appShutdown: { started: false }, mirrorUninstallRetention() {}, readState: () => ({}),
     bootTheme: () => 'white', currentWorkAreas: () => [], restoredWindowState: () => ({ theme: 'white' }),
-    THEME_SEED: { white: {} }, serveDist: () => serving.promise,
+    themeSeed, serveDist: () => serving.promise,
     startSupervisedCapabilityLayer() { starts += 1; return Promise.resolve() },
-    // The real body reads the maintenance opt-in (an earlier commit) before it constructs the
+    // The real body reads the maintenance opt-in (9a45a4774) before it constructs the
     // window; an ordinary launch has no --start-inactive switch.
     app: { commandLine: { hasSwitch: () => false } },
   }
@@ -780,7 +781,7 @@ test('the actual shell joins both research calls and agent records before final 
   assert.ok(f.calls.indexOf('quiesce:owner') < f.calls.indexOf('broker-dispose'))
   assert.ok(f.calls.indexOf('quiesce:child') < f.calls.indexOf('agent-record'))
   // The end record is written at once, but the session stays routed until the host's close
-  // drains, so the final packets that close emits still reach capture (an earlier commit).
+  // drains, so the final packets that close emits still reach capture (e0c49804d).
   assert.equal(sessions.size, 1, 'the session is still routed while its close drains')
   assert.equal(f.calls.includes('capability-kill'), false)
   assert.equal(f.calls.includes('resources-stop'), false)

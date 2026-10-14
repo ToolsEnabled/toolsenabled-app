@@ -16,9 +16,11 @@ import { thinkingSummary, thinkingTranscriptId } from '../shell/thinking-transcr
 
 /* WHAT ONE AGENT SAID TO ANOTHER IS NOT WHAT THIS AGENT SAID TO THE PERSON.
  *
- * Tree rule R1203: messages between agents go to the Messages page, where the
- * user can track agent comms; they do not appear in the chat window where the
- * user chats with the agents.
+ * The person's own words, filed as tree rule R1203: "in chat windows, agents
+ * comms are seen in chat windows for the user. Messages inbetween agents are
+ * supposeed to go to messages page so the user can track the agent comms from
+ * there. Those messages should not appear in the chat window where users chat
+ * with the agents."
  *
  * A durable arrival off another circle is put on this stream by
  * shell/agent-host.cjs (showIncoming) shaped as assistant text, because that
@@ -134,11 +136,11 @@ export function createSessionTextReader() {
 
 /* THE MODEL'S OWN WORKING, READ AS ITS OWN THING -- NEVER AS sessionEventText.
  *
- * Thinking is to be shown, and there is finally
+ * The owner wants thinking shown, and as of 2026-09-03 there is finally
  * something to show it FROM: the engine contract grew an eighth event type
  * for exactly this (engine/src/lib/agent-engine/engine-contract.js's
- * EVENT_TYPES: more event types are fine, and the user is shown when the
- * model is thinking). It carries the whole block on
+ * EVENT_TYPES, owner: "more event types are fine we should be showing the
+ * user when the model is thinking anyway"). It carries the whole block on
  * `text`, not a delta -- claude-cli-adapter.js emits one `thinking` event per
  * complete block (`{ type: 'thinking', text: part.thinking, ... }`, read off
  * `content[].type === 'thinking'` on the assistant message, never off the
@@ -147,7 +149,7 @@ export function createSessionTextReader() {
  * still put the model's private working into the transcript as though the
  * agent had said it, which is why it keeps this reader rather than joining
  * sessionEventText's. VERIFIED against engine/src/lib/agent-engine/
- * claude-cli-adapter.js and engine-contract.js on an earlier engine branch;
+ * claude-cli-adapter.js and engine-contract.js on release/engine-1.0.41-next;
  * the capability/ copy this app vendors is byte-identical to both.
  *
  * NEVER FOLDED INTO sessionEventText. That function's whole job is "this is
@@ -180,8 +182,8 @@ export function sessionThinkingText(packet, sessionId) {
 
 /* WHICH TURN A PACKET BELONGS TO, when the engine says so.
  *
- * THE DEFECT THIS EXISTS FOR (2026-08-18): messages in history disappeared or
- * merged into each other. The view sums every delta into one
+ * THE DEFECT THIS EXISTS FOR (owner, 2026-08-18): "the messages in history
+ * disappear or combine into each other." The view sums every delta into one
  * string per session and repaints one open bubble with it, and both are
  * released in exactly one place -- a `turn_completed` packet. A turn that ends
  * any other way therefore left the string and the bubble standing, and the NEXT
@@ -207,7 +209,7 @@ export function sessionEventTurnId(packet, sessionId) {
 /* WHERE ONE MESSAGE ENDS INSIDE A TURN, which is a smaller thing than a turn
  * ending and was not marked anywhere.
  *
- * THE DEFECT (2026-08-22, from the home card): "Said back: ...now.I
+ * THE DEFECT (owner, 2026-08-22, from the home card): "Said back: ...now.I
  * couldn't". Words reach a screen only as assistant_text_delta, and every
  * accumulator joins deltas bare -- right for the tokens of one message, wrong
  * when an engine says two whole messages in one turn: answer, run a tool,
@@ -256,10 +258,25 @@ export function sessionPersonTurn(packet, sessionId) {
   return Object.freeze({ via: event.via, text: event.text, turnId, at })
 }
 
+export function sessionSafetyRefusal(packet, sessionId) {
+  if (packet?.sessionId !== sessionId || packet?.event?.type !== 'turn_completed') return false
+  const failure = packet.event.payload?.failure
+  return failure?.category === 'safety-policy' || ['misalignmentPolicyViolation', 'misalignment_policy_violation'].includes(failure?.code || packet.event.code)
+}
+
+/* 1.0.50 review CM-2: the provider refused this session's model (the engine's 'model-refused' failure). Queued
+   messages wait until a turn on the session succeeds. A safety refusal is never this. */
+export function sessionModelRefusal(packet, sessionId) {
+  if (packet?.sessionId !== sessionId || packet?.event?.type !== 'turn_completed') return false
+  return packet.event.payload?.failure?.category === 'model-refused' && packet.event.status !== 'refusal'
+    && !sessionSafetyRefusal(packet, sessionId)
+}
+
 export function sessionTurnStatus(packet, sessionId) {
   if (!packet || typeof packet !== 'object' || packet.sessionId !== sessionId) return null
   const event = packet.event
   if (!event || typeof event !== 'object' || event.type !== 'turn_completed') return null
+  if (sessionSafetyRefusal(packet, sessionId)) return 'failed'
   return typeof event.status === 'string' ? event.status : 'completed'
 }
 
@@ -286,7 +303,7 @@ export function sessionEndedEvent(packet, sessionId) {
 
 /* WHOSE WORDS THIS COMPLETION IS ALLOWED TO TAKE.
  *
- * THE DEFECT (2026-08-18, the other half of messages merging into each other).
+ * THE DEFECT (owner, 2026-08-18, the other half of "combine into each other").
  * The turn-completion branch read sessionTurnStatus, which carries the STATUS
  * and not the turn id, and then filed whatever was in the session's
  * accumulator as this completion's answer. Order two turns like this --
@@ -838,8 +855,8 @@ export function sessionActivityEvent(packet, sessionId) {
   }
   if (event.type === 'thinking') {
     /* THE MODEL'S OWN REASONING, SHOWN AS ITS OWN ROW -- NEVER AS SOMETHING
-       THE AGENT SAID. More event types are fine, and the user is shown when
-       the model is thinking. Both
+       THE AGENT SAID. Owner, 2026-09-03: "more event types are fine we
+       should be showing the user when the model is thinking anyway." Both
        engines forward it as this one contract type (claude-cli-adapter.js's
        assistant content[].type==='thinking', codex-adapter.js's
        item type==='reasoning'), and this reader is the one place that type

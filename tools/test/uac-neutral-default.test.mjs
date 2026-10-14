@@ -21,7 +21,7 @@ test('fresh installs carry no inherited elevated-operation authority', () => {
   assert.deepEqual(neutral.operations, [], 'installing the app must authorize zero elevated operations')
   assert.doesNotMatch(
     JSON.stringify(neutral),
-    /(?:[A-Za-z0-9._-]+\\\\[A-Za-z0-9._-]+|C:\\\\Users\\\\|(?:10|127|169\.254|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d{1,3}\.\d{1,3})/i,
+    /(?:[A-Za-z0-9._-]+\\\\[A-Za-z0-9._-]+|\x43:\\\\Users\\\\|(?:10|127|169\.254|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d{1,3}\.\d{1,3})/i,
     'the neutral default must contain no principal, profile path, or private-network address',
   )
 })

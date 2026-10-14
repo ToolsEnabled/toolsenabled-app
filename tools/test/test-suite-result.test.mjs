@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { ownedFixtureTempRoot } from './lib/owned-fixture-temp.mjs';
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { createContext, Script } from "node:vm";
+import { requiredNativeSourceCases, sourceCaseExecutionRequirement } from "../lib/adapters/source-command-plan.mjs";
 import {
   NIGHTLY_ENVIRONMENT_VARIABLE,
   RELEASE_SKIP_REGISTER,
@@ -325,4 +327,116 @@ test('real failure diagnostics cannot masquerade as TAP results, plans or bailou
   assert.deepEqual(result.failures, ['a reported assertion failure']);
   const truncated = measured.stdout.replace(/^  \.\.\.$/m, '');
   assert.throws(() => validateSuiteResult({ ...measured, stdout: truncated }), /diagnostic/);
+});
+
+test("T2050 guarded Linux fixtures have exact off-platform release accounting", async () => {
+  // Independently named contracts: neither a filename pattern nor the register
+  // under test supplies the expected coverage. No operational fixture is run.
+  const expected = [
+    ["linux-t2050-installed-measurement", "tools/test/linux-installed-measurement.test.mjs", "typed measurement executes the actual fixed-root reader and refuses unbound evidence"],
+    ["linux-t2050-transport-positive-binding", "tools/test/linux-qualification-transport-bindings.test.mjs", "synthetic transport positive control preserves nonce/profile and unqualified state"],
+    ["linux-t2050-transport-nonce-replay", "tools/test/linux-qualification-transport-bindings.test.mjs", "synthetic replay control refuses a changed nonce"],
+    ["linux-t2050-transport-response-role", "tools/test/linux-qualification-transport-bindings.test.mjs", "standard request must refuse a privileged response role"],
+    ["linux-t2050-transport-base-image", "tools/test/linux-qualification-transport-bindings.test.mjs", "changed base image bytes must refuse before admission"],
+    ["linux-t2050-transport-endpoint-owner", "tools/test/linux-qualification-transport-bindings.test.mjs", "QMP and RPC endpoints must belong to the declared process"],
+    ["linux-t2050-transport-later-attestation", "tools/test/linux-qualification-transport-bindings.test.mjs", "a later attestation must retain the initially measured machine identity"],
+    ["linux-t2050-transport-share-boundary", "tools/test/linux-qualification-transport-bindings.test.mjs", "artifact input share must not resolve outside the dedicated machine root"],
+    ["linux-t2050-transport-process-start", "tools/test/linux-qualification-transport-bindings.test.mjs", "changed process start refuses the next request"],
+    ["linux-t2050-transport-command-bounds", "tools/test/linux-qualification-transport-bindings.test.mjs", "invalid command/profile bounds refuse without RPC dispatch"],
+    ["linux-t2050-artifact-staging-boundary", "tools/test/linux-qualification-artifact-staging.test.mjs", "linked artifact input refuses before creating anything outside the machine root"],
+    ["linux-t2050-measurement-input-staging", "tools/test/linux-installed-measurement-staging.test.mjs", "host-only measurement staging admits exact files and refuses unsafe copy boundaries"],
+  ];
+  const names = expected.map(([, , name]) => name);
+  assert.deepEqual(RELEASE_SKIP_REGISTER.filter(entry => entry.id.startsWith("linux-t2050-"))
+    .map(entry => [entry.id, entry.testName]), expected.map(([id, , name]) => [id, name]));
+  for (const [id, file, name] of expected) {
+    const entries = RELEASE_SKIP_REGISTER.filter(entry => entry.testName === name);
+    assert.equal(entries.length, 1, name);
+    const entry = entries[0];
+    assert.equal(entry.id, id);
+    assert.equal(entry.class, "platform");
+    assert.equal(entry.requiredPlatform, "linux");
+    assert.deepEqual(entry.stages, ["promotion", "release"]);
+    assert.ok(entry.reason.includes(file), "the reason must identify the guarded source contract");
+    assert.equal(skipEntryAppliesOnPlatform(entry, "linux"), false,
+      "Linux root, wrong architecture or missing prerequisites must remain blocking skips");
+    for (const platform of ["win32", "darwin"]) assert.equal(skipEntryAppliesOnPlatform(entry, platform), true);
+  }
+
+  // Evaluate the actual parser/classifier with synthetic platform labels. Only
+  // ESM export declarations are removed. No filesystem, require, environment,
+  // host functions or process-launch facility is provided to any VM context.
+  const moduleSource = await readFile(new URL("../lib/test-suite-result.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(moduleSource, /^import\b/m);
+  const body = moduleSource.replace(/^export (?=(?:const|function)\b)/gm, "");
+  assert.doesNotMatch(body, /^export\b/m);
+  const evaluate = (platform, stdout, stage) => {
+    const context = createContext(Object.create(null), { codeGeneration: { strings: false, wasm: false } });
+    const input = JSON.stringify({ code: 0, stdout, stage });
+    const program = `globalThis.process = Object.freeze({ platform: ${JSON.stringify(platform)} });\n`
+      + body + `\nJSON.stringify(validateSuiteResult(${input}));`;
+    return JSON.parse(new Script(program, { filename: "test-suite-result.synthetic-platform.mjs" })
+      .runInContext(context, { timeout: 1000 }));
+  };
+  const tap = rows => {
+    const skipped = rows.filter(row => row.skipped).length;
+    const escaped = name => name.replaceAll("\\", "\\\\").replaceAll("#", "\\#");
+    return ["TAP version 13", ...rows.map((row, index) =>
+      `ok ${index + 1} - ${escaped(row.name)}${row.skipped ? " # SKIP synthetic missing prerequisite" : ""}`),
+    `1..${rows.length}`, `# tests ${rows.length}`, "# suites 0", `# pass ${rows.length - skipped}`,
+    "# fail 0", "# cancelled 0", `# skipped ${skipped}`, "# todo 0", "# duration_ms 1"].join("\n");
+  };
+  const skippedRows = [{ name: requiredName, skipped: false }, ...names.map(name => ({ name, skipped: true }))];
+  for (const stage of ["promotion", "release"]) {
+    for (const platform of ["linux", "win32", "darwin"]) {
+      const evidence = evaluate(platform, tap(skippedRows), stage);
+      assert.equal(evidence.counts.tests, 13);
+      assert.equal(evidence.counts.pass, 1, "registration never counts skipped cases as passes");
+      assert.equal(evidence.counts.skipped, 12);
+      assert.deepEqual(evidence.skips.unexecuted, names);
+      assert.deepEqual(evidence.skips.retired, []);
+      assert.equal(evidence.requiredControls.length, 1);
+      if (platform === "linux") {
+        assert.deepEqual(evidence.skips.named, []);
+        assert.deepEqual(evidence.skips.unnamed, names, "missing native prerequisites stay blocking");
+      } else {
+        assert.deepEqual(evidence.skips.unnamed, []);
+        assert.deepEqual(evidence.skips.named.map(({ id, name, class: kind }) => [id, name, kind]),
+          expected.map(([id, , name]) => [id, name, "platform"]));
+      }
+      const unknown = "an unrelated Linux fixture must remain unexecuted and unnamed";
+      const withUnknown = evaluate(platform, tap([...skippedRows, { name: unknown, skipped: true }]), stage);
+      assert.equal(withUnknown.counts.pass, 1);
+      assert.equal(withUnknown.counts.skipped, 13);
+      assert.deepEqual(withUnknown.skips.unnamed, platform === "linux" ? [...names, unknown] : [unknown]);
+      const renamed = names[0] + " (renamed)";
+      const changedName = evaluate(platform, tap(skippedRows.map((row, index) =>
+        index === 1 ? { ...row, name: renamed } : row)), stage);
+      assert.ok(changedName.skips.unnamed.includes(renamed), "matching is exact, never by prefix or file");
+      // Keep an ordinary execution so these negatives reach the required-control
+      // validator after the parser's separate zero-completed-tests refusal.
+      const independentPass = { name: "an unrelated executed control", skipped: false };
+      assert.throws(() => evaluate(platform, tap([independentPass, ...skippedRows.slice(1)]), stage), /requires control .*found 0 results/);
+      assert.throws(() => evaluate(platform, tap([independentPass, ...skippedRows.map((row, index) =>
+        index === 0 ? { ...row, skipped: true } : row)]), stage), /requires control .*was skipped/);
+      const executed = evaluate(platform, tap(skippedRows.map(row => ({ ...row, skipped: false }))), stage);
+      assert.equal(executed.counts.pass, 13);
+      assert.equal(executed.counts.skipped, 0);
+      assert.deepEqual(executed.skips, { unexecuted: [], named: [], unnamed: [], retired: [] });
+    }
+  }
+
+  // The other consumer still requires native/companion execution; naming a
+  // release skip supplies neither an observation nor a waiver to that contract.
+  const files = [...new Set(expected.map(([, file]) => file))];
+  assert.deepEqual(requiredNativeSourceCases("app", files), expected.map(([, file, testName]) =>
+    ({ suite: "app", file, testName, requiredPlatform: "linux" })));
+  for (const [, file, testName] of expected) {
+    for (const platform of ["linux", "win32", "darwin"]) {
+      const requirement = sourceCaseExecutionRequirement({ suite: "app", files: [file], testName, platform });
+      assert.equal(requirement.requiredPlatform, "linux");
+      assert.equal(requirement.status, "unexecuted");
+      assert.equal(requirement.kind, platform === "linux" ? "native-prerequisite-unmet" : "companion-platform-required");
+    }
+  }
 });

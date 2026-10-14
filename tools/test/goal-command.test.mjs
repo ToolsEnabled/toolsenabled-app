@@ -9,10 +9,11 @@
  * `goalUsageSentence()`, whose words were "Nothing was recorded and no agent
  * was started."
  *
- * Ledger T61, A23, overruled that: goal works like the CLI /goal -- a goal set
- * in the app makes the agent work autonomously until the goal is achieved; it
- * is NOT record-only. Those assertions were pinning the behaviour reported as
- * broken (goal still had issues), so they are changed here rather than worked around.
+ * Ledger T61, owner A23, overruled that: "Goal must function like the CLI
+ * /goal: a goal set in the app makes the agent work autonomously until the
+ * goal is achieved. It is NOT record-only." Those assertions were pinning the
+ * behaviour the owner reported as broken ("theres still issues with goal"),
+ * so they are changed here rather than worked around.
  *
  * WHAT DID NOT CHANGE, and is still asserted below: the R id is never
  * invented, guessed, lowercased or extracted from the objective; the queue
@@ -425,12 +426,12 @@ test('a typed /goal on an ended session says it is not running, and a transient 
   assert.equal(pending.sentence, goalRefusalSentence('goalUnconfirmed'))
 })
 
-/* THE HOST'S OWN "NO SUCH SESSION", ON THE TYPED DOOR.
+/* THE HOST'S OWN "NO SUCH SESSION", ON THE TYPED DOOR (LIVE 2026-09-23).
  *
  * A session the window still owns can be gone from shell/agent-host.cjs:
  * ownedAgentSession() passes, then readySession() answers
- * AGENT_SESSION_UNKNOWN. A development app log shows exactly that right after
- * a burst of host `revoke` retirements: a run of
+ * AGENT_SESSION_UNKNOWN. The owner's app log shows exactly that right after
+ * four owner-host `revoke` retirements (09:20:10-09:21:01): nine
  * `mc-agent:goal` refusals, all AGENT_SESSION_UNKNOWN. /goal told the person the screen "could not
  * confirm the goal was set" -- an invitation to type it again -- when no
  * goal could be set at all because nothing is running. */

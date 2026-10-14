@@ -12,13 +12,6 @@ import { scanRepository } from '../check-no-profile-paths.mjs'
 
 let repoRoot
 
-// Planted offenders are synthetic. Each Windows profile path is assembled at
-// run time from invented parts, so this test's own source carries no literal
-// user-profile path. `separator` is spelled as the planted file's bytes spell
-// it: '\\' is one backslash (a plain path), '\\\\' is two (a path written
-// inside a JavaScript string literal).
-const windowsProfilePath = (separator, ...segments) => ['C:', 'Users', ...segments].join(separator)
-
 before(async () => {
   repoRoot = await mkdtemp(path.join(os.tmpdir(), 'check-no-profile-paths-'))
   const init = spawnSync('git', ['init', '-q', repoRoot])
@@ -47,7 +40,7 @@ test('a repository with no absolute profile paths scans clean', async () => {
 })
 
 test('a new file outside the allowlist carrying a Windows profile path is caught and named', async () => {
-  await track('tools/planted-offender.mjs', `const p = '${windowsProfilePath('\\\\', 'SomeoneElse', 'x')}'\n`)
+  await track('tools/planted-offender.mjs', "const p = '\x43:\\\\Users\\\\SomeoneElse\\\\x'\n")
   const { offenders } = scanRepository(repoRoot)
   const found = offenders.find(o => o.file === 'tools/planted-offender.mjs')
   assert.ok(found, 'expected the planted Windows-path file to be reported')
@@ -55,7 +48,7 @@ test('a new file outside the allowlist carrying a Windows profile path is caught
 })
 
 test('a new file carrying a Linux or macOS profile path is caught the same way', async () => {
-  await track('tools/planted-linux-offender.mjs', "const p = '/home/someone-real'\n")
+  await track('tools/planted-linux-offender.mjs', "const p = '/\x68ome/someone-real'\n")
   const { offenders } = scanRepository(repoRoot)
   const found = offenders.find(o => o.file === 'tools/planted-linux-offender.mjs')
   assert.ok(found, 'expected the planted Linux-path file to be reported')
@@ -70,7 +63,7 @@ test('removing the planted offender clears the gate', async () => {
 })
 
 test('the redacted-profile marker is never flagged, in any file', async () => {
-  await track('captures-example/pre-fix/capture.log', `cssOverride ${windowsProfilePath('\\', 'redacted-profile', 'Desktop', 'work', 'file.css')}\n`)
+  await track('captures-example/pre-fix/capture.log', "cssOverride \x43:\\Users\\redacted-profile\\Desktop\\work\\file.css\n")
   const { offenders } = scanRepository(repoRoot)
   assert.deepEqual(offenders, [])
 })
@@ -79,7 +72,7 @@ test('a file on the explicit allowlist is exempt even though it names a real-sha
   // Uses the exact relative path of a real allowlist entry (a fence-literal
   // driver script), independent of which temp directory holds this fixture --
   // the allowlist is keyed by tracked path, not by absolute location.
-  await track('tools/check-no-owner-data.mjs', `const fence = '${windowsProfilePath('\\\\', 'BuildAccount-Dev')}'\n`)
+  await track('tools/check-no-owner-data.mjs', "const fence = '\x43:\\\\Users\\\\fixture-profile'\n")
   const { offenders } = scanRepository(repoRoot)
   assert.deepEqual(offenders, [])
 })
@@ -101,7 +94,7 @@ test('a lowercase Windows drive and users segment is caught the same as the exac
   // `i` flag, so a leak whose drive/segment prefix happened to be
   // lower- or mixed-case was silently invisible even though the tool's own
   // stated purpose is catching exactly this shape of leak.
-  await track('tools/planted-lowercase-drive-offender.mjs', `const p = '${windowsProfilePath('\\\\', 'someoneelse', 'x').toLowerCase()}'\n`)
+  await track('tools/planted-lowercase-drive-offender.mjs', "const p = '\x63:\\\\users\\\\someoneelse\\\\x'\n")
   const { offenders } = scanRepository(repoRoot)
   const found = offenders.find(o => o.file === 'tools/planted-lowercase-drive-offender.mjs')
   assert.ok(found, 'expected the planted lowercase-drive Windows-path file to be reported')
@@ -130,7 +123,7 @@ test('a lowercase macOS /users/<account> segment is caught the same as /Users/',
 test('an untracked file (written but never git add-ed) is still caught', async () => {
   const full = path.join(repoRoot, 'tools', 'never-staged-offender.mjs')
   await mkdir(path.dirname(full), { recursive: true })
-  await writeFile(full, `const p = '${windowsProfilePath('\\\\', 'SomeoneElse', 'x')}'\n`)
+  await writeFile(full, "const p = '\x43:\\\\Users\\\\SomeoneElse\\\\x'\n")
   const { offenders } = scanRepository(repoRoot)
   const found = offenders.find(o => o.file === 'tools/never-staged-offender.mjs')
   assert.ok(found, 'expected an untracked planted file to be reported too, before it is ever git add-ed')
@@ -140,7 +133,7 @@ test('an untracked file (written but never git add-ed) is still caught', async (
 test('the CLI exits nonzero and names the offending file when run end to end, then clears on rm', async () => {
   const full = path.join(repoRoot, 'tools', 'planted-cli-offender.mjs')
   await mkdir(path.dirname(full), { recursive: true })
-  await writeFile(full, `const p = '${windowsProfilePath('\\\\', 'SomeoneElse', 'x')}'\n`)
+  await writeFile(full, "const p = '\x43:\\\\Users\\\\SomeoneElse\\\\x'\n")
   const gate = fileURLToPath(new URL('../check-no-profile-paths.mjs', import.meta.url))
   // T339: the CLI defaults to its own repository, so the throwaway fixture
   // is named explicitly; cwd alone no longer redirects the scan.

@@ -1,6 +1,6 @@
 /* A RESUME REGISTERS UNDER THE SAVED PARENT, NOT THE PRIOR ONE.
  *
- * MEASURED: a manager resumed under its
+ * MEASURED by Controller, 2026-09-04: a manager resumed at 02:14:54Z under its
  * PRIOR parent after the person had reparented it, and the tree directory row
  * still carried the old managerName, so a send to it from the circle it now
  * actually reports to was refused TREE_RECIPIENT_NOT_CONNECTED.

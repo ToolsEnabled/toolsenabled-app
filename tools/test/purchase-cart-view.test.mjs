@@ -1,18 +1,19 @@
 /* THE PURCHASE LIST, AS A THING A PERSON CAN READ.
  *
- * The cart is to be in front of its owner in their signed-in account,
- * readable, current, and honest about what happens if they do nothing. These
+ * The owner asked for his cart to be in front of him in his signed-in account,
+ * readable, current, and honest about what happens if he does nothing. These
  * assertions are about the five ways that goes wrong, and every one of them was
  * a real state of this tree before the code under test existed:
  *
  *   1. THE DEADLINE WAS INVISIBLE. `expiresAt` has been on every request since
  *      the beginning and src/owner-popup.js validated it and drew it nowhere.
+ *      Both of his live shopping lists expire on 2026-08-18.
  *
  *   2. DOING NOTHING LOOKED NEUTRAL. The engine refuses a request the moment its
  *      date passes. The card said "leaving this screen decides nothing", which
  *      is true about the button and silent about the calendar.
  *
- *   3. AN INTERNAL REFERENCE NUMBER WAS ON THEIR MONEY SCREEN. The engine stamps
+ *   3. AN INTERNAL REFERENCE NUMBER WAS ON HIS MONEY SCREEN. The engine stamps
  *      "[From your words: R1234] " onto the front of a description and the row
  *      printed the whole string.
  *
@@ -21,7 +22,7 @@
  *      number on a tile.
  *
  *   5. AN UNREADABLE QUEUE COULD READ AS AN EMPTY ONE. That is the worst of the
- *      five: it would tell them their money decisions were settled on the day some
+ *      five: it would tell him his money decisions were settled on the day four
  *      of them expire.
  *
  * NOTHING HERE SPENDS, DECIDES, OR ENQUEUES. Every function under test is pure,
@@ -134,9 +135,9 @@ test('crossing local midnight changes tomorrow to today without changing the exp
 
 /* ---- 2. doing nothing is never described as neutral ---- */
 
-test('what happens if they do nothing is stated, and differs by kind', () => {
+test('what happens if he does nothing is stated, and differs by kind', () => {
   assert.match(doNothingText('purchase_batch'), /every line here is denied/,
-    'the engine refuses a shopping list at its expiry; a surface that implied otherwise would be wrong about their money')
+    'the engine refuses a shopping list at its expiry; a surface that implied otherwise would be wrong about his money')
   assert.match(doNothingText('confirmation'), /this is denied on that date/)
   /* A notice is acknowledged, never refused. Calling that a refusal would be
      alarming and false, and the engine files it with a different decision. */
@@ -153,15 +154,15 @@ test('every kind of request carries the deadline and the consequence on its card
   }
 })
 
-/* ---- 3. no reference number of ours reaches their screen ---- */
+/* ---- 3. no reference number of ours reaches his screen ---- */
 
 test('the provenance stamp becomes a sentence, and the reference number is dropped', () => {
   const owned = readProvenance('[From your words: R1234, R1203] Azure Artifact Signing')
   assert.equal(owned.provenance, 'owner')
-  assert.equal(owned.text, 'Azure Artifact Signing', 'the stamp is still on the front of the name they read')
+  assert.equal(owned.text, 'Azure Artifact Signing', 'the stamp is still on the front of the name he reads')
   assert.equal(owned.label, OWNER_LINE)
   assert.doesNotMatch(`${owned.text} ${owned.label}`, /R1234|R1203/,
-    'a record number of ours on the screen where they decide about money')
+    'a record number of ours on the screen where he decides about money')
 
   const agent = readProvenance('[AGENT-PROPOSED - not traceable to your words] Weekly automated backups')
   assert.equal(agent.provenance, 'agent')
@@ -169,7 +170,7 @@ test('the provenance stamp becomes a sentence, and the reference number is dropp
   assert.equal(agent.label, AGENT_LINE)
 
   /* NEITHER STAMP IS `unknown`, NEVER `agent`. "We could not tell" and "we
-     checked, and this was not your idea" are different claims about their own
+     checked, and this was not your idea" are different claims about his own
      words and only one of them would be true. */
   const bare = readProvenance('Something with no stamp at all')
   assert.equal(bare.provenance, 'unknown')
@@ -225,13 +226,13 @@ test('a line appearing, moving price, or leaving is named, not counted', () => {
   }), NOW)], NOW)
   assert.equal(repriced.added.length, 1)
   assert.match(repriced.added[0].text, /was \$11\.08 and it is now \$12\.00/,
-    'a changed amount must say what it was, or they are comparing against their own memory')
+    'a changed amount must say what it was, or he is comparing against his own memory')
 
   const shrunk = recordCartReading([viewPrompt(batch({ items: [line({ amountCents: 1_200 })], totalCents: 1_200 }), NOW)], NOW)
   assert.equal(shrunk.added.length, 1)
   assert.match(shrunk.added[0].text, /Taken off ToolsEnabled launch: toolsenabled\.ai/)
 
-  /* Newest first, so the thing that just happened is the thing they read. */
+  /* Newest first, so the thing that just happened is the thing he reads. */
   assert.match(cartChanges()[0].text, /Taken off/)
   assert.equal(cartChanges().length, 3)
   resetCartChanges()
@@ -278,7 +279,7 @@ test('the account row draws four states, and never invents one', () => {
   assert.match(waiting, /data-cart-state="waiting"/)
   assert.match(waiting, /\$11\.08 if you approve every one/)
   assert.match(waiting, /1 line across 1 list/)
-  /* The soonest thing on a queue can be a question, not a cart. A screen
+  /* The soonest thing on his real queue is a question, not a cart. A screen
      that clocked only the shopping lists would let the first deadline pass. */
   assert.match(waiting, /Payment path/)
   assert.match(waiting, /Expires in 4 days/)
@@ -296,11 +297,11 @@ test('the account row draws four states, and never invents one', () => {
  * for in what came out. */
 test('the cart row is actually on the signed-in account screen', () => {
   const signedIn = {
-    available: true, signedIn: true, username: 'alex', displayName: 'Alex P',
+    available: true, signedIn: true, username: 'Example', displayName: 'Example P',
     accountId: 'a1', accountCount: 1, signInMethod: 'local', canPersistSession: true,
   }
   const html = signedInMarkup({ state: signedIn, cart: cartSummary([batch(), question()], NOW) })
-  assert.match(html, /data-account-cart\b/, 'the signed-in account screen does not show their purchase list')
+  assert.match(html, /data-account-cart\b/, 'the signed-in account screen does not show his purchase list')
   assert.match(html, /data-cart-state="waiting"/)
   assert.match(html, /\$11\.08/)
   assert.match(html, /href="#\/ledger\?tab=p"/)
@@ -310,7 +311,7 @@ test('the cart row is actually on the signed-in account screen', () => {
 
 /* TWO PRESSES OR FEWER FROM A SIGNED-IN HOME SCREEN, measured rather than
  * claimed. Home offers the queue directly, so it is one; the account screen
- * offers it as well, because that is where they asked for it to be. */
+ * offers it as well, because that is where he asked for it to be. */
 test('home offers the purchase list without going through anything else', () => {
   const home = describeHome({
     fleetConfigured: false,
@@ -381,7 +382,7 @@ test('the engine answers the same questions the same way', async t => {
   assert.equal(readProvenance('[AGENT-PROPOSED - not traceable to your words] x').provenance, 'agent')
 
   /* The two round the same deadline to the same whole day, which is the number
-     their decision is actually made against. */
+     his decision is actually made against. */
   for (const expiresAt of ['2026-08-13T11:00:00.000Z', '2026-08-13T13:00:00.000Z', '2026-08-18T16:36:57.941Z', '2026-08-01T00:00:00.000Z']) {
     const mine = expiryOf({ expiresAt }, NOW)
     const theirs = engine.viewPrompt({ ...question(), expiresAt }, NOW)
@@ -418,12 +419,12 @@ test('the owner’s real queue projects without inventing anything', async t => 
   for (const cart of summary.carts) {
     assert.equal(cart.totalCents, cart.lines.reduce((sum, item) => sum + item.amountCents, 0))
     for (const item of cart.lines) {
-      assert.doesNotMatch(item.text, /^\[/, 'a stamp survived onto the name they read')
-      assert.doesNotMatch(item.text, /\bR\d{3,4}\b/, 'a record number of ours survived onto their money surface')
+      assert.doesNotMatch(item.text, /^\[/, 'a stamp survived onto the name he reads')
+      assert.doesNotMatch(item.text, /\bR\d{3,4}\b/, 'a record number of ours survived onto his money surface')
       assert.equal(item.renewalCents, null)
     }
   }
-  /* Printed rather than asserted: the queue is theirs and it moves. What is
+  /* Printed rather than asserted: the queue is his and it moves. What is
      asserted above is that whatever is in it adds up and carries no stamp. */
   t.diagnostic(`live queue: ${summary.waitingCount} waiting, ${summary.cartCount} list(s), ${summary.lineCount} line(s), soonest ${summary.soonest ? summary.soonest.deadline : 'none'}`)
 })

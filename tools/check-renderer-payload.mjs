@@ -25,8 +25,8 @@
  * THE SECOND REASON A FILE IS KEPT OUT, ADDED FOR 1.0.45. `operator` means "somebody's
  * private document". It is not the only reason a product asset must stay out of an
  * installer: the subscription page's price catalog was nobody's private document and
- * still shipped a Team price and a three-seat minimum into a release whose rule is
- * that no payments are collected at first public launch (R1214). Classifying it
+ * still shipped a Team price and a three-seat minimum into a release whose owner rule is
+ * "we are NOT collecting payments at first public launch" (R1214). Classifying it
  * `operator` would have worked and would have been a lie about what it is, and a
  * classification nobody believes is one the next person re-argues. So there is a third
  * group, `withheld`, enforced exactly like `operator` and meaning what it says.

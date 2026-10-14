@@ -160,7 +160,7 @@ test('a vault that could not be read is unknown, never an empty vault', async ()
     /* THE DISTINCTION THIS WHOLE PATH EXISTS FOR: a file error must not read as
        "you have no credentials". */
     assert.doesNotMatch(answer.reason, /\bno credentials\b|\bholds none\b/i,
-      `${label} told the owner their vault is empty`)
+      `${label} told the owner his vault is empty`)
   }
 })
 
@@ -250,7 +250,7 @@ test('nothing is removed until the owner approves that exact removal', async () 
   assert.equal(removed.length, 0, 'a credential was removed with no approval ever requested')
 
   /* 2  ASKED, NOT YET ANSWERED. This is the state the owner is in for as long
-        as the prompt sits on their approvals screen, and it must not remove. */
+        as the prompt sits on his approvals screen, and it must not remove. */
   const asked = seam.requestCredentialRemoval({ name: 'legacy_token' }, { ...options(), stateRoot: root })
   assert.equal(asked.ok, true, asked.reason)
   assert.equal(asked.approvalHref, '#/approvals', 'the removal did not point at the product\'s approvals surface')
@@ -327,7 +327,7 @@ test('asking twice about one record reuses the owner question, and a refusal doe
   assert.ok(!other.reused)
 
   /* 4  ANSWERED NO, AND ASKED AGAIN -- a NEW question. Reusing here would tell
-        the person their answer was "still waiting" when it was no, and hand back a
+        the owner his answer was "still waiting" when it was no, and hand back a
         prompt that can only ever refuse. */
   prompts.ownerDecides(other.promptId, 'deny')
   const afterDeny = seam.requestCredentialRemoval({ name: 'provider_api_key' }, options)
@@ -349,7 +349,7 @@ test('asking twice about one record reuses the owner question, and a refusal doe
     'the refused binding was left behind the new one')
 })
 
-test('the page can read back what is waiting for the owner, and what they answered', async () => {
+test('the page can read back what is waiting for the owner, and what he answered', async () => {
   /* WHY THIS EXISTS. Approving a removal means LEAVING the vault page for
    * #/approvals, which destroys the panel and its memory of which prompt it
    * raised. The binding was always durable; nothing read it back. So the
@@ -539,7 +539,7 @@ test('a remover that rejects reports failure and does not spend the approval', a
   assert.ok(failed.code && failed.reason, 'a rejected removal refused without naming itself')
 
   /* 2  THE APPROVAL SURVIVES. The owner said yes and the product failed;
-        making them approve again would blame them for that. Proven by retrying
+        making him approve again would blame him for that. Proven by retrying
         with a working remover and having it succeed on the SAME approval. */
   const retried = await seam.completeCredentialRemoval({ name: 'legacy_token', promptId: asked.promptId },
     { ...rejecting, removeCredential: async () => ({ status: 'cleared' }) })
@@ -659,8 +659,8 @@ test('a payload with no working remover says so instead of reporting a removal',
   const answer = await seam.completeCredentialRemoval({ name: 'legacy_token', promptId: asked.promptId }, options)
   assert.equal(answer.ok, false)
   assert.equal(answer.code, 'CREDENTIAL_REMOVER_UNAVAILABLE')
-  /* The owner's approval survives, because they gave it and the product failed --
-     making them approve again would blame them for an installation fault. */
+  /* The owner's approval survives, because he gave it and the product failed --
+     making him approve again would blame him for an installation fault. */
   const recovered = await seam.completeCredentialRemoval({ name: 'legacy_token', promptId: asked.promptId },
     { ...options, removeCredential: () => ({ status: 'cleared' }) })
   assert.equal(recovered.removed, true, recovered.reason)

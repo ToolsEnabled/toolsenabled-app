@@ -2,7 +2,7 @@
 /**
  * IS A CONFIRMED PURCHASE DECISION VISIBLE TO ANOTHER ACCOUNT?
  *
- * E2 (an internal report) proved a second person cannot see the
+ * E2 (reports/lanes/test-account.md) proved a second person cannot see the
  * owner's name, card or identity, and could not answer this one, because
  * pressing Confirm is fenced for an executor. It refused to infer from the
  * selection leak. This driver answers it without pressing Confirm and without

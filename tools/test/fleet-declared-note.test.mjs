@@ -39,7 +39,7 @@ test('the declared-state note does not send the reader after a connection that d
 })
 
 test('the note explains why real counts sit beside an absent host', () => {
-  /* The contradiction seen was numbers next to a denial with nothing
+  /* The contradiction the owner saw was numbers next to a denial with nothing
      reconciling them. The note has to do that reconciling, in words. */
   assert.match(note(), /this computer/i, 'the note must say whose the counts are')
   assert.match(note(), /fleet host/i, 'the note must name what is absent')

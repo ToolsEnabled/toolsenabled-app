@@ -2,8 +2,8 @@
 //
 // This page used to be two pages wearing one route: a demonstration whose
 // eight instruments tweened a simulated dataset, and a measured face that
-// reads this computer's own signed records. The rule collapsed the split —
-// every simulated page IS the UI page, with mock data — so the
+// reads this computer's own signed records. The owner's ruling collapsed the
+// split — "all simulated pages ARE the UI pages, just mock data" — so the
 // demonstration engine, its dataset generator, its tween loop, its pools,
 // verdicts, heartbeat and agent roster are gone from this file. What remains
 // is the measured render, fed through one axis (src/data-source.js):
@@ -39,7 +39,7 @@ import { buildTheme } from '../echarts-theme.js'
    for one render to serve both real and example data. */
 import {
   activityMatrix, activityOption, burnOption, createLiveCharts, liveWindow,
-  outcomeOption, providerOfTier, routingFlows, routingOption,
+  outcomeOption, providerOfModelKey, routingFlows, routingOption,
   tokenBandOption, tokenBands, turnCounts, turnStripOption, turnsInWindow,
 } from '../metrics-live-charts.js'
 import { readMetricsRecords, withMetricsDeadline } from '../metrics-records.js'
@@ -136,7 +136,7 @@ const motionQuery = typeof window !== 'undefined' && window.matchMedia
 const reduced = () => document.body.classList.contains('reduce-motion') || !!motionQuery?.matches
 
 /* The footer verdict is its own module so it is the actual expression a test
-   can drive by value (BUG08): auditing off is the
+   can drive by value (BUG08, root review 2026-09-21): auditing off is the
    person's setting, not a read failure, and the off wording is scoped to new
    operations. See src/metrics-footer-status.js. */
 import { metricsFooterStatus, METRICS_AUDIT_OFF_STATUS } from '../metrics-footer-status.js'
@@ -1167,7 +1167,7 @@ export function metricsView() {
     const models = root.querySelector('#model-usage')
     panelReady('models', '#model-sub', `${rangeWord()} · share of known tokens`)
     if (local?.usage?.byModel?.rows.length) {
-      tokenRows(models, local.usage.byModel.rows.map(row => ({ label: row.label, tokens: row.tokens, share: row.share, provider: providerOfTier(row.key) || 'unrecorded',
+      tokenRows(models, local.usage.byModel.rows.map(row => ({ label: row.label, tokens: row.tokens, share: row.share, provider: providerOfModelKey(row.key) || 'unrecorded',
         note: `${row.turns} ${row.turns === 1 ? 'turn' : 'turns'}${row.unknownTurns ? ` · ${row.unknownTurns} without totals` : ''}` })))
     } else {
       models.replaceChildren()
@@ -1370,7 +1370,7 @@ export function metricsView() {
          disclosure is owed. Everything below it went through the real parsers,
          which is exactly why this line is not optional -- the readings LOOK
          measured, and only the source says they are not. */
-      note.textContent = `${rangeWord()} · `
+      note.textContent = `${rangeWord()} `
       const dot = document.createElement('i')
       dot.className = 'sim-dot'
       dot.setAttribute('aria-hidden', 'true')
@@ -1513,7 +1513,7 @@ export function metricsView() {
     applyLiveProjection()
     status.textContent = metricsFooterStatus({ needsUpdate, sessions, usage, readErrors,
       updatedLabel: `Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` })
-    /* SAID ONCE. With auditing off, the line under
+    /* SAID ONCE (owner review, 2026-09-23). With auditing off, the line under
        the period controls (#mf-note) already says so in full, so this header
        line keeps its words for whatever reads the status but is not drawn a
        second time. Only when that line carries it: the run record being off

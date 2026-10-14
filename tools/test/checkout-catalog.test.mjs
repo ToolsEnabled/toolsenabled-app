@@ -65,7 +65,7 @@ function baseItem(overrides = {}) {
     defaultSelected: false,
     whatItIs: 'What it is.',
     whatBreaksWithout: 'What breaks.',
-    whyHeWantedIt: 'Why they wanted it.',
+    whyHeWantedIt: 'Why he wanted it.',
     sourceUrl: null,
     warning: null,
     blockers: [],
@@ -223,7 +223,7 @@ test('a blocking blocker marks an item loudly WITHOUT taking the choice away', (
   const item = normalizeCatalog(baseCatalog([baseItem({
     blockers: [{ code: 'NAME_NOT_DECIDED', summary: 'The company name is not settled.', severity: 'blocking' }],
   })])).items[0]
-  assert.equal(item.selectable, true, 'they can put it in the list; nothing here buys it')
+  assert.equal(item.selectable, true, 'he can put it in the list; nothing here buys it')
   assert.equal(item.blocked, true)
   assert.equal(item.blockedReason, 'The company name is not settled.')
   assert.equal(item.unselectableReason, null)
@@ -271,7 +271,7 @@ test('a do-not-buy item can never be selected even with a price and no blockers'
 })
 
 test('the most fundamental reason wins when an item is unselectable for several', () => {
-  // On the do-not-buy list AND unpriced: they are told it was ruled out, which is
+  // On the do-not-buy list AND unpriced: he is told it was ruled out, which is
   // the settled answer, rather than the narrower "nobody quoted it".
   const item = normalizeCatalog(baseCatalog([baseItem({
     category: 'do-not-buy',

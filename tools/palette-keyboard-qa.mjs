@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-/* THE ACTIONS POPUP, DRIVEN THE WAY IT IS MEANT TO WORK.
+/* THE ACTIONS POPUP, DRIVEN THE WAY THE OWNER ASKED FOR IT TO WORK.
  *
- * The requirement for this menu: work more like VS Code, and be much more
- * intuitive. The substance of VS Code's quick pick is that the
+ * His words on this menu: "this menu needs to be more like vscode, much more
+ * intuitive preferably". The substance of VS Code's quick pick is that the
  * keyboard drives everything from the filter box: type to narrow, Up and Down
  * to move, Enter to run, Escape to leave, with the row under the cursor
  * announced to assistive tech. Before this repair the popup's entire keyboard
@@ -236,8 +236,8 @@ async function doorDiagnostics(window, nodeId = null) {
  * start makes likely, and machine load decides -- the rail is back on
  * "Fleet overview", every inactive rail page is visibility:hidden
  * (src/tree-graph.css), and the door reports hidden for the full wait.
- * Signature, verbatim from a red run at tree an earlier commit (the previously GREEN
- * confirming tree) and again at a later commit: activeRailPage="rail-page
+ * Signature, verbatim from a red run at tree a3e9f85 (the previously GREEN
+ * confirming tree) and again at 0485034: activeRailPage="rail-page
  * stats-page is-active", btn.visibility="hidden", the node still selected.
  * One race, two trees, red on whichever side the machine was busier for --
  * that is the weather, not the product's delta.
@@ -425,53 +425,13 @@ async function seededRun() {
 
 const LIVE_PROMPT = 'Write the single word Kestrel on the first line, then count from 1 to 400, one number per line. Do not say anything else.'
 
-const SIGN_IN_FS = { cpSync, existsSync, mkdirSync, statSync, symlinkSync }
-
-export function lendClaudeSignIn(scratch, fs = SIGN_IN_FS) {
-  const realHome = process.env.USERPROFILE || ''
-  const credential = path.join(realHome, '.claude', '.credentials.json')
-  try {
-    fs.statSync(credential)
-  } catch (error) {
-    if (error instanceof Error && error.code === 'ENOENT') {
-      return { ok: false, code: 'CLAUDE_CREDENTIAL_ABSENT' }
-    }
-    return {
-      ok: false,
-      code: 'CLAUDE_CREDENTIAL_CHECK_FAILED',
-      causeCode: error instanceof Error && typeof error.code === 'string' ? error.code : null,
-      message: 'Could not check the Claude sign-in; this is NOT claiming the credential is absent.',
-    }
-  }
-  const scratchClaude = path.join(scratch, 'home', '.claude')
-  fs.mkdirSync(scratchClaude, { recursive: true })
-  fs.cpSync(credential, path.join(scratchClaude, '.credentials.json'))
-  const settings = path.join(realHome, '.claude.json')
-  if (fs.existsSync(settings)) fs.cpSync(settings, path.join(scratch, 'home', '.claude.json'))
-  const realNpm = path.join(process.env.APPDATA || '', 'npm')
-  if (fs.existsSync(realNpm)) {
-    fs.mkdirSync(path.join(scratch, 'roaming'), { recursive: true })
-    try { fs.symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* linked */ }
-  }
-  return { ok: true, code: 'CLAUDE_CREDENTIAL_LENT' }
-}
-
 async function liveRun() {
   const scratch = mkdtempSync(path.join(tmpdir(), 'palette-kb-live-'))
   let window = null
   try {
     const staged = await stage(scratch)
     seedMachineRecord(scratch, staged.appRoot, 'standard')
-    const signIn = lendClaudeSignIn(scratch)
-    if (!signIn.ok && signIn.code === 'CLAUDE_CREDENTIAL_ABSENT') {
-      note('FAIL', 'HARNESS STATE: this computer has no Claude sign-in to lend, so the live half was not measured.')
-      return
-    }
-    if (!signIn.ok) {
-      note('FAIL', `HARNESS STATE: ${signIn.message} code=${signIn.causeCode || 'UNKNOWN'}; the live half was not measured.`)
-      return
-    }
-    window = await openWindow(staged.executable, scratch)
+    window = await openWindow(staged.executable, scratch, { provider: 'claude' })
     await window.evaluate(`localStorage.setItem('mc.write.agent-session', 'enabled')`)
     await window.evaluate(`location.hash = '#/computers'`)
     await delay(1200)

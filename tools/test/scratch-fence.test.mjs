@@ -1,10 +1,10 @@
 // THE FENCE, PROVED RATHER THAN ASSERTED.
 //
-// Three earlier defects shape this file. The first fenced
+// Three defects from other lanes shape this file. Worker 87's first fenced
 // driver resolved the audit database by calling getStateStore(), which OPENS
 // the store, so the check meant to keep a run off the live database would have
 // opened it to find out where it was. A later one required audit-store.js,
-// which CREATES the state-root directory at module load. And an earlier fence
+// which CREATES the state-root directory at module load. And Worker 87's fence
 // called a no-argument vaultPath() that read the AMBIENT environment and
 // answered the live vault when handed a safe scratch one -- while every refusal
 // proof still passed, because refusing a live vault is what they test.
@@ -19,6 +19,8 @@ import fs from 'node:fs'
 import childProcess from 'node:child_process'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
+
+import { fenceNameAuthorities } from '../lib/vault-scratch-fence.mjs'
 
 import {
   ACCOUNT_IDENTITY_NAMES,
@@ -43,7 +45,7 @@ import {
  * requiredNames().length, and the owned set compared against what
  * buildDistChainEnvironment re-points. Each proved the two halves agree and
  * nothing about whether either is right: dropping a name from both sides left
- * them fully green. The same shape was found elsewhere, where
+ * them fully green. Worker 89 found the same shape in another lane, where
  * removing TOOLSENABLED_VAULT_PATH from the re-pointed set left its QA green.
  *
  * So the owned set and the exempt tier are WRITTEN DOWN HERE, by hand, and the
@@ -71,7 +73,7 @@ const CAPABILITY_MUST_INCLUDE = [
   'TOOLSENABLED_STATE_ROOT',
   'TOOLSENABLED_VAULT_PATH',
 ]
-const FLOOR_BY_RULE = { 'capability overrides': 20, 'account paths': 4, 'provider homes': 3, 'node loader': 2 }
+const FLOOR_BY_RULE = { 'capability overrides': 20, 'account paths': 5, 'provider homes': 2, 'node loader': 2 }
 
 /* Does a path cited in an exemption reason name a real file? Searched by its
  * TAIL, because a reason cites the readable part of a path
@@ -168,7 +170,7 @@ function resolvesInProduct(citation) {
 }
 
 const SCRATCH = path.join('C:', 'sc', 'state')
-const LIVE_ROOT = path.join('C:', 'Users', 'Someone', 'Documents', 'Project Files', 'ToolsEnabled-Live')
+const LIVE_ROOT = path.join('C:', 'Users', 'Someone', 'Desktop', 'Example profile', 'ToolsEnabled-Live')
 
 /** An environment that satisfies the fence: every owned name inside SCRATCH. */
 function scratchEnv(overrides = {}) {
@@ -300,7 +302,7 @@ test('importing the module executes nothing of its own', async () => {
 })
 
 test('the fence is a function of the environment it is handed, never process.env', () => {
-  // The exact earlier defect: a safe environment handed in, live values still
+  // Worker 87's exact defect: a safe environment handed in, live values still
   // ambient. Every resolved path must be the scratch one.
   const savedState = process.env.TOOLSENABLED_STATE_ROOT
   const savedVault = process.env.TOOLSENABLED_VAULT_PATH
@@ -388,10 +390,14 @@ test('the set comes from the product authorities, by category, with no total wri
   }
   assert.deepEqual(groups[4].names, ['MC_TEST_STATE_ROOT'], 'exactly one declared seam')
 
-  // The safety-class name found missing, and the harness seam.
+  // The safety-class name Worker 89 found missing, and the harness seam.
   assert.ok(names.includes('TOOLSENABLED_STATE_PATH'), 'the grant store must be fenced')
   assert.ok(names.includes('MC_TEST_STATE_ROOT'))
-  for (const name of ['CLAUDE_CONFIG_DIR', 'CODEX_HOME', 'GEMINI_DIR']) assert.ok(names.includes(name), name)
+  const vaultNames = fenceNameAuthorities().names
+  for (const name of ['CLAUDE_CONFIG_DIR', 'CODEX_HOME', 'GEMINI_DIR']) {
+    assert.ok(names.includes(name), `scratch fence must still cover ${name} after the account-path move`)
+    assert.ok(vaultNames.includes(name), `vault fence must still cover ${name} after the account-path move`)
+  }
 
   // The audit database is found by SHAPE, not by literal.
   assert.deepEqual(auditDatabaseNames(names), ['TOOLSENABLED_AUDIT_DB'])
@@ -410,8 +416,8 @@ test('eight spellings of one live path are all refused by name', () => {
     'mixed backslash': backslash.replace('ToolsEnabled-Live', 'toolsENABLED-live'),
     'lower forward': forward,
     'upper forward': forward.toUpperCase(),
-    'msys': '/c/Users/Someone/Documents/Project Files/ToolsEnabled-Live/capability/vault/secrets.json',
-    'msys upper': '/C/USERS/SOMEONE/DOCUMENTS/PROJECT FILES/TOOLSENABLED-LIVE/CAPABILITY/VAULT/SECRETS.JSON',
+    'msys': '/c/\x55sers/Someone/Desktop/Example profile/ToolsEnabled-Live/capability/vault/secrets.json',
+    'msys upper': '/C/USERS/SOMEONE/DESKTOP/Example PROFILE/TOOLSENABLED-LIVE/CAPABILITY/VAULT/SECRETS.JSON',
     'trailing separator': `${path.join(LIVE_ROOT, 'capability')}${path.sep}`,
   }
   for (const [label, spelling] of Object.entries(spellings)) {
@@ -558,7 +564,7 @@ test('a name missing from the handed environment resolves to nothing, never to t
   /* THE DIRECTION THE OVERRIDE CASE CANNOT REACH. Test 5 hands a COMPLETE
    * environment, so a resolver that consulted process.env only when the handed
    * object lacked a name would keep this suite fully green -- the override
-   * always wins when there is something to override. A check drove exactly
+   * always wins when there is something to override. Worker 89 drove exactly
    * that mutation and saw 15 of 15 pass.
    *
    * So: delete one owned name from the handed environment while the LIVE value

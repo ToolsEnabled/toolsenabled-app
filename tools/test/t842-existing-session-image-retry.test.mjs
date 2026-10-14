@@ -25,7 +25,7 @@ const runNode = mainAst.body.find(node => node.type === 'FunctionDeclaration' &&
 assert.ok(runNode, 'the actual native image queue function must exist')
 const runImageQueueBody = mainSource.slice(runNode.start, runNode.end)
 const helperNames = [
-  'agentIpcError', 'agentPayload', 'boundedAgentString', 'parseAgentSend',
+  'agentIpcError', 'agentPayload', 'boundedAgentString', 'boundedAgentModel', 'parseAgentSend',
   'assertTrustedAgentSender', 'windowPrincipal',
 ]
 const helperCode = helperNames.map(name => {
@@ -39,9 +39,9 @@ const limitCode = mainAst.body.filter(node => node.type === 'VariableDeclaration
   .map(node => `const ${mainSource.slice(node.start, node.end)};`)
   .join('\n')
 const helpers = new Function(
-  'trustedFleetProfileSender',
+  'trustedFleetProfileSender', 'require', 'resolveCapabilityRoot',
   `${limitCode}\n${helperCode};return {${helperNames.join(',')}}`,
-)(event => event.trusted === true)
+)(event => event.trusted === true, require, () => engineRoot)
 
 const {createAgentCommandSurface, REQUIRED_DEPS} = require('./agent-command-surface.cjs')
 const trackedSources = [

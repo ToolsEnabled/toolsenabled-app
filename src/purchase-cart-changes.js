@@ -4,9 +4,9 @@
  * reconciles in silence: src/ledger-prompt-queue.js removes the cards that are gone
  * and appends the ones that are new, and the only visible trace is that the
  * total on the tile is a different number than it was a moment ago. A person
- * watching their own money list therefore learns THAT something moved and never
- * WHAT moved. That is the difference between a screen they can trust and a screen
- * they have to re-read from the top every time they look at it.
+ * watching his own money list therefore learns THAT something moved and never
+ * WHAT moved. That is the difference between a screen he can trust and a screen
+ * he has to re-read from the top every time he looks at it.
  *
  * SO THIS COMPARES TWO READINGS AND WRITES THE DIFFERENCE IN SENTENCES. Lines
  * added, lines gone, an amount that is not what it was, a deadline that moved, a
@@ -17,7 +17,7 @@
  *   IT IS NOT A HISTORY. It lives in this window's memory and is empty again
  *   when the program is reopened, exactly like src/approval-outcomes.js and for
  *   the same reason: owner decisions are the engine's to keep, and a renderer
- *   that wrote its own durable copy of their money list would be the second list
+ *   that wrote its own durable copy of his money list would be the second list
  *   this whole design exists to prevent. The screen says this out loud.
  *
  *   IT DOES NOT KNOW WHY. A list that leaves the queue either was decided or

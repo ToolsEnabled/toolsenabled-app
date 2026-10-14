@@ -2,13 +2,13 @@
 
 // THE APP AND ITS PACKED ENGINE MUST AGREE ON EVERY SETTINGS ROW THE APP DRAWS.
 //
-// Measured 2026-09-16 on the 1.0.45 cut 1 (an earlier app commit, an earlier engine commit): the
+// Measured 2026-09-16 on the 1.0.45 cut 1 (app da0f2fde, engine bf3bde09): the
 // Settings page's working-profile presets and the "Who adds standing rules"
 // quick slider both read the row `rules.filing_from`, which the engine landed
 // on a branch the cut never carried. The packed capability registry had no such
 // row, so the Working profile slider disabled itself with "This host cannot
 // apply the profile field ..." and the rules slider read "Not available in this
-// build", and the slider looked broken. The app's own suite
+// build". The owner saw "my slider doesn't even work". The app's own suite
 // (tools/test/product-setting-rows.test.mjs) was red against the packed payload
 // -- but the cut's suites had run against a different capability/ copy than the
 // one it packed, so nothing refused the pair.

@@ -1,5 +1,5 @@
 import { layoutTree, TREE_LABEL_STACK } from './tree-layout.js'
-import { layoutBoxTree, treeBoxSize } from './tree-box-layout.js'
+import { boxVideoLane, layoutBoxTree, treeBoxSize } from './tree-box-layout.js'
 
 // Box text is compensated by the renderer as cards scale down. Geometry can
 // therefore use more of the canvas without forcing an early subtree fold.
@@ -8,7 +8,9 @@ const VIEW_PADDING = 10
 const FRONTIER_LIMIT = 80
 const PROJECTION_WORK_LIMIT = 160
 
-function prospectiveFit(scope, agents, nodeStyle, W, H, contextSize) {
+/* videoIds (boxes only): agents whose box shows a video panel. Their rank gets
+   a video lane in the layout, and their own bottom reaches the panel's. */
+function prospectiveFit(scope, agents, nodeStyle, W, H, contextSize, videoIds = null) {
   if (!agents.length) return 1
   const visible = new Map(agents.map(agent => [agent.id, agent]))
   const nodes = agents.map(agent => {
@@ -20,8 +22,10 @@ function prospectiveFit(scope, agents, nodeStyle, W, H, contextSize) {
     return { ...agent, parentId: visible.has(parentId) ? parentId : null }
   })
   const box = treeBoxSize(contextSize)
+  const video = nodeStyle === 'boxes' ? videoIds : null
+  const lane = video ? boxVideoLane(box) : 0
   const layout = nodeStyle === 'boxes'
-    ? layoutBoxTree({ nodes, W, H, contextSize })
+    ? layoutBoxTree({ nodes, W, H, contextSize, videoIds: video })
     : layoutTree({ nodes, W, H, spacious: true })
   let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity
   for (const [id, point] of layout.slots) {
@@ -29,6 +33,7 @@ function prospectiveFit(scope, agents, nodeStyle, W, H, contextSize) {
     if (nodeStyle === 'boxes') {
       halfWidth = box.width / 2
       above = below = box.height / 2
+      if (video?.has(id)) below += lane
     } else {
       const radius = layout.radii.get(id)
       const labelWidth = Math.min(radius * 2 + 118, layout.labels.get(id)?.maxWidth || Infinity)
@@ -76,9 +81,9 @@ function boxFrontier(scope, rootId, full, fanout) {
 }
 
 function fillReadableFrontier(scope, initial, options) {
-  const { rootId, nodeStyle, W, H, contextSize, minScale, threshold, fitScale } = options
+  const { rootId, nodeStyle, W, H, contextSize, minScale, threshold, fitScale, videoIds } = options
   let agents = describeFrontier(scope, initial, rootId), work = 0
-  const fit = candidate => prospectiveFit(scope, candidate, nodeStyle, W, H, contextSize)
+  const fit = candidate => prospectiveFit(scope, candidate, nodeStyle, W, H, contextSize, videoIds)
   while (agents.length < FRONTIER_LIMIT && work < PROJECTION_WORK_LIMIT) {
     const parents = new Set(agents.map(agent => agent.parentId).filter(Boolean))
     let best = null
@@ -141,15 +146,20 @@ function fillReadableFrontier(scope, initial, options) {
 // Fit the prospective complete branch, never the already-folded result. That
 // keeps newly freed space from immediately undoing the fold. The caller owns
 // gesture settling and caches previousFolded separately for each tree view.
+// videoIds: the agents that show a video under their box (Boxes only). A
+// branch whose ranks carry videos is taller, so it folds sooner.
 export function chooseTreeProjection({
   scope, rootId = null, rootIds = null, nodeStyle = 'boxes', W = 800, H = 600, previousFolded, contextSize = 'medium',
+  videoIds = null,
 }) {
   W = Number.isFinite(W) ? Math.max(0, W) : 800
   H = Number.isFinite(H) ? Math.max(0, H) : 600
   nodeStyle = nodeStyle === 'circles' ? 'circles' : 'boxes'
+  videoIds = nodeStyle === 'boxes' && videoIds ? new Set(videoIds) : null
+  if (!videoIds?.size) videoIds = null
   const full = scope.project(rootId, { collapse: false, rootIds })
   const minScale = READABLE_SCALE[nodeStyle]
-  const fitScale = prospectiveFit(scope, full, nodeStyle, W, H, contextSize)
+  const fitScale = prospectiveFit(scope, full, nodeStyle, W, H, contextSize, videoIds)
   const threshold = minScale * (previousFolded === true ? 1.1 : previousFolded === false ? 0.9 : 1)
   if (!full.length || fitScale >= threshold) {
     return { agents: full, folded: false, fitScale, minScale, branchesPerLevel: null }
@@ -160,15 +170,15 @@ export function chooseTreeProjection({
     branchesPerLevel = fanout
     if (nodeStyle === 'boxes') {
       const mixed = boxFrontier(scope, rootId, full, fanout)
-      if (mixed && prospectiveFit(scope, mixed, nodeStyle, W, H, contextSize) >= minScale) {
+      if (mixed && prospectiveFit(scope, mixed, nodeStyle, W, H, contextSize, videoIds) >= minScale) {
         agents = mixed
         break
       }
       if (mixed && fanout > 2) continue
     }
-    if (prospectiveFit(scope, agents, nodeStyle, W, H, contextSize) >= minScale) break
+    if (prospectiveFit(scope, agents, nodeStyle, W, H, contextSize, videoIds) >= minScale) break
   }
-  agents = fillReadableFrontier(scope, agents, { rootId, nodeStyle, W, H, contextSize, minScale, threshold, fitScale })
+  agents = fillReadableFrontier(scope, agents, { rootId, nodeStyle, W, H, contextSize, minScale, threshold, fitScale, videoIds })
   const folded = agents.some(agent => agent.treeScope?.hidden > 0)
   return { agents, folded, fitScale, minScale, branchesPerLevel: folded ? branchesPerLevel : null }
 }

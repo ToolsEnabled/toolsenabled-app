@@ -10,13 +10,13 @@
  * execFileSync('powershell.exe', ... tools/secrets.ps1 ...) -- a whole
  * interpreter start, synchronous, on the thread that pumps the window's message
  * queue. Idle on this machine that is 145-153 ms per start. The shipped code's
- * own measurement under a real working load
- * (shell/vault-presence.cjs, about 100 agents running) records six consecutive
+ * own measurement under the load the owner actually runs
+ * (shell/vault-presence.cjs, "~100 agents running") records six consecutive
  * vault reads at 15031, 13099, 15035, 15034, 15028 and 5372 ms. One of those,
  * on the main thread, is a window that stops answering Windows for fifteen
  * seconds -- which is exactly what the machine recorded as AppHangB1
- * ("stopped interacting with Windows and was closed") and the repeated
- * crashes that were reported.
+ * ("stopped interacting with Windows and was closed") and what the owner
+ * reported as "it keeps crashing".
  *
  * SO THE WORK MOVES, AND NOTHING ELSE DOES. This worker loads the SAME module,
  * from the same payload root, with the same TOOLSENABLED_STATE_ROOT set before

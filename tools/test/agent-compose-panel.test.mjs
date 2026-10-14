@@ -39,6 +39,7 @@ import { fileURLToPath } from 'node:url'
 import { findingsInText } from '../check-plain-language.mjs'
 import { visibleTextFrom, withoutComments } from '../lib/user-visible-strings.mjs'
 import { ROLES } from '../../src/vocab.js'
+import { OTHER_MODEL_VALUE, OTHER_MODEL_LABEL, MODEL_NAME_LABEL, MODEL_NAME_HELP, customModelTier } from '../../src/model-picker.js'
 import {
   DEFAULT_TIER,
   FIRST_ROLE_SUGGESTION,
@@ -98,6 +99,7 @@ const PRESSED_NODE_NAME = 'Nova'
    a name goes in and a whole sentence comes out -- so it is called rather than
    listed, which is also the proof that a bare name could never match. */
 const APPROVED_WORDS = new Set([
+  OTHER_MODEL_LABEL, MODEL_NAME_LABEL, MODEL_NAME_HELP,
   ...Object.values(START_PANEL).filter(value => typeof value === 'string'),
   START_PANEL.underNamed(PRESSED_NODE_NAME),
   ...Object.values(START_REFUSAL),
@@ -428,7 +430,7 @@ test('the refusals and the picked role’s line are the copy module’s too', ()
   actionNamed(handle, 'start').dispatch('click')
 
   /* ONE REFUSAL, NOT TWO. The role stopped being required on 2026-08-19
-     (users are not forced to choose a role), so the role field has
+     (owner: "users shouldnt be forced to choose a role"), so the role field has
      no problem line at all any more -- not an empty one. */
   assert.equal(problemFor(handle, 'role'), null, 'the role field can no longer be refused, so it must not carry a refusal line')
   assert.equal(problemFor(handle, 'message').textContent, START_PANEL.needMessage)
@@ -496,7 +498,7 @@ test('every choice on screen is a label, and no role key is anywhere in the pane
   /* 1.0.48: every provider, then only the opening provider's model rows, then
      only the depths that model takes (effortChoicesFor). */
   const openingProvider = tierProvider(DEFAULT_TIER)
-  assert.equal(options.length, ROLE_CHOICES.length + 1 + PROVIDER_CHOICES.length + rowsOf(TIER_CHOICES, openingProvider).length
+  assert.equal(options.length, ROLE_CHOICES.length + 1 + PROVIDER_CHOICES.length + rowsOf(TIER_CHOICES, openingProvider).length + 1
     + effortChoicesFor(DEFAULT_TIER).length + 1 + 2 + 1,
     'every role plus its prompt, every provider, that provider\'s models, that model\'s depths, folder default, scope choices and project prompt')
   const roleOptions = fieldNamed(handle, 'role').children
@@ -609,8 +611,8 @@ test('no parent at all means this begins a new tree, and the draft carries no pa
   assert.deepEqual(calls.submitted, [{ mode: 'start', role: 'manager', tier: DEFAULT_TIER, effort: 'medium', message: 'Take the packaging work.', parentId: null, profileId: null }])
 })
 
-/* ---------- SET AND START, PERSON-CHOSEN (Set and Start are both offered
-   as options) ---------- */
+/* ---------- SET AND START, PERSON-CHOSEN (owner: "ITS SUPPOSED TO HAVE SET
+   OR START AS OPTIONS") ---------- */
 
 test('pressing Set hands the draft over with mode "set", the same fields Start would carry', () => {
   const { handle, calls } = open({ parent: { id: 'node-17' } })
@@ -701,7 +703,7 @@ test('a complete draft is handed to the caller as role, message and parent', () 
     role: 'shadow',
     /* The tier the person did not touch is the default, stated -- never absent.
        An absent tier would make the model choice fall to whatever the engine
-       happens to be set to, silently, which is the earlier defect. */
+       happens to be set to, silently, which is the pre-4204332 defect. */
     tier: DEFAULT_TIER,
     effort: 'medium',
     // Trimmed at the ends and nowhere else: the line break is the person's.
@@ -763,14 +765,14 @@ test('the model menu preselects the default and offers its provider\'s rows by l
   assert.equal(menu.value, DEFAULT_TIER)
   const options = menu.children
   const rows = rowsOf(TIER_CHOICES, tierProvider(DEFAULT_TIER))
-  assert.deepEqual(options.map(option => option.value), rows.map(choice => choice.id))
-  assert.deepEqual(options.map(option => option.textContent), rows.map(choice => choice.label))
+  assert.deepEqual(options.map(option => option.value), [...rows.map(choice => choice.id), OTHER_MODEL_VALUE])
+  assert.deepEqual(options.map(option => option.textContent), [...rows.map(choice => choice.label), OTHER_MODEL_LABEL])
 })
 
 /* ---------- provider, then model (1.0.48) ----------
  *
- * Owner decision: every model a provider offers is selectable, chosen as
- * provider first, then model. The Provider menu is a filter:
+ * Owner: "users need to be able to select all the models from the providers.
+ * it should be provider, then model choice". The Provider menu is a filter:
  * the draft still carries one model row id, so everything below is about what
  * the two menus show and in which order they are answered.
  * ------------------------------------------------------------------------- */
@@ -785,11 +787,11 @@ test('the Provider menu filters the Model menu to that provider\'s rows, each ke
     provider.value = id
     provider.dispatch('change')
     const menu = fieldNamed(handle, 'tier').children
-    assert.deepEqual(menu.map(option => option.value), rowsOf(handed, id).map(choice => choice.id),
+    assert.deepEqual(menu.map(option => option.value), [...rowsOf(handed, id).map(choice => choice.id), OTHER_MODEL_VALUE],
       `${id}: the Model menu is not that provider's rows`)
-    assert.deepEqual(menu.map(option => option.disabled), rowsOf(handed, id).map(choice => choice.enabled === false),
+    assert.deepEqual(menu.map(option => option.disabled), [...rowsOf(handed, id).map(choice => choice.enabled === false), handed.find(choice => choice.id === customModelTier(id))?.enabled === false],
       `${id}: a row lost its startable state`)
-    assert.deepEqual(menu.map(option => option.textContent), rowsOf(handed, id).map(choice => choice.label),
+    assert.deepEqual(menu.map(option => option.textContent), [...rowsOf(handed, id).map(choice => choice.label), OTHER_MODEL_LABEL],
       `${id}: a row lost its words, or its reason`)
   }
 })
@@ -946,7 +948,7 @@ test('a readiness repaint restores the provider before the model, so a chosen Cl
   handle.open({ tiers: tierChoicesFor(['astra', 'claude-opus', 'claude-sonnet-5']) })
   handle.open({ confinementLine: UNKNOWN_CONFINEMENT })
   assert.equal(fieldNamed(handle, 'provider').value, 'claude')
-  assert.deepEqual(fieldNamed(handle, 'tier').children.map(option => option.value), rowsOf(TIER_CHOICES, 'claude').map(choice => choice.id))
+  assert.deepEqual(fieldNamed(handle, 'tier').children.map(option => option.value), [...rowsOf(TIER_CHOICES, 'claude').map(choice => choice.id), OTHER_MODEL_VALUE])
   assert.deepEqual(fieldNamed(handle, 'effort').children.map(option => option.value), effortChoicesFor('claude-sonnet-5').map(choice => choice.id))
   assert.equal(doc.activeElement, fieldNamed(handle, 'tier'))
   assert.deepEqual(handle.draft(), { mode: undefined, role: 'manager', tier: 'claude-sonnet-5', effort: 'high',
@@ -999,7 +1001,7 @@ test('re-opening over another node starts from an empty draft', () => {
 
 /* ---------- refusing an incomplete draft ---------- */
 
-/* Users are not forced to choose a role.
+/* OWNER, 2026-08-19: "users shouldnt be forced to choose a role."
  *
  * This test is the inversion of the one that stood here, and the inversion is
  * the point: the panel used to refuse a draft with no role and now hands it
@@ -1162,8 +1164,8 @@ test('an ordinary key press is not a cancel', () => {
   assert.notEqual(handle.element(), null)
 })
 
-/* THE MOUSE-OPEN ORDERING, measured dead on the packaged build 2026-08-20:
- * press the empty tree slot with the MOUSE, press Escape --
+/* THE MOUSE-OPEN ORDERING, measured dead on the packaged build 2026-08-20
+ * (order-drive lane): press the empty tree slot with the MOUSE, press Escape --
  * the panel stayed standing, because the view moved focus into the panel only
  * for keyboard opens, so the key landed on the page body and never bubbled
  * through this root. The panel's own contract says Escape cancels; that has to
@@ -1456,8 +1458,9 @@ test('every field is a real control with its own label bound by id', () => {
 
 /* ---------- the tips went behind hover; the facts did not -----------------
  *
- * The page 2 right panel read as cluttered, so some of the tips show only on
- * hover.
+ * Owner, 2026-08-19, on this panel for the second time: "pg 2 right pnel STILL
+ * reads ugly and messy. Make some of the tips only show on hover ... so it
+ * isnt so messy".
  *
  * THE LINE THESE TESTS DEFEND is not "fewer paragraphs". It is which paragraph
  * is allowed to go: text that EXPLAINS a control may hide, text that states a
@@ -1562,8 +1565,8 @@ test('the folder line hides only while it is help, and never while it is an empt
     'the empty state was put behind hover, so nobody is told there are no folders')
   assert.ok(!String(folderHint(noFolders).className).includes('tip-box'))
 
-  const setupFolder = open({ folders: [], defaultFolder: 'C:\\Work' }).handle
-  assert.equal(folderHint(setupFolder).textContent, START_PANEL.folderNoneChosen('C:\\Work'))
+  const setupFolder = open({ folders: [], defaultFolder: '\x43:\\Work' }).handle
+  assert.equal(folderHint(setupFolder).textContent, START_PANEL.folderNoneChosen('\x43:\\Work'))
   assert.equal(folderHint(setupFolder).getAttribute('data-compose-tip'), null,
     'where a start would actually land was put behind hover')
 })
@@ -1685,7 +1688,7 @@ test('it is a pure component: no window, no starting, nothing outside the docume
 /* ---------- the fold ---------- */
 
 test('the form scrolls, so Start can always be reached', () => {
-  /* Reported: Start could not be reached by scrolling. The rail
+  /* Owner, verbatim: "I also cant scroll down to even press start." The rail
      clips (`.rail { overflow: hidden }`) and its pages are absolutely
      positioned, so this panel can never make the rail taller — it can only
      overflow and be cut off. Twice now the answer was to buy pixels back by
@@ -1703,7 +1706,7 @@ test('the form scrolls, so Start can always be reached', () => {
      clipping rail and cut the button off. Putting it in the scroller fixed
      reachability and lost VISIBILITY: measured on installed 1.0.21, the form
      wants ~765px against a rail of 560-700, so Start began ~100px below the
-     fold and it was reported, again, that there was no way to start an agent.
+     fold and the owner reported, again, "there is no way to start an agent".
      A control that is off-screen at first paint is absent to the person
      looking at it.
      Beside the scroller is safe precisely because of the two rules asserted
@@ -1745,7 +1748,7 @@ test('the order is the form, then Start, then what the session may do, then prog
   /* THE WARNING GOES UNDER START AND NOWHERE ELSE, and this assertion is the
      only thing standing between that order and the next lane that reads the
      confinement sentence, thinks "this belongs above the button" and moves it.
-     Reported TWICE: a block placed ahead of Start pushes Start down by
+     Owner-reported TWICE: a block placed ahead of Start pushes Start down by
      exactly its own height and back below the fold, which is the defect the
      comments above the action row in src/agent-compose-panel.js record. Under
      the button, Start does not move at all, and the sentence is still outside
@@ -1990,7 +1993,7 @@ test('the panel puts the sign-in warning on the glass, where the person reads it
   fieldNamed(handle, 'provider').value = 'codex'
   fieldNamed(handle, 'provider').dispatch('change')
   const labels = fieldNamed(handle, 'tier').children.map(option => option.textContent)
-  assert.deepEqual(labels, rowsOf(handed, 'codex').map(choice => choice.label))
+  assert.deepEqual(labels, [...rowsOf(handed, 'codex').map(choice => choice.label), OTHER_MODEL_LABEL])
   assert.ok(labels.some(label => /nobody is signed in to Codex/.test(label)),
     'the warning was computed and never reached the screen')
 })
@@ -2076,17 +2079,18 @@ test('the compose panel renders the engine rows it is handed, not a list of its 
     fieldNamed(handle, 'provider').dispatch('change')
     labels.push(...fieldNamed(handle, 'tier').children.map(option => option.textContent))
   }
-  assert.deepEqual(labels, PROVIDER_CHOICES.flatMap(provider => rowsOf(handed, provider.id)).map(choice => choice.label),
+  assert.deepEqual(labels, PROVIDER_CHOICES.flatMap(provider => [...rowsOf(handed, provider.id).map(choice => choice.label), OTHER_MODEL_LABEL]),
     'the panel drew its own tier list instead of the one it was given')
-  assert.equal(labels.length, handed.length, 'a handed row is missing from every provider\'s menu')
+  assert.equal(labels.length, handed.length + PROVIDER_CHOICES.length, 'a handed row is missing from every provider\'s menu')
 })
 
 /* ---------------------------------------------------------------------------
  * THE FOLDER A TREE'S AGENTS WORK IN, ASKED WHERE THE TREE IS STARTED.
  *
- * Starting a tree selects a folder, with a configurable default, where the
- * agents spawn; on 2026-08-19 choosing a folder for each tree was reported
- * missing. It existed only AFTER the fact, on
+ * Owner, 2026-08-16: "when a user starts a tree they should select a folder,
+ * they can have a default folder, where the agents spawn". Owner again,
+ * 2026-08-19, having gone looking for it: "what happened to sessions and
+ * choosing a folder for each tree and such?" It existed only AFTER the fact, on
  * an existing tree's rail, 614px down a 3825px scroll (driven, packaged,
  * tools/rail-inventory-drive.mjs).
  * ------------------------------------------------------------------------- */
@@ -2214,8 +2218,7 @@ test('with no folders set up, the panel says where to make one and still starts'
  * footer saying "It may change files only inside the folder you chose."
  * ------------------------------------------------------------------------- */
 
-// A synthetic workspace folder, assembled at run time so the source carries no literal user path.
-const CHOSEN = ['C:', 'Users', 'someone', 'Documents', 'AI Workspace'].join('\\')
+const CHOSEN = '\x43:\\Users\\someone\\Documents\\AI Workspace'
 
 test('when setup recorded a folder, the first row names IT and not the product’s workspace', () => {
   const { handle } = open({ folders: [], defaultFolder: CHOSEN })
@@ -2322,7 +2325,7 @@ test('the line is pinned with Start, so it cannot be scrolled away from the butt
   assert.ok(scroller, 'the form still scrolls')
   assert.equal(scroller.findAll(node => node === said).length, 0, 'a disclosure inside the scroller is a disclosure nobody reads')
   /* AFTER the action row, never before it: the panel's own header records that
-     Start below the fold was a reported defect twice, and a block added
+     Start below the fold was an owner-reported defect twice, and a block added
      ABOVE the button moves the button down. */
   const root = handle.element()
   const actions = root.find(node => node.className.includes('agent-compose-actions'))
@@ -2413,4 +2416,109 @@ test('a picture pasted into the brief is not dropped silently: the brief says wh
   assert.equal(textPrevented, false, 'a text paste is left to the browser')
   brief.dispatch('input', {})
   assert.equal(problemFor(handle, 'message').textContent, '', 'typing clears the line, as for any refusal about the brief')
+})
+
+/* ---------- a Local model that is not set up: the way out, in the panel ----------
+ *
+ * A Local agent on a computer with nothing local set up answered "Nothing was
+ * started. The chosen local runtime is unavailable…" and the panel offered
+ * nothing but the sentence. The caller now hands over `localSetup`
+ * ({ needed, open }); the panel draws "Set up local models" beside a Local refusal, and when Local is
+ * picked on a computer that says it cannot start one yet. The words are this
+ * flow's own (START_PANEL.localSetupButton / localNotReady). */
+const everyTierStartable = () => tierChoicesFor(['local', DEFAULT_TIER])
+const localSetupButton = handle => handle.element().find(node => node.getAttribute('data-compose-local-setup') === 'panel')
+const turns = async (count = 8) => { for (let index = 0; index < count; index += 1) await new Promise(resolve => setImmediate(resolve)) }
+
+test('a Local start refused because nothing local is set up offers Set up local models beside the sentence', async () => {
+  const opened = []
+  const refusal = { ok: false, code: 'LOCAL_NODE_RUNTIME_UNAVAILABLE', message: START_REFUSAL.noReasonGiven }
+  const { handle } = open({
+    tiers: everyTierStartable(),
+    answer: Promise.resolve(refusal),
+    localSetup: { needed: async () => false, open: async () => { opened.push('open'); return true } },
+  })
+  fill(handle, { tier: 'local', message: 'Say hello from this computer.' })
+  actionNamed(handle, 'start').dispatch('click')
+  await turns()
+  assert.equal(noticeLine(handle).textContent, START_REFUSAL.noReasonGiven, 'the refusal sentence stays')
+  const button = localSetupButton(handle)
+  assert.ok(button, 'the panel has a local setup control')
+  assert.equal(button.hasAttribute('hidden'), false, 'it is shown beside a Local refusal')
+  assert.equal(button.textContent, START_PANEL.localSetupButton)
+  button.dispatch('click')
+  await turns()
+  assert.deepEqual(opened, ['open'])
+  assert.equal(localSetupButton(handle).hasAttribute('hidden'), true, 'once local models are ready the button and the refusal go')
+  assert.equal(noticeLine(handle).textContent, '')
+})
+
+test('picking Local on a computer where it cannot start yet says so and offers the setup; picking another model takes it away', async () => {
+  let asked = 0
+  const { handle } = open({
+    tiers: everyTierStartable(),
+    localSetup: { needed: async () => { asked += 1; return true }, open: async () => false },
+  })
+  assert.equal(asked, 0, 'nothing is asked until Local is picked')
+  assert.equal(localSetupButton(handle).hasAttribute('hidden'), true)
+  fill(handle, { tier: 'local' })
+  fieldNamed(handle, 'tier').dispatch('change')
+  await turns()
+  assert.equal(asked, 1)
+  assert.equal(noticeLine(handle).textContent, START_PANEL.localNotReady)
+  assert.equal(localSetupButton(handle).hasAttribute('hidden'), false)
+  localSetupButton(handle).dispatch('click')
+  await turns()
+  assert.equal(localSetupButton(handle).hasAttribute('hidden'), false, 'closing the popup unfinished keeps the way back in')
+  fill(handle, { tier: DEFAULT_TIER })
+  fieldNamed(handle, 'tier').dispatch('change')
+  await turns()
+  assert.equal(localSetupButton(handle).hasAttribute('hidden'), true)
+  assert.equal(noticeLine(handle).textContent, '')
+})
+
+/* The Model menu follows the Provider menu without raising a change of its
+   own, so choosing the Local provider is itself the pick that asks. */
+test('choosing the Local provider alone asks the computer once, and the same row chosen again does not ask twice', async () => {
+  let asked = 0
+  const { handle } = open({
+    tiers: everyTierStartable(),
+    localSetup: { needed: async () => { asked += 1; return true }, open: async () => false },
+  })
+  const provider = fieldNamed(handle, 'provider')
+  provider.value = 'local'
+  provider.dispatch('change')
+  await turns()
+  assert.equal(fieldNamed(handle, 'tier').value, 'local', 'the Model menu is on the Local row')
+  assert.equal(asked, 1, 'a change of provider to Local is a pick of Local')
+  assert.equal(localSetupButton(handle).hasAttribute('hidden'), false)
+  assert.equal(noticeLine(handle).textContent, START_PANEL.localNotReady)
+  fieldNamed(handle, 'tier').dispatch('change')
+  await turns()
+  assert.equal(asked, 1, 'the same row chosen again is the same pick')
+})
+
+test('a computer where Local can start, a caller with no setup, and other refusals get no setup button', async () => {
+  {
+    const { handle } = open({ tiers: everyTierStartable(), localSetup: { needed: async () => false, open: async () => true } })
+    fill(handle, { tier: 'local' })
+    fieldNamed(handle, 'tier').dispatch('change')
+    await turns()
+    assert.equal(localSetupButton(handle).hasAttribute('hidden'), true)
+  }
+  {
+    const { handle } = open({ tiers: everyTierStartable(), answer: Promise.resolve({ ok: false, code: 'LOCAL_NODE_RUNTIME_UNAVAILABLE', message: START_REFUSAL.noReasonGiven }) })
+    fill(handle, { tier: 'local', message: 'Say hello.' })
+    actionNamed(handle, 'start').dispatch('click')
+    await turns()
+    assert.equal(localSetupButton(handle).hasAttribute('hidden'), true, 'no caller, no button that could not work')
+  }
+  {
+    const { handle } = open({ tiers: everyTierStartable(), answer: Promise.resolve({ ok: false, code: 'AGENT_SESSION_FAILED', message: START_REFUSAL.noReasonGiven }),
+      localSetup: { needed: async () => false, open: async () => true } })
+    fill(handle, { tier: 'local', message: 'Say hello.' })
+    actionNamed(handle, 'start').dispatch('click')
+    await turns()
+    assert.equal(localSetupButton(handle).hasAttribute('hidden'), true, 'only a Local-setup refusal carries it')
+  }
 })

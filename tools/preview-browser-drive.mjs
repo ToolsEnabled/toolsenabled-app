@@ -1,5 +1,5 @@
 /*
- * preview-browser-drive.mjs — R1268
+ * preview-browser-drive.mjs — R1268 lane W1
  *
  * Drives the BUILT website preview (dist/preview) in a real Chromium browser,
  * as a prospective buyer gets it: no Electron preload, no shell bridge, no node
@@ -38,7 +38,7 @@
  * execution of the candidate's native app. Other configuration comes from the
  * environment. Passing a bare URL as an
  * Electron argv makes the binary exit -1 before main runs, with no stdout and no
- * stderr (measured by an R1260 review). A harness that took the URL positionally
+ * stderr (measured by R1260 lane t5a). A harness that took the URL positionally
  * would read as a silent pass to any caller watching stdout.
  *
  *   PREVIEW_DIST      directory to serve            default: <repo>/dist
@@ -173,7 +173,7 @@ function withTimeout(promise, ms, label) {
 /* ------------------------------------------------------------------ *
  * a plain static server — no dev server, no framework, and bound to the
  * loopback interface by NAME so it answers on the family the browser dials
- * (vite preview binds IPv6-only here; an earlier review recorded it)
+ * (vite preview binds IPv6-only here; R1260 t5a recorded it as W7)
  * ------------------------------------------------------------------ */
 
 const MIME = {
@@ -185,7 +185,7 @@ const MIME = {
 const serverState = {
   /** when set, /preview/exits.js is served with this declaration patched in */
   downloadDeclaration: null,
-  /** when true, the subscription catalogue R1268 ships resolves */
+  /** when true, the subscription catalogue W3 ships resolves */
   subscribePresent: false,
   /** explicit future-enabled fixture, never a product or server setting */
   subscribeEnabled: false,
@@ -217,7 +217,7 @@ function makeServer() {
     if (pathname.endsWith('/')) pathname += 'index.html'
 
     /* The artifact the preview probes to decide whether the subscription surface
-     * shipped. It is R1268's, it is not in this tree, and that is the point:
+     * shipped. It is R1268 W3's, it is not in this tree, and that is the point:
      * ABSENT is the state on a build without their work, PRESENT is the state on
      * a build with it, and both are driven below. */
     if (pathname === '/data/subscription-catalog.json') {
@@ -300,7 +300,7 @@ async function clickAt(win, x, y) {
  *  THE POINT IS ASKED FOR RATHER THAN FIXED AT (8,8), for two measured reasons.
  *  The probe occupies the top-left corner, so (8,8) would now read the probe.
  *  And the scale is not knowable from the image: an offscreen capture of a
- *  1024-wide viewport came back 1413 device pixels wide on a 137.5% display
+ *  1024-wide viewport came back 1413 device pixels wide on this 137.5% display
  *  while the page reported devicePixelRatio 1 -- reading the DOM's point at
  *  scale 1 returned rgb(24,28,34) where the page says rgb(242,229,188), which
  *  is a false FAILURE rather than a false pass, but wrong either way. The scale

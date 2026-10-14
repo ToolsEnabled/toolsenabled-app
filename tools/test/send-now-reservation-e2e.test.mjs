@@ -44,6 +44,15 @@ const registrationSource = operations.map(op => {
 }).join('\n')
 const preloadSource = readFileSync(path.join(APP, 'shell/fleet-profile-preload.cjs'), 'utf8')
 const tick = () => new Promise(resolve => setTimeout(resolve, 0))
+// The host now waits for terminal evidence before refusing an interrupt. Give
+// that bounded protocol time to settle; fixed microtask counts measure neither
+// its refusal nor the reservation release. The five-second test bound exceeds
+// the host's 2.5-second terminal-evidence budget and never supplies a receipt.
+async function waitFor(condition, reason) {
+  const deadline = Date.now() + 5000
+  while (!condition() && Date.now() < deadline) await tick()
+  assert.ok(condition(), reason)
+}
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 let fixtureNumber = 0
 
@@ -246,7 +255,8 @@ for (const door of ['strip', 'composer']) {
     const f = await fixture(t, { refuseStop: true })
     f.enqueuePeer()
     f.click(door)
-    for (let i=0;i<15;i++) await tick()
+    await waitFor(() => f.ipcCalls.some(row => row.channel === 'mc-agent:release-send-now' && row.result),
+      'the refused Stop must settle and release its reservation')
     const reserves = f.ipcCalls.filter(row => row.channel === 'mc-agent:reserve-send-now')
     const releases = f.ipcCalls.filter(row => row.channel === 'mc-agent:release-send-now')
     assert.equal(reserves.length, 1)
@@ -418,7 +428,8 @@ function heldRetryClock(t) {
 test('scripted mounted Send now: refused first press requeues, second press delivers once with one release', async t => {
   const f = await fixture(t, { refuseStop: true })
   f.click('strip')
-  for (let i = 0; i < 15; i++) await tick()
+  await waitFor(() => f.ipcCalls.some(row => row.channel === 'mc-agent:release-send-now' && row.result),
+    'the first refused press must release its reservation before retry')
 
   const firstRows = f.outbox.list(f.sessionId)
   assert.equal(firstRows.length, 1, 'the refused first press returns the same message to the queue')

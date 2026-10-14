@@ -25,7 +25,7 @@ export function withMetricsDeadline(read, { signal, timeoutMs = 15000 } = {}) {
 }
 
 /* AUDIT_NOT_ENABLED is the host's word for an audit that is switched off
-   (product rule T782 / BUG08): a normal state, kept as its own
+   (owner direction 2026-09-20, T782 / BUG08): a normal state, kept as its own
    code so the projection can say so instead of "unavailable". */
 const readFailureCode = result => {
   if (result?.ok === true) return null

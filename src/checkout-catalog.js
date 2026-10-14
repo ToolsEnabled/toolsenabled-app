@@ -20,7 +20,7 @@
 // same house style src/owner-popup.js uses for the prompt boundary, and throws
 // rather than rendering a partial catalogue. A screen that silently drops the
 // two items it could not parse is worse than a screen that says it could not
-// read the list, because they would be choosing from a list they believe is
+// read the list, because he would be choosing from a list he believes is
 // complete.
 //
 // MONEY IS CONVERTED EXACTLY, ONCE, HERE.
@@ -220,9 +220,9 @@ function normalizeItem(value, currency, categoryIds, seenIds) {
   //
   // A blocking blocker does NOT make an item unchoosable, and that is a
   // deliberate reversal. It used to. Measured against the real catalogue that
-  // left 5 of 35 items pickable: the domain most needed, and every company
-  // option, could not be touched. The checkout is one a person can pick and
-  // choose from with all options, and a shop where 86% of the shelf is
+  // left 5 of 35 items pickable: the domain he needs most, and every company
+  // option, could not be touched. The owner asked for a checkout he can "pick
+  // and choose" from with "all options", and a shop where 86% of the shelf is
   // untouchable does not answer that.
   //
   // The reversal is safe because of what this screen actually does. Choosing
@@ -231,7 +231,7 @@ function normalizeItem(value, currency, categoryIds, seenIds) {
   // has to do is be impossible to miss, and it now is: it renders as a loud
   // band at the point of choice, it is counted on the running total bar, it
   // gets its own section above the totals on the review step, and every
-  // blocked line is marked in the saved record. They engage with the reason
+  // blocked line is marked in the saved record. He engages with the reason
   // instead of being unable to reach the item and never reading it.
   //
   // Two things genuinely cannot be chosen, and both are about arithmetic

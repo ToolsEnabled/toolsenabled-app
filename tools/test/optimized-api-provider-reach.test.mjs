@@ -126,7 +126,7 @@ const ALL_PROVIDERS = ['codex', 'claude', 'gemini', 'grok', 'local']
 
 /* THE MODES A SESSION CAN BE PLANNED IN, DEFAULT FIRST.
  *
- * The default is what a session gets unless the person widens it, so it is the
+ * The default is what a session gets unless the owner widens it, so it is the
  * mode any claim about "what sessions receive" is about. `Enabled` is the wider
  * one, and against a payload carrying ACP planners it is the mode that refuses
  * Gemini and Grok by design -- which is exactly why testing only that mode left

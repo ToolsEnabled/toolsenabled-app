@@ -131,8 +131,8 @@ test('real tool events preserve actionable fields and distinguish refusal, failu
 })
 
 test('a thinking event becomes its own activity row, never assistant text', () => {
-   /* More event types are fine, and the user is shown when the model is
-     thinking. Both engines forward reasoning
+  /* Owner, 2026-09-03: "more event types are fine we should be showing the
+     user when the model is thinking anyway." Both engines forward reasoning
      as this one contract type; this is the reader that turns it into
      something a screen can show. */
   const thinking = sessionActivityEvent(packet({ type: 'thinking', turnId: 'turn-a', text: 'weighing the options' }), 'session-a')

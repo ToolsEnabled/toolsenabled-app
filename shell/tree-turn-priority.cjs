@@ -1,7 +1,7 @@
 /* WHEN A TURN ENDS, WHO GETS THE NEXT ONE: THE PERSON, OR THE TREE.
  *
- * THE DEFECT THIS EXISTS TO REMOVE. Several messages a person typed over a
- * quarter of an hour never reached the
+ * THE DEFECT THIS EXISTS TO REMOVE, MEASURED 2026-09-03. Four messages the
+ * owner typed at 03:53:21, 03:57:17, 03:58:34 and 04:08:35 never reached the
  * Controller's engine transcript and never reached the owner-capture spool.
  * Nothing refused them and nothing dropped them: they were OUTRANKED, over and
  * over, by the computer's own chatter.
@@ -93,6 +93,7 @@
  * sendTurn round trip. It was not measured because measuring it means driving
  * the running app, and this lane must not disturb it. The yield is therefore a
  * bound with a stated reason, not a measurement.
+ *
  */
 'use strict'
 
@@ -105,6 +106,7 @@ const TREE_TURN_REASONS = Object.freeze({
   TAKE: 'TREE_TURN',
   CLOCK_UNUSABLE: 'TREE_PRIORITY_CLOCK_UNUSABLE',
   YIELD_BOUND: 'TREE_YIELD_BOUND_REACHED',
+
 })
 
 /* How many boundaries' worth of personYieldMs a single batch of queued tree

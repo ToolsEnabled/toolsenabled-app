@@ -1,4 +1,4 @@
-import { LAUNCH_TIERS } from './orchestration-controls.js'
+import { LAUNCH_TIERS, usageModel } from './orchestration-controls.js'
 import { sessionTurnSucceeded } from './agent-session-events.js'
 import { csvCell } from './metrics-history.js'
 
@@ -55,7 +55,7 @@ export function tokenComposition(turn) {
 export function usageAnalysis(turns = [], conversations = null) {
   const rows = turns.filter(turn => turn.basis !== 'session-total').map(turn => {
     const tier = LAUNCH_TIERS.find(row => row.id === turn.tier)
-    return { ...turn, model: tier?.label || turn.tier || 'Not recorded', provider: tier?.provider || 'unrecorded',
+    return { ...turn, model: usageModel(turn)?.label || turn.tier || 'Not recorded', provider: tier?.provider || 'unrecorded',
       agent: conversations?.get(turn.sessionId)?.role || 'Not recorded',
       result: turnResult(turn.status),
       totalSource: known(turn.totalTokens) ? turn.reportedTotal ? 'Reported' : 'Derived' : 'Unknown' }

@@ -1,11 +1,11 @@
 # Sign in with Google — registering the client this product signs in with
 
 > **The flow is proven; the shipping client is NOT registered yet.** On
-> 2026-08-11 a client in a personal development project (secret in the
-> vault as `product_google_signin_client_secret`) completed a
+> 2026-08-11 a client in the owner's personal project (`840383906222-…`,
+> secret in the vault as `product_google_signin_client_secret`) completed a
 > real Google sign-in end to end (`node tools/google-signin-live-qa.mjs`,
 > 21/21). That run proved the CODE. It did not produce a client this product
-> can ship: that client lives in a personal development project, and this
+> can ship: that client lives in the owner's personal project, and this
 > document's own closing paragraph forbids shipping it. Until the product's
 > own Desktop client is registered (the procedure below, ~10 minutes) and its
 > id lands in `config/google-signin.json`, every install honestly reports
@@ -42,7 +42,7 @@ every desktop program that signs in with Google does, `gcloud` included.
 
 **What that does mean:** the client you make here must be **for this product and
 for sign-in only**. Never reuse the `google_client_id` in the vault — that one
-holds Drive, Gmail and Calendar grants for the operator's own accounts, and
+holds Drive, Gmail and Calendar grants for the owner's own accounts, and
 publishing its identifiers inside an installer would hand every customer the
 application identity those grants were issued to.
 
@@ -178,7 +178,7 @@ powershell -ExecutionPolicy Bypass -STA -File $secrets prompt-set product_google
 **The state root is the part that goes wrong.** A vault in a source checkout and
 the vault the installed product reads are two different files, and a client
 stored in the first one is invisible to the second — the same split that once
-hid a stored payment card from its own installation. If sign-in still says it
+hid the owner's payment card from his own installation. If sign-in still says it
 is not switched on, the refusal on that screen now prints the full path of the
 vault it read; compare it with the one you wrote to.
 
@@ -206,9 +206,9 @@ test exercises, so it is known to work end to end.
 
 **C. Every copy you ship — goes in the installer.** Create the same file at
 `config/google-signin.json` in the app tree
-(`%USERPROFILE%\Desktop\example-worktree`) and rebuild. `config/` is shared by
-everyone building this repo, so hand the change to whoever coordinates the build
-rather than committing it from a side branch.
+(`<profile-root>\<you>\Desktop\wt-capability`) and rebuild. `config/` is a shared file
+in this repo's lane rules, so hand the change to the coordinator rather than
+committing it from a lane.
 
 The product looks in four places in this order and uses the first it finds: the
 `TOOLSENABLED_GOOGLE_CLIENT_ID` environment variable, then this installation's
@@ -276,14 +276,14 @@ signed out either way:
 
 **The engine's `src/lib/google-oauth.js` is a different thing, and its client
 must not be shipped here.** That is the capability layer: a refresh-token flow
-that lets the operator's own agents call Google APIs as the operator, with
+that lets the owner's own agents call Google APIs as him, with
 `google_client_id` / `google_client_secret` / `google_refresh_token__<alias>` in
 the vault, holding Drive, Gmail and Calendar grants.
 
 The distinction is **not** that one holds a secret and the other cannot — both
 send one, because Google requires it. The distinction is *whose grants hang off
 the client*. Publishing the vault client's identifiers inside an installer would
-put the application identity that holds the operator's Drive and Gmail access into
+put the application identity that holds the owner's Drive and Gmail access into
 every customer's hands. Register a separate Desktop-app client for sign-in, with
 the three identity scopes and nothing else.
 

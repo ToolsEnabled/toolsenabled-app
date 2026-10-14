@@ -50,11 +50,9 @@ const helpers = new Function(`const MAX_SESSION_ID_LENGTH = ${mainSource.slice(m
 `)()
 
 // Path values are data only. No file is created or read, and no inherited
-// profile/temp setting chooses a fixture destination. The Windows value is
-// synthetic and assembled at run time, so this source carries no literal
-// user-profile path.
+// profile/temp setting chooses a fixture destination.
 const ROOT = process.platform === 'win32'
-  ? ['C:', 'Users', 'BuildAccount-Dev', 'AppData', 'Local', 'Temp', 'chat-mention-refusal-fixture'].join('\\')
+  ? '\x43:\\Users\\fixture-profile\\AppData\\Local\\Temp\\chat-mention-refusal-fixture'
   : '/tmp/chat-mention-refusal-fixture'
 const FILE = join(ROOT, 'Folder With Spaces', 'Example File.txt')
 const IMAGE = join(ROOT, 'Existing image.png')

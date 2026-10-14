@@ -83,6 +83,35 @@ async function mount(options = {}) {
 
 const catalogReply = async () => ({ ok: true, status: 200, json: async () => structuredClone(catalog) })
 
+const operatorPlan = catalog.plans.find(plan => plan.id === 'operator')
+assert.ok(operatorPlan, 'the generated catalog must retain the operator plan for mounted refusal cases')
+
+function enterEmail(mounted, value = 'reader@example.test') {
+  const input = mounted.view.el.querySelector('#sub-email')
+  input.value = value
+  input.dispatchEvent({ type: 'input', bubbles: true })
+  return input
+}
+
+function choosePlan(mounted, id = operatorPlan.id) {
+  const radio = mounted.view.el.querySelectorAll('.sub-plan-radio')
+    .find(candidate => candidate.value === id)
+  assert.ok(radio, `the mounted catalog must expose plan ${id}`)
+  /* The stand-in deliberately does not reflect every HTML property. Give this
+     event target the same reflected name a browser radio exposes before using
+     its real bubbling path. */
+  radio.name = radio.getAttribute('name')
+  radio.checked = true
+  radio.dispatchEvent({ type: 'change', bubbles: true })
+  return radio
+}
+
+function submitForm(mounted) {
+  return mounted.view.el.querySelector('.sub-form').dispatchEvent({
+    type: 'submit', bubbles: true, cancelable: true,
+  })
+}
+
 test('shared element events preserve identity, bubble, and report cancellation', () => {
   const installed = domStandIn.installDomStandIn(globalThis)
   try {
@@ -169,7 +198,7 @@ function installedFocus(status) {
  * /data/subscription-catalog.json is not there and the shell answers a missing
  * /data/*.json with a 404 and a JSON body. Every other test in this file hands
  * the view a catalog; this one hands it the reply a real install gets, and
- * asserts on the ABSENCE of the four ruled-out things -- a price, a
+ * asserts on the ABSENCE of the four things the owner ruled out -- a price, a
  * plan, a seat minimum, and a way to pay.
  *
  * It asserts absence in the rendered text rather than on the module's branches
@@ -203,4 +232,152 @@ test('with no catalog in the payload the page offers no price, no plan, no seat 
     assert.equal(text.includes(SUBSCRIPTION_DISABLED_HINT), true,
       'mutation `render an empty page instead of an answer` survived: expected the reader to be told why, in the availability owner\'s words')
   } finally { mounted.restore() }
+})
+
+test('a pending signup paints an aria-live response before the inert adapter resolves', async () => {
+  let release
+  let calls = 0
+  const waiting = new Promise(resolve => { release = resolve })
+  const mounted = await mount({
+    fetchImpl: catalogReply,
+    submitImpl: async request => {
+      calls += 1
+      assert.equal(request.planId, operatorPlan.id)
+      await waiting
+      return { ok: false, state: 'refused', reason: 'The retained adapter refused this fixture.' }
+    },
+  })
+  try {
+    choosePlan(mounted)
+    enterEmail(mounted)
+    submitForm(mounted)
+    await settle()
+
+    const status = mounted.view.el.querySelector('#sub-status')
+    const submit = mounted.view.el.querySelector('.sub-submit')
+    assert.equal(calls, 1, 'the mounted submit path must call only the inert adapter')
+    assert.equal(status.hidden, false, 'pending feedback must be visible before the adapter resolves')
+    assert.equal(status.getAttribute('role'), 'status', 'pending feedback must remain a status')
+    assert.equal(status.getAttribute('aria-live'), 'polite', 'pending feedback must be announced politely')
+    assert.match(status.textContent, /Asking the payment provider for a checkout page/)
+    assert.equal(submit.disabled, true, 'the submit control must be unavailable while the adapter is pending')
+
+    release()
+    await settle()
+    assert.equal(submit.disabled, false, 'the submit control must recover after the adapter resolves')
+    assert.match(status.textContent, /That did not go through/)
+  } finally {
+    release?.()
+    mounted.restore()
+  }
+})
+
+test('a plan refusal associates its error with a radio and correction clears the response', async () => {
+  const mounted = await mount({ fetchImpl: catalogReply })
+  try {
+    enterEmail(mounted)
+    submitForm(mounted)
+    await settle()
+
+    const group = mounted.view.el.querySelector('.sub-plans-set')
+    const error = mounted.view.el.querySelector('#sub-error-planId')
+    const radio = mounted.view.el.querySelector('.sub-plan-radio')
+    assert.equal(group.getAttribute('aria-describedby'), 'sub-error-planId')
+    assert.equal(error.hidden, false, 'the local plan refusal must be visible')
+    assert.equal(error.textContent, 'Choose a plan.', 'the plan refusal must expose its actionable reason')
+    assert.equal(radio.getAttribute('aria-invalid'), 'true', 'the focused plan control must be marked invalid')
+    assert.equal(mounted.view.el.ownerDocument.activeElement, radio,
+      'the plan refusal must move focus to a reachable radio, not only the disabled submit')
+
+    choosePlan(mounted)
+    assert.equal(error.hidden, true, 'choosing a plan must clear the old plan refusal')
+    assert.equal(mounted.view.el.querySelector('#sub-status').hidden, true,
+      'choosing a plan must clear the old status')
+    assert.equal(radio.getAttribute('aria-invalid'), 'false',
+      'the corrected plan control must no longer be marked invalid')
+  } finally { mounted.restore() }
+})
+
+test('a period refusal is associated with its radio group and clears on period correction', async () => {
+  const mounted = await mount({
+    fetchImpl: catalogReply,
+    submitImpl: async () => ({
+      ok: false,
+      state: 'refused',
+      field: 'period',
+      reason: 'The retained adapter refused this billing period.',
+    }),
+  })
+  try {
+    choosePlan(mounted)
+    enterEmail(mounted)
+    submitForm(mounted)
+    await settle()
+
+    const group = mounted.view.el.querySelector('.sub-seg')
+    const error = mounted.view.el.querySelector('#sub-error-period')
+    const periodButtons = mounted.view.el.querySelectorAll('.sub-seg-btn')
+    const monthly = periodButtons.find(button => button.dataset.period === 'monthly')
+    const annual = periodButtons.find(button => button.dataset.period === 'annual')
+    assert.equal(group.getAttribute('aria-describedby'), 'sub-error-period')
+    assert.equal(error.hidden, false, 'the service period refusal must be visible')
+    assert.equal(error.textContent, 'The retained adapter refused this billing period.',
+      'the period refusal must expose the service reason, not only an error container')
+    assert.equal(monthly.getAttribute('aria-invalid'), 'true', 'the refused period control must be marked invalid')
+    assert.equal(mounted.view.el.ownerDocument.activeElement, monthly,
+      'the period refusal must focus a reachable period control')
+
+    annual.dispatchEvent({ type: 'click' })
+    assert.equal(error.hidden, true, 'choosing another period must clear the old period refusal')
+    assert.equal(mounted.view.el.querySelector('#sub-status').hidden, true,
+      'choosing another period must clear the old status')
+    assert.equal(monthly.getAttribute('aria-invalid'), 'false')
+    assert.equal(annual.getAttribute('aria-checked'), 'true')
+  } finally { mounted.restore() }
+})
+
+test('a late inert adapter result after destroy does not repaint the retired view', async () => {
+  let release
+  const waiting = new Promise(resolve => { release = resolve })
+  const mounted = await mount({
+    fetchImpl: catalogReply,
+    submitImpl: async () => {
+      await waiting
+      return { ok: false, state: 'refused', reason: 'This late result must be ignored.' }
+    },
+  })
+  try {
+    choosePlan(mounted)
+    enterEmail(mounted)
+    submitForm(mounted)
+    await settle()
+    const status = mounted.view.el.querySelector('#sub-status')
+    const submit = mounted.view.el.querySelector('.sub-submit')
+    const beforeDestroy = {
+      statusText: status.textContent,
+      statusClass: status.className,
+      statusHidden: status.hidden,
+      submitText: submit.textContent,
+      submitDisabled: submit.disabled,
+      activeElement: mounted.view.el.ownerDocument.activeElement,
+    }
+    mounted.view.destroy()
+    release()
+    await settle()
+    assert.equal(status.textContent, beforeDestroy.statusText,
+      'a late result must not change the retired status text')
+    assert.equal(status.className, beforeDestroy.statusClass,
+      'a late result must not change the retired status state')
+    assert.equal(status.hidden, beforeDestroy.statusHidden,
+      'a late result must not change status visibility on the retired view')
+    assert.equal(submit.textContent, beforeDestroy.submitText,
+      'a late result must not change the retired submit label')
+    assert.equal(submit.disabled, beforeDestroy.submitDisabled,
+      'a late result must not change the retired submit availability')
+    assert.strictEqual(mounted.view.el.ownerDocument.activeElement, beforeDestroy.activeElement,
+      'a late result must not steal focus from the retired view')
+  } finally {
+    release?.()
+    mounted.restore()
+  }
 })

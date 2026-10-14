@@ -15,7 +15,7 @@ import { RUNTIME_FILES } from '../../src/benchmark/study.mjs'
 // class as a reply with no program in it at all. A reader of the report then cannot tell three
 // things apart: a reply whose program was the wrong SHAPE, a reply with NO program, and a
 // program that really ran and CRASHED. This file pins the distinct class.
-// The fixture is a claude-cli reply retained from an apparatus-development run, which leaked tools
+// The fixture is the claude-cli reply retained by lean-bench run 5b6ed8d2, which leaked tools
 // to the model and does not qualify; it is used as a real reply shape, never as a result.
 const fixture = JSON.parse(await readFile(new URL('./fixtures/research-benchmark-prose-wrapped-reply.json', import.meta.url), 'utf8'))
 const program = 'from AlgorithmImports import *\nclass FrozenBenchmark(QCAlgorithm):\n    def Initialize(self):\n        pass\n'

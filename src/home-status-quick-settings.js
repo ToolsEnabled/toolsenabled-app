@@ -1,7 +1,7 @@
 import { THEME_CHOICES, currentTheme } from './theme-choice.js'
 import { HOME_STATUS_COLOR_SETTINGS, currentHomeStatusColor, resolvedHomeStatusColor, setHomeStatusColor } from './home-status-colors.js'
 
-const LABELS = Object.freeze({ clear: 'Clear', attention: 'Needs review', blocked: 'Blocked' })
+const LABELS = Object.freeze({ clear: 'Home: nothing waiting', attention: 'Ledger: owner requests', blocked: 'Ledger: blocked' })
 const DESCRIPTIONS = Object.freeze({ clear: 'No owner requests waiting', attention: 'Owner asks and proposals', blocked: 'Work waiting on a blocker' })
 const themeLabel = () => THEME_CHOICES.find(theme => theme.id === currentTheme()).label
 

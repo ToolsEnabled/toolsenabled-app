@@ -35,8 +35,8 @@
  * require-clean-tree.mjs already writes exactly that statement, and its own
  * header promises the record "ships inside the package -- inspectable by anyone
  * holding only the .exe". MEASURED: dist/build-info.json was absent from all
- * three app.asar files on one build machine (an installed build, a
- * release/win-unpacked build, and a verification build). The promise was
+ * three app.asar files on this machine (the installed 01:31 build, the 02:59
+ * release/win-unpacked build, and a 22:07 verification build). The promise was
  * never kept by any artifact, because require-clean-tree only writes the record
  * when it RUNS, and `electron-builder --win nsis` invoked directly produces a
  * complete, fully-formed installer without it.
@@ -326,14 +326,9 @@ function main() {
   if (skipped.length) console.log(`check-asar-manifest: patterns not enforced (negations/complex globs): ${skipped.join(', ')}`)
 
   // 3b. The Google sign-in carrier ships with an empty or a PRODUCT client id,
-  //     never a development project's. A development client can prove the
-  //     flow against Google's real servers, but docs/GOOGLE-SIGN-IN-SETUP.md
-  //     forbids shipping it; list its id prefix under
-  //     "forbiddenGoogleClientPrefixes" (an array of strings) in the local
-  //     private/owner-data-patterns.owner.json, or in
-  //     TOOLSENABLED_FORBIDDEN_GOOGLE_CLIENT_PREFIXES (comma-separated). Both
-  //     sources count. A key that is present but not a list of strings is a
-  //     failure, so a typo cannot quietly switch this check off.
+  //     never the vault project's. The 840383906222 client proved the flow
+  //     against Google's real servers, but it is registered in the owner's
+  //     personal project and docs/GOOGLE-SIGN-IN-SETUP.md forbids shipping it.
   //     An empty clientId is the honest pre-registration state and passes with
   //     a printed note; a populated one must be Google-shaped and not the
   //     forbidden client.
@@ -349,8 +344,8 @@ function main() {
       const clientId = typeof googleConfig.clientId === 'string' ? googleConfig.clientId.trim() : ''
       if (!clientId) {
         console.log('check-asar-manifest: google sign-in carrier ships with an empty clientId -- sign-in reports not-configured until the product client is registered (docs/GOOGLE-SIGN-IN-SETUP.md)')
-      } else if (forbiddenGoogleClientPrefixes(problems).some((prefix) => clientId.startsWith(prefix))) {
-        problems.push('config/google-signin.json ships a development OAuth client listed as forbidden (forbiddenGoogleClientPrefixes or TOOLSENABLED_FORBIDDEN_GOOGLE_CLIENT_PREFIXES). It must never ship; register the product\'s own Desktop client instead.')
+      } else if (clientId.startsWith('840383906222-')) {
+        problems.push('config/google-signin.json ships the VAULT project\'s OAuth client (840383906222-*). That client is registered in the owner\'s personal project and must never ship; register the product\'s own Desktop client instead.')
       } else if (!/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(clientId)) {
         problems.push(`config/google-signin.json ships a clientId that is not in the form Google issues (${clientId.slice(0, 40)}...) -- every install would refuse it as invalid`)
       } else {
@@ -409,27 +404,6 @@ function main() {
     return
   }
   console.log('check-asar-manifest: OK')
-}
-
-/* Development OAuth client id prefixes that must never ship (section 3b). They are
-   one builder's project numbers, so they are not written here: they come from the
-   local owner profile's "forbiddenGoogleClientPrefixes" array and from the
-   comma-separated TOOLSENABLED_FORBIDDEN_GOOGLE_CLIENT_PREFIXES. A profile that is
-   absent or unreadable contributes nothing (other gates own its presence); a key
-   that is present but misshapen is recorded as a problem, never ignored. */
-function forbiddenGoogleClientPrefixes(problems, { repoRoot = REPO_ROOT, env = process.env } = {}) {
-  const prefixes = (env.TOOLSENABLED_FORBIDDEN_GOOGLE_CLIENT_PREFIXES || '').split(',').map((prefix) => prefix.trim()).filter(Boolean)
-  const profilePath = path.join(repoRoot, 'private', 'owner-data-patterns.owner.json')
-  if (!existsSync(profilePath)) return prefixes
-  let profile = null
-  try { profile = JSON.parse(readFileSync(profilePath, 'utf8')) } catch { return prefixes }
-  const listed = profile && profile.forbiddenGoogleClientPrefixes
-  if (listed === undefined) return prefixes
-  if (!Array.isArray(listed) || listed.some((prefix) => typeof prefix !== 'string' || !prefix.trim())) {
-    problems.push('private/owner-data-patterns.owner.json "forbiddenGoogleClientPrefixes" must be an array of non-empty strings; the development OAuth client check could not use it.')
-    return prefixes
-  }
-  return [...prefixes, ...listed.map((prefix) => prefix.trim())]
 }
 
 /* Guarded so a test can import judgeProvenance without this file walking an

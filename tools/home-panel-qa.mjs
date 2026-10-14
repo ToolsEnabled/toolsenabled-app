@@ -24,7 +24,7 @@ if (!within(resolved, home) && !within(resolved, await realpath(os.tmpdir()))) t
 const output = await mkdtemp(path.join(resolved, 'home-panel-qa-'))
 const origin = process.env.HOME_QA_URL || 'http://127.0.0.1:4623'
 
-/* The widths are the two it is judged at. The panel is hidden
+/* The widths are the two the owner asked to be judged at. The panel is hidden
    below 900px by the page's own rule, so a narrower check would be measuring
    its absence. */
 const WIDTHS = [1440, 1000]
@@ -95,8 +95,8 @@ try {
           if (!label || getComputedStyle(label).display === 'none') return null
           return Math.abs(label.getBoundingClientRect().top - said.getBoundingClientRect().top) < 8
         })(),
-        /* WHAT THE HIGHLIGHTS ARE DOING. The complaint was about how the
-           panel highlights things, and the measurable shape of
+        /* WHAT THE HIGHLIGHTS ARE DOING. The owner's complaint was that they did
+           not like how the panel highlights things, and the measurable shape of
            that was one accent doing four unrelated jobs and two hover surfaces
            firing at once. These read the arrangement, not a colour name. */
         highlight: (() => {
@@ -173,7 +173,7 @@ try {
     assert.equal(seen.found, true, `the activity panel is on the page at ${width}px`)
 
     /* THE SECOND BAR. home.css hides this one deliberately and records the
-       rule for why: the bar goes, the scrolling stays. A later rule
+       owner's words for why: the bar goes, the scrolling stays. A later rule
        putting it back is what produced the pair of bars 43px apart. */
     assert.equal(seen.scrolls, true, `the panel's region still scrolls at ${width}px`)
     assert.equal(seen.barHidden, true, `and shows no bar of its own at ${width}px`)

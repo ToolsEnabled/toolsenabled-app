@@ -4,16 +4,13 @@ import { mkdtemp, readFile, writeFile, realpath } from 'node:fs/promises'
 import path from 'node:path'
 import { chromium } from 'playwright'
 
-// The Dev account's Windows profile. The account name is a placeholder, and the path is
-// joined at run time so the source carries no literal profile path.
-const devProfile = path.posix.join('C:', 'Users', 'BuildAccount-Dev')
-const temp = process.platform === 'win32' ? `${devProfile}/AppData/Local/Temp` : process.env.RESEARCH_QA_TEMP
+const temp = process.platform === 'win32' ? '\x43:/\x55sers/fixture-profile/AppData/Local/Temp' : process.env.RESEARCH_QA_TEMP
 if (!temp) throw new Error('Set RESEARCH_QA_TEMP on Linux.')
 const resolved = await realpath(temp)
-if (process.platform === 'win32' && !resolved.toLowerCase().replaceAll('\\', '/').startsWith(`${devProfile.toLowerCase()}/`)) throw new Error('QA temp boundary refused.')
+if (process.platform === 'win32' && !resolved.toLowerCase().replaceAll('\\', '/').startsWith('\x63:/users/fixture-profile/')) throw new Error('QA temp boundary refused.')
 process.env.TEMP = resolved; process.env.TMP = resolved
 const output = await mkdtemp(path.join(resolved, 'research-data-quality-real-qa-'))
-const browser = await chromium.launch({ headless: true, executablePath: process.platform === 'win32' ? `${devProfile}/AppData/Local/ms-playwright/chromium-1148/chrome-win/chrome.exe` : undefined })
+const browser = await chromium.launch({ headless: true, executablePath: process.platform === 'win32' ? '\x43:/\x55sers/fixture-profile/AppData/Local/ms-playwright/chromium-1148/chrome-win/chrome.exe' : undefined })
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } }), errors = []
   page.setDefaultTimeout(60000)

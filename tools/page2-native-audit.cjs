@@ -24,25 +24,22 @@ const { scenarios: roleScenarios } = require('./lib/page2-native-role-scenarios.
 const { scenarios: preferenceScenarios } = require('./lib/page2-native-preference-scenarios.cjs')
 const { scenarios: continuationScenarios } = require('./lib/page2-native-continuation-scenarios.cjs')
 const scenarios = [...sharedScenarios, ...controlScenarios, ...boundedScenarios, ...functionScenarios, ...permissionFileScenarios, ...menuScenarios, ...roleScenarios, ...preferenceScenarios, ...continuationScenarios]
-const { providerAuthenticatedLaunchEnvironment, createOutsideWriteFence } = require('./lib/sterile-launch.cjs')
+const { prepareSterileProfile, qaProfileDirectories, sterileLaunchEnvironment, createOutsideWriteFence } = require('./lib/sterile-launch.cjs')
 const { guardWindowsPath, guardWindowsTree } = require('./lib/page2-native-paths.cjs')
 const { guardNativeInput, assertNativeSelection, readNativeWindowState } = require('./lib/page2-native-input.cjs')
+const { providerLaunchEnvironment } = require('./lib/provider-launch-environment.cjs')
 const { prepareProviderAccount, guardOwnedPath } = require('./lib/page2-native-provider-account.cjs')
 const { validateFirstUseOptions, prepareFirstUseProfile, HOME_KEYS } = require('./lib/page2-native-first-use.cjs')
 
 function optionsFrom(argv) {
   const options = { app: path.resolve(__dirname, '..'), cases: [], realProvider: false, level: 'standard', linuxDialogBackend: 'desktop', list: false }
-  const values = new Map([['--app', 'app'], ['--out', 'out'], ['--socket-temp-parent', 'socketTempParent'], ['--electron', 'electron'], ['--playwright', 'playwright'], ['--modules', 'modules'], ['--level', 'level'], ['--effort', 'effort'], ['--engine-source', 'engineSource'], ['--linux-dialog-backend', 'linuxDialogBackend'], ['--codex-profile-home', 'codexProfileHome'], ['--codex-account-id-sha256', 'codexAccountIdSha256']])
+  const values = new Map([['--app', 'app'], ['--out', 'out'], ['--socket-temp-parent', 'socketTempParent'], ['--electron', 'electron'], ['--playwright', 'playwright'], ['--modules', 'modules'], ['--level', 'level'], ['--effort', 'effort'], ['--engine-source', 'engineSource'], ['--linux-dialog-backend', 'linuxDialogBackend'], ['--codex-profile-home', 'codexProfileHome'], ['--codex-home', 'codexProfileHome']])
   for (let index = 0; index < argv.length; index++) {
     const flag = argv[index]
     if (flag === '--real-provider') options.realProvider = true
     else if (flag === '--retain-socket-temp') {
       if (options.retainSocketTemp) throw new Error('Duplicate --retain-socket-temp')
       options.retainSocketTemp = true
-    }
-    else if (flag === '--retain-provider-credentials') {
-      if (options.retainProviderCredentials) throw new Error('Duplicate --retain-provider-credentials')
-      options.retainProviderCredentials = true
     }
     else if (flag === '--sterile-first-use') {
       if (options.sterileFirstUse) throw new Error('Duplicate --sterile-first-use')
@@ -64,11 +61,7 @@ function optionsFrom(argv) {
   if (options.effort !== undefined && !['xhigh', 'max'].includes(options.effort)) throw new Error('--effort must be xhigh or max')
   if (!['guided', 'standard'].includes(options.level)) throw new Error('--level must be guided or standard')
   if (!['desktop', 'gtk'].includes(options.linuxDialogBackend)) throw new Error('--linux-dialog-backend must be desktop or gtk')
-  if (options.codexProfileHome !== undefined || options.codexAccountIdSha256 !== undefined) {
-    if (!options.realProvider || !options.codexProfileHome || !/^[a-f0-9]{64}$/.test(options.codexAccountIdSha256 || '')) {
-      throw new Error('Explicit provider selection requires --real-provider, --codex-profile-home and --codex-account-id-sha256 together')
-    }
-  }
+  if (options.codexProfileHome !== undefined && !options.realProvider) throw new Error('Explicit provider selection requires --real-provider')
   validateFirstUseOptions(options)
   return options
 }
@@ -242,7 +235,7 @@ async function main(argv = process.argv.slice(2), companion = null) {
       process.stdout.write('node tools/page2-native-first-use-audit.cjs --sterile-first-use --case first-use-settings-cold-reopen --app PATH --out PRIVATE_PARENT --electron PATH --modules PATH --playwright PATH --engine-source PATH --linux-dialog-backend gtk\nLinux-only mounted first-use companion. Generates an empty provider-free profile; no existing account or credentials are selected. Use --list for its separate six-case inventory. This companion cannot qualify authenticated native coverage or a whole cut.\n')
       return 0
     }
-    process.stdout.write('node tools/page2-native-audit.cjs --real-provider [--app PATH] [--out PRIVATE_PARENT] [--socket-temp-parent PRIVATE_SHORT_PARENT] [--retain-socket-temp] [--retain-provider-credentials] [--case ID,...] [--level guided|standard] [--effort xhigh|max] [--linux-dialog-backend desktop|gtk] [--codex-profile-home PATH --codex-account-id-sha256 SHA256]\nUse --list for named coverage. Run on the owning account\'s interactive desktop. Explicit provider selection uses a temporary copy of the verified existing sign-in and the normal named-account registry. Provider mode spends provider budget. --retain-provider-credentials preserves temporary credential copies even when preparation fails; cleanup then requires separate authorization.\n')
+    process.stdout.write('node tools/page2-native-audit.cjs --real-provider [--app PATH] [--out PRIVATE_PARENT] [--socket-temp-parent PRIVATE_SHORT_PARENT] [--retain-socket-temp] [--case ID,...] [--level guided|standard] [--effort xhigh|max] [--linux-dialog-backend desktop|gtk] [--codex-profile-home PATH]\nUse --list for named coverage. Run on the owning account\'s interactive desktop. Explicit provider selection uses the existing home in place and the normal named-account registry; without a home, provide OPENAI_API_KEY or CODEX_API_KEY in the environment. Provider mode spends provider budget.\n')
     return 0
   }
   if (options.list) {
@@ -303,7 +296,9 @@ async function main(argv = process.argv.slice(2), companion = null) {
       report.event({ kind: 'first-use-profile-created', receipt: firstUse.receipt })
     }
     const environment = firstUse ? firstUse.environment
-      : providerAuthenticatedLaunchEnvironment({ accountHome, scratchRoot: path.join(qaRoot, 'profile') }, process.env, { cwd: qaRoot })
+      : providerLaunchEnvironment('codex', sterileLaunchEnvironment(prepareSterileProfile(qaProfileDirectories(path.join(qaRoot, 'profile')))), {
+        argv: options.codexProfileHome ? ['--codex-home', options.codexProfileHome] : [], accountHome,
+      })
     if (!firstUse) providerAccount = prepareProviderAccount({ options, accountHome, qaRoot, userData, runtime, environment })
     if (providerAccount) report.metadata.providerAccount = providerAccount.receipt
     if (process.platform === 'linux') {

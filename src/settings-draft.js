@@ -23,8 +23,8 @@ export function settingRecordDisposition(recorded, settingId) {
 
 /* A product row's draft key is 'product:<id>' (draftSettingsBridge below); the
    host records the row as 'settings.set' on <id> alone. The classifier is
-   handed the id, never the key (the prefixed key made every real save read
-   as unconfirmed). Keys of the other writers --
+   handed the id, never the key (Controller review of v3, F4: the prefixed key
+   made every real save read as unconfirmed). Keys of the other writers --
    transcripts, permission profiles -- are not product rows and answer null. */
 export const PRODUCT_KEY_PREFIX = 'product:'
 export function productSettingId(key) {
@@ -49,7 +49,7 @@ export function createSettingsDraft({ onChange = () => {} } = {}) {
     }
     return ordered
   }
-  /* AUDIT OFF IS NOT A FAILED RECORD (product rule T782). The
+  /* AUDIT OFF IS NOT A FAILED RECORD (owner direction 2026-09-20, T782). The
      host answers an intentional audit-off save with the exact not-required
      object (settingRecordDisposition above): optional auditing was not
      requested, which is neither a signed-ledger success nor a save that
@@ -193,6 +193,7 @@ export function draftSettingsBridge(shell, draft, { confirmWrite = async () => u
     if (generation !== writeGeneration) return latestRead?.result ?? readSaved()
     if (latestRead && sequence < latestRead.sequence) return latestRead.result
     if (!result?.ok || !Array.isArray(result.rows)) return result
+    if (result.available === false) saved.clear()
     latestRead = { sequence, result }
     for (const row of result.rows) saved.set(row.id, row.value)
     return result

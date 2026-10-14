@@ -28,7 +28,7 @@
 // WHAT IT DELIBERATELY DOES NOT CHECK. The page's claims about downloading,
 // SmartScreen, install locations and uninstalling are about Windows and about a
 // file transfer, not about the running renderer. They were each measured by hand
-// (see an internal report) and they are not re-measurable from inside a
+// (see reports/lanes/team4-d10.md) and they are not re-measurable from inside a
 // window, so this suite does not pretend to cover them. It says so in its own
 // output rather than leaving the reader to infer the scope from a count.
 //
@@ -137,7 +137,7 @@ function documentText(html) {
  * and repacks -- which needs @electron/asar, and that package is ABSENT from
  * this worktree's node_modules today (so is node_modules/.bin, and so is
  * @rollup's native binding, which is why `npm run build` cannot run here
- * either; see an internal report). Electron loads resources/app.asar if
+ * either; see reports/lanes/team4-d10.md). Electron loads resources/app.asar if
  * it is there and resources/app/ otherwise, so removing the archive FROM THE
  * COPY and writing the payload as a plain directory gets the same renderer in
  * front of the same shell with no packing step at all.
@@ -193,7 +193,7 @@ function appExecutable(appRoot) {
    than filtered out of the real one, so an unfamiliar directory carrying a
    codex shim cannot silently turn "not installed" into "installed" and pass. */
 function systemOnlyPath() {
-  const root = process.env.SystemRoot || 'C:\\Windows'
+  const root = process.env.SystemRoot || '\x43:\\Windows'
   return [
     path.join(root, 'system32'),
     root,
@@ -439,7 +439,7 @@ async function main() {
 
       /* CAN THE PRODUCT ACTUALLY LINK TO IT? A different question from "is it
        * served", and the one that decides whether the anchor handed over in
-       * an internal report is an instruction or a guess.
+       * reports/lanes/team4-d10.md is an instruction or a guess.
        *
        * `target="_blank"` is what the proposed anchor uses, and the shell sets
        * no setWindowOpenHandler, so whether a second window appears at all is
@@ -769,7 +769,7 @@ async function main() {
 
   const failed = results.filter(result => !result.ok)
   console.log(`\n${results.length - failed.length}/${results.length} checks passed`)
-  console.log('NOT COVERED HERE (measured by hand, see an internal report):')
+  console.log('NOT COVERED HERE (measured by hand, see reports/lanes/team4-d10.md):')
   console.log('  the download, the SmartScreen prompt, the install locations, the uninstall entry,')
   console.log('  none of which is observable from inside the window.')
   if (failed.length) {

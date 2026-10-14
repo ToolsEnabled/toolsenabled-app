@@ -51,6 +51,13 @@ if (process.platform === 'linux') process.umask(process.umask() | 0o077)
    exactly one place, agentNotifier() below; every decision about whether to
    raise one lives in shell/agent-notifications.cjs. */
 const { app, BrowserWindow, crashReporter, desktopCapturer, dialog, globalShortcut, ipcMain, nativeTheme, Menu, Notification, safeStorage: electronSafeStorage, screen, shell: electronShell } = require('electron')
+const { reportStartupRefusal } = require('./startup-refusal.cjs')
+const { checkLinuxInstalledAdmission } = require('./linux-installed-admission.cjs')
+const linuxInstalledAdmission = checkLinuxInstalledAdmission({ isPackaged: app.isPackaged })
+if (linuxInstalledAdmission.ok !== true) {
+  reportStartupRefusal({ ...linuxInstalledAdmission, environment: process.env, dialog, stderr: process.stderr })
+  process.exit(1)
+}
 const { platformKeystore } = require('./os-keystore.cjs')
 const safeStorage = platformKeystore(electronSafeStorage)
 const {
@@ -63,9 +70,9 @@ const {
   checkWindowsRuntimeIntegrity,
   electronNodeHandoffEnvironment,
   fencedAccountEnvironment,
+  nativeClaudeHomeStartAnswer,
   trustedProfileShortAliasRoot,
 } = require('./install-profile-guard.cjs')
-const { reportStartupRefusal } = require('./startup-refusal.cjs')
 
 /* A PER-USER INSTALL MAY NOT BORROW ANOTHER WINDOWS ACCOUNT.
  *
@@ -112,8 +119,9 @@ if (runtimeProfileCheck.ok !== true) {
   process.exit(1)
 }
 /* AN ELEVATED TOKEN IS MEASURED HERE AND WARNED ABOUT LATER, NEVER REFUSED.
-   This block used to end the launch. That was removed: the user decides,
-   and the most the product may do is warn once, with a checkbox not
+   This block used to end the launch. The owner struck that on 2026-09-02: "the
+   whole point of this software is the user decides and we give them the
+   choice" -- and the most the product may do is warn once, with a checkbox not
    to warn again. showElevatedRunWarning() below does exactly that, once the app
    may show a dialog and before the window. The measurement stays this early
    because it is cheap and the answer is logged with the launch. */
@@ -129,6 +137,7 @@ const { ELEVATED_WARNING_KEY, elevatedRunWarning } = require('./install-profile-
    resolves and validates userData below. */
 const { scrubCapabilityPathOverrides } = require('./capability-path-environment.cjs')
 scrubCapabilityPathOverrides(process.env)
+const { createPluginCatalogue, makeLoader } = require('./plugin-catalogue.cjs')
 
 /* Resolve the optional 8.3 spelling from the already-authorized long profile,
    never from TEMP, argv or a runtime path. A missing/invalid answer leaves no
@@ -167,6 +176,16 @@ if (accountEnvironmentCheck.ok !== true) {
   reportStartupRefusal({ ...accountEnvironmentCheck, environment: process.env, dialog, stderr: process.stderr })
   process.exit(1)
 }
+/* A CLAUDE_CONFIG_DIR THAT CANNOT BE USED NO LONGER ENDS THE LAUNCH (1.0.50
+   review, accounts B). The guard set it aside instead; a default Claude agent
+   refuses to start and says why (resolveSessionAccount), and everything else
+   runs. A log line, never a gate. */
+const NATIVE_CLAUDE_HOME_SET_ASIDE = accountEnvironmentCheck.claudeConfigDirSetAside || null
+if (NATIVE_CLAUDE_HOME_SET_ASIDE) {
+  try {
+    process.stderr.write(`CLAUDE_CONFIG_DIR was set aside at startup (${NATIVE_CLAUDE_HOME_SET_ASIDE.reason}); default Claude agents refuse to start until it is changed.\n`)
+  } catch { /* a log line, never a gate */ }
+}
 if (accountEnvironmentCheck.environment) {
   for (const name of Object.keys(process.env)) delete process.env[name]
   Object.assign(process.env, accountEnvironmentCheck.environment)
@@ -201,6 +220,21 @@ if (ELECTRON_NODE_HANDOFF?.ok === true) {
     windowsHide: true,
   })
   process.exit(typeof result.status === 'number' ? result.status : 1)
+}
+/* PLUGINS, BEFORE ANYTHING IN THIS PROCESS LOADS THE TOOL REGISTRY. The state
+   root is published above and no capability module is loaded yet; the
+   organisation record below loads the registry at module load, and the owner
+   host's broker comes much later. A granted plugin's tools reach the in-process
+   MCP server only if they are registered first -- see activatePayloadPlugins().
+   tools/test/owner-host-start-order.test.mjs holds this order. */
+const PLUGIN_ACTIVATION = require('./capability-layer.cjs').activatePayloadPlugins({
+  root: require('./capability-layer.cjs').resolveCapabilityRoot(),
+})
+if (!PLUGIN_ACTIVATION.ok && PLUGIN_ACTIVATION.code !== 'PLUGIN_PAYLOAD_ABSENT') {
+  console.error(`[plugins] not brought up: ${PLUGIN_ACTIVATION.code} ${PLUGIN_ACTIVATION.reason}`)
+}
+for (const refused of PLUGIN_ACTIVATION.status?.refused || []) {
+  console.error(`[plugins] ${refused.directory} not brought up: ${refused.code}`)
 }
 const http = require('http')
 const https = require('https')
@@ -358,16 +392,22 @@ const { treeCommandRefusalSentence } = require('./tree-command-refusal-sentences
  * only the relayed form is told to drop those two switches by name; on a
  * helper's own argv they are a launcher's stray and still refuse. */
 const treeNodeCommandLaunchIdentity = (form = 'launch') => {
-  // Electron's Linux second-instance argv also carries this exact token.
-  // Live resume and send commands both reached this
-  // parser and were refused on that switch before the broker saw the request.
-  // Accept it only in the relayed form; it is still a stray on the helper's
-  // own launch argv, and all other unrecognized switches remain refused.
+  // Electron adds its selected Linux backend to second-instance argv, though
+  // it is absent from the helper's original process.argv. Measured on 43.3.0:
+  // X11 on 2026-09-23, Wayland on 2026-09-29. Admit only this primary's exact
+  // native selection, never a value supplied by the incoming command. The
+  // helper's launch grammar still refuses every explicit backend override.
+  const nativeSwitches = []
+  if (form === 'relayed' && process.platform === 'linux') {
+    let ozone = null
+    try { ozone = app.commandLine.getSwitchValue('ozone-platform') } catch { /* unknown native selection admits nothing */ }
+    if (ozone === 'x11' || ozone === 'wayland') nativeSwitches.push(`--ozone-platform=${ozone}`)
+  }
   // --disable-logging is appended by this file itself (product diagnostics off,
   // below) in every helper before the lock, so Chromium relays it too; on the
-  // live development tier every outside resume/send was refused on it.
+  // owner's LIVE on 2026-09-23 every outside resume/send was refused on it.
   const appendedSwitches = form === 'relayed'
-    ? [...OUTSIDE_CONTROL_SWITCHES, '--ozone-platform=x11', '--disable-logging'] : []
+    ? [...OUTSIDE_CONTROL_SWITCHES, ...nativeSwitches, '--disable-logging'] : []
   if (app.isPackaged) return { developmentEntry: null, developmentUserDataPath: null, appendedSwitches }
   const entries = [__filename]
   try {
@@ -438,8 +478,19 @@ const { createRendererPrefs } = require('./renderer-prefs.cjs')
 const { createTaskTopologyAdmission } = require('./task-assignment-authority.cjs')
 const { captureResetBrowserStorage } = require('./reset-browser-storage.cjs')
 const { attentionNow, createAgentNotifier, deliveryAnswerFor, watchedSessionFrom } = require('./agent-notifications.cjs')
-const { createUpdateCheck, createManifestFetcher, createInstallerDownloader } = require('./update-check.cjs')
+const { createUpdateCheck, createManifestFetcher, createInstallerDownloader, createInstallerAfterQuit } = require('./update-check.cjs')
 const { readExeVersionInfo } = require('./installer-pe-identity.cjs')
+/* An accepted update's installer starts on the app's `quit` event, after
+   every refusal has had its say, never before the quit (1.0.50 platform
+   review, U1). One per process: whichever window accepted the update, the
+   quit is the app's. A refused quit cancels it (will-prevent-unload, and
+   "Keep ToolsEnabled open" on the unsaved-conversation notice). */
+const installerAfterQuit = createInstallerAfterQuit({
+  onQuit: listener => app.once('quit', listener),
+  offQuit: listener => app.removeListener('quit', listener),
+  spawn: spawnChildProcess,
+  log: line => console.error(`[update-check] ${line}`),
+})
 const { adoptLegacyUserData } = require('./userdata-adoption.cjs')
 const { isRetentionPrefKey, mirrorRetentionChoice } = require('./uninstall-retention.cjs')
 const { planReset, eraseLocalData } = require('./local-data-reset.cjs')
@@ -687,6 +738,7 @@ const {
   adoptLegacyAccountRegistry,
   createAccountRegistryStore,
   MAX_NAME_LENGTH: MAX_ACCOUNT_NAME_LENGTH,
+  signInByProvider,
 } = require('./account-registry.cjs')
 /* ONE HOME FOR EVERY ACCOUNT READ. The store resolves a relative account
    folder against os.homedir(); the engine's readAccountUsage and
@@ -725,6 +777,22 @@ if (accountServicesRoot && !PROVIDER_ISOLATION_REQUESTED) {
     console.error(`[account-registry] legacy adoption refused: ${adoption.code}`)
   }
 }
+/* REMOVING AN ACCOUNT MUST ALSO REACH THE CONFINED COPIES OF ITS SIGN-IN.
+   The engine hard-links an account's sign-in into every confined agent home it
+   prepares for it, under <services root>/agent-home, and nothing reaps those
+   homes -- so destroying the account's own file left the credential working
+   under each of them. This hands the store the engine's own sweep, bound to
+   the same fenced services root, loaded only when a removal needs it. A payload
+   without it answers null, which the store reports as not revoked. The sign-in
+   path goes along as `source`: after a confined refresh the live copies are a
+   new file, and the engine finds them by the source their homes record. */
+function revokeConfinedAccountCopies(identity, signIn) {
+  const root = resolveCapabilityRoot()
+  if (!root || !accountServicesRoot) return null
+  const confinement = require(path.join(root, 'src', 'lib', 'agent-session-confinement.js'))
+  if (typeof confinement.revokeConfinedCopies !== 'function' || typeof confinement.CONFINED_HOME_LEAF !== 'string') return null
+  return confinement.revokeConfinedCopies(path.join(accountServicesRoot, confinement.CONFINED_HOME_LEAF), identity, { source: signIn })
+}
 const accountRegistry = createAccountRegistryStore({
   file: ACCOUNT_REGISTRY_FILE,
   stateFile: accountServicesRoot
@@ -733,6 +801,7 @@ const accountRegistry = createAccountRegistryStore({
   /* Where addManaged() makes account folders: under the same fenced services
      root the rotation record lives in, never derived a second way. */
   servicesRoot: accountServicesRoot,
+  revokeConfinedCopies: revokeConfinedAccountCopies,
   ...(providerIsolation ? { homedir: () => ACCOUNT_HOME_DIR, providerIsolation } : {}),
 })
 
@@ -1475,6 +1544,7 @@ const productDiagnostics = createProductDiagnostics({ chooseExport: options => d
 const mainLagDiagnosticWriter = productDiagnostics.writer('main-lag')
 const mainHeapDiagnosticWriter = productDiagnostics.writer('main-heap')
 const exitDiagnosticWriter = productDiagnostics.writer('exit-record')
+const legacySignInDiagnosticWriter = productDiagnostics.writer('legacy-signin-cleanup')
 // Only new managed files are eligible. Existing profile logs are never enrolled.
 productDiagnostics.start()
 process.once('exit', () => { void productDiagnostics.dispose() })
@@ -1524,8 +1594,8 @@ const AGENT_EFFORT_VALUES = Object.freeze(['none', 'minimal', 'low', 'medium', '
 const MAX_SURFACE_LENGTH = 64
 const MAX_TURN_TEXT_LENGTH = 200_000
 
-/* THE PASTED-IMAGE FEEDER (R10: pasting an image with Ctrl+V must work).
- * The rule: bytes come ONLY
+/* THE PASTED-IMAGE FEEDER (owner R10, verbatim: "I still cant control V and
+ * image to you please get that fixed"). Controller's ruling: bytes come ONLY
  * from the renderer's own paste event, never from Electron's clipboard.readImage()
  * in the main process -- readImage() reads whatever is on the clipboard at
  * whatever moment the call happens, which is ambient machine state; a paste
@@ -1545,16 +1615,18 @@ const PASTE_IMAGE_MIME_EXTENSIONS = Object.freeze({
 })
 /* ONE PASTED IMAGE'S BYTE CEILING -- a bound this app applies to a single
  * write it makes to its own disk from caller-supplied bytes, not a limit on
- * the person's use of the feature (R16, the rule that the software sets no
- * product limit on the person's work, is about refusing that work, not about
+ * the person's use of the feature (R16: "IT IS NOT A PRODUCT LIMIT ... DO NOT
+ * PUT A LIMIT IN THE SOFTWARE" is about refusing the person's work, not about
  * bounding a single payload's size the same way MAX_TURN_TEXT_LENGTH already
  * bounds a single turn's text). The existing per-turn cap already bounds HOW
  * MANY images ride one turn (8, parseAgentSend); this bounds how big ONE of
  * them may be. 8 MiB: a dense 4K (3840x2160) screenshot -- the ordinary
  * ceiling of what a person pastes to show an agent what they mean -- saves as
  * a PNG in the low single-digit megabytes; this leaves real headroom above
- * that without leaving a caller-supplied write unbounded. Not a measurement:
- * it is stated as reasoned rather than measured. */
+ * that without leaving a caller-supplied write unbounded. Not a measurement
+ * taken on this machine (this lane's tool bridge could not reach a live
+ * screen capture to confirm a real file size), so it is stated as reasoned
+ * rather than measured -- see the report. */
 const MAX_PASTE_IMAGE_BYTES = 8 * 1024 * 1024
 /* 3 bytes of source data become 4 base64 characters; the +4 is slack for an
    encoder that pads rather than one that packs maximally tight. The REAL
@@ -1898,8 +1970,8 @@ function treeCommandStartAdmission(request, principal) {
   const refuse = () => { throw treeSpawnError('TREE_DELEGATION_REFUSED', 'The tree start no longer matches its requesting circle.') }
   if (!context || principal.kind !== 'window' || command.action !== 'create-and-start-node'
       || command.computerId !== treeCommandComputerId || command.nodeId != null || command.treeId != null
-      || ['resumeThreadId', 'resumeAccount', 'replacesSessionId', 'continueFromAccount', 'accountRecovery',
-        'accountRetry', 'editorForkReceipt', 'boundedWork'].some(key => request[key] !== undefined)) refuse()
+      || ['resumeThreadId', 'resumeAccount', 'replacesSessionId',
+        'editorForkReceipt', 'boundedWork'].some(key => request[key] !== undefined)) refuse()
   const nodeId = request.requestKeys?.threadId
   const anchors = JSON.stringify(request.requestKeys?.treeAnchors)
   const tier = request.tier
@@ -2096,6 +2168,11 @@ function resolveLocalTreeCommand(envelope, result) {
       ...(envelope?.request?.action === 'resume-node' && typeof envelope.request.assignment === 'string'
           && ['submitted', 'not-submitted'].includes(result.firstTurnState)
         ? { firstTurnState: result.firstTurnState } : {}),
+      // Keep a first-input refusal distinct from the successful session resume.
+      ...(envelope?.request?.action === 'resume-node' && typeof envelope.request.assignment === 'string'
+          && result.firstTurnState === 'not-submitted'
+        ? { code: typeof result.code === 'string' && /^[A-Z][A-Z0-9_]{1,127}$/.test(result.code)
+          ? result.code : 'MC_TREE_COMMAND_ASSIGNMENT_NOT_SUBMITTED' } : {}),
       /* THE FACT A CALLER CANNOT SEE ANY OTHER WAY. An assistant that asked for
          this circle has no screen to read the org-status line from; without
          this, executeCreateAndStartNode's statusNote was computed and then
@@ -2202,8 +2279,8 @@ function dispatchTreeSpawn(request) {
      * timeout starts only once a command has been handed to the renderer, so a
      * command queued while the renderer is not ready waits indefinitely -- and
      * the caller here is an assistant's tool call, which would simply never
-     * answer. Measured on a development tree: a tree spawn sat unanswered for
-     * minutes with no refusal and no circle.
+     * answer. Measured on the owner's own tree: a tree spawn sat unanswered for
+     * six minutes with no refusal and no circle.
      *
      * So this puts a clock on the whole errand, and says what the broker was
      * doing when it ran out. A refusal an assistant can read and retry beats a
@@ -2319,7 +2396,8 @@ function dispatchTreeSpawn(request) {
          written for one verb and hard-coded it, so an assistant could add a
          circle and nothing else -- no stop, no restart, no removal -- even
          though the view performs all three for the person's own press.
-         Agents can delete, start and restart the agents under them. */
+         Owner, 2026-09-03: "THE AGENTS NEED TO BE ABLE TO DELETE AND START
+         AND RESTART AGENTS UNDER THEM". */
       action: request.action || 'create-and-start-node',
       ...(CONFIGURATION_ACTIONS.includes(request.action) ? { choice: request.choice } : {}),
       computerId,
@@ -2339,8 +2417,8 @@ function dispatchTreeSpawn(request) {
          for every verb and a key that is missing on one action and present on
          another is the shape that gate has twice refused by accident.
 
-         The effort level is selectable when agents are spawned.
-         effort is the one that changes what actually
+         Owner, 2026-09-19: "you NEED to be able to select effort level when
+         you spawn agents". effort is the one that changes what actually
          starts; provider and model are the confirmation the engine already
          checked against the tier, forwarded so the view can check it again
          against its OWN tier table rather than trusting that the two agree. */
@@ -2600,10 +2678,16 @@ function parseResearchStart(value) {
   }
 }
 
+function boundedAgentModel(value) {
+  const { validateNativeModelId } = require('./native-model-selection.cjs').loadNativeModelSelection(resolveCapabilityRoot())
+  try { return validateNativeModelId(value) }
+  catch (error) { agentIpcError('MC_AGENT_INVALID_PAYLOAD', error.message) }
+}
+
 function parseAgentStart(value) {
   // `tier` IS ACCEPTED HERE BECAUSE WITHOUT IT NOBODY CAN CHOOSE A MODEL.
   //
-  // The defect: the provider and model could not be chosen. That was true
+  // Owner, 2026-08-13: "i cant even choose the provider or model". He was right
   // in the most literal way -- this allowlist held exactly three keys and
   // agentPayload() THROWS on anything else, so a renderer that sent a tier was
   // refused before it reached the host. Below it, startSession() had no model
@@ -2613,14 +2697,15 @@ function parseAgentStart(value) {
   // Adding the key here is only the first of three edits -- see agent-host.cjs
   // startSession(), which resolves it, and the compose panel, which must offer
   // it. Shipping any one of them alone leaves a control that looks real and is
-  // not, which is the defect an earlier commit removed three sliders for.
-  const payload = agentPayload(value, ['sessionId', 'cwd', 'surface', 'tier', 'effort', 'profileId', 'resumeThreadId', 'resumeThreadProvider', 'resumeManagerName', 'resumeAccount', 'treeAccount', 'continueFromAccount', 'accountRecovery', 'accountRetry', 'replacesSessionId', 'requestKeys', 'treeIdentity', 'roleBinding', 'delegationToken', 'boundedWork', 'research', 'researchSetup', 'editorForkReceipt', 'treeCommandRequestId', 'historyHandoff'])
+  // not, which is the defect f1ce3ec removed three sliders for.
+  const payload = agentPayload(value, ['sessionId', 'cwd', 'surface', 'tier', 'effort', 'model', 'profileId', 'resumeThreadId', 'resumeSessionId', 'resumeTranscript', 'resumeThreadProvider', 'resumeManagerName', 'resumeAccount', 'treeAccount', 'replacesSessionId', 'requestKeys', 'treeIdentity', 'roleBinding', 'delegationToken', 'boundedWork', 'research', 'researchSetup', 'editorForkReceipt', 'treeCommandRequestId', 'historyHandoff'])
   const sessionId = Object.prototype.hasOwnProperty.call(payload, 'sessionId')
     ? payload.sessionId
     : `chat-${randomUUID()}`
   const result = {
     sessionId: boundedAgentString(sessionId, 'sessionId', MAX_SESSION_ID_LENGTH),
   }
+  if (Object.prototype.hasOwnProperty.call(payload, 'model')) result.model = boundedAgentModel(payload.model)
   if (payload.historyHandoff !== undefined) result.historyHandoff = boundedAgentString(payload.historyHandoff, 'historyHandoff', 160000)
   if (payload.boundedWork !== undefined) result.boundedWork = require('./tree-bounded-work.cjs').parseBoundedWork(payload.boundedWork)
   if (payload.research !== undefined) result.research = parseResearchStart(payload.research)
@@ -2628,7 +2713,7 @@ function parseAgentStart(value) {
     if (payload.researchSetup !== true || payload.surface !== 'research-experiment'
         || result.research?.mode !== 'clean-room'
         || ['delegationToken', 'boundedWork', 'resumeThreadId', 'resumeThreadProvider', 'resumeManagerName',
-          'resumeAccount', 'replacesSessionId', 'continueFromAccount', 'accountRecovery', 'accountRetry',
+          'resumeAccount', 'replacesSessionId',
           'editorForkReceipt', 'treeCommandRequestId'].some(key => payload[key] !== undefined)) {
       agentIpcError('MC_AGENT_RESEARCH_INVALID', 'Clean-room setup requires a fresh local research experiment session.')
     }
@@ -2636,7 +2721,7 @@ function parseAgentStart(value) {
   }
   if (payload.editorForkReceipt !== undefined) {
     result.editorForkReceipt = boundedAgentString(payload.editorForkReceipt, 'editorForkReceipt', 128)
-    if (['resumeThreadId', 'resumeAccount', 'continueFromAccount', 'accountRecovery', 'replacesSessionId', 'delegationToken'].some(key => payload[key] !== undefined)) {
+    if (['resumeThreadId', 'resumeAccount', 'replacesSessionId', 'delegationToken'].some(key => payload[key] !== undefined)) {
       agentIpcError('EDITOR_FORK_INVALID', 'An editor copy must be a new session, with its original account and a saved source receipt.')
     }
   }
@@ -2706,6 +2791,21 @@ function parseAgentStart(value) {
     // conversation. Bounded to the adapter's own threadId ceiling.
     result.resumeThreadId = boundedAgentString(payload.resumeThreadId, 'resumeThreadId', 512)
   }
+  if (Object.prototype.hasOwnProperty.call(payload, 'resumeSessionId')) {
+    if (!result.resumeThreadId) agentIpcError('MC_AGENT_INVALID_PAYLOAD', 'resumeSessionId requires resumeThreadId')
+    result.resumeSessionId = boundedAgentString(payload.resumeSessionId, 'resumeSessionId', MAX_SESSION_ID_LENGTH)
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, 'resumeTranscript')) {
+    const location = payload.resumeTranscript
+    if (!result.resumeSessionId || !location || typeof location !== 'object' || Array.isArray(location)
+        || Object.keys(location).length !== 2 || !Object.hasOwn(location, 'computerId') || !Object.hasOwn(location, 'nodeId')) {
+      agentIpcError('MC_AGENT_INVALID_PAYLOAD', 'resumeTranscript requires the saved source session and its computer and node.')
+    }
+    result.resumeTranscript = {
+      computerId: boundedAgentString(location.computerId, 'resumeTranscript.computerId', 128),
+      nodeId: boundedAgentString(location.nodeId, 'resumeTranscript.nodeId', 128),
+    }
+  }
   if (Object.prototype.hasOwnProperty.call(payload, 'resumeThreadProvider')) {
     /* WHICH PROGRAM MINTED THAT THREAD, as the renderer's saved transcript
        record remembers it. It rides with the id rather than being re-derived
@@ -2739,25 +2839,9 @@ function parseAgentStart(value) {
   if (Object.prototype.hasOwnProperty.call(payload, 'treeAccount')) {
     result.treeAccount = boundedAgentString(payload.treeAccount, 'treeAccount', MAX_ACCOUNT_NAME_LENGTH)
   }
-  if (Object.prototype.hasOwnProperty.call(payload, 'continueFromAccount')) {
-    result.continueFromAccount = boundedAgentString(payload.continueFromAccount, 'continueFromAccount', MAX_ACCOUNT_NAME_LENGTH)
-  }
-  if (payload.accountRetry !== undefined) {
-    const retry = agentPayload(payload.accountRetry, ['excludeAccounts', 'recheckAttempt'])
-    if (!Array.isArray(retry.excludeAccounts) || retry.excludeAccounts.length > 32
-      || !Number.isSafeInteger(retry.recheckAttempt) || retry.recheckAttempt < 0 || retry.recheckAttempt > 100000
-      || ['resumeThreadId', 'resumeAccount', 'editorForkReceipt', 'accountRecovery', 'continueFromAccount', 'delegationToken', 'boundedWork'].some(key => payload[key] !== undefined)) {
-      agentIpcError('MC_AGENT_INVALID_PAYLOAD', 'Account retries need a fresh tree session and bounded account selectors.')
-    }
-    result.accountRetry = { excludeAccounts: [...new Set(retry.excludeAccounts.map(name => boundedAgentString(name, 'excluded account', MAX_ACCOUNT_NAME_LENGTH)))], recheckAttempt: retry.recheckAttempt }
-  }
-  if (Object.prototype.hasOwnProperty.call(payload, 'accountRecovery')) {
-    const recovery = agentPayload(payload.accountRecovery, ['recoveryId'])
-    result.accountRecovery = { recoveryId: boundedAgentString(recovery.recoveryId, 'recoveryId', 120) }
-  }
   if (Object.prototype.hasOwnProperty.call(payload, 'resumeAccount')) {
     /* A provider thread lives inside the account home that created it. Account
-       rotation is correct for a NEW conversation and destructive for a resume:
+       selection must stay with the saved account during a resume:
        another signed-in home cannot see this id, so the provider accepts the
        process launch and then ends before a turn produces any words. The saved
        account name is only a selector into the main-process registry -- never a
@@ -2765,7 +2849,11 @@ function parseAgentStart(value) {
     if (!result.resumeThreadId) {
       agentIpcError('MC_AGENT_INVALID_PAYLOAD', 'resumeAccount may only be used with resumeThreadId')
     }
-    result.resumeAccount = boundedAgentString(payload.resumeAccount, 'resumeAccount', MAX_ACCOUNT_NAME_LENGTH)
+    /* null names the provider's default sign-in, which a saved conversation records as no account; the host
+       reads a null resumeAccount as exactly that and checks it against the recorded origin. */
+    if (payload.resumeAccount !== null) {
+      result.resumeAccount = boundedAgentString(payload.resumeAccount, 'resumeAccount', MAX_ACCOUNT_NAME_LENGTH)
+    }
   }
   if (Object.prototype.hasOwnProperty.call(payload, 'replacesSessionId')) {
     result.replacesSessionId = boundedAgentString(payload.replacesSessionId, 'replacesSessionId', MAX_SESSION_ID_LENGTH)
@@ -2824,14 +2912,11 @@ function parseAgentStart(value) {
   }
   if (result.treeAccount && (!result.treeIdentity || !result.requestKeys?.threadId
     || (result.resumeThreadId && result.resumeAccount !== result.treeAccount)
-    || ['accountRecovery', 'accountRetry', 'delegationToken',
+    || ['delegationToken',
       'editorForkReceipt', 'research', 'researchSetup'].some(key => payload[key] !== undefined))) {
-    agentIpcError('MC_AGENT_INVALID_PAYLOAD', 'A slot account requires a bound tree start or its same-account saved thread, without recovery or inherited delegation.')
+    agentIpcError('MC_AGENT_INVALID_PAYLOAD', 'A slot account requires a bound tree start or its same-account saved thread, without inherited delegation.')
   }
-  if (result.continueFromAccount && (!result.replacesSessionId || !result.treeIdentity
-    || result.resumeThreadId || result.resumeAccount || result.accountRecovery)) {
-    agentIpcError('MC_AGENT_INVALID_PAYLOAD', 'Continuing on another account requires a fresh replacement, without a saved provider thread or automatic recovery ticket.')
-  }
+
   if (result.replacesSessionId && !result.treeIdentity) {
     agentIpcError('MC_AGENT_INVALID_PAYLOAD', 'replacesSessionId requires the saved tree identity of the circle being replaced')
   }
@@ -2876,7 +2961,7 @@ function parseAgentSend(value) {
     text: payload.text,
   }
   if (payload.model !== undefined) {
-    request.model = boundedAgentString(payload.model, 'model', 128)
+    request.model = boundedAgentModel(payload.model)
   }
   if (payload.images !== undefined) {
     if (!Array.isArray(payload.images) || payload.images.length > 8) {
@@ -2915,8 +3000,9 @@ function parseAgentSessionCommand(value) {
 /* Every agent channel must come from the application's own main frame.
    These channels start and drive a real CLI child process, so any frame that
    can reach the preload could spawn one: a main frame navigated off-origin,
-   or a window the shell did not open. The shell has no will-navigate or
-   window-open guard, so this is the boundary that actually holds.
+   or a window the shell did not open. Since 1.0.50 (M3) the main window has a
+   will-navigate and window-open guard (shell/main-window-navigation.cjs), but
+   this sender check stays the boundary that holds on its own.
 
    The sibling fleet-profile handlers already apply exactly this test. The
    agent channels -- the ones that create processes -- had none, which is the
@@ -3099,6 +3185,11 @@ function noteAgentTurnUsageImpl(session, packet) {
   const reading = session.usageByTurn && session.usageByTurn.get(turnId)
   if (!reading) return
   session.usageByTurn.delete(turnId)
+  // The model name the person typed, read from the host, never from the page (1.0.50 review CM-4). A host that
+  // cannot say leaves the row as it always was.
+  let typedModel = null
+  try { typedModel = agentHost?.typedModelFor?.(packet.sessionId) } catch { typedModel = null }
+  if (typeof typedModel !== 'string' || !typedModel) typedModel = null
 
   try {
     getUsageRecorder().recordTurnAsync({
@@ -3109,13 +3200,20 @@ function noteAgentTurnUsageImpl(session, packet) {
       principal: session.metricsPrincipal || null,
       turnId: usageLabel('turnId', turnId),
       tier: usageLabel('tier', session.tier),
+      /* THE MODEL NAME THE PERSON TYPED (1.0.50 review CM-4), which `tier` alone
+         signed under the provider's default row. Kept only when the ledger's
+         label rule admits it (no \ / or :); `modelChoice` records that a typed
+         name was used either way, so Metrics reads "Other model" for one it
+         could not keep, never the default row's name. */
+      model: typedModel ? usageLabel('model', typedModel) : null,
+      modelChoice: typedModel ? 'typed' : null,
       account: usageLabel('account', session.account),
       status: usageLabel('status', typeof event.status === 'string' ? event.status.toLowerCase() : null),
       /* WHY, AND NOT ONLY THAT IT WENT WRONG.
-         MEASURED on a development install: several claude-fable turns in a
-         row wrote status:"error" with every figure zero, while claude-opus
-         succeeded in the same window on the same install. The engine had said
-         why each time -- the Claude CLI's own
+         MEASURED 2026-09-03 on the owner's computer: five claude-fable turns in
+         a row, 01:49:05Z onward, wrote status:"error" with every figure zero,
+         while claude-opus wrote 160 successes in the same window on the same
+         install. The engine had said why each time -- the Claude CLI's own
          "There's an issue with the selected model (…). It may not exist or you
          may not have access to it." reaches this listener on the completion's
          `text` (claude-cli-adapter.js#handleResult) -- and this record kept the
@@ -3170,7 +3268,7 @@ function noteAgentTurnCompleted(session, packet) {
 
 /* THE MAIN PROCESS WATCHING ITS OWN HEAP.
  *
- * MEASURED (isolated instance, this same Electron 43.3.0):
+ * MEASURED 2026-09-04 (lane H, isolated instance, this same Electron 43.3.0):
  * the main process's V8 limit is 4192 MB, and 9 concurrent sessions driven
  * through 3,303 turns in twelve minutes left heapUsed flat at 23-34 MB. So
  * this process is not the one that was running out of room, no
@@ -3179,7 +3277,7 @@ function noteAgentTurnCompleted(session, packet) {
  * writes down what it is holding before it dies.
  *
  * THE INVENTORY IS THE STRUCTURES THIS FILE CAN ACTUALLY COUNT, and it is
- * deliberately short. Everything on it was read (static pass) and only
+ * deliberately short. Everything on it was read (lane H, static pass) and only
  * the recomputable ones carry a `prune`:
  *
  *   agentSessions       one entry per RUNNING session; deleted on every exit
@@ -3387,7 +3485,7 @@ function noteAgentSessionEnded(report) {
  * So the desk notifies about the desk's own sessions. WHAT WOULD CHANGE THIS:
  * the browser that started the session gaining its own way to be told, at which
  * point this becomes a choice between two surfaces rather than a choice between
- * one surface and silence -- and it would be a product choice, not this
+ * one surface and silence -- and it would be the owner's choice, not this
  * file's. Until then the honest answer is the narrow one. */
 function ownedByThisWindow(session) {
   return Boolean(session) && session.ownerKind !== 'relay'
@@ -3747,8 +3845,8 @@ async function recordSpawnIntent(request) {
     // It is metadata beside the exact receipt, never an audit evidence field.
     const principal = accountPrincipal()
     if (captured.decision.metricsLocalHistory !== true) return Object.freeze({ ...audit, audit, principal })
-    /* KEEP METRICS HISTORY ON THIS COMPUTER (metrics.local_history, product
-       rule, on by default). The same app-local start row as the
+    /* KEEP METRICS HISTORY ON THIS COMPUTER (metrics.local_history, owner
+       decision 2026-09-23, on by default). The same app-local start row as the
        audited path below, and nothing in the canonical signed ledger, which
        stays governed by audit.enabled alone. Unlike that path it is not a
        gate: a Metrics row that cannot be written leaves a gap in Metrics and
@@ -3822,7 +3920,7 @@ async function recordSpawnIntent(request) {
          signed in, and this line must not be read as though it did. The record
          states who it was when it can and says plainly that it could not when
          it cannot; whether the product should refuse to start an agent for a
-         signed-out person is a decision for the owner, and until they make it
+         signed-out person is a decision for the owner, and until he makes it
          the honest record is the one that does not pretend to be a lock. */
       principal: recordedPrincipal,
       details: spawnRecordDetails(request, { includeCwd: true }),
@@ -4191,44 +4289,11 @@ function loadRotation() {
   return rotationModule
 }
 
-/* THE MODE THE ACCOUNTS MENU RECORDED IS THE ONE RULE.
- *
- * The accounts menu on page 2 asks "when an account runs out" -- stop, in my
- * order, most room first, least room first, keep them even, dynamic, expiring
- * soonest -- and writes the answer beside the accounts themselves. When nothing
- * is recorded the engine's default applies: the listed order, walked until an
- * account runs out (signed-in accounts rotate on their own). The walkthrough's older two-valued question "If an account
- * runs out" no longer rides along on every start; a CHANGE to that answer is
- * mirrored into this same record by src/setup-profile.js, so the two can never
- * disagree about what this computer is set to. The engine reads the registry
- * field itself, so passing it is belt and braces on a build whose payload is
- * newer than its shell -- never the only route the setting has.
- *
- * IT NEVER STOPS A START. Every failure here answers null for the mode and the
- * engine's default runs. */
-function selectionPolicyFromRegistry(provider) {
-  try {
-    const answer = accountRegistry.policy()
-    if (!answer || answer.ok !== true || !answer.policy) return null
-    /* THIS PROGRAM'S RULE: its own where it has one, the global one where that
-       was recorded, nothing where neither was -- and nothing means the engine
-       applies its own default, which is the same one this store shows. */
-    const own = answer.policy.byProvider && answer.policy.byProvider[provider]
-    if (own && own.own) return own
-    if (answer.policy.recorded !== true) return null
-    return own || answer.policy
-  } catch {
-    return null
-  }
-}
-
 /* IS ANY ACCOUNT FOR THIS PROVIDER SIGNED IN: 'yes', 'no' or 'unknown'.
  *
  * Answers the agent host's third start gate (see resolveStartTier). It reads
  * ONLY sign-in presence, never an allowance: a spent account is still a signed-
- * in account, and the whole point of the account rotation is to carry a person
- * through a spent five-hour window rather than take the provider away from them
- * for it.
+ * in account. Its start still checks the exact account the person chose.
  *
  * `unknown` WINS OVER `no`, deliberately. One account that cannot be read is not
  * evidence that the other three are absent, and this gate refuses a tier, so the
@@ -4245,21 +4310,13 @@ function providerSignInAnswer(provider) {
   if (typeof provider !== 'string' || provider.length === 0) return 'unknown'
   const nowMs = Date.now()
   if (!providerSignInCache.byProvider || nowMs - providerSignInCache.atMs > PROVIDER_SIGN_IN_TTL_MS) {
-    const byProvider = new Map()
+    let byProvider
     try {
       const listed = accountRegistry.list()
-      const accounts = listed && Array.isArray(listed.accounts) ? listed.accounts : []
-      for (const account of accounts) {
-        const id = typeof account?.provider === 'string' ? account.provider : null
-        if (!id) continue
-        const seen = byProvider.get(id)
-        const answer = account.signedIn === 'yes' ? 'yes' : (account.signedIn === 'no' ? 'no' : 'unknown')
-        /* yes beats unknown beats no: one usable sign-in is enough to offer the
-           tier, and one unreadable account must not condemn the provider. */
-        if (seen === 'yes' || answer === 'yes') byProvider.set(id, 'yes')
-        else if (seen === 'unknown' || answer === 'unknown') byProvider.set(id, 'unknown')
-        else byProvider.set(id, 'no')
-      }
+      /* yes beats unknown beats no, and a missing Claude sign-in file is not a
+         sign-out (1.0.50 review, accounts C): the fold lives with the registry
+         (shell/account-registry.cjs signInByProvider) so it can be tested. */
+      byProvider = signInByProvider(listed && Array.isArray(listed.accounts) ? listed.accounts : [])
     } catch {
       /* A registry that cannot be read has told us nothing about any provider,
          and nothing is not a refusal. */
@@ -4297,7 +4354,7 @@ function providerSignInAnswer(provider) {
   return answer === undefined ? 'unknown' : answer
 }
 
-async function resolveSessionAccount({ provider, client = null, model = null, preferred = null, exact = false, persistSelection = true, excludeAccounts = [], keepTryingAccounts = false, recheckAttempt = 0 }, { signal = null } = {}) {
+async function resolveSessionAccount({ provider, client = null, model = null, preferred = null, exact = false, persistSelection = true }, { signal = null } = {}) {
   signal?.throwIfAborted()
   const rotation = loadRotation()
   if (!rotation) {
@@ -4307,56 +4364,38 @@ async function resolveSessionAccount({ provider, client = null, model = null, pr
   if (persistSelection === false && rotation.ACCOUNT_REQUEST_SELECTION_VERSION !== 1) {
     throw Object.assign(new Error('Update the paired engine before choosing an account for only this slot.'), { code: 'AGENT_ACCOUNT_SELECTION_UNAVAILABLE' })
   }
-  if (keepTryingAccounts && rotation.ACCOUNT_RECOVERY_TIMING_VERSION !== 1) {
-    throw Object.assign(new Error('Update the agent engine before using persistent account retries.'), { code: 'AGENT_ACCOUNT_RETRY_UNAVAILABLE' })
-  }
   if (client != null && rotation.ACCOUNT_CLIENT_CONTRACT_VERSION !== 1) {
     throw Object.assign(new Error('Update the paired engine before selecting an Antigravity account.'), { code: 'ACCOUNT_CLIENT_UNAVAILABLE' })
   }
   if (provider === 'claude' && model && rotation.ACCOUNT_MODEL_SCOPE_CONTRACT_VERSION !== 1) {
     throw Object.assign(new Error('Update the paired engine before selecting a Claude model against its account limits.'), { code: 'AGENT_ACCOUNT_UNAVAILABLE' })
   }
-  /* A resume is not an account-selection opportunity. The thread exists in
-     exactly one provider home, so force the engine's manual path with that
-     home first and let agent-host verify the answer is exact. Fresh starts
-     retain the person's recorded rotation policy byte for byte. */
-  const exactResume = exact === true && typeof preferred === 'string' && preferred.length > 0
-  const policy = exactResume ? { selectionMode: 'manual' } : selectionPolicyFromRegistry(provider)
+  // Fresh starts and resumes both retain the person's explicit account.
   try {
-    return await rotation.resolveAccountForSession({
+    const selection = await rotation.resolveAccountForSession({
       provider,
       ...(provider === 'claude' && model ? { model } : {}),
       ...(client ? { client } : {}),
       ...(PROVIDER_ISOLATION_REQUESTED ? { registryPath: ACCOUNT_REGISTRY_FILE } : {}),
       servicesRoot: resolveServicesRootForAccounts(),
       homeDir: ACCOUNT_HOME_DIR,
-      excludeAccounts,
-      ...(keepTryingAccounts ? { keepTryingAccounts: true, recheckAttempt } : {}),
       ...(persistSelection === false ? { persistSelection: false } : {}),
       signal,
-      /* AN EXACT RESUME IS JUDGED ON THE PROVIDER'S LIMIT, NOT THIS COMPUTER'S.
-       *
-       * The Accounts page cutoff decides which account an AUTOMATIC start should
-       * pick; it is a preference about spreading work around. A resume is not a
-       * selection -- the thread lives in one account's home and no other account
-       * can continue it -- so applying that cutoff turns a person away from their
-       * own saved conversation on their own setting.
-       *
-       * MEASURED: an hourly cutoff of 25% classed every Claude account past a
-       * quarter of its 5-hour window as spent. A saved conversation on an account
-       * with 84% of its WEEK remaining was refused four times, and the refusal
-       * told the person to wait for a reset that was not the thing blocking them. */
-      ...(exactResume ? { preferred, providerLimitsOnly: true } : {}),
-      ...(policy === null ? {} : {
-        // Recovery's separate opt-in authorizes walking eligible backups even
-        // when ordinary starts are set to manual. Keep the chosen ranking for
-        // automatic modes; only manual needs the listed-order recovery walk.
-        selectionMode: excludeAccounts.length > 0 && policy.selectionMode === 'manual'
-          ? 'priority' : policy.selectionMode,
-        reservePercent: policy.reservePercent,
-        rankWindow: policy.rankWindow,
-      }),
+      ...(preferred ? { preferred } : {}),
+      providerLimitsOnly: true,
     })
+    if (preferred && selection?.account && selection.account.name !== preferred) {
+      throw Object.assign(new Error('The account resolver returned a different account.'),
+        { code: 'AGENT_ACCOUNT_UNAVAILABLE' })
+    }
+    /* The default Claude sign-in lives in the folder CLAUDE_CONFIG_DIR names.
+       When startup set that folder aside, a default Claude start refuses by
+       name rather than quietly using another folder (1.0.50 review, accounts B). */
+    if (provider === 'claude') {
+      const setAside = nativeClaudeHomeStartAnswer(NATIVE_CLAUDE_HOME_SET_ASIDE, selection)
+      if (setAside) return setAside
+    }
+    return selection
   } catch (error) {
     signal?.throwIfAborted()
     /* A ReferenceError is this function's own bug, never a failed account read,
@@ -4383,6 +4422,22 @@ function resolveServicesRootForAccounts() {
   if (providerIsolation) providerIsolation.isolationContext(process.env, { servicesRoot: root })
   return root
 }
+
+function readSavedStandaloneTabs(computerId, kind = 'tabs') {
+  const saved = rendererPrefs.snapshot()
+  if (saved.damaged || saved.fleetDamaged) throw new Error('Saved agents are unreadable.')
+  return saved.values[(kind === 'trees' ? 'mc.fleet.trees.v1:' : 'mc.fleet.standalone-tabs.v1:') + computerId]
+}
+
+const readStandaloneTranscript = require('./legacy-standalone-identity.cjs').createLegacyStandaloneTranscriptReader({
+  readTranscript: request => nodeTranscripts.read(request),
+  readTabs: readSavedStandaloneTabs,
+  readContinuation: sessionId => require('./legacy-standalone-identity.cjs').readSavedStandaloneContinuation({
+    file: path.join(resolveServicesRootForAccounts(), 'agent-continuations.sqlite'),
+    sessionId,
+    continuationModule: require(path.join(resolveCapabilityRoot(), 'src/lib/agent-continuation-state.js')),
+  }),
+})
 
 async function buildAgentHost() {
   if (auditIdentitySettings?.isBusy()) agentIpcError('AUDIT_MAINTENANCE_REQUIRED', 'Audit identity maintenance requires a restart before starting agents.')
@@ -4422,12 +4477,28 @@ async function buildAgentHost() {
     throw error
   }
   ensureWorkspaceRoot()
+  const legacyResumeOriginResolver = require('./legacy-resume-origin.cjs').createLegacyResumeOriginResolver({
+    readTabs: readSavedStandaloneTabs,
+    readTrees: computerId => readSavedStandaloneTabs(computerId, 'trees'),
+    readTranscript: location => readStandaloneTranscript({ ...location, limit: 1 }),
+    accountHome: (name, provider) => accountRegistry.homeOf({ name, provider }, { allowPreviousNames: true }).directory,
+    defaultHome: provider => provider === 'claude'
+      ? (process.platform === 'win32'
+          ? Object.entries(process.env).find(([name]) => name.toUpperCase() === 'CLAUDE_CONFIG_DIR')?.[1]
+          : process.env.CLAUDE_CONFIG_DIR) || path.join(ACCOUNT_HOME_DIR, '.claude')
+      : provider === 'gemini' ? ACCOUNT_HOME_DIR : path.join(ACCOUNT_HOME_DIR, '.codex'),
+  })
   const host = createAgentHost({
     defaultCwd: WORKSPACE_ROOT,
     profileRoot: SHELL_PROFILE_FENCE,
     sessionEnvironmentExtras: agentToolAllowlistExtras,
     accountResolver: resolveSessionAccount,
-    recoveryEnabled: () => accountRegistry.policy()?.policy?.autoRecoverOnLimit === true,
+    resumeAccountHome: (name, provider) => accountRegistry.homeOf({ name, provider }, { allowPreviousNames: true }).directory,
+    resumeOriginDirectory: path.join(CAPABILITY_STATE_ROOT, 'native-conversation-origins'),
+    legacyResumeOriginResolver,
+    // A restored tab placed into a tree hands its verified native identity to the new circle (B3).
+    stoppedConversationAdoption: require('./stopped-conversation-adoption.cjs').createStoppedConversationAdoption({
+      readTabs: readSavedStandaloneTabs, readTranscript: readStandaloneTranscript, store: nodeTranscripts }),
     assertTranscriptWritable: () => assertConversationWritable(),
     reserveTranscriptTurn: async request => {
       /* B31: ANOTHER AGENT'S MESSAGE BEING SAVED IS A WAIT, NOT A REFUSAL.
@@ -4492,7 +4563,7 @@ async function buildAgentHost() {
   })
   removeAgentEventListener = host.onEvent(async (packet) => {
     /* W22 ATTRIBUTION MARK -- see shell/main-lag.cjs. This fan-out runs on
-       EVERY packet from EVERY live circle (W22: "the per-agent-
+       EVERY packet from EVERY live circle (Manager 3, W22: "the per-agent-
        event work in the main process") and is not an ipcMain handler, so
        main-lag.cjs's automatic wrapping never sees it; every stall this
        causes has been landing as "unattributed" up to now. Each step below
@@ -5041,6 +5112,29 @@ const screenControlHost = require('./screen-control-host.cjs').createScreenContr
   audit: event => fs.promises.appendFile(path.join(app.getPath('userData'), 'screen-control-actions.jsonl'),
     JSON.stringify({ at: new Date().toISOString(), ...event }) + '\n', { encoding: 'utf8', mode: 0o600 }),
 })
+/* 1.0.49 VIDEO BOX, phase 1: a window on this computer the person picks, shown
+   under that agent's box. The host lists windows (never this app's own), holds
+   one armed pick and answers getDisplayMedia synchronously; the store keeps
+   each agent's choice by title and program name for the re-pick after a
+   restart. Nothing is recorded, sent anywhere or given to the agent. Erase
+   seals the store; delete-on-exit removes it with the node data. */
+const agentVideoSources = require('./agent-video-sources.cjs').createAgentVideoSources({ directory: app.getPath('userData'), sealed: () => localDataErased })
+function videoIdentityFrom(graph, nodeId) {
+  const node = graph.nodes.find(row => row.id === nodeId)
+  if (graph.computerId !== 'this-computer' || !node || !graph.trees.some(tree => tree.id === node.treeId) || !node.createdAt) return null
+  return { treeId: node.treeId, nodeId: node.id, nodeCreatedAt: String(node.createdAt) }
+}
+const videoBoxHost = require('./video-box-host.cjs').createVideoBoxHost({
+  desktopCapturer, BrowserWindow, webContents: require('electron').webContents,
+  shellOrigin: () => shellOrigin,
+  supported: () => require('./screen-control-adapter.cjs').desktopCaptureSupported(),
+  store: agentVideoSources,
+  readIdentity: () => { const graph = readSavedFleetTrees('this-computer'); return nodeId => videoIdentityFrom(graph, nodeId) },
+  /* A permission grant the display handler never took went to another kind
+     of capture (the old desktop getUserMedia): a reload ends every capture
+     that page holds (shell/video-box-host.cjs, review F1). */
+  endStrayCapture: owner => { if (!owner.isDestroyed()) owner.reload() },
+})
 const screenControlQuitGuard = require('./screen-control-quit.cjs').createScreenControlQuitGuard({
   host: screenControlHost,
   quit: () => { exitRecord.writeExitRecord('quit-call', 'screen-control-cleanup-confirmed'); app.quit() },
@@ -5165,6 +5259,14 @@ for (const [channel, command] of [['status', 'state'], ['grant', 'grant'], ['rev
     return screenControlHost[command](event.sender, value)
   })
 }
+/* The video box channels: the app's own main frame only, answered for that
+   window. Every refusal is an answer with a code, never a throw. */
+ipcMain.handle('mc-video-box:sources', event => { assertTrustedAgentSender(event); return videoBoxHost.sources(event.sender) })
+ipcMain.handle('mc-video-box:arm', (event, value) => { assertTrustedAgentSender(event); return videoBoxHost.arm(event.sender, value) })
+ipcMain.handle('mc-video-box:forget', (event, value) => { assertTrustedAgentSender(event); return videoBoxHost.forget(event.sender, value) })
+ipcMain.handle('mc-video-box:saved', event => { assertTrustedAgentSender(event); return videoBoxHost.saved(event.sender) })
+ipcMain.handle('mc-video-box:remember', (event, value) => { assertTrustedAgentSender(event); return videoBoxHost.remember(event.sender, value) })
+ipcMain.handle('mc-video-box:clear', event => { assertTrustedAgentSender(event); return videoBoxHost.clear(event.sender) })
 ipcMain.handle('mc-accessibility:prepareEnable', accessibilityCommand('prepareEnable'))
 ipcMain.handle('mc-accessibility:confirm', accessibilityCommand('confirm'))
 ipcMain.handle('mc-accessibility:reject', accessibilityCommand('reject'))
@@ -5447,12 +5549,66 @@ ipcMain.handle('mc-resources:configure', (event, value) => {
  * provider it applies to; an envelope-level failure would be a second way of
  * saying the same thing, and a caller branching on it would be branching on
  * nothing. */
+
 ipcMain.handle('mc-providers:presence', async (event) => {
   assertTrustedAgentSender(event)
   return providerIsolation ? providerCliPresence({ providerIsolation }) : providerCliPresence()
 })
 
-/* WHICH COPY OF EACH PROGRAM, WHOSE, WHICH VERSION, AND HOW MANY.
+/* PLUGINS: THREE READS AND TWO DECISIONS, AND THE DECISIONS ARE THE PERSON'S.
+ *
+ * Everything these answer with is a security fact -- what a package asked for,
+ * what it was given, and what its tools therefore count as -- so the reading and
+ * the deciding are in shell/plugin-catalogue.cjs, where a suite can drive every
+ * branch without Electron. These three are the arrows and nothing more.
+ *
+ * WHAT CANNOT CROSS. No path in either direction: a plugin is named by its content
+ * digest, which is both its identity and the lookup key. A capability name is
+ * checked against a closed vocabulary before it reaches the grant store. Nothing a
+ * plugin wrote reaches the window as anything but text, and the page escapes it.
+ *
+ * NOTHING HERE ACTIVATES A PLUGIN. A grant changes what the tool registry will
+ * contain, and that is built once when the engine starts -- src/lib/tool-pack-registry.js
+ * is frozen at module load, so a pack registered later would silently not exist.
+ * Every answer therefore carries restartRequired, and the page says so. */
+let pluginCatalogue = null
+function plugins() {
+  if (!pluginCatalogue) {
+    pluginCatalogue = createPluginCatalogue({
+      load: makeLoader({ capabilityRoot: resolveCapabilityRoot, stateRoot: CAPABILITY_STATE_ROOT }),
+      log: (message, detail) => { try { console.warn(message, detail) } catch {} },
+      /* The person's own role ids, so the page can name a plugin role one of
+         them hides. The org record never throws; the catalogue treats a throw as
+         "none known" and keeps the list. */
+      storedRoleIds: () => {
+        const own = agentOrgRecord.ownRoleIds()
+        if (!own.ok) throw Object.assign(new Error(own.reason), { code: own.code })
+        return own.ids
+      },
+      /* What bringing plugins up at load did, so a card can say an allowed plugin
+         is not running (F6). Before, a refusal reached only the console. */
+      activation: () => PLUGIN_ACTIVATION,
+    })
+  }
+  return pluginCatalogue
+}
+
+ipcMain.handle('mc-plugins:list', async (event) => {
+  assertTrustedAgentSender(event)
+  return plugins().list()
+})
+
+ipcMain.handle('mc-plugins:grant', async (event, request) => {
+  assertTrustedAgentSender(event)
+  return plugins().grant(request)
+})
+
+ipcMain.handle('mc-plugins:revoke', async (event, request) => {
+  assertTrustedAgentSender(event)
+  return plugins().revoke(request)
+})
+
+/* WHICH COPY OF EACH PROGRAM, WHOSE, WHICH VERSION, AND HOW MANY (rc-0922).
    Same rules as the presence channel above: the sender check, nothing started,
    and no path in the answer -- words from closed sets, a version string, a
    count, and for a copy the person owns its own update command as text. An
@@ -5516,14 +5672,7 @@ ipcMain.handle('mc-accounts:list', async (event) => {
          reading as "nobody". */
       active,
       activeByProvider: active.byProvider,
-      /* WHAT THE LAST CHANGE OF ACCOUNT ACTUALLY WAS, so the menu can say it in
-         one sentence. `active.at` has always carried the CLOCK TIME of this
-         same record and nothing else, which left the menu able to say when this
-         computer last changed account and never what the change was -- and an
-         automatic failover is precisely the change nobody was present for.
-         Four fields, each read and bounded in the store: when, off which
-         account, onto which, and whether the computer did it on its own. Null
-         when this computer has never switched. */
+
       lastSwitch: active.lastSwitch,
       /* The last allowance read, with its time, so the menu paints numbers
          at once and says how old they are. Null when there has been none.
@@ -5588,64 +5737,6 @@ function accountAnswer(work) {
  * before the store sees it. Anything else -- a boolean, an array, a cleared
  * box sent as a string -- is refused here rather than coerced into a reserve
  * nobody chose. */
-ipcMain.handle('mc-accounts:policy', (event, value) => {
-  assertTrustedAgentSender(event)
-  let request
-  try {
-    const payload = agentPayload(value, [
-      'selectionMode', 'reservePercent', 'rankWindow',
-      'autoRecoverOnLimit',
-      'exhaustedAtPercentHourly', 'exhaustedAtPercentWeekly',
-      'provider'
-    ])
-    request = {
-      /* null on a scoped field means "back to same as above"; the store says
-         so and refuses it on the global rule. */
-      ...(payload.selectionMode === undefined
-        ? {}
-        : { selectionMode: payload.selectionMode === null ? null : boundedAgentString(payload.selectionMode, 'selectionMode', 32) }),
-      ...(payload.reservePercent === undefined ? {} : { reservePercent: payload.reservePercent }),
-      ...(payload.autoRecoverOnLimit === undefined ? {} : { autoRecoverOnLimit: payload.autoRecoverOnLimit }),
-      ...(payload.rankWindow === undefined
-        ? {}
-        : { rankWindow: payload.rankWindow === null ? null : boundedAgentString(payload.rankWindow, 'rankWindow', 16) }),
-      /* null is carried, not dropped: on these two it means "clear this
-         window's own limit", which is a different instruction from omitting
-         the key. The store is what tells them apart. */
-      ...(payload.exhaustedAtPercentHourly === undefined ? {} : { exhaustedAtPercentHourly: payload.exhaustedAtPercentHourly }),
-      ...(payload.exhaustedAtPercentWeekly === undefined ? {} : { exhaustedAtPercentWeekly: payload.exhaustedAtPercentWeekly }),
-      ...(payload.provider === undefined ? {} : { provider: boundedAgentString(payload.provider, 'provider', 32) }),
-    }
-  } catch (error) {
-    throw rendererSafeAgentError(error)
-  }
-  if (Object.hasOwn(request, 'reservePercent')
-    && (typeof request.reservePercent !== 'number' || !Number.isFinite(request.reservePercent)
-      || request.reservePercent < 0 || request.reservePercent > 100)) {
-    return { ok: false, code: 'ACCOUNT_RESERVE_INVALID', reason: 'The reserve must be a number between 0 and 100.' }
-  }
-  /* THE SAME SHAPE CHECK THE RESERVE GETS, for the same reason: a cleared box
-     arriving as a string, or a `true`, must be refused here rather than
-     coerced into a limit nobody chose. `null` passes -- it is the clear. */
-  for (const field of ['exhaustedAtPercentHourly', 'exhaustedAtPercentWeekly']) {
-    if (!Object.hasOwn(request, field)) continue
-    const given = request[field]
-    if (given === null) continue
-    if (typeof given !== 'number' || !Number.isFinite(given) || given < 1 || given > 100) {
-      return {
-        ok: false,
-        code: 'ACCOUNT_WINDOW_LIMIT_INVALID',
-        reason: 'A window limit must be a number between 1 and 100, or cleared.'
-      }
-    }
-  }
-  return accountAnswer(() => {
-    const answer = accountRegistry.setPolicy(request)
-    if (answer?.ok && request.autoRecoverOnLimit === true) agentHost?.offerPendingAccountRecoveries?.()
-    return answer
-  })
-})
-
 ipcMain.handle('mc-accounts:switch', (event, value) => {
   assertTrustedAgentSender(event)
   let request
@@ -5770,7 +5861,7 @@ function bindAccountUsageGeneration(answer, before, current, observedRevision) {
     if (latest.name !== row.name) removedProviders.add(row.provider)
     accounts.push({ ...row, name: latest.name, authGeneration: last })
   }
-  return { ...answer, accounts, orders: (Array.isArray(answer.orders) ? answer.orders : []).filter(order => !removedProviders.has(order?.provider)) }
+  return { ...answer, accounts }
 }
 
 function accountUsageProbeClosed(row) {
@@ -5829,8 +5920,7 @@ async function recoverAccountUsageRefresh(answer, before, current, observedRevis
   })
   // A filtered read has no complete provider ranking. Keep unaffected full
   // sweep orders, and let the next full check rank a refreshed provider.
-  return { before: baselines, answer: { ...answer, accounts,
-    orders: (Array.isArray(answer.orders) ? answer.orders : []).filter(order => !changedProviders.has(order?.provider)) } }
+  return { before: baselines, answer: { ...answer, accounts } }
 }
 
 function filterAccountUsageGenerations(answer, current) {
@@ -5845,7 +5935,7 @@ function filterAccountUsageGenerations(answer, current) {
     if (latest.name !== row.name) removedProviders.add(row.provider)
     accounts.push({ ...row, name: latest.name })
   }
-  return { ...answer, accounts, orders: (Array.isArray(answer.orders) ? answer.orders : []).filter(order => !removedProviders.has(order?.provider)) }
+  return { ...answer, accounts }
 }
 
 // A home binding survives signing in as somebody else in that same folder.
@@ -5860,8 +5950,7 @@ function filterAccountUsage(answer, observedRevision = -1) {
     return false
   })
   if (accounts.length === answer.accounts.length) return answer
-  return { ...answer, accounts,
-    orders: (Array.isArray(answer.orders) ? answer.orders : []).filter(order => !removedProviders.has(order?.provider)) }
+  return { ...answer, accounts }
 }
 
 function invalidateAccountUsageCache(account) {
@@ -5902,7 +5991,7 @@ function writeAccountUsageCache(answer, observedRevision = accountUsageRevision)
         ok: true,
         readAt: typeof accepted.readAt === 'string' ? accepted.readAt : new Date().toISOString(),
         accounts: accepted.accounts,
-        orders: accepted.orders,
+
         policy: accepted.policy,
       }, null, 2)}\n`)
       for (const account of accepted.accounts || []) {
@@ -5937,7 +6026,7 @@ const readAccountsUsage = asyncSingleFlight(async () => {
       code: 'ACCOUNT_USAGE_UNAVAILABLE',
       reason: 'This copy cannot check how much of each account is left. Everything else on this menu still works.',
       accounts: [],
-      orders: [],
+
       policy: null,
     }
   }
@@ -5965,7 +6054,7 @@ const readAccountsUsage = asyncSingleFlight(async () => {
       code: (error && error.code) || 'ACCOUNT_USAGE_READ_FAILED',
       reason: 'The accounts could not be checked just now. Open this menu again to try.',
       accounts: [],
-      orders: [],
+
       policy: null,
     }
   }
@@ -5979,13 +6068,12 @@ ipcMain.handle('mc-accounts:usage', async (event) => {
 ipcMain.handle('mc-accounts:add', (event, value) => {
   assertTrustedAgentSender(event)
   try {
-    const payload = agentPayload(value, ['name', 'provider', 'directory', 'priority', 'client'])
+    const payload = agentPayload(value, ['name', 'provider', 'directory', 'client'])
     return accountRegistry.add({
       name: boundedAgentString(payload.name, 'name', 64),
       provider: boundedAgentString(payload.provider, 'provider', 32),
       directory: boundedAgentString(payload.directory, 'directory', 1024),
       ...(payload.client == null ? {} : { client: boundedAgentString(payload.client, 'client', 32) }),
-      ...(payload.priority === undefined ? {} : { priority: payload.priority }),
     })
   } catch (error) {
     throw rendererSafeAgentError(error)
@@ -6090,23 +6178,23 @@ const { createCloudAccountSetup } = require('./cloud-account-setup.cjs')
  * this file by the harness (sha256
  * a3f6d7d8b45eeb8f33083b518ea5ccafd24b5dc931a431dd7fdf636dad306c06), inside
  * a bare Electron 43.3.0 main that Explorer's ShellExecute had started at
- * Medium integrity (S-1-16-8192, parent explorer) on a Windows 10
+ * Medium integrity (S-1-16-8192, parent explorer pid 3636) on this Windows 10
  * machine, which has no wt.exe. The tail was provider-login's own
  * terminalInvocation() with `ping -n 30 127.0.0.1` standing in for the
  * sign-in and a home containing a space, the libuv-quoted branch.
  *
- *   spawned:              cmd.exe /c start "" C:\Windows\System32\cmd.exe /k
+ *   spawned (pid 15708):  cmd.exe /c start "" C:\Windows\System32\cmd.exe /k
  *                         echo ping -n 30 127.0.0.1 ^&^& set "ACCT_QA_HOME_NEW=
  *                         ...\home with spaces" ^&^& ping -n 30 127.0.0.1
  *   what start started,   cmd.exe /k echo ping -n 30 127.0.0.1 && set
  *   off its own command   "ACCT_QA_HOME_NEW=...\home with spaces" && ping -n
- *   line:                 30 127.0.0.1  -- carets gone, tail exact
+ *   line (pid 9592):      30 127.0.0.1  -- carets gone, tail exact
  *
  * user32 EnumWindows at 3 s and 12 s: one VISIBLE ConsoleWindowClass window
- * owned by that cmd.exe (with conhost and ping under it).
+ * owned by that cmd.exe (pid 9592; conhost 12628 and ping 16412 under it).
  * At 36 s, ping over, the same window still stood with cmd at its /k prompt.
  * The OLD form spawned beside it as the control -- same tail, direct,
- * detached: the cmd.exe had no window at all, only its ping
+ * detached (pid 14476): the cmd.exe had no window at all, only its ping
  * child's own console showed, titled "ping -n 30 127.0.0.1", and when ping
  * ended that cmd exited with it. That is the live drive's finding,
  * reproduced. The assigned home arrived EXACTLY through all three cmd
@@ -6361,7 +6449,7 @@ function addManagedAccount(request) {
 
 /* ADDING AN ACCOUNT FROM THE ACCOUNTS MENU: A PROGRAM, AND MAYBE A NAME.
  *
- * The rule is a few clicks, so nothing here asks for a folder.
+ * The owner's rule is "just a few clicks", so nothing here asks for a folder.
  * The store makes one under the fenced services root and records it; what
  * comes back is the name it took, the program, and the folder it made. The
  * folder crosses on the same deliberate exception the list already makes: it
@@ -6447,7 +6535,7 @@ ipcMain.handle('mc-accounts:sign-in', (event, value) => {
  * the row said exactly what it said before, because the only thing on this
  * menu that re-reads is a press of Check allowances, and that press starts one
  * short-lived program per account. MEASURED 2026-09-03: two Claude homes were
- * signed out and their rows drew as signed in until somebody
+ * signed out at 03:35:53Z and their rows drew as signed in until somebody
  * pressed it. So the press that opens the window also arms a watch on THAT ONE
  * account's folder, and a change to its sign-in leaf pushes that one account's
  * fresh answer to the window that pressed. The store holds one watch at a time
@@ -6571,7 +6659,7 @@ ipcMain.handle('mc-provider-login:update', (event, value) => {
    Code's licence grants no redistribution; REQ-engine-bundle-provider-clis.md
    records the ruling), so the person's machine fetches from the provider's own
    channel -- into ToolsEnabled's own folder, never `npm -g` into the person's
-   prefix. A program that is already here is not installed again
+   prefix (rc-0922). A program that is already here is not installed again
    unless the person chose `privateCopy`. */
 ipcMain.handle('mc-provider-login:install', (event, value) => {
   assertTrustedAgentSender(event)
@@ -6606,7 +6694,7 @@ ipcMain.handle('mc-provider-login:install', (event, value) => {
 
 /* LOCAL MODELS: three channels beside the three-program ones above, on the
    SAME window.mcProviders bridge rather than a parallel one -- the extend-
-   don't-duplicate ruling adopted after the three specific misfits
+   don't-duplicate ruling fleet-B approved after the three specific misfits
    in installStart (hardcoded npm), loginStart (no sign-in step exists for a
    local runtime) and presence() (filesystem-only by design, never a network
    probe) were named. install-runtime and pull-model stream through the SAME
@@ -6662,6 +6750,108 @@ ipcMain.handle('mc-provider-login:stop-runtime', (event, value) => {
   const model = hasModel ? boundedAgentString(payload.model, 'model', 200) : null
   const flightKey = hasModel ? `local-pull:${runtime}:${model}` : `local-install:${runtime}`
   return providerLoginService.stop(flightKey)
+})
+
+/* SET UP LOCAL MODELS: the machine half of the popup that shows only the
+   steps a computer still needs (shell/local-model-setup.cjs). Same bridge
+   object as the local-model channels above (window.mcProviders), same sender
+   check, and its own event channel because an install or a model download can
+   outlive the popup that started it. What crosses back is phases, counts,
+   model names and codes, never a path. Settings are not written here: the
+   popup saves through mc-settings:set-many like the Settings page. */
+const localModelSetup = (() => {
+  const root = resolveCapabilityRoot()
+  if (!root) return null
+  try {
+    const seam = require(path.join(root, 'src', 'lib', 'proc', 'hidden-spawn.js'))
+    const localOptions = require(path.join(root, 'src', 'lib', 'local-model-options.js'))
+    const { createLocalModelSetup } = require('./local-model-setup.cjs')
+    return createLocalModelSetup({
+      dataDirectory: SHELL_USER_DATA_PATH,
+      localNodeRuntime: localNodeRuntimeModule,
+      localNodeProcess: localNodeProcessModule,
+      readSettingsValues: () => localOptions.readSettings(),
+      spawnServe: (command, args, options) => seam.spawnHidden(command, args, options),
+      isolated: Object.keys(process.env).some(name => name.toUpperCase() === 'TOOLSENABLED_PROVIDER_ISOLATION_ROOT'),
+    })
+  } catch {
+    return null
+  }
+})()
+
+const LOCAL_SETUP_UNAVAILABLE = Object.freeze({ ok: false, code: 'LOCAL_SETUP_ENGINE_UNAVAILABLE' })
+
+function localSetupEmitter(event) {
+  const sender = event.sender
+  return packet => {
+    if (sender.isDestroyed()) return
+    sender.send('mc-local-setup:event', packet)
+  }
+}
+
+ipcMain.handle('mc-local-setup:status', async event => {
+  assertTrustedAgentSender(event)
+  if (!localModelSetup) return LOCAL_SETUP_UNAVAILABLE
+  return localModelSetup.status()
+})
+
+ipcMain.handle('mc-local-setup:install', event => {
+  assertTrustedAgentSender(event)
+  if (!localModelSetup) return LOCAL_SETUP_UNAVAILABLE
+  return localModelSetup.install(localSetupEmitter(event))
+})
+
+ipcMain.handle('mc-local-setup:cancel-install', event => {
+  assertTrustedAgentSender(event)
+  if (!localModelSetup) return LOCAL_SETUP_UNAVAILABLE
+  return localModelSetup.cancelInstall()
+})
+
+/* Windows only: the verified per-user installer, started by the person's own
+   press and nothing else. */
+ipcMain.handle('mc-local-setup:run-installer', event => {
+  assertTrustedAgentSender(event)
+  if (!localModelSetup) return LOCAL_SETUP_UNAVAILABLE
+  return localModelSetup.runInstaller(localSetupEmitter(event))
+})
+
+ipcMain.handle('mc-local-setup:start', async event => {
+  assertTrustedAgentSender(event)
+  if (!localModelSetup) return LOCAL_SETUP_UNAVAILABLE
+  return localModelSetup.start()
+})
+
+ipcMain.handle('mc-local-setup:stop', async event => {
+  assertTrustedAgentSender(event)
+  if (!localModelSetup) return LOCAL_SETUP_UNAVAILABLE
+  return localModelSetup.stop()
+})
+
+ipcMain.handle('mc-local-setup:pull', (event, value) => {
+  assertTrustedAgentSender(event)
+  if (!localModelSetup) return LOCAL_SETUP_UNAVAILABLE
+  const payload = agentPayload(value, ['model'])
+  const model = boundedAgentString(payload.model, 'model', 200)
+  return localModelSetup.pull({ model }, localSetupEmitter(event))
+})
+
+ipcMain.handle('mc-local-setup:cancel-pull', event => {
+  assertTrustedAgentSender(event)
+  if (!localModelSetup) return LOCAL_SETUP_UNAVAILABLE
+  return localModelSetup.cancelPull()
+})
+
+ipcMain.handle('mc-local-setup:check', async event => {
+  assertTrustedAgentSender(event)
+  if (!localModelSetup) return LOCAL_SETUP_UNAVAILABLE
+  return localModelSetup.check()
+})
+
+/* The Ollama this app started stops with the app, and a download in flight
+   is called off (a model download resumes next time; a program download
+   starts again). */
+app.on('will-quit', () => {
+  if (localModelSetup) localModelSetup.stopAll()
 })
 
 /* THERE IS NO OPEN-THE-PAGE CHANNEL ANY MORE, AND THAT IS THE POINT.
@@ -6804,8 +6994,8 @@ ipcMain.handle('mc-agent:request', (event, value) => {
 })
 
 /* THE PERSON'S HAND ON ONE STANDING REQUEST -- edit its words, or remove it
-   (O7 improvements: a hand-edit tool, for the user to edit or delete entries
-   on the ToolsEnabled ledger by hand). The exact
+   (O7 improvements, owner 2026-08-22: "its a hand edit tool. for the user to
+   go in on the toolsenabled ledger and hand edit or delete them"). The exact
    mirror of the filing channel above: the same frame check, the same window
    principal, the same surface. The surface refuses any principal that is not
    the person (the window, or the signed-in relay with web-drive on), and the
@@ -6821,7 +7011,7 @@ ipcMain.handle('mc-agent:request-remove', (event, value) => {
   return getAgentCommandSurface().run('agent:request-remove', value, windowPrincipal(event))
 })
 
-/* THE PERSON'S DECISION ON ONE RECORD (rule: one canonical
+/* THE PERSON'S DECISION ON ONE RECORD (owner, 2026-09-02: one canonical
    ledger, managed on the Ledger page). Approve a proposal an agent filed so
    it counts from the next start, or decline it -- or decline an open request.
    The exact mirror of edit and remove above: same frame check, same window
@@ -6834,7 +7024,7 @@ ipcMain.handle('mc-agent:request-decide', (event, value) => {
 })
 
 /* THE PERSON'S RESOLUTION OF ONE STANDING REQUEST (R_LEDGER kinds follow-on,
-   kinds follow-on). The exact mirror of decide above: same frame
+   2026-09-07, Controller 3 L4e). The exact mirror of decide above: same frame
    check, same window principal, same surface, same person-only fence.
    {id, status, reason?} in, {ok, id, status} out; no path. */
 ipcMain.handle('mc-agent:request-resolve', (event, value) => {
@@ -6843,7 +7033,7 @@ ipcMain.handle('mc-agent:request-resolve', (event, value) => {
 })
 
 /* THE LEDGER PAGE'S WRITE VERBS FOR TASK AND ASK RECORDS (ledger kinds,
-   kinds). The exact mirror of edit, remove
+   2026-09-07, Controller 3 ruling 05:20Z). The exact mirror of edit, remove
    and decide above: same frame check, same window principal, same surface,
    same person-only fence. {id} in for completeTask/removeTask/removeAsk,
    {id, words} for answerAsk, {id, reason?} for declineAsk;
@@ -6895,7 +7085,7 @@ ipcMain.handle('mc-agent:requests', (event, value) => {
 })
 
 /* THE WHOLE LEDGER, FOR THE LEDGER PAGE -- every tier, every status, the
-   history chain checked (rule: one canonical ledger with scope
+   history chain checked (owner, 2026-09-02: one canonical ledger with scope
    tiers, managed on /ledger). A READ AND NOTHING MORE, and one that never
    creates the file: the reader in shell/canonical-ledger-read.cjs loads the
    payload's store and asks it, so an installed copy with nothing filed yet
@@ -6981,8 +7171,8 @@ ipcMain.handle('mc-agent:pick-attachment', (event, value) => {
   return getAgentCommandSurface().run('agent:pick-attachment', value, windowPrincipal(event))
 })
 
-/* THE PASTED-IMAGE FEEDER (R10: pasting an image with Ctrl+V must work).
-   Bytes ride in `value` -- read by the renderer
+/* THE PASTED-IMAGE FEEDER (owner R10: "I still cant control V and image to
+   you please get that fixed"). Bytes ride in `value` -- read by the renderer
    directly off its own paste event, never read here from the OS clipboard --
    so the channel carries the same shape every other write channel does, no
    Electron clipboard API touched in this process. */
@@ -7486,14 +7676,7 @@ ipcMain.handle('mc-agent:close', (event, value) => {
    BEFORE that — read the persisted theme from the shell's own copy so a
    black-theme user never sees a white flash behind the chrome. */
 const STATE_FILE = () => path.join(app.getPath('userData'), 'shell-state.json')
-const THEME_SEED = {
-  // measured from the live page per theme (body bg / ink), not guessed
-  white: { bg: '#f7f8fa', ink: '#0e1726' },
-  tan: { bg: '#f2e5bc', ink: '#282828' },
-  black: { bg: '#0d0f12', ink: '#eef2f6' },
-  ember: { bg: '#170d13', ink: '#fff1f3' },
-  cobalt: { bg: '#0b1223', ink: '#eff5ff' },
-}
+const { THEME_SEED, themeSeed } = require('./theme-seed.cjs')
 
 function readState() {
   try {
@@ -8349,7 +8532,7 @@ function serveDist() {
       /* frame-ancestors works only as a RESPONSE HEADER — Chrome ignores the
          directive inside a <meta> policy, which left every page on this
          loopback origin frameable by any website in the person's browser
-         (an internal report, measured
+         (reports/lanes/preview-frame-ancestors-inert.md, measured
          2026-08-14; a page can iframe http://127.0.0.1:<port>/ and the Host
          check rightly passes). Set on EVERY branch, before any of them
          writes: nothing this server answers is a third party's to embed.
@@ -8386,7 +8569,12 @@ function serveDist() {
       if (serveFeedback(url, req, res)) return
       let file = path.normalize(path.join(DIST, url === '/' ? 'index.html' : url))
       // the hash router means every real navigation is still index.html
-      if (!file.startsWith(DIST)) { res.writeHead(403); return res.end() }
+      // A string prefix also matches a sibling such as dist-private. Test the
+      // path component boundary after normalization, including on Windows.
+      const relativeToDist = path.relative(DIST, file)
+      if (relativeToDist === '..' || relativeToDist.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToDist)) {
+        res.writeHead(403); return res.end()
+      }
       const sourcePageUnavailable = (error) => {
         // This page must work without any renderer assets. A denied read is
         // not evidence of a missing build, and installed copies need no build.
@@ -8406,7 +8594,7 @@ function serveDist() {
            only: nothing from the request, the error or the disk goes in. */
         res.writeHead(503, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
         res.end('<!doctype html>\n<html lang="en" data-theme="white"><head><meta charset="utf-8"><title>ToolsEnabled</title>\n'
-          + '<style>html,body{margin:0;background:#f7f8fa;color:#0e1726}'
+          + `<style>html,body{margin:0;background:${THEME_SEED.white.bg};color:${THEME_SEED.white.ink}}`
           + 'body{font:16px/1.5 system-ui,sans-serif}main{max-width:40rem;padding:72px 32px 32px}</style></head>\n'
           + `<body><main><p>${sentence}</p></main></body></html>\n`)
       }
@@ -8574,7 +8762,7 @@ const transcriptRefusalCode = error => (typeof error?.code === 'string' && error
 
 ipcMain.handle('mc-transcripts:bind', async (event, request) => {
   if (!trustedFleetProfileSender(event)) return prefsRefusal('transcript binding')
-  try { return transcriptCapture.bind({ sessionId: request?.sessionId, computerId: request?.computerId, nodeId: request?.nodeId }) } catch (error) { return { ok: false, error: { code: transcriptRefusalCode(error), message: error.message } } }
+  try { return transcriptCapture.bind({ sessionId: request?.sessionId, computerId: request?.computerId, nodeId: request?.nodeId, authoritative: true }) } catch (error) { return { ok: false, error: { code: transcriptRefusalCode(error), message: error.message } } }
 })
 
 /* The other half of a handover, and the reason bind() may stay strict. A +
@@ -8614,6 +8802,7 @@ for (const operation of ['append', 'retry', 'migrate', 'read', 'list', 'archive'
       if (operation === 'archive') await transcriptCapture.flushNode(request)
       if (operation === 'retry') return await retryConversationStorage()
       if (operation === 'getSettings') return withConversationStorageState(withPrivacyCleanupHold(await nodeTranscripts.getSettings(request)))
+      if (operation === 'read') return withConversationStorageState(await readStandaloneTranscript(request))
       return withConversationStorageState(await nodeTranscripts[operation](request))
     } catch (error) { return { ok: false, error: { code: transcriptRefusalCode(error), message: error.message } } }
   })
@@ -8866,8 +9055,13 @@ function getActionPermissionProfileHost() {
 ipcMain.on('mc-prefs:write', (event, request) => {
   if (!trustedFleetProfileSender(event)) { event.returnValue = prefsRefusal('save'); return }
   if (localDataErased) { event.returnValue = prefsErasedRefusal('save'); return }
-  if (request?.key === 'mc.action-permissions.v1') {
-    try { event.returnValue = getActionPermissionProfileHost().save(request.value) }
+  if (request?.key === 'mc.action-permissions.v1' || (typeof request?.key === 'string' && request.key.startsWith('mc.action-permissions.recovery.'))) {
+    try {
+      const host = getActionPermissionProfileHost()
+      event.returnValue = request.key === 'mc.action-permissions.v1'
+        ? host.save(request.value, Object.hasOwn(request, 'expectedValue') ? { expectedValue: request.expectedValue } : {})
+        : host.preserve(request.key, request.value)
+    }
     catch (error) { event.returnValue = { ok: false, error: {
       code: error?.code || 'ACTION_PERMISSION_PROFILE_UNAVAILABLE',
       message: error?.message || 'Permission settings could not be saved.',
@@ -9011,7 +9205,7 @@ ipcMain.handle('mc-setup:sandbox-prepare', (event, value) => sandboxSetup.run(ev
    directory a lane runs in; deriving it twice is how they would stop agreeing.
    See ensureDispatchAssistantConfig() in shell/setup-record.cjs. */
 /* THE PERMISSION LEVEL GOES INTO THE SIGNED LEDGER, AND THE WIDEST LEVEL IS
-   REFUSED WITHOUT A CONFIRMED CONSENT (rule X4). This channel
+   REFUSED WITHOUT A CONFIRMED CONSENT (owner, X4, 2026-08-15). This channel
    used to write the machine record and nothing else: a person moving this
    computer to the level at which an agent can read, change and delete any file
    on it left no signed trace. It now goes through shell/tier-consent.cjs --
@@ -9078,7 +9272,7 @@ ipcMain.handle('mc-setup:tier-consent', event =>
 
 /* ---------- the installation's own settings, changed from inside the window ----------
  *
- * WHAT WAS MISSING, in the product's own rule: a user setting is a registry row,
+ * WHAT WAS MISSING, in the owner's own rule: a user setting is a registry row,
  * a real enforcement, and a control in the software -- or it is a lie. The
  * research family had a row and an enforcer and NO control anywhere, so the
  * research page's sentence ("the research pipeline is switched off in settings")
@@ -9239,6 +9433,7 @@ function finalizePrivacyOwnerGone(input) {
 const nodePrivacyCleanup = require('./node-privacy-cleanup.cjs').createNodePrivacyCleanup({
   prefs: rendererPrefs, org: agentOrgRecord, transcripts: nodeTranscripts,
   recoveryHandoffs: { clearForPrivacy: () => clearRecoveryForPrivacy({ prefs: rendererPrefs, store: nodeRecoveryStore }) },
+  videoSources: agentVideoSources,
   ownerGone: prepareAndCommitPrivacyOwnerGone,
   finalizeOwnerGone: finalizePrivacyOwnerGone,
 })
@@ -9375,7 +9570,7 @@ ipcMain.handle('mc-setup:choose-workspace', event => withFleetProfileSender(even
  * whole product. The only hand-off to the operating system anywhere was
  * `openExternal` for one sign-in URL. An assistant could write a document or a
  * report into the person's own folder and the person had no way to open it from
- * the application that put it there. Both halves were asked for at once:
+ * the application that put it there. The owner asked for both halves at once:
  * files openable in the app, and reports readable in the app.
  *
  * FIVE THIN WRAPPERS AND NOTHING ELSE, exactly like the agent channels above:
@@ -9446,9 +9641,10 @@ ipcMain.handle('mc-files:read', (event, request) => {
 })
 /* ---------- comparing two files side by side, and editing both ----------
  *
- * A basic diff editing screen: the original file and the new file, split, in a
- * pop-up window with easy text editing over both and a save-this-version under
- * each, so a user can pull up, review and modify diffs easily.
+ * The owner: "i think we should offer a basic diff editing screen ... the
+ * original file and the new file; split; in a popup window with easy text
+ * editing over both and a save this version under both, so a user can pull up
+ * review and modify diffs easily."
  *
  * THREE CHANNELS, ONE OF WHICH WRITES. `pick` opens the native file dialog and
  * hands back the text; `stamp` reports whether the file has moved since it was
@@ -9754,7 +9950,7 @@ ipcMain.handle('mc-account:payment-presence', event =>
  * THREE-AND-A-HALF CHANNELS, AND NOT ONE OF THEM CARRIES A CREDENTIAL VALUE IN
  * EITHER DIRECTION. `names` answers with record names. `add` sends a choice and
  * a name and hands the owner to the product's own entry form. `request-removal`
- * asks them to approve a deletion on the approvals screen. `complete-removal`
+ * asks him to approve a deletion on the approvals screen. `complete-removal`
  * acts on that approval, and refuses if it is absent, pending, denied, or for
  * some other prompt.
  *
@@ -9787,7 +9983,7 @@ ipcMain.handle('mc-vault:add', (event, request) =>
  * its shape. The same state root as every question above, so the decisions sit
  * beside the records they are about and survive a generation change with them.
  *
- * EVERY CHANGE IS AUDITED, by requirement. The audit row names the
+ * EVERY CHANGE IS AUDITED, by the owner's requirement. The audit row names the
  * record and the rule's subject and the direction of the change; it never
  * carries a value, and it is written whether the change was accepted or
  * refused, so a refused attempt is as visible as a successful one. */
@@ -9817,9 +10013,9 @@ ipcMain.handle('mc-vault:set-nickname', (event, request) =>
   }))
 
 /* `subject` IS THE RULE'S SUBJECT, NOT A CLAIM ABOUT WHO IS ASKING, and the
-   two must never share a word here. The person is ticking a box that says "this
+   two must never share a word here. The owner is ticking a box that says "this
    role may/may not read this record", so WHICH role the rule is about can only
-   come from the page they are ticking it on. Who is ASKING is decided by
+   come from the page he is ticking it on. Who is ASKING is decided by
    withFleetProfileSender from the IPC event and is never read from the payload;
    the read-side identity is the `principal` argument of vault-presence.cjs's
    `vaultRecordValues`, which no handler in this file calls. Spelling the rule
@@ -10382,6 +10578,8 @@ ipcMain.handle('mc-reset:erase', event =>
              record in their own file; an erase that left it behind would leave
              the person's conversations on disk under a screen saying the data is gone. */
           'renderer-fleet-documents.json',
+          // 1.0.49: the saved video window titles go with the saved trees.
+          'agent-video-sources.json',
           'uninstall-data-policy.txt', 'workspace', 'Local Storage', 'shell-state.json'],
       })
 
@@ -10827,6 +11025,7 @@ function startSupervisedCapabilityLayer() {
       root,
       resolveTaskLedgerWriter: getTaskLedgerAssignmentWriter,
       mainLag: mainLagMonitor,
+      onLegacySignInCleanup: row => legacySignInDiagnosticWriter.append(JSON.stringify(row)),
     })
     if (appShutdown.started) {
       if (ownerHostStarted.ok) await stopAppOwnedOwnerHost(ownerHostStarted.host)
@@ -11082,7 +11281,7 @@ async function createWindow() {
      relaunch. */
   const shellState = readState()
   const state = restoredWindowState({ ...shellState, theme: bootTheme(shellState) }, currentWorkAreas())
-  const seed = THEME_SEED[state.theme] || THEME_SEED.white
+  const seed = themeSeed(state.theme)
   const server = await serveDist()
   if (appShutdown.started) return
   const port = server.address().port
@@ -11121,24 +11320,37 @@ async function createWindow() {
   // BrowserWindow.webContents itself throws after the native window is gone.
   // Cleanup retains the original owner object instead of reading that getter.
   const inputOwner = window.webContents
+  /* 1.0.50 M3: a link never opens a window inside this application. A web
+     address goes to the person's own browser; the window itself stays on the
+     application's origin (shell/main-window-navigation.cjs). */
+  require('./main-window-navigation.cjs').installMainWindowNavigationGuard(inputOwner, {
+    origin: () => shellOrigin,
+    openExternal: url => electronShell.openExternal(url),
+  })
   // Voice and opt-in hand controls hold separate media permissions.
   require('./voice-permissions.cjs').installVoicePermissions(inputOwner.session, {
     owns: contents => contents === inputOwner,
+    // Every grant in this session is for the application's own origin only (M3).
+    origin: () => shellOrigin,
     allows: contents => voiceHost.allowsMicrophone(contents),
     allowsCamera: contents => handCameraOwners.has(contents) && !window.isDestroyed() && window.isFocused(),
+    allowsDisplayCapture: contents => videoBoxHost.allowsDisplayCapture(contents),
   })
+  // The video box: one armed pick, answered synchronously (shell/video-box-host.cjs).
+  inputOwner.session.setDisplayMediaRequestHandler(videoBoxHost.displayHandler(inputOwner))
   window.on('blur', () => handCameraOwners.delete(inputOwner))
   inputOwner.once('destroyed', () => {
     handCameraOwners.delete(inputOwner)
     accessibilityApp.invalidateDocument(inputOwner)
     accessibilityHost.close(inputOwner)
     screenControlHost.close(inputOwner)
+    videoBoxHost.close(inputOwner)
     voiceHost.close(inputOwner)
   })
   /* A RELOAD IS A MAIN-FRAME NAVIGATION, NOT A SPINNER.
      did-start-loading fires whenever the contents' loading state flips on,
      which includes a frame inside the page starting to load. MEASURED
-     2026-09-04 on a live instance: three tree commands
+     2026-09-04 15:16-15:39Z on the owner's Live instance: three tree commands
      (two restarts and a spawn) were refused MC_TREE_COMMAND_RENDERER_RELOADED
      -- "the window reloaded before this request was answered" -- while the
      window never reloaded; the person was using the app with seventeen
@@ -11151,6 +11363,7 @@ async function createWindow() {
     accessibilityApp.invalidateDocument(inputOwner)
     accessibilityHost.close(inputOwner)
     screenControlHost.close(inputOwner)
+    videoBoxHost.close(inputOwner)
     void treeNodeCommandBroker.rendererReloaded()
     handCameraOwners.delete(inputOwner)
     voiceHost.close(inputOwner)
@@ -11163,8 +11376,8 @@ async function createWindow() {
      * last line of a successful createWindow(). Any path that did not reach
      * that line left the broker permanently not-ready -- and a QUEUED command
      * has no clock on it, so every tree-node command then sat in the queue
-     * with nothing to answer it. Measured on a development tree: a tree
-     * spawn ran out reporting {queued:1, rendererReady:false}, with
+     * with nothing to answer it. Measured on the owner's own tree, 2026-09-03:
+     * a tree spawn ran out reporting {queued:1, rendererReady:false}, with
      * every gate before delivery passed.
      *
      * Enabling here is the truthful statement: this window has loaded and can
@@ -11182,8 +11395,8 @@ async function createWindow() {
    * included, and it is what marks the renderer not-ready. did-finish-load
    * fires only for a MAIN-FRAME load, so any subframe load left readiness off
    * with nothing to turn it back on -- and a queued tree-node command then
-   * waited forever. Measured twice on a development tree: two spawns ran
-   * out ninety seconds apart reporting the identical broker state,
+   * waited forever. Measured twice on the owner's own tree, 2026-09-03: two
+   * spawns ran out ninety seconds apart reporting the identical broker state,
    * {queued:1, rendererReady:false}, on a window that was plainly loaded and
    * being used.
    *
@@ -11200,6 +11413,9 @@ async function createWindow() {
     // A refused unload keeps the entire app alive, including future agent
     // close warnings. Never override the renderer's unsaved/save-in-flight veto.
     closeRequested = false
+    // An accepted update waits for a quit that has just been refused; a later,
+    // unrelated quit must not start its installer (U1).
+    installerAfterQuit.cancel()
   })
   win.webContents.session.webRequest.onBeforeSendHeaders(
     { urls: [`${shellOrigin}/data/*`] },
@@ -11370,12 +11586,21 @@ async function createWindow() {
       if (!win || win.isDestroyed()) return Promise.reject(new Error('no window'))
       return dialog.showMessageBox(win, options)
     },
-    spawn: spawnChildProcess,
-    /* closeRequested first, so the close warning does not ask a second time
-       about agents the person has just agreed to close. */
-    quit: () => { closeRequested = true; exitRecord.writeExitRecord('quit-call', 'update-check-accepted'); app.quit() },
+    /* Armed first, so the installer is waiting on `quit` before the quit is
+       asked for; closeRequested next, so the close warning does not ask a
+       second time about agents the person has just agreed to close (U1). */
+    runAfterQuit: (file) => {
+      installerAfterQuit.arm(file)
+      closeRequested = true
+      exitRecord.writeExitRecord('quit-call', 'update-check-accepted')
+      app.quit()
+    },
     runningAgentCount,
     closeWarning: closeEndsAgentsWarning,
+    /* An administrator token is inherited by the installer, which refuses it
+       (U6); the startup integrity check already measured it. Unknown is not
+       elevated: the installer's own refusal still stands behind this. */
+    elevated: () => runtimeIntegrityCheck.elevated === true,
     downloadDirectory: app.getPath('userData'),
     log: (line) => console.error(`[update-check] ${line}`),
   })
@@ -11423,7 +11648,7 @@ ipcMain.on('mc-theme', (event, value) => {
 /* Merge note (lane/research-queue -> installer/nsis).
    Both sides edited this block. The agent-host shutdown below is KEPT from the
    chat lane. Its single-instance wiring is NOT kept, because it is the older,
-   defective ordering that T4f (an earlier commit) fixed: it registered the whenReady
+   defective ordering that T4f (ad51ddb) fixed: it registered the whenReady
    handler BEFORE taking the lock, so an instance that lost the lock called
    quit() and then still ran createWindow(), building a window on an app already
    tearing down. wireSingleInstance() below performs exactly the same three jobs
@@ -11629,7 +11854,10 @@ function quitAfterSaving() {
   const later = () => { quitAfterSavingTimer = setTimeout(check, 200); quitAfterSavingTimer.unref?.() }
   const check = () => {
     quitAfterSavingTimer = null
-    if (appShutdown.started || openWindowCount() > windowsAtRefusal) return
+    if (appShutdown.started) return
+    // A window opened since the refusal: the person came back, so the quit and
+    // any update waiting on it are called off (U1).
+    if (openWindowCount() > windowsAtRefusal) { installerAfterQuit.cancel(); return }
     if (transcriptsCanQuit()) { exitRecord.writeExitRecord('quit-call', 'quit-after-saving'); app.quit(); return }
     if (conversationStorageError() || Date.now() >= deadline) { reportUnsavedTranscriptClose({ afterWaiting: true, quitRequested: true }); return }
     later()
@@ -11681,7 +11909,11 @@ function reportUnsavedTranscriptClose({ afterWaiting = false, quitRequested = fa
       : 'Saving is taking longer than usual. ToolsEnabled will remain open while any conversation changes are unsaved.',
     buttons: ['Retry saving', 'Keep ToolsEnabled open'], defaultId: 1, cancelId: 1, noLink: true,
   }).then(async answer => {
-    if (answer.response !== 0) return
+    if (answer.response !== 0) {
+      // "Keep ToolsEnabled open": an accepted update no longer waits on this quit (U1).
+      installerAfterQuit.cancel()
+      return
+    }
     const result = await retryConversationStorage()
     // With no window left, or after a refused quit, the quit was already asked for (see above).
     const quitting = appShutdown.started || quitRequested || quitAskedDuringNotice || openWindowCount() === 0

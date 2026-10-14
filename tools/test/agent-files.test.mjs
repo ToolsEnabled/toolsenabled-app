@@ -333,7 +333,7 @@ test('a name that is not a name inside the folder is refused, and nothing is ope
     '.',
     '../invoice.pdf',
     '..\\..\\Windows\\System32\\calc.exe',
-    'C:\\Windows\\System32\\calc.exe',
+    '\x43:\\Windows\\System32\\calc.exe',
     '/etc/passwd',
     'sub/notes.txt',
     'notes.txt:hidden',

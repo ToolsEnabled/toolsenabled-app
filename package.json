@@ -3,7 +3,7 @@
   "description": "A workspace for AI agents, with conversations, working folders, and permissions.",
   "desktopName": "toolsenabled.desktop",
   "private": true,
-  "version": "1.0.48",
+  "version": "1.0.50",
   "engines": {
     "node": "22.19.0"
   },
@@ -111,7 +111,7 @@
   "build": {
     "extends": "./tools/code-signing/electron-builder-signing.cjs",
     "appId": "com.toolsenabled.desktop",
-    "copyright": "Copyright \u00a9 2026 Joshua Pinckard",
+    "copyright": "Copyright © 2026 Joshua Pinckard",
     "asar": true,
     "asarUnpack": [
       "shell/screen-control-native.py",
@@ -166,6 +166,8 @@
       "executableName": "toolsenabled",
       "icon": "shell/icon.png",
       "category": "Development",
+      "synopsis": "Desktop workspace for AI agents",
+      "vendor": "ToolsEnabled, Inc.",
       "syncDesktopName": true,
       "target": [
         {
@@ -179,6 +181,7 @@
     "deb": {
       "packageName": "toolsenabled",
       "maintainer": "ToolsEnabled <support@toolsenabled.ai>",
+      "packageCategory": "devel",
       "depends": [
         "libgtk-3-0",
         "python3",

@@ -1,7 +1,7 @@
 /* SEND NOW's RESERVATION, DRIVEN THROUGH THE ACTUAL MOUNTED COMPOSER (T785).
  *
  * The host-level proof lives in send-now-reservation.test.mjs. This suite is
- * the other half: the REAL src/components.js buildChat,
+ * the other half Controller asked for: the REAL src/components.js buildChat,
  * mounted over the DOM stand-in and the REAL src/session-outbox.js store, with
  * a queue-strip "Send now" clicked as a person clicks it. It records the
  * onReserveHold / onReleaseHold calls the renderer makes and traces the whole

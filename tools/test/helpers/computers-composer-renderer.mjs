@@ -42,7 +42,7 @@ window.mcAgent={
  // A reload asks the host which saved sessions it still holds before it reconnects them.
  sessionPresence:async({sessionIds})=>({ok:true,sessionIds:[...sessionIds]}),
  close:async()=>{calls.push('close');return {ok:true,closed:true}},start:async()=>{calls.push('start');return {ok:false}},
- pickAttachment:async()=>{calls.push('attach');return {ok:true,path:'C:/synthetic/image.png',size:100}},
+ pickAttachment:async()=>{calls.push('attach');return {ok:true,path:'\x43:/synthetic/image.png',size:100}},
  pickMention:async()=>{calls.push('mention');return {ok:true,path:'src/synthetic.js'}},
  interrupt:async()=>{calls.push('interrupt');return {ok:true}},send:async()=>{calls.push('send');return {turnId:'unexpected'}},
  setEffort:async()=>({effort:'high'})

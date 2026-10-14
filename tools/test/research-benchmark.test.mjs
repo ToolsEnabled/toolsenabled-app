@@ -135,7 +135,7 @@ test('verification rejects changed source, missing inputs and escaped symlinks',
 })
 test('service declaration pins exact CLI/manifest, handles Linux and Windows, and refuses unfiled runs', async () => {
   const project = await freezeStudy(await bindRuntimeSources(developmentStarter(), sources)), files = await projectFiles(project, sources)
-  for (const directory of ['/tmp/benchmark space', 'C:\\Benchmarks\\Study One']) {
+  for (const directory of ['/tmp/benchmark space', '\x43:\\Benchmarks\\Study One']) {
     const spec = await exportedBenchmarkExperiment({ project, directory, command: 'node', files, projectId: 'rp-abcd' })
     assert.equal(spec.runner.pinnedFiles.length, sourceNames.length + 2); assert.equal(spec.runner.args[3], directory); assert.equal(spec.runner.pinnedFiles[0].sha256, await sha256(files['manifest.json']))
   }

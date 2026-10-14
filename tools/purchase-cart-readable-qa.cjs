@@ -8,16 +8,16 @@
  * stylesheet can give an element no height, push it out of the viewport, or
  * paint it in the background colour, and every assertion over returned text
  * stays green while a person sees nothing. The deadline is the single fact the
- * operator's money depends on, so "the function returned the sentence" is not the
+ * owner's money depends on, so "the function returned the sentence" is not the
  * bar. The bar is a measured box, on a screen, with a cart in it.
  *
  * WHAT THIS FILE USED TO BE, AND THE TWO THINGS THAT MADE IT NOT A GATE.
  *
- * 1. IT MEASURED LIVE CART STATE AND NOTHING ELSE. Finding the operator's queue
+ * 1. IT MEASURED LIVE CART STATE AND NOTHING ELSE. Finding the owner's queue
  *    empty, it exited 2 with "re-run it when something is waiting" -- so whether
- *    the suite measured anything depended on whether a purchase happened to be
- *    waiting that hour. On an ordinary day the one check standing between the
- *    operator's money and an unreadable deadline measured NOTHING, and exit 2 is FAIL to
+ *    the suite measured anything depended on whether he happened to be deciding
+ *    a purchase that hour. On an ordinary day the one check standing between his
+ *    money and an unreadable deadline measured NOTHING, and exit 2 is FAIL to
  *    the suite (tools/packaged-qa-suite.mjs verdictFor: any non-zero code).
  *
  * 2. IT NEEDED A BROWSER THAT IS NOT ON THIS MACHINE. It required Playwright out
@@ -41,7 +41,7 @@
  *   or written for it.
  *
  *   THE OWNER'S REAL CART runs when there is one, and is SKIPPED WITH ITS REASON
- *   when there is not. An empty queue is a fact about their week, not a defect in
+ *   when there is not. An empty queue is a fact about his week, not a defect in
  *   this window.
  *
  * A run that measured NEITHER is the one state that still refuses, because a
@@ -490,7 +490,7 @@ app.whenReady().then(async () => {
     process.stdout.write(`\n${routed.length} finding(s) in the words the engine wrote — routed, not edited here:\n`
       + `${routed.map(entry => `  - ${entry}`).join('\n')}\n`
       + '\nThese titles and messages are written by the engine\'s cart producers and printed here unedited.\n'
-      + 'Rewriting them in this window would edit the owner\'s own quoted words on their money screen.\n')
+      + 'Rewriting them in this window would edit the owner\'s own quoted words on his money screen.\n')
   }
   if (findings.length > 0 || routed.length > 0) { app.exit(1); return }
   process.stdout.write('Every request drawn'

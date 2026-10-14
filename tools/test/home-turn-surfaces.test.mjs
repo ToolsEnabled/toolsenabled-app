@@ -117,8 +117,8 @@ function ruleBody(selector) {
   return css.slice(open + 1, css.indexOf('}', open))
 }
 
-/* THE THREAD IS THE SHARED SURFACE NOW (the chat in the chat view is the same
-   as every chat surface in the app): buildChat's .msg rows in
+/* THE THREAD IS THE SHARED SURFACE NOW (owner: "the chat in the chat view needs
+   to be the same as every chat surface in the app"): buildChat's .msg rows in
    .log-turns, never a .turn of this view's own. The run rows keep the view's
    run-turn painter, which is the split this suite exists to hold. */
 const threadTurns = view => { const chat = view.el.querySelector('.log-turns').querySelector('.chat'); return chat ? chat.querySelector('.chat-log').querySelectorAll('.msg') : [] }

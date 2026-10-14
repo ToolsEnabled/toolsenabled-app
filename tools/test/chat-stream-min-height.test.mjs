@@ -56,7 +56,7 @@ test('close() releases the hold so a shorter final answer settles to its true he
   const clearAt = close.indexOf(`m.style.minHeight = ''`)
   /* The final paint's fallback is the stream's whole source so far: `lastWhole`
      since the reply writes into segments (a reply follows the work it came
-     after); it was `readable.text` before. */
+     after, owner-approved 2026-09-23); it was `readable.text` before. */
   const paintCallAt = close.search(/paint\(finalText \?\? (?:lastWhole|readable\.text), true\)/)
   assert.ok(paintCallAt !== -1 && paintCallAt < clearAt,
     'close() clears the height hold before its own final paint runs')

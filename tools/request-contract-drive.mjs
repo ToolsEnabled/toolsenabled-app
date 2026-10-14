@@ -2,7 +2,7 @@
 
 /* THE STANDING-REQUEST CONTRACT, DRIVEN ON A STAGED PACKAGED BUILD.
  *
- * The directive, and nothing weaker: type a real /RequestThread into a
+ * The owner's directive, and nothing weaker: type a real /RequestThread into a
  * real agent's chat; see the product's one-sentence confirmation on the glass;
  * find the words VERBATIM in the ledger file; RESTART the app; prove the new
  * session's brief carries the rule (mechanically, in the engine's own session
@@ -18,10 +18,8 @@
  * IT SPENDS REAL MONEY on this computer's own Codex subscription, so it is a
  * tool and never a default test target.
  *
- * THE SIGN-IN IS POINTED AT, NEVER COPIED — the junction technique
- * tools/agent-to-agent-tree-drive.mjs documents. Everything else lives in a
- * scratch profile this run deletes; every ledger this run writes lands under
- * that scratch state root and never in anyone's real state.
+ * Use --codex-home for the existing provider home in place, or an API key
+ * from the environment. Product state and workspaces remain in scratch.
  *
  *   node tools/request-contract-drive.mjs
  *   node tools/request-contract-drive.mjs --visible
@@ -277,23 +275,11 @@ async function main() {
       staged = await stage(scratch)
       note('info', `staged a packaged build carrying this tree at ${staged.appRoot}`)
 
-      const realCodex = path.join(process.env.USERPROFILE || '', '.codex')
-      if (!existsSync(path.join(realCodex, 'auth.json'))) {
-        note('FAIL', 'HARNESS STATE: this computer has no Codex sign-in to point the scratch profile at; nothing below would measure a real agent.')
-        return
-      }
-      mkdirSync(path.join(scratch, 'home'), { recursive: true })
-      try { symlinkSync(realCodex, path.join(scratch, 'home', '.codex'), 'junction') } catch { /* pointed */ }
-      const realNpm = path.join(process.env.APPDATA || '', 'npm')
-      if (existsSync(realNpm)) {
-        mkdirSync(path.join(scratch, 'roaming'), { recursive: true })
-        try { symlinkSync(realNpm, path.join(scratch, 'roaming', 'npm'), 'junction') } catch { /* pointed */ }
-      }
-      note('info', 'the scratch profile POINTS at this computer\'s Codex sign-in; no credential is read or copied by this file.')
+      // Provider sign-in is selected by --codex-home or the API environment.
 
       seedMachineRecord(scratch, staged.appRoot, 'standard')
     }
-    window = await openWindow(staged.executable, scratch)
+    window = await openWindow(staged.executable, scratch, { provider: 'codex' })
     pid = window.timeline.pid
     const computerId = await computersPage(window)
     if (!computerId) { note('FAIL', 'the computers page never named a computer'); return }
@@ -402,7 +388,7 @@ async function main() {
     window = null
     await delay(2500)
 
-    window = await openWindow(staged.executable, scratch)
+    window = await openWindow(staged.executable, scratch, { provider: 'codex' })
     pid = window.timeline.pid
     const computerId2 = await computersPage(window)
     if (computerId2 !== computerId) note('warn', `the computer id changed across the restart (${computerId} -> ${computerId2})`)

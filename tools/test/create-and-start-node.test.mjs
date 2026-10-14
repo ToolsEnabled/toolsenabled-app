@@ -118,8 +118,8 @@ test('a circle is added under the parent, drawn, then started, and its id and na
   })
   assert.deepEqual(calls.added, [{
     /* madeByAgent is recorded HERE because here is where it is true, and the
-       removal rule reads it later: agents spawned by agents that the user has
-       not prompted can be removed by their parent agents.
+       owner's removal rule reads it later: "agents that were spawned by agents
+       AND who the user hasnt prompted - THEY can be removed by parent agents".
        Nothing on the removal path gets to claim it. */
     madeByAgent: true,
     parentId: 'node-1-parent',
@@ -191,9 +191,9 @@ test('a parent that is not running cannot hand work down', async () => {
 })
 
 test('a working circle wearing a stale label can still hand work down', async () => {
-  /* MEASURED on a development fleet: every circle read
+  /* MEASURED 2026-09-03 on the owner's own fleet: all nine circles read
      'finished' on the tree while their sessions were heartbeating and their
-     agents were working. Spawns were refused for many minutes
+     agents were working. Eight spawns were refused across twenty-three minutes
      and the Controller reported "delegation is currently impossible".
 
      The status field is the view's bookkeeping and it is set to 'finished' on
@@ -240,7 +240,7 @@ test('the store\'s own refusal sentence is what the person is shown', async () =
 
 /* THE FIXTURE ABOVE STUBS addNode, WHICH HIDES THE BUG THIS FILE IS ABOUT.
  *
- * MEASURED 2026-09-03 (internal report):
+ * MEASURED 2026-09-03 (REPORT-controller-2-tree-spawn-regression-20260903.md):
  * engine/src/lib/tool-registry.js's MAX_TREE_BRIEF_CHARS accepts an expanded
  * contract up to 12,000 characters -- eighteen real spawns were refused in one
  * evening with contracts of 4,229 to 5,035 characters before that ceiling was
@@ -380,8 +380,8 @@ test('with no namer, the new circle comes back unnamed rather than wearing its i
 
 /* THE DEPTH, PROVIDER AND MODEL AN ASSISTANT CHOSE WHEN IT ASKED FOR A CIRCLE.
  *
- * The effort level is selectable when agents are spawned. Measured on
- * 2026-09-19: this seam wrote `effort: ''` on every
+ * Owner, 2026-09-19: "you NEED to be able to select effort level when you spawn
+ * agents". Measured the same morning: this seam wrote `effort: ''` on every
  * circle it added and passed `effort: null` into the start, so a spawn that
  * named a depth produced a circle running at its model's default and said
  * nothing about it.
@@ -393,8 +393,8 @@ test('the depth an assistant chose is written on the circle and carried into its
   /* CLAUDE TIERS FIRST, BECAUSE THEY ARE THE COMMON CASE and because they are
      the ones an earlier version of this seam refused: it keyed on the tier
      row's `effort` column, which every claude row leaves null because that
-     column is the tier's DEFAULT depth, not its allowed set. A manager tier at
-     xhigh and a builder tier at medium is the usual shape. */
+     column is the tier's DEFAULT depth, not its allowed set. The owner's own
+     managers run claude-opus at xhigh and his builders claude-opus at medium. */
   const claude = LAUNCH_TIERS.find(tier => tier.provider === 'claude')
   const codex = LAUNCH_TIERS.find(tier => tier.provider === 'codex')
   assert.ok(claude && codex, 'the tier table no longer offers both providers, so this proves nothing')
@@ -508,4 +508,127 @@ test('a provider or model that confirms the chosen model is accepted, in either 
     assert.equal(answer.ok, true, model)
     assert.equal(calls.started.length, 1, `${model}: the circle is started`)
   }
+})
+
+/* B38 (1.0.48 soak): a helper started while the Computers page re-renders is
+ * left "not started yet". The first mount of the page drew the circle; a second
+ * mount of the same page retired that copy before the start could run, so
+ * startDraftNode answered a bare `{ ok: false, notStarted: true }`. That came
+ * back as MC_TREE_COMMAND_START_FAILED with no reason -- which the engine
+ * could only call an internal error -- and the circle stood unstarted.
+ *
+ * Two real stores over one storage stand for the two mounts: the replacement
+ * reads the saved forest after the first copy drew its circle, as it does. */
+function twoMounts() {
+  let saved = null
+  const storage = { read: () => saved, write: (_key, value) => { saved = JSON.parse(JSON.stringify(value)); return true } }
+  const mint = () => { let count = 0; return prefix => { count += 1; return `${prefix}-${count}` } }
+  const mount = () => createFleetTreeStore({ computerId: 'c1', storage, now: () => '2026-09-27T00:00:00.000Z', makeId: mint() })
+  const first = mount()
+  const tree = first.createTree({ name: 'Ops' })
+  const parent = first.addNode({ treeId: tree.tree.id, role: 'manager' })
+  assert.equal(first.attachSession(parent.node.id, COMMAND.parentSessionId).ok, true)
+  const args = store => ({
+    treeStore: store,
+    sessionNodeIds: new Map([[COMMAND.parentSessionId, parent.node.id]]),
+    roleRecordFor: role => (role === 'worker' ? { id: role } : null),
+    launchTiers: [{ id: 'claude-sonnet' }],
+  })
+  return { first, mount, parent: parent.node, args }
+}
+const children = (store, parentId) => store.snapshot().nodes.filter(node => node.parentId === parentId)
+
+test('a page rebuilt under the start answers the retryable VIEW_DESTROYED, and its redelivery starts the same circle', async () => {
+  const f = twoMounts()
+  const command = { ...COMMAND, reservedNodeId: 'node-reserved-1' }
+  let firstDestroyed = false
+  const answer = await executeCreateAndStartNode({
+    ...f.args(f.first),
+    command,
+    startDraftNode: async () => { firstDestroyed = true; return { ok: false, notStarted: true } },
+    viewDestroyed: () => firstDestroyed,
+  })
+  assert.equal(answer.ok, false)
+  assert.equal(answer.code, 'MC_TREE_COMMAND_VIEW_DESTROYED',
+    'a page rebuilt under the start is not a failed start; src/main.js redelivers this code to the replacement view')
+  assert.equal(answer.retryable, true)
+  assert.equal(answer.nodeId, 'node-reserved-1')
+  assert.match(answer.reason, /rebuilt/)
+  assert.equal(f.first.getNode('node-reserved-1').status, 'draft', 'nothing was asked of a provider')
+
+  const second = f.mount()
+  const started = []
+  const redelivered = await executeCreateAndStartNode({
+    ...f.args(second),
+    command,
+    startDraftNode: async node => {
+      started.push(node.id)
+      assert.equal(second.attachSession(node.id, 'chat-child-1').ok, true)
+      return { ok: true, sessionId: 'chat-child-1' }
+    },
+    viewDestroyed: () => false,
+  })
+  assert.equal(redelivered.ok, true, `the redelivery must start the circle already drawn, got ${JSON.stringify(redelivered)}`)
+  assert.equal(redelivered.nodeId, 'node-reserved-1')
+  assert.deepEqual(started, ['node-reserved-1'])
+  assert.deepEqual(children(second, f.parent.id).map(node => node.id), ['node-reserved-1'],
+    'one circle for one request: the redelivery adopts it, never draws a second')
+  assert.equal(second.getNode('node-reserved-1').sessionId, 'chat-child-1')
+
+  /* A third delivery finds a circle that is no longer an unstarted draft and
+     is refused exactly as before; nothing is started twice. */
+  const again = await executeCreateAndStartNode({
+    ...f.args(second),
+    command,
+    startDraftNode: async () => { throw new Error('must not start a running circle again') },
+  })
+  assert.equal(again.code, 'MC_TREE_SPAWN_PLACE_REFUSED')
+  assert.match(again.reason, /already in use/)
+})
+
+test('a circle under the reserved id that this request did not draw is never taken over', async () => {
+  for (const [what, change] of [
+    ['a different model', node => ({ ...node, tier: 'claude-opus' })],
+    ['a different role', node => ({ ...node, role: 'manager' })],
+    ['a person-made circle', node => ({ ...node, createdByAgent: false })],
+  ]) {
+    const nodes = new Map([['node-1-parent', { id: 'node-1-parent', treeId: 'tree-1', status: 'running', parentId: null }]])
+    nodes.set('node-reserved-1', change({ id: 'node-reserved-1', treeId: 'tree-1', status: 'draft', sessionId: null,
+      parentId: 'node-1-parent', role: 'worker', tier: 'claude-sonnet', effort: '', createdByAgent: true }))
+    const added = []
+    const answer = await executeCreateAndStartNode({
+      command: { ...COMMAND, reservedNodeId: 'node-reserved-1' },
+      treeStore: {
+        getNode: id => nodes.get(id) || null,
+        addNode: fields => { added.push(fields); return { ok: false, problems: ['The reserved name for this agent is invalid or already in use.'] } },
+      },
+      sessionNodeIds: new Map([['chat-parent-1', 'node-1-parent']]),
+      roleRecordFor: role => ({ id: role }),
+      launchTiers: [{ id: 'claude-sonnet' }],
+      startDraftNode: async () => { throw new Error(`${what}: must not be started`) },
+    })
+    assert.equal(answer.code, 'MC_TREE_SPAWN_PLACE_REFUSED', what)
+    assert.equal(added.length, 1, `${what}: the store answers, as it did before`)
+  }
+})
+
+test('without a reserved id a rebuilt page cannot be redelivered safely, so it is a failed start that says why', async () => {
+  const { args } = fixture({ startResult: { ok: false, notStarted: true } })
+  const answer = await executeCreateAndStartNode({ ...args, viewDestroyed: () => true })
+  assert.equal(answer.code, 'MC_TREE_COMMAND_START_FAILED', 'a redelivery could not find this circle and would draw a second')
+  assert.match(answer.reason || '', /rebuilt/, 'the reason must say the page was rebuilt, not leave the agent with a bare code')
+})
+
+test('a start that ran is judged by its own answer even when the page has since been rebuilt', async () => {
+  const { args, nodes } = fixture()
+  const answer = await executeCreateAndStartNode({ ...args,
+    startDraftNode: async node => {
+      nodes.set(node.id, { ...nodes.get(node.id), status: 'failed', statusNote: 'The provider refused this start.' })
+      return { ok: false, message: 'The provider refused this start.' }
+    },
+    viewDestroyed: () => true,
+    command: { ...COMMAND, reservedNodeId: 'node-2-child' },
+  })
+  assert.equal(answer.code, 'MC_TREE_COMMAND_START_FAILED')
+  assert.equal(answer.reason, 'The provider refused this start.')
 })

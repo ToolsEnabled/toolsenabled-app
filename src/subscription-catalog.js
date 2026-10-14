@@ -7,9 +7,9 @@
 // and never an empty plan list dressed as "no plans available".
 //
 // AND ON A PACKAGED BUILD IT IS NOT THERE, WHICH IS THE POINT. R1214: the
-// catalog shipped a Team price and a three-seat minimum that were never
-// authorised, into a release whose rule is that no payments are collected at
-// first public launch. The answer was not a flag on this module -- a flag can
+// catalog shipped a Team price and a three-seat minimum the owner never
+// authorised, into a release whose rule is "we are NOT collecting payments at
+// first public launch". The answer was not a flag on this module -- a flag can
 // be turned on -- but the bytes: config/renderer-payload-boundary.json
 // classifies data/subscription-catalog.json as `withheld`, the generated file
 // lives at config/subscription-catalog.json outside the payload, and
@@ -17,7 +17,7 @@
 // public/. So this reader's 404 branch is the SHIPPED path, not the edge case:
 // the page renders "Subscriptions are not open yet" with no plan, no price, no
 // seat minimum and no purchase control. The validation below is unchanged and
-// is not what enforces the rule; it is what stops a DAMAGED catalog
+// is not what enforces the owner's rule; it is what stops a DAMAGED catalog
 // being rendered on the day one is served again.
 //
 // ABSENCE FAILS CLOSED, AND THIS IS THE PAGE WHERE THAT MATTERS MOST. A missing

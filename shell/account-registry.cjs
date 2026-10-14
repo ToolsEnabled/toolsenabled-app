@@ -3,7 +3,7 @@
 /* THE PERSON'S OWN PROVIDER ACCOUNTS, AS THIS MACHINE ALREADY RECORDS THEM.
  *
  * WHAT IT IS FOR. A person can hold more than one Codex or Claude account -- a
- * team one and a personal one is the ordinary case -- and each account keeps
+ * school one and a personal one is the ordinary case -- and each account keeps
  * its sign-in in a whole home directory of its own, selected by an environment
  * variable. The engine already reads a list of those homes and rotates between
  * them (capability/src/lib/multi-account/*). Until this file there was NO way to
@@ -24,10 +24,9 @@
  *   a codex entry names profileDir; a claude entry names configDir; a gemini
  *     entry names homeDir
  *   a relative directory resolves against the person's home directory
- *   names are unique PER PROVIDER, so "team" may be both a Codex account
+ *   names are unique PER PROVIDER, so "school" may be both a Codex account
  *     and a Claude account and cannot be two Codex accounts
  *   two accounts of the SAME provider may not share one directory
- *   priority is a positive whole number, lowest first
  *
  * AN ABSENT FILE IS THE NORMAL STATE AND IS NEVER AN ERROR. It means "no
  * rotation": one sign-in on this computer, which is what almost everybody has.
@@ -78,8 +77,8 @@
  * contains it too, and a command with the path left out is not a command.
  * Nothing is discovered and returned -- only what was entered or created here.
  *
- * THE FOLDER A PERSON DOES NOT HAVE TO NAME. The rule for adding an
- * account is a few clicks, and a folder path is not a click. So
+ * THE FOLDER A PERSON DOES NOT HAVE TO NAME. The owner's rule for adding an
+ * account is "just a few clicks", and a folder path is not a click. So
  * addManaged() makes the folder itself, under <servicesRoot>/account-homes/
  * <provider>/<slug-of-name> -- numbered when that slug is taken or empty --
  * and records it exactly as add() would have recorded a typed one. The person
@@ -100,9 +99,10 @@ const STATE_LEAF = 'multi-account-state.json'
 const CONFIG_DIRECTORY = 'config'
 const HOMES_DIRECTORY = 'account-homes'
 
-const DEFAULT_EXHAUSTED_AT_PERCENT = 99
 const MAX_ACCOUNTS = 24
 const MAX_NAME_LENGTH = 64
+const MAX_PREVIOUS_NAMES = 64
+const MAX_PREVIOUS_NAME_LENGTH = 120
 const MAX_DIRECTORY_LENGTH = 1024
 const HOME_CREATED_BY_APP_FIELD = 'homeCreatedByApp'
 
@@ -209,42 +209,6 @@ function signInFilePath(resolvedHome, spec) {
     : path.join(resolvedHome, spec.signInFile)
 }
 
-/* WHICH ACCOUNT GOES FIRST, AS THE SIX ANSWERS THE ENGINE ACTUALLY ACCEPTS.
- *
- * Copied from capability/src/lib/multi-account/selection-modes.js for the same
- * reason the provider table above is copied rather than required: this file is
- * the main process of the shell and must not depend on a payload that a cut
- * build may not carry. The cost of copying is that the two can drift, and the
- * defence against that is the direction of the failure -- the engine
- * normalises anything it does not recognise to `manual`, which never switches
- * accounts on its own. So a mode this table gains and the engine has not is a
- * setting that does nothing; it is never a setting that spends the wrong
- * subscription. tools/test/account-registry.test.mjs deep-compares this list,
- * DEFAULT_SELECTION_MODE and DEFAULT_RESERVE_PERCENT against the packed
- * engine's exports, so drift is a red test rather than a silent setting.
- *
- * The WORDS for these live in the renderer beside the dropdown that shows them
- * (src/account-switcher-state.js). Only the ids are here, because ids are what
- * this process validates and writes. */
-const SELECTION_MODE_IDS = Object.freeze([
-  'manual', 'priority', 'rotate', 'most-available', 'least-available', 'even', 'dynamic', 'resets-soonest',
-])
-/* The id the last mode shipped under for a few hours; a record that holds it
-   still reads and is written back under the current id. */
-const LEGACY_SELECTION_MODES = Object.freeze({ 'expiring-first': 'resets-soonest' })
-/* Which window a ranked mode reads: the tighter of the two, the 5-hour one,
-   or the weekly one. Mirrors the engine's RANK_WINDOW_IDS. */
-const RANK_WINDOW_IDS = Object.freeze(['either', 'hourly', 'weekly'])
-const DEFAULT_RANK_WINDOW = 'either'
-function canonicalMode(value) {
-  return Object.hasOwn(LEGACY_SELECTION_MODES, value) ? LEGACY_SELECTION_MODES[value] : value
-}
-
-const DEFAULT_SELECTION_MODE = 'priority'
-/* A recorded id this build does not know reads as the stop; distinct from the
-   default, which is what an ABSENT record means. Mirrors the engine's pair. */
-const UNRECOGNISED_SELECTION_MODE = 'manual'
-const DEFAULT_RESERVE_PERCENT = 25
 
 function plainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -393,7 +357,7 @@ function sameOwnedPath(left, right) {
 
 /* Validate the legacy bytes against the engine's CURRENT accepted registry
    shape before adopting them. Unknown fields are preserved because the engine
-   ignores them; invalid/defaultable exhaustedAtPercent and priority values are
+   ignores them; obsolete automatic policy fields are
    also accepted for the same reason. Everything that makes loadRegistry()
    refuse is rejected here, including an empty list. */
 function validateEngineRegistryBytes(raw) {
@@ -449,6 +413,19 @@ function validateEngineRegistryRecord(parsed) {
     const directoryKey = `${spec.id}:${entry[spec.dirField].trim().toLowerCase()}`
     if (seenDirectories.has(directoryKey)) return invalid('ACCOUNT_LEGACY_DIRECTORY_SHARED')
     seenDirectories.add(directoryKey)
+  }
+  const labelOwners = new Map()
+  for (const entry of parsed.accounts) {
+    const aliases = entry.previousNames
+    if (aliases != null && (!Array.isArray(aliases) || aliases.length > MAX_PREVIOUS_NAMES
+      || aliases.some(label => !nonEmptyString(label) || label.length > MAX_PREVIOUS_NAME_LENGTH))) {
+      return { ok: false, code: 'ACCOUNT_LEGACY_ALIASES_INVALID' }
+    }
+    for (const label of [entry.name, ...(aliases || [])]) {
+      const key = `${entry.provider}:${label.trim().toLowerCase()}`
+      if (labelOwners.has(key) && labelOwners.get(key) !== entry) return { ok: false, code: 'ACCOUNT_LEGACY_ALIAS_CONFLICT' }
+      labelOwners.set(key, entry)
+    }
   }
   return { ok: true }
 }
@@ -592,7 +569,20 @@ function adoptLegacyAccountRegistry({
    that guessed a second location would be a second answer. Without it the
    store still lists, adds typed folders, switches and records a policy; only
    the folder-making add refuses. */
-function createAccountRegistryStore({ file, stateFile = null, servicesRoot = null, fsImpl = fs, fspImpl = fsp, homedir = os.homedir, platform = process.platform, env = process.env, providerIsolation = null } = {}) {
+/* `revokeConfinedCopies(identity, signIn)` reaches the confined copies of a
+   sign-in this store destroys: the engine hard-links an account's sign-in into
+   every confined agent home it prepares for that account, and nothing reaps
+   those homes, so removing the account's own file left the credential working
+   under every one of them. The caller hands in the engine's own sweep
+   (agent-session-confinement revokeConfinedCopies, bound to
+   <servicesRoot>/agent-home) rather than this file restating it. Without it a
+   removal behaves exactly as it always has.
+
+   It is handed the sign-in's PATH as well as its identity. Once a confined CLI
+   has refreshed, the copies holding the live token are a new file that no
+   longer shares this one's identity; the engine finds them by the source each
+   confined home records, which is this path. */
+function createAccountRegistryStore({ file, stateFile = null, servicesRoot = null, fsImpl = fs, fspImpl = fsp, homedir = os.homedir, platform = process.platform, env = process.env, providerIsolation = null, revokeConfinedCopies = null } = {}) {
   if (typeof file !== 'string' || !file) throw new Error('the account registry store needs its file path')
   const isolated = [env, process.env].some(environment => Object.keys(environment).some(name => name.toUpperCase() === 'TOOLSENABLED_PROVIDER_ISOLATION_ROOT'))
   if (isolated && (!providerIsolation || providerIsolation.PROVIDER_SESSION_ISOLATION_VERSION !== 1 || typeof providerIsolation.isolationContext !== 'function'
@@ -658,22 +648,60 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
     }
   }
 
-  /* A STATE FILE THAT CANNOT BE READ IS MOVED ASIDE, NOT OBEYED AND NOT
-     OVERWRITTEN. The 2026-09-02 power loss left it as 9,420 bytes of NUL, and
-     a copy seeded into a second instance carried the same bytes; every press
-     of "Use this one" then answered "could not be read" until a person renamed
-     the file by hand. It is only the memory of the last switch, so the bytes
-     are kept under a name that says what they are and the record starts again
-     from nothing -- the same rule the engine's own reader applies. Answers the
-     quarantine path, or null when there was nothing to move (absent, readable,
-     or a rename that failed -- in which case the caller keeps its refusal).
-     An exclusive sibling directory owns the destination. Timestamp-only
-     rename targets could overwrite an earlier backup within one clock tick.
-     Keep one rename rather than copy/link then unlink: a concurrent source
-     replacement must be moved intact, never deleted after saving older bytes. */
+  // Preserve damaged bytes and a choose-again condition for every provider.
+  // The owned directory protects the gap if writing the replacement fails.
+  function unreadableChoiceState() {
+    return { activeAccount: null, activeByProvider: null, manualPinByProvider: null,
+      selectionRevision: null, selectionUnreadableByProvider: Object.fromEntries(PROVIDER_IDS.map(id => [id, true])),
+      lastSwitch: null, history: [] }
+  }
+
+  function validSelectionRecord(state) {
+    if (!plainObject(state)) return false
+    if (state.activeAccount != null && !nonEmptyString(state.activeAccount)) return false
+    if (state.selectionRevision != null && typeof state.selectionRevision !== 'string') return false
+    if (state.history != null && !Array.isArray(state.history)) return false
+    for (const field of ['activeByProvider', 'manualPinByProvider', 'selectionUnreadableByProvider']) {
+      const map = state[field]
+      if (map == null) continue
+      if (!plainObject(map)) return false
+      for (const provider of PROVIDER_IDS) {
+        const value = map[provider]
+        if (value == null) continue
+        if (field === 'selectionUnreadableByProvider' ? typeof value !== 'boolean' : !nonEmptyString(value)) return false
+      }
+    }
+    return true
+  }
+
+  function readChoiceState() {
+    if (!stateFile) return null
+    const inspection = inspectOwnedPath(privateRecordPath(stateFile), fsImpl)
+    if (inspection.error) throw refusal('ACCOUNT_STATE_UNREADABLE',
+      'The saved account selection could not be read. Open Accounts and choose an account before starting again.')
+    if (!inspection.absent) {
+      const state = readOwnJson(stateFile)
+      if (state !== null && validSelectionRecord(state)) return state
+      if (quarantineDamagedState() === null) throw refusal('ACCOUNT_STATE_DAMAGED',
+        'The saved account selection could not be preserved, so the choice was not changed.')
+      return unreadableChoiceState()
+    }
+    if (typeof fsImpl.readdirSync !== 'function') return null
+    try {
+      const prefix = `${path.basename(stateFile)}.corrupt-`
+      return fsImpl.readdirSync(path.dirname(privatePath(stateFile))).some(name => name.startsWith(prefix))
+        ? unreadableChoiceState() : null
+    } catch (error) {
+      if (error?.code === 'ENOENT') return null
+      throw refusal('ACCOUNT_STATE_UNREADABLE',
+        'The saved account selection could not be read. Open Accounts and choose an account before starting again.')
+    }
+  }
+
   function quarantineDamagedState() {
     if (!stateFile || !stateFileExists()) return null
-    if (readOwnJson(stateFile) !== null) return null
+    const current = readOwnJson(stateFile)
+    if (current !== null && validSelectionRecord(current)) return null
     let directory = null
     let aside
     try {
@@ -684,6 +712,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
       if (directory) { try { fsImpl.rmdirSync(directory) } catch { /* only our empty directory may be removed */ } }
       return null
     }
+    writeStateRecord(unreadableChoiceState())
     return aside
   }
 
@@ -753,7 +782,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
    * PRESENCE ALONE STILL CANNOT SEE A SIGN-OUT, and this does not pretend
    * otherwise. MEASURED 2026-09-03 on this machine: two Claude homes under
    * account-homes\claude had .credentials.json rewritten from 509 bytes to
-   * 281 bytes -- signed out, with the file still there -- and no
+   * 281 bytes at 03:35:53Z -- signed out, with the file still there -- and no
    * stat can tell those two sizes apart without reading them, which this
    * module may not do and which the probe above says would answer wrongly in
    * both directions anyway. Only the provider's own verdict settles that
@@ -883,7 +912,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
         spec,
         name: entry.name.trim(),
         directory: entry[spec.dirField].trim(),
-        priority: Number.isSafeInteger(entry.priority) && entry.priority > 0 ? entry.priority : index + 1,
+
       })
     })
     return out
@@ -903,7 +932,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
   function writeRecord(record) {
     const temp = privateRecordPath(`${file}.tmp-${process.pid}`)
     fsImpl.mkdirSync(path.dirname(privateRecordPath(file)), { recursive: true })
-    fsImpl.writeFileSync(temp, `${JSON.stringify(record, null, 2)}\n`)
+    fsImpl.writeFileSync(temp, `${JSON.stringify({ accounts: record.accounts.map(entry => Object.fromEntries(['name', 'previousNames', 'provider', 'profileDir', 'configDir', 'homeDir', 'client', 'expectEmail', 'homeCreatedByApp', 'role'].filter(key => Object.hasOwn(entry, key)).map(key => [key, entry[key]]))) }, null, 2)}\n`)
     fsImpl.renameSync(temp, file)
   }
 
@@ -924,7 +953,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
   }
 
   /* Unique PER PROVIDER, which is the engine's rule and not a softening of
-     it: one person's "team" is a real Codex account and a real Claude
+     it: one person's "school" is a real Codex account and a real Claude
      account, and refusing the second would be refusing the ordinary case.
      Answers the refusal rather than throwing it, because the default-name
      search below asks the question many times and only the caller that is
@@ -935,7 +964,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
     }
     for (const item of existing) {
       if (item.spec.id !== spec.id) continue
-      if (item.name.toLowerCase() === cleanName.toLowerCase()) {
+      if ([item.name, ...(item.entry.previousNames || [])].some(label => label.toLowerCase() === cleanName.toLowerCase())) {
         return refusal('ACCOUNT_NAME_TAKEN', 'That name is already used for this kind of account.')
       }
       if (sameDirectory(resolveHome(item.directory), resolved)) {
@@ -945,22 +974,12 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
     return null
   }
 
-  /* THE ONE WRITE BOTH ADDS END IN. The priority is the caller's when it gave
-     one and otherwise the next free slot; every key already on the file is
-     carried across untouched, and the entry is written in the provider's own
-     folder field so the rotation can read it. */
-  function appendEntry({ record, existing, spec, name, directory, priority = null, homeCreatedByApp = false }) {
-    const nextPriority = priority !== null
-      ? priority
-      : existing.reduce((highest, item) => Math.max(highest, item.priority), 0) + 1
+  // Both account additions save the same explicit account record.
+  function appendEntry({ record, existing, spec, name, directory, homeCreatedByApp = false }) {
     const previous = record || {}
     const kept = Array.isArray(previous.accounts) ? previous.accounts : []
     writeRecord({
       ...previous,
-      exhaustedAtPercent: Number.isSafeInteger(previous.exhaustedAtPercent)
-        && previous.exhaustedAtPercent > 0 && previous.exhaustedAtPercent <= 100
-        ? previous.exhaustedAtPercent
-        : DEFAULT_EXHAUSTED_AT_PERCENT,
       accounts: [
         ...kept,
         {
@@ -969,11 +988,10 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
           ...(spec.client ? { client: spec.client } : {}),
           [spec.dirField]: directory,
           [HOME_CREATED_BY_APP_FIELD]: homeCreatedByApp === true,
-          priority: nextPriority,
+
         },
       ],
     })
-    return nextPriority
   }
 
   /* THE FOLDER NAME AN ACCOUNT NAME BECOMES. Lower-case Latin letters, digits
@@ -1048,17 +1066,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
     return plainObject(state) ? readNameMap(state.activeByProvider) : null
   }
 
-  /* WHICH ACCOUNT EACH PROGRAM WAS TOLD TO USE, WHICH IS A DIFFERENT QUESTION.
-     `activeByProvider` above is overwritten by every start, including a
-     failover, so it cannot preserve the person's explicit menu choice.
-     The engine records that choice separately in `manualPinByProvider`,
-     where no start writes it.
 
-     A RECORD WRITTEN BEFORE THAT FIELD EXISTED STILL ANSWERS, from the last
-     `manual-switch` entry about each program -- the same walk the engine's own
-     manualPin() does. An entry naming no program is what a record written
-     before THAT field existed looks like, and it answers for whichever program
-     has not been answered yet. */
   function readChosenByProvider(state) {
     if (!plainObject(state)) return null
     const written = readNameMap(state.manualPinByProvider)
@@ -1094,15 +1102,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
     return -1
   }
 
-  /* WHEN THE COMPUTER MOVED OFF THE ACCOUNT THE PERSON CHOSE, AND WHY.
-     Without this the menu showed the failover's account as the one in use and
-     said nothing at all, which from the outside is a choice that reverted
-     itself. The reason is the CHOSEN account's own line from that start's
-     attempt trail, because the figure and the reset that made the walk move on
-     are what turn "could not serve" into something a person can act on.
-     "Could not look" and "not there" are different answers: a start that never
-     tried the chosen account carries no line for it, and a null reason says so
-     rather than inventing one. */
+
   function movedOffByProvider(state, chosen) {
     if (!plainObject(state) || !plainObject(chosen)) return null
     const out = emptyByProvider()
@@ -1149,91 +1149,16 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
     fsImpl.renameSync(temp, stateFile)
   }
 
-  function readMode(value) {
-    const mode = canonicalMode(value)
-    return SELECTION_MODE_IDS.includes(mode) ? mode : (value == null ? null : UNRECOGNISED_SELECTION_MODE)
-  }
-  function readReserve(value) {
-    return Number.isFinite(value) && value >= 0 && value <= 100 ? value : null
-  }
-  function readRankWindow(value) {
-    return RANK_WINDOW_IDS.includes(value) ? value : null
-  }
 
-  function readPolicy(record) {
-    const source = plainObject(record) ? record : {}
-    const mode = readMode(source.selectionMode)
-    const reserve = readReserve(source.reservePercent)
-    const rankWindow = readRankWindow(source.rankWindow)
-    /* ONE RULE PER PROGRAM where the person set one (rules are set per
-       provider): each program's answer is its own entry where that has a
-       field, the global rule otherwise, and `own` says per field which it was
-       so the menu can draw "same as above" honestly for each. */
-    const overrides = plainObject(source.selectionByProvider) ? source.selectionByProvider : {}
-    const byProvider = {}
-    for (const id of PROVIDER_IDS) {
-      const entry = plainObject(overrides[id]) ? overrides[id] : {}
-      const ownMode = readMode(entry.selectionMode)
-      const ownReserve = readReserve(entry.reservePercent)
-      const ownWindow = readRankWindow(entry.rankWindow)
-      byProvider[id] = {
-        selectionMode: ownMode !== null ? ownMode : (mode !== null ? mode : DEFAULT_SELECTION_MODE),
-        reservePercent: ownReserve !== null ? ownReserve : (reserve !== null ? reserve : DEFAULT_RESERVE_PERCENT),
-        rankWindow: ownWindow !== null ? ownWindow : (rankWindow !== null ? rankWindow : DEFAULT_RANK_WINDOW),
-        own: { selectionMode: ownMode !== null, reservePercent: ownReserve !== null, rankWindow: ownWindow !== null },
-      }
-    }
-    return {
-      /* `recorded` is what tells "nobody has chosen" from "somebody chose the
-         cautious one", and the engine layers those two differently over the
-         older walkthrough answer. Collapsing them here would make the dropdown
-         unable to show a person that their choice took effect. */
-      recorded: SELECTION_MODE_IDS.includes(canonicalMode(source.selectionMode)),
-      selectionMode: mode !== null ? mode : DEFAULT_SELECTION_MODE,
-      /* KEEPING TRYING IS ON UNLESS SOMEBODY TURNED IT OFF, and this is the one
-         place that decides it.
 
-         It read `=== true`, so an absent key answered false and the recovery
-         machinery -- account-recovery-coordinator, rotation, handover -- was
-         built, shipped and never enabled. What showed was every turn
-         failing on a spent account until they switched by hand, which is the
-         complaint this change exists to answer.
 
-         `!== false` rather than `=== true` is the whole change, and it is
-         deliberately asymmetric: ABSENT means nobody has decided, and the
-         product should do the useful thing; literal `false` means somebody went
-         and turned it off, and that must survive every read and every write.
-         setPolicy already refuses a non-boolean, so `false` here can only have
-         been chosen on purpose.
 
-         This is also why the reported "the setting reverts" needs no separate
-         fix: setPolicy spreads the record it read, so a partial save keeps the
-         key, and JSON round-trips a boolean exactly. It was never reverting --
-         it was defaulting off and only ever reading true when written. */
-      autoRecoverOnLimit: source.autoRecoverOnLimit !== false,
-      reservePercent: reserve !== null ? reserve : DEFAULT_RESERVE_PERCENT,
-      rankWindow: rankWindow !== null ? rankWindow : DEFAULT_RANK_WINDOW,
-      byProvider,
-      exhaustedAtPercent: Number.isSafeInteger(source.exhaustedAtPercent)
-        && source.exhaustedAtPercent > 0 && source.exhaustedAtPercent <= 100
-        ? source.exhaustedAtPercent
-        : DEFAULT_EXHAUSTED_AT_PERCENT,
-      /* ONE LIMIT PER WINDOW, and null means "this window has no limit of
-         its own, so it uses the single number above". Null rather than a
-         copy of that number, because the menu has to be able to draw the
-         difference between a limit somebody chose and one they inherited --
-         the same distinction `recorded` exists for on the mode. */
-      exhaustedAtPercentHourly: windowLimitOf(source.exhaustedAtPercentHourly),
-      exhaustedAtPercentWeekly: windowLimitOf(source.exhaustedAtPercentWeekly),
-    }
-  }
+
 
   /* A per-window limit as recorded, or null when the file names none. The
      same bounds the engine's registry.js applies, so a number this store
      accepts is a number that side reads back. */
-  function windowLimitOf(value) {
-    return Number.isSafeInteger(value) && value > 0 && value <= 100 ? value : null
-  }
+
 
   /* Removing the last account restores the absent state rather than leaving an
      empty list behind. See the header: an empty list is a refusal in the engine
@@ -1248,9 +1173,9 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
   /* Destroy the one file this entry's provider spec names as the sign-in,
      added 2026-09-07. Before this, remove() dropped the registry row and left
      that file exactly where it was -- an account no longer listed as
-     registered kept a live, still-usable sign-in (measured on a development
+     registered kept a live, still-usable sign-in (measured on the owner's own
      machine: an undeclared claude-1 home carried an unexpired refresh token
-     days after its access token expired and the registration was gone).
+     five days after its access token expired and the registration was gone).
      Uses signInFilePath() -- the same composition list()/signedInAt() already
      use, so a Gemini entry's credential (one level down, in .gemini) is
      destroyed at the right path, not the home root. `force: true` makes an
@@ -1278,8 +1203,39 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
     if (!resolved) {
       return { credentialDestroyed: false, credentialDisposition: 'preserved-unresolved-home' }
     }
-    fsImpl.rmSync(privatePath(signInFilePath(resolved, spec)), { force: true })
-    return { credentialDestroyed: true }
+    const signIn = privatePath(signInFilePath(resolved, spec))
+    /* The file's identity, taken BEFORE it is removed: the confined copies are
+       other names of this same file, and once this name is gone nothing here
+       can say which file that was. One lstat, no bytes -- the rule this module
+       already keeps for sign-in files. */
+    const identity = typeof revokeConfinedCopies === 'function' ? signInIdentity(signIn) : null
+    /* A sign-in is reported deleted only when one was there to delete
+       (REVIEW-1050 #13): a folder Accounts made where nobody ever signed in
+       has none, and "the sign-in was deleted" would be untrue. */
+    const present = identity !== null || signInPresent(signIn)
+    fsImpl.rmSync(signIn, { force: true })
+    if (!present) return { credentialDestroyed: false, credentialDisposition: 'no-saved-sign-in' }
+    if (!identity) return { credentialDestroyed: true }
+    /* After the removal, so a copy an agent start linked while this ran (it can
+       only link the old file) is reached too. Reported, never thrown: the
+       sign-in is already gone, and keeping the registration now would show an
+       account whose sign-in is not there. */
+    let sweep = null
+    try { sweep = revokeConfinedCopies(identity, signIn) } catch { sweep = null }
+    const removed = sweep && Number.isInteger(sweep.removed) ? sweep.removed : 0
+    const complete = Boolean(sweep) && Array.isArray(sweep.failures) && sweep.failures.length === 0
+    return { credentialDestroyed: true, confinedCopiesRemoved: removed, confinedCopiesRevoked: complete }
+  }
+
+  function signInPresent(file) {
+    try { fsImpl.lstatSync(file); return true } catch { return false }
+  }
+
+  function signInIdentity(file) {
+    try {
+      const info = fsImpl.lstatSync(file, { bigint: true })
+      return info.isFile() ? Object.freeze({ dev: info.dev, ino: info.ino }) : null
+    } catch { return null }
   }
 
   function signInCommandFor(spec, directory) {
@@ -1311,7 +1267,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
      watchSignIn(), which watches that same folder -- and a folder either of
      them took from its caller instead of from the record would be a folder
      nobody recorded. */
-  function resolvedHomeOf({ name, provider } = {}) {
+  function resolvedHomeOf({ name, provider } = {}, { allowPreviousNames = false } = {}) {
     const spec = specFor(provider)
     if (!spec) {
       throw refusal('ACCOUNT_PROVIDER_UNSUPPORTED', 'There is no sign-in command for that kind of account.')
@@ -1322,7 +1278,13 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
     if (record === null && registryFileExists()) {
       throw refusal('ACCOUNT_REGISTRY_DAMAGED', 'The list of accounts on this computer cannot be read, so nothing was changed.')
     }
-    const match = record === null ? null : findEntry(record, spec, cleanName)
+    // Saved conversations may use an earlier registered label. Mutating
+    // Accounts actions keep requiring the current label through findEntry().
+    const match = record === null ? null : allowPreviousNames ? usableEntries(record).find(item => item.spec.id === spec.id
+      && (item.name.toLowerCase() === cleanName.toLowerCase()
+        || (Array.isArray(item.entry.previousNames)
+          && item.entry.previousNames.some(label => typeof label === 'string' && label.toLowerCase() === cleanName.toLowerCase()))))
+      : findEntry(record, spec, cleanName)
     if (!match) throw refusal('ACCOUNT_UNKNOWN', 'That account is not on this computer’s list.')
     const resolved = resolveHome(match.directory)
     if (!resolved) {
@@ -1370,14 +1332,14 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
           return {
             name: item.name,
             provider: item.spec.id,
+            ...(item.entry.previousNames?.length ? { previousNames: [...item.entry.previousNames] } : {}),
             ...(item.spec.client ? { client: item.spec.client } : {}),
             directory: resolved || item.directory,
-            priority: item.priority,
+
             signedIn: signedInAt(item.spec, resolved),
           }
         })
-        .sort((a, b) => (a.priority - b.priority)
-          || a.provider.localeCompare(b.provider)
+        .sort((a, b) => a.provider.localeCompare(b.provider)
           || a.name.localeCompare(b.name))
       return {
         ok: true,
@@ -1388,9 +1350,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
            accounts and the rule that orders them are one answer rather than
            two reads that a write landing between them could split. Same shape
            as policy(), so a reader of either sees the same thing. */
-        policy: damaged
-          ? { ok: false, code: 'ACCOUNT_REGISTRY_DAMAGED', policy: null }
-          : { ok: true, code: null, policy: readPolicy(record) },
+
       }
     },
 
@@ -1434,28 +1394,26 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
         return {
           name: item.name,
           provider: item.spec.id,
+          ...(item.entry.previousNames?.length ? { previousNames: [...item.entry.previousNames] } : {}),
           ...(item.spec.client ? { client: item.spec.client } : {}),
           directory: resolved || item.directory,
-          priority: item.priority,
+
           signedIn: generation ? generation.signedIn : await signedInAtAsync(item.spec, resolved),
           ...(generation ? { authGeneration: generation.authGeneration } : {}),
         }
       }))
-      accounts.sort((a, b) => (a.priority - b.priority)
-        || a.provider.localeCompare(b.provider)
+      accounts.sort((a, b) => a.provider.localeCompare(b.provider)
         || a.name.localeCompare(b.name))
       return {
         ok: true,
         accounts,
         damaged,
         ...(damaged && problem ? { problem } : {}),
-        policy: damaged
-          ? { ok: false, code: 'ACCOUNT_REGISTRY_DAMAGED', policy: null }
-          : { ok: true, code: null, policy: readPolicy(record) },
+
       }
     },
 
-    add({ name, provider, client = null, directory, priority } = {}) {
+    add({ name, provider, client = null, directory } = {}) {
       const spec = specFor(provider, client)
       if (!spec) {
         throw refusal('ACCOUNT_PROVIDER_UNSUPPORTED', 'That kind of account cannot be added here.')
@@ -1471,27 +1429,18 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
       if (!resolved) {
         throw refusal('ACCOUNT_HOME_UNKNOWN', 'That folder cannot be resolved on this computer.')
       }
-      let cleanPriority = null
-      if (priority !== undefined && priority !== null && priority !== '') {
-        const asNumber = typeof priority === 'number' ? priority : Number(priority)
-        if (!Number.isSafeInteger(asNumber) || asNumber <= 0) {
-          throw refusal('ACCOUNT_PRIORITY_INVALID', 'The order must be a whole number above zero.')
-        }
-        cleanPriority = asNumber
-      }
-
       const { record, existing } = loadForAppend()
       const collision = collisionOf(existing, spec, cleanName, resolved)
       if (collision) throw collision
       appendEntry({ record, existing, spec, name: cleanName, directory: cleanDirectory,
-        priority: cleanPriority, homeCreatedByApp: false })
+         homeCreatedByApp: false })
       return { ok: true }
     },
 
     /* ADD AN ACCOUNT WITHOUT ASKING WHERE TO PUT IT.
      *
-     * The rule: adding them in the app takes a few clicks. A folder path is
-     * not a click, so this makes the folder --
+     * The owner's rule: "it should just be easy to add them in the app, just a
+     * few clicks". A folder path is not a click, so this makes the folder --
      * <servicesRoot>/account-homes/<provider>/<slug-of-name> -- and records it
      * exactly as add() records a typed one, through the same damage, cap and
      * collision checks. The name is optional too: left blank, the account is
@@ -1606,8 +1555,8 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
        that is not on it is refused, so a window can never be opened onto a
        folder nobody recorded. The answer carries the provider's home variable
        beside the folder so the caller need not consult a second table. */
-    homeOf({ name, provider } = {}) {
-      const account = resolvedHomeOf({ name, provider })
+    homeOf({ name, provider } = {}, { allowPreviousNames = false } = {}) {
+      const account = resolvedHomeOf({ name, provider }, { allowPreviousNames })
       /* `spec` stays inside this module: the caller gets the folder and the
          variable that moves it, which is all a sign-in window needs. */
       return { name: account.name, provider: account.provider, directory: account.directory, homeEnv: account.homeEnv, ...(account.client ? { client: account.client } : {}) }
@@ -1620,8 +1569,8 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
      * folder. Nothing in this product noticed: the row kept whatever it said
      * before, and the only way to learn otherwise was to come back and press
      * Check allowances -- a press that starts one short-lived program per
-     * account. MEASURED 2026-09-03: two Claude homes were signed out and
-     * their rows still drew as signed in, because the only
+     * account. MEASURED 2026-09-03: two Claude homes were signed out at
+     * 03:35:53Z and their rows still drew as signed in, because the only
      * fresh signal on this menu is that press.
      *
      * ONE ACCOUNT, AND ONLY THE ONE THAT WAS PRESSED. The name is looked up
@@ -1746,29 +1695,46 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
       const match = findEntry(record, spec, cleanName)
       if (!match) throw refusal('ACCOUNT_UNKNOWN', 'That account is not on this computer’s list.')
       if (cleanNew === match.name) return { ok: true, renamed: false, name: match.name }
-      if (cleanNew.toLowerCase() !== match.name.toLowerCase() && findEntry(record, spec, cleanNew)) {
-        throw refusal('ACCOUNT_NAME_TAKEN', 'That name is already used for this kind of account.')
-      }
-      writeRecord({ ...record, accounts: record.accounts.map(entry => (entry === match.entry ? { ...entry, name: cleanNew } : entry)) })
+      if (match.name.length > MAX_PREVIOUS_NAME_LENGTH) throw refusal('ACCOUNT_RENAME_NAME_INVALID',
+        'The saved account name is too long to rename safely. Keep its current name so saved conversations can still find it.')
+      const conflicting = usableEntries(record).some(item => item.spec.id === spec.id && item.entry !== match.entry
+        && [item.name, ...(item.entry.previousNames || [])].some(label => label.toLowerCase() === cleanNew.toLowerCase()))
+      if (conflicting) throw refusal('ACCOUNT_NAME_TAKEN', 'That name is already used for this kind of account.')
+      const previousNames = [...new Set([...(match.entry.previousNames || []), match.name])]
+      if (previousNames.length > MAX_PREVIOUS_NAMES) throw refusal('ACCOUNT_RENAME_HISTORY_FULL',
+        'This account has too many saved names to rename safely. Keep its current name so saved conversations can still find it.')
 
-      /* The account in use keeps its place under its new name. A record that
-         cannot be read is left alone here: renaming the list is the press,
-         and the quarantine belongs to the reads that need the record. */
+      // Migrate the choice even when another account is active. Promote legacy
+      // manual history before rewriting it, preserving the other providers.
       if (stateFile) {
-        const state = readOwnJson(stateFile)
+        const state = readChoiceState()
         if (plainObject(state)) {
           const byProvider = readByProvider(state)
-          const wasActive = Boolean(byProvider && byProvider[spec.id] === match.name)
-          const legacyActive = nonEmptyString(state.activeAccount) && state.activeAccount.trim() === match.name
-          if (wasActive || legacyActive) {
-            writeStateRecord({
-              ...state,
-              ...(legacyActive ? { activeAccount: cleanNew } : {}),
-              ...(wasActive ? { activeByProvider: { ...(plainObject(state.activeByProvider) ? state.activeByProvider : {}), [spec.id]: cleanNew } } : {}),
-            })
-          }
+          const chosen = readChosenByProvider(state)
+          const renameLabel = value => value === match.name ? cleanNew : value
+          const aboutProvider = entry => !nonEmptyString(entry?.provider) || entry.provider === spec.id
+          const migrateEntry = entry => plainObject(entry) && aboutProvider(entry) ? {
+            ...entry,
+            ...(Object.hasOwn(entry, 'account') ? { account: renameLabel(entry.account) } : {}),
+            ...(Object.hasOwn(entry, 'switchedFrom') ? { switchedFrom: renameLabel(entry.switchedFrom) } : {}),
+            ...(Object.hasOwn(entry, 'from') ? { from: renameLabel(entry.from) } : {}),
+            ...(Object.hasOwn(entry, 'to') ? { to: renameLabel(entry.to) } : {}),
+            ...(Array.isArray(entry.attempts) ? { attempts: entry.attempts.map(attempt => plainObject(attempt)
+              ? { ...attempt, account: renameLabel(attempt.account) } : attempt) } : {}),
+          } : entry
+          const legacyActive = aboutProvider(state.lastSwitch) && state.activeAccount === match.name
+          writeStateRecord({
+            ...state,
+            selectionRevision: randomUUID(),
+            ...(legacyActive ? { activeAccount: cleanNew } : {}),
+            ...(byProvider ? { activeByProvider: { ...byProvider, [spec.id]: renameLabel(byProvider[spec.id]) } } : {}),
+            ...(chosen ? { manualPinByProvider: { ...chosen, [spec.id]: renameLabel(chosen[spec.id]) } } : {}),
+            lastSwitch: migrateEntry(state.lastSwitch),
+            history: Array.isArray(state.history) ? state.history.map(migrateEntry) : [],
+          })
         }
       }
+      writeRecord({ ...record, accounts: record.accounts.map(entry => entry === match.entry ? { ...entry, name: cleanNew, previousNames } : entry) })
       return { ok: true, renamed: true, name: cleanNew }
     },
 
@@ -1821,11 +1787,11 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
         chosenByProvider: null, movedOffByProvider: null,
       }
       if (!stateFile) return empty
-      const state = readOwnJson(stateFile)
-      if (!state) {
-        quarantineDamagedState()
-        return empty
-      }
+      let state
+      try { state = readChoiceState() } catch { return { ...empty, code: 'ACCOUNT_STATE_UNREADABLE',
+        reason: 'The saved account selection could not be read. Open Accounts and choose an account before starting again.' } }
+      if (!state) return empty
+      const chooseAgain = Object.values(state.selectionUnreadableByProvider || {}).some(value => value === true)
       const name = nonEmptyString(state.activeAccount) ? state.activeAccount.trim() : null
       const lastSwitch = plainObject(state.lastSwitch) ? state.lastSwitch : null
       const at = lastSwitch && nonEmptyString(lastSwitch.at) ? lastSwitch.at.trim() : null
@@ -1840,21 +1806,7 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
         const holders = byProvider ? PROVIDER_IDS.filter(id => byProvider[id] === name) : []
         provider = holders.length === 1 ? holders[0] : null
       }
-      /* THE SWITCH ITSELF, NOT JUST ITS CLOCK TIME.
-       *
-       * `at` above has always been read off this same record and the rest of it
-       * thrown away, so the menu could say WHEN this computer last changed
-       * account and never what the change WAS. The one sentence a person needs
-       * after an automatic failover -- "your work moved from work to spare
-       * because work ran out" -- was unwritable from the answer, and the
-       * failover is exactly the change nobody was present for.
-       *
-       * BOUNDED AND WORD-BY-WORD, never the record whole. This file is written
-       * by the engine's switcher and carries whatever fields it grows; copying
-       * the object across would hand a screen values nothing here has read.
-       * `automatic` is three-valued on purpose: a record written before the
-       * field existed did not say, and "not stated" must not draw as "you did
-       * this yourself". */
+
       const lastSwitchOut = lastSwitch === null ? null : {
         at,
         from: nonEmptyString(lastSwitch.from) ? lastSwitch.from.trim().slice(0, 64) : null,
@@ -1870,6 +1822,8 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
       const chosenByProvider = readChosenByProvider(state)
       return {
         name, provider, at, byProvider,
+        ...(chooseAgain ? { code: 'ACCOUNT_STATE_UNREADABLE',
+          reason: 'The saved account selection could not be read. Open Accounts and choose an account before starting again.' } : {}),
         lastSwitch: lastSwitchOut,
         /* The choice and its consequence travel together: "which account did I
            pick" is only half an answer while the computer is running another
@@ -1878,151 +1832,6 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
         chosenByProvider,
         movedOffByProvider: movedOffByProvider(state, chosenByProvider),
       }
-    },
-
-    /* HOW THIS COMPUTER PICKS BETWEEN THE ACCOUNTS ABOVE.
-     *
-     * It lives in the SAME file as the accounts, and that is the whole design
-     * rather than a convenience: a rule kept somewhere else is a second answer
-     * to one question, and the day the two disagree nothing says which is in
-     * force. The engine reads these two fields straight off the registry it
-     * already loads (capability/src/lib/multi-account/registry.js), so what
-     * this screen writes is what the next start obeys -- with no third party
-     * carrying the value between them.
-     *
-     * A DAMAGED FILE IS UNREADABLE, NOT DEFAULT. Every other read here says so;
-     * this one has to as well, or a person whose list cannot be parsed is shown
-     * "Stop and let me switch" as though they had chosen it. */
-    policy() {
-      const record = loadRecord()
-      if (record === null && registryFileExists()) {
-        return { ok: false, code: 'ACCOUNT_REGISTRY_DAMAGED', policy: null }
-      }
-      return { ok: true, code: null, policy: readPolicy(record) }
-    },
-
-    /* CHANGING IT REWRITES THOSE TWO FIELDS AND NOTHING ELSE.
-     *
-     * The accounts array is carried across by reference from what was read, so
-     * choosing a mode can never reorder, drop or rewrite an account. An absent
-     * registry is REFUSED rather than created: a switching rule for a list that
-     * does not exist is a file with no accounts in it, which the engine treats
-     * as a loud refusal (ACCOUNTS_REGISTRY_EMPTY) rather than as the quiet
-     * normal absence. */
-    /* `provider` names ONE program's rule instead of the global one; there a
-       field sent as null takes that program back to "same as above". The
-       rank window (which window the ranking reads) travels the same way. */
-    setPolicy({
-      autoRecoverOnLimit,
-      selectionMode, reservePercent, rankWindow,
-      exhaustedAtPercentHourly, exhaustedAtPercentWeekly,
-      provider
-    } = {}) {
-      const scoped = provider !== undefined && provider !== null
-      if (autoRecoverOnLimit !== undefined && (typeof autoRecoverOnLimit !== 'boolean' || scoped)) {
-        throw refusal('ACCOUNT_RECOVERY_INVALID', 'Automatic recovery must be on or off for this computer.')
-      }
-      if (scoped && !specFor(provider)) {
-        throw refusal('ACCOUNT_PROVIDER_UNSUPPORTED', 'That kind of account has no rule of its own here.')
-      }
-      const cleanMode = selectionMode === undefined ? undefined
-        : (selectionMode === null ? null : canonicalMode(selectionMode))
-      if (cleanMode !== undefined && cleanMode !== null && !SELECTION_MODE_IDS.includes(cleanMode)) {
-        throw refusal('ACCOUNT_MODE_UNSUPPORTED', 'That way of choosing an account is not one this copy offers.')
-      }
-      if (cleanMode === null && !scoped) {
-        throw refusal('ACCOUNT_MODE_UNSUPPORTED', 'That way of choosing an account is not one this copy offers.')
-      }
-      const cleanWindow = rankWindow === undefined ? undefined : (rankWindow === null ? null : rankWindow)
-      if (cleanWindow !== undefined && cleanWindow !== null && !RANK_WINDOW_IDS.includes(cleanWindow)) {
-        throw refusal('ACCOUNT_RANK_WINDOW_UNSUPPORTED', 'That window is not one the ranking can read.')
-      }
-      if (cleanWindow === null && !scoped) {
-        throw refusal('ACCOUNT_RANK_WINDOW_UNSUPPORTED', 'That window is not one the ranking can read.')
-      }
-      /* A NUMBER, OR NOTHING. An absent key leaves the recorded value alone;
-         anything present must already be a finite number from 0 to 100. There
-         is deliberately no Number() coercion here: it turned a cleared box
-         into 0, `true` into 1 and `[]` into 0, each of them a reserve nobody
-         chose, saved with a "Saved" confirmation. */
-      let cleanReserve
-      if (reservePercent !== undefined && reservePercent !== null) {
-        if (typeof reservePercent !== 'number' || !Number.isFinite(reservePercent)
-          || reservePercent < 0 || reservePercent > 100) {
-          throw refusal('ACCOUNT_RESERVE_INVALID', 'The reserve must be a number between 0 and 100.')
-        }
-        cleanReserve = Math.round(reservePercent)
-      }
-
-      /* THE TWO PER-WINDOW LIMITS, HELD TO THE SAME RULE AS THE RESERVE: a
-         number or nothing, never a coercion. `null` is meaningful and
-         different from absent -- it CLEARS this window's own limit and hands
-         it back to the single number -- so it is carried through rather than
-         treated as "leave alone".
-
-         1 is the floor rather than 0, because a limit of 0 means every
-         account is spent before it has done anything, which is a fleet that
-         cannot start and a number nobody would choose on purpose. The engine
-         reads the same field with the same bound. */
-      const cleanWindowLimit = (value, field) => {
-        if (value === undefined) return undefined
-        if (value === null) return null
-        if (typeof value !== 'number' || !Number.isFinite(value) || value < 1 || value > 100) {
-          throw refusal('ACCOUNT_WINDOW_LIMIT_INVALID',
-            'A window limit must be a number between 1 and 100, or cleared.')
-        }
-        return Math.round(value)
-      }
-      const cleanHourly = cleanWindowLimit(exhaustedAtPercentHourly, 'hourly')
-      const cleanWeekly = cleanWindowLimit(exhaustedAtPercentWeekly, 'weekly')
-
-      /* THEY ARE THIS COMPUTER'S, NOT ONE PROGRAM'S. The engine reads them off
-         the top of the registry for every provider, so accepting them under a
-         provider scope would record a number that nothing ever reads -- a
-         control that says Saved and does nothing. */
-      if (scoped && (cleanHourly !== undefined || cleanWeekly !== undefined)) {
-        throw refusal('ACCOUNT_WINDOW_LIMIT_NOT_SCOPED',
-          'The allowance limits are set once for this computer, not per program.')
-      }
-
-      const record = loadRecord()
-      if (record === null) {
-        throw refusal(
-          registryFileExists() ? 'ACCOUNT_REGISTRY_DAMAGED' : 'ACCOUNT_REGISTRY_ABSENT',
-          registryFileExists()
-            ? 'The list of accounts on this computer cannot be read, so nothing was changed.'
-            : 'There are no accounts on this computer yet, so there is nothing to choose between. Add one first.',
-        )
-      }
-      let next
-      if (scoped) {
-        const table = plainObject(record.selectionByProvider) ? { ...record.selectionByProvider } : {}
-        const entry = plainObject(table[provider]) ? { ...table[provider] } : {}
-        if (cleanMode !== undefined) { if (cleanMode === null) delete entry.selectionMode; else entry.selectionMode = cleanMode }
-        if (cleanReserve !== undefined) entry.reservePercent = cleanReserve
-        if (cleanWindow !== undefined) { if (cleanWindow === null) delete entry.rankWindow; else entry.rankWindow = cleanWindow }
-        if (Object.keys(entry).length === 0) delete table[provider]
-        else table[provider] = entry
-        next = { ...record }
-        if (Object.keys(table).length === 0) delete next.selectionByProvider
-        else next.selectionByProvider = table
-      } else {
-        next = {
-          ...record,
-          ...(autoRecoverOnLimit === undefined ? {} : { autoRecoverOnLimit }),
-          ...(cleanMode === undefined ? {} : { selectionMode: cleanMode }),
-          ...(cleanReserve === undefined ? {} : { reservePercent: cleanReserve }),
-          ...(cleanWindow === undefined ? {} : { rankWindow: cleanWindow }),
-          ...(cleanHourly === undefined || cleanHourly === null ? {} : { exhaustedAtPercentHourly: cleanHourly }),
-          ...(cleanWeekly === undefined || cleanWeekly === null ? {} : { exhaustedAtPercentWeekly: cleanWeekly }),
-        }
-        /* Cleared means the key LEAVES the file, so the engine falls back to
-           the single number rather than reading a limit of null. */
-        if (cleanHourly === null) delete next.exhaustedAtPercentHourly
-        if (cleanWeekly === null) delete next.exhaustedAtPercentWeekly
-      }
-      writeRecord(next)
-      return { ok: true, policy: readPolicy(next) }
     },
 
     /* SWITCH THIS COMPUTER ONTO ONE OF THE LISTED ACCOUNTS, BY NAME.
@@ -2034,15 +1843,15 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
      * But that verification spawns a provider process, and this file is held by
      * tools/test/account-registry.test.mjs to starting NO child process at all.
      * So the check happens where the probing already happens: the next start
-     * re-checks the account it lands on and fails over or stops exactly as it
+     * re-checks the chosen account and stops on a refusal, as it
      * would have anyway. Recording a preference can never be the step that runs
      * an agent as an account that cannot serve.
      *
      * ONE ACTIVE NAME PER PROGRAM. The record carries `activeByProvider`
      * ({ codex, claude, gemini }) beside the legacy `activeAccount`, which is
      * kept as the last switch made for readers that predate the split. The
-     * comparison and the write are both per provider: a Codex "team" in use
-     * does not make a Claude "team" read as already chosen, and choosing one
+     * comparison and the write are both per provider: a Codex "school" in use
+     * does not make a Claude "school" read as already chosen, and choosing one
      * program's account leaves the other programs' choices alone. A record
      * with no per-provider entry yet is always written, because a single
      * legacy name says nothing about which program it was for.
@@ -2075,21 +1884,13 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
       const match = findEntry(record, spec, cleanName)
       if (!match) throw refusal('ACCOUNT_UNKNOWN', 'That account is not on this computer’s list.')
 
-      const state = readOwnJson(stateFile)
-      if (state === null && stateFileExists() && quarantineDamagedState() === null) {
-        throw refusal('ACCOUNT_STATE_DAMAGED', 'The record of which account is in use could not be read, so the switch was not made.')
-      }
+      const state = readChoiceState()
       const byProvider = readByProvider(state) || emptyByProvider()
       const chosen = readChosenByProvider(state) || emptyByProvider()
       const previous = byProvider[spec.id]
       const active = { name: match.name, provider: spec.id }
-      /* NOTHING TO DO ONLY WHEN THE CHOICE ALREADY SAYS SO TOO. The account in
-         use matching is not enough: after a failover back onto the chosen
-         account the two agree while the record still names someone else, and
-         after this press the person's answer to "which one" has changed even
-         though nothing moved. Pressing it again, on a record that already
-         says it, writes nothing. */
-      if (previous === match.name && chosen[spec.id] === match.name) return { ok: true, switched: false, active }
+
+      if (previous === match.name && chosen[spec.id] === match.name && !state?.selectionUnreadableByProvider?.[spec.id]) return { ok: true, switched: false, active }
 
       const at = new Date().toISOString()
       const history = plainObject(state) && Array.isArray(state.history)
@@ -2098,13 +1899,12 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
       writeStateRecord({
         ...(plainObject(state) ? state : {}),
         $comment: 'Runtime state for the multi-account switcher. Names and statuses only; no credentials.',
+        selectionRevision: randomUUID(),
+        selectionUnreadableByProvider: state?.selectionUnreadableByProvider
+          ? { ...state.selectionUnreadableByProvider, [spec.id]: false } : null,
         activeAccount: match.name,
         activeByProvider: { ...byProvider, [spec.id]: match.name },
-        /* THE CHOICE, WHERE NO START WILL OVERWRITE IT. `activeByProvider` above
-           is rewritten by every start including a failover, so it recorded the
-           press for as long as it took the next agent to begin -- over a minute
-           on a development install. The engine reads this
-           field on every start and puts the named account first. */
+
         manualPinByProvider: { ...chosen, [spec.id]: match.name },
         /* `automatic: false` because a person pressed something. The engine's
            own records had 20 selections and every one of them said false while
@@ -2137,18 +1937,44 @@ function createAccountRegistryStore({ file, stateFile = null, servicesRoot = nul
   }
 }
 
+/* IS ANY REGISTERED ACCOUNT FOR EACH PROVIDER SIGNED IN: provider -> 'yes',
+ * 'no' or 'unknown', for the agent host's start gate (shell/main.cjs
+ * providerSignInAnswer). yes beats unknown beats no: one usable sign-in is
+ * enough to offer a provider, and one unreadable account must not condemn it.
+ *
+ * A MISSING CLAUDE SIGN-IN FILE IS NOT A SIGN-OUT (1.0.50 review, accounts C).
+ * Claude Code also runs with an API key, a key helper or a cloud provider, and
+ * none of those writes .credentials.json. Counting the missing file as "no"
+ * refused every Claude start whenever each listed Claude account used one of
+ * them -- before the start's own native status check, which accepts all three,
+ * ever ran. For Claude an absent (or empty) file therefore answers "unknown"
+ * here, as shell/provider-cli-presence.cjs already answers for the default
+ * sign-in, and the native check decides. A Codex account still answers "no": a
+ * Codex start refuses without its auth.json. */
+const SIGN_IN_FILE_ABSENCE_IS_UNKNOWN = Object.freeze(['claude'])
+function signInByProvider(accounts) {
+  const byProvider = new Map()
+  for (const account of Array.isArray(accounts) ? accounts : []) {
+    const id = typeof account?.provider === 'string' ? account.provider : null
+    if (!id) continue
+    const seen = byProvider.get(id)
+    const answer = account.signedIn === 'yes' ? 'yes'
+      : account.signedIn === 'no' && !SIGN_IN_FILE_ABSENCE_IS_UNKNOWN.includes(id) ? 'no' : 'unknown'
+    if (seen === 'yes' || answer === 'yes') byProvider.set(id, 'yes')
+    else if (seen === 'unknown' || answer === 'unknown') byProvider.set(id, 'unknown')
+    else byProvider.set(id, 'no')
+  }
+  return byProvider
+}
+
 module.exports = {
   PROVIDERS,
   PROVIDER_IDS,
+  SIGN_IN_FILE_ABSENCE_IS_UNKNOWN,
+  signInByProvider,
   /* Exported so the drift test can hold the composed presence path equal to
      the packed engine's signInFilePath() for every provider. */
   signInFilePath,
-  SELECTION_MODE_IDS,
-  LEGACY_SELECTION_MODES,
-  RANK_WINDOW_IDS,
-  DEFAULT_RANK_WINDOW,
-  DEFAULT_SELECTION_MODE,
-  DEFAULT_RESERVE_PERCENT,
   MAX_ACCOUNTS,
   MAX_NAME_LENGTH,
   accountRotationStateFile,

@@ -5,8 +5,6 @@ import { register } from 'node:module'
 import {
   createCloudMirrorSetup,
   emptyMirrorSetupState,
-  environmentChoices,
-  environmentCompletenessNote,
   githubRepositoryFromRemote,
   registerBlockedReason,
   setupBodyMarkup,
@@ -24,19 +22,16 @@ const { SETTINGS } = await import('../../src/views/settings.js')
    while passing against a reinstated defect. The module was written with
    injected dependencies precisely so this file did not have to be one of them. */
 
+const ENVIRONMENT_ID = '6a8cb9e4d4c481918bab8089e2fe2ca2'
+const BINDING_MESSAGE = 'The environment ID was entered by the person. The provider has not confirmed its repository binding.'
 const PRIVATE_ENV = Object.freeze({
-  environmentId: 'env-private', repository: 'Example/mirror', defaultBranch: 'main', visibility: 'private', reason: null,
-})
-const UNBOUND_ENV = Object.freeze({
-  environmentId: 'env-unbound', repository: null, defaultBranch: null, visibility: null,
-  reason: 'This environment is bound to 3 repositories, so which one a task would land in cannot be established here.',
+  environmentId: ENVIRONMENT_ID, repository: 'Example/mirror', visibility: 'private',
 })
 const VERIFIED_AT = '2026-09-01T12:00:00.000Z'
 const SOURCE_COMMIT = 'a'.repeat(40)
 const PUBLICATION_COMMIT = 'b'.repeat(40)
 const auditReceipt = sequence => ({ sequence, eventHash: sequence.toString(16).padStart(64, '0') })
 const REQUIRED_CHECKS = Object.freeze([
-  'typed remote and Cloud environment name the same repository',
   'mirror repository is active',
   'mirror repository is private',
   'mirror repository is reachable',
@@ -44,7 +39,7 @@ const REQUIRED_CHECKS = Object.freeze([
 ])
 
 function verifiedProject({
-  key = 'engine', repository = 'Example/mirror', sourceRoot = 'C:/checkout', enabled,
+  key = 'engine', repository = 'Example/mirror', sourceRoot = '\x43:/checkout', enabled,
 } = {}) {
   return {
     key,
@@ -59,13 +54,16 @@ function verifiedProject({
   }
 }
 
-function registrationReceipt({ key = 'engine', repository = 'Example/mirror', sourceRoot = 'C:/checkout', environment = 'env-private' } = {}) {
+function registrationReceipt({ key = 'engine', repository = 'Example/mirror', sourceRoot = '\x43:/checkout', environment = ENVIRONMENT_ID } = {}) {
   const project = verifiedProject({ key, repository, sourceRoot })
   delete project.key
   return {
     action: 'cloud-mirror-register',
     projectKey: key,
     environment,
+    repositoryBinding: {
+      source: 'person-entered', confirmation: 'unconfirmed', providerConfirmed: false, message: BINDING_MESSAGE,
+    },
     project,
     intentAudit: auditReceipt(40),
     audit: auditReceipt(41),
@@ -92,18 +90,16 @@ function readyState(overrides = {}) {
   return {
     ...emptyMirrorSetupState(),
     phase: 'ready',
-    environments: [PRIVATE_ENV],
-    environmentsComplete: true,
     ...overrides,
     draft: {
-      projectKey: 'engine', sourceRoot: 'C:/checkout', boundaryManifest: 'config/cloud-mirror-boundary.json', mirrorRemote: 'https://github.com/Example/mirror.git',
-      environment: 'env-private', ...(overrides.draft || {}),
+      projectKey: 'engine', sourceRoot: '\x43:/checkout', boundaryManifest: 'config/cloud-mirror-boundary.json', mirrorRemote: 'https://github.com/Example/mirror.git',
+      environment: ENVIRONMENT_ID, ...(overrides.draft || {}),
     },
   }
 }
 
 test('the register control carries its own reason for every state that blocks it', () => {
-  assert.equal(registerBlockedReason(readyState()), null, 'a complete draft against a bound private environment can be registered')
+  assert.equal(registerBlockedReason(readyState()), null, 'a valid manual ID and private mirror declaration can be registered')
 
   // Each of these must return a SENTENCE, not a boolean. The dead-control
   // census in this repository found forty-nine live controls that could not
@@ -123,22 +119,17 @@ test('the register control carries its own reason for every state that blocks it
   }
 })
 
-test('the typed GitHub remote and cloud environment must identify the same repository', () => {
+test('the typed GitHub remote must identify the exact HTTPS repository', () => {
   assert.equal(githubRepositoryFromRemote('https://github.com/ExampleOwner/private-mirror.git'), 'ExampleOwner/private-mirror')
   assert.equal(githubRepositoryFromRemote('git@github.com:ExampleOwner/private-mirror.git'), null,
     'SCP-style SSH remotes must not cross the HTTPS-only transport boundary')
   assert.equal(githubRepositoryFromRemote('ssh://git@github.com/ExampleOwner/private-mirror.git'), null,
     'SSH URLs must not cross the HTTPS-only transport boundary')
-  assert.equal(githubRepositoryFromRemote('https://token@github.com/ExampleOwner/private-mirror.git'), null,
+  assert.equal(githubRepositoryFromRemote('https://person-896cddb0@example.com/ExampleOwner/private-mirror.git'), null,
     'a credential embedded in a remote must not be accepted by the form')
   assert.equal(githubRepositoryFromRemote('https://github.com:444/ExampleOwner/private-mirror.git'), null,
     'a URL with an explicit port is not the exact github.com destination the backend verifies')
   assert.equal(githubRepositoryFromRemote('https://github.com/ExampleOwner/private-mirror.git?redirect=elsewhere'), null)
-
-  const mismatch = registerBlockedReason(readyState({
-    draft: { mirrorRemote: 'https://github.com/Elsewhere/mirror.git' },
-  }))
-  assert.match(String(mismatch), /bound to Example\/mirror, not Elsewhere\/mirror/i)
 
   const malformed = registerBlockedReason(readyState({
     draft: { mirrorRemote: 'https://example.invalid/not-github.git' },
@@ -146,58 +137,68 @@ test('the typed GitHub remote and cloud environment must identify the same repos
   assert.match(String(malformed), /GitHub repository address/i)
 })
 
-test('a stale provider visibility label never substitutes for the fresh GitHub privacy check', () => {
-  const publicEnvironment = {
-    environmentId: 'env-public', repository: 'Example/public-mirror', defaultBranch: 'main', visibility: 'public', reason: null,
+test('manual environment IDs register without a catalog or a repository inference', () => {
+  for (const environments of [
+    [],
+    [PRIVATE_ENV],
+    [{ ...PRIVATE_ENV, repository: 'Elsewhere/mirror' }],
+    [{ ...PRIVATE_ENV, repository: null, reason: 'No repository was reported.' }],
+  ]) {
+    for (const environmentsComplete of [null, false, true]) {
+      const state = readyState({ environments, environmentsComplete })
+      assert.equal(registerBlockedReason(state), null,
+        'a stale or unread catalog cannot block the person-entered declaration')
+    }
   }
-  const state = readyState({
-    environments: [publicEnvironment],
-    draft: { mirrorRemote: 'https://github.com/Example/public-mirror.git', environment: 'env-public' },
+})
+
+test('the environment field asks for an ID beside the declared repository and discloses uncertainty', () => {
+  const markup = setupBodyMarkup(readyState())
+  assert.match(markup, /<input[^>]*type="text"[^>]*data-cms-field="environment"/)
+  assert.doesNotMatch(markup, /<select[^>]*data-cms-field="environment"/)
+  assert.match(markup, /32-character hexadecimal environment ID for Example\/mirror/)
+  assert.match(markup, /ToolsEnabled cannot confirm that this environment points at that repository/)
+  assert.doesNotMatch(markup, /Choose one|list is incomplete|environments have not been read|environment is bound to the same/i)
+})
+
+test('malformed environment IDs refuse before any bridge action', async () => {
+  for (const environment of ['', 'env-private', 'a'.repeat(31), 'a'.repeat(33), 'g'.repeat(32), 'a'.repeat(16) + '/' + 'b'.repeat(15)]) {
+    const actions = []
+    const setup = createCloudMirrorSetup({
+      documentRef: null,
+      postAction: async action => { actions.push(action); return { ok: false } },
+    })
+    Object.assign(setup.state, readyState({ draft: { environment } }))
+    assert.match(String(registerBlockedReason(setup.state)), /environment ID/i)
+    await setup.register()
+    assert.deepEqual(actions, [], 'an invalid ID must not contact the bridge')
+  }
+})
+
+test('registration sends only the entered ID with its manual provenance and repository declaration', async () => {
+  const calls = []
+  const setup = createCloudMirrorSetup({
+    documentRef: null,
+    postAction: async (action, body) => { calls.push({ action, body }); return { ok: false, reason: 'Stop after observing the request.' } },
   })
-  const [choice] = environmentChoices(state)
-  assert.equal(choice.selectable, true)
-  assert.equal(choice.reason, null)
-  assert.equal(registerBlockedReason(state), null,
-    'the provider label can lag a visibility change; registration must ask GitHub about the exact typed destination')
-})
-
-test('an unknown environment names the right computer for local and relay readers', () => {
-  // Same symptom, opposite remedy. Collapsing them would send half the people
-  // who hit this to fix the wrong thing.
-  const whenComplete = registerBlockedReason(readyState({
-    environmentsComplete: true, draft: { environment: 'env-absent' },
+  Object.assign(setup.state, readyState({
+    environments: [{ ...PRIVATE_ENV, accountId: 'catalog-account' }],
+    draft: { environment: `  ${ENVIRONMENT_ID.toUpperCase()}  ` },
   }))
-  const whenIncomplete = registerBlockedReason(readyState({
-    environmentsComplete: false, draft: { environment: 'env-absent' },
-  }))
-  const overRelay = registerBlockedReason(readyState({
-    environmentsComplete: true, draft: { environment: 'env-absent' },
-  }), { viaRelay: true })
-  assert.equal(whenComplete, 'That environment is not one this computer is signed in to.',
-    'the local reader must retain the desk sentence byte-for-byte')
-  assert.equal(overRelay, 'That environment is not one the computer you are driving is signed in to.',
-    'the relay reader must be told about the computer the environment list came from')
-  assert.match(String(whenIncomplete), /could not be read in full/i)
-  assert.notEqual(whenComplete, whenIncomplete, 'a complete list and an incomplete one must not produce the same sentence')
+  await setup.register()
+  assert.deepEqual(calls, [{
+    action: 'cloud-mirror-register',
+    body: {
+      projectKey: 'engine', sourceRoot: '\x43:/checkout', boundaryManifest: 'config/cloud-mirror-boundary.json',
+      mirrorRemote: 'https://github.com/Example/mirror.git', environment: ENVIRONMENT_ID, environmentSource: 'person-entered',
+    },
+  }], 'the environment cannot select an account from a catalog')
 })
 
-test('an environment bound to no single repository is shown, unselectable, with its own reason', () => {
-  const state = readyState({ environments: [PRIVATE_ENV, UNBOUND_ENV], draft: { environment: 'env-unbound' } })
-  const choices = environmentChoices(state)
-  assert.equal(choices.length, 2, 'an unusable environment is still LISTED — hiding it leaves a person hunting for one they can see in the provider console')
-  const unbound = choices.find(choice => choice.id === 'env-unbound')
-  assert.equal(unbound.selectable, false)
-  assert.match(unbound.reason, /3 repositories/, "the environment's own reason is carried, not replaced")
-  assert.match(String(registerBlockedReason(state)), /3 repositories/)
-})
-
-test('an incomplete environment list is never presented as the whole set', () => {
-  assert.equal(environmentCompletenessNote(readyState({ environmentsComplete: true })), null)
-  assert.match(String(environmentCompletenessNote(readyState({ environmentsComplete: false }))), /incomplete/i)
-  // Not-read-yet is a third state. Reporting it as `false` would claim we asked
-  // and were partly refused; reporting it as `true` would claim an empty list
-  // is the whole truth.
-  assert.match(String(environmentCompletenessNote(emptyMirrorSetupState())), /not been read/i)
+test('settings describes entering an environment ID and the unconfirmed repository binding', () => {
+  const row = SETTINGS.find(setting => setting.id === 'cloud_mirror_setup')
+  assert.match(row.desc, /enter.*environment ID/i)
+  assert.match(row.desc, /cannot confirm.*environment.*repository/i)
 })
 
 test('the check list renders UNVERIFIED rows, not only the successes', () => {
@@ -281,7 +282,7 @@ test('the existing boundary mechanism is visible, canonicalized, and traversal r
     '../outside.json',
     './config/cloud-mirror-boundary.json',
     '/absolute.json',
-    'C:/outside.json',
+    '\x43:/outside.json',
     'config//cloud-mirror-boundary.json',
     'config/../cloud-mirror-boundary.json',
   ]) {
@@ -314,7 +315,7 @@ test('malformed and credential-bearing repository addresses refuse before regist
     'https://github.com/owner/repo/extra',
     'https://github.com/owner/repo/',
     'https://github.com/owner//repo.git',
-    'https://token@github.com/owner/repo.git',
+    'https://person-896cddb0@example.com/owner/repo.git',
     'https://github.com/owner/repo.git#stale',
   ]) {
     let posted = 0
@@ -440,18 +441,22 @@ test('a registry that cannot be READ is not reported as a registry that is empty
     'an unreadable registry must say so — reporting it as empty would invite registering a duplicate over work that cannot currently be seen')
 })
 
-test('environments that could not be read are marked incomplete rather than empty-and-complete', async () => {
+test('setup loads registered mirrors without asking for an environment or account catalog', async () => {
+  const calls = []
   const setup = createCloudMirrorSetup({
     documentRef: null,
-    postAction: async (action) => (action === 'cloud-accounts'
-      ? { ok: false, code: 'BRIDGE_UNREACHABLE', reason: 'that machine is not reachable' }
-      : { ok: true, receipt: { registryPath: 'r.json', projects: [] } }),
+    postAction: async (action, body) => {
+      calls.push({ action, body })
+      if (action === 'cloud-mirror-list') return { ok: true, receipt: { registryPath: 'r.json', projects: [] } }
+      throw new Error('Catalog discovery is unsupported.')
+    },
   })
   await setup.load()
-  assert.equal(setup.state.environments.length, 0)
-  assert.equal(setup.state.environmentsComplete, false,
-    'an unread account list must not claim completeness — "we could not ask" and "there are none" are different answers')
-  assert.match(String(environmentCompletenessNote(setup.state)), /incomplete/i)
+  assert.deepEqual(calls, [{ action: 'cloud-mirror-list', body: {} }])
+  assert.equal(setup.state.phase, 'ready')
+  assert.equal(setup.state.refusal, null)
+  Object.assign(setup.state.draft, readyState().draft)
+  assert.equal(registerBlockedReason(setup.state), null)
 })
 
 test('choosing a folder without the desktop shell refuses by name instead of doing nothing', async () => {
@@ -472,10 +477,10 @@ test('a cancelled folder choice is not an error and leaves the draft alone', asy
     documentRef: null, postAction: async () => ({ ok: true, receipt: {} }),
     chooseDirectory: async () => ({ ok: true, canceled: true }),
   })
-  setup.state.draft.sourceRoot = 'C:/already'
+  setup.state.draft.sourceRoot = '\x43:/already'
   await setup.pickFolder()
   assert.equal(setup.state.refusal, null, 'cancelling is a choice, not a failure')
-  assert.equal(setup.state.draft.sourceRoot, 'C:/already')
+  assert.equal(setup.state.draft.sourceRoot, '\x43:/already')
 })
 
 test('a successful registration records the project so a duplicate name is caught without a round trip', async () => {
@@ -555,14 +560,14 @@ test('only a disabled row can enter replacement mode and it sends replace true a
     postAction: async (action, body) => {
       if (action === 'cloud-mirror-register') {
         registeredBodies.push(body)
-        return { ok: true, receipt: registrationReceipt({ key: 'legacy', sourceRoot: 'C:/saved' }) }
+        return { ok: true, receipt: registrationReceipt({ key: 'legacy', sourceRoot: '\x43:/saved' }) }
       }
       return { ok: true, receipt: publicationReceipt({ key: 'legacy' }) }
     },
   })
   Object.assign(setup.state, readyState({
     projects: [{
-      key: 'legacy', sourceRoot: 'C:/saved', mirrorRemote: 'https://github.com/Example/mirror.git',
+      key: 'legacy', sourceRoot: '\x43:/saved', mirrorRemote: 'https://github.com/Example/mirror.git',
       cloudRepository: 'Example/mirror', enabled: false, disabledReason: 'Missing current privacy proof.',
     }],
     draft: { projectKey: '', sourceRoot: '', boundaryManifest: 'config/cloud-mirror-boundary.json', mirrorRemote: '', environment: '' },
@@ -570,7 +575,7 @@ test('only a disabled row can enter replacement mode and it sends replace true a
 
   assert.match(String(registerBlockedReason({
     ...setup.state,
-    draft: { projectKey: 'legacy', sourceRoot: 'C:/saved', boundaryManifest: 'config/cloud-mirror-boundary.json', mirrorRemote: 'https://github.com/Example/mirror.git', environment: 'env-private' },
+    draft: { projectKey: 'legacy', sourceRoot: '\x43:/saved', boundaryManifest: 'config/cloud-mirror-boundary.json', mirrorRemote: 'https://github.com/Example/mirror.git', environment: ENVIRONMENT_ID },
   })), /Re-register control/i,
   'typing a disabled duplicate key must not silently authorize replacement')
 
@@ -578,11 +583,14 @@ test('only a disabled row can enter replacement mode and it sends replace true a
   assert.equal(setup.state.reregisterKey, 'legacy')
   assert.deepEqual(setup.state.draft, {
     projectKey: 'legacy',
-    sourceRoot: 'C:/saved',
+    sourceRoot: '\x43:/saved',
     boundaryManifest: 'config/cloud-mirror-boundary.json',
     mirrorRemote: 'https://github.com/Example/mirror.git',
-    environment: 'env-private',
+    environment: '',
   })
+  assert.match(String(registerBlockedReason(setup.state)), /Enter.*environment ID/i,
+    're-registering cannot infer an ID from the saved repository')
+  setup.state.draft.environment = ENVIRONMENT_ID
   assert.equal(registerBlockedReason(setup.state), null)
   const reRegisterMarkup = setupBodyMarkup(setup.state)
   assert.match(reRegisterMarkup, /Re-registering legacy/)
@@ -593,10 +601,11 @@ test('only a disabled row can enter replacement mode and it sends replace true a
   await setup.register()
   assert.deepEqual(registeredBodies, [{
     projectKey: 'legacy',
-    sourceRoot: 'C:/saved',
+    sourceRoot: '\x43:/saved',
     boundaryManifest: 'config/cloud-mirror-boundary.json',
     mirrorRemote: 'https://github.com/Example/mirror.git',
-    environment: 'env-private',
+    environment: ENVIRONMENT_ID,
+    environmentSource: 'person-entered',
     replace: true,
   }])
   assert.equal(setup.state.phase, 'registered')
@@ -622,7 +631,7 @@ test('normal registration omits replace and enabled entries cannot enter replace
     'an ordinary registration must not send even replace:false; replacement is an explicit disabled-entry capability')
 
   Object.assign(setup.state, readyState({
-    projects: [{ key: 'engine', sourceRoot: 'C:/checkout', mirrorRemote: 'https://github.com/Example/mirror.git', enabled: true }],
+    projects: [{ key: 'engine', sourceRoot: '\x43:/checkout', mirrorRemote: 'https://github.com/Example/mirror.git', enabled: true }],
     draft: { projectKey: '', sourceRoot: '', boundaryManifest: 'config/cloud-mirror-boundary.json', mirrorRemote: '', environment: '' },
   }))
   setup.beginReregister('engine')
@@ -633,7 +642,7 @@ test('normal registration omits replace and enabled entries cannot enter replace
 test('an enabled mirror can be disabled locally without implying any remote cleanup', async () => {
   const calls = []
   const enabled = {
-    key: 'engine', sourceRoot: 'C:/checkout', mirrorRemote: 'https://github.com/Example/mirror.git',
+    key: 'engine', sourceRoot: '\x43:/checkout', mirrorRemote: 'https://github.com/Example/mirror.git',
     mirrorBranch: 'cloud-mirror/engine', cloudRepository: 'Example/mirror', enabled: true,
   }
   const setup = createCloudMirrorSetup({
@@ -706,7 +715,6 @@ test('thrown load calls settle to a visible ready refusal instead of leaving loa
   await setup.load()
   assert.equal(setup.state.phase, 'ready')
   assert.equal(setup.state.busy, null)
-  assert.equal(setup.state.environmentsComplete, false)
   assert.match(setup.state.refusal.message, /cloud-mirror-list connection closed/i)
 })
 
@@ -727,20 +735,18 @@ function modalHost() {
 }
 
 test('closing and reopening invalidates late load responses from the old modal generation', async () => {
-  const pending = [deferred(), deferred(), deferred(), deferred()]
+  const pending = [deferred(), deferred()]
   let call = 0
   const setup = createCloudMirrorSetup({ documentRef: null, postAction: () => pending[call++].promise })
 
   const oldLoad = setup.open(modalHost())
   setup.close()
   const newLoad = setup.open(modalHost())
-  pending[2].resolve({ ok: true, receipt: { registryPath: 'new.json', projects: [{ key: 'new', enabled: true }] } })
-  pending[3].resolve({ ok: true, receipt: { environments: [PRIVATE_ENV], environmentsComplete: true } })
+  pending[1].resolve({ ok: true, receipt: { registryPath: 'new.json', projects: [{ key: 'new', enabled: true }] } })
   await newLoad
   assert.equal(setup.state.registryPath, 'new.json')
 
   pending[0].resolve({ ok: true, receipt: { registryPath: 'stale.json', projects: [{ key: 'stale', enabled: true }] } })
-  pending[1].resolve({ ok: true, receipt: { environments: [], environmentsComplete: true } })
   await oldLoad
   assert.equal(setup.state.registryPath, 'new.json')
   assert.deepEqual(setup.state.projects.map(project => project.key), ['new'])
@@ -853,24 +859,83 @@ test('a thrown bridge error clears busy state and leaves publication retryable',
   assert.match(setup.state.refusal.message, /bridge connection closed/i)
 })
 
-test('a SUCCESSFUL account read that reports a partial list is carried through as partial', async () => {
-  /* A GAP A MUTATION FOUND, recorded because the test is only meaningful beside
-     the reason. The sibling test above covers the call FAILING. This covers the
-     call SUCCEEDING while the provider itself says it could not ask every
-     account -- which is what `environmentsComplete: false` exists to express,
-     and it travels a different branch. Neutering that branch left this file
-     green until this case was added. */
+test('re-registration requires a new person entry even when a saved or catalog environment matches', () => {
+  const setup = createCloudMirrorSetup({ documentRef: null, postAction: async () => ({ ok: false }) })
+  Object.assign(setup.state, readyState({
+    environments: [PRIVATE_ENV],
+    projects: [{ ...verifiedProject({ key: 'legacy', enabled: false }), environment: ENVIRONMENT_ID }],
+  }))
+  setup.beginReregister('legacy')
+  assert.equal(setup.state.draft.environment, '')
+  assert.match(String(registerBlockedReason(setup.state)), /Enter.*environment ID/i)
+})
+
+test('manual registration receipts cannot omit or contradict the unconfirmed binding warning', async () => {
+  for (const change of [
+    receipt => { delete receipt.repositoryBinding },
+    receipt => { receipt.repositoryBinding = Object.assign([], receipt.repositoryBinding) },
+    receipt => { receipt.repositoryBinding.source = 'catalog' },
+    receipt => { receipt.repositoryBinding.confirmation = 'confirmed' },
+    receipt => { receipt.repositoryBinding.providerConfirmed = true },
+    receipt => { delete receipt.repositoryBinding.message },
+    receipt => { receipt.repositoryBinding.message = '  ' },
+    receipt => { receipt.repositoryBinding.message = {} },
+    receipt => { receipt.repositoryBinding.message = { trim: () => BINDING_MESSAGE } },
+  ]) {
+    const receipt = registrationReceipt()
+    change(receipt)
+    const calls = []
+    const setup = createCloudMirrorSetup({
+      documentRef: null,
+      postAction: async action => { calls.push(action); return { ok: true, receipt } },
+    })
+    Object.assign(setup.state, readyState())
+    await setup.register()
+    assert.deepEqual(calls, ['cloud-mirror-register'])
+    assert.equal(setup.state.phase, 'failed')
+    assert.equal(setup.state.refusal.code, 'CMS_REGISTRATION_RECEIPT_UNVERIFIED')
+  }
+})
+
+test('the receipt binding message stays visible through publication, failure, and retry', async () => {
+  const pendingPublish = deferred()
   const setup = createCloudMirrorSetup({
     documentRef: null,
-    postAction: async (action) => (action === 'cloud-accounts'
-      ? { ok: true, receipt: { environments: [PRIVATE_ENV], environmentsComplete: false } }
-      : { ok: true, receipt: { registryPath: 'r.json', projects: [] } }),
+    postAction: async action => action === 'cloud-mirror-register'
+      ? { ok: true, receipt: registrationReceipt() }
+      : pendingPublish.promise,
   })
-  await setup.load()
-  assert.equal(setup.state.environments.length, 1, 'the environments that WERE readable are still offered')
-  assert.equal(setup.state.environmentsComplete, false,
-    'a provider-reported partial list must stay partial — an ok response is not a complete one')
-  assert.match(String(environmentCompletenessNote(setup.state)), /incomplete/i)
+  Object.assign(setup.state, readyState())
+  const pendingRegister = setup.register()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(setup.state.phase, 'publishing')
+  assert.match(setupBodyMarkup(setup.state), /The environment ID was entered by the person/)
+  assert.match(setupBodyMarkup(setup.state), /The provider has not confirmed its repository binding/)
+  pendingPublish.resolve({ ok: false, code: 'CLOUD_MIRROR_PUSH_FAILED', reason: 'The private mirror could not be reached.' })
+  await pendingRegister
+  assert.equal(setup.state.phase, 'publish-failed')
+  assert.match(setupBodyMarkup(setup.state), /The provider has not confirmed its repository binding/)
+  await setup.publish('engine')
+  assert.match(setupBodyMarkup(setup.state), /The provider has not confirmed its repository binding/)
+
+  const complete = createCloudMirrorSetup({
+    documentRef: null,
+    postAction: async action => ({ ok: true, receipt: action === 'cloud-mirror-register' ? registrationReceipt() : publicationReceipt() }),
+  })
+  Object.assign(complete.state, readyState())
+  await complete.register()
+  assert.equal(complete.state.phase, 'registered')
+  assert.match(setupBodyMarkup(complete.state), /The provider has not confirmed its repository binding/)
+})
+
+test('receipt binding messages are shown as text rather than active markup', () => {
+  const receipt = registrationReceipt()
+  receipt.repositoryBinding.message = '<img src=x onerror=alert(1)>'
+  for (const phase of ['publishing', 'publish-failed', 'registered']) {
+    const markup = setupBodyMarkup({ ...readyState(), phase, result: receipt })
+    assert.doesNotMatch(markup, /<img src=x/)
+    assert.match(markup, /&lt;img src=x/)
+  }
 })
 
 test('every action row on the settings page carries its own action id', () => {

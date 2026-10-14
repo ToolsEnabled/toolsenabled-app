@@ -7,8 +7,8 @@ export const MAX_PROMPT_LENGTH = COMPOSITION_LIMITS.text
 /* PROMPT B. THIS FILE USED TO EXPORT FOUR ROLE NAMES.
    They were one worked example's vocabulary -- buy and sell, reason and
    process -- sitting in the general compiler as though they were its schema,
-   and the example material says "details" where the role said "process", so
-   those real bundles could not drop into a template this product shipped. A
+   and the owner's own material says "details" where they said "process", so
+   their real bundles could not drop into a template this product shipped. A
    compiler that knows any role name knows one domain. Roles are now whatever a
    catalog's own bundles declare: any names, any number, the way labels already
    work. The Lean and operational examples declare their four beside the

@@ -8,8 +8,8 @@
  * mc-agent:event since the first day. Nothing ever wrote one down. So the
  * metrics page could say only that this product never sees a token count, which
  * was true of the RECORD and false of the PRODUCT: the count arrives, per turn,
- * already in the main process, and was dropped on the floor. The question was
- * why the metrics do not work; this is the half of the answer that is a missing
+ * already in the main process, and was dropped on the floor. The owner asked why
+ * the metrics do not work; this is the half of the answer that is a missing
  * writer rather than a missing panel.
  *
  * WHAT IT IS. The same record as shell/spawn-record.cjs -- ed25519-signed,
@@ -235,7 +235,7 @@ function turnUsageFrom(record) {
 function createUsageRecorder({ safeStorage, directory, now } = {}) {
   const recorder = createSpawnRecorder({ safeStorage, directory, ledgerFile: USAGE_LEDGER_FILE, now })
 
-  function turnRecord({ sessionId, principal = null, turnId = null, tier = null, account = null, status = null, failure = null, usage } = {}) {
+  function turnRecord({ sessionId, principal = null, turnId = null, tier = null, model = null, modelChoice = null, account = null, status = null, failure = null, usage } = {}) {
     /* REFUSED HERE RATHER THAN LEFT TO THE WRITER, because the writer treats an
        absent usage field as "this record simply has none" -- which is right for
        the run ledger and wrong for this one. A usage record without a reading is
@@ -256,7 +256,7 @@ function createUsageRecorder({ safeStorage, directory, now } = {}) {
          because it can carry a path, and a reason a person is meant to READ has
          to live in a field the writer bounds. A turn that ended well carries
          null, exactly as it carries null for a label the class would not hold. */
-      usage: { ...usage, turnId, tier, account, status, failure },
+      usage: { ...usage, turnId, tier, model, modelChoice, account, status, failure },
     }
   }
 

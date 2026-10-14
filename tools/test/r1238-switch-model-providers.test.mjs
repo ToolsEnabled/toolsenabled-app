@@ -1,8 +1,10 @@
 // WHICH PROVIDERS A RUNNING CONVERSATION MAY BE CONTINUED ON, AND THE LAST
 // PROVIDER NAME THAT WAS WRONG ABOUT IT.
 //
-// R1238: the switch-model row is always present and works, for Codex,
-// Claude, local, Grok and Gemini.
+// OWNER REQUEST R1238 (2026-09-19): "why cant i choose to switch models between
+// codex or claude or local or grok or gemini mid session. this was built. why
+// does the button hide now it needs to work dude there is no reason this doesnt
+// work."
 //
 // THE DEFECT, measured on this payload 2026-09-19. sessionModelChoices() ended
 // its continuation test with `tier.provider !== 'local'`, guarded by a comment
@@ -38,7 +40,7 @@ const EVERY_TIER = LAUNCH_TIERS.map(tier => tier.id)
 const rowFor = (rows, id) => rows.find(row => row.id === id) || null
 const providerTier = provider => LAUNCH_TIERS.find(tier => tier.provider === provider).id
 
-/* The five named providers, each by a tier that really carries it. */
+/* The five providers the owner named, each by a tier that really carries it. */
 const LOCAL = providerTier('local')
 const GEMINI = providerTier('gemini')
 const GROK = providerTier('grok')

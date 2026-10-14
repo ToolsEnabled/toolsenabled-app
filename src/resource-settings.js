@@ -68,8 +68,8 @@ export function resourcePolicySentence(mode) {
   return 'Fresh CPU, app responsiveness and physical RAM readings admit paced starts. Pending launches reserve memory.'
 }
 /* A host that reports no mode is shown -- and, if the form is then saved,
-   given -- All off. Enforced admission is an explicit choice (product rule
-   T782): the form must never turn it on as a side effect of
+   given -- All off. Enforced admission is an explicit choice (owner direction
+   2026-09-20, T782): the form must never turn it on as a side effect of
    filling in a blank. */
 export const RESOURCE_MODE_FALLBACK = 'off'
 export function resourceFormValues(settings = {}) {

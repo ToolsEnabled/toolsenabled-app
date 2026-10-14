@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { claudeProcesses, fileIsAbsent } from '../owner-walkthrough-drive.mjs'
+import { claudeProcesses } from '../owner-walkthrough-drive.mjs'
 
 test('Claude process lookup separates absence from could-not-tell and never caches either', () => {
   let calls = 0
@@ -30,24 +30,4 @@ test('Claude process lookup separates absence from could-not-tell and never cach
   )
   assert.deepEqual(claudeProcesses(spawn), [{ ProcessId: 42, Name: 'claude.exe' }])
   assert.equal(calls, 4, 'every observation must run a fresh process query')
-})
-
-test('Claude credential lookup reserves absent for ENOENT and does not cache uncertainty', () => {
-  let calls = 0
-  const stat = () => {
-    calls += 1
-    if (calls === 1) throw Object.assign(new Error('missing'), { code: 'ENOENT' })
-    if (calls === 2) throw Object.assign(new Error('busy'), { code: 'EBUSY' })
-    return { isFile: () => true }
-  }
-
-  // CONTROL: ENOENT remains the one legitimate absent result.
-  assert.equal(fileIsAbsent('credential', stat), true)
-  assert.throws(
-    () => fileIsAbsent('credential', stat),
-    error => error.code === 'CLAUDE_SIGN_IN_LOOKUP_COULD_NOT_TELL'
-      && /not claiming that it is absent/.test(error.message),
-  )
-  assert.equal(fileIsAbsent('credential', stat), false)
-  assert.equal(calls, 3, 'a could-not-tell result must not be cached or latched')
 })

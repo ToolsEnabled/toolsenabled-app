@@ -8,7 +8,7 @@
  * Both expose `mcShell`. That is a trap, and it has now caught three separate
  * pieces of work:
  *
- *   1. The agent bridge. Fixed by an earlier commit, whose subject is literally
+ *   1. The agent bridge. Fixed by commit 1d44d35, whose subject is literally
  *      "Put the agent bridge in the preload the app actually loads".
  *   2. The same file's own header, which since then has warned in prose that
  *      exposing something here instead "would have produced a green test over

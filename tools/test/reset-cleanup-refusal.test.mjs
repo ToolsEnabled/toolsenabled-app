@@ -98,7 +98,7 @@ function fixture(t) {
     capabilityLayerStarting: null, capabilityLayer: null, capabilityLayerChild: null, capabilityLayerStatus: null,
     relaySupervisor: { stop: async () => ({ ok: true, stopped: true }) }, relayFacadeCredentials: null, agentFacade: null,
     /* The reset's 'Task ownership' phase (main.cjs prepareFullResetOwnerGone,
-       an earlier commit) commits before the Ledger writer closes; stood in with its
+       2a942239) commits before the Ledger writer closes; stood in with its
        durable receipt so these cases reach the owner cleanup they are about. */
     prepareFullResetOwnerGone: () => {
       assert.equal(calls.sweeps, 0, 'task ownership commits before any reset root is erased')

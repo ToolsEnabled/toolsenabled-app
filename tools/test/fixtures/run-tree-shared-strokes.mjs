@@ -11,9 +11,7 @@ const root = fileURLToPath(new URL('../../../', import.meta.url))
 const requested = process.env.TREE_STROKE_EVIDENCE
 const out = requested ? existsSync(requested) ? mkdtempSync(`${requested}-`) : requested : mkdtempSync(path.join(tmpdir(), 'tree-strokes-'))
 mkdirSync(out, { recursive: true })
-// The reviewed baseline is a commit from the history that preceded this change;
-// name it with TREE_STROKE_BASELINE_REF in a checkout that has it.
-const baselineRef = process.env.TREE_STROKE_BASELINE_REF || '0000000'
+const baselineRef = 'fd7c16bc'
 const baseline = execFileSync('git', ['show', `${baselineRef}:src/tree-graph.js`], { cwd: root, encoding: 'utf8' })
 const sourceState = () => Object.fromEntries([
   'src/tree-graph.js', 'src/tree-graph.css', 'src/tree-workspace.css', 'src/tree-stroke-paths.js',

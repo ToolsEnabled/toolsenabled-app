@@ -1,12 +1,14 @@
 /* /vault — the credentials this computer holds, what they are called, and who
  * may read each one.
  *
- * WHY THIS IS A PAGE AND NOT A SETTINGS ROW. The vault is supposed to have its
- * own page like Settings and Ledger do. It had been delivered as the
+ * WHY THIS IS A PAGE AND NOT A SETTINGS ROW. The owner asked three times, and
+ * the third time said what was wrong with the answer he had been given:
+ * the vault still had no page of its own, and it
+ * should have one, like Settings and Ledger. It had been delivered as the
  * `vault_credentials` row inside Settings' "Data & Privacy" section -- a real
  * surface, reachable, and not a page. A row inside a category inside another
- * page is not a page of its own, and describing it as one is how the request
- * kept coming back.
+ * page is not "its own page like settings and ledger does", and describing it
+ * as one is how the request came back three times.
  *
  * So this is a stop with its own address (`#/vault`), its own entry in the left
  * navigation, and its own crumb, exactly like Ledger. The Settings row stays
@@ -19,10 +21,10 @@
  * has no verb that returns one. Everything below is names, the owner's own
  * nicknames, and booleans.
  *
- * THE NICKNAME REPLACES THE NAME RATHER THAN LABELLING IT. The rule is that
- * credentials get secret nicknames so the real names are not visible. A
+ * THE NICKNAME REPLACES THE NAME RATHER THAN LABELLING IT. The owner's words
+ * were "give credentials secret nicknames so that they arent visible". A
  * nickname shown beside the real name would leave the real name visible, which
- * is the thing to prevent. So a nicknamed record shows its nickname where
+ * is the thing he asked to stop. So a nicknamed record shows its nickname where
  * its name would be, and the real name is behind a per-row disclosure that is
  * closed until the owner opens it -- available to the person sitting here, not
  * on screen by default and never handed to an assistant.
@@ -131,7 +133,7 @@ export const VAULT_PAGE_COPY = Object.freeze({
   accessNote: 'Each change saves as soon as you make it.',
   /* Said beside the control rather than only in the rules panel: the owner is
      about to refuse a credential to something that is not an agent, and the
-     consequence is that their own scheduled runs stop using it. */
+     consequence is that his own scheduled runs stop using it. */
   automationNote: 'This computer’s own automation, not an agent role. A scheduled action reads the vault as the '
     + 'scheduler, so refusing it here stops every scheduled run from using this credential.',
   agentsNote: 'Add a rule for one agent by its exact agent ID.',

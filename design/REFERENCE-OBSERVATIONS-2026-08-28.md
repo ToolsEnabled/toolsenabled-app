@@ -1,10 +1,12 @@
-# Reference screenshots — structured observations
+# The owner's reference screenshots — structured observations
 
-**Provenance.** Seven reference screenshots were supplied — three of a desktop
-chat/workspace panel and four of a mobile app — as a direction for the chat
-surface and for mobile; the mobile panels do not map onto how the software
-functions, so they are adapted, in the product's three colors.
-**The original PNGs are committed beside this document**:
+**Provenance.** On 2026‑08‑28 the owner supplied seven reference screenshots —
+three of a desktop chat/workspace panel and four of a mobile app — with these
+words: for the chat surface, "here is how I had wanted the chat surface to
+look more like"; for mobile, "I wanted it to end up somewhere like this —
+although these panels really don't have much to do with connecting to how our
+software actually functions so you will have to modify. and do it in our 3
+colors." **The original PNGs are committed beside this document**:
 `design/chat/reference-d1-panel.png`, `reference-d2-composer.png`,
 `reference-d3-scrolled.png` and `design/mobile/reference-m1-door-ledger.png`,
 `reference-m2-sheet-detail.png`, `reference-m3-ledger-dense.png`,
@@ -14,11 +16,12 @@ cloud agents (who cannot see images) build from. **The mocks are fictional
 products** (a Codex‑style workspace; invented agents); only the design
 language transfers. **Our surfaces render in the light white/tan/gray palette
 with role/status accents from the existing token system** — the mocks are
-dark; the standing rule keeps ours light.
+dark; the owner's standing ruling keeps ours light.
 
-**THE GOVERNING RULE (supersedes any restyle reading of this
-document):** the shipped chat was reviewed against these mocks and kept; only
-the functionality the mocks show is added. So for every CHAT surface:
+**THE GOVERNING RULING, 2026‑08‑28 (supersedes any restyle reading of this
+document):** the owner reviewed the shipped chat against these mocks and
+ruled — in his words — "I like our version of chat so far better actually.
+Let's just add in the functionality you see." So for every CHAT surface:
 **the shipped Dense panel's design IS the visual authority; the mocks are a
 FUNCTIONALITY reference only.** No brief may restyle the chat toward the
 mocks — a brief adds a missing capability and renders it in the EXISTING
@@ -29,9 +32,10 @@ per‑message timestamps · activity‑card per‑row and total durations + a
 collapse control · the inline diff card capability (file header, N‑of‑M
 files, open‑diff door — reusing the existing diff editor) · working‑row live
 counters (tools/files/±lines) where session data exists · attach chips
-(name/size/remove). **THE MOBILE RULE:** mobile leans on what is already built
-and designed rather than a new direction (the tree excepted); the design fills
-the gap from the software to the mobile. So for M1–M4: wherever
+(name/size/remove). **THE MOBILE RULING, refined by the owner 2026‑08‑28:** "lean heavily on what
+we've already built and designed rather than going in the new direction —
+except the tree obviously. We like our software; the design is meant to help
+you fill in the gap from the software to the mobile." So for M1–M4: wherever
 the shipped software already has the thing — the chat panel, the phone sheet
 (M2/M4‑proven), the agent page, sign‑in patterns, the token system — mobile
 REUSES it at phone density; the mocks apply ONLY where the software has no

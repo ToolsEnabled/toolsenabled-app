@@ -214,10 +214,16 @@ test('placing an unsent restored tab hands its saved conversation to the new cir
   const draft = setup({ running: false })
   draft.args.session.snapshot = () => ({ sessionId: null, phase: 'draft', prompt: '', sentPrompt: '', transcript: [], currentText: '' })
   draft.args.session.restoredConversation = () => lines.map(line => ({ ...line }))
+  const native = { nativeSessionId: 'saved-native', threadId: 'saved-thread', provider: 'codex', account: null,
+    sourceTranscript: { computerId: 'adoption-test', nodeId: 'saved-seat' } }
+  draft.args.session.restoredNativeConversation = () => native
+  draft.args.bridge.adoptTreeAddress = async request => ({ ok: true, stopped: true, sessionId: null,
+    ...native, nodeId: request.requestKeys.threadId, treeKey: request.treeKey })
   const placed = await adoptStandaloneIntoTree(draft.args)
   assert.equal(placed.ok, true)
   const bind = draft.calls.find(call => Array.isArray(call) && call[0] === 'bind')
-  assert.deepEqual(bind[4], lines, 'the circle is not given the conversation the tab came back with')
+  assert.equal(bind[2].nativeSessionId, native.nativeSessionId, 'the binder receives the host-confirmed canonical identity')
+  assert.equal(bind[4], undefined, 'the host already copied the conversation before binding')
   assert.equal(draft.store.getNode(placed.nodeId).message, '', 'an old request became the brief Start tree would send')
 
   const running = setup()

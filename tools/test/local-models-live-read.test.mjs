@@ -40,7 +40,7 @@ const SERVED = Object.freeze([
 
 const rows = (name = 'qwen3.5:9b', endpoint = ENDPOINT) => ([
   /* THE ADDRESS IS NOT A CHOICE, AND THIS FIXTURE SAYS SO BECAUSE THE PRODUCT
-     DOES. The engine moves only `model.name` to the chooser class; the
+     DOES. The engine lane moves only `model.name` to the chooser class; the
      address stays a shown value, because an address is typed rather than picked
      from a list something discovered. Writing it here as a chooser row was my
      first draft and a test caught it: the address row then drew "nothing has

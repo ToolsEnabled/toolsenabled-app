@@ -1,6 +1,6 @@
 # Controller disposable native recipe
 
-Preparation only. an earlier app commit; an earlier engine commit. No acceptance tree was identified at handoff. Controller must identify an authorized disposable native tree/profile and attest its loaded pair before execution. Do not use the owner LIVE profile, restart/promote an app, run a paid provider, or change QA fixtures. If an authorized non-paid native provider is unavailable, leave the receipt incomplete. This driver reads evidence; it never launches a native app or provider.
+Preparation only. App 07091006f633d8e452ea9b6a27d0281c88f6249b; engine f3d8bb3d81fb6a1868a13b2c4f1dbb1dafd0544c. No acceptance tree was identified at handoff. Controller must identify an authorized disposable native tree/profile and attest its loaded pair before execution. Do not use the owner LIVE profile, restart/promote an app, run a paid provider, or change QA fixtures. If an authorized non-paid native provider is unavailable, leave the receipt incomplete. This driver reads evidence; it never launches a native app or provider.
 
 1. In the isolated app worktree run `node tools/paste-resume-native-acceptance.mjs template > /path/to/disposable-evidence/receipt.json` (create the evidence directory first). Record Controller run identity, disposable profile and mode. Use `native` only for actual native observations; `mock` remains nonqualifying.
 2. Prepare a disposable image containing a fresh visual challenge (random shapes/colors or characters). Do not disclose the expected challenge in prompt text. Record expected challenge privately in evidence, along with image and native interaction recording. On agent page and session surface, paste using the native clipboard in both first-send and continuation flows. Add ordinary words; send exactly once. Capture the resulting message, one attachment, preserved words, and provider response correctly reading the image-only challenge. A preview, IPC send success, synthetic base64, or fake provider acknowledgment is insufficient. Record provider receipt/message ID and transcript evidence. Set fields named in the validator only from observations.
@@ -39,6 +39,6 @@ For capture-mcp, retain the actual desktop source and capture action, capture ar
 
 ## Preserved dissent and limits
 
-Dissent/limits: do not close all R51 on this renderer correction. Historical successor an earlier commit adds agent:start allow-list coverage; not imported or executed in this lane. Engine wording says resumed while renderer/shell say continued, documented historical discrepancy; no copy redesign. Do not claim R49 or J7 closed from ancestry or mocked bridge checks.
+Dissent/limits: do not close all R51 on this renderer correction. Historical successor 427cab93 adds agent:start allow-list coverage; not imported or executed in this lane. Engine wording says resumed while renderer/shell say continued, documented historical discrepancy; no copy redesign. Do not claim R49 or J7 closed from ancestry or mocked bridge checks.
 
 Validator checks claims and referenced files, cannot authenticate native provenance/content; independent review required, accepted always false.

@@ -2,7 +2,7 @@
 
 /* T52(2). The band above the top bar, PROVED BY PIXELS rather than by geometry.
  *
- * Geometry alone cannot answer the complaint. `elementFromPoint` is
+ * Geometry alone cannot answer the owner's complaint. `elementFromPoint` is
  * useless here on purpose: the cover keeps `pointer-events: none` so it does
  * not start swallowing clicks, which means hit-testing looks straight through
  * it and would report the page text as "on top" whether it is painted or not.

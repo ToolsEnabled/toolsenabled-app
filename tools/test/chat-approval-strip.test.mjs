@@ -145,7 +145,7 @@ test('badges are optional and free-form -- no SMALL/WRITE taxonomy invented in t
 test('the map is cleared on dispose, alongside the other per-chat collections', () => {
   /* The WHOLE dispose body, located by its own closing brace. A fixed character
      window silently stopped covering the later teardown lines as dispose grew:
-     measured 2026-09-09 at an earlier app commit, statusUnsub sat at offset 1385 but
+     measured 2026-09-09 at app 6909208e, statusUnsub sat at offset 1385 but
      queueUnsub at 1467 and chipsUnsub at 1519, so a 1400 window reported
      "dispose leaks the queue subscription" while dispose unsubscribes on the
      very next line. A pin that silently stops measuring is worse than no pin. */

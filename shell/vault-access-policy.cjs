@@ -1,6 +1,6 @@
 'use strict'
 
-/* THE OWNER'S DECISIONS ABOUT THEIR OWN VAULT RECORDS: what each one is CALLED on
+/* THE OWNER'S DECISIONS ABOUT HIS OWN VAULT RECORDS: what each one is CALLED on
  * screen and to an assistant, and which principals may read it.
  *
  * WHY THIS IS A FILE OF ITS OWN, BESIDE THE APPROVALS FILE RATHER THAN INSIDE
@@ -23,14 +23,14 @@
  * would have meant that promoting this change locks every existing credential
  * on every installed copy -- including the ones sign-in reads -- until the
  * owner re-enables each one by hand. That is not a security posture, it is an
- * outage. What is required is the ability to enable or disable agent access to
- * certain credentials, and a deny the person SET is honoured absolutely.
+ * outage. What the owner asked for is the ability to "enable/disable agent
+ * access to certain credentials", and a deny he SET is honoured absolutely.
  *
  * AN UNREADABLE POLICY IS NOT AN ABSENT ONE, and this is where the default
  * flips. An absent file means "no decisions yet" and allows. A file that EXISTS
  * and cannot be parsed means the owner's decisions are on disk and unavailable,
- * and allowing there would silently discard every deny they set -- a corrupted
- * byte would re-open every credential they closed. So a present-but-unreadable
+ * and allowing there would silently discard every deny he set -- a corrupted
+ * byte would re-open every credential he closed. So a present-but-unreadable
  * policy refuses reads, by name, with VAULT_POLICY_UNREADABLE. The product
  * already keeps this distinction elsewhere; see
  * tools/test/product-settings-unreadable-is-not-absent.test.mjs.
@@ -146,7 +146,7 @@ function writePolicy(stateRoot, policy, { fileSystem = fs } = {}) {
     if (!record) continue
     /* A record carrying neither a nickname nor a single rule is not written.
        This keeps the file to what the owner actually decided rather than one
-       entry per credential they have ever had. */
+       entry per credential he has ever had. */
     if (record.nickname === null && Object.keys(record.access).length === 0) continue
     records[name] = record
   }
@@ -236,8 +236,8 @@ function mayRead(read, name, principal) {
  * What this record is CALLED to whoever is asking.
  *
  * A nickname replaces the real name outright -- it is not a label beside it --
- * because the rule is that credentials get secret nicknames so the real names
- * are not visible. Returning the real name alongside would defeat it.
+ * because the owner's words were "give credentials secret nicknames so that
+ * they arent visible". Returning the real name alongside would defeat it.
  */
 function displayName(read, name) {
   if (!read || read.readable !== true) return name

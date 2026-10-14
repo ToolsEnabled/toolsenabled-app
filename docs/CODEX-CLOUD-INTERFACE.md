@@ -1,8 +1,10 @@
 # Codex Cloud interface — shipping feature spec
 
-The cloud interface for Codex is a shipped feature. This document is the build spec. Every
-requirement below exists because its absence cost real time when work was run through the
-raw CLI at volume. Treat the WHY notes as contract, not color.
+Owner ruling (2026-08-09): *"the cloud interface for codex we are building is a feature we
+need to have in the shipment."* This document is the build spec. It is written by the
+session that ran ~2,400 cloud lanes through the raw CLI in one day, and every requirement
+below exists because its absence cost real time today. Treat the WHY notes as contract,
+not color.
 
 ## What it is
 
@@ -79,10 +81,12 @@ counterpart. Nothing here invents new backend capability — it productizes the 
 - Backend: shell (Electron main) spawns the codex CLI exactly as the bridge spawns local
   codex today — `windowsHide: true`, no shell:true, bounded timeouts, output captured to
   files not pipes. Exit codes read directly, never through a pipe.
-- Earlier internal dispatch and harvest scripts are the proven reference implementations
-  of wave dispatch and merge-harvest. Port their *behavior* (including the
-  missing-manifest hard-fail and the HEAD-pin auto-resolve), not their file layout.
-- This spec is written to be read cold.
+- The engine repo's `C:\lanes\dispatch-swarm.js` + `cloud-harvest.js` are the proven
+  reference implementations of wave dispatch and merge-harvest. Port their *behavior*
+  (including the missing-manifest hard-fail and the HEAD-pin auto-resolve), not their
+  file layout.
+- Candidate builder: Machine B's app development system, after installer validation
+  completes. This spec is written to be read cold.
 
 ---
 

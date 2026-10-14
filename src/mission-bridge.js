@@ -102,7 +102,7 @@ const BRIDGE_PROOF_RE = /^[A-Za-z0-9_-]{43}$/
 // was about to finish. It was set from a single ~12s sample; the live action
 // ledger no longer agrees. MEASURED 2026-09-03: system.status (what /v1/status
 // calls) succeeded in as long as 31,121 ms -- one sample already past the old
-// 30,000 ms ceiling, the exact "misreported as failed" case the
+// 30,000 ms ceiling, at 19:36:52Z, the exact "misreported as failed" case the
 // dispatch comment describes, just not yet written down for this action. Each
 // of the two durable writes status() makes is ordinary audit-chain traffic,
 // and that traffic is not free here: the SAME ledger's host.exec "Durable
@@ -232,8 +232,8 @@ async function scanWellKnownBridges() {
  * reaching the HOST, which is fine. A page served from any public origin is the
  * website: the computer in front of the person is a visitor's own machine --
  * possibly a friend's -- and this application must never reach into it. That is
- * the rule stated as architecture: a user on the web is never hooked into their
- * computer, even when signed in.
+ * the owner's rule stated as architecture: "when a user is on the web we can't
+ * be trying to hook into their computer, even when logged in."
  *
  * Until now that rule was held by a CONVENTION: the site's host-bridge.js
  * answered getBridgeEndpoint with source:'supervised' and a deliberately
@@ -587,8 +587,8 @@ export async function bridgeApiContract({ requiredActions = [] } = {}) {
  * ASKED ONCE PER RECHECK WINDOW WHILE THE ANSWER IS THE STRUCTURAL REFUSAL.
  * ./local-tiers-memo.js holds the measurement and the rule; the short of it is
  * that "this installation has no peer machine" is configuration, the research
- * page asks twice on every visit, and every such call in a measured audit
- * ledger was that same refusal. A real reading, a timeout, a
+ * page asks twice on every visit, and twenty-one of twenty-one calls in the
+ * owner's audit ledger were that same refusal. A real reading, a timeout, a
  * transport failure and any other code are all asked again immediately.
  */
 export function localTiersStatus() {

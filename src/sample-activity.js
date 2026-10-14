@@ -13,9 +13,9 @@
  * SUBSTITUTION, NOT SUPPRESSION. The honesty rule forbids REAL data in a box
  * badged as an example. It does not require the example to be empty. So the
  * demonstration gets a record of its own, and the badge stays true because
- * nothing here is anybody's data. This also matches the 2026-08-06 rule on the
- * computers page -- changing the source is the worst way to fix the problem --
- * the render should absorb the data shape rather than switch to
+ * nothing here is anybody's data. This also matches the owner's ruling of
+ * 2026-08-06 on the computers page -- "changing source is the worst way to fix
+ * the problem" -- the render should absorb the data shape rather than switch to
  * a different, poorer face.
  *
  * IT IS BUILT AS A RAW LEDGER REPLY AND PARSED BY readLocalSessions, rather
@@ -78,8 +78,8 @@ const NO_OUTCOME_AT = Object.freeze(new Set([6, 12]))
 
 /* THE DEMONSTRATION MOVES, AND IT IS STILL DETERMINISTIC IN nowMs.
  *
- * The example moves, like a real simulated environment, so it feels a little
- * alive. The ladder above slides with
+ * Owner, 2026-08-26: "make it move ... make it feel like a real simulated
+ * environment ... just make it feel alive a bit." The ladder above slides with
  * the clock, so its timestamps age -- but it is the SAME nineteen runs for
  * ever. A visitor watching the page saw the same list with different minute
  * counts, which is a photograph with a clock drawn on it.
@@ -265,7 +265,7 @@ export function sampleSessionsRaw(nowMs = Date.now()) {
 /* WHAT THE EXAMPLE FLEET SAID BACK, one reply per ask, in the same order as
  * SAMPLE_ASKS. The home card shows a run's question, the lines between, and
  * its answer; the demonstration used to fake its answers at random from a
- * separate sample transcript, which is now folded into the live
+ * separate sample transcript, which the owner asked to fold into the live
  * card's one renderer. So the example's answers are written down here, beside
  * its questions, and read through the same join a real machine's are. Kept to
  * the demonstration's own world (lanes, gates, sweeps) for the reason

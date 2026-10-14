@@ -1,6 +1,6 @@
 /* THE STANDING-REQUEST CONTRACT AT THE HOST SEAM — filing and boot carriage.
  *
- * The design, as it stands after the one-ledger fold:
+ * The owner's design, as it stands after the one-ledger fold (2026-09-02):
  * ONE canonical ledger with scope tiers -- global, session, tree, thread --
  * filed by the /Request-family commands in the person's own words and
  * managed on the Ledger page; agents READ the tiers that apply to them at
@@ -98,8 +98,8 @@ function guidedPlan(workdir) {
 /* One scratch world per test: a state root the fixture store writes under,
    a workdir, a host over the confined engine, and the plan in place.
 
-   TOOLSENABLED_STATE_ROOT, a standing safety rule (from an earlier
-   finding): the
+   TOOLSENABLED_STATE_ROOT, Controller 3's standing safety rule (2026-09-07,
+   from Worker 3's Finding 1, W\REPORT-ledger-kinds-tools-20260907.md): the
    REAL engine's runtime-state-root.js resolves the owner-request ledger
    through this variable whenever a call omits rootPath, memoized at module
    load, so a probe or test that sets it too late -- or never -- can target
@@ -109,7 +109,7 @@ function guidedPlan(workdir) {
    process.env.MC_TEST_STATE_ROOT first, never TOOLSENABLED_STATE_ROOT, so
    this suite was never actually exposed to that variable) -- but the rule is
    set and restored here anyway, alongside MC_TEST_STATE_ROOT, as the
-   defense-in-depth the rule requires: if anything in this call chain ever
+   defense-in-depth Controller 3 ordered: if anything in this call chain ever
    changes to read the real variable, a fresh scratch directory is already
    sitting there instead of the live root. */
 async function inWorld(run, buildOverrides = () => ({})) {
@@ -445,7 +445,7 @@ test('filing lands the words verbatim in the one ledger, with its tier and key, 
   })
 })
 
-/* THE LEDGER KINDS SPLIT (the shared interface): a
+/* THE LEDGER KINDS SPLIT (Controller 3's shared interface, 2026-09-07): a
    /Task or /Ask files through this exact same host seam, with a `kind`
    letter ('T' or 'A') riding beside scope, key, words and label. The engine
    lane is adding kind dispatch inside r-ledger.js's own fileRequest; this
@@ -526,9 +526,9 @@ test('kind rides through fileStandingRequest into fileRequest, and a payload wit
        arbitrary data or being silently swallowed into a plain rule -- a
        silent absorption of unexpected input is the exact defect this
        codebase's /Request refusals already avoid (an unknown /-word keeps
-       its own honest refusal instead of guessing). The rule: any other kind
-       value is refused in the existing AGENT_REQUEST_* refusal style, and
-       only if none fits, one new typed code -- none of
+       its own honest refusal instead of guessing). Controller 3, 2026-09-07:
+       "any other kind value is refused in the existing AGENT_REQUEST_*
+       refusal style, and only if none fits, one new typed code" -- none of
        the existing codes name an invalid kind, so this is
        AGENT_REQUEST_KIND_INVALID. */
     const before = calls.length
@@ -541,8 +541,9 @@ test('kind rides through fileStandingRequest into fileRequest, and a payload wit
   }
 })
 
-/* THE LEDGER PAGE'S WRITE VERBS FOR TASK AND ASK RECORDS (extended to add
-   removeAsk after the ledger page drew a fifth button): completeTask,
+/* THE LEDGER PAGE'S WRITE VERBS FOR TASK AND ASK RECORDS (Controller 3
+   ruling 05:20Z, 2026-09-07, extended same-day to add removeAsk after
+   Worker 2's ledger-page commit 7c6b70e0 drew a fifth button): completeTask,
    removeTask, answerAsk, declineAsk and removeAsk reach the engine's raw
    store, src/lib/owner-request-store.js, directly -- not through
    r-ledger.js's fileRequest door, which never re-exports them. This suite
@@ -591,8 +592,8 @@ test('completeTask and removeTask carry the actor decideStandingRequest already 
     assert.equal(calls.length, before, 'a refused id must never reach the store')
 
     /* The store's own refusal code and message pass through UNCHANGED --
-       the rule: the store's typed refusal codes pass through unchanged --
-       unlike the R family's R_LEDGER_* -> AGENT_REQUEST_*
+       Controller 3, verbatim: "the store's typed refusal codes pass through
+       unchanged" -- unlike the R family's R_LEDGER_* -> AGENT_REQUEST_*
        re-prefix, this seam owns no renaming of the store's vocabulary. */
     store.completeTask = () => { const e = new Error('T9 is done; only an open or recurring task can be completed.'); e.code = 'R_LEDGER_STATUS_INVALID'; throw e }
     await assert.rejects(() => host.completeTask({ id: 'T9' }),
@@ -658,14 +659,14 @@ test('a store built before completeTask/removeTask/answerAsk/declineAsk/removeAs
   }
 })
 
-/* THE COMPOSITION STEP: every write-verb test
+/* THE COMPOSITION STEP (Controller 3, L4c, 2026-09-07): every write-verb test
    above proves the HOST's own half against a stub store. This test is the
-   other half -- the REAL fixture store, refreshed byte-for-byte from
-   an accepted earlier engine commit (see the
+   other half -- the REAL fixture store, refreshed byte-for-byte from L1's
+   accepted engine tip b4bd80f1404228af1f089a063a892c6e88c339b7 (see the
    commit that refreshed tools/test/fixtures/confined-engine/src/lib/
    owner-request-store.js and r-ledger.js).
 
-   EXPLICIT ROOT, a standing safety rule: this is
+   EXPLICIT ROOT, Controller 3's standing safety rule (2026-09-07): this is
    the one test in the file that files, completes and removes records
    through the real store with no stub standing between it and disk, so it
    carries the belt beside inWorld()'s TOOLSENABLED_STATE_ROOT/
@@ -1032,7 +1033,7 @@ test('edit rewrites in place, remove tombstones, and neither reissues a number',
 /* ---------------------------------------------------------------------------
  * THE DUTY PARAGRAPH, CHOSEN BY THE SWITCH (O7, "agents manage the ledgers").
  *
- * The rule: one switch, on or off. The payload's
+ * The owner's ruling, 2026-08-22: one switch, on or off. The payload's
  * src/lib/r-ledger-agent-gate.js decides the MODE from `rules.capture_spoken`
  * and owns one paragraph per mode; the host asks it at every start and hands
  * the answer to the agent in the standing-requests block. The fixture gate
@@ -1142,8 +1143,8 @@ test('auto with the write server: the agent is told to file with r_ledger.file',
   })
 })
 
-/* THE NESTED SUB-SETTING (O7 improvements: a user setting, default no, nested
-   below it in settings). With
+/* THE NESTED SUB-SETTING (O7 improvements; owner, 2026-08-22 (2): "this is
+   more of a user setting. default no. nest it below in settings"). With
    rules.ask_when_unsure on, the gate's answer carries askWhenUnsure:true and
    the host hands it to the SAME paragraph call it already makes -- one gate
    read per start, so what the agent is told and what the settings say cannot
@@ -1191,7 +1192,7 @@ test('auto with ask-when-unsure on: the agent is told doubt files nothing and en
   })
 })
 
-/* THE SECOND SUB-SETTING (rule: one canonical ledger; an
+/* THE SECOND SUB-SETTING (owner, 2026-09-02: one canonical ledger; an
    agent's filing may wait for the person). rules.agent_filed_needs_approval
    -- default OFF, only a user/installer true turns it on -- is read off the
    same gate answer as `needsApproval`. With it on, the store files an agent's
@@ -1343,10 +1344,10 @@ test('the store refuses every hand but the person\'s for edit, remove and decide
 })
 
 /* THE PERSON'S RESOLUTION OF ONE STANDING REQUEST -- R_LEDGER kinds
-   follow-on. host.resolveStandingRequest
+   follow-on, 2026-09-07 (Controller 3 L4e/L4f). host.resolveStandingRequest
    is built the way decideStandingRequest is, reaching the engine's r-ledger
-   module -- the engine's resolve(), which the fixture was refreshed
-   to carry byte for byte from an earlier engine commit. THE REAL-STORE
+   module -- Worker's L1f resolve(), which the fixture was refreshed
+   2026-09-07 to carry byte for byte from engine 2f351784. THE REAL-STORE
    SUCCESS PATH, proved here rather than assumed: a filed R record resolves,
    the resolved status reads back through canonical-ledger-read, and the
    resolved row LEAVES the session-start block and the rail -- resolve()
@@ -1396,15 +1397,16 @@ test('resolveStandingRequest succeeds against the refreshed fixture: the record 
 })
 
 /* THE ENGINE-TOO-OLD REFUSAL -- proved against a STUB, not the real fixture.
-   The fixture was refreshed to carry the engine's resolve(), so it can no
-   longer stand in for an engine that predates it. The
-   AGENT_LEDGER_RESOLVE_UNAVAILABLE test is therefore kept against a fake
-   module lacking resolve, and says so. The stub rides the same injectable rLedgerLoader
+   The fixture was refreshed 2026-09-07 to carry Worker's L1f resolve(), so
+   it can no longer stand in for an engine that predates it. Controller 3:
+   "your AGENT_LEDGER_RESOLVE_UNAVAILABLE test can no longer be proven
+   against the fixture ... keep it against a fake module lacking resolve,
+   and say so" -- said here. The stub rides the same injectable rLedgerLoader
    seam the kind-dispatch test above already uses. */
 test('resolveStandingRequest refuses by name against an engine module that predates resolve()', async () => {
   const workdir = testScratch('mc-resolve-stub-')
   /* No resolve, no RESOLUTION_STATUSES -- exactly what an engine older than
-     the resolve follow-on exposes. */
+     L1f's follow-on exposes. */
   const host = createAgentHost({ enginePath: CONFINED_ENGINE, defaultCwd: workdir, rLedgerLoader: () => ({}) })
   try {
     await assert.rejects(() => host.resolveStandingRequest({ id: 'R1', status: 'done' }),

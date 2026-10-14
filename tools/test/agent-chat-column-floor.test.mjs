@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 /* THE AGENT PAGE'S CHAT COLUMN FLOOR, PINNED AT SOURCE.
  *
- * The picked chat card ("Dense — light-mode palette",
+ * The owner's picked chat card ("Dense — light-mode palette",
  * design/chat/picked-card.png) and its SIZING LAW (design/chat/Sizes.dc.html)
  * set the Panel width at 520px. .agentv-panels-wrap > .agentv-panels lays out
  * Chat and Controls as a 1.15fr/auto/1fr grid; undragged, Chat's share used

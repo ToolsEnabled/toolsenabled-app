@@ -168,7 +168,7 @@
 }
 
 /* THE REPORT, AS WRITTEN. No markdown library: adding a dependency here needs
-   a product decision, and a report read exactly as the agent wrote it is the
+   the owner's word, and a report read exactly as the agent wrote it is the
    honest rendering either way. It scrolls in its own box so the dialog never
    grows past the window, and it is focusable so a keyboard can scroll it. */
 .agent-files-report {

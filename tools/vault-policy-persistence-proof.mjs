@@ -3,7 +3,7 @@
  * GENERATION?
  *
  * WHY THIS IS NOT A COMMENT IN A DESIGN NOTE. "It lives under the state root,
- * so it persists" is a claim about a path, and the thing the person actually
+ * so it persists" is a claim about a path, and the thing the owner actually
  * loses if it is wrong is specific and bad: a nickname exists to HIDE a
  * credential's real name, so a nickname that vanished on upgrade would re-expose
  * exactly what it was created to hide, and an access switch that vanished would

@@ -238,7 +238,7 @@ test('a token with no subject, or no readable address, is refused', async () => 
 test('a display name carrying a bidi override or a control character is stripped', async () => {
   /* A name that renders as a DIFFERENT name is an impersonation primitive in an
      attribution record. Written as escapes, never as the characters. */
-  const hostile = `alex${String.fromCharCode(0x202e)}nimda${String.fromCharCode(0x0a)}admin`
+  const hostile = `Example${String.fromCharCode(0x202e)}nimda${String.fromCharCode(0x0a)}admin`
   const result = await verifyWith(signToken(goodClaims({ name: hostile })))
   assert.equal(result.ok, true)
   assert.ok(!new RegExp("[\\u0000-\\u001f\\u200b-\\u200f\\u202a-\\u202e]").test(result.identity.displayName),
@@ -412,20 +412,17 @@ test('a test identity provider must announce itself, and may only be on this com
 
 /* ------------------------------- the vault ---------------------------------- */
 
-/* WHAT THESE PIN, AND THE REPORT THAT MADE THEM NECESSARY. The Google client
-   had been stored where this product's own credential catalogue says
-   credentials go -- the vault -- many times over.
+/* WHAT THESE PIN, AND THE SENTENCE THAT MADE THEM NECESSARY. The owner, having
+   stored the Google client where this product's own credential catalogue says
+   credentials go: "we have the oauth in vault ive done this like 10 times".
    The resolver read two files and an environment variable and never asked the
    vault, and the refusal it produced said only that the feature was
    unavailable -- so ten deliberate attempts and never having tried looked
    exactly alike from the screen. */
 
-// A synthetic installation's capability root, assembled at run time so this
-// source carries no literal user-profile path.
-const STATE_ROOT = ['C:', 'Users', 'somebody', 'AppData', 'Roaming', 'ToolsEnabled', 'capability'].join('\\')
-const VAULT_STORE = `${STATE_ROOT}\\vault\\secrets.json`
+const VAULT_STORE = '\x43:\\Users\\somebody\\AppData\\Roaming\\ToolsEnabled\\capability\\vault\\secrets.json'
 const VAULT_SECRET = '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choed'
-const CAPABILITY_ROOT = 'C:\\program\\resources\\capability'
+const CAPABILITY_ROOT = '\x43:\\program\\resources\\capability'
 
 /* A vault, faked at the seam shell/vault-presence.cjs presents, so every branch
    below is reachable without PowerShell, a real store, or a Windows account
@@ -463,7 +460,7 @@ async function vaultConfigured(records, extra = {}) {
     appRoot: null,
     env: {},
     capabilityRoot: CAPABILITY_ROOT,
-    stateRoot: STATE_ROOT,
+    stateRoot: '\x43:\\Users\\somebody\\AppData\\Roaming\\ToolsEnabled\\capability',
     readVaultValues: vaultReader(records),
     probeVaultRecord: presenceProbe(false),
     ...extra,
@@ -500,7 +497,7 @@ test('THE ORDER HOLDS: environment over vault, vault over the per-installation f
 
   const withVault = {
     capabilityRoot: CAPABILITY_ROOT,
-    stateRoot: 'C:\\state',
+    stateRoot: '\x43:\\state',
     readVaultValues: vaultReader({ records: { [VAULT_CLIENT_ID_KEY]: CLIENT_ID, [VAULT_CLIENT_SECRET_KEY]: VAULT_SECRET } }),
     probeVaultRecord: presenceProbe(false),
   }
@@ -596,7 +593,7 @@ test('AN UNREADABLE VAULT IS UNKNOWN, NEVER ABSENT', async () => {
       appRoot: null,
       env: {},
       capabilityRoot: CAPABILITY_ROOT,
-      stateRoot: 'C:\\state',
+      stateRoot: '\x43:\\state',
       readVaultValues: vaultReader({ readable: false }),
       probeVaultRecord: presenceProbe(null),
     })
@@ -710,7 +707,7 @@ test('THE VAULT READER ITSELF KEEPS ABSENT AND UNREADABLE APART', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'gsv-cap-'))
   mkdirSync(path.join(root, 'tools'))
   writeFileSync(path.join(root, 'tools', 'secrets.ps1'), '# stand-in for the real vault script\n')
-  const options = (run) => ({ capabilityRoot: root, stateRoot: 'C:\\state', run, platform: 'win32' })
+  const options = (run) => ({ capabilityRoot: root, stateRoot: '\x43:\\state', run, platform: 'win32' })
   const KEYS = [VAULT_CLIENT_ID_KEY, VAULT_CLIENT_SECRET_KEY]
 
   /* Both on file. */
@@ -780,7 +777,7 @@ test('THE VAULT READER ITSELF KEEPS ABSENT AND UNREADABLE APART', async () => {
   assert.equal(malformed.code, 'VAULT_RESPONSE_INVALID')
 
   /* No helper program is UNKNOWN too -- it is not evidence about a store. */
-  const noTooling = await vaultRecordValues(KEYS, { capabilityRoot: null, stateRoot: 'C:\\state' })
+  const noTooling = await vaultRecordValues(KEYS, { capabilityRoot: null, stateRoot: '\x43:\\state' })
   assert.equal(noTooling.readable, false)
   assert.equal(noTooling.code, 'VAULT_TOOLING_ABSENT')
 

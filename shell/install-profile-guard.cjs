@@ -19,12 +19,36 @@ const STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES = Object.freeze([
   'LOCALAPPDATA',
   'USERPROFILE',
   'HOME',
+  'CLAUDE_CONFIG_DIR',
 ])
 const PROVIDER_HOME_ENVIRONMENT_NAMES = Object.freeze([
   'CODEX_HOME',
-  'CLAUDE_CONFIG_DIR',
   'GEMINI_DIR',
 ])
+/* CLAUDE CODE'S OWN CONFIGURATION FOLDER IS NEVER A REASON NOT TO OPEN
+ * (1.0.50 review, accounts B). It stays in the account-path enumeration above,
+ * which the test and QA scratch fences read to know which names the product
+ * uses, but the startup guard does not hold it to the inside-the-profile rule:
+ * a person may keep it on another drive (D:\Claude) or outside their Windows user profile folder,
+ * and 1.0.48 opened normally for them. It is checked the way PATH and TEMP are
+ * -- it may not name another Windows account -- and a value that cannot be used
+ * (another account's folder, a network or device path, a relative path, or a
+ * link that cannot be followed safely) is set aside rather than ending the
+ * launch. A default Claude agent then refuses to start and says why
+ * (nativeClaudeHomeStartAnswer); named Claude accounts and other providers are
+ * unaffected. */
+const NATIVE_CLAUDE_HOME_ENVIRONMENT_NAME = 'CLAUDE_CONFIG_DIR'
+const PROFILE_FENCED_ACCOUNT_PATH_NAMES = Object.freeze(STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES
+  .filter(name => name !== NATIVE_CLAUDE_HOME_ENVIRONMENT_NAME))
+/* Checked like a PATH entry, not held inside the profile; see fencedAccountEnvironment. */
+const INHERITED_HOME_ENVIRONMENT_NAME = 'HOME'
+const NATIVE_CLAUDE_HOME_UNUSABLE_CODE = 'ACCOUNT_DEFAULT_CLAUDE_HOME_UNUSABLE'
+const NATIVE_CLAUDE_HOME_SET_ASIDE_WHY = Object.freeze({
+  'other-account': 'is in another Windows account',
+  'unsupported-path': 'is a network or device path',
+  'not-absolute': 'is not a full path',
+  unresolved: 'could not be followed safely',
+})
 const NODE_LOADER_ENVIRONMENT_NAMES = Object.freeze([
   'NODE_OPTIONS',
   'NODE_PATH',
@@ -204,8 +228,9 @@ function checkRuntimeProfileOwner({
  * Ask the kernel-owned whoami.exe for the token's mandatory integrity SID. SID
  * values are stable and language-neutral; group display names are not. High
  * (12288) and above are MEASURED, not refused: this used to end the launch,
- * and that was removed -- the user decides, and the product may warn once,
- * with a checkbox not to warn again. So the answer carries `elevated` (true,
+ * and the owner struck that on 2026-09-02 -- "the whole point of this software
+ * is the user decides and we give them the choice ... we can warn them, and a
+ * check box not to warn again". So the answer carries `elevated` (true,
  * false, or null when the probe could not say) and the words of a warning;
  * main shows the warning once, with the checkbox, and starts either way.
  * Individual privileged operations still use the narrow elevated-helper path
@@ -404,33 +429,81 @@ function electronNodeHandoffEnvironment(environment) {
   return selected
 }
 
+/* How much of a matched profile component is really the folder name.
+ * `component` is the text after `<parent>\` up to the next backslash,
+ * semicolon, double quote or end of value; `followedByPath` says a backslash
+ * comes next. Two rules keep a compound value (JAVA_TOOL_OPTIONS, GRADLE_OPTS)
+ * from gluing the next option onto the folder name (platform review S3):
+ *  - A Windows file name cannot contain ':', so a component that reaches one has
+ *    run into the next value (`Ana -Dtmp=C:`); it ends at the space or comma
+ *    before that token, and the rest of the value is matched again.
+ *  - The person's own folder name followed by an option (` -X`) or a
+ *    comma, with no backslash after it, is the person's own folder. This is a
+ *    heuristic: a profile folder literally named `Ana -X` could in principle
+ *    exist, but `Ana Smith` (no option dash) and `Ana -X\bin` (a path) still
+ *    count as a different folder. */
+function profileComponentLength(component, followedByPath, ownName) {
+  let length = component.length
+  let continuesAsPath = followedByPath
+  const colon = component.indexOf(':')
+  if (colon >= 0) {
+    const before = component.slice(0, colon)
+    const delimiter = Math.max(before.lastIndexOf(' '), before.lastIndexOf('\t'), before.lastIndexOf(','))
+    if (delimiter > 0 && before.slice(0, delimiter).trim()) {
+      length = delimiter
+      continuesAsPath = false
+    }
+  }
+  if (ownName && !continuesAsPath && length > ownName.length
+      && component.slice(0, ownName.length).toLowerCase() === ownName.toLowerCase()
+      && /^(?:\s+-|\s*,)/.test(component.slice(ownName.length, length))) {
+    length = ownName.length
+  }
+  return length
+}
+
 function windowsProfileReferences(value, fence = null) {
   if (typeof value !== 'string' || value.length === 0) return []
   const selected = value.replace(/\//g, '\\')
   const references = []
+  const normalizeReference = candidate => cleanWindowsPath(candidate?.replace(/^([a-z])\$/i, '$1:'))
   const remember = candidate => {
-    const normalized = cleanWindowsPath(candidate?.replace(/^([a-z])\$/i, '$1:'))
+    const normalized = normalizeReference(candidate)
     if (normalized && !references.some(value => value.toLowerCase() === normalized.toLowerCase())) references.push(normalized)
   }
+  const boundary = cleanWindowsPath(fence)
+  const ownName = boundary ? path.win32.basename(boundary) : null
   /* A profile directory is one complete path component. Spaces and apostrophes
-     are valid in that component; only a path separator or compound-value
-     delimiter ends it. */
-  for (const match of selected.matchAll(/(?:[a-z]:|[a-z]\$)\\Users\\[^\\;"]+/ig)) {
-    remember(match[0].trimEnd())
+     are valid in that component; a path separator or compound-value delimiter
+     ends it, and profileComponentLength ends it where another option begins.
+     Matching resumes right after the folder name, so a second account later in
+     the same value is still found. */
+  const scan = (pattern, prefixLength) => {
+    pattern.lastIndex = 0
+    let match
+    while ((match = pattern.exec(selected)) !== null) {
+      const prefix = prefixLength(match)
+      const component = match[0].slice(prefix)
+      const followedByPath = selected[match.index + match[0].length] === '\\'
+      const own = ownName && sameWindowsPath(normalizeReference(`${match[0].slice(0, prefix)}${ownName}`), boundary)
+        ? ownName : null
+      const length = profileComponentLength(component, followedByPath, own)
+      remember(match[0].slice(0, prefix + length).trimEnd())
+      pattern.lastIndex = match.index + prefix + Math.max(1, length)
+    }
   }
+  scan(/(?:[a-z]:|[a-z]\$)\\Users\\[^\\;"]+/ig, match => match[0].indexOf('\\', 3) + 1)
 
   /* Windows may place profiles below a custom ProfilesDirectory. Once the
      selected profile is known, siblings below that same parent are profile
      references too. Do not apply this rule when the profile is directly below
      a drive root, where every ordinary directory would otherwise look like an
      account. */
-  const boundary = cleanWindowsPath(fence)
   const parent = boundary ? cleanWindowsPath(path.win32.dirname(boundary)) : null
   const parentRoot = parent ? cleanWindowsPath(path.win32.parse(parent).root) : null
   if (parent && parentRoot && !sameWindowsPath(parent, parentRoot)) {
     const escapedParent = parent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const pattern = new RegExp(`${escapedParent}\\\\[^\\\\;"]+`, 'ig')
-    for (const match of selected.matchAll(pattern)) remember(match[0].trimEnd())
+    scan(new RegExp(`${escapedParent}\\\\[^\\\\;"]+`, 'ig'), () => parent.length + 1)
   }
   return references
 }
@@ -549,9 +622,58 @@ function escapedFencedPath(value, fence, filesystem, {
   return !insideWindowsPath(canonical, fence)
 }
 
+/* The spelling of an inherited CLAUDE_CONFIG_DIR without the surrounding
+ * double quotes cmd.exe and the System dialog may keep ("E:\"). The
+ * full-path decision is made on this spelling, and it is the one handed on:
+ * no reader of CLAUDE_CONFIG_DIR strips quotes (review of fixes 3.7). */
+function unquotedNativeClaudeHome(value) {
+  return typeof value === 'string' ? value.trim().replace(/^"(.*)"$/, '$1').trim() : ''
+}
+
+/* Why an inherited CLAUDE_CONFIG_DIR cannot be used, or null when it can.
+ * Lexical first, then one walk through the existing ancestors that stops at the
+ * first link naming another account, so no other account's folder is opened. */
+function nativeClaudeHomeSetAsideReason(value, fence, filesystem) {
+  if (usesUnsupportedWindowsPathNamespace(value)) return 'unsupported-path'
+  const lexical = cleanWindowsPath(value)
+  /* Decide "full path" before cleanWindowsPath strips the trailing separator:
+     a drive root (E:\ or E:/) is full, but its stripped form E: is
+     drive-relative (platform review S4). */
+  const unquoted = unquotedNativeClaudeHome(value)
+  if (!lexical || !unquoted || !path.win32.isAbsolute(path.win32.normalize(unquoted))) return 'not-absolute'
+  if (foreignWindowsProfileReferences(lexical, fence).length > 0) return 'other-account'
+  const canonical = canonicalWindowsPathThroughExistingAncestors(lexical, {
+    ...(filesystem || {}),
+    stopAtTarget: target => foreignWindowsProfileReferences(target, fence).length > 0,
+  })
+  if (!canonical) return 'unresolved'
+  return foreignWindowsProfileReferences(canonical, fence).length > 0 ? 'other-account' : null
+}
+
+/* The answer a default Claude start gets when startup set CLAUDE_CONFIG_DIR
+ * aside, shaped like the account resolver's own refusal so the agent host
+ * refuses with it. Null when nothing was set aside, when a named Claude account
+ * was chosen (it never used that folder), or when the resolver already refused
+ * for a reason of its own. */
+function nativeClaudeHomeStartAnswer(setAside, selection = null) {
+  if (!setAside || !Object.hasOwn(NATIVE_CLAUDE_HOME_SET_ASIDE_WHY, setAside.reason)) return null
+  if (selection && (selection.blocked === true || (selection.rotated === true && selection.account))) return null
+  return Object.freeze({
+    rotated: false,
+    account: null,
+    blocked: true,
+    code: NATIVE_CLAUDE_HOME_UNUSABLE_CODE,
+    reason: `The folder CLAUDE_CONFIG_DIR names for Claude Code ${NATIVE_CLAUDE_HOME_SET_ASIDE_WHY[setAside.reason]}, so ToolsEnabled did not use it. `
+      + 'Point it at a folder in this Windows account or on another drive and restart ToolsEnabled, or choose a Claude account in Accounts.',
+  })
+}
+
 /* Build the environment the interactive shell and the compatibility Node
- * handoff may inherit. Provider homes are account selectors, not ambient
- * launch facts, so they are removed and may only be reapplied later from a
+ * handoff may inherit. Claude Code's default sign-in follows its inherited
+ * CLAUDE_CONFIG_DIR; retain it unless it names another Windows account or
+ * cannot be checked, in which case it is set aside (see
+ * NATIVE_CLAUDE_HOME_ENVIRONMENT_NAME) and never ends the launch. Other
+ * provider selectors are reapplied later from a
  * validated account record. Windows profile roots must stay inside the
  * selected profile. Node loader controls are removed too: a packaged build
  * disables NODE_OPTIONS in the executable itself, before JavaScript can run,
@@ -597,8 +719,18 @@ function fencedAccountEnvironment({
     })
   }
 
+  let claudeConfigDirSetAside = null
+  const setAsideNativeClaudeHome = reason => {
+    deleteEnvironmentNames(selected, [NATIVE_CLAUDE_HOME_ENVIRONMENT_NAME])
+    claudeConfigDirSetAside = Object.freeze({ variable: NATIVE_CLAUDE_HOME_ENVIRONMENT_NAME, reason })
+  }
+  const setAsideFields = () => claudeConfigDirSetAside ? { claudeConfigDirSetAside } : {}
+  if (usesUnsupportedWindowsPathNamespace(valueFor(NATIVE_CLAUDE_HOME_ENVIRONMENT_NAME))) {
+    setAsideNativeClaudeHome('unsupported-path')
+  }
+
   const unsupportedEnvironmentPaths = []
-  for (const name of [...STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES, 'TEMP', 'TMP']) {
+  for (const name of [...PROFILE_FENCED_ACCOUNT_PATH_NAMES, 'TEMP', 'TMP']) {
     if (usesUnsupportedWindowsPathNamespace(valueFor(name))) unsupportedEnvironmentPaths.push(name)
   }
   const inheritedPathForNamespaceCheck = valueFor('PATH')
@@ -621,7 +753,7 @@ function fencedAccountEnvironment({
   }
 
   const fence = cleanWindowsPath(fencedProfile)
-  if (!fence) return Object.freeze({ ok: true, environment: selected, reason: 'no-profile-fence' })
+  if (!fence) return Object.freeze({ ok: true, environment: selected, reason: 'no-profile-fence', ...setAsideFields() })
   const violations = []
 
   /* A sterile Dev launch can place its entire scratch account below Windows'
@@ -645,14 +777,51 @@ function fencedAccountEnvironment({
     if (changed) replaceValue('PATH', entries.join(path.win32.delimiter))
   }
 
-  for (const name of STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES) {
+  for (const name of PROFILE_FENCED_ACCOUNT_PATH_NAMES) {
+    if (name === INHERITED_HOME_ENVIRONMENT_NAME) continue
     const value = valueFor(name)
     if (typeof value === 'string' && value.trim() && escapedFencedPath(value, fence, filesystem)) violations.push(name)
   }
+  /* HOME is not the Windows profile: Node and Chromium read USERPROFILE. MSYS2
+     and Cygwin set it to their own tree (C:\msys64\home\<user>), and people
+     set HOME=D:\home for Git, Vim or Emacs. Hold it to the PATH rule instead --
+     it may not name or link into another Windows account -- rather than the
+     inside-the-profile rule (platform review S2). USERPROFILE, APPDATA and
+     LOCALAPPDATA keep the strict rule. */
+  const inheritedHome = valueFor(INHERITED_HOME_ENVIRONMENT_NAME)
+  if (typeof inheritedHome === 'string' && inheritedHome.trim()
+      && escapedFencedPath(inheritedHome, fence, filesystem, { allowSystemPath: true, cwd })) {
+    violations.push(INHERITED_HOME_ENVIRONMENT_NAME)
+  }
+  const nativeClaudeHome = valueFor(NATIVE_CLAUDE_HOME_ENVIRONMENT_NAME)
+  if (typeof nativeClaudeHome === 'string' && nativeClaudeHome.trim()) {
+    const setAside = nativeClaudeHomeSetAsideReason(nativeClaudeHome, fence, filesystem)
+    if (setAside) {
+      setAsideNativeClaudeHome(setAside)
+    } else if (unquotedNativeClaudeHome(nativeClaudeHome) !== nativeClaudeHome.trim()) {
+      /* Kept, but spelled with surrounding quotes: hand on the spelling the
+         decision was made on, under the inherited name. */
+      for (const name of Object.keys(selected)) {
+        if (name.toUpperCase() === NATIVE_CLAUDE_HOME_ENVIRONMENT_NAME) selected[name] = unquotedNativeClaudeHome(nativeClaudeHome)
+      }
+    }
+  }
   const homeDrive = valueFor('HOMEDRIVE')
   const homePath = valueFor('HOMEPATH')
+  /* Winlogon sets HOMEDRIVE/HOMEPATH from the account's home folder, which on
+     a domain PC is commonly a mapped drive (H:\) and on a local one may be
+     any folder (net user /homedir). The person cannot change them, and
+     neither Node nor Chromium reads them for the profile. Refuse only a value
+     that names another Windows account; outside the profile the check is
+     lexical and never touches the drive or the network (platform review S1).
+     Inside the profile a reparse point may still lead out of it, so a value
+     there takes the same in-profile walk as HOME and PATH entries; the walk
+     stops at the first link target outside the fence and opens nothing there
+     (review of fixes 3.8). UNC values were refused above. */
   if (typeof homeDrive === 'string' && homeDrive && typeof homePath === 'string' && homePath) {
-    if (escapedFencedPath(path.win32.join(homeDrive, homePath), fence, filesystem)) {
+    const home = path.win32.join(homeDrive, homePath)
+    if (foreignWindowsProfileReferences(home, fence).length > 0
+        || (insideWindowsPath(home, fence) && escapedFencedPath(home, fence, filesystem))) {
       violations.push('HOMEDRIVE/HOMEPATH')
     }
   }
@@ -685,7 +854,7 @@ function fencedAccountEnvironment({
       message: `This copy of ToolsEnabled refused inherited account paths outside the selected Windows profile. Variables: ${[...new Set(violations)].sort().join(', ')}`,
     })
   }
-  return Object.freeze({ ok: true, environment: selected, fencedProfile: fence, reason: 'inside-profile-fence' })
+  return Object.freeze({ ok: true, environment: selected, fencedProfile: fence, reason: 'inside-profile-fence', ...setAsideFields() })
 }
 
 /* Electron's --user-data-dir bypasses APPDATA and therefore bypasses every
@@ -890,6 +1059,8 @@ module.exports = Object.freeze({
   ELEVATED_RUNTIME_CODE,
   ELEVATED_WARNING_KEY,
   INTEGRITY_UNAVAILABLE_CODE,
+  NATIVE_CLAUDE_HOME_ENVIRONMENT_NAME,
+  NATIVE_CLAUDE_HOME_UNUSABLE_CODE,
   NODE_LOADER_ENVIRONMENT_NAMES,
   PROVIDER_HOME_ENVIRONMENT_NAMES,
   STRICT_ACCOUNT_PATH_ENVIRONMENT_NAMES,
@@ -904,6 +1075,7 @@ module.exports = Object.freeze({
   explicitUserDataDirectories,
   fencedAccountEnvironment,
   insideWindowsPath,
+  nativeClaudeHomeStartAnswer,
   profileRootFromEnvironment,
   profileRootFromInstallPath,
   profileRootFromRuntimePath,
